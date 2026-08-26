@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { WEEKLY_ROW_CHOICES, CUSTOM_ROW_PREFIX, getWeeklyRows, setWeeklyRows } from "@/lib/weeklyRows";
+import { automaticRowKeys } from "@/lib/weeklyGrid";
 import { getCustomAnchors } from "@/lib/customAnchors";
 import { WayOfLoveTurnLearnPray, usePracticeModePref } from "@/components/WayOfLoveTurnLearnPray";
 import { PracticeCard } from "@/components/DailyProgressBody";
@@ -129,6 +130,14 @@ function WeeklyRowsEditor() {
   // Custom anchors get rows too — a practice you named yourself is exactly the
   // kind of thing you'd want to watch across a week.
   const anchors = useMemo(() => getCustomAnchors(), []);
+  /**
+   * What the card is showing RIGHT NOW when nothing is saved — derived, not
+   * assumed. Hardcoding the three "usual" rows told a newsletter reader their
+   * middle row was Contemplative when it was Reflection, and told someone with
+   * a two-row card they had three; the first tap then wrote that fiction down.
+   */
+  const rhythm = useRhythmState();
+  const automatic = useMemo(() => automaticRowKeys(rhythm), [rhythm]);
   const choices = useMemo(() => [
     ...WEEKLY_ROW_CHOICES,
     ...anchors.map((a) => ({ key: `${CUSTOM_ROW_PREFIX}${a.id}`, emoji: a.emoji || "✨", label: a.title, sub: "Your own practice." })),
@@ -138,7 +147,7 @@ function WeeklyRowsEditor() {
   const toggle = (key: string) => {
     // First touch starts from what the card is ALREADY showing, so switching
     // one practice on doesn't silently wipe the rows you were looking at.
-    const base = chosen ?? ["morning", "contemplative", "evening"];
+    const base = chosen ?? automatic;
     apply(base.includes(key) ? base.filter((k) => k !== key) : [...base, key]);
   };
 
@@ -160,7 +169,7 @@ function WeeklyRowsEditor() {
               : "The card is choosing for you. Tap any row to take it over."}
           </p>
           {choices.map((c) => {
-            const on = chosen ? chosen.includes(c.key) : ["morning", "contemplative", "evening"].includes(c.key);
+            const on = chosen ? chosen.includes(c.key) : automatic.includes(c.key);
             return (
               <button
                 key={c.key}

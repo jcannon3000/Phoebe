@@ -9,6 +9,7 @@
 import { getSideLevel } from "@/lib/officePrefs";
 import { getCustomAnchors, getCustomDoneDays, anchorOnDay } from "@/lib/customAnchors";
 import { getWeeklyRows } from "@/lib/weeklyRows";
+import { getPracticeDays, onDay } from "@/lib/practiceDays";
 import type { RhythmState } from "@/hooks/useRhythmState";
 
 // Carries every field GET /api/me/practice-week actually returns (see
@@ -75,6 +76,30 @@ function computeWindowDays(week: { days: PracticeWeekDay[] } | undefined): Pract
  *  toggle, and resolves TODAY's column from the live rhythm state (not the
  *  practice-week snapshot, which can lag a few seconds behind a
  *  just-finished practice) exactly like the card does. */
+/**
+ * The rows the card picks WHEN NOBODY HAS CHOSEN — as keys.
+ *
+ * Exported because the row editor has to show what you already have before you
+ * change it. It hardcoded ["morning","contemplative","evening"], which is only
+ * one of three possible answers: the middle slot is Reflection for a reader who
+ * keeps a newsletter and no contemplative practice, and there is NO middle row
+ * when they keep neither. So the editor ticked a row that wasn't there, left
+ * the one that was unticked, and the first tap silently swapped them.
+ *
+ * Deriving both from this function is the fix, and the point: two places
+ * answering the same question is how they came to disagree.
+ */
+export function automaticRowKeys(rhythm: RhythmState): string[] {
+  const namedContemplativeActive = rhythm.silenceActive || rhythm.cobreatheStandaloneActive
+    || rhythm.walkActive || rhythm.listeningActive || rhythm.examenActive || rhythm.visioActive;
+  const contemplativeActive = namedContemplativeActive || getCustomAnchors().length > 0;
+  const newsletterActive = rhythm.reflections.length > 0;
+  const middle = !contemplativeActive && newsletterActive
+    ? "reflection"
+    : contemplativeActive ? "contemplative" : null;
+  return ["morning", ...(middle ? [middle] : []), "evening"];
+}
+
 export function computeWeeklyGrid(params: {
   rhythm: RhythmState;
   week: { days: PracticeWeekDay[] } | undefined;
@@ -260,9 +285,6 @@ export function computeWeeklyGrid(params: {
    */
   // …and the row APPEARS for any of them. Gating on silence-or-breath alone is
   // what hid a walker's practice from this card entirely.
-  const contemplativeActive = namedContemplativeActive || customAnchorIds.length > 0;
-  const newsletterActive = rhythm.reflections.length > 0;
-  const middleIsNewsletter = !contemplativeActive && newsletterActive;
   // `d.reflection` is deliberately fdd/ssje/cac only, with Dean's Commentary
   // reported separately as `d.vts` — so a VTS-only reader needs both, or their
   // row would be blank every day while they kept it.
@@ -278,7 +300,6 @@ export function computeWeeklyGrid(params: {
    * single day. Silence wins the slot when they keep it, a newsletter takes it
    * when they don't, and when they keep neither the card is simply two rows.
    */
-  const middleIsContemplative = !middleIsNewsletter && contemplativeActive;
 
   type Row = { emoji: string; label: string; done: boolean; historyFor: (d: PracticeWeekDay) => boolean; partialToday?: boolean; partialFor?: (d: PracticeWeekDay) => boolean };
 
@@ -302,14 +323,37 @@ export function computeWeeklyGrid(params: {
     evening: eveningRow,
     contemplative: contemplativeRow,
     reflection: reflectionRow,
-    cobreathe: { emoji: "🌍", label: "Creation Prayer", done: rhythm.cobreatheDone, historyFor: (d) => d.cobreathe },
-    walk: { emoji: "🚶", label: "Contemplative Walk", done: rhythm.walkDone, historyFor: (d) => d.walk },
-    listening: { emoji: "🎵", label: "Audio Divina", done: rhythm.listeningDone, historyFor: (d) => d.listening },
-    visio: { emoji: "🖼️", label: "Visio Divina", done: rhythm.visioDone, historyFor: (d) => !!d.visio },
-    examen: { emoji: "🌗", label: "The Examen", done: rhythm.examenDone, historyFor: (d) => d.examen },
-    compline: { emoji: "🌒", label: "Compline", done: rhythm.complineDone, historyFor: (d) => d.compline },
-    reading: { emoji: "📚", label: "Reading", done: rhythm.readingDone, historyFor: (d) => d.reading },
-    "prayer-list": { emoji: "🕊️", label: "Prayer List", done: rhythm.prayerListDone, historyFor: (d) => d.prayerList },
+    ...Object.fromEntries(([
+      ["cobreathe", "🌍", "Creation Prayer", rhythm.cobreatheDone, (d: PracticeWeekDay) => d.cobreathe],
+      ["walk", "🚶", "Contemplative Walk", rhythm.walkDone, (d: PracticeWeekDay) => d.walk],
+      ["listening", "🎵", "Audio Divina", rhythm.listeningDone, (d: PracticeWeekDay) => d.listening],
+      ["visio", "🖼️", "Visio Divina", rhythm.visioDone, (d: PracticeWeekDay) => !!d.visio],
+      ["examen", "🌗", "The Examen", rhythm.examenDone, (d: PracticeWeekDay) => d.examen],
+      ["compline", "🌒", "Compline", rhythm.complineDone, (d: PracticeWeekDay) => d.compline],
+      ["reading", "📚", "Reading", rhythm.readingDone, (d: PracticeWeekDay) => d.reading],
+      ["prayer-list", "🕊️", "Prayer List", rhythm.prayerListDone, (d: PracticeWeekDay) => d.prayerList],
+    ] as Array<[string, string, string, boolean, (d: PracticeWeekDay) => boolean]>).map(([key, emoji, label, doneToday, on]) => [key, {
+      emoji,
+      label,
+      /**
+       * An off day is not a missed day.
+       *
+       * These rows can be given to a practice scoped to certain weekdays
+       * (lib/practiceDays), and without this a Visio Divina kept Monday to
+       * Friday drew two hollow dots every weekend — a gap you could never
+       * fill, which is the one thing this grid must not show. The custom-anchor
+       * row below has always read its off days as kept for exactly this
+       * reason; these now do the same.
+       */
+      // The day-set is read ONCE per row, not once per row per day —
+      // practiceOnDay re-parses the whole map on every call, and this runs for
+      // eight rows across seven columns on every render of the card.
+      done: (() => { const scope = getPracticeDays(key); return !onDay(scope) || doneToday; })(),
+      historyFor: (() => {
+        const scope = getPracticeDays(key);
+        return (d: PracticeWeekDay) => !onDay(scope, new Date(`${d.ymd}T12:00:00`)) || on(d);
+      })(),
+    }])),
   };
   // A custom anchor gets a row of its own when asked for by key.
   for (const a of customAnchorsForGrid) {
@@ -332,11 +376,12 @@ export function computeWeeklyGrid(params: {
   const chosenRowKeys = getWeeklyRows();
   const chosenRows = chosenRowKeys?.map((k) => ROW_BY_KEY[k]).filter((r): r is Row => !!r) ?? null;
 
-  const automatic: Row[] = practiceMode ? [
-    morningRow,
-    ...(middleIsNewsletter ? [reflectionRow] : middleIsContemplative ? [contemplativeRow] : []),
-    eveningRow,
-  ] : [
+  // Through the SAME function the editor asks — see automaticRowKeys. Building
+  // the list twice from the same conditions is precisely how the editor came to
+  // disagree with the card about which middle row was showing.
+  const automatic: Row[] = practiceMode
+    ? automaticRowKeys(rhythm).map((k) => ROW_BY_KEY[k]).filter((r): r is Row => !!r)
+    : [
     { emoji: "🔄", label: "Turn", done: turned, historyFor: (d) => readTurnedOn(d.ymd) },
     { emoji: "📖", label: "Learn", done: learned, historyFor: learnedOn },
     { emoji: "🙏🏽", label: "Pray", done: prayed, historyFor: prayedOn },
