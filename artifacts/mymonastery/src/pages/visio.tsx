@@ -147,9 +147,18 @@ export default function VisioPage() {
     retry: false,
   });
 
-  // Read once at mount: chooseArtwork needs it to pin today's pick and to
-  // subtract what's already been seen, and re-reading mid-practice would let
-  // this session's own entry change the answer underneath it.
+  /**
+   * The closing cards' record, and NOTHING ELSE.
+   *
+   * `chooseArtwork(ymd, lessons)` does not take this and must never take it.
+   * Everyone praying Visio on a given day sees the SAME work (owner: "we want
+   * everyone to be viewing the same image who's practicing it"), which holds
+   * only while the choice is a pure function of the date and the appointed
+   * lessons. A version that subtracted the reader's own history made the image
+   * quietly personal, and this comment used to say that was still the case —
+   * so anyone tidying up would have wired it back. Read once at mount so this
+   * session's own entry can't reorder the cards underneath it.
+   */
   const [history] = useState(() => getVisioHistory());
   /**
    * Set when the reader taps something in the closing gallery. From then on
@@ -219,9 +228,9 @@ export default function VisioPage() {
     [],
   );
 
-  // Remember today's, once it's settled — this is what pins the choice for the
-  // rest of the day and keeps tomorrow's different. Not recorded for an
-  // override: re-reading an old picture shouldn't rewrite today.
+  // Remember today's, once it's settled — for the closing cards. It pins
+  // nothing: the date does that, since chooseArtwork is pure. Not recorded for
+  // an override: re-reading an old picture shouldn't rewrite today.
   useEffect(() => {
     if (!chosen) return;
     try { recordVisioSeen(chosen.art.id, today); } catch { /* non-fatal */ }
@@ -488,6 +497,8 @@ export default function VisioPage() {
   useEffect(() => {
     const onFinished = () => {
       if (!handedOff.current) return;
+      // Belt and braces: see the step-change reset below for why this can't
+      // already be a stale flag from an earlier beat.
       handedOff.current = false;
       setStep((n) => Math.max(0, n - 1));
     };
@@ -503,6 +514,22 @@ export default function VisioPage() {
    * going back one slide silently deletes the reflection from the practice.
    */
   useEffect(() => { if (step < FIRST_LOOK) setReadBackground(false); }, [step, FIRST_LOOK]);
+  /**
+   * The hand-off flag belongs to ONE beat.
+   *
+   * Leaving the reflection doesn't change `step` (that's the whole point of the
+   * listener above), so this never fires on the path it protects. It fires when
+   * the deck moves on by any other route — and that matters because the closing
+   * slide opens VCS too ("Read reflection", openExternal). Without this, a flag
+   * left set at beat 3 would still be armed at beat 7, and closing THAT browser
+   * would walk the reader backwards out of their own completion screen.
+   *
+   * Unreachable today: on iOS every exit from the reading already clears it
+   * (the pill's Back/Next fire office-prev/next-slide, the edge swipe fires
+   * browserfinished), and on web no browserfinished is ever fired at all. It
+   * costs one line to stop being one native tweak away from true.
+   */
+  useEffect(() => { handedOff.current = false; }, [step]);
   useEffect(() => { if (view?.essayUrl) preloadExternal(view.essayUrl); }, [view?.essayUrl]);
   useEffect(() => {
     const onNext = () => { handedOff.current = false; setStep((n) => Math.min(TOTAL - 1, n + 1)); };
