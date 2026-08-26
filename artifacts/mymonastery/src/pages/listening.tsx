@@ -77,7 +77,7 @@ function relDay(day: string): string {
 type View = "deck" | "log" | "history";
 
 // One account-wide log entry (server-backed; syncs across the account).
-type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; shared?: boolean; createdAt: string };
+type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; felt?: string; shared?: boolean; createdAt: string };
 
 export default function ListeningPage() {
   const [view, setView] = useState<View>("deck");
@@ -86,6 +86,17 @@ export default function ListeningPage() {
   // Kept today already? The form collapses behind a "Log another" button, so
   // the page reads as the practice rather than an empty form. This re-opens it.
   const [logAnother, setLogAnother] = useState(false);
+  /**
+   * Up to three emoji for what the listening FELT like — optional, and the
+   * wordless alternative to writing a sentence about it (owner). Counted in
+   * GRAPHEMES: 🙏🏽 is four UTF-16 units and a family emoji is eleven, so a
+   * length check on `.length` would let one emoji fill the field or cut
+   * another in half.
+   */
+  const [felt, setFelt] = useState("");
+  const feltCount = (v: string) => (typeof Intl.Segmenter === "function"
+    ? [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(v)].length
+    : [...v].length);
   // `query` is the transient search text (never stored); `what` is the SELECTED
   // catalog title and is only ever set by tapping a result or a recent — you
   // can't log free-typed text. This keeps the log to structured Apple Music
@@ -167,7 +178,7 @@ export default function ListeningPage() {
   }
   // Audio Divina is private — a personal listening log, no sharing with fellows.
   const logMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, shared: false }),
+    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, felt, shared: false }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
   const deleteMutation = useMutation({
@@ -181,7 +192,7 @@ export default function ListeningPage() {
     if (!what.trim()) return;
     logMutation.mutate();
     markPracticeDoneToday("listening");
-    setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false);
+    setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false); setFelt("");
     // Stay on the practice — the new listen becomes the hero right here,
     // rather than throwing you onto the full-log screen to see that it saved.
     setLogAnother(false);
@@ -354,6 +365,28 @@ export default function ListeningPage() {
                       );
                     })}
                   </div>
+                  {/* Owner: "in addition to the song they chose, let them have
+                      an optional log where they can enter three emojis that
+                      represent what they felt." Optional and wordless — the
+                      alternative to writing a sentence, not a second thing to
+                      write. Three is the ceiling, counted in graphemes so a
+                      skin-toned 🙏🏽 or a family emoji counts as one. */}
+                  <p className="text-[10.5px] uppercase tracking-[0.18em] mt-5 mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                    What did you feel? <span style={{ textTransform: "none", letterSpacing: 0, opacity: 0.7 }}>— optional, up to three emoji</span>
+                  </p>
+                  <input
+                    value={felt}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      // Let them delete freely; only cap growth.
+                      if (feltCount(v) <= 3 || v.length < felt.length) setFelt(v);
+                    }}
+                    inputMode="text"
+                    placeholder="🕊️ 🌊 🙏🏽"
+                    aria-label="Up to three emoji for what you felt"
+                    className="w-full rounded-2xl px-4 py-3.5 text-[22px] text-center outline-none"
+                    style={glassField}
+                  />
                 </div>
               )}
             </motion.div>
@@ -784,7 +817,12 @@ function EntryRow({ e, onDelete, deleting }: { e: ServerEntry; onDelete: (id: nu
       )}
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{label}</p>
-        <p className="text-[11.5px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{MEDIUM_EMOJI[e.medium] ?? "🎧"} {relDay(e.day)}</p>
+        <p className="text-[11.5px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+          {MEDIUM_EMOJI[e.medium] ?? "🎧"} {relDay(e.day)}
+          {/* What it felt like, if they said. Kept on this line rather than
+              given its own: it's a colour on the entry, not a second fact. */}
+          {e.felt ? <span className="ml-1.5" aria-label="what you felt">{e.felt}</span> : null}
+        </p>
       </div>
       <button
         onClick={() => onDelete(e.id)}

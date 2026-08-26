@@ -26,6 +26,10 @@ export const listeningEntriesTable = pgTable(
     artworkUrl: text("artwork_url").notNull().default(""),
     // Optional reflection — "what did it stir in you?".
     experience: text("experience").notNull().default(""),
+    // Up to three emoji for what the listening FELT like — the wordless
+    // version of `experience`, for the days when naming it in a sentence is
+    // more than the practice asks. Optional; empty when they didn't say.
+    felt: text("felt").notNull().default(""),
     // Private by default; when shared=true the entry appears on the viewer's
     // Fellows feed (mirrors gratitude's `shared`, but scoped to fellows).
     shared: boolean("shared").notNull().default(false),

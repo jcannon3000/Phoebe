@@ -33,7 +33,7 @@ router.get("/listening", async (req: Request, res: Response): Promise<void> => {
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
   try {
     const rows = await db
-      .select({ id: listeningEntriesTable.id, day: listeningEntriesTable.day, medium: listeningEntriesTable.medium, what: listeningEntriesTable.what, artworkUrl: listeningEntriesTable.artworkUrl, createdAt: listeningEntriesTable.createdAt })
+      .select({ id: listeningEntriesTable.id, day: listeningEntriesTable.day, medium: listeningEntriesTable.medium, what: listeningEntriesTable.what, artworkUrl: listeningEntriesTable.artworkUrl, felt: listeningEntriesTable.felt, createdAt: listeningEntriesTable.createdAt })
       .from(listeningEntriesTable)
       .where(eq(listeningEntriesTable.userId, userId))
       .orderBy(desc(listeningEntriesTable.createdAt))
@@ -48,18 +48,39 @@ router.get("/listening", async (req: Request, res: Response): Promise<void> => {
 router.post("/listening", perUserRateLimit("listening_log", { max: 30, windowMs: 60 * 1000 }), async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
-  const body = req.body as { day?: unknown; medium?: unknown; what?: unknown; artworkUrl?: unknown };
+  const body = req.body as { day?: unknown; medium?: unknown; what?: unknown; artworkUrl?: unknown; felt?: unknown };
   const day = typeof body.day === "string" && isValidYmd(body.day)
     ? body.day
     : new Date().toISOString().slice(0, 10);
   const medium = typeof body.medium === "string" && MEDIA.has(body.medium) ? body.medium : "streaming";
   const what = typeof body.what === "string" ? body.what.trim().slice(0, 200) : "";
   const artworkUrl = typeof body.artworkUrl === "string" && /^https?:\/\//i.test(body.artworkUrl) ? body.artworkUrl.slice(0, 600) : "";
+  /**
+   * Up to three emoji for what it felt like.
+   *
+   * Counted in GRAPHEMES, not code units: a single 👨‍👩‍👧 is eleven UTF-16
+   * units and 🙏🏽 is four, so a `.slice(3)` would cut one emoji into mojibake
+   * and call it three. Intl.Segmenter gives the count a person would give.
+   * Anything that isn't an emoji is dropped rather than rejected — this is an
+   * optional wordless field, and the useful failure is "your text didn't take",
+   * not a 400 in the middle of logging a practice.
+   */
+  const felt = (() => {
+    const raw = typeof body.felt === "string" ? body.felt : "";
+    if (!raw) return "";
+    const graphemes = typeof Intl.Segmenter === "function"
+      ? [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(raw)].map((x) => x.segment)
+      : [...raw];
+    return graphemes
+      .filter((g) => /\p{Extended_Pictographic}/u.test(g))
+      .slice(0, 3)
+      .join("");
+  })();
   try {
     const [row] = await db
       .insert(listeningEntriesTable)
-      .values({ userId, day, medium, what, artworkUrl })
-      .returning({ id: listeningEntriesTable.id, day: listeningEntriesTable.day, medium: listeningEntriesTable.medium, what: listeningEntriesTable.what, artworkUrl: listeningEntriesTable.artworkUrl, createdAt: listeningEntriesTable.createdAt });
+      .values({ userId, day, medium, what, artworkUrl, felt })
+      .returning({ id: listeningEntriesTable.id, day: listeningEntriesTable.day, medium: listeningEntriesTable.medium, what: listeningEntriesTable.what, artworkUrl: listeningEntriesTable.artworkUrl, felt: listeningEntriesTable.felt, createdAt: listeningEntriesTable.createdAt });
     res.json({ ok: true, entry: row });
   } catch (err) {
     console.error("[/listening POST] failed:", err);
