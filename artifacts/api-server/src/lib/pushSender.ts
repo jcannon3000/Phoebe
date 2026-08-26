@@ -1138,7 +1138,46 @@ export function sendParishOfficeReminderPush(
       : side === "morning"
         ? "A few quiet minutes to start the day."
         : "A few quiet minutes before the day ends.";
-  const body = readingsLine ? `${firstLine}\n${readingsLine}` : firstLine;
+  /**
+   * The second line — and every practice gets one.
+   *
+   * Reported: "the prayer notifications are on time, but they have lost their
+   * description." Only four levels ever had a second line: the readings line is
+   * scoped to office / devotion / psalms / readings, and scriptureScopeFor
+   * returns "none" for everything else. So a rule anchored on a custom practice,
+   * Simple Guided Prayer, the Examen, Creation Prayer, Compline or a reflection
+   * got a notification whose whole body was two words — "Chapel" — where the
+   * same reminder used to carry psalms and lessons.
+   *
+   * Nothing was lost from those four; the others simply never had anything to
+   * say. They do now: the practice's own one-line description, the same words
+   * the customizer uses to describe it, so the notification still tells you
+   * what you're being invited into.
+   *
+   * The readings keep priority where they exist — an actual citation beats a
+   * standing description of the practice.
+   */
+  const PRACTICE_BLURB: Record<string, string> = {
+    "reflect-sit": "A few minutes of silence.",
+    examen: "Review the day with God.",
+    "guided-prayer": "Praise, ask, confess, give thanks.",
+    creation: "Breathing with God's creation.",
+    compline: "The night office, before sleep.",
+    fdd: "Today's reflection.",
+  };
+  // The plain invitation, which is the first line when we know nothing at all —
+  // and the LAST-RESORT second line when we know the practice's name but have
+  // nothing to say about it. A practice someone named themselves ("Chapel") is
+  // exactly that case: we won't invent a description for it, but the reminder
+  // shouldn't be one word either.
+  const genericLine = side === "morning"
+    ? "A few quiet minutes to start the day."
+    : "A few quiet minutes before the day ends.";
+  const secondLine = readingsLine
+    ?? (level ? PRACTICE_BLURB[level] : null)
+    // …never repeat the first line back as the second.
+    ?? (firstLine === genericLine ? null : genericLine);
+  const body = secondLine ? `${firstLine}\n${secondLine}` : firstLine;
   return sendPushToUser(userId, {
     title,
     body,
