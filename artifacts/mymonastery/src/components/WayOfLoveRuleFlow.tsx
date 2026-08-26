@@ -70,6 +70,7 @@ import {
   setSideExtra,
   getSideExtra,
   setSideContemplationKind,
+  getSideContemplationKind,
 } from "@/lib/officePrefs";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
@@ -557,6 +558,29 @@ const DEFAULT_REMINDER_TIME = "07:00";
 // Is a home module currently surfaced? Mirrors the dashboard's gate: only a
 // current-version layout counts, and the key must be in `order` and not
 // `hidden`. Used to seed the optional-practice toggles from the live home.
+/**
+ * Is the Creation Prayer home card there because a SIDE keeps the breath?
+ *
+ * Owner: "if I had creation prayer in an anchor and take it out, it should not
+ * be transferred into my contemplative practices — it should just be turned
+ * off." (And: "but I could then turn it back on.")
+ *
+ * A side that keeps the breath makes commit() write the `cobreathe` home card.
+ * The standing-practices toggle then seeded ITSELF from that same card — so
+ * removing Creation Prayer from the anchor didn't remove it at all, it moved
+ * it: the card stayed on, the toggle read it back as a standalone practice,
+ * and commit wrote it again. The practice migrated rather than ending.
+ *
+ * So the card only counts as a STANDING practice when no side is carrying it.
+ * It stays a row on the contemplative slide either way, so taking it off an
+ * anchor and then choosing it as a standing practice is still one tap.
+ */
+function creationHeldBySide(): boolean {
+  return (["morning", "evening"] as const).some(
+    (sd) => getSideContemplation(sd) && getSideContemplationKind(sd) === "creation",
+  );
+}
+
 function homeCardOn(
   hl: { order?: string[]; hidden?: string[]; v?: number } | null | undefined,
   key: string,
@@ -998,7 +1022,7 @@ export default function WayOfLoveRuleFlow({
     const silentSeed = getSideContemplation("morning") || getSideContemplation("evening") || getSideLevel("morning") === "reflect-sit" || getSideLevel("evening") === "reflect-sit";
     const examenSeed = homeCardOn(user.homeLayout, "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen";
     setContemplative((c) => touchedRef.current ? c : {
-      cobreathe: homeCardOn(user.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && silentSeed),
+      cobreathe: !creationHeldBySide() && homeCardOn(user.homeLayout, "cobreathe"),
       audio: homeCardOn(user.homeLayout, "listening"),
       examen: examenSeed,
       walk: homeCardOn(user.homeLayout, "walk"),
@@ -1026,7 +1050,7 @@ export default function WayOfLoveRuleFlow({
   // Divina, the Examen. The latter three slot into the day at a chosen time.
   const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; compline: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
-    cobreathe: homeCardOn(user?.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && (getSideContemplation("morning") || getSideContemplation("evening") || getSideLevel("morning") === "reflect-sit" || getSideLevel("evening") === "reflect-sit")),
+    cobreathe: !creationHeldBySide() && homeCardOn(user?.homeLayout, "cobreathe"),
     audio: homeCardOn(user?.homeLayout, "listening"),
     examen: homeCardOn(user?.homeLayout, "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen",
     walk: homeCardOn(user?.homeLayout, "walk"),
@@ -2367,6 +2391,12 @@ export default function WayOfLoveRuleFlow({
         background: on ? CARD_ACTIVE : CARD,
         border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
         color: CREAM, borderRadius: 14, padding: 0, overflow: "hidden", textAlign: "left",
+        // FULL WIDTH on its own. This used to rely on being a direct child of a
+        // flex column (align-items: stretch) — so the moment two new slides
+        // wrapped each row in a keyed <div>, the div stretched and the button
+        // inside it shrank to fit its text, and a list of five options came out
+        // with five different right edges. A row shouldn't care where it's put.
+        width: "100%", boxSizing: "border-box",
         display: "flex", alignItems: "stretch", cursor: "pointer",
         transition: "background 0.15s, border-color 0.15s",
       }}
@@ -2985,7 +3015,12 @@ export default function WayOfLoveRuleFlow({
     return shell(
       <>
         {backRow(goPrev)}
-        {stepHeader(t("wol_rule.silence_eyebrow", { defaultValue: "Return" }), t("wol_rule.silence_title", { defaultValue: "Silence" }))}
+        {/* Owner: "the silence slide in the customizer should be contemplative
+            prayer." That IS the practice this slide sizes — the app calls it
+            Contemplative Prayer on the anchor slide, on the contemplative
+            picker and on the home card, and "Silence" was the one place it
+            went by a different name. */}
+        {stepHeader(t("wol_rule.silence_eyebrow", { defaultValue: "Return" }), t("wol_rule.silence_title", { defaultValue: "Contemplative Prayer" }))}
         {/* Owner: say what's being asked before the picker, rather than
             leaving a bare dropdown under a one-word heading. */}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 18px" }}>
@@ -3487,7 +3522,7 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.bcp_form_body", { side: cap.toLowerCase(), defaultValue: `Which of the prayer book's ${cap.toLowerCase()} liturgies would you like to keep?` })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {forms.map((f) => <div key={f}>{row(f)}</div>)}
+          {forms.map((f) => row(f))}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -3523,9 +3558,7 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {forms.map((f) => {
             const m = meta(f);
-            return (
-              <div key={f}>
-                {choiceRow(contemplativeForm[side] === f, `${m.emoji} ${m.label}`, m.sub, () => {
+            return choiceRow(contemplativeForm[side] === f, `${m.emoji} ${m.label}`, m.sub, () => {
                   touchedRef.current = true;
                   setContemplativeForm((p) => ({ ...p, [side]: f }));
                   // One contemplative practice per side: the two per-side forms
@@ -3545,12 +3578,34 @@ export default function WayOfLoveRuleFlow({
                       if (goalMin === 0) { chooseGoal("20"); chooseSilenceMode("fixed"); }
                     }
                   } else {
+                    /**
+                     * A walk, sacred listening or Visio Divina AS THIS SIDE'S
+                     * ANCHOR — not as a standing all-day card.
+                     *
+                     * Reported: "I tried to make Visio Divina my evening
+                     * practice and it didn't work." It turned the side's
+                     * contemplation OFF and flipped a standing toggle ON, so
+                     * the side was left with no anchor at all and the practice
+                     * floated free of the evening.
+                     *
+                     * These three have a home as a side's anchor already: a
+                     * `custom` level whose NAME lib/anchorPractices matches
+                     * back to the real practice, so the card opens it and
+                     * completing it ticks this side.
+                     *
+                     * The form is restored AFTER choosePrayBySide, which clears
+                     * it — that clear is what keeps the anchor slide
+                     * single-select, and this is the one caller that means
+                     * both things at once.
+                     */
                     if (contemplationBySide[side]) toggleContemplationSide(side);
-                    setContemplative((c) => ({ ...c, [f]: true }));
+                    setContemplative((c) => (c[f] ? { ...c, [f]: false } : c));
+                    choosePrayBySide(side, "ownPractice");
+                    setCustomNameBySide((p2) => ({ ...p2, [side]: m.label }));
+                    setSideCustomName(side, m.label);
+                    setContemplativeForm((p2) => ({ ...p2, [side]: f }));
                   }
-                })}
-              </div>
-            );
+            });
           })}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}

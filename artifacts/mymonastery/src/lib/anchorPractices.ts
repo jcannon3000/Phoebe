@@ -21,7 +21,7 @@
  */
 export type AnchorPractice = {
   /** The rhythm key this practice completes as. */
-  key: "listening" | "cobreathe" | "walk";
+  key: "listening" | "cobreathe" | "walk" | "visio";
   emoji: string;
   /** Where the card goes. Empty = no page of its own; tap logs it instead. */
   href: string;
@@ -34,6 +34,11 @@ const BY_NAME: Record<string, AnchorPractice> = {
   // A walk has no screen to sit on — it's logged when you come back, the same
   // way the standalone Contemplative Walk card works.
   "contemplative walk": { key: "walk", emoji: "🚶", href: "" },
+  // Reported: "I tried to make Visio Divina my evening practice and it didn't
+  // work." It was missing from this map, so choosing it as a side's anchor
+  // stored a name that resolved to no practice — a bare tap-to-mark card
+  // called "Visio Divina" that had nothing to do with the real one.
+  "visio divina": { key: "visio", emoji: "🖼️", href: "/visio" },
 };
 
 /** The practice a side's custom anchor NAMES, if it names one at all. */
