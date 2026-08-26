@@ -422,6 +422,7 @@ async function evalLadder(userId: number, tz: string, state: LadderState, todayY
              COALESCE(SUM(duration_seconds), 0) AS secs
       FROM prayer_sessions
       WHERE user_id = ${userId} AND surface = 'contemplation'
+        AND (source IS NULL OR source <> 'cobreathe')
         AND ended_at >= NOW() - INTERVAL '95 days'
         AND (ended_at AT TIME ZONE ${tz})::date >= ${fromYmd}::date
         AND (ended_at AT TIME ZONE ${tz})::date <= ${yesterday}::date
@@ -465,7 +466,8 @@ router.get("/me/silence-ladder", async (req, res): Promise<void> => {
     // dropped in migrate.ts; this query against it 500'd this whole endpoint
     // on every call. In-app sits are now the sole source (see evalLadder).
     const [todaySits] = await Promise.all([
-      db.execute<{ secs: number }>(sql`SELECT COALESCE(SUM(duration_seconds),0) AS secs FROM prayer_sessions WHERE user_id = ${sessionUserId} AND surface = 'contemplation' AND (ended_at AT TIME ZONE ${tz})::date = ${todayYmd}::date`),
+      // Silent sits only — see the practice-week query's source-filter note.
+      db.execute<{ secs: number }>(sql`SELECT COALESCE(SUM(duration_seconds),0) AS secs FROM prayer_sessions WHERE user_id = ${sessionUserId} AND surface = 'contemplation' AND (source IS NULL OR source <> 'cobreathe') AND (ended_at AT TIME ZONE ${tz})::date = ${todayYmd}::date`),
     ]);
     const todayMinutes = Math.floor(Number(todaySits.rows[0]?.secs ?? 0) / 60);
     res.json({
@@ -732,12 +734,20 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       `),
       // Contemplation sits logged in-app — summed per local day so we can
       // measure each day's total against the daily goal (not just presence).
+      // SILENT sits only: a Creation Prayer breath posts surface
+      // 'contemplation' with source 'cobreathe' (its minutes ride the same
+      // table), and without the source filter twelve breaths met the SILENCE
+      // goal — a creation-side completion ticking the silent signal, the
+      // exact conflation the per-side kind exists to prevent. The
+      // contemplation-sides-today route has always filtered this way; these
+      // aggregate reads never did.
       db.execute<{ day: string; secs: number }>(sql`
         SELECT to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
                COALESCE(SUM(duration_seconds), 0) AS secs
         FROM prayer_sessions
         WHERE user_id = ${sessionUserId}
           AND surface = 'contemplation'
+          AND (source IS NULL OR source <> 'cobreathe')
           AND ended_at >= NOW() - INTERVAL '8 days'
         GROUP BY 1
       `),

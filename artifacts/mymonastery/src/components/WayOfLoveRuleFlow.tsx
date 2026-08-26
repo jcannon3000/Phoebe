@@ -2038,9 +2038,14 @@ export default function WayOfLoveRuleFlow({
     setGoal(String(preset.silence ? preset.goalMin : 0));
     // The preset's sit IS its promise ("5 minutes of silence" = one 5-minute
     // sit) — size each side's card to it.
+    // Only when the preset's sit IS silent — for a breath preset (VTS) the
+    // goal is the day's separate silence total, and stamping it onto a side
+    // whose practice is measured in breaths is the goal→per-side inference
+    // this file has already removed twice.
+    const presetSitsSilent = preset.silence && preset.contemplationStyle !== "cobreathe";
     setMinutesBySide({
-      morning: preset.silence && preset.goalMin >= 5 && preset.goalMin <= 30 ? preset.goalMin : 15,
-      evening: preset.silence && preset.goalMin >= 5 && preset.goalMin <= 30 ? preset.goalMin : 15,
+      morning: presetSitsSilent && preset.goalMin >= 5 && preset.goalMin <= 30 ? preset.goalMin : 15,
+      evening: presetSitsSilent && preset.goalMin >= 5 && preset.goalMin <= 30 ? preset.goalMin : 15,
     });
     setNewsletters(preset.reflections);
     setExtras({ examen: false, listening: false, reading: false, podcasts: false, prayerList: false });
@@ -2219,9 +2224,16 @@ export default function WayOfLoveRuleFlow({
     return !!g && extraOptionsFor(side).filter((e) => e.group === g).length > 1;
   };
 
-  /** Is the silent sit part of this rhythm? Drives whether the Silence page
-   *  (minutes + log method) is asked at all — see buildSteps. */
-  const wantsSilence = goalMin > 0 || contemplationBySide.morning || contemplationBySide.evening;
+  /** Is the SILENT sit part of this rhythm? Drives whether the Silence page
+   *  (minutes + log method) is asked at all — see buildSteps — and lights the
+   *  "Contemplative Prayer / Time set aside for silence" row. KIND-AWARE: a
+   *  side kept as Creation Prayer (or a walk, or listening) is not silence,
+   *  and counting it here lit the silence row for a VTS rule and let its
+   *  toggle-OFF silently delete the Evening Creation Prayer. A side that's on
+   *  with no recorded form is treated as silent (the legacy shape). */
+  const sideIsSilentSit = (sd: OfficeSide) =>
+    contemplationBySide[sd] && (contemplativeForm[sd] === "prayer" || contemplativeForm[sd] === null);
+  const wantsSilence = goalMin > 0 || sideIsSilentSit("morning") || sideIsSilentSit("evening");
   const buildSteps = (sidesArg: Record<OfficeSide, boolean>): Step[] => guest
     // GUEST (public no-login): when → per-side way + ONE merged config slide
     // (the BCP form + medium + reminder all live on side-config — no separate
@@ -2400,6 +2412,15 @@ export default function WayOfLoveRuleFlow({
     if (rowId === "side:morning") return st.startsWith("morning-");
     if (rowId === "side:evening") return st.startsWith("evening-");
     if (rowId === "contemplation") return st === "contemplation-goal" || st === "contemplative";
+    // A side's contemplative practice is that side's ANCHOR, so editing it
+    // walks the side's whole run of slides (way → which practice → config),
+    // exactly as the side:<side> row does — the owner asked to be able to
+    // change Creation Prayer to the evening office from this gear. Without
+    // this case the walk fell through to false and the FIRST slide's
+    // Continue already said Save.
+    if (rowId.startsWith("contemplation:")) {
+      return rowId.endsWith(":morning") ? st.startsWith("morning-") : st.startsWith("evening-");
+    }
     if (rowId.startsWith("slot:")) return st === "contemplative";
     if (rowId.startsWith("card:")) return st === "learn";
     if (rowId.startsWith("custom:")) return st === "custom";
@@ -2688,7 +2709,23 @@ export default function WayOfLoveRuleFlow({
     if (id === "extra:evening") return "evening-extra";
     if (id === "side:morning") return "morning-way";
     if (id === "side:evening") return "evening-way";
-    if (id === "contemplation" || id.startsWith("contemplation:")) return "contemplation-goal";
+    // Bare "contemplation" is the DAY's silence goal. "contemplation:<side>"
+    // is that side's contemplative practice — of any kind. Lumping the two
+    // sent the gear on "Evening Creation Prayer" to the silent-goal slide
+    // (owner screenshot, 2026-08-26), where Save then wrote the whole rule
+    // from a slide about a different practice.
+    //
+    // And it opens the SIDE'S FIRST slide, not the practice's details —
+    // owner: "it needs to go to the first slide of the evening side if it's
+    // the evening anchor … if it's creation prayer, I need to be able to
+    // change it to evening office if I want." The practice IS that side's
+    // anchor, so its gear behaves exactly like the side row's: the way slide,
+    // where the anchor itself can be swapped, then on through the side's own
+    // slides.
+    if (id === "contemplation") return "contemplation-goal";
+    if (id.startsWith("contemplation:")) {
+      return id.endsWith(":morning") ? "morning-way" : "evening-way";
+    }
     if (id.startsWith("slot:")) return "contemplative";
     if (id.startsWith("card:")) return "learn";
     if (id.startsWith("custom:")) return "custom";
@@ -3122,7 +3159,17 @@ export default function WayOfLoveRuleFlow({
               touchedRef.current = true;
               if (wantsSilence) {
                 chooseGoal("0");
-                setContemplationBySide({ morning: false, evening: false });
+                // Only the SILENT sides go with it. This used to zero both
+                // sides, so switching silence off took the Evening Creation
+                // Prayer down with it — a practice this row never named.
+                setContemplationBySide((prev) => ({
+                  morning: sideIsSilentSit("morning") ? false : prev.morning,
+                  evening: sideIsSilentSit("evening") ? false : prev.evening,
+                }));
+                setContemplativeForm((prev) => ({
+                  morning: sideIsSilentSit("morning") ? null : prev.morning,
+                  evening: sideIsSilentSit("evening") ? null : prev.evening,
+                }));
               } else {
                 chooseGoal("20");
                 chooseSilenceMode("fixed");
@@ -4761,7 +4808,10 @@ export default function WayOfLoveRuleFlow({
           ? t("wol_rule.n_breaths", { count: cobreatheBreaths, defaultValue: `${cobreatheBreaths} breaths` })
           : (silenceMode === "grow" ? "Growing toward 30 min" : (minutesBySide[s] > 0 ? t("wol_rule.n_min", { count: minutesBySide[s], defaultValue: `${minutesBySide[s]} min` }) : "A silent sit")),
         // Tapping edits THIS side (its config step sets the length + reminder).
-        step: (isCob ? (s === "morning" ? "morning-config" : "evening-config") : "contemplation-goal") as Step,
+        // Its own config slide for BOTH kinds — the slide that sets what this
+        // row displays (minutesBySide / breaths). The silent branch used to
+        // open the day's GOAL slide, which cannot change the sit it came from.
+        step: (s === "morning" ? "morning-config" : "evening-config") as Step,
       };
     })),
     // SOLO silence goal — minutes set with no per-side contemplation: the home
@@ -4783,8 +4833,12 @@ export default function WayOfLoveRuleFlow({
      * is the same practice said twice.
      */
     ...((goalMin > 0
-      && !(contemplationBySide.morning && contemplationStyle === "silent")
-      && !(contemplationBySide.evening && contemplationStyle === "silent")) ? [{
+      // Per-SIDE kind, not the global style: setSideContemplationKind mirrors
+      // the LAST-written side into the global, so on a split rule (silent one
+      // side, creation the other) the global holds whichever side committed
+      // last and this suppression fired for the wrong one.
+      && !(contemplationBySide.morning && contemplativeForm.morning === "prayer")
+      && !(contemplationBySide.evening && contemplativeForm.evening === "prayer")) ? [{
       emoji: (silenceMode === "grow" ? "🌱" : "🕯️"),
       label: "Silence",
       sub: silenceMode === "grow" ? "Growing toward 30 min" : `${goalMin} min a day`,

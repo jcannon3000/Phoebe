@@ -413,6 +413,12 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
       const conds = [
         eq(prayerSessionsTable.userId, sessionUserId),
         eq(prayerSessionsTable.surface, "contemplation"),
+        // SILENT sits only. These figures are what the client's
+        // contemplationMin — and so the silence goal card — is measured
+        // against; a Creation Prayer breath rides this table with source
+        // 'cobreathe' and was completing the SILENCE goal. The sides-today
+        // route below has always drawn this line; the aggregate didn't.
+        sql`(${prayerSessionsTable.source} IS NULL OR ${prayerSessionsTable.source} <> 'cobreathe')`,
       ];
       if (since) conds.push(gte(prayerSessionsTable.endedAt, since));
       const [row] = await db

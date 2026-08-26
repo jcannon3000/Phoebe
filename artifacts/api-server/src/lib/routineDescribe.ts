@@ -233,17 +233,29 @@ export function describeSpec(spec: {
       const isBreath = sideKind
         ? sideKind === "creation"
         : rc["phoebe:contemplation-style"] === "cobreathe";
+      // The OTHER named kinds. Falling through to the silent branch dressed a
+      // walk/listening/visio side as "🕯️ Contemplation · N min · timer" — a
+      // practice the reader never chose, with a sub about a timer it doesn't
+      // have. Five kinds exist (officePrefs.ContemplationKind); name them.
+      const NAMED_KIND: Record<string, { emoji: string; label: string; sub: string }> = {
+        walk: { emoji: "🚶", label: "Contemplative Walk", sub: "A walk kept as prayer" },
+        audio: { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer" },
+        visio: { emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image" },
+      };
+      const named = sideKind ? NAMED_KIND[sideKind] : undefined;
       rows.push({
         // Per-SIDE id. Both sides used the bare "contemplation", so a rule
         // that keeps a sit morning and evening rendered two list rows sharing
         // one React key — and deleting one could take the other's place with
         // it. It also let the ✕ only ever mean "clear both sides".
         id: `contemplation:${side}`,
-        emoji: isBreath ? "🌍" : "🕯️",
-        label: isBreath ? `${cap} Creation Prayer` : `${cap} Contemplation`,
+        emoji: isBreath ? "🌍" : named ? named.emoji : "🕯️",
+        label: isBreath ? `${cap} Creation Prayer` : named ? `${cap} ${named.label}` : `${cap} Contemplation`,
         sub: isBreath
           ? "Breathing with creation"
-          : [mins ? `${mins} min` : "A silent sit", logMethodLabel(rc)].join(" · "),
+          : named
+            ? named.sub
+            : [mins ? `${mins} min` : "A silent sit", logMethodLabel(rc)].join(" · "),
         section: "contemplation",
       });
     }
@@ -268,9 +280,28 @@ export function describeSpec(spec: {
     }
   }
 
+  /**
+   * Suppressed ONLY by a per-side SILENT sit — the one case that really is
+   * the same practice said twice. This predicate used to check the on/off
+   * flag alone, never the kind key read above, so an evening of Creation
+   * Prayer (breathing) suppressed the SILENCE row: the VTS rule's ten-minute
+   * goal had a live card on the home and no row here to see, edit or delete.
+   * The client fixed this exact inference on its review screen
+   * (WayOfLoveRuleFlow's silence-row comment names this rule) and the fix was
+   * never mirrored — the third recurrence of "a per-side sit speaks for the
+   * goal" that the per-side-contemplation memory predicted. The contract is
+   * useRhythmState.silenceGoalCardActive: `soloSilenceActive || (creation
+   * per side && goal > 0)` — where the home shows a Silence card, this list
+   * must show its row.
+   */
+  const sideIsSilentSit = (side: "morning" | "evening"): boolean => {
+    if (rc[`phoebe:office:contemplation:${side}`] !== "1") return false;
+    const kind = rc[`phoebe:office:contemplation-kind:${side}`];
+    return kind ? kind === "silent" : rc["phoebe:contemplation-style"] !== "cobreathe";
+  };
   if (spec.officePrefs.contemplationGoalMinutes > 0
-      && rc["phoebe:office:contemplation:morning"] !== "1"
-      && rc["phoebe:office:contemplation:evening"] !== "1") {
+      && !sideIsSilentSit("morning")
+      && !sideIsSilentSit("evening")) {
     rows.push({
       id: "contemplation",
       emoji: "🕯️",

@@ -61,13 +61,10 @@ export default function ContemplationLogPage() {
       if (when === "today") {
         const mSet = getSideContemplationExplicit("morning");
         const eSet = getSideContemplationExplicit("evening");
-        const anyExplicit = mSet !== null || eSet !== null;
         attributeContemplationSit({
           explicitSide,
-          activeSides: {
-            morning: anyExplicit ? mSet === true : true,
-            evening: anyExplicit ? eSet === true : true,
-          },
+          // Explicit picks only — see contemplation.tsx's attributeSit note.
+          activeSides: { morning: mSet === true, evening: eSet === true },
           kind: "silent",
         });
       }

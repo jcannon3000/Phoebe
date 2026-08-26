@@ -595,12 +595,19 @@ export function useRhythmState(): RhythmState {
       evening: hasContemplationSideDoneToday("evening", sideContemplationKind("evening")),
     });
     window.addEventListener(CONTEMPLATION_SIDE_DONE_EVENT, recheck);
+    // The day-flag match is KEYED BY KIND, and kinds change through
+    // setSideContemplationKind, which announces itself on OFFICE_PREFS_EVENT
+    // — not on the side-done event. Without this, flipping a side's kind
+    // re-rendered the card with the new face while the done-flag still held
+    // the old kind's answer until the next focus.
+    window.addEventListener(OFFICE_PREFS_EVENT, recheck);
     window.addEventListener("focus", recheck);
     window.addEventListener("pageshow", recheck);
     window.addEventListener("storage", recheck);
     window.addEventListener("phoebe:appactive", recheck);
     return () => {
       window.removeEventListener(CONTEMPLATION_SIDE_DONE_EVENT, recheck);
+      window.removeEventListener(OFFICE_PREFS_EVENT, recheck);
       window.removeEventListener("focus", recheck);
       window.removeEventListener("pageshow", recheck);
       window.removeEventListener("storage", recheck);
@@ -1253,7 +1260,11 @@ export function useRhythmState(): RhythmState {
       ? "silent"
       : (getContemplationStyleGlobal() === "creation" ? "cobreathe" : "silent"));
   const silenceGoalCardActive = soloSilenceActive || (creationPerSide && contemplationGoalMin > 0);
-  const silenceGoalCardDone = contemplationMin >= contemplationGoalMin;
+  // goal > 0 is load-bearing: with no goal this was `0 >= 0` — true from
+  // midnight — and /turn-learn-pray's contemplative slot read "kept" before
+  // the person had done anything, every day, for anyone without a minutes
+  // goal. A card that isn't active can't be done.
+  const silenceGoalCardDone = contemplationGoalMin > 0 && contemplationMin >= contemplationGoalMin;
   const cobreatheStandaloneActive = cobreatheActive && !creationPerSide;
   // Each reflection newsletter the user follows is its OWN anchor (card + dot).
   // The selected set is the reflection home-modules that are on; an un-set-up

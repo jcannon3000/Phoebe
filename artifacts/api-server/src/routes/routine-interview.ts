@@ -994,6 +994,18 @@ function normalizeContemplation(spec: {
   const rc = spec.ruleConfig;
   for (const side of ["morning", "evening"] as const) {
     if (rc[`phoebe:office:contemplation:${side}`] !== "1") continue;
+    /**
+     * ONLY a SILENT sit can be re-homed into the silence goal. This loop was
+     * kind-blind: an evening of Creation Prayer beside an office anchor had
+     * its side flag forced to "0" and its minutes folded into
+     * contemplationGoalMinutes — the practice silently retyped as silence,
+     * which is the exact conflation the per-side kind key exists to prevent.
+     * A creation/walk/audio/visio side is a DIFFERENT practice, not a sit in
+     * the wrong home; it coexists with the anchor and stays.
+     */
+    const kind = rc[`phoebe:office:contemplation-kind:${side}`];
+    const isSilent = kind ? kind === "silent" : rc["phoebe:contemplation-style"] !== "cobreathe";
+    if (!isSilent) continue;
     const level = rc[`phoebe:office:level:${side}`];
     const sideIsTaken = !!level && level !== "ask" && level !== "reflect-sit";
     if (!sideIsTaken) continue;
@@ -1023,6 +1035,8 @@ function normalizeContemplation(spec: {
     // the difference was a routine quietly rewriting itself.
     rc[`phoebe:office:contemplation:${side}`] = "0";
     delete rc[`phoebe:office:minutes:${side}`];
+    // The kind key would otherwise outlive the practice it described.
+    delete rc[`phoebe:office:contemplation-kind:${side}`];
   }
 }
 

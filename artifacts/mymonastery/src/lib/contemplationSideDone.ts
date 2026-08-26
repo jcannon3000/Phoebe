@@ -198,10 +198,18 @@ export function resolveContemplationSideForSit(kind: ContemplationKind = "silent
   } catch { /* ignore */ }
   const mSet = getSideContemplationExplicit("morning");
   const eSet = getSideContemplationExplicit("evening");
-  const anyExplicit = mSet !== null || eSet !== null;
+  /**
+   * ONLY an explicit per-side choice makes a side a candidate. The old shape
+   * ("no explicit key → treat BOTH sides as active") was the goal-implies-
+   * per-side-sits inference — the one useRhythmState refused twice — living
+   * on in the attribution layer: a goal-only user's sit was stamped onto
+   * "morning", written to the day-flag AND the server, and lay in wait to
+   * mark a side kept the day they ever turned one on. A sit with no per-side
+   * home attributes to no side; the goal card still counts its minutes.
+   */
   const active: Record<ContemplationSide, boolean> = {
-    morning: anyExplicit ? mSet === true : true,
-    evening: anyExplicit ? eSet === true : true,
+    morning: mSet === true,
+    evening: eSet === true,
   };
   // Same rule as attributeContemplationSit: a sit that isn't the practice
   // these sides carry resolves to NO side, so the timer doesn't stamp a

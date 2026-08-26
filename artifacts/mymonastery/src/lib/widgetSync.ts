@@ -157,6 +157,17 @@ export function useWidgetSync(): void {
     // The widget's strings are plain English (they cross into Swift, not i18n),
     // so shared title helpers get a t() that just resolves their defaultValue.
     const tPass = (_k: string, o?: Record<string, unknown>): string => String(o?.["defaultValue"] ?? "");
+    /** The face a contemplative SIDE card wears, by its kind — mirrors
+     *  DailyProgressBody's per-side card naming exactly. */
+    const contemplationSideFace = (cap: "Morning" | "Evening", kind: string): { title: string; eyebrow: string; subtitle: string } => {
+      switch (kind) {
+        case "creation": return { title: `${cap} Creation Prayer`, eyebrow: "A prayer for the earth", subtitle: "Breathing with creation" };
+        case "walk": return { title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray" };
+        case "audio": return { title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music" };
+        case "visio": return { title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image" };
+        default: return { title: `${cap} Contemplation`, eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence" };
+      }
+    };
     const officeTitle = (side: "Morning" | "Evening"): string => {
       const lvl = getSideLevel(side.toLowerCase() as "morning" | "evening");
       if (lvl === "psalms") return `${side} Psalms`;
@@ -236,12 +247,17 @@ export function useWidgetSync(): void {
         subtitle: (rf.source === "cac" && cacMetaQ.data?.title) ? cacMetaQ.data.title : "A few minutes with the day's word",
         cta: "Read", kind: "reflect" as const,
       })),
-      { active: r.morningContemplationActive, done: r.morningContemplationDone, slot: "morning", title: "Morning Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
+      // Named by the side's KIND — the widget called a Creation Prayer (or a
+      // walk, or Audio Divina) side "Contemplation … in silence" while every
+      // in-app surface named it correctly, and this file's whole contract is
+      // "exactly what's on the home screen".
+      { active: r.morningContemplationActive, done: r.morningContemplationDone, slot: "morning", ...contemplationSideFace("Morning", r.morningContemplationKind), cta: "Begin", kind: "office" },
       // The solo "Silence" goal card — shown whenever there's a minutes goal
       // but no per-side contemplation card carries it (same gate as rawCards'
       // "silence" card in DailyProgressBody). Was missing entirely, which
       // undercounted totalAnchors/dots for the default guest shape.
       { active: r.silenceGoalCardActive, done: r.silenceGoalCardDone, slot: "anytime", title: "Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
+      // (contemplationSideFace lives just above this list's builder.)
       // cobreatheStandaloneActive (not raw cobreatheActive) — when Creation
       // Prayer is riding as the per-side Morning/Evening Contemplation card
       // instead, the standalone card above is suppressed (same gate as
@@ -268,7 +284,7 @@ export function useWidgetSync(): void {
       // The active novena — same novenaActive/Done DailyProgressBody's card
       // and the header pill's dot use, so the widget can't drift from either.
       { active: !!(r.novenaActive && !r.novenaReplacesMorning && !r.novenaReplacesEvening), done: r.novenaDone, slot: "anytime", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
-      { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", title: "Evening Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
+      { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", ...contemplationSideFace("Evening", r.eveningContemplationKind), cta: "Begin", kind: "office" },
       { active: r.eveningActive && !r.novenaReplacesEvening, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office", isPrimary: true },
       { active: !!r.eveningExtraLevel, done: r.eveningExtraDone, slot: "evening", title: r.eveningExtraLevel ? extraPracticeTitle("Evening", r.eveningExtraLevel, tPass) : "", eyebrow: "Also this evening", subtitle: "Alongside your main practice", cta: "Begin", kind: "office" },
       { active: !!(r.novenaReplacesEvening && r.novenaActive), done: r.novenaDone, slot: "evening", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office", isPrimary: true },
@@ -389,6 +405,11 @@ export function useWidgetSync(): void {
     // next-up) until an unrelated refetch happened to push a new state.
     r.morningExtraLevel, r.morningExtraDone, r.eveningExtraLevel, r.eveningExtraDone,
     r.novenaActive, r.novenaDone, r.novena?.currentDay, r.novena?.title, r.novenaReplacesMorning, r.novenaReplacesEvening,
+    // Read at the rows above — flipping a side's KIND (or the derived
+    // standalone/goal-card gates) must wake the push, or the widget wears the
+    // old face until an unrelated refetch.
+    r.morningContemplationKind, r.eveningContemplationKind,
+    r.cobreatheStandaloneActive, r.silenceGoalCardActive, r.silenceGoalCardDone,
     customSig, r.prayerKind, r.streak, r.contemplationMin, r.contemplationGoalMin,
     prayedWithQ.data, coPrayersQ.data, prayerReqsQ.data, cacMetaQ.data,
   ]);

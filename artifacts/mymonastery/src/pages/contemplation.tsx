@@ -511,12 +511,14 @@ export default function ContemplationPage() {
     } catch { /* ignore */ }
     const mSet = getSideContemplationExplicit("morning");
     const eSet = getSideContemplationExplicit("evening");
-    const anyExplicit = mSet !== null || eSet !== null;
     const activeSides = {
-      // With an explicit per-side pick, honor it; otherwise (legacy global goal)
-      // both sides carry a card, so either can receive the sit.
-      morning: anyExplicit ? mSet === true : true,
-      evening: anyExplicit ? eSet === true : true,
+      // Explicit per-side picks ONLY — "no explicit key" no longer means
+      // "both sides are active". That default was the goal-implies-per-side
+      // inference (removed from useRhythmState twice) surviving here: a
+      // goal-only sit got stamped onto a side nobody turned on. No side set,
+      // no side credited; the goal still counts the minutes.
+      morning: mSet === true,
+      evening: eSet === true,
     };
     // This page IS the silent sit — never the Creation Prayer breath (that's
     // /cobreathe). Tagging the kind keeps a silent sit from ticking a side

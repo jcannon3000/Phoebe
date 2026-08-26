@@ -875,6 +875,20 @@ export function getSideContemplationKind(side: OfficeSide): ContemplationKind {
 
 export function setSideContemplationKind(side: OfficeSide, kind: ContemplationKind): void {
   try {
+    /**
+     * PIN THE OTHER SIDE FIRST. The global written below is the FALLBACK for
+     * any side without its own key — so on a legacy rule (contemplation on
+     * both sides, neither kind key written), choosing Creation Prayer for the
+     * evening silently retyped the MORNING too: its card went 🌍, and a
+     * silent sit already kept that morning stopped matching its day-flag and
+     * un-ticked mid-day. Writing the other side's current effective kind as
+     * its own key freezes it against the fallback shift; a side that already
+     * has a key, or keeps no contemplation, needs nothing.
+     */
+    const other: OfficeSide = side === "morning" ? "evening" : "morning";
+    if (getSideContemplation(other) && !getSideContemplationKindExplicit(other)) {
+      localStorage.setItem(`phoebe:office:contemplation-kind:${other}`, getSideContemplationKind(other));
+    }
     localStorage.setItem(`phoebe:office:contemplation-kind:${side}`, kind);
     // The global flag still drives surfaces that have no side to speak of —
     // /cobreathe's own entry point, the standalone breath card. Keep it in
