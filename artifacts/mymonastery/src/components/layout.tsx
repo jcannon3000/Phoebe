@@ -1193,7 +1193,7 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
   const { isPilot: headerIsPilot } = usePilotMode();
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10", isolation: "isolate" }}>
+    <div className="min-h-screen flex flex-col relative overflow-x-guard" style={{ background: "#091A10", isolation: "isolate" }}>
       <LoadReveal />
       <OpeningSplash />
       {/* First-open (iOS) prayer-setup splash — picks a prayer method + a daily

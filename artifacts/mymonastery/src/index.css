@@ -338,6 +338,26 @@ textarea:focus {
     overflow-x: clip;
   }
 
+  /**
+   * The same guard, for any wrapper that needs it BELOW body.
+   *
+   * `overflow-x: hidden` does not stay a horizontal-only rule: when the other
+   * axis is `visible`, CSS computes it to `auto`, and the element becomes a
+   * scroll container. That silently breaks every `position: sticky` descendant
+   * — the sticky pins itself to a scrollport that never scrolls, while the
+   * page scrolls around it. Reported as: "I am still not seeing the continue
+   * button float on the customizer."
+   *
+   * `clip` clips without creating a scrollport, so sticky keeps working. The
+   * `hidden` line before it is the fallback for iOS 15 (Safari gained `clip`
+   * in 16), where the declaration is dropped and the old behaviour stands:
+   * layout still safe, sticky still broken, which is where it already was.
+   */
+  .overflow-x-guard {
+    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
   #root {
     background-color: #091A10;
     min-height: 100vh;
