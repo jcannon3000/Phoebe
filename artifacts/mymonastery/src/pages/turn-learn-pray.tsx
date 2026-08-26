@@ -168,12 +168,18 @@ export default function TurnLearnPrayPage() {
   };
   // The identity of a side that IS its contemplation, and of the middle row
   // once a side has taken the breath.
-  const sideContemplation = (side: "morning" | "evening") => ({
-    title: creationStyle ? t("rhythm.card_creation", { defaultValue: "Creation Prayer" }) : t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
-    emoji: creationStyle ? "🌍" : "🕯️",
-    done: side === "morning" ? rhythm.morningContemplationDone : rhythm.eveningContemplationDone,
-    href: creationStyle ? `/cobreathe?side=${side}` : `/contemplation?begin=1&side=${side}`,
-  });
+  const sideContemplation = (side: "morning" | "evening") => {
+    // PER SIDE (owner: "let's separate creation prayer and contemplative
+    // prayer") — the aggregate style would name both sides after whichever one
+    // happened to be the breath.
+    const isCreation = (side === "morning" ? rhythm.morningContemplationKind : rhythm.eveningContemplationKind) === "creation";
+    return {
+      title: isCreation ? t("rhythm.card_creation", { defaultValue: "Creation Prayer" }) : t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
+      emoji: isCreation ? "🌍" : "🕯️",
+      done: side === "morning" ? rhythm.morningContemplationDone : rhythm.eveningContemplationDone,
+      href: isCreation ? `/cobreathe?side=${side}` : `/contemplation?begin=1&side=${side}`,
+    };
+  };
   const slotStatus: Record<"morning" | "contemplative" | "evening", { title: string; emoji: string; done: boolean; href: string; onClick?: () => void }> = {
     morning: morningIsContemplation ? sideContemplation("morning") : {
       title: sideOfficeTitle("Morning", rhythm.prayerKind, t),

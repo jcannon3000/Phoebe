@@ -40,6 +40,11 @@ export const ROUTINE_KEYS: string[] = [
   "phoebe:office:community-within:morning", "phoebe:office:community-within:evening",
   // Per-side Contemplative Prayer (drives the Morning/Evening Contemplation cards).
   "phoebe:office:contemplation:morning", "phoebe:office:contemplation:evening",
+  // …and WHICH contemplative practice that side keeps — silent sit or the
+  // Creation Prayer breath. Per side, so a rule can hold both (see
+  // officePrefs.getSideContemplationKind). A key missing from THIS list is
+  // never mirrored to localStorage and never syncs, so it must live here.
+  "phoebe:office:contemplation-kind:morning", "phoebe:office:contemplation-kind:evening",
   // Per-side sit length + confession + gratitude toggles (were device-local
   // only, so they were lost on logout→login; now they ride the rule_config).
   "phoebe:office:minutes:morning", "phoebe:office:minutes:evening",

@@ -135,10 +135,16 @@ export function computeWeeklyGrid(params: {
    */
   const morningIsContemplation = rhythm.morningContemplationActive && !rhythm.morningActive;
   const eveningIsContemplation = rhythm.eveningContemplationActive && !rhythm.eveningActive;
-  const creationStyle = rhythm.contemplationStyle === "cobreathe";
+  // PER SIDE — the rule can hold the breath on one side and silence on the
+  // other now (owner: "let's separate creation prayer and contemplative
+  // prayer"), so a grid that asked one global question for both sides would
+  // read the wrong column for one of them.
+  const sideKind = (side: "morning" | "evening") =>
+    side === "morning" ? rhythm.morningContemplationKind : rhythm.eveningContemplationKind;
   // History for such a side: the practice-week has no per-side contemplation
   // column, so read the flag for the practice it actually is.
-  const sideContemplationOn = (d: PracticeWeekDay) => (creationStyle ? d.cobreathe : d.contemplation);
+  const sideContemplationOn = (side: "morning" | "evening") => (d: PracticeWeekDay) =>
+    sideKind(side) === "creation" ? d.cobreathe : d.contemplation;
 
   /**
    * A PAST day's dot reports what you kept THAT DAY — it never re-judges your
@@ -166,9 +172,9 @@ export function computeWeeklyGrid(params: {
    * anchor was in force on the day.
    */
   const morningPracticeOn = (d: PracticeWeekDay) =>
-    d.morning || !!d.morningExtra || (morningIsContemplation && sideContemplationOn(d));
+    d.morning || !!d.morningExtra || (morningIsContemplation && sideContemplationOn("morning")(d));
   const eveningPracticeOn = (d: PracticeWeekDay) =>
-    d.evening || !!d.eveningExtra || (eveningIsContemplation && sideContemplationOn(d));
+    d.evening || !!d.eveningExtra || (eveningIsContemplation && sideContemplationOn("evening")(d));
   /**
    * WHATEVER their contemplative practice is, it counts here.
    *
@@ -275,9 +281,9 @@ export function computeWeeklyGrid(params: {
       : null;
 
   const raw: Array<{ emoji: string; label: string; done: boolean; historyFor: (d: PracticeWeekDay) => boolean; partialToday?: boolean; partialFor?: (d: PracticeWeekDay) => boolean }> = practiceMode ? [
-    { emoji: morningIsContemplation && creationStyle ? "🌍" : "🌅", label: "Morning", done: morningPractice, historyFor: morningPracticeOn },
+    { emoji: morningIsContemplation && sideKind("morning") === "creation" ? "🌍" : "🌅", label: "Morning", done: morningPractice, historyFor: morningPracticeOn },
     ...(middleRow ? [middleRow] : []),
-    { emoji: eveningIsContemplation && creationStyle ? "🌍" : "🌙", label: "Evening", done: eveningPractice, historyFor: eveningPracticeOn },
+    { emoji: eveningIsContemplation && sideKind("evening") === "creation" ? "🌍" : "🌙", label: "Evening", done: eveningPractice, historyFor: eveningPracticeOn },
   ] : [
     { emoji: "🔄", label: "Turn", done: turned, historyFor: (d) => readTurnedOn(d.ymd) },
     { emoji: "📖", label: "Learn", done: learned, historyFor: learnedOn },

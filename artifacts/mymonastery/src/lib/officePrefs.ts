@@ -821,6 +821,57 @@ export function setSideContemplation(side: OfficeSide, v: boolean): void {
   } catch { /* non-fatal */ }
 }
 
+/**
+ * WHICH contemplative practice a side keeps — per side, at last.
+ *
+ * Owner: "let's separate creation prayer and contemplative prayer."
+ *
+ * These two were told apart by ONE GLOBAL FLAG, `phoebe:contemplation-style`.
+ * A rule could therefore hold only one of them at a time, and every attempt to
+ * keep both produced the same family of bugs, over and over across this
+ * project: a silent sit ticking the Creation Prayer card; the customizer
+ * retyping an evening of Creation Prayer as silence; the weekly grid reading a
+ * `cobreathe` column for a side that kept a `contemplation` one; the review
+ * listing one practice twice. Every one of them was the same missing fact —
+ * WHICH KIND, on WHICH SIDE.
+ *
+ * Falls back to the global flag when a side has never been written, so an
+ * existing rule keeps meaning exactly what it meant before this key existed.
+ * Both are ROUTINE_KEYS, so both sync.
+ */
+export type ContemplationKind = "silent" | "creation";
+
+export function getContemplationStyleGlobal(): ContemplationKind {
+  try {
+    return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "creation" : "silent";
+  } catch { return "silent"; }
+}
+
+/** null = this side has never said, so the caller may fall back. */
+export function getSideContemplationKindExplicit(side: OfficeSide): ContemplationKind | null {
+  try {
+    const raw = localStorage.getItem(`phoebe:office:contemplation-kind:${side}`);
+    if (raw === "silent" || raw === "creation") return raw;
+  } catch { /* private mode */ }
+  return null;
+}
+
+export function getSideContemplationKind(side: OfficeSide): ContemplationKind {
+  return getSideContemplationKindExplicit(side) ?? getContemplationStyleGlobal();
+}
+
+export function setSideContemplationKind(side: OfficeSide, kind: ContemplationKind): void {
+  try {
+    localStorage.setItem(`phoebe:office:contemplation-kind:${side}`, kind);
+    // The global flag still drives surfaces that have no side to speak of —
+    // /cobreathe's own entry point, the standalone breath card. Keep it in
+    // step with the most recent per-side choice rather than letting it drift
+    // into meaning something no side agrees with.
+    localStorage.setItem("phoebe:contemplation-style", kind === "creation" ? "cobreathe" : "silent");
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
 // ── React hook ─────────────────────────────────────────────────────
 // Snapshot the prefs into state and refresh on any change. Use this
 // instead of calling the getters in render — otherwise the component

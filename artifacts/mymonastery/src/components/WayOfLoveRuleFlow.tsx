@@ -69,6 +69,7 @@ import {
   type DefaultOfficeEntry,
   setSideExtra,
   getSideExtra,
+  setSideContemplationKind,
 } from "@/lib/officePrefs";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
@@ -1473,6 +1474,12 @@ export default function WayOfLoveRuleFlow({
         setSideReflection(side, primary);
         persistCommunityWithOffice(side, prayBySide[side] !== "community" && communityWithOffice[side]);
         setSideContemplation(side, contemplationBySide[side]);
+        // …and WHICH one. Per side (owner: "let's separate creation prayer and
+        // contemplative prayer") — the form the reader picked on this side's
+        // own slide, not the global style flag they used to share.
+        if (contemplationBySide[side]) {
+          setSideContemplationKind(side, contemplativeForm[side] === "creation" ? "creation" : "silent");
+        }
         // Sit length is per side (config picker), NOT the daily goal.
         if (contemplationBySide[side]) setSideMinutes(side, minutesBySide[side]);
         if (prayBySide[side] === "ownPractice") setSideCustomName(side, customNameBySide[side].trim());
@@ -1667,6 +1674,12 @@ export default function WayOfLoveRuleFlow({
         persistCommunityWithOffice(side, prayBySide[side] !== "community" && communityWithOffice[side]);
         // Per-side Contemplative Prayer → the home's Morning/Evening Contemplation card.
         setSideContemplation(side, contemplationBySide[side]);
+        // …and WHICH one. Per side (owner: "let's separate creation prayer and
+        // contemplative prayer") — the form the reader picked on this side's
+        // own slide, not the global style flag they used to share.
+        if (contemplationBySide[side]) {
+          setSideContemplationKind(side, contemplativeForm[side] === "creation" ? "creation" : "silent");
+        }
         // Sit length is per side (config picker), NOT the daily goal — a
         // 90-minute goal must not put a 90-minute sit on each card (owner).
         if (contemplationBySide[side]) setSideMinutes(side, minutesBySide[side]);
@@ -1861,6 +1874,15 @@ export default function WayOfLoveRuleFlow({
       evening: preset.silence && preset.sides.evening && preset.silenceSide !== "morning",
     };
     setContemplationBySide(presetContemplation);
+    // …and WHICH practice, on each side the rule turns on. commit() writes this
+    // too, from contemplativeForm; doing it here as well means a rule adopted
+    // and never re-opened still has a per-side kind rather than leaning on the
+    // global flag's fallback.
+    for (const sd of ["morning", "evening"] as const) {
+      if (presetContemplation[sd]) {
+        setSideContemplationKind(sd, preset.contemplationStyle === "cobreathe" ? "creation" : "silent");
+      }
+    }
     // Keep the "which contemplative practice" pick in step with the preset —
     // otherwise a stale form from before adopting it would leave the config
     // slide's dropdown disagreeing with what the preset actually turned on.
@@ -3496,6 +3518,9 @@ export default function WayOfLoveRuleFlow({
                   const perSide = f === "prayer" || f === "creation";
                   if (perSide) {
                     if (!contemplationBySide[side]) toggleContemplationSide(side);
+                    // THIS side's kind — and the global stays in step for the
+                    // side-less surfaces (see setSideContemplationKind).
+                    setSideContemplationKind(side, f === "creation" ? "creation" : "silent");
                     chooseContemplationStyle(f === "creation" ? "cobreathe" : "silent");
                     if (f === "prayer") {
                       chooseSideMinutes(side, 10);

@@ -12,6 +12,7 @@ import {
   getReflectionSource, setReflectionSource, setSideReflection,
   setPsalmCycle, setSideCustomName, OFFICE_PREFS_EVENT, OFFICE_LEVELS_SET, type OfficeLevel,
   type ReflectionSource,
+  setSideContemplationKind,
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset } from "@/lib/rulePresets";
@@ -155,7 +156,11 @@ export default function CustomizePage() {
       setSideContemplation("morning", true);
       setSideContemplation("evening", true);
       writeSilenceGoal(CONTEMPLATION_GOAL_DEFAULT_MIN, { splitAcrossSides: true });
-      try { localStorage.setItem("phoebe:contemplation-style", "silent"); } catch { /* ignore */ }
+      // WHICH practice, per side — this pick is the silent sit on both (see
+      // officePrefs.setSideContemplationKind; it keeps the global flag in step
+      // for the side-less surfaces).
+      setSideContemplationKind("morning", "silent");
+      setSideContemplationKind("evening", "silent");
       window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
     } else {
       // Back to a BCP form on both sides — clear the per-side Creation Prayer
@@ -236,6 +241,11 @@ export default function CustomizePage() {
     };
     setSideContemplation("morning", contemplationOn.morning);
     setSideContemplation("evening", contemplationOn.evening);
+    // The rule's contemplative practice, recorded on each side that keeps one.
+    const presetKind = preset.contemplationStyle === "cobreathe" ? "creation" : "silent";
+    for (const sd of ["morning", "evening"] as const) {
+      if (contemplationOn[sd]) setSideContemplationKind(sd, presetKind);
+    }
     try { localStorage.setItem("phoebe:contemplation-style", preset.contemplationStyle ?? "silent"); } catch { /* ignore */ }
 
     // The daily contemplative-minutes goal. Not split across sides here: a

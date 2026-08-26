@@ -17,7 +17,7 @@ import { practiceOnDay } from "@/lib/practiceDays";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
-import { anchorModesFor, getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, getSideReflectionExplicit, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { anchorModesFor, getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, getSideReflectionExplicit, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT, getSideContemplationKind, getContemplationStyleGlobal } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
 import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
 
@@ -249,6 +249,10 @@ export type RhythmState = {
    *  covers whichever sides are contemplative). Drives per-side card naming +
    *  routing in DailyProgressBody. */
   contemplationStyle: "silent" | "cobreathe";
+  /** Which contemplative practice EACH side keeps — never infer this from
+   *  `contemplationStyle`, which is only the aggregate. */
+  morningContemplationKind: "silent" | "creation";
+  eveningContemplationKind: "silent" | "creation";
   contemplationLogMethod: "timer" | "manual";
   /** "Grow my silence" ladder state when enabled (else null) — the current rung
    *  drives contemplationGoalMin; daysToNext/nextLevel feed the card. */
@@ -1150,12 +1154,24 @@ export function useRhythmState(): RhythmState {
   // fresh session has none set, and the office-prefs GET default goal (5) then
   // flipped both sides on — a card the user never asked for. A goal is a goal;
   // per-side contemplation is only what they picked per side.
-  // The contemplation STYLE (silent sit vs the Creation Prayer breath) — a side
-  // is office OR contemplation, so one global flag covers whichever sides are
-  // contemplative. Set by the customizer's Creation Prayer choice.
-  const contemplationStyle: "silent" | "cobreathe" = (() => {
-    try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { return "silent"; }
-  })();
+  /**
+   * WHICH contemplative practice each side keeps — PER SIDE.
+   *
+   * Owner: "let's separate creation prayer and contemplative prayer." One
+   * global flag used to answer this for the whole rule, so a person could
+   * keep the breath OR silence but never both, and every attempt to hold both
+   * produced the same bug in a new place. The kind lives on the side now (see
+   * officePrefs.getSideContemplationKind), falling back to the old global for
+   * a rule that predates the key.
+   *
+   * `contemplationStyle` stays as the AGGREGATE for the surfaces that have no
+   * side to ask about (the standalone breath card, /cobreathe's own entry).
+   * It reads "cobreathe" when either side keeps the breath — so it can no
+   * longer be used to decide what a PARTICULAR side is; use the per-side
+   * values for that.
+   */
+  const morningContemplationKind = getSideContemplationKind("morning");
+  const eveningContemplationKind = getSideContemplationKind("evening");
   // "timer" (default) opens the countdown timer; "manual" just marks the sit
   // done on tap — owner: "log method... either timer or manual log."
   const contemplationLogMethod = getContemplationLogMethod();
@@ -1200,7 +1216,17 @@ export function useRhythmState(): RhythmState {
   // standalone Co-Breathe card (the per-side cards ARE it) but ALSO renders the
   // minutes-goal card alongside (the breath cards never show goal progress).
   // These two mirror those exact render rules so dots/counts match the cards.
-  const creationPerSide = contemplationStyle === "cobreathe" && (morningContemplationActive || eveningContemplationActive);
+  const morningIsCreation = morningContemplationActive && morningContemplationKind === "creation";
+  const eveningIsCreation = eveningContemplationActive && eveningContemplationKind === "creation";
+  const creationPerSide = morningIsCreation || eveningIsCreation;
+  // The aggregate, for consumers with no side in hand. Derived from the sides
+  // that are actually ON rather than from the raw flag, so a stale global left
+  // over from a practice nobody keeps any more can't speak for the rule.
+  const contemplationStyle: "silent" | "cobreathe" = creationPerSide
+    ? "cobreathe"
+    : ((morningContemplationActive || eveningContemplationActive)
+      ? "silent"
+      : (getContemplationStyleGlobal() === "creation" ? "cobreathe" : "silent"));
   const silenceGoalCardActive = soloSilenceActive || (creationPerSide && contemplationGoalMin > 0);
   const silenceGoalCardDone = contemplationMin >= contemplationGoalMin;
   const cobreatheStandaloneActive = cobreatheActive && !creationPerSide;
@@ -1397,6 +1423,8 @@ export function useRhythmState(): RhythmState {
     contemplationMin,
     contemplationGoalMin,
     contemplationStyle,
+    morningContemplationKind,
+    eveningContemplationKind,
     contemplationLogMethod,
     silenceLadder: ladderEnabled && ladderData?.enabled && typeof ladderData.level === "number"
       ? { level: ladderData.level, levelDays: ladderData.levelDays ?? 0, daysToNext: ladderData.daysToNext ?? 0, nextLevel: ladderData.nextLevel ?? ladderData.level, atMax: !!ladderData.atMax }
