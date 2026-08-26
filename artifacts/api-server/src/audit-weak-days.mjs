@@ -1,3 +1,10 @@
+// RUN WITH THE CLIENT TSCONFIG — visioSelect imports "@/lib/visioSchedule",
+// and that alias only resolves against artifacts/mymonastery/tsconfig.json:
+//   DATABASE_URL="postgres://x:x@localhost:5/x" \
+//     ../../mymonastery/node_modules/.bin/tsx \
+//     --tsconfig ../../mymonastery/tsconfig.json <this file>
+// (The DATABASE_URL is a dummy — the ordo builder is pure, it just wants the
+// env var present at import time.)
 // The days whose artwork does NOT verse-match: what was appointed, and what
 // the best achievable score was for EACH reading on that day.
 import { buildOfficeOrdoDay } from "./lib/officeOrdo.ts";

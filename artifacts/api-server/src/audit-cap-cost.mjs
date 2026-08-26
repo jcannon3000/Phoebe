@@ -1,3 +1,10 @@
+// RUN WITH THE CLIENT TSCONFIG — visioSelect imports "@/lib/visioSchedule",
+// and that alias only resolves against artifacts/mymonastery/tsconfig.json:
+//   DATABASE_URL="postgres://x:x@localhost:5/x" \
+//     ../../mymonastery/node_modules/.bin/tsx \
+//     --tsconfig ../../mymonastery/tsconfig.json <this file>
+// (The DATABASE_URL is a dummy — the ordo builder is pure, it just wants the
+// env var present at import time.)
 // What a 3-per-calendar-year cap would cost: how many day-slots exceed it,
 // and how many of those are single-match days where the cap must drop the
 // picture to a WORSE-matching reading.
