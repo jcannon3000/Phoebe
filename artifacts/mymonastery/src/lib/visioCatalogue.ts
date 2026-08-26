@@ -11,7 +11,7 @@
  * is recorded per entry so the closing slide can name it. Records whose rights
  * could not be resolved were dropped rather than assumed.
  *
- * `img` points at ACT's own S3 host rather than a bundled asset: at 233
+ * `img` points at ACT's own S3 host rather than a bundled asset: at 229
  * artworks this collection is far too large to ship inside the app binary, and
  * their host serves only full-size JPEGs (there is no IIIF derivative
  * endpoint). So the image is fetched when the practice opens.

@@ -168,7 +168,7 @@ export type Chosen = {
  *
  * Different each day comes from the ordinal above rather than from memory: it
  * steps one place each day, through the matches when the lectionary gives
- * some, and through the whole 233 when it doesn't.
+ * some, and through the whole 229 when it doesn't.
  *
  * `lessons` may be empty (offline, still loading, or a day with no appointed
  * lesson) — the rotation covers that, and is equally shared.

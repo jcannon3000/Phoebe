@@ -17,14 +17,14 @@
  *
  * ── Where the art comes from ──
  *
- * lib/visioCatalogue.ts — 233 works from Vanderbilt's Art in the Christian
+ * lib/visioCatalogue.ts — 229 works from Vanderbilt's Art in the Christian
  * Tradition, every one licence-verified against Wikimedia Commons (see
  * scripts/fetch-act-catalogue.mjs). Each is tagged to the passages it depicts,
  * so lib/visioSelect.ts can cross that against TODAY'S appointed lessons: on
  * the day the lectionary gives Luke 10:38-42 you get Vermeer's Martha and
  * Mary, not whatever a modulo landed on.
  *
- * Catalogue images load from ACT's own host — 233 paintings is far too much to
+ * Catalogue images load from ACT's own host — 229 paintings is far too much to
  * put in the app binary. So this screen is built to degrade: the readings
  * lookup is capped, an unreachable image falls back to a BUNDLED work, and
  * nothing here ever renders an empty page while it waits (the blank-screen rule
