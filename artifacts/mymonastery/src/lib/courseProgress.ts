@@ -236,3 +236,38 @@ export function useAnyCourseProgressTick(): number {
     () => tickRef.current,
   );
 }
+
+/**
+ * Courses the reader has taken OFF their home screen.
+ *
+ * Owner: "there should be an option to take this off your home screen." A
+ * course arrives on the home the moment you start it and stays until it's
+ * finished — which is right for the one you're walking and wrong for the one
+ * you opened once to look at. Hiding is per COURSE and device-local, the same
+ * shape Settings' other home-display switches use: it changes what your home
+ * shows, not what you've done, so your progress is untouched and the course is
+ * still there in Learn whenever you want it back.
+ */
+const HIDDEN_KEY = "phoebe:course-hidden";
+
+function readHidden(): Set<string> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]");
+    return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : []);
+  } catch { return new Set(); }
+}
+
+export const COURSE_HIDDEN_EVENT = "phoebe:course-hidden-changed";
+
+export function isCourseHiddenFromHome(courseId: string): boolean {
+  return readHidden().has(courseId);
+}
+
+export function setCourseHiddenFromHome(courseId: string, hidden: boolean): void {
+  try {
+    const next = readHidden();
+    if (hidden) next.add(courseId); else next.delete(courseId);
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify([...next]));
+    window.dispatchEvent(new Event(COURSE_HIDDEN_EVENT));
+  } catch { /* private mode — non-fatal */ }
+}

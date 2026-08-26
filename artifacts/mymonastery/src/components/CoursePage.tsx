@@ -32,7 +32,7 @@ import {
   type JourneyCourse,
   type JourneyUnit,
 } from "@/lib/spiritualJourney";
-import { useCourseProgress } from "@/lib/courseProgress";
+import { isCourseHiddenFromHome, setCourseHiddenFromHome, useCourseProgress } from "@/lib/courseProgress";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // Palette (mirrors church-deck / MenuHub). Cards are FROSTED glass — translucent
@@ -395,6 +395,7 @@ function UnitBlock({
 
 export function CoursePage({ course, index }: { course: JourneyCourse; index: CourseIndex }) {
   const { completedCount, isComplete, toggleComplete, markComplete, setLast, lastId, markStarted } = useCourseProgress(course.id);
+  const [hiddenFromHome, setHiddenFromHome] = useState(() => isCourseHiddenFromHome(course.id));
   // Leaf backdrop (frosted-glass cards float over it) — one photo per visit.
   const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
@@ -501,6 +502,22 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
               />
             </div>
           </div>
+
+          {/* Owner: "there should be an option to take this off your home
+              screen." A course lands on the home the moment you start it and
+              stays until it's finished — right for the one you're walking,
+              wrong for the one you opened once to look at. Device-local, like
+              Settings' other home-display switches: it changes what your home
+              SHOWS, never what you've done. Your progress is untouched and the
+              course is still here whenever you want it back. */}
+          <button
+            type="button"
+            onClick={() => { setCourseHiddenFromHome(course.id, !hiddenFromHome); setHiddenFromHome((v) => !v); }}
+            className="mt-3 text-[12px] underline underline-offset-2 transition-opacity hover:opacity-80"
+            style={{ color: "rgba(143,175,150,0.75)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+          >
+            {hiddenFromHome ? "Show this course on my home screen" : "Take this off my home screen"}
+          </button>
         </div>
 
         <div className="h-px" style={{ background: C.line }} />

@@ -9,12 +9,12 @@
 // web/desktop-only (YouTube IFrame player) — on the iOS shell only Bishop
 // Budde's Way of Love (an audio course on the podcast player) appears.
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, useInView } from "framer-motion";
 import { Play } from "lucide-react";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { useCourseProgress } from "@/lib/courseProgress";
+import { useCourseProgress, isCourseHiddenFromHome, COURSE_HIDDEN_EVENT } from "@/lib/courseProgress";
 import {
   CENTERING_PRAYER,
   CENTERING_INDEX,
@@ -97,8 +97,21 @@ export function HomeLearnSection() {
   // the flagship on every platform — instead of a menu of all. Once everything
   // is finished, the section disappears; starting something else happens from
   // the Learn tab.
-  const active = cards.filter((c) => c.started && c.done < c.total);
-  const wolCard = cards.find((c) => c.key === WAY_OF_LOVE.id);
+  // …and not one the reader has taken off their home (owner). Re-read on the
+  // change event so hiding one from its own page removes it here without a
+  // reload.
+  const [hiddenTick, setHiddenTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setHiddenTick((n) => n + 1);
+    window.addEventListener(COURSE_HIDDEN_EVENT, bump);
+    return () => window.removeEventListener(COURSE_HIDDEN_EVENT, bump);
+  }, []);
+  // `hiddenTick` is read so the filter re-runs when the event fires; the value
+  // itself carries no meaning.
+  void hiddenTick;
+  const onHome = cards.filter((c) => !isCourseHiddenFromHome(c.key));
+  const active = onHome.filter((c) => c.started && c.done < c.total);
+  const wolCard = onHome.find((c) => c.key === WAY_OF_LOVE.id);
   const show = active.length > 0 ? active : wolCard && wolCard.done < wolCard.total ? [wolCard] : [];
   if (show.length === 0) return null;
 
