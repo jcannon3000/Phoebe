@@ -680,7 +680,22 @@ export default function WayOfLoveRuleFlow({
    * change becomes an accidental rewrite — the same reason the questionnaire
    * grew an adjust mode. Only shown when there IS a routine to edit.
    */
-  const [manualMode, setManualMode] = useState<"pick" | "scratch" | "edit" | "preset">("pick");
+  /**
+   * Opens on YOUR RHYTHM, not on a menu about it.
+   *
+   * Owner: "the beginning of Shape your routine should just first show the
+   * person's routine like how the edit is, and have options at the bottom that
+   * are choose preset and revert to past routine."
+   *
+   * It used to open on "What would you like to do?" — four rows describing
+   * ways to answer a question you can't see yet. The rhythm itself is the
+   * answer: show it, let them change a row in place, and keep the two whole-
+   * rhythm moves (adopt a preset, go back to a past one) at the bottom where
+   * they belong. "pick" is gone; `canEditParts` still decides whether there's
+   * a rhythm to show at all, so a first-time author falls straight through to
+   * the flow as before.
+   */
+  const [manualMode, setManualMode] = useState<"scratch" | "edit" | "preset">("edit");
   // A named rule the person has TAPPED but not yet confirmed. Adopting replaces
   // an existing rhythm wholesale (the ?adopt= path refuses to do that silently —
   // it once wiped people's offices), so the picker always asks first.
@@ -2366,7 +2381,7 @@ export default function WayOfLoveRuleFlow({
     // Back out of the preset CONFIRM to the preset LIST first — one tap should
     // undo one tap, not drop you two slides back at the fork.
     if (canEditParts && manualMode === "preset" && presetPending) { setPresetPending(null); return; }
-    if (canEditParts && manualMode !== "pick") { setManualMode("pick"); return; }
+    if (canEditParts && manualMode !== "edit") { setManualMode("edit"); return; }
     if (entryChoiceMade && showEntryChoice) { setEntryChoiceMade(false); return; }
     onBack();
   };
@@ -2684,54 +2699,6 @@ export default function WayOfLoveRuleFlow({
       </div>,
     );
   }
-  if (entrySettled && canEditParts && manualMode === "pick") {
-    return shell(
-      <>
-        {stepHeader(
-          t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" }),
-          t("wol_rule.manual_pick_title", { defaultValue: "What would you like to do?" }),
-        )}
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
-          {t("wol_rule.manual_pick_body", {
-            defaultValue: "Change one part of what you already keep, or build the whole rhythm again from the beginning.",
-          })}
-        </p>
-        {/* A MENU, not a checklist (owner): every row here navigates the
-            moment it's tapped, so none of them is ever a "selected" state. */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {menuRow(
-            "\u270F\uFE0F",
-            t("wol_rule.manual_edit", { defaultValue: "Edit part of it" }),
-            t("wol_rule.manual_edit_sub", { defaultValue: "Pick the one thing you want to change. Everything else stays as it is." }),
-            () => setManualMode("edit"),
-          )}
-          {menuRow(
-            "\uD83C\uDF31",
-            t("wol_rule.manual_scratch", { defaultValue: "Start from scratch" }),
-            t("wol_rule.manual_scratch_sub", { defaultValue: "Go through every slide and set the whole rhythm again." }),
-            () => setManualMode("scratch"),
-          )}
-          {menuRow(
-            "\uD83D\uDCCB",
-            t("wol_rule.manual_preset", { defaultValue: "Start from a preset" }),
-            t("wol_rule.manual_preset_sub", { defaultValue: "Adopt a complete rhythm that's already been shaped. You can change any part of it after." }),
-            () => { setPresetPending(null); setManualMode("preset"); },
-          )}
-          {/* Owner: "combine the first two slides \u2026 just put the past routine
-              option on the bottom of the second slide" \u2014 and now a full card
-              like the rest, not an underlined link. Still last: going back to an
-              old rhythm is the exception, not a fourth equal way to build one. */}
-          {canRevert && menuRow(
-            "\u21A9\uFE0F",
-            t("wol_rule.entry_revert", { defaultValue: "Go back to a past routine" }),
-            t("wol_rule.entry_revert_sub", { defaultValue: "Return to a rhythm you kept before, exactly as it was." }),
-            () => setLocation("/routine-history"),
-          )}
-        </div>
-      </>,
-    );
-  }
-
   // "Start from a preset" — the four named rules as a list you can READ before
   // you take one (emoji, name, what it actually contains). Adopting replaces the
   // whole rhythm, so a tap opens a confirm rather than committing outright.
@@ -2891,13 +2858,24 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.edit_add_practice", { defaultValue: "+ Add a practice" })}
         </button>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setManualMode("scratch"))}
-        <button
-          type="button"
-          onClick={() => setManualMode("pick")}
-          style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 14, fontFamily: FONT, cursor: "pointer", padding: "10px 12px" }}
-        >
-          {t("common.back", { defaultValue: "Back" })}
-        </button>
+        {/* The two WHOLE-rhythm moves, under the rhythm they'd replace
+            (owner). Everything above changes one practice; these two change
+            all of it, so they sit apart and last — going back to an old rhythm
+            especially, which is the exception, not a way of building one. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
+          {menuRow(
+            "\uD83D\uDCCB",
+            t("wol_rule.manual_preset", { defaultValue: "Start from a preset" }),
+            t("wol_rule.manual_preset_sub", { defaultValue: "Adopt a complete rhythm that's already been shaped. You can change any part of it after." }),
+            () => { setPresetPending(null); setManualMode("preset"); },
+          )}
+          {canRevert && menuRow(
+            "\u21A9\uFE0F",
+            t("wol_rule.entry_revert", { defaultValue: "Go back to a past routine" }),
+            t("wol_rule.entry_revert_sub", { defaultValue: "Return to a rhythm you kept before, exactly as it was." }),
+            () => setLocation("/routine-history"),
+          )}
+        </div>
 
         {deletingEditRow && (
           <div
