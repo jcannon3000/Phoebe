@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Trash2 } from "lucide-react";
 import { RiseSheet } from "@/components/RiseSheet";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { pickWideBackground } from "@/lib/wideBackgrounds";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { type ListeningMedium } from "@/lib/listeningLog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +18,11 @@ import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrar
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
+// Visio Divina's own deck chrome, so the two practices read as siblings
+// (owner: "don't have it come up like a drawer, have it be more like visio").
+const DECK_BG = "#091A10";
+const DECK_FAINT = "rgba(143,175,150,0.55)";
+const DECK_BORDER = "rgba(46,107,64,0.38)";
 // Audio Divina uses Space Grotesk for ALL text (no serif).
 const SERIF = SPACE_GROTESK;
 // Frosted surface for the visibility pill + the Log button (not solid green).
@@ -82,6 +90,11 @@ type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: str
 export default function ListeningPage() {
   const [view, setView] = useState<View>("deck");
   const [deckStep, setDeckStep] = useState(0);
+  /** The leaf, picked once per open — the same backdrop Visio and its siblings use. */
+  const deckBackdrop = useMemo(
+    () => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
+    [],
+  );
   const deckTouch = useRef<{ x: number; y: number } | null>(null);
   // Kept today already? The form collapses behind a "Log another" button, so
   // the page reads as the practice rather than an empty form. This re-opens it.
@@ -94,9 +107,10 @@ export default function ListeningPage() {
    * another in half.
    */
   const [felt, setFelt] = useState("");
-  const feltCount = (v: string) => (typeof Intl.Segmenter === "function"
-    ? [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(v)].length
-    : [...v].length);
+  const feltGraphemes = (v: string): string[] => (typeof Intl.Segmenter === "function"
+    ? [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(v)].map((x) => x.segment)
+    : [...v]);
+  const feltCount = (v: string) => feltGraphemes(v).length;
   // `query` is the transient search text (never stored); `what` is the SELECTED
   // catalog title and is only ever set by tapping a result or a recent — you
   // can't log free-typed text. This keeps the log to structured Apple Music
@@ -186,8 +200,21 @@ export default function ListeningPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
 
-  // The whole log: pick what (from search) + how, mark it done, then show the
-  // log. (No amount.) You must pick a catalog result — no free-typed entries.
+  /**
+   * The whole log: what you listened to + how, mark it done, then show the log.
+   *
+   * FREE TEXT IS ALLOWED. This used to insist on a catalog result — `what` was
+   * only ever set by tapping a search result, so typing filled the box and left
+   * the Log button dead. That rule only holds while the catalog is reachable,
+   * and searchCatalog needs an Apple Music token server-side or a Spotify one
+   * (CLIENT_ID is empty), so when neither answers there are no results to tap,
+   * nothing can be picked, and the practice becomes impossible to log at all —
+   * reported as "the logging wasn't working", and with it "the emojis weren't
+   * working", because nothing could be saved for them to ride along with.
+   *
+   * A structured catalog reference is still what a tap gives you (title,
+   * artist and artwork). Typing is the fallback, not the preference.
+   */
   function logToday() {
     if (!what.trim()) return;
     logMutation.mutate();
@@ -230,12 +257,24 @@ export default function ListeningPage() {
    * changes; the deck is the way in to it, and the log stays its own view for
    * going back over what you've sat with.
    */
-  const INTRO = 0, LISTEN = 1, LIFT = 2, LOG = 3;
+  /**
+   * Owner: "have the log before the second prompt."
+   *
+   * intro · listen · LOG · lift it in prayer.
+   *
+   * The recording is the middle of the practice, not the end of it. Writing
+   * down what you listened to while it's fresh, and THEN lifting what it
+   * stirred, leaves you in prayer rather than in a form — which is how the
+   * picture practice ends too. Ending on the log made the last thing you did
+   * data entry.
+   */
+  const INTRO = 0, LISTEN = 1, LOG = 2, LIFT = 3;
   const DECK_TOTAL = 4;
+  const LAST = LIFT;
 
   if (view === "deck") {
     const atLog = deckStep === LOG;
-    const next = () => { if (deckStep < LOG) setDeckStep((n) => n + 1); };
+    const next = () => { if (deckStep < LAST) setDeckStep((n) => n + 1); };
     const prev = () => { if (deckStep > INTRO) setDeckStep((n) => n - 1); };
     // Tap the left half to go back, the right half forward; swipe likewise —
     // lifted from the office deck and Visio Divina so every deck in the app
@@ -260,16 +299,66 @@ export default function ListeningPage() {
       if (dx < 0) next(); else prev();
     };
     return (
-      <RiseSheet bgPhoto={null}>
-        {() => (
-          <div className="w-full" onClick={onTapNavigate} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-            <button
-              onClick={() => setView("log")}
-              className="text-[13px] mb-6 inline-flex items-center gap-1.5"
-              style={{ color: SAGE, fontFamily: SPACE_GROTESK }}
-            >
-              ✕ <span>Close</span>
-            </button>
+      /**
+       * Visio Divina's shell, not a drawer (owner). A rise-from-the-bottom
+       * sheet reads as a panel over the app you were in; these practices are
+       * somewhere you GO. Same ground, same leaf backdrop, same Back / title /
+       * ✕ chrome, same footer — so the two decks are recognisably the same
+       * kind of thing.
+       */
+      <div style={{ position: "fixed", inset: 0, background: DECK_BG, isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}
+           onClick={onTapNavigate} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        {deckBackdrop ? (
+          <>
+            <motion.img
+              src={deckBackdrop}
+              alt=""
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.22 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
+            />
+            <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }} />
+          </>
+        ) : (
+          <AnimatedBackground base={DECK_BG} variant="subtle" />
+        )}
+
+        {/* Back / title / close — Visio's own header, to the pixel. */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "calc(env(safe-area-inset-top) + 12px) 16px 8px", gap: 10 }}>
+          <button
+            type="button"
+            onClick={prev}
+            disabled={deckStep === INTRO}
+            style={{ userSelect: "none", WebkitTapHighlightColor: "transparent", background: "none", border: "none", color: deckStep === INTRO ? "transparent" : SAGE, fontFamily: SPACE_GROTESK, fontSize: 14, cursor: deckStep === INTRO ? "default" : "pointer", padding: 6 }}
+          >
+            ← Back
+          </button>
+          <span style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+            Audio Divina
+          </span>
+          <button
+            type="button"
+            onClick={() => setView("log")}
+            aria-label="Close"
+            style={{ userSelect: "none", WebkitTapHighlightColor: "transparent", width: 32, height: 32, borderRadius: 999, background: "rgba(9,26,16,0.5)", border: `1px solid ${DECK_BORDER}`, color: WARM, cursor: "pointer", padding: 0 }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* The beat itself — vertically centred, the way Visio's are (owner:
+            "the previous slides are not vertically centered"). The LOG beat
+            fills from the top instead: it's a form that can outgrow the screen,
+            and centring it puts the first field under your thumb. */}
+        <div
+          style={{
+            flex: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center",
+            justifyContent: atLog ? "flex-start" : "center",
+            padding: "0 20px", gap: 16, overflowY: "auto",
+          }}
+        >
             <motion.div
               key={deckStep}
               initial={{ opacity: 0 }}
@@ -277,13 +366,13 @@ export default function ListeningPage() {
               transition={{ duration: 0.34, ease: "easeOut" }}
               className="w-full flex flex-col items-center gap-4"
             >
-              <p className="text-[10.5px] uppercase tracking-[0.18em] self-start" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
-                Audio Divina
-              </p>
 
+              {/* Centred, like Visio's opening beat — the deck centres its
+                  content vertically now, and a left-ragged title inside a
+                  centred column reads as a mistake rather than a choice. */}
               {deckStep === INTRO && (
-                <div className="w-full">
-                  <h1 className="text-[30px] font-bold leading-tight mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK, letterSpacing: "-0.02em" }}>
+                <div className="w-full text-center" style={{ maxWidth: 480 }}>
+                  <h1 className="title-glow-breathe text-[30px] font-bold leading-tight mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK, letterSpacing: "-0.02em" }}>
                     Sacred listening
                   </h1>
                   <p className="text-[16px] leading-relaxed" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
@@ -292,14 +381,18 @@ export default function ListeningPage() {
                 </div>
               )}
 
+              {/* The prompts are set exactly as Visio's are (owner: "the prompts
+                  are different") — .title-glow-breathe, the app's illuminated
+                  rise: a 6px lift as they fade in, then a slow breathing glow.
+                  Space Grotesk, upright, 21px, same measure. */}
               {deckStep === LISTEN && (
-                <p className="text-[21px] leading-relaxed text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, maxWidth: 480 }}>
+                <p className="title-glow-breathe text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
                   Listen once to a song that is on your heart. Take a moment to rest in the music, and listen to what might touch your heart as you do.
                 </p>
               )}
 
               {deckStep === LIFT && (
-                <p className="text-[21px] leading-relaxed text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, maxWidth: 480 }}>
+                <p className="title-glow-breathe text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
                   Take a moment to lift to God what may be on your heart.
                 </p>
               )}
@@ -311,7 +404,7 @@ export default function ListeningPage() {
                   </p>
                   <input
                     value={query}
-                    onChange={(e) => { setQuery(e.target.value); setPicked(false); setWhat(""); setArtworkUrl(""); }}
+                    onChange={(e) => { setQuery(e.target.value); setPicked(false); setWhat(e.target.value); setArtworkUrl(""); }}
                     onFocus={() => setSearchFocused(true)}
                     onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
                     placeholder="Search a song, album, or artist…"
@@ -377,9 +470,19 @@ export default function ListeningPage() {
                   <input
                     value={felt}
                     onChange={(e) => {
+                      /**
+                       * TRIM to three rather than REFUSE the keystroke.
+                       *
+                       * Rejecting the whole value when it goes over is the
+                       * wrong shape for an emoji keyboard: iOS can deliver a
+                       * multi-scalar emoji, an autocorrect replacement or a
+                       * paste as one change, and refusing it wholesale makes
+                       * the field look broken — you tap an emoji and nothing
+                       * appears. Keep the first three of whatever arrives, and
+                       * never block a shorter value, so deleting always works.
+                       */
                       const v = e.target.value;
-                      // Let them delete freely; only cap growth.
-                      if (feltCount(v) <= 3 || v.length < felt.length) setFelt(v);
+                      setFelt(feltCount(v) <= 3 ? v : feltGraphemes(v).slice(0, 3).join(""));
                     }}
                     inputMode="text"
                     placeholder="🕊️ 🌊 🙏🏽"
@@ -390,25 +493,38 @@ export default function ListeningPage() {
                 </div>
               )}
             </motion.div>
+        </div>
 
-            <div className="w-full flex flex-col items-center gap-2 mt-8">
-              <button
-                onClick={() => { if (atLog) { logToday(); setDeckStep(INTRO); setView("log"); } else next(); }}
-                disabled={atLog && !what.trim()}
-                className="w-full py-4 rounded-2xl text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:active:scale-100"
-                style={(!atLog || what.trim())
-                  ? { ...FROST_CTA, background: "rgba(46,107,64,0.55)", color: WARM, fontFamily: SPACE_GROTESK }
-                  : { ...FROST_CTA, color: "rgba(240,237,230,0.42)", fontFamily: SPACE_GROTESK }}
-              >
-                {deckStep === INTRO ? "Begin" : atLog ? "Log it" : "Continue"}
-              </button>
-              <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK, letterSpacing: "0.12em" }}>
-                {deckStep + 1} / {DECK_TOTAL}
-              </span>
-            </div>
-          </div>
-        )}
-      </RiseSheet>
+        {/* Footer — Visio's, including the step counter. */}
+        <div style={{ padding: "10px 20px calc(env(safe-area-inset-bottom) + 18px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+          <button
+            onClick={() => {
+              // The log records and MOVES ON to the prayer beat — it isn't the
+              // end of the deck any more. The prayer beat is, and it closes out
+              // to the log view.
+              if (atLog) { logToday(); next(); return; }
+              if (deckStep === LAST) { setDeckStep(INTRO); setView("log"); return; }
+              next();
+            }}
+            disabled={atLog && !what.trim()}
+            style={{
+              userSelect: "none", WebkitTapHighlightColor: "transparent",
+              width: "100%", maxWidth: 420, borderRadius: 999, padding: "14px 20px",
+              fontSize: 16, fontWeight: 600, fontFamily: SPACE_GROTESK,
+              cursor: (!atLog || what.trim()) ? "pointer" : "default",
+              ...FROST_CTA,
+              border: `1px solid ${DECK_BORDER}`,
+              background: (!atLog || what.trim()) ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.22)",
+              color: (!atLog || what.trim()) ? WARM : "rgba(240,237,230,0.42)",
+            }}
+          >
+            {deckStep === INTRO ? "Begin" : atLog ? "Log it" : deckStep === LAST ? "Done" : "Continue"}
+          </button>
+          <span style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.12em" }}>
+            {deckStep + 1} / {DECK_TOTAL}
+          </span>
+        </div>
+      </div>
     );
   }
 
@@ -545,7 +661,7 @@ export default function ListeningPage() {
               </p>
               <input
                 value={query}
-                onChange={(e) => { setQuery(e.target.value); setPicked(false); setWhat(""); setArtworkUrl(""); }}
+                onChange={(e) => { setQuery(e.target.value); setPicked(false); setWhat(e.target.value); setArtworkUrl(""); }}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
                 placeholder="Search a song, album, or artist…"

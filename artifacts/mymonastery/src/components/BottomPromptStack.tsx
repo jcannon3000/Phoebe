@@ -21,6 +21,9 @@ import { NotificationReminderBanner } from "@/components/NotificationReminderBan
 const IMMERSIVE_PRACTICE_ROUTES = new Set<string>([
   "/visio", "/psalms", "/contemplation", "/cobreathe", "/pray-breath",
   "/guided-prayer", "/examen", "/prayer-mode",
+  // Audio Divina is a full-screen deck now too, with its own footer CTA — the
+  // prompt card was landing squarely on its Begin button.
+  "/listening",
   // The customizer belongs here too. Its Continue now hovers at the bottom of
   // the screen, so a standing prompt card lands squarely on top of it — and on
   // the Back link beneath it, which is how it was found. Designing your rule is
