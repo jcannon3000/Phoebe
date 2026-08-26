@@ -13,9 +13,15 @@ import { db, usersTable, type PrescribedRoutineSpec } from "@workspace/db";
 // Same module key set the home-layout route validates against, so an applied
 // layout can never surface an unknown card.
 export const HOME_MODULE_KEYS = [
+  // "visio" and "prayer-list" were missing while both are real home modules
+  // (routes/prayer.ts and the client's HOME_MODULES have them). sanitizeSpec
+  // strips unknown keys from order AND hidden, and cleanHomeLayout's backfill
+  // can't restore a key it doesn't know — so every prescribed routine, group
+  // rule, creator season and snapshot restore silently dropped Visio Divina
+  // and the Prayer List for the adopter.
   "office", "feeds", "contemplation", "listening", "reading", "walk",
   "cobreathe", "compline", "examen", "cac", "fdd", "ssje", "vts",
-  "ncmp", "podcasts", "requests",
+  "visio", "prayer-list", "ncmp", "podcasts", "requests",
 ] as const;
 
 const ALLOWED_PREFS = new Set(["none", "office", "devotion"]);

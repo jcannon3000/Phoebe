@@ -3492,6 +3492,35 @@ export default function WayOfLoveRuleFlow({
     // Divina became a checkbox called "Audio Divina" sitting next to the real
     // one.
     const on = !turningOff;
+    /**
+     * WITHDRAW WHAT THIS SIDE HAD BEFORE.
+     *
+     * Reported: "Contemplative Walk was selected which I did not have; Audio
+     * Divina was also selected." `extraBySide[side]` holds ONE title, but
+     * `contemplative` is a six-key set that only ever accumulated: tapping
+     * Audio Divina and then Contemplative Walk left the name on the walk and
+     * BOTH practice flags true. commit() then wrote both home cards, and the
+     * next open seeded both back as chosen. Switching your mind quietly added
+     * a practice instead of replacing one.
+     *
+     * The newsletter branch below already withdrew its own pick on toggle-off;
+     * this is the same withdrawal for the practice branch, and for the
+     * REPLACEMENT case the newsletter branch never had to handle.
+     */
+    const previous = extraBySide[side];
+    if (previous && previous !== title) {
+      const prevEntry = extraEntryFor(previous, cap);
+      if (prevEntry?.maps.kind === "practice") {
+        const prevKey = prevEntry.maps.key;
+        setContemplative((p) => (p[prevKey] ? { ...p, [prevKey]: false } : p));
+      } else if (prevEntry?.maps.kind === "contemplation") {
+        setContemplationBySide((p) => ({ ...p, [side]: false }));
+      } else if (prevEntry?.maps.kind === "newsletter") {
+        const picked = extraNewsletterBySide[side];
+        if (picked) setNewsletters((p) => p.filter((x) => x !== picked));
+        setExtraNewsletterBySide((p) => ({ ...p, [side]: null }));
+      }
+    }
     if (e.maps.kind === "practice") {
       const key = e.maps.key;
       setContemplative((p) => ({ ...p, [key]: on }));
@@ -3656,7 +3685,7 @@ export default function WayOfLoveRuleFlow({
       : f === "creation" ? { emoji: "🌍", label: t("wol_rule.cf_creation", { defaultValue: "Creation Prayer" }), sub: t("wol_rule.cf_creation_sub", { defaultValue: "Breathing with creation, at one shared pace." }) }
       : f === "walk" ? { emoji: "🚶", label: t("wol_rule.cf_walk", { defaultValue: "Contemplative Walk" }), sub: t("wol_rule.cf_walk_sub", { defaultValue: "A walk kept as prayer, attentive to what's around you." }) }
       : f === "audio" ? { emoji: "🎵", label: t("wol_rule.cf_audio", { defaultValue: "Audio Divina" }), sub: t("wol_rule.cf_audio_sub", { defaultValue: "Sacred listening — music held the way you'd hold a text." }) }
-      : { emoji: "🖼️", label: t("wol_rule.cf_visio", { defaultValue: "Visio Divina" }), sub: t("wol_rule.cp_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }) };
+      : { emoji: "🖼️", label: t("wol_rule.cf_visio", { defaultValue: "Visio Divina" }), sub: t("wol_rule.cf_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }) };
     return shell(
       <>
         {backRow(goPrev)}
@@ -4041,7 +4070,15 @@ export default function WayOfLoveRuleFlow({
               <span style={{ flex: 1, minWidth: 0, color: CREAM, fontSize: 15, fontFamily: FONT }}>{extraBySide[side]}</span>
               <button
                 type="button"
-                onClick={() => { touchedRef.current = true; setExtraBySide((p) => ({ ...p, [side]: null })); }}
+                // Route the ✕ through chooseExtra's own toggle-off rather than
+                // poking the name to null — clearing the NAME alone left the
+                // practice's flag on, and commit() then wrote its home card
+                // for a second practice the reader had just removed.
+                onClick={() => {
+                  const current = extraEntryFor(extraBySide[side], cap);
+                  if (current) chooseExtra(side, current, cap);
+                  else { touchedRef.current = true; setExtraBySide((p) => ({ ...p, [side]: null })); }
+                }}
                 aria-label={`Remove ${extraBySide[side]}`}
                 style={{ background: "none", border: "none", color: SAGE, fontSize: 15, cursor: "pointer", padding: "2px 6px" }}
               >

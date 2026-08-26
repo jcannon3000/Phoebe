@@ -45,7 +45,7 @@ export function BookOfficeLogSheet({
           className="w-full rounded-2xl py-3.5 text-[15px] font-semibold active:scale-[0.99]"
           style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
         >
-          ✓ {t("rhythm.log_done", { defaultValue: "Log" })}
+          ✓ {t("rhythm.log_amount", { defaultValue: "Log" })}
         </button>
 
         <button

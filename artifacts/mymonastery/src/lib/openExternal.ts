@@ -138,7 +138,7 @@ export function openExternalThenMarkRead(
   // read the INSTANT the link opens rather than when the person comes back —
   // that was the "newsletter dot flips at tap time" bug.
   if (native?.isNative?.() && native?.openInAppBrowser) {
-    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader });
+    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back });
     const onDone = () => {
       window.removeEventListener("phoebe:browserfinished", onDone);
       markRead();

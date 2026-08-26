@@ -331,6 +331,13 @@ export function useWidgetSync(): void {
     // authenticated user, so its running AT ALL already satisfies Turn's
     // actual definition ("opened Phoebe today").
     const weekly = computeWeeklyGrid({ rhythm: r, week: weekQ.data, practiceMode, turned: true });
+    // Settings → Home display → Weekly Progress governs the widget's grid too.
+    // widgetSync never read the key, so turning the weekly card off on the home
+    // left the same seven-day grid sitting on the Home Screen — the one place
+    // you can't dismiss it. Same key settings.tsx and the card itself write.
+    const weeklyHidden = (() => {
+      try { return localStorage.getItem("phoebe:hide-turn-learn-pray") === "1"; } catch { return false; }
+    })();
 
     const bridge = (window as unknown as { PhoebeNative?: WidgetBridge }).PhoebeNative;
     bridge?.updateWidget?.({
@@ -353,11 +360,11 @@ export function useWidgetSync(): void {
       reflectAvailable: r.reflectActive,
       contemplationMin: r.contemplationMin,
       contemplationGoalMin: r.contemplationGoalMin,
-      weeklyLabels: weekly.rows.map((row) => row.label),
-      weeklyEmoji: weekly.rows.map((row) => row.emoji),
-      weeklyGrid: weekly.rows.map((row) => row.kept),
-      weeklyPartial: weekly.rows.map((row) => row.partial),
-      weeklyDayInitials: weekly.dayInitials,
+      weeklyLabels: weeklyHidden ? [] : weekly.rows.map((row) => row.label),
+      weeklyEmoji: weeklyHidden ? [] : weekly.rows.map((row) => row.emoji),
+      weeklyGrid: weeklyHidden ? [] : weekly.rows.map((row) => row.kept),
+      weeklyPartial: weeklyHidden ? [] : weekly.rows.map((row) => row.partial),
+      weeklyDayInitials: weeklyHidden ? [] : weekly.dayInitials,
       updatedAt: new Date().toISOString(),
     });
   }, [

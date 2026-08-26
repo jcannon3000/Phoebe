@@ -287,19 +287,37 @@ export default function CustomizePage() {
         ...(r.pray === "ownPractice" ? { customName: r.name ?? "Worship" } : {}),
       })));
     }
-    // Practices with their own card (Visio Divina, a Contemplative Walk…), and
-    // the part of the day they ride at.
-    if (preset.practices) {
+    /**
+     * The rule's home layout — ADOPTING A RULE REPLACES, it doesn't add to.
+     *
+     * Two reported bugs came out of this block. It ran only `if
+     * (preset.practices)` — and VTS has no `practices` key, so adopting VTS
+     * wrote NO layout at all: the pre-existing Forward Day by Day stayed
+     * visible and VTS's own card stayed hidden, and re-opening the full
+     * customizer read the layout back as "Forward Day by Day is selected".
+     * And inside it, an unnamed practice was only ever left alone, never
+     * turned off — so adopting a rule with a Walk and then adopting VTS kept
+     * the walk, which is "Contemplative Walk was selected which I did not
+     * have."
+     *
+     * Runs unconditionally now, and every key the rule doesn't name is
+     * hidden — the same all-or-nothing shape the full customizer's commit()
+     * has always had.
+     */
+    {
       const existing = currentHomeLayout;
       const order = [...(existing?.order ?? [])];
       const hidden = new Set(existing?.hidden ?? []);
-      for (const [key, on] of Object.entries(preset.practices)) {
-        if (on) {
-          if (!order.includes(key)) order.push(key);
-          hidden.delete(key);
-        } else {
-          hidden.add(key);
-        }
+      const wanted: Record<string, boolean> = {
+        // The rule's newsletter, and only that one.
+        ...Object.fromEntries((["fdd", "ssje", "cac", "vts"] as const).map((n) => [n, refl === n])),
+        // Its standing practices, and only those.
+        ...Object.fromEntries((["listening", "walk", "visio", "cobreathe", "examen", "compline", "reading", "podcasts", "prayer-list"] as const)
+          .map((k) => [k, preset.practices?.[k as keyof typeof preset.practices] === true])),
+      };
+      for (const [key, on] of Object.entries(wanted)) {
+        if (!order.includes(key)) order.push(key);
+        if (on) hidden.delete(key); else hidden.add(key);
       }
       const layout: HomeLayout = { order, hidden: [...hidden], v: HOME_LAYOUT_VERSION };
       if (guest) cacheHomeLayoutLocalOnly(layout);

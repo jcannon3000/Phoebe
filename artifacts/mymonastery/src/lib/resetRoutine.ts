@@ -19,8 +19,14 @@ import { OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 // requests lead + the feeds card; every optional add-on is off. This matches a
 // brand-new account, whose null layout falls back to exactly this rhythm.
 const DEFAULT_HIDDEN_MODULES = [
+  // The server BACKFILLS every module key into `order`, so a key missing from
+  // this list comes back VISIBLE — the opposite of what a reset means. "vts",
+  // "visio" and "prayer-list" were missing, so resetting to default left the
+  // Dean's Commentary and Visio Divina on the home, and the customizer then
+  // seeded them as chosen. Keep this list = every optional module.
   "listening", "reading", "walk", "cobreathe", "compline",
-  "examen", "cac", "ssje", "ncmp", "podcasts", "contemplation",
+  "examen", "cac", "ssje", "vts", "visio", "prayer-list",
+  "ncmp", "podcasts", "contemplation",
 ];
 
 export async function resetRoutineToDefault(opts: {

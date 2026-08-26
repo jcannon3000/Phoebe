@@ -106,7 +106,7 @@ export default function CobreatheAboutPage() {
                 className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
                 style={{ maxWidth: 360, background: "#2D5E3F", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, border: "none", cursor: "pointer" }}
               >
-                {t("cobreathe.begin_short", { defaultValue: "Begin the breath" })} <span aria-hidden>→</span>
+                {t("cobreathe.begin_about", { defaultValue: "Begin the breath" })} <span aria-hidden>→</span>
               </button>
               <button
                 type="button"

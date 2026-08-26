@@ -73,7 +73,7 @@ export default function CommunitiesPage() {
               <Link href="/communities/browse">
                 <span className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold"
                   style={{ background: "transparent", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.4)" }}>
-                  <Search size={14} /> {t("communities.browse_communities", { defaultValue: "Browse" })}
+                  <Search size={14} /> {t("communities.browse_short", { defaultValue: "Browse" })}
                 </span>
               </Link>
               {isBuilder && (
