@@ -115,6 +115,10 @@ async function resolveLicences(titles) {
 const tidy = (v) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : v);
 
 /** ACT's requested citation, in the form their own pages ask for. */
+/** Owner: "take out the William Blake stuff." Matched on the surname, lower-cased,
+ *  against ACT's "Surname, Forename, dates" artist string. */
+const EXCLUDED_ARTISTS = ["blake, william"];
+
 function attribution(a, artist) {
   const who = artist ? `${artist}. ` : "";
   return `${who}${tidy(a.title)}, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons.`;
@@ -150,6 +154,14 @@ const main = async () => {
     // against a reading, so it isn't part of this practice.
     if (!a.scriptures?.length) { dropped.noScripture++; continue; }
     const artist = a.artists?.[0] ?? null;
+    // Artists the practice deliberately doesn't carry (owner). Kept HERE as
+    // well as removed from the generated file, or the next regeneration
+    // quietly puts them back — the same "a regen undid it" trap the catalogue
+    // header already warns about.
+    if (artist && EXCLUDED_ARTISTS.some((x) => String(artist).toLowerCase().includes(x))) {
+      dropped.excludedArtist = (dropped.excludedArtist ?? 0) + 1;
+      continue;
+    }
     kept.push({
       id: a.id,
       title: tidy(a.title),
