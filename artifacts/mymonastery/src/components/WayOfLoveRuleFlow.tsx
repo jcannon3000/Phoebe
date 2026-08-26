@@ -726,6 +726,9 @@ export default function WayOfLoveRuleFlow({
   const [editRows, setEditRows] = useState<Array<{ id: string; emoji: string; label: string; sub: string }>>([]);
   const [editLoaded, setEditLoaded] = useState(false);
   const [deletingEditRow, setDeletingEditRow] = useState<{ id: string; label: string } | null>(null);
+  /** The review screen's ✕ confirm — carries the row's own remove(), since
+   *  review rows are built from local state rather than server row ids. */
+  const [deletingReviewRow, setDeletingReviewRow] = useState<{ label: string; remove: () => void } | null>(null);
   // Whether this person has any past routine to go back to — read synchronously
   // from the flag the snapshot save leaves behind (see the effect below).
   const [hasRoutineHistory] = useState(() => {
@@ -4813,7 +4816,15 @@ export default function WayOfLoveRuleFlow({
       : prayBySide[side] === "readings" ? "Daily Scripture Readings"
       : `${cap} Devotion`;
   };
-  const reviewRows: Array<{ emoji: string; label: string; sub: string; step: Step }> = [
+  /**
+   * Owner: the review screen wants the same ⚙/✕ the edit list has, so a
+   * practice can be adjusted or taken off without leaving "the shape of your
+   * days". The gear reuses each row's existing `step`; `remove` is new — the
+   * review builds its rows from local state rather than from server row ids,
+   * so each names its own way off rather than routing through clearEditRow.
+   * A row with no `remove` shows only the gear.
+   */
+  const reviewRows: Array<{ emoji: string; label: string; sub: string; step: Step; remove?: () => void }> = [
     // One row per side that has an OFFICE ANCHOR. A side with only add-ons
     // (contemplation/examen) has no office card — those surface as their own
     // rows below (Silence / The Examen), so it isn't listed here as an office.
@@ -4824,6 +4835,9 @@ export default function WayOfLoveRuleFlow({
         ? t("wol_rule.own_named_practice", { defaultValue: "Your anchor practice" })
         : t("wol_rule.own_practice", { defaultValue: "Your own practice" })) : prayBySide[s] === "fdd" ? "Forward Movement" : prayBySide[s] === "readings" ? "Forward Movement" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
+      // Taking the office off leaves the side itself alone — its add-ons
+      // (a sit, the Examen) keep their own rows below.
+      remove: () => choosePrayBySide(s, "none"),
     })),
     // Per-side contemplative prayer — its own row per side. When the style is
     // the breath it's "Morning / Evening Creation Prayer" (🌍); a silent sit is
@@ -4847,6 +4861,14 @@ export default function WayOfLoveRuleFlow({
         // row displays (minutesBySide / breaths). The silent branch used to
         // open the day's GOAL slide, which cannot change the sit it came from.
         step: (s === "morning" ? "morning-config" : "evening-config") as Step,
+        // Same pair clearEditRow's "contemplation:<side>" branch clears — the
+        // flag AND the form, or the side reopens claiming a practice it no
+        // longer keeps.
+        remove: () => {
+          touchedRef.current = true;
+          setContemplationBySide((prev) => ({ ...prev, [s]: false }));
+          setContemplativeForm((prev) => ({ ...prev, [s]: null }));
+        },
       };
     })),
     // SOLO silence goal — minutes set with no per-side contemplation: the home
@@ -4878,11 +4900,12 @@ export default function WayOfLoveRuleFlow({
       label: "Silence",
       sub: silenceMode === "grow" ? "Growing toward 30 min" : `${goalMin} min a day`,
       step: "contemplation-goal" as Step,
+      remove: () => chooseGoal("0"),
     }] : []),
     // No time-of-day sub-label anymore — these add-ons are just available
     // all day (see the "contemplative" step for the "with your prayer"
     // exception, when Creation Prayer IS the side's primary sit style).
-    ...(contemplative.compline ? [{ emoji: "🌙", label: "Compline", sub: "Available from 7pm", step: "contemplative" as Step }] : []),
+    ...(contemplative.compline ? [{ emoji: "🌙", label: "Compline", sub: "Available from 7pm", step: "contemplative" as Step, remove: () => toggleContemplative("compline") }] : []),
     /**
      * The standing Creation Prayer add-on — but NOT when a side already lists
      * it as that side's own practice.
@@ -4895,13 +4918,13 @@ export default function WayOfLoveRuleFlow({
      * one — it names when and how long — so the add-on row stands down.
      */
     ...((contemplative.cobreathe && !(cobreatheIsSideStyle && (contemplationBySide.morning || contemplationBySide.evening)))
-      ? [{ emoji: "🌍", label: "Creation Prayer", sub: "Available all day", step: "contemplative" as Step }] : []),
-    ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: "Available all day", step: "contemplative" as Step }] : []),
-    ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Available all day", step: "contemplative" as Step }] : []),
+      ? [{ emoji: "🌍", label: "Creation Prayer", sub: "Available all day", step: "contemplative" as Step, remove: () => toggleContemplative("cobreathe") }] : []),
+    ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: "Available all day", step: "contemplative" as Step, remove: () => toggleContemplative("audio") }] : []),
+    ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Available all day", step: "contemplative" as Step, remove: () => toggleContemplative("examen") }] : []),
     ...(newsletters.length
-      ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step }]
+      ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step, remove: chooseNoReflection }]
       : []),
-    ...(extras.prayerList ? [{ emoji: "🕊️", label: "My Prayer List", sub: "Pray through your own list", step: "extras" as Step }] : []),
+    ...(extras.prayerList ? [{ emoji: "🕊️", label: "My Prayer List", sub: "Pray through your own list", step: "extras" as Step, remove: () => { touchedRef.current = true; setExtras((e) => ({ ...e, prayerList: false })); } }] : []),
     // The user's own custom practices — each tappable back into "Create your own".
     // A weekday-scoped practice says so: "Midday" alone described Community
     // Meal as an every-day practice, which is not what the rule set up.
@@ -4912,6 +4935,9 @@ export default function WayOfLoveRuleFlow({
         ? `${SLOT_LABEL[a.slot]} · ${describeDays(a.days)}`
         : SLOT_LABEL[a.slot],
       step: "custom" as Step,
+      // A real anchor with server state — removeCustomAnchor tombstones it, so
+      // dropping the row alone would let the next sync bring it straight back.
+      remove: () => { touchedRef.current = true; removeCustomAnchor(a.id); setCustomList(getCustomAnchors()); },
     })),
     // Drop any row whose edit target is no longer in the flow (e.g. an existing
     // user's contemplative/extras cards under the limited customizer) — tapping
@@ -5049,24 +5075,86 @@ export default function WayOfLoveRuleFlow({
         </p>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
-        {reviewRows.map((r, i) => (
-          <button
-            key={`${r.label}-${i}`}
-            onClick={() => setStep(r.step)}
-            style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" }}
-          >
-            <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
-              <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
-            </span>
-            <span style={{ color: "rgba(143,175,150,0.4)", fontSize: 16, flexShrink: 0 }} aria-hidden>›</span>
-          </button>
-        ))}
+        {/* The row is a DIV, not a button: it now holds two controls of its
+            own, and a button inside a button is invalid markup that swallows
+            the inner taps. The body stays tappable (it's still "tap any
+            practice to adjust it"), with the gear and ✕ beside it — the same
+            pair, the same `circle` styling, as the edit list's rows. */}
+        {reviewRows.map((r, i) => {
+          const circle: React.CSSProperties = {
+            width: 30, height: 30, flexShrink: 0, borderRadius: 999,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(255,255,255,0.06)", border: `1px solid ${CARD_B}`,
+            color: SAGE, fontSize: 14, cursor: "pointer", padding: 0,
+          };
+          return (
+            <div
+              key={`${r.label}-${i}`}
+              style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10 }}
+            >
+              <button
+                type="button"
+                aria-label={`Settings for ${r.label}`}
+                onClick={() => setStep(r.step)}
+                style={circle}
+              >
+                ⚙
+              </button>
+              {r.remove && (
+                <button
+                  type="button"
+                  aria-label={`Remove ${r.label}`}
+                  onClick={() => setDeletingReviewRow({ label: r.label, remove: r.remove! })}
+                  style={circle}
+                >
+                  ✕
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setStep(r.step)}
+                style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+              >
+                <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
+                  <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
+                </span>
+                <span style={{ color: "rgba(143,175,150,0.4)", fontSize: 16, flexShrink: 0 }} aria-hidden>›</span>
+              </button>
+            </div>
+          );
+        })}
       </div>
       <p style={{ textAlign: "center", color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "16px 0 0" }}>
-        {t("wol_rule.done_edit_hint", { defaultValue: "Tap any practice to adjust it." })}
+        {t("wol_rule.done_edit_hint", { defaultValue: "Tap the gear to change a practice, or the ✕ to take it off." })}
       </p>
+      {/* Same confirm the edit list uses — nothing comes off a rule on one tap. */}
+      {deletingReviewRow && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setDeletingReviewRow(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(4,12,7,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 18, padding: 18, maxWidth: 380, width: "100%", boxSizing: "border-box" }}>
+            <p style={{ color: CREAM, fontFamily: FONT, fontSize: 17, fontWeight: 700, margin: 0 }}>
+              Remove {deletingReviewRow.label}?
+            </p>
+            <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14, lineHeight: 1.55, margin: "8px 0 0" }}>
+              It comes off when you keep this rhythm. You can add it back any time.
+            </p>
+            <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+              <button type="button" onClick={() => { deletingReviewRow.remove(); setDeletingReviewRow(null); }} style={{ flex: 1, background: CTA, color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
+                Remove
+              </button>
+              <button type="button" onClick={() => setDeletingReviewRow(null)} style={{ flex: 1, background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.25)", borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+                Keep it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* One plain closing CTA — no 30-day offer, no "do it together" invite
           stage (owner, 2026-07-03): they chose the rhythm, it's set, done. */}
       <button onClick={onDone} style={{ marginTop: 14, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
