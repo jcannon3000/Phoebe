@@ -2487,6 +2487,17 @@ export default function WayOfLoveRuleFlow({
   // Continue + a bottom Back bar (the top Back row was removed). Back uses
   // goPrev, which steps back through the dynamic flow (or exits on the first
   // step). Tapping the right side of the screen also goes back (see shell).
+  /**
+   * THIS MUST BE THE LAST THING ON THE SLIDE.
+   *
+   * It hovers at the bottom with a gradient scrim so content scrolls and fades
+   * under it. That only works while it IS the final element: put anything after
+   * it and, at the end of the scroll, it falls inline and the scrim paints an
+   * opaque band across whatever follows — reported as a "weird green overlay"
+   * below Continue on the edit-your-routine step, which had two rows beneath
+   * it. The rows moved above it. Audited: 17 call sites, and this is the only
+   * one that ever had trailing content.
+   */
   const ctaButton = (rawLabel: string, onClick: () => void) => {
     // Editing one practice, this button is the end of the road — call it Save,
     // not Continue, because there is nothing after it to continue to. Only on
@@ -2896,10 +2907,10 @@ export default function WayOfLoveRuleFlow({
         >
           {t("wol_rule.edit_add_practice", { defaultValue: "+ Add a practice" })}
         </button>
-        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setManualMode("scratch"))}
         {/* The two WHOLE-rhythm moves, under the rhythm they'd replace
             (owner). Everything above changes one practice; these two change
-            all of it, so they sit apart and last — going back to an old rhythm
+            all of it, so they sit apart, below every per-practice row — going
+            back to an old rhythm
             especially, which is the exception, not a way of building one. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
           {menuRow(
@@ -2915,6 +2926,13 @@ export default function WayOfLoveRuleFlow({
             () => setLocation("/routine-history"),
           )}
         </div>
+        {/* Continue LAST, so it can hover at the bottom with everything else
+            scrolling under it (owner, twice). It used to sit above the two rows
+            just above, which meant it could never stay pinned — at the end of
+            the scroll it fell inline and its scrim painted a band across them.
+            Moving it here keeps the hover AND the rows; a screen's final action
+            belonging under everything it acts on is the ordinary arrangement. */}
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setManualMode("scratch"))}
 
         {deletingEditRow && (
           <div
