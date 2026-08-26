@@ -100,7 +100,20 @@ export function matchScore(artRefs: string[], lessons: string[]): number {
     for (const l of lessons) {
       const lp = parseRef(l);
       if (!lp || lp.book !== ap.book) continue;
-      best = Math.max(best, 1);
+      /**
+       * "Both are psalms" is not a connection.
+       *
+       * For every other book, sharing the book means sharing a story — a work
+       * from Genesis 3 on a Genesis 16 day is at least the same narrative. The
+       * Psalter isn't a narrative: Psalm 41 and Psalm 5 are separate poems that
+       * happen to be bound together, and 212 of the catalogue's works are
+       * psalm-tagged, so the book tier handed almost any day a psalm painting
+       * with nothing to do with the psalm appointed. Audited: a "Hand of God"
+       * tagged Psalm 41 was being shown on a day appointing Psalms 5, 6, 10 and
+       * 11. For the Psalter the chapter IS the work, so only the chapter and
+       * verse tiers below can be earned.
+       */
+      if (!isPsalmBook(lp.book)) best = Math.max(best, 1);
       for (const as of ap.spans) {
         for (const ls of lp.spans) {
           if (as.chapter !== ls.chapter) continue;
@@ -173,19 +186,106 @@ export type Chosen = {
  * `lessons` may be empty (offline, still loading, or a day with no appointed
  * lesson) — the rotation covers that, and is equally shared.
  */
-export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
-  const scored = lessons.length
-    ? ACT_CATALOGUE.map((art) => ({ art, score: matchScore(art.refs, lessons) })).filter((x) => x.score > 0)
-    : [];
-  if (!scored.length) {
-    const art = rotationForDay(ymd);
-    return { art, ref: art.refs[0] ?? "", followsToday: false };
+/** The Psalter, however the lectionary spelled it. */
+function isPsalmBook(book: string): boolean {
+  return book === "psalm" || book === "psalms";
+}
+/**
+ * A gospel, by book name — including the lectionary's abbreviations ("Matt.").
+ * The numbered Johns normalise with their leading digit ("1 john"), so testing
+ * the start of the name keeps the epistles out of the gospel tier.
+ */
+function isGospelBook(book: string): boolean {
+  return /^(matt|mark|luke|john)/.test(book);
+}
+
+/**
+ * WHICH READING THE PICTURE SHOULD FOLLOW, in the owner's order.
+ *
+ * Owner: "it should first try to match for the gospel of the day, then the
+ * Epistle or OT, then psalm."
+ *
+ * So this is a tiered search, not one flat maximum. The gospel is asked first
+ * and a real match there WINS — even against a closer match on a psalm, which
+ * is the whole point of an order: the day's gospel is its centre, and the
+ * picture should sit with it when it can.
+ *
+ * "The Epistle or OT" is one tier because the owner grouped them, which also
+ * means this never has to tell an epistle from an OT lesson — anything that
+ * isn't a gospel and isn't a psalm belongs to the middle.
+ *
+ * A tier is only ACCEPTED at chapter level or better. A book-level hit ("some
+ * artwork from Mark, on a Mark day") is too loose to outrank a real match in
+ * the tier below it; those are gathered at the end as the last thing before
+ * the plain rotation.
+ */
+function tiersFor(lessons: string[]): string[][] {
+  const gospel: string[] = [], middle: string[] = [], psalms: string[] = [];
+  for (const l of lessons) {
+    const p = parseRef(l);
+    if (!p) continue;
+    (isGospelBook(p.book) ? gospel : isPsalmBook(p.book) ? psalms : middle).push(l);
   }
+  return [gospel, middle, psalms];
+}
+
+/**
+ * Where in the tie set to start, for a given day.
+ *
+ * `dayOrdinal` alone decorrelates poorly across a CHANGING set: the office
+ * reads semi-continuously, so consecutive days often produce tie sets of
+ * different sizes drawn from overlapping works, and `ordinal % size` lands on
+ * yesterday's painting by coincidence more often than it should. Measured over
+ * the two-year cycle: 17 such repeats that had an alternative available.
+ *
+ * Folding the SET's own identity into the offset breaks that correlation — a
+ * different set of candidates starts from a different place. Still a pure
+ * function of the date and the set, so it stays deterministic: everyone
+ * praying today sees the same picture, which is the rule this whole file is
+ * built around.
+ */
+function rotationIndex(ymd: string, ids: number[]): number {
+  const sig = ids.reduce((a, b) => (a + b) % 9973, 0);
+  const n = ids.length;
+  return (((dayOrdinal(ymd) + sig) % n) + n) % n;
+}
+
+/** Best-scoring works for one set of references, with their score. */
+function scoreAgainst(refs: string[]): { best: Array<{ art: CatalogueArtwork }>; top: number } {
+  if (!refs.length) return { best: [], top: 0 };
+  const scored = ACT_CATALOGUE
+    .map((art) => ({ art, score: matchScore(art.refs, refs) }))
+    .filter((x) => x.score > 0);
+  if (!scored.length) return { best: [], top: 0 };
   const top = Math.max(...scored.map((x) => x.score));
-  const best = scored.filter((x) => x.score === top);
-  const art = best[((dayOrdinal(ymd) % best.length) + best.length) % best.length]!.art;
-  // Show the artwork's own reference that today's reading actually matched,
-  // rather than whichever ACT happened to list first.
-  const ref = art.refs.find((r) => matchScore([r], lessons) === top) ?? art.refs[0] ?? "";
-  return { art, ref, followsToday: top >= 2 };
+  return { best: scored.filter((x) => x.score === top), top };
+}
+
+export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
+  // Gospel, then Epistle/OT, then psalms — the first tier that matches at
+  // CHAPTER level or better wins, whatever the tiers below could have scored.
+  const tiers = tiersFor(lessons);
+  for (const tier of tiers) {
+    const { best, top } = scoreAgainst(tier);
+    if (top < 2 || !best.length) continue;
+    // Deterministic among equals, and a COUNTER not a hash: consecutive days
+    // give consecutive indices, so a lection appointed several days running
+    // (Holy Week) walks its matching works instead of repeating one.
+    const art = best[rotationIndex(ymd, best.map((x) => x.art.id))]!.art;
+    const ref = art.refs.find((r) => matchScore([r], tier) === top) ?? art.refs[0] ?? "";
+    return { art, ref, followsToday: true };
+  }
+  // Nothing reached chapter level in any tier. Take the best BOOK-level match
+  // across everything before giving up — same book is a thin thread, but it is
+  // a thread, and the tiers above have already refused to let one outrank a
+  // real match. (Psalms can't reach here: see matchScore.)
+  const { best, top } = scoreAgainst(lessons);
+  if (best.length && top >= 1) {
+    const art = best[rotationIndex(ymd, best.map((x) => x.art.id))]!.art;
+    const ref = art.refs.find((r) => matchScore([r], lessons) === top) ?? art.refs[0] ?? "";
+    // NOT "today's reading" — it's the same book, a different passage.
+    return { art, ref, followsToday: false };
+  }
+  const art = rotationForDay(ymd);
+  return { art, ref: art.refs[0] ?? "", followsToday: false };
 }

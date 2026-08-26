@@ -38,8 +38,6 @@ import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { markOfficeBookComplete } from "@/lib/officeManualLog";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
-import { vcsLinkForReference } from "@/lib/vcsExhibitions";
-import { artworkForReference } from "@/lib/visioSelect";
 import { canPrayOnVenite, veniteOfficeUrl } from "@/lib/venite";
 import { PointedLine } from "@/components/PointedLine";
 
@@ -3239,6 +3237,21 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 >
                   📖 Read Scripture Reflection — Forward Day by Day
                 </button>
+                {/* Owner: "in both morning and evening, under where we have
+                    the read scripture reflection, have it say Practice Visio
+                    Divina and just bring up the one for today."
+
+                    A fifth way to stay in the pause — the same shape as the
+                    three above it. /visio picks the day's artwork off the
+                    lectionary itself, so there's nothing to pass: "the one for
+                    today" is what that page opens on. */}
+                <button
+                  type="button"
+                  onClick={() => setViewerLocation("/visio")}
+                  style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", background: "transparent", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                >
+                  🖼️ Practice Visio Divina
+                </button>
               </div>
             </div>
           ) : currentSlide.type === "intercessions_portal" ? (
@@ -3534,86 +3547,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                       </div>
                     </div>
                   )}
-                  {/**
-                   * Art and commentary on this book, at the Visual Commentary on
-                   * Scripture. A LINK, never embedded: their images are licensed
-                   * from picture agencies and the commentary is the authors'
-                   * own. Book-level because their per-book pages are the only
-                   * regular URLs they publish — see lib/vcsExhibitions for why
-                   * we don't build a passage-level map. Absent, quietly, for the
-                   * books they don't cover.
-                   */}
-                  {(() => {
-                    /**
-                     * THE PAINTING FOR THIS READING, when there is one.
-                     *
-                     * Owner: the evening gospel's link "just went to a page
-                     * with a bunch of things from the gospel of John, but not
-                     * specifically one that was relevant to that gospel
-                     * reading." True, and by design at the time — the note
-                     * below records that book pages were the only regular URLs
-                     * we had.
-                     *
-                     * They aren't any more. The Visio catalogue tags 229 works
-                     * to the passages they depict and carries each one's own
-                     * commentary link, so the passage-level map the note said
-                     * we couldn't build is sitting right there. Ask it first;
-                     * fall back to the book page, which is honest about being
-                     * a list.
-                     */
-                    const art = artworkForReference(reference);
-                    if (art) {
-                      return (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openOfficeReading(art.essay, {
-                              officeTitle,
-                              slideLabel: `${slideIdx + 1} of ${slides.length}`,
-                              sectionLabel,
-                            });
-                          }}
-                          style={{
-                            background: "none", border: "none", color: FAINT_GREEN,
-                            fontFamily: SPACE_GROTESK, fontSize: 12.5, textDecoration: "underline",
-                            cursor: "pointer", padding: "8px 10px", marginTop: 2,
-                          }}
-                        >
-                          {/* Named, because it IS one work now — "art &
-                              commentary on John" would undersell a link that
-                              opens the painting of the passage just read. */}
-                          {`🖼️ ${art.title}`}
-                        </button>
-                      );
-                    }
-                    const vcs = vcsLinkForReference(reference);
-                    if (!vcs) return null;
-                    return (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Same hand-off the Bible reading uses — the office's
-                          // own chrome and the snapshot veil, so stepping out to
-                          // a commentary feels like part of the office rather
-                          // than being thrown into a browser.
-                          openOfficeReading(vcs.url, {
-                            officeTitle,
-                            slideLabel: `${slideIdx + 1} of ${slides.length}`,
-                            sectionLabel,
-                          });
-                        }}
-                        style={{
-                          background: "none", border: "none", color: FAINT_GREEN,
-                          fontFamily: SPACE_GROTESK, fontSize: 12.5, textDecoration: "underline",
-                          cursor: "pointer", padding: "8px 10px", marginTop: 2,
-                        }}
-                      >
-                        {`🖼️ Art & commentary on ${vcs.book}`}
-                      </button>
-                    );
-                  })()}
+                  {/* (A per-lesson "Art & commentary" link lived here — first
+                      book-level at the Visual Commentary on Scripture, then
+                      the catalogued painting for the passage itself. Owner:
+                      "let's just take that off of that page." The art has its
+                      own door now, in the contemplative pause: "Practice Visio
+                      Divina", which opens the day's work whole rather than as
+                      a footnote under a reading. lib/vcsExhibitions and
+                      visioSelect's artworkForReference went with it.) */}
                 </div>
               );
             })()
