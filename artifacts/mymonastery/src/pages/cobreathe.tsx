@@ -903,6 +903,10 @@ export default function CobreathePage() {
         others={othersDone}
         placeName={place?.name ?? null}
         placeBreathsToday={placeStats?.today}
+        // …and the longer story, for the place's own slide. The query has
+        // carried these all along; only today's number was ever shown.
+        placeBreathsMonth={placeStats?.month?.breaths}
+        placeBreathsAllTime={placeStats?.allTime?.breaths}
         companions={summaryFaces}
         onContinue={() => setLocation("/")}
       />

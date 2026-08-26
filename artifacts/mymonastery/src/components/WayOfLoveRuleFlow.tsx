@@ -2772,9 +2772,20 @@ export default function WayOfLoveRuleFlow({
          * gone by the top. The extra stop near the middle keeps the ramp from
          * banding on the dark green.
          */
-        paddingTop: 72,
+        paddingTop: 56,
         paddingBottom: "calc(40px + max(6px, env(safe-area-inset-bottom)))",
-        background: "linear-gradient(to top, rgba(9,26,16,1) 0%, rgba(9,26,16,1) 38%, rgba(9,26,16,0.92) 58%, rgba(9,26,16,0.6) 78%, rgba(9,26,16,0.24) 90%, rgba(9,26,16,0) 100%)",
+        /**
+         * A SOLID BED, then a short fade — not a long gentle ramp.
+         *
+         * The first attempt ramped from opaque at 38% to nothing at the top,
+         * which over a ~220px container left a card's text still 40% visible
+         * behind the buttons: legible enough to read, which reads as a
+         * rendering fault rather than a fade (owner: "the shadow is not
+         * working properly"). Opaque through two thirds means nothing shows
+         * anywhere near the buttons; the fade is a band at the top edge, doing
+         * the one job it has — letting a card dissolve as it scrolls under.
+         */
+        background: "linear-gradient(to top, rgba(9,26,16,1) 0%, rgba(9,26,16,1) 66%, rgba(9,26,16,0.9) 80%, rgba(9,26,16,0.45) 91%, rgba(9,26,16,0) 100%)",
         display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
       }}
     >

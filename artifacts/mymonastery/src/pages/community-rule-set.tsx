@@ -146,7 +146,13 @@ export default function CommunityRuleSetPage() {
 
   const wrap: React.CSSProperties = {
     minHeight: "100dvh", display: "flex", flexDirection: "column", justifyContent: "center",
-    alignItems: "stretch", gap: 18, padding: "24px 22px", maxWidth: 460, margin: "0 auto",
+    alignItems: "stretch", gap: 18, maxWidth: 460, margin: "0 auto",
+    // The status bar and the home indicator own the top and bottom of the
+    // screen. A flat 24px sat the whole panel too high — reported as "the
+    // community rule of life UI is too high" — because a centred column on a
+    // 100dvh page starts measuring from the very top of the display, notch
+    // included. Insets on both ends, floored at the old padding.
+    padding: "calc(env(safe-area-inset-top, 0px) + 24px) 22px calc(env(safe-area-inset-bottom, 0px) + 24px)",
   };
   const card: React.CSSProperties = {
     background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",

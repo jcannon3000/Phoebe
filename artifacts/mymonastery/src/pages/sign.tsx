@@ -84,7 +84,11 @@ export default function SignPage() {
       {/* Screen-only toolbar: Back + Print. */}
       <div
         className="sign-toolbar"
-        style={{ position: "sticky", top: 0, zIndex: 5, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "rgba(9,26,16,0.92)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+        style={{ position: "sticky", top: 0, zIndex: 5, display: "flex", justifyContent: "space-between", alignItems: "center", // The status bar owns the top of the screen — without the inset this bar
+        // sat under the clock and the battery (owner screenshot: "Back" and
+        // "Print / Save as PDF" printed straight through them). Same treatment
+        // every other full-screen page here uses.
+        padding: "calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px", background: "rgba(9,26,16,0.92)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
       >
         <button
           type="button"
