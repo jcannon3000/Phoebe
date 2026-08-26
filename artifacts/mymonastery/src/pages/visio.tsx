@@ -141,6 +141,10 @@ export default function VisioPage() {
    * shows what was written rather than an empty field.
    */
   const [felt, setFelt] = useState(() => getVisioHistory().find((v) => v.ymd === new Date().toLocaleDateString("en-CA"))?.felt ?? "");
+  /** Whether anything has been typed into the emoji log this visit — drives
+   *  the "Kept ✓" confirmation under the field. Starts false so a value
+   *  restored from an earlier day doesn't claim to have just been saved. */
+  const [feltSaved, setFeltSaved] = useState(false);
   const feltCount = (v: string) => (typeof Intl.Segmenter === "function"
     ? [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(v)].length
     : [...v].length);
@@ -963,6 +967,7 @@ export default function VisioPage() {
                 if (feltCount(v) <= 3 || v.length < felt.length) {
                   setFelt(v);
                   try { recordVisioFelt(today, v); } catch { /* non-fatal */ }
+                  setFeltSaved(true);
                 }
               }}
               inputMode="text"
@@ -976,6 +981,25 @@ export default function VisioPage() {
                 border: `1px solid ${BORDER}`, fontFamily: FONT,
               }}
             />
+            {/**
+              * "Kept" — because there is no Log button and there shouldn't be.
+              *
+              * Owner: "on the emoji log there's no log button, it's just the
+              * field." True, and deliberate: the entry is written to the day's
+              * history on each keystroke, since the Done tap leaves for home
+              * and a log you have to remember to save is a log that gets lost.
+              *
+              * But a field that saves invisibly is indistinguishable from a
+              * field that does nothing, which is what the report is really
+              * about. So it says so, quietly, once something has been typed —
+              * confirmation instead of a button that would only re-do what has
+              * already happened.
+              */}
+            {feltSaved && felt.trim() !== "" && (
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, margin: "6px 0 0", textAlign: "center" }}>
+                {t("visio.felt_saved", { defaultValue: "Kept ✓" })}
+              </p>
+            )}
             {view && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, lineHeight: 1.55, margin: "6px 0 0", textAlign: "center" }}>
                 {view.attribution}

@@ -244,6 +244,28 @@ export default function ListeningPage() {
   const todayYmd = new Date().toLocaleDateString("en-CA");
   const todayEntry = sortedEntries.find((e) => e.day === todayYmd) ?? null;
   const keptToday = todayEntry !== null;
+  /**
+   * Coming back through the deck: today's song is already in the field.
+   *
+   * logToday() clears the form, so a second pass used to meet a blank one with
+   * the listen safely recorded — which is why the gate carried a "or they
+   * already logged today" escape, and that escape was the hole that let
+   * someone advance having named nothing. Putting the song back is the better
+   * answer to the same problem: they can SEE what they logged, change it if
+   * they want, and the gate stays strict without ever trapping anyone.
+   *
+   * Runs once per arrival, and only into an empty field, so it can never
+   * overwrite something being typed.
+   */
+  const prefilledRef = useRef(false);
+  useEffect(() => {
+    if (prefilledRef.current || !todayEntry) return;
+    const song = todayEntry.what?.trim();
+    if (!song) return;
+    prefilledRef.current = true;
+    setWhat((prev) => (prev.trim() ? prev : song));
+    setQuery((prev) => (prev.trim() ? prev : song));
+  }, [todayEntry]);
   // Today's listen when there is one, otherwise the last one — the page always
   // opens on music rather than on an empty form.
   const heroEntry = todayEntry ?? sortedEntries[0] ?? null;
@@ -302,7 +324,25 @@ export default function ListeningPage() {
      * still closes the deck from this beat, so the door is only to the next
      * beat, never out of the practice.
      */
-    const logSatisfied = !!what.trim() || keptToday;
+    /**
+     * A SONG, named, before the deck moves on.
+     *
+     * Owner: "they shouldn't be able to advance in the slideshow until they've
+     * picked a song."
+     *
+     * This used to read `what.trim() || keptToday`, and the second half was
+     * the hole: anyone who had already logged today could walk past an EMPTY
+     * field, which is exactly "advancing without picking a song". The escape
+     * existed for a real reason — logToday clears the form, so coming back
+     * through the deck met a blank field with the listen safely recorded, and
+     * holding them there would have been a locked door.
+     *
+     * The prefill below removes the need for the escape: a second pass finds
+     * today's song already in the field, so the gate can be strict and still
+     * trap nobody. The ✕ closes the deck from this beat regardless, so the
+     * door is only ever to the next beat, never out of the practice.
+     */
+    const logSatisfied = !!what.trim();
     const next = () => { if (deckStep < LAST) setDeckStep((n) => n + 1); };
     const prev = () => {
       // Stepping back from the prayer beat skips the log once it's been done —
