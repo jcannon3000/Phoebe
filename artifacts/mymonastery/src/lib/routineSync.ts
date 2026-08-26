@@ -98,6 +98,15 @@ export const ROUTINE_KEYS: string[] = [
   // per-device localStorage, so toggling it on phone never showed up on
   // web. Owner: "showing up on my phone but not on web."
   "phoebe:hide-turn-learn-pray",
+  // Which COURSES the reader has taken off their home screen, and which medium
+  // Audio Divina defaults to. Both are exactly the shape of the key above them
+  // — a home-display choice and a practice preference — and both were written
+  // without joining this list, which is the drift this file's own header
+  // documents happening twice before. Missing here they never sync, and (since
+  // guestSeed derives its logout wipe from this list) they survive into the
+  // next person's session on a shared device.
+  "phoebe:course-hidden",
+  "phoebe:audio-divina-medium",
   // Course progress (lib/courseProgress.ts) — which lessons are completed + the
   // last one opened, per course. Device-local like the office method was, so it
   // was lost on logout→login; now it rides the rule_config too. One key per

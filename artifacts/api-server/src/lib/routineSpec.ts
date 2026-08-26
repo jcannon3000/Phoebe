@@ -51,6 +51,19 @@ const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 // onto every congregant's row (DB bloat + bandwidth amplification). Mirrors the
 // self-service /me/rule-config guard (prayer.ts).
 const RULE_CONFIG_MAX_BYTES = 32_000;
+/**
+ * How many rule-config keys a spec may carry.
+ *
+ * The count cap was 64 while the client's ROUTINE_KEYS already held 56 — eight
+ * keys of headroom on a list that grows every time a practice gains a
+ * preference, and `Object.entries` order deciding which ones die. It truncates
+ * SILENTLY: the spec saves, the adopter's rhythm is quietly missing whatever
+ * fell off the end, and nothing anywhere says so. The real ceiling is
+ * RULE_CONFIG_MAX_BYTES (32 KB, which 56 keys come nowhere near); this is
+ * belt-and-braces against a pathological payload, so it should sit far above
+ * the legitimate list rather than just above it.
+ */
+const RULE_CONFIG_MAX_KEYS = 192;
 
 export function sanitizeSpec(raw: unknown): PrescribedRoutineSpec | null {
   if (!raw || typeof raw !== "object") return null;
@@ -81,19 +94,27 @@ export function sanitizeSpec(raw: unknown): PrescribedRoutineSpec | null {
   if (order.length === 0) return null;
 
   // rule-config values: string→string, bounded like /me/rule-config — per-entry
-  // (key ≤80, value ≤8000, ≤64 keys) AND in aggregate (≤32 KB total).
+  // (key ≤80, value ≤8000, ≤RULE_CONFIG_MAX_KEYS) AND in aggregate (≤32 KB).
   const rcRaw = (s.ruleConfig && typeof s.ruleConfig === "object" && !Array.isArray(s.ruleConfig))
     ? (s.ruleConfig as Record<string, unknown>) : {};
   const ruleConfig: Record<string, string> = {};
   let n = 0;
   let rcBytes = 0;
   for (const [k, v] of Object.entries(rcRaw)) {
-    if (n >= 64) break;
+    if (n >= RULE_CONFIG_MAX_KEYS) break;
     if (typeof k === "string" && k.length <= 80 && typeof v === "string" && v.length <= 8000) {
       rcBytes += k.length + v.length;
       if (rcBytes > RULE_CONFIG_MAX_BYTES) break;
       ruleConfig[k] = v; n++;
     }
+  }
+  // Truncation used to be silent, which is how a cap eight keys above the real
+  // list stayed invisible. If it ever bites again, it says so.
+  if (Object.keys(rcRaw).length > Object.keys(ruleConfig).length) {
+    console.warn(
+      "[routineSpec] rule-config truncated:",
+      Object.keys(rcRaw).length, "keys in,", Object.keys(ruleConfig).length, "kept",
+    );
   }
 
   return {
