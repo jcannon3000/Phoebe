@@ -42,6 +42,19 @@ export type RulePreset = {
   /** Names for sides whose `pray` is "ownPractice" (e.g. VTS's "Chapel"). */
   customNames?: Partial<Record<OfficeSideKey, string>>;
   /**
+   * WHICH newsletter a side reads when its `pray` is "fdd".
+   *
+   * The "fdd" level is a sentinel meaning "a reflection is this side's
+   * prayer" — whichever one; the source comes from that side's own reflection
+   * pref, and sideOfficeTitle names the card from it. Adopting a rule
+   * otherwise points every side at `reflections[0]`, which makes the two
+   * inseparable: Canterbury Downtown wants Forward Day by Day AS the morning
+   * office while the newsletter CARD is the CAC's meditation, and without
+   * this the morning anchor came out titled "CAC Daily Meditation".
+   * Omitted = the side follows the rule's newsletter, as before.
+   */
+  anchorReflection?: Partial<Record<OfficeSideKey, ReflectionSource>>;
+  /**
    * Standing practices of the rule's own that aren't one of the named ones —
    * written as CUSTOM ANCHORS, the app's existing shape for "a practice only
    * you keep": its own card, its own dot, kept with a tap. `days` scopes it to
@@ -160,5 +173,35 @@ export const RULE_PRESETS: RulePreset[] = [
       { emoji: "📖", label: "The CAC Daily Meditation" },
       { emoji: "🚶", label: "A Contemplative Walk" },
       { emoji: "🌗", label: "The Examen in the evening" },
+    ] },
+  // CANTERBURY DOWNTOWN (owner) — the chaplaincy's rhythm. Forward Day by Day
+  // IS the morning office here (level "fdd", not the newsletter card), Simple
+  // Guided Prayer closes the day, and the contemplation is Audio Divina —
+  // music as the way of prayer rather than a sit. Creation Prayer rides
+  // alongside as a standing practice.
+  //
+  // Audio Divina and Creation Prayer are practices with their own cards, not
+  // office anchors, so they're turned on in `practices` rather than named as a
+  // side's way. Note the vocabulary seam: the practices key is "audio" while
+  // the slot/home-layout key for the same thing is "listening".
+  //
+  // No silence goal and no per-side sit — the listening is the contemplation.
+  { id: "canterbury-downtown", emoji: "🏙️", sides: { morning: true, evening: true },
+    pray: "fdd", evening: "guidedPrayer",
+    // The morning office IS Forward Day by Day; the newsletter card is the
+    // CAC's meditation. Two different readings, so the side's source is named
+    // here rather than inherited from `reflections`.
+    anchorReflection: { morning: "fdd" },
+    practices: { audio: true, cobreathe: true },
+    practiceSlots: { listening: "anytime", cobreathe: "anytime" },
+    silence: false, goalMin: 0,
+    reflections: ["cac"],
+    title: "Canterbury Downtown", blurb: "Forward Day by Day to open the morning, music as the day's contemplation, Richard Rohr's meditation, and three minutes of guided prayer at its close.",
+    rows: [
+      { emoji: "🌅", label: "Forward Day by Day in the morning" },
+      { emoji: "📖", label: "The CAC Daily Meditation" },
+      { emoji: "🎵", label: "Audio Divina" },
+      { emoji: "🌍", label: "Creation Prayer" },
+      { emoji: "🙌", label: "Simple Guided Prayer in the evening" },
     ] },
 ];

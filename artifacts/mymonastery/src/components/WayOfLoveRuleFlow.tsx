@@ -703,6 +703,13 @@ export default function WayOfLoveRuleFlow({
   // it once wiped people's offices), so the picker always asks first.
   const [presetPending, setPresetPending] = useState<string | null>(null);
   /**
+   * A side whose ANCHOR reads a different newsletter from the rule's own —
+   * carried from adoptRule to commit(), which otherwise points every side at
+   * newsletters[0] and would undo it a slide later. Empty for every rule that
+   * doesn't ask (see rulePresets.anchorReflection).
+   */
+  const [anchorReflectionBySide, setAnchorReflectionBySide] = useState<Partial<Record<OfficeSide, ReflectionSource>>>({});
+  /**
    * Owner: "you can just edit one, and then it saves and goes back."
    *
    * The gear on the edit list used to drop you into the middle of the full
@@ -1581,7 +1588,10 @@ export default function WayOfLoveRuleFlow({
       if (sides[side]) {
         setSideLevel(side, PRAY_LEVEL[prayBySide[side]]);
         setSideEntry(side, methodBySide[side]);
-        setSideReflection(side, primary);
+        // …unless this side's ANCHOR reads a different one (Canterbury
+        // Downtown: Forward Day by Day as the morning office, the CAC's
+        // meditation as the newsletter card).
+        setSideReflection(side, anchorReflectionBySide[side] ?? primary);
         persistCommunityWithOffice(side, prayBySide[side] !== "community" && communityWithOffice[side]);
         setSideContemplation(side, contemplationBySide[side]);
         // …and WHICH one. Per side (owner: "let's separate creation prayer and
@@ -1789,7 +1799,10 @@ export default function WayOfLoveRuleFlow({
       if (sides[side]) {
         setSideLevel(side, PRAY_LEVEL[prayBySide[side]]);
         setSideEntry(side, methodBySide[side]);
-        setSideReflection(side, primary);
+        // …unless this side's ANCHOR reads a different one (Canterbury
+        // Downtown: Forward Day by Day as the morning office, the CAC's
+        // meditation as the newsletter card).
+        setSideReflection(side, anchorReflectionBySide[side] ?? primary);
         // Remember the Prayer List + BCP merge so the row stays checked on
         // re-open (only meaningful when the office anchor isn't community itself).
         persistCommunityWithOffice(side, prayBySide[side] !== "community" && communityWithOffice[side]);
@@ -2048,6 +2061,10 @@ export default function WayOfLoveRuleFlow({
       evening: presetSitsSilent && preset.goalMin >= 5 && preset.goalMin <= 30 ? preset.goalMin : 15,
     });
     setNewsletters(preset.reflections);
+    // A side whose ANCHOR reads a different newsletter from the rule's own —
+    // held in state so commit() can honour it (see anchorReflectionBySide).
+    // Cleared first, like the practices above, so nothing carries over.
+    setAnchorReflectionBySide({ ...(preset.anchorReflection ?? {}) });
     setExtras({ examen: false, listening: false, reading: false, podcasts: false, prayerList: false });
     // A side whose practice is the person's own needs its NAME, or the rule
     // adopts an anchor called "Morning Practice".

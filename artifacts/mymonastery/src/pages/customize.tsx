@@ -14,7 +14,7 @@ import {
   type ReflectionSource,
   setSideContemplationKind, setSideDayRules } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
-import { RULE_PRESETS, type RulePreset } from "@/lib/rulePresets";
+import { RULE_PRESETS, type RulePreset, type OfficeSideKey } from "@/lib/rulePresets";
 import { addCustomAnchor, getCustomAnchors, setPracticeSlot, type SlottedPractice, type CustomSlot } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
@@ -258,6 +258,10 @@ export default function CustomizePage() {
     setReflectionSource(refl);
     setSideReflection("morning", refl);
     setSideReflection("evening", refl);
+    // …then any side whose ANCHOR reads a different one (see anchorReflection).
+    for (const [side, src] of Object.entries(preset.anchorReflection ?? {}) as Array<[OfficeSideKey, ReflectionSource]>) {
+      if (src) setSideReflection(side, src);
+    }
 
     // The rule's own standing practices, idempotent by title.
     if (preset.customAnchors?.length) {
@@ -311,9 +315,17 @@ export default function CustomizePage() {
       const wanted: Record<string, boolean> = {
         // The rule's newsletter, and only that one.
         ...Object.fromEntries((["fdd", "ssje", "cac", "vts"] as const).map((n) => [n, refl === n])),
-        // Its standing practices, and only those.
+        // Its standing practices, and only those. NOTE the one name that
+        // differs between the two vocabularies: the home-layout key is
+        // "listening", the preset's practices key is "audio". Looking up
+        // practices["listening"] always found undefined, so a preset could
+        // never turn Audio Divina ON here — it was hidden every time. Latent
+        // until a rule actually asked for it; Canterbury Downtown does.
         ...Object.fromEntries((["listening", "walk", "visio", "cobreathe", "examen", "compline", "reading", "podcasts", "prayer-list"] as const)
-          .map((k) => [k, preset.practices?.[k as keyof typeof preset.practices] === true])),
+          .map((k) => {
+            const practiceKey = k === "listening" ? "audio" : k;
+            return [k, preset.practices?.[practiceKey as keyof typeof preset.practices] === true];
+          })),
       };
       for (const [key, on] of Object.entries(wanted)) {
         if (!order.includes(key)) order.push(key);
