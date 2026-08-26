@@ -71,6 +71,62 @@ function useMovements(): Movement[] {
   ];
 }
 
+/**
+ * The amen that makes you wait — prayer-mode's AmenButton, in this deck's pill.
+ *
+ * Three seconds before the tap is accepted, with the wash filling underneath.
+ * Owner: "the slides as if that has the amen timing." The reason is the same
+ * one prayer-mode records: without it, tappers rip through a person's prayer
+ * list in a few seconds, and each prayer stops being a moment.
+ *
+ * KEYED by the slide at the call site, so it remounts per prayer and the timer
+ * is always fresh-false — the bug prayer-mode's own note warns about is "the
+ * first one works and then no others", which is exactly what a shared, unkeyed
+ * instance produces.
+ *
+ * The 3s here and the 3s in index.css's .amen-progress-fill are one duration
+ * in two languages; they're kept together deliberately (see that rule's note).
+ */
+function HeldAmenPill({ label, onAmen }: { label: string; onAmen: () => void }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setReady(true);
+      // The soft "light" haptic marks the reveal; the tap itself gets the
+      // medium one below — two different feels for two different moments.
+      try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } })); } catch { /* non-fatal */ }
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (!ready) return;
+        try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "medium" } })); } catch { /* non-fatal */ }
+        onAmen();
+      }}
+      // aria-disabled, not disabled: a disabled button leaves the
+      // accessibility tree and can't say why it won't respond.
+      aria-disabled={!ready}
+      className="rounded-full py-3 px-12 relative overflow-hidden active:scale-[0.99]"
+      style={{ ...PILL, cursor: ready ? "pointer" : "default", opacity: ready ? 1 : 0.75, transition: "opacity 360ms ease-out" }}
+    >
+      <span
+        aria-hidden
+        className="absolute left-0 top-0 bottom-0 amen-progress-fill"
+        style={{
+          background: "rgba(46,107,64,0.45)",
+          pointerEvents: "none",
+          opacity: ready ? 0 : 1,
+          transition: "opacity 360ms ease-out",
+        }}
+      />
+      <span style={{ position: "relative" }}>{label}</span>
+    </button>
+  );
+}
+
 export default function GuidedPrayerPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -201,8 +257,29 @@ export default function GuidedPrayerPage() {
   // With it gone the prayer list (and then the collect) follow the closing
   // directly.
   const prayerListStep = MOVEMENTS.length + 2;
-  const collectStep = showPrayerList ? prayerListStep + 1 : prayerListStep;
-  const isPrayerList = showPrayerList && step === prayerListStep;
+  /**
+   * ONE PRAYER PER SLIDE, held for the amen — not a list to read past.
+   *
+   * Owner: "I asked it to look just like when the prayer list is in the
+   * offices, the slides as if that has the amen timing." This was a single
+   * slide stacking every intention in a scroll box with an "Add to your list"
+   * link under it — a management screen at the end of a prayer, which is why
+   * the reply was "I didn't ask for this." The prayer SLIDESHOW is the thing
+   * it should have been: each intention alone on the screen, and an Amen that
+   * won't accept the tap for three seconds, so the slide is a moment rather
+   * than something to swipe through.
+   *
+   * The hold is prayer-mode's AMEN_HOLD_MS and its .amen-progress-fill wash,
+   * shared rather than re-timed — index.css keeps the CSS animation and the JS
+   * timer in step, and a second copy of the number is how they drift apart.
+   */
+  const prayerCount = showPrayerList ? activeIntentions.length : 0;
+  const prayerIndex = showPrayerList && step >= prayerListStep && step < prayerListStep + prayerCount
+    ? step - prayerListStep
+    : -1;
+  const prayer = prayerIndex >= 0 ? activeIntentions[prayerIndex] : null;
+  const collectStep = prayerListStep + prayerCount;
+  const isPrayerList = prayer != null;
   const isCollect = showCollect && step === collectStep;
   const movement = !isIntro && !isClosing && !isPrayerList && !isCollect ? MOVEMENTS[step - 1] : null;
 
@@ -216,9 +293,13 @@ export default function GuidedPrayerPage() {
           ? { label: t("guided_prayer.continue"), onClick: () => setStep((s) => (s + 1) as typeof step) }
           : { label: t("common.done"), onClick: () => setLocation("/dashboard") })
       : isPrayerList
-        ? (showCollect
-            ? { label: t("guided_prayer.continue"), onClick: () => setStep((s) => (s + 1) as typeof step) }
-            : { label: t("common.done"), onClick: () => setLocation("/dashboard") })
+        // Always "Amen", and always the next thing — the last prayer hands on
+        // to the collect when there is one, and otherwise ends the practice.
+        // (The advance itself is wired through the held button below, so this
+        // onClick is what IT calls once the hold is up.)
+        ? (showCollect || prayerIndex < prayerCount - 1
+            ? { label: t("guided_prayer.amen"), onClick: () => setStep((s) => (s + 1) as typeof step) }
+            : { label: t("guided_prayer.amen"), onClick: () => setLocation("/dashboard") })
       : isCollect
         ? { label: t("common.done"), onClick: () => setLocation("/dashboard") }
       : { label: isLastMovement ? t("guided_prayer.amen") : t("guided_prayer.continue"), onClick: () => setStep((s) => s + 1) };
@@ -379,9 +460,9 @@ export default function GuidedPrayerPage() {
               </p>
             </motion.div>
           )}
-          {isPrayerList && (
+          {prayer && (
             <motion.div
-              key="prayer-list"
+              key={`prayer-${prayerIndex}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
@@ -389,35 +470,35 @@ export default function GuidedPrayerPage() {
               className="w-full flex flex-col items-center"
               style={{ maxWidth: 480, textAlign: "center" }}
             >
-              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
+              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 18 }}>
                 {t("guided_prayer.prayer_list_eyebrow", { defaultValue: "Your Prayer List" })}
               </p>
-              <div className="w-full flex flex-col gap-2.5" style={{ maxHeight: "42dvh", overflowY: "auto" }}>
-                {activeIntentions.map((it, i) => (
-                  <div
-                    key={i}
-                    className="text-left"
-                    style={{ padding: "13px 16px", borderRadius: 14, border: `1px solid ${ACCENT}`, background: "rgba(9,26,16,0.32)" }}
-                  >
-                    <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 16, lineHeight: 1.4, color: WARM, margin: 0 }}>
-                      {it.headline}
-                    </p>
-                    {it.subline && (
-                      <p style={{ fontFamily: FONT, fontSize: 12.5, color: EYEBROW, margin: "3px 0 0" }}>
-                        {it.subline}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => setLocation("/intentions")}
-                className="mt-5 text-xs"
-                style={{ background: "none", border: "none", color: EYEBROW, cursor: "pointer", fontFamily: FONT }}
-              >
-                {t("guided_prayer.add_to_list", { defaultValue: "Add to your list" })}
-              </button>
+              {/* The prayer itself, set like every other prayer in the app —
+                  the serif italic the office and the slideshow both use, at
+                  the size a thing you are praying gets, not the size a row in
+                  a list gets. */}
+              <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
+                {prayer.headline}
+              </p>
+              {prayer.subline && (
+                <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 13, margin: "12px 0 0" }}>
+                  {prayer.subline}
+                </p>
+              )}
+              {/* Where you are in the list, when there is more than one — the
+                  same quiet dots the movements use, so the tail reads as part
+                  of the same deck. */}
+              {prayerCount > 1 && (
+                <div className="flex items-center justify-center gap-1.5" style={{ marginTop: 22 }}>
+                  {activeIntentions.map((_, i) => (
+                    <span
+                      key={i}
+                      className="block rounded-full"
+                      style={{ width: 6, height: 6, background: i <= prayerIndex ? DOT_ON : DOT_OFF }}
+                    />
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
           {isCollect && collect?.text && (
@@ -465,14 +546,20 @@ export default function GuidedPrayerPage() {
             ))}
           </div>
         )}
-        <button
-          type="button"
-          onClick={primary.onClick}
-          className="rounded-full py-3 px-12 transition-opacity hover:opacity-90 active:scale-[0.99]"
-          style={PILL}
-        >
-          {primary.label}
-        </button>
+        {/* On a prayer slide the pill IS the amen, and it holds — see
+            HeldAmenPill. Everywhere else it's the ordinary control. */}
+        {prayer ? (
+          <HeldAmenPill key={`amen-${prayerIndex}`} label={primary.label} onAmen={primary.onClick} />
+        ) : (
+          <button
+            type="button"
+            onClick={primary.onClick}
+            className="rounded-full py-3 px-12 transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={PILL}
+          >
+            {primary.label}
+          </button>
+        )}
       </div>
     </div>
   );

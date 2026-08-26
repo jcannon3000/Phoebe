@@ -24,8 +24,37 @@ function sideIsSetTo(side: "morning" | "evening", level: string): boolean {
 // already uses, so reading e.g. Psalms as a mere reflection on a side where
 // it ISN'T the chosen anchor doesn't clear a reminder for prayer that
 // hasn't actually happened yet.
-function clearReminderIfAnchor(side: "morning" | "evening", level: string): void {
-  if (sideIsSetTo(side, level)) clearOfficeReminderNotifications();
+/**
+ * This side's ANCHOR practice was just prayed — credit it properly.
+ *
+ * Two things have to happen, and only one of them used to:
+ *
+ *  1. Silence today's reminder for that side (what this always did).
+ *
+ *  2. LIFT TODAY'S UNDO. Un-logging a side writes a tombstone that masks every
+ *     non-local completion signal for the rest of the day (see
+ *     officeManualLog's undoOfficeToday). Praying the practice again has to
+ *     clear it, or the side can never be marked done again until midnight —
+ *     the card's own "completed ✓" pill reads the practice's own flag and goes
+ *     green while the rhythm's `morningDone` stays masked, so the card sits in
+ *     Next wearing a tick. Reported as: "I completed simple guided and it
+ *     didn't go to done."
+ *
+ *     markCustomPrayed learned this once already, for Chapel ("I had chapel as
+ *     done, then I just tapped the card and it jumped to Next, then I could
+ *     not get it to mark as done") — and the lesson stayed in that one
+ *     function while psalms, guided prayer, FDD, the readings and the three
+ *     newsletters-as-anchor all kept the same hole. Fixing it HERE covers
+ *     every one of them, and every one added later, because they all already
+ *     call this.
+ *
+ * Both are gated on the practice actually BEING this side's anchor — reading
+ * FDD as an add-on must not clear a deliberate undo of the morning office.
+ */
+function creditSideAnchor(side: "morning" | "evening", level: string): void {
+  if (!sideIsSetTo(side, level)) return;
+  clearOfficeUndoToday(side);
+  clearOfficeReminderNotifications();
 }
 
 // Tracks whether the user has tapped a daily-reflection link today,
@@ -249,7 +278,7 @@ const psalmsTrackerMorning = makeDailyReadTracker("phoebe:psalms:morning:last-re
 const psalmsTrackerEvening = makeDailyReadTracker("phoebe:psalms:evening:last-read-day", PSALMS_READ_EVENT, () => syncPsalmsSession("evening"), "evening");
 const psalmsTrackerFor = (side: "morning" | "evening") => (side === "evening" ? psalmsTrackerEvening : psalmsTrackerMorning);
 export function hasPrayedPsalmsToday(side: "morning" | "evening" = "morning"): boolean { return psalmsTrackerFor(side).hasReadToday(); }
-export function markPsalmsPrayed(side: "morning" | "evening" = "morning"): void { psalmsTrackerFor(side).markRead(); clearReminderIfAnchor(side, "psalms"); }
+export function markPsalmsPrayed(side: "morning" | "evening" = "morning"): void { psalmsTrackerFor(side).markRead(); creditSideAnchor(side, "psalms"); }
 
 // Simple Guided Prayer (Praise / Confession / Thanksgiving / Supplication) —
 // same shape as Psalms above: a per-side alternative to the BCP office, so
@@ -276,7 +305,7 @@ const guidedPrayerTrackerMorning = makeDailyReadTracker("phoebe:guided-prayer:mo
 const guidedPrayerTrackerEvening = makeDailyReadTracker("phoebe:guided-prayer:evening:last-read-day", GUIDED_PRAYER_READ_EVENT, () => syncGuidedPrayerSession("evening"), "evening");
 const guidedPrayerTrackerFor = (side: "morning" | "evening") => (side === "evening" ? guidedPrayerTrackerEvening : guidedPrayerTrackerMorning);
 export function hasPrayedGuidedPrayerToday(side: "morning" | "evening" = "morning"): boolean { return guidedPrayerTrackerFor(side).hasReadToday(); }
-export function markGuidedPrayerPrayed(side: "morning" | "evening" = "morning"): void { guidedPrayerTrackerFor(side).markRead(); clearReminderIfAnchor(side, "guided-prayer"); }
+export function markGuidedPrayerPrayed(side: "morning" | "evening" = "morning"): void { guidedPrayerTrackerFor(side).markRead(); creditSideAnchor(side, "guided-prayer"); }
 
 // A side's own "Create your own" practice (level "custom", named via
 // officePrefs.getSideCustomName) — same shape as Simple Guided Prayer above,
@@ -312,7 +341,7 @@ export function hasPrayedCustomToday(side: "morning" | "evening" = "morning"): b
 export function markCustomPrayed(side: "morning" | "evening" = "morning"): void {
   customPrayerTrackerFor(side).markRead();
   clearOfficeUndoToday(side);
-  clearReminderIfAnchor(side, "custom");
+  creditSideAnchor(side, "custom");
 }
 /**
  * Un-mark a "Create your own" side practice.
@@ -359,7 +388,7 @@ const fddTrackerMorning = makeDailyReadTracker("phoebe:fdd:morning:last-read-day
 const fddTrackerEvening = makeDailyReadTracker("phoebe:fdd:evening:last-read-day", FDD_PRAYED_EVENT, () => syncFddSession("evening"), "evening");
 const fddTrackerFor = (side: "morning" | "evening") => (side === "evening" ? fddTrackerEvening : fddTrackerMorning);
 export function hasPrayedFddToday(side: "morning" | "evening" = "morning"): boolean { return fddTrackerFor(side).hasReadToday(); }
-export function markFddPrayed(side: "morning" | "evening" = "morning"): void { fddTrackerFor(side).markRead(); clearReminderIfAnchor(side, "fdd"); }
+export function markFddPrayed(side: "morning" | "evening" = "morning"): void { fddTrackerFor(side).markRead(); creditSideAnchor(side, "fdd"); }
 
 /**
  * Any of the four reflection sources can serve as a side's actual ANCHOR
@@ -397,7 +426,7 @@ const cacTrackerMorning = makeDailyReadTracker("phoebe:cac:morning:last-read-day
 const cacTrackerEvening = makeDailyReadTracker("phoebe:cac:evening:last-read-day", CAC_PRAYED_EVENT, () => syncCacSession("evening"), "evening");
 const cacTrackerFor = (side: "morning" | "evening") => (side === "evening" ? cacTrackerEvening : cacTrackerMorning);
 export function hasPrayedCacToday(side: "morning" | "evening" = "morning"): boolean { return cacTrackerFor(side).hasReadToday(); }
-export function markCacPrayed(side: "morning" | "evening" = "morning"): void { cacTrackerFor(side).markRead(); clearReminderIfAnchor(side, "fdd"); }
+export function markCacPrayed(side: "morning" | "evening" = "morning"): void { cacTrackerFor(side).markRead(); creditSideAnchor(side, "fdd"); }
 
 function syncSsjeSession(side: "morning" | "evening"): void {
   if (!sideIsSetTo(side, "fdd")) return;
@@ -413,7 +442,7 @@ const ssjeTrackerMorning = makeDailyReadTracker("phoebe:ssje:morning:last-read-d
 const ssjeTrackerEvening = makeDailyReadTracker("phoebe:ssje:evening:last-read-day", SSJE_PRAYED_EVENT, () => syncSsjeSession("evening"), "evening");
 const ssjeTrackerFor = (side: "morning" | "evening") => (side === "evening" ? ssjeTrackerEvening : ssjeTrackerMorning);
 export function hasPrayedSsjeToday(side: "morning" | "evening" = "morning"): boolean { return ssjeTrackerFor(side).hasReadToday(); }
-export function markSsjePrayed(side: "morning" | "evening" = "morning"): void { ssjeTrackerFor(side).markRead(); clearReminderIfAnchor(side, "fdd"); }
+export function markSsjePrayed(side: "morning" | "evening" = "morning"): void { ssjeTrackerFor(side).markRead(); creditSideAnchor(side, "fdd"); }
 
 function syncVtsSession(side: "morning" | "evening"): void {
   if (!sideIsSetTo(side, "fdd")) return;
@@ -429,7 +458,7 @@ const vtsTrackerMorning = makeDailyReadTracker("phoebe:vts:morning:last-read-day
 const vtsTrackerEvening = makeDailyReadTracker("phoebe:vts:evening:last-read-day", VTS_PRAYED_EVENT, () => syncVtsSession("evening"), "evening");
 const vtsTrackerFor = (side: "morning" | "evening") => (side === "evening" ? vtsTrackerEvening : vtsTrackerMorning);
 export function hasPrayedVtsToday(side: "morning" | "evening" = "morning"): boolean { return vtsTrackerFor(side).hasReadToday(); }
-export function markVtsPrayed(side: "morning" | "evening" = "morning"): void { vtsTrackerFor(side).markRead(); clearReminderIfAnchor(side, "fdd"); }
+export function markVtsPrayed(side: "morning" | "evening" = "morning"): void { vtsTrackerFor(side).markRead(); creditSideAnchor(side, "fdd"); }
 
 /**
  * Reading a newsletter ONCE should satisfy it once, wherever it appears.
@@ -518,7 +547,7 @@ const readingsTrackerMorning = makeDailyReadTracker("phoebe:readings:morning:las
 const readingsTrackerEvening = makeDailyReadTracker("phoebe:readings:evening:last-read-day", READINGS_PRAYED_EVENT, () => syncReadingsSession("evening"), "evening");
 const readingsTrackerFor = (side: "morning" | "evening") => (side === "evening" ? readingsTrackerEvening : readingsTrackerMorning);
 export function hasPrayedReadingsToday(side: "morning" | "evening" = "morning"): boolean { return readingsTrackerFor(side).hasReadToday(); }
-export function markReadingsPrayed(side: "morning" | "evening" = "morning"): void { readingsTrackerFor(side).markRead(); clearReminderIfAnchor(side, "readings"); }
+export function markReadingsPrayed(side: "morning" | "evening" = "morning"): void { readingsTrackerFor(side).markRead(); creditSideAnchor(side, "readings"); }
 
 // Forward Movement's daily-readings page — a real page per calendar date
 // (https://prayer.forwardmovement.org/daily-readings/YYYY-MM-DD), unlike
