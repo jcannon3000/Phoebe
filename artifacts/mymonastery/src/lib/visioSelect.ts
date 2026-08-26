@@ -189,3 +189,47 @@ export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
   const ref = art.refs.find((r) => matchScore([r], lessons) === top) ?? art.refs[0] ?? "";
   return { art, ref, followsToday: top >= 2 };
 }
+
+/**
+ * The catalogued artwork that actually depicts THIS passage, if there is one.
+ *
+ * The office's "Art & commentary" link under each lesson was book-level,
+ * because VCS's per-book pages were the only regular URLs we had. Reported:
+ * the evening gospel's link "just went to a page with a bunch of things from
+ * the gospel of John, but not specifically one that was relevant to that
+ * gospel reading."
+ *
+ * We do have the passage-level map now — it's the Visio catalogue, where every
+ * work carries the references it depicts and a link to its own commentary. So
+ * ask it first, and keep the book page as the fallback.
+ *
+ * Requires a SAME-CHAPTER match at least (matchScore >= 2). A score of 1 is
+ * same-book, which is precisely the complaint — and the book page already says
+ * "a bunch of things from John" honestly, without dressing it up as the
+ * painting for tonight's reading.
+ *
+ * Deterministic among equals, by catalogue order: the same lesson gives the
+ * same painting on every device and every re-open.
+ */
+const BY_REFERENCE = new Map<string, CatalogueArtwork | null>();
+export function artworkForReference(reference: string): CatalogueArtwork | null {
+  if (!reference?.trim()) return null;
+  // Memoised: this is called from a slide's render body, and the answer for a
+  // given reference never changes. Scanning 229 works on every re-render of
+  // the office deck would be paid for nothing.
+  const cached = BY_REFERENCE.get(reference);
+  if (cached !== undefined) return cached;
+  const lessons = [reference];
+  let best: CatalogueArtwork | null = null;
+  let bestScore = 1;
+  for (const art of ACT_CATALOGUE) {
+    // Only works whose commentary is a real page — a few entries point at an
+    // exhibition root, which lands the reader back in a list of many.
+    if (!art.essay) continue;
+    try { if (!/^https?:$/.test(new URL(art.essay).protocol)) continue; } catch { continue; }
+    const score = matchScore(art.refs, lessons);
+    if (score > bestScore) { best = art; bestScore = score; }
+  }
+  BY_REFERENCE.set(reference, best);
+  return best;
+}

@@ -39,6 +39,7 @@ import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { markOfficeBookComplete } from "@/lib/officeManualLog";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { vcsLinkForReference } from "@/lib/vcsExhibitions";
+import { artworkForReference } from "@/lib/visioSelect";
 import { canPrayOnVenite, veniteOfficeUrl } from "@/lib/venite";
 import { PointedLine } from "@/components/PointedLine";
 
@@ -3543,6 +3544,49 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                    * books they don't cover.
                    */}
                   {(() => {
+                    /**
+                     * THE PAINTING FOR THIS READING, when there is one.
+                     *
+                     * Owner: the evening gospel's link "just went to a page
+                     * with a bunch of things from the gospel of John, but not
+                     * specifically one that was relevant to that gospel
+                     * reading." True, and by design at the time — the note
+                     * below records that book pages were the only regular URLs
+                     * we had.
+                     *
+                     * They aren't any more. The Visio catalogue tags 229 works
+                     * to the passages they depict and carries each one's own
+                     * commentary link, so the passage-level map the note said
+                     * we couldn't build is sitting right there. Ask it first;
+                     * fall back to the book page, which is honest about being
+                     * a list.
+                     */
+                    const art = artworkForReference(reference);
+                    if (art) {
+                      return (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openOfficeReading(art.essay, {
+                              officeTitle,
+                              slideLabel: `${slideIdx + 1} of ${slides.length}`,
+                              sectionLabel,
+                            });
+                          }}
+                          style={{
+                            background: "none", border: "none", color: FAINT_GREEN,
+                            fontFamily: SPACE_GROTESK, fontSize: 12.5, textDecoration: "underline",
+                            cursor: "pointer", padding: "8px 10px", marginTop: 2,
+                          }}
+                        >
+                          {/* Named, because it IS one work now — "art &
+                              commentary on John" would undersell a link that
+                              opens the painting of the passage just read. */}
+                          {`🖼️ ${art.title}`}
+                        </button>
+                      );
+                    }
                     const vcs = vcsLinkForReference(reference);
                     if (!vcs) return null;
                     return (
