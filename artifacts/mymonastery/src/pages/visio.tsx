@@ -678,7 +678,22 @@ export default function VisioPage() {
                * opened from, and this deck is over — its Next would have
                * nothing to move to and would sit there looking broken.
                */
-              const isToday = !!active && a.id === active.art.id && !!a.essay;
+              /**
+               * No reflection → no pill (owner: "if there isn't a reflection
+               * just don't show the reflection").
+               *
+               * A usable reflection is a real http(s) URL, not merely a
+               * non-empty string: anything else can only open the in-app
+               * browser onto nothing, which is how a reflection presented as a
+               * blank white page with a Back button. (A link that's well
+               * formed but unreachable is the browser's problem now — it shows
+               * what went wrong and offers Safari, rather than blankness.)
+               */
+              const hasReflection = (() => {
+                if (!a.essay) return false;
+                try { return /^https?:$/.test(new URL(a.essay).protocol); } catch { return false; }
+              })();
+              const isToday = !!active && a.id === active.art.id && hasReflection;
               return (
                 <div
                   key={a.id}

@@ -290,6 +290,8 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      *  them, and being yanked back to the top mid-read is the very complaint
      *  that scroll exists to answer. */
     private var readerMovedPage = false
+    /** The "couldn't load" panel, when the initial navigation failed. */
+    private var loadFailureView: UIView?
     @objc private func noteReaderMovedPage() { readerMovedPage = true }
 
     private let preloadedWebView: WKWebView?
@@ -1062,6 +1064,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
     // ── WKNavigationDelegate ────────────────────────────────────────────────
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        // A later load succeeded — take the failure panel down.
+        loadFailureView?.removeFromSuperview()
+        loadFailureView = nil
         UIView.animate(withDuration: 0.25, animations: { [weak self] in
             self?.progressView.alpha = 0
         }) { [weak self] _ in
@@ -1087,6 +1092,85 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // Reveal whatever there is — an error page they can read beats a veil
         // that never lifts.
         hideVeil()
+    }
+
+    /**
+     * THE INITIAL LOAD FAILED — and a failed PROVISIONAL navigation paints
+     * nothing at all.
+     *
+     * Reported: a blank white page with only "Back" on it, opening a Visio
+     * Divina reflection. That is exactly this: WKWebView never commits the
+     * navigation, so there is no error page to reveal, and the veil lifting
+     * uncovers an empty white web view. This delegate method wasn't
+     * implemented at all, so nothing distinguished "offline" from "loaded a
+     * blank page" — and the reader was left looking at nothing with no way to
+     * tell which.
+     *
+     * A blank screen is never an acceptable end state (this repo keeps a rule
+     * about it). Say what happened, name the site, and offer the two things
+     * that actually help: try again, or open it in Safari.
+     */
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        UIView.animate(withDuration: 0.25) { [weak self] in self?.progressView.alpha = 0 }
+        updateNavButtons()
+        hideVeil()
+        // -999 is "cancelled" — a redirect or a second load superseding this
+        // one, which is normal and must not raise an error screen.
+        if (error as NSError).code == NSURLErrorCancelled { return }
+        showLoadFailure(error)
+    }
+
+    /// A readable failure in place of the blank page. Replaced on any later
+    /// successful load (see didFinish).
+    private func showLoadFailure(_ error: Error) {
+        loadFailureView?.removeFromSuperview()
+        let host = (webView.url ?? url).host ?? "that page"
+        let panel = UIView()
+        panel.translatesAutoresizingMaskIntoConstraints = false
+        panel.backgroundColor = .clear
+
+        let label = UILabel()
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        label.font = .systemFont(ofSize: 15)
+        label.textColor = UIColor.secondaryLabel
+        label.text = "Couldn't load \(host).\n\n\(error.localizedDescription)"
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        let retry = UIButton(type: .system)
+        retry.setTitle("Try again", for: .normal)
+        retry.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+        retry.addTarget(self, action: #selector(retryLoad), for: .touchUpInside)
+        retry.translatesAutoresizingMaskIntoConstraints = false
+
+        let safari = UIButton(type: .system)
+        safari.setTitle("Open in Safari", for: .normal)
+        safari.titleLabel?.font = .systemFont(ofSize: 15)
+        safari.addTarget(self, action: #selector(openInSafari), for: .touchUpInside)
+        safari.translatesAutoresizingMaskIntoConstraints = false
+
+        panel.addSubview(label); panel.addSubview(retry); panel.addSubview(safari)
+        view.addSubview(panel)
+        loadFailureView = panel
+        NSLayoutConstraint.activate([
+            panel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 28),
+            panel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -28),
+            panel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            label.topAnchor.constraint(equalTo: panel.topAnchor),
+            label.leadingAnchor.constraint(equalTo: panel.leadingAnchor),
+            label.trailingAnchor.constraint(equalTo: panel.trailingAnchor),
+            retry.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 18),
+            retry.centerXAnchor.constraint(equalTo: panel.centerXAnchor),
+            safari.topAnchor.constraint(equalTo: retry.bottomAnchor, constant: 6),
+            safari.centerXAnchor.constraint(equalTo: panel.centerXAnchor),
+            safari.bottomAnchor.constraint(equalTo: panel.bottomAnchor),
+        ])
+    }
+
+    @objc private func retryLoad() {
+        loadFailureView?.removeFromSuperview()
+        loadFailureView = nil
+        webView.load(URLRequest(url: webView.url ?? url))
     }
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
