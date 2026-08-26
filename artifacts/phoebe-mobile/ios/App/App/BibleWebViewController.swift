@@ -956,14 +956,28 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      * page begins with the site masthead and the exhibition's own preamble,
      * and a work halfway down an exhibition would land nowhere near itself.
      *
-     * Host-gated. Every other reading this browser opens (Bible.com, oremus,
-     * Forward Movement, CAC, SSJE) is a single article that opens where it
-     * should already.
+     * Host-gated, and now TWO hosts:
+     *
+     *  • thevcs.org — the artwork above the deep-linked commentary (below).
+     *  • bible.oremus.org — the passage TITLE (owner: "on the oremus Bible
+     *    browser, have the page start scrolled to where the title of the verse
+     *    is — so it'd be John 7:1-23 today"). oremus opens on its masthead: a
+     *    diagnostic line, the site heading, a quick-link bar and a block of
+     *    display buttons all sit above the reading, so a lesson opened from a
+     *    slide begins with roughly a screen of chrome before a word of
+     *    scripture. The h1 IS the reference, so landing on it puts the reading
+     *    where the slide said it would be.
+     *
+     * Every other reading this browser opens (Bible.com, Forward Movement,
+     * CAC, SSJE) is a single article that opens where it should already.
      */
     private func scrollToDeepLinkedWork() {
-        guard let url = webView.url,
-              let host = url.host?.lowercased(),
-              host == "thevcs.org" || host.hasSuffix(".thevcs.org"),
+        guard let url = webView.url, let host = url.host?.lowercased() else { return }
+        if host == "bible.oremus.org" || host.hasSuffix(".oremus.org") {
+            scrollToOremusPassage()
+            return
+        }
+        guard host == "thevcs.org" || host.hasSuffix(".thevcs.org"),
               let slug = url.path.split(separator: "/").last.map(String.init),
               !slug.isEmpty,
               let slugLiteral = String(data: (try? JSONSerialization.data(withJSONObject: [slug], options: [])) ?? Data(), encoding: .utf8)
@@ -1009,6 +1023,50 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 // Not there yet (the site renders works progressively), or there
                 // but about to move as the images above it finish loading. Try
                 // again.
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    attempt(remaining - 1, delay: found ? 0.7 : 0.4)
+                }
+            }
+        }
+        attempt(3, delay: 0.35)
+    }
+
+    /**
+     * oremus: open ON the passage title, not on the site masthead.
+     *
+     * `h2.passageref` is the reference itself — "John 7:1-23" — and it sits at
+     * the head of the text block. NOT `h1#h1screen`, which despite the name is
+     * the SITE heading ("Bible Browser"); landing there moved the page 45px
+     * and left the reading exactly where it was. Verified against a live
+     * lesson page: the ref sits at 289px, with the masthead, the quick-link
+     * bar and a 90px block of display buttons above it.
+     *
+     * A small top inset is left above it so it reads as the top of a page
+     * rather than a line clipped to the very edge. Falls back to the text
+     * block (`.bible`) if oremus ever renames the heading — a reading that
+     * opens a little low is a better failure than one that opens on the
+     * masthead, so each step degrades toward "scroll less, not more".
+     *
+     * Shares the retry + readerMovedPage guards with the VCS path: the page
+     * settles as its stylesheet lands, and a reader who has already started
+     * scrolling is never yanked back.
+     */
+    private func scrollToOremusPassage() {
+        let js = """
+        (function () {
+          var el = document.querySelector('h2.passageref')
+                || document.querySelector('.bible');
+          if (!el) return false;
+          var top = el.getBoundingClientRect().top + window.pageYOffset;
+          window.scrollTo(0, Math.max(0, top - 12));
+          return true;
+        })()
+        """
+        func attempt(_ remaining: Int, delay: TimeInterval) {
+            guard !readerMovedPage else { return }
+            webView.evaluateJavaScript(js) { [weak self] value, _ in
+                guard let self, remaining > 0 else { return }
+                let found = (value as? Bool) ?? false
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                     attempt(remaining - 1, delay: found ? 0.7 : 0.4)
                 }
