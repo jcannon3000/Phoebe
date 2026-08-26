@@ -392,7 +392,7 @@ export default function CobreathePage() {
    * rather than serving yesterday's "today". Only runs on the slide that
    * shows it.
    */
-  const { data: placeStats, isLoading: statsLoading } = useQuery<{
+  const { data: placeStats } = useQuery<{
     place: { id: number; name: string; subtitle: string | null };
     people?: Array<{ userId: number; name: string; avatarUrl: string | null }>;
     today: number;
@@ -408,7 +408,8 @@ export default function CobreathePage() {
     queryFn: () => apiRequest("GET", `/api/breath/places/${place && place.id > 0 ? place.id : encodeURIComponent(place?.slug ?? "")}/stats?day=${day}${mode === "done" ? "&people=1" : ""}`),
     // Also through the breath and the summary: the summary reports the place's
     // tally, and a query disabled by then would have nothing to report.
-    enabled: (mode === "placeStats" || mode === "breathing" || mode === "done")
+    // Not on the place slide any more — its numbers moved to the summary.
+    enabled: (mode === "breathing" || mode === "done")
       && !!place && (place.id > 0 || !!place.slug),
     staleTime: 60_000,
   });
@@ -743,24 +744,6 @@ export default function CobreathePage() {
    * once — so the two spans carry both.
    */
   if (mode === "placeStats") {
-    const st = placeStats;
-    const row = (label: string, primary: string, secondary?: string) => (
-      <div
-        className="w-full rounded-2xl py-3.5 px-4"
-        style={{
-          background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-          border: "1px solid rgba(168,197,160,0.25)", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12,
-        }}
-      >
-        <span style={{ color: "rgba(200,212,192,0.78)", fontFamily: SPACE_GROTESK, fontSize: 14 }}>{label}</span>
-        <span style={{ textAlign: "right" }}>
-          <span style={{ display: "block", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700 }}>{primary}</span>
-          {secondary && (
-            <span style={{ display: "block", color: "rgba(200,212,192,0.65)", fontFamily: SPACE_GROTESK, fontSize: 12.5, marginTop: 1 }}>{secondary}</span>
-          )}
-        </span>
-      </div>
-    );
     return (
       <Layout bgPhoto={introBgPhoto}>
         <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
@@ -787,41 +770,36 @@ export default function CobreathePage() {
                 </p>
               )}
 
-              <div className="w-full flex flex-col gap-2" style={{ maxWidth: 440, marginTop: 14 }}>
-                {statsLoading && !st && (
-                  <p style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK, fontSize: 14 }}>
-                    {t("common.loading", { defaultValue: "Loading…" })}
-                  </p>
-                )}
-                {st && (
-                  <>
-                    {/* One number: see the note above on why today can't have two. */}
-                    {row(
-                      t("cobreathe.stat_today", { defaultValue: "Today" }),
-                      st.today === 1
-                        ? t("cobreathe.stat_one_breath", { defaultValue: "1 breath" })
-                        : t("cobreathe.stat_n_breaths", { count: st.today, defaultValue: `${st.today} breaths` }),
-                    )}
-                    {row(
-                      t("cobreathe.stat_month", { defaultValue: "This month" }),
-                      t("cobreathe.stat_n_breaths", { count: st.month.breaths, defaultValue: `${st.month.breaths} breaths` }),
-                      t("cobreathe.stat_n_people", { count: st.month.people, defaultValue: `${st.month.people} ${st.month.people === 1 ? "person" : "people"}` }),
-                    )}
-                    {row(
-                      t("cobreathe.stat_all_time", { defaultValue: "All time" }),
-                      t("cobreathe.stat_n_breaths", { count: st.allTime.breaths, defaultValue: `${st.allTime.breaths} breaths` }),
-                      t("cobreathe.stat_n_people", { count: st.allTime.people, defaultValue: `${st.allTime.people} ${st.allTime.people === 1 ? "person" : "people"}` }),
-                    )}
-                  </>
-                )}
+              {/**
+                * NO NUMBERS BEFORE THE BREATH.
+                *
+                * Owner: "the stats are still showing before the practice, and
+                * not actually counting anything." This slide led with the
+                * place's today / this month / all-time tallies — a scoreboard
+                * in front of a prayer, and one that reads as zeros to the first
+                * person at a quiet place, which is exactly who most needs the
+                * choosing to feel worth something.
+                *
+                * They belong AFTER: the summary already shows the place's
+                * count and who else breathed there, and by then the reader's
+                * own breath is in the number. This slide keeps what it is for
+                * — the place you just joined, and whether Phoebe can tell
+                * you're there.
+                */}
 
+              <div className="w-full flex flex-col gap-2" style={{ maxWidth: 440, marginTop: 20 }}>
+                {/* …and INTO the breath. This slide's button used to say
+                    "Done" and go back to the intro — the numbers were the
+                    point, so reading them WAS the visit. With them gone, the
+                    place you just chose leads where it always should have:
+                    into the prayer you chose it for. */}
                 <button
                   type="button"
-                  onClick={() => setMode("intro")}
+                  onClick={() => setMode(cobreatheHowtoSeen() ? "breathing" : "howto")}
                   className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                  style={{ marginTop: 12, background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
+                  style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
                 >
-                  {t("common.done", { defaultValue: "Done" })}
+                  {t("cobreathe.begin", { defaultValue: "Begin" })}
                 </button>
                 <button
                   type="button"
