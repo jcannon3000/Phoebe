@@ -274,6 +274,24 @@ export default function ListeningPage() {
 
   if (view === "deck") {
     const atLog = deckStep === LOG;
+    /**
+     * THE LOG IS REQUIRED (owner: "it shouldn't go forward until they've
+     * logged something").
+     *
+     * The deck used to walk past an empty form, which made the record
+     * optional in a practice whose whole middle beat is making one — you could
+     * arrive at the prayer having named nothing, and nothing would be kept.
+     *
+     * The old note here warned that a disabled button on a MIDDLE beat is a
+     * locked door rather than a "finish this to be done", and that stands —
+     * so the gate opens two ways. Something typed opens it, and so does
+     * having ALREADY logged today: logToday() clears the form, so anyone
+     * coming back through the deck a second time faces an empty field with
+     * their listen safely recorded, and must not be held there. The ✕ also
+     * still closes the deck from this beat, so the door is only to the next
+     * beat, never out of the practice.
+     */
+    const logSatisfied = !!what.trim() || keptToday;
     const next = () => { if (deckStep < LAST) setDeckStep((n) => n + 1); };
     const prev = () => {
       // Stepping back from the prayer beat skips the log once it's been done —
@@ -479,9 +497,21 @@ export default function ListeningPage() {
                 */}
               {deckStep === DONE && (
                 <div style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", gap: 10 }}>
-                  <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 2px" }}>
+                  {/* A TITLE, then an eyebrow over the cards (owner). "Audio
+                      Divina complete" was set as a 10px caption, which is the
+                      size the app uses for LABELS — so the one line that says
+                      the practice is finished was the quietest thing on its
+                      own closing slide. It's the heading now, matched to the
+                      deck's other titles, and the caption size goes to the
+                      thing it actually labels: the list underneath. */}
+                  <h1 className="text-center text-[26px] font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK, letterSpacing: "-0.02em", margin: "0 0 6px" }}>
                     Audio Divina complete
-                  </p>
+                  </h1>
+                  {sortedEntries.length > 0 && (
+                    <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 2px" }}>
+                      Recent listening
+                    </p>
+                  )}
                   {sortedEntries.slice(0, 5).map((e) => (
                     <div
                       key={e.id}
@@ -517,6 +547,29 @@ export default function ListeningPage() {
                     <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 14, lineHeight: 1.6, margin: "8px 0 0" }}>
                       Your listening will gather here.
                     </p>
+                  )}
+                  {/* VIEW ALL (owner) — the slide shows the five most recent,
+                      and until now that was the end of it: no way from the
+                      close of the practice to everything you've sat with. The
+                      full log is a view this page already has; this is the
+                      door to it. Same phrasing as the log page's own shelf
+                      link, so it's recognisably the same door.
+
+                      It leaves the deck, so it resets the deck the way "Done"
+                      does — otherwise coming back in would drop you on the
+                      closing slide of a practice you hadn't done yet. */}
+                  {sortedEntries.length > 5 && (
+                    <button
+                      type="button"
+                      onClick={() => { loggedHere.current = false; setDeckStep(INTRO); setView("history"); }}
+                      style={{
+                        userSelect: "none", WebkitTapHighlightColor: "transparent",
+                        alignSelf: "center", marginTop: 6, background: "none", border: "none",
+                        color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 13, cursor: "pointer", padding: "8px 12px",
+                      }}
+                    >
+                      View all ›
+                    </button>
                   )}
                 </div>
               )}
@@ -615,6 +668,10 @@ export default function ListeningPage() {
                * prayer.
                */
               if (atLog) {
+                // Nothing named and nothing kept today: the beat holds. (The
+                // button is disabled too — this is the belt to that's braces,
+                // since a keyboard Enter can still reach a styled button.)
+                if (!logSatisfied) return;
                 // The flag means "a log was actually written", not "we passed
                 // this beat" — set unconditionally it made Back skip the log
                 // for someone who had recorded nothing, which is exactly the
@@ -626,23 +683,28 @@ export default function ListeningPage() {
               if (deckStep === LAST) { loggedHere.current = false; setDeckStep(INTRO); setView("log"); return; }
               next();
             }}
+            disabled={atLog && !logSatisfied}
             style={{
               userSelect: "none", WebkitTapHighlightColor: "transparent",
               width: "100%", maxWidth: 420, borderRadius: 999, padding: "14px 20px",
               fontSize: 16, fontWeight: 600, fontFamily: SPACE_GROTESK,
-              cursor: "pointer",
+              cursor: atLog && !logSatisfied ? "default" : "pointer",
               ...FROST_CTA,
               border: `1px solid ${DECK_BORDER}`,
-              background: "rgba(46,107,64,0.55)",
-              color: WARM,
+              // Dimmed rather than hidden, so it reads as "not yet" instead of
+              // "gone" — the field above it is what turns it on.
+              background: atLog && !logSatisfied ? "rgba(46,107,64,0.22)" : "rgba(46,107,64,0.55)",
+              color: atLog && !logSatisfied ? SAGE : WARM,
             }}
           >
             {deckStep === INTRO
               ? "Begin"
-              // Only "Log it" when there is something to log; otherwise it's
-              // simply the next beat, and saying "Log it" would promise a
-              // record that isn't being written.
-              : atLog ? (what.trim() ? "Log it" : "Continue")
+              // "Log it" whenever a record is wanted — including while the
+              // field is still empty and the button is held, because that is
+              // the moment the label has a job: it names what's missing.
+              // "Continue" only for someone who already logged today and left
+              // the form empty, where a second record isn't being made.
+              : atLog ? (what.trim() || !keptToday ? "Log it" : "Continue")
                 : deckStep === LAST ? "Done" : "Continue"}
           </button>
           <span style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.12em" }}>
