@@ -46,7 +46,7 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
 import { chooseArtwork, artworkById, type Chosen } from "@/lib/visioSelect";
 import { getVisioHistory, recordVisioSeen, recordVisioFelt } from "@/lib/visioHistory";
-import { VISIO_READINGS_SIDE } from "@/hooks/useVisioToday";
+import { useVisioLessons } from "@/hooks/useVisioToday";
 import { apiRequest } from "@/lib/queryClient";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
@@ -109,26 +109,9 @@ export default function VisioPage() {
   // FIXED, not the clock — see useVisioToday. Picking by the hour gave two
   // people on the same day different paintings, and let the home card name a
   // different image from the one this page then opened.
-  const side = VISIO_READINGS_SIDE;
-
-  const { data: readings, isFetched } = useQuery<{ lessons?: string[] }>({
-    queryKey: ["/api/office/readings", side, "office", today],
-    // Never resolve undefined — React Query throws on it, and an older server
-    // without the route falls through to the SPA and hands back a non-JSON
-    // body. An empty shape simply means "pray without the lectionary".
-    queryFn: async () => {
-      try {
-        const r = await apiRequest<{ lessons?: string[] } | undefined>(
-          "GET", `/api/office/readings?side=${side}&level=office&date=${today}`,
-        );
-        return r && typeof r === "object" ? r : {};
-      } catch {
-        return {};
-      }
-    },
-    staleTime: 30 * 60_000,
-    retry: false,
-  });
+  // Both offices' lessons AND psalms — the shared hook, so the card and the
+  // practice can never disagree (see useVisioLessons).
+  const { lessons: dayLessons, isFetched } = useVisioLessons();
 
   /**
    * The closing cards' record, and NOTHING ELSE.
@@ -175,7 +158,7 @@ export default function VisioPage() {
     if (settled.current) return;
     if (isFetched) {
       settled.current = true;
-      setChosen(chooseArtwork(today, (readings?.lessons ?? []).filter(Boolean)));
+      setChosen(chooseArtwork(today, dayLessons));
       return;
     }
     // …and a hard cap, so a hanging request can't hold the practice shut.
@@ -185,7 +168,7 @@ export default function VisioPage() {
       setChosen(chooseArtwork(today, []));
     }, READINGS_CAP_MS);
     return () => clearTimeout(timer);
-  }, [isFetched, readings, today]);
+  }, [isFetched, dayLessons, today]);
 
   /** Whichever artwork the deck is actually showing — today's, or one the
    *  reader tapped back into from the closing gallery. */

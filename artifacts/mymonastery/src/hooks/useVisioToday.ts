@@ -13,30 +13,56 @@ import { apiRequest } from "@/lib/queryClient";
 import { chooseArtwork, type Chosen } from "@/lib/visioSelect";
 
 /**
- * Which office's readings the artwork follows — FIXED, not the clock.
+ * Which office's readings the artwork follows: ALL of them.
  *
- * Owner: "we want everyone to be viewing the same image who's practicing it."
- * Picking the side by the hour quietly broke that: someone praying before 5pm
- * matched the morning lessons and someone praying after matched the evening
- * ones, so two people on the same day got different paintings — and the home
- * card could name a different image from the one the practice then opened.
- * One side for everyone, all day.
+ * Owner: "the best case scenario is every day, the picture we're showing is
+ * connected to one of the lectionary readings — either in morning prayer or
+ * evening prayer or the psalms."
+ *
+ * This used to be pinned to the morning office's lessons alone (a fix for an
+ * older bug where the SIDE followed the clock and two people on one day saw
+ * two paintings — that invariant still holds: everyone gets the same, fixed
+ * set of references all day, it's just the whole day's set now). Audited over
+ * the full two-year cycle: morning lessons alone connect the artwork to the
+ * lectionary on 9% of days; morning + evening + the appointed psalms connect
+ * on over 60%, and the psalms are most of the difference — the catalogue is
+ * full of psalm-tagged works the old selection never saw.
  */
-export const VISIO_READINGS_SIDE = "morning";
+/**
+ * The lectionary's own punctuation, removed: the office writes optional
+ * psalms as "[95]" and optional verse spans as "63:1-8(9-11)", neither of
+ * which the reference parser reads. Brackets drop, parens unwrap.
+ */
+function normalizeRef(r: string): string {
+  // Parens become a separated list item ("63:1-8(9-11)" → "63:1-8, 9-11"),
+  // never bare unwrapping — that glued the digits into "1-89-11". The parser
+  // reads the first span, which is the appointed core either way.
+  return r.replace(/[\[\]]/g, "").replace(/\(([^)]*)\)/g, ", $1").replace(/\s+,/g, ",").replace(/\s+/g, " ").trim();
+}
 
-export function useVisioToday(): { chosen: Chosen | null; settled: boolean } {
+/** One side's appointed refs — lessons AND psalms, normalized. */
+function refsOf(data: { lessons?: string[]; psalms?: string[] } | undefined): string[] {
+  return [
+    ...(data?.lessons ?? []),
+    ...(data?.psalms ?? []).map((p) => `Psalm ${p}`),
+  ].filter(Boolean).map(normalizeRef);
+}
+
+/**
+ * Every reference appointed for today — both offices' lessons and psalms.
+ * ONE implementation, used by the practice page and the home card both, so
+ * the two can't disagree about which painting today gets.
+ */
+export function useVisioLessons(): { lessons: string[]; isFetched: boolean } {
   const today = useMemo(() => {
     try { return new Date().toLocaleDateString("en-CA"); } catch { return "1970-01-01"; }
   }, []);
-  const { data, isFetched } = useQuery<{ lessons?: string[] }>({
-    queryKey: ["/api/office/readings", VISIO_READINGS_SIDE, "office", today],
-    // Never resolve undefined — React Query throws on it, and an older server
-    // without the route falls through to the SPA and hands back a non-JSON
-    // body. An empty shape simply means "no lectionary today".
+  const q = (side: "morning" | "evening") => ({
+    queryKey: ["/api/office/readings", side, "office", today],
     queryFn: async () => {
       try {
-        const r = await apiRequest<{ lessons?: string[] } | undefined>(
-          "GET", `/api/office/readings?side=${VISIO_READINGS_SIDE}&level=office&date=${today}`,
+        const r = await apiRequest<{ lessons?: string[]; psalms?: string[] } | undefined>(
+          "GET", `/api/office/readings?side=${side}&level=office&date=${today}`,
         );
         return r && typeof r === "object" ? r : {};
       } catch {
@@ -46,7 +72,22 @@ export function useVisioToday(): { chosen: Chosen | null; settled: boolean } {
     staleTime: 30 * 60_000,
     retry: false,
   });
-  const lessons = useMemo(() => (data?.lessons ?? []).filter(Boolean), [data]);
+  const morning = useQuery<{ lessons?: string[]; psalms?: string[] }>(q("morning"));
+  const evening = useQuery<{ lessons?: string[]; psalms?: string[] }>(q("evening"));
+  const lessons = useMemo(
+    () => [...new Set([...refsOf(morning.data), ...refsOf(evening.data)])],
+    [morning.data, evening.data],
+  );
+  // Fetched = BOTH settled. Choosing on half the day's readings would name one
+  // painting on the card and another on the slide a moment later.
+  return { lessons, isFetched: morning.isFetched && evening.isFetched };
+}
+
+export function useVisioToday(): { chosen: Chosen | null; settled: boolean } {
+  const today = useMemo(() => {
+    try { return new Date().toLocaleDateString("en-CA"); } catch { return "1970-01-01"; }
+  }, []);
+  const { lessons, isFetched } = useVisioLessons();
   // Only once the lookup has settled. Naming the rotation's artwork while the
   // lessons are still in flight would put one title on the card and a
   // different one on the slide a moment later.
