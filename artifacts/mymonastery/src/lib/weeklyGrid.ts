@@ -170,10 +170,35 @@ export function computeWeeklyGrid(params: {
   // read the wrong column for one of them.
   const sideKind = (side: "morning" | "evening") =>
     side === "morning" ? rhythm.morningContemplationKind : rhythm.eveningContemplationKind;
-  // History for such a side: the practice-week has no per-side contemplation
-  // column, so read the flag for the practice it actually is.
+  /**
+   * History for a CONTEMPLATIVE side — a union, not a switch.
+   *
+   * The practice-week has no per-side contemplation column: a past day records
+   * that a sit or a breath happened, never which side it belonged to. Choosing
+   * ONE of those columns by today's kind is the exact switch the invariant
+   * below forbids, and it was still here. Keep Creation Prayer as your morning
+   * for a week, then move that side to silent Contemplation, and every one of
+   * those kept mornings starts being asked for `d.contemplation` instead of
+   * `d.cobreathe`, goes false, and the week empties — nothing was un-done, the
+   * question changed. Owner has now raised this twice.
+   *
+   * So by default BOTH count. Each term is something the person actually did
+   * that day, so this can only restore a dot that was earned.
+   *
+   * The one case that still needs the switch is a rule holding the breath on
+   * one side and silence on the other (owner: "let's separate creation prayer
+   * and contemplative prayer"). A union there would fill BOTH sides from a
+   * single practice, and inventing a dot is worse than losing one. With no
+   * per-side record there is nothing better available — if those two sides ever
+   * swapped kinds, that day's dot can still land on the wrong one. The real fix
+   * is server-side: record which anchor was in force on the day.
+   */
+  const sidesHoldDifferentKinds = morningIsContemplation && eveningIsContemplation
+    && sideKind("morning") !== sideKind("evening");
   const sideContemplationOn = (side: "morning" | "evening") => (d: PracticeWeekDay) =>
-    sideKind(side) === "creation" ? d.cobreathe : d.contemplation;
+    sidesHoldDifferentKinds
+      ? (sideKind(side) === "creation" ? d.cobreathe : d.contemplation)
+      : (d.cobreathe || d.contemplation);
 
   /**
    * A PAST day's dot reports what you kept THAT DAY — it never re-judges your
