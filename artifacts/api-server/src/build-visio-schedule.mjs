@@ -43,7 +43,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getOfficeDay } from "./lib/liturgicalCalendar.ts";
 import { getLectionaryReadings } from "./lib/lectionary.ts";
-import { rankedTiers, rotationIndex, matchScore, rotationForDay } from "../../mymonastery/src/lib/visioSelect.ts";
+import { rankedTiers, pickFromTier, matchScore, rotationForDay } from "../../mymonastery/src/lib/visioSelect.ts";
 import { ACT_CATALOGUE } from "../../mymonastery/src/lib/visioCatalogue.ts";
 
 /** How many times one work may appear in a calendar year. Owner: three. */
@@ -104,23 +104,16 @@ function build() {
 
     /** Walk a tie set from the runtime's own offset, so an uncapped day
      *  resolves to EXACTLY what chooseArtwork would have picked. */
-    const pickFrom = (best, respectCap) => {
-      if (!best.length) return null;
-      const start = rotationIndex(ymd, best.map((a) => a.id));
-      for (let k = 0; k < best.length; k++) {
-        const cand = best[(start + k) % best.length];
-        if (!respectCap || countFor(year, cand.id) < CAP) return cand;
-      }
-      return null;
-    };
+    const pickFrom = (best, respectCap, essayRunnerUp = []) =>
+      pickFromTier(ymd, best, (cand) => !respectCap || countFor(year, cand.id) < CAP, essayRunnerUp);
 
     // PASS 1 — the cap respected. Tiers in order; within a tier, an equally
     // good painting of the SAME reading is tried before dropping a tier,
     // since a worse reading is a bigger loss than a different brush.
     for (let t = 0; t < tiers.length; t++) {
-      const { refs: tierRefs, best, top } = tiers[t];
+      const { refs: tierRefs, best, top, essayRunnerUp } = tiers[t];
       if (top < 2 || !best.length) continue;
-      const pick = pickFrom(best, true);
+      const pick = pickFrom(best, true, essayRunnerUp);
       if (!pick) { movedTier = true; continue; }   // this reading is spent
       chosen = { art: pick, tierRefs, top };
       stats[t === 0 ? "gospel" : t === 1 ? "middle" : "psalm"]++;

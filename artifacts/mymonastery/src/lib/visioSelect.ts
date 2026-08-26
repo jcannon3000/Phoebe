@@ -253,14 +253,32 @@ export function rotationIndex(ymd: string, ids: number[]): number {
 }
 
 /** Best-scoring works for one set of references, with their score. */
-function scoreAgainst(refs: string[]): { best: Array<{ art: CatalogueArtwork }>; top: number } {
-  if (!refs.length) return { best: [], top: 0 };
+function scoreAgainst(refs: string[]): {
+  best: Array<{ art: CatalogueArtwork }>;
+  top: number;
+  /**
+   * Works one step BELOW the top that still reach chapter level, and that
+   * carry a reflection — the only reason to look past the best match at all.
+   * See pickFromTier: on 13.4% of days the closest work is a bare
+   * lectionary-expansion painting while a work WITH its commentary sits one
+   * step behind it, and that step is worth taking.
+   */
+  essayRunnerUp: CatalogueArtwork[];
+} {
+  if (!refs.length) return { best: [], top: 0, essayRunnerUp: [] };
   const scored = ACT_CATALOGUE
     .map((art) => ({ art, score: matchScore(art.refs, refs) }))
     .filter((x) => x.score > 0);
-  if (!scored.length) return { best: [], top: 0 };
+  if (!scored.length) return { best: [], top: 0, essayRunnerUp: [] };
   const top = Math.max(...scored.map((x) => x.score));
-  return { best: scored.filter((x) => x.score === top), top };
+  const under = top - 1;
+  return {
+    best: scored.filter((x) => x.score === top),
+    top,
+    essayRunnerUp: under >= 2
+      ? scored.filter((x) => x.score === under && hasUsableEssay(x.art)).map((x) => x.art)
+      : [],
+  };
 }
 
 /**
@@ -272,11 +290,81 @@ function scoreAgainst(refs: string[]): { best: Array<{ art: CatalogueArtwork }>;
  * skip a work that has already had its three appearances this year and move to
  * a different reading (see lib/visioSchedule).
  */
-export function rankedTiers(lessons: string[]): Array<{ refs: string[]; best: CatalogueArtwork[]; top: number }> {
+export function rankedTiers(lessons: string[]): Array<{
+  refs: string[]; best: CatalogueArtwork[]; top: number; essayRunnerUp: CatalogueArtwork[];
+}> {
   return tiersFor(lessons).map((refs) => {
-    const { best, top } = scoreAgainst(refs);
-    return { refs, best: best.map((x) => x.art), top };
+    const { best, top, essayRunnerUp } = scoreAgainst(refs);
+    return { refs, best: best.map((x) => x.art), top, essayRunnerUp };
   });
+}
+
+/** A reflection we can actually open — a real http(s) page, not an empty tag. */
+export function hasUsableEssay(art: CatalogueArtwork): boolean {
+  if (!art.essay) return false;
+  try { return /^https?:$/.test(new URL(art.essay).protocol); } catch { return false; }
+}
+
+/**
+ * One work out of a tier's tie set — PREFERRING ONE THAT CARRIES ITS REFLECTION.
+ *
+ * Owner: "the reflection got eliminated, I don't see the reflection in Visio
+ * Divina anymore." Measured: it had gone from every day to 36% of them.
+ *
+ * The cause was the catalogue growing 229 → 580 to cover the lectionary. The
+ * 351 works added by that expansion have no VCS commentary (`essay: ""`), and
+ * they are BETTER lectionary matches by construction — they were harvested
+ * precisely for the passages the original set missed — so they won most days
+ * and took the reflection with them. Coverage of the readings was bought with
+ * the reading about the picture, which was never the trade on offer.
+ *
+ * This costs nothing to put right, because a tie set is by definition works
+ * that scored THE SAME. Ordering it so the ones with a reflection are tried
+ * first changes which equally-good painting is shown, never how well the
+ * painting matches. Only when no equally-good work has a reflection does a
+ * bare one win — and then the deck already shows that day plainly.
+ *
+ * Shared with the schedule generator (`accept` is how it applies the 3-a-year
+ * cap) so both resolve a tie the same way by construction, rather than by two
+ * copies staying in step.
+ */
+export function pickFromTier(
+  ymd: string,
+  best: CatalogueArtwork[],
+  accept: (art: CatalogueArtwork) => boolean = () => true,
+  essayRunnerUp: CatalogueArtwork[] = [],
+): CatalogueArtwork | null {
+  if (!best.length && !essayRunnerUp.length) return null;
+  /**
+   * In order: an equally-good work WITH its reflection; then a work with its
+   * reflection one step behind; then the best match, bare.
+   *
+   * The middle group is the only place match quality is traded, and it is
+   * traded one step — a chapter-level painting of the same reading instead of
+   * a verse-level one, never a different reading and never below chapter
+   * level. Measured over 2026–27 that lifts the days carrying a reflection
+   * from 44% to about 62%, which is the ceiling: on the remaining 38% no work
+   * with a commentary reaches chapter level at all, and those days show the
+   * picture plainly, as the deck already handles.
+   *
+   * TIERS ARE NEVER CROSSED for a reflection. The owner's order — gospel,
+   * then Epistle or OT, then psalm — outranks this entirely; this only ever
+   * reorders candidates WITHIN the tier that already won.
+   */
+  const groups = [
+    best.filter(hasUsableEssay),
+    essayRunnerUp,
+    best.filter((a) => !hasUsableEssay(a)),
+  ];
+  for (const group of groups) {
+    if (!group.length) continue;
+    const start = rotationIndex(ymd, group.map((a) => a.id));
+    for (let k = 0; k < group.length; k++) {
+      const cand = group[(start + k) % group.length]!;
+      if (accept(cand)) return cand;
+    }
+  }
+  return null;
 }
 
 export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
@@ -307,13 +395,16 @@ export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
   // CHAPTER level or better wins, whatever the tiers below could have scored.
   const tiers = tiersFor(lessons);
   for (const tier of tiers) {
-    const { best, top } = scoreAgainst(tier);
+    const { best, top, essayRunnerUp } = scoreAgainst(tier);
     if (top < 2 || !best.length) continue;
     // Deterministic among equals, and a COUNTER not a hash: consecutive days
     // give consecutive indices, so a lection appointed several days running
     // (Holy Week) walks its matching works instead of repeating one.
-    const art = best[rotationIndex(ymd, best.map((x) => x.art.id))]!.art;
-    const ref = art.refs.find((r) => matchScore([r], tier) === top) ?? art.refs[0] ?? "";
+    const art = pickFromTier(ymd, best.map((x) => x.art), undefined, essayRunnerUp)!;
+    // The work's OWN reference that today's reading matched — recomputed
+    // against the art actually chosen, since a runner-up matched one step
+    // lower than `top`.
+    const ref = art.refs.find((r) => matchScore([r], tier) >= 2) ?? art.refs[0] ?? "";
     return { art, ref, followsToday: true };
   }
   // Nothing reached chapter level in any tier. Take the best BOOK-level match
@@ -322,7 +413,7 @@ export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
   // real match. (Psalms can't reach here: see matchScore.)
   const { best, top } = scoreAgainst(lessons);
   if (best.length && top >= 1) {
-    const art = best[rotationIndex(ymd, best.map((x) => x.art.id))]!.art;
+    const art = pickFromTier(ymd, best.map((x) => x.art))!;
     const ref = art.refs.find((r) => matchScore([r], lessons) === top) ?? art.refs[0] ?? "";
     // NOT "today's reading" — it's the same book, a different passage.
     return { art, ref, followsToday: false };
