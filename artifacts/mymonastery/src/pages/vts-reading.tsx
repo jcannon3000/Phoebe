@@ -16,7 +16,7 @@
  * changed, fetch failure), this falls back to a single "Read on VTS's
  * site" card rather than showing a broken reader.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -98,6 +98,20 @@ export default function VtsReadingPage() {
       const v = new URLSearchParams(window.location.search).get("side");
       if (v === "morning" || v === "evening") markReflectionPrayed("vts", v);
     } catch { /* ignore */ }
+    /**
+     * …and re-ask the server for the count, once its write has landed.
+     *
+     * Reported: the flamingo stats weren't "actually counting anything". The
+     * streak was fetched ON MOUNT and cached, while today's read is recorded
+     * DURING the reading (markVtsRead POSTs /reflections/read) — so the
+     * closing slide reported the streak as it stood BEFORE you read, every
+     * time. Reading it never moved the number.
+     *
+     * The POST is fire-and-forget, so this waits a beat rather than chaining
+     * on it, and refetches again on the closing slide (see the effect below)
+     * in case that beat wasn't enough.
+     */
+    window.setTimeout(() => { void refetchStreak(); }, 1200);
   };
 
   /**
@@ -106,11 +120,13 @@ export default function VtsReadingPage() {
    * would otherwise watch their streak reset every Saturday.
    */
   const localToday = (() => { try { return new Date().toLocaleDateString("en-CA"); } catch { return ""; } })();
-  const { data: streak } = useQuery<{ current: number; totalDays: number }>({
+  const { data: streak, isFetched: streakReady, refetch: refetchStreak } = useQuery<{ current: number; totalDays: number }>({
     queryKey: ["/api/me/reflection-streak", "vts", localToday],
     queryFn: () => apiRequest("GET", `/api/me/reflection-streak?source=vts&today=${encodeURIComponent(localToday)}`),
     enabled: !!localToday,
-    staleTime: 5 * 60_000,
+    // No staleTime: today's read is recorded DURING this reading, so a cached
+    // answer from a minute ago is a pre-read answer. See markReadOnce.
+    staleTime: 0,
   });
 
   const paragraphs = data?.paragraphs ?? [];
@@ -131,6 +147,13 @@ export default function VtsReadingPage() {
     if (!atEnd) setStep((s) => s + 1);
     else close();
   };
+  // Landing on the closing slide asks once more — the read POST may still
+  // have been in flight when markReadOnce's own refetch fired.
+  useEffect(() => {
+    if (isStreak) void refetchStreak();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStreak]);
+
   // Matches the office nav pill's Back button — disabled at the first
   // slide rather than closing (the X already owns "leave the reader").
   const prev = () => { if (!atStart) setStep((s) => s - 1); };
@@ -313,17 +336,22 @@ export default function VtsReadingPage() {
               className="title-glow-breathe"
               style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(52px, 12vw, 92px)", lineHeight: 1, letterSpacing: "-0.03em", margin: 0 }}
             >
-              {streak?.current ?? 0}
+              {/* A dash, not a 0, until the number is real — an unanswered
+                  query rendering "0" is how a reader who has kept this for a
+                  fortnight is told they have kept it for no days at all. */}
+              {streakReady ? (streak?.current ?? 0) : "—"}
             </p>
             <p style={{ color: WARM_TEXT, fontSize: 17, fontFamily: SPACE_GROTESK, margin: 0 }}>
-              {(streak?.current ?? 0) === 1
-                ? "day of the Dean’s Commentary"
-                : "days of the Dean’s Commentary, in a row"}
+              {!streakReady
+                ? "of the Dean’s Commentary"
+                : (streak?.current ?? 0) === 1
+                  ? "day of the Dean’s Commentary"
+                  : "days of the Dean’s Commentary, in a row"}
             </p>
             {/* Weekends are stepped over, not counted as misses — say so, or a
                 reader who reads every weekday will think the number is wrong. */}
             <p style={{ color: FAINT_GREEN, fontSize: 13, lineHeight: 1.6, fontFamily: SPACE_GROTESK, margin: "2px 0 0" }}>
-              {(streak?.totalDays ?? 0) > 0
+              {streakReady && (streak?.totalDays ?? 0) > 0
                 ? `${streak?.totalDays} day${(streak?.totalDays ?? 0) === 1 ? "" : "s"} read in all. It comes out on weekdays, so weekends don’t break the streak.`
                 : "It comes out on weekdays, so weekends don’t break the streak."}
             </p>
