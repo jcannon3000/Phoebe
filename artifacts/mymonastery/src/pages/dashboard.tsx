@@ -14,13 +14,11 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
-import { CommunityRuleOfferBeta } from "@/components/CommunityRuleOfferBeta";
 import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { HomeLearnSection } from "@/components/HomeLearnSection";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { WayOfLoveTurnLearnPray } from "@/components/WayOfLoveTurnLearnPray";
-import { GroupRulePrompt } from "@/components/GroupRulePrompt";
 import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
@@ -7254,12 +7252,19 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
 
   return (
     <Layout bgPhoto={homeBgPhoto} blueShade={homeTheme === "water"}>
-      {/* Offers a community's rule of life to someone who joined by any route
-          OTHER than the invite link (the directory, an accepted request, an
-          admin adding them) — or whose community adopted a rule after they
-          joined. Self-hiding: renders nothing unless there's an unoffered
-          rule. */}
-      <GroupRulePrompt />
+      {/**
+        * (A community's rule of life was OFFERED here, as a card over the top
+        * of the home. Owner: "why is this on my home screen, I never asked for
+        * that to be on the home screen."
+        *
+        * Its whole argument was that the rule "sat on the community page,
+        * passive, where nobody thinks to look" — and that stopped being true
+        * when the owner asked for it to live on the group page, at the top of
+        * the customizer's preset list, and marked in the directory. Three
+        * places you'd go looking, none of which interrupt a morning. A prompt
+        * that exists because a thing is hard to find should go when the thing
+        * becomes easy to find.)
+        */}
       <style>{`
         @media (min-width: 768px) {
           .dash-shell {
@@ -7345,7 +7350,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
           {/* BETA — the one-time "your community keeps a rule of life" offer:
               new accounts that registered through an invite never saw the
               join-time offer, so the home makes it once (Not now dismisses). */}
-          {!eventsOnly && isBeta && <CommunityRuleOfferBeta />}
           {eventsOnly && (
             <p
               className="mb-1"

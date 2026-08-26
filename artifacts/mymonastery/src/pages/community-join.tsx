@@ -10,7 +10,6 @@ import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { CommunityRuleCard } from "@/components/CommunityRuleCard";
-import { markGroupRuleSeen } from "@/components/GroupRulePrompt";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { TermsBody } from "./terms";
 import { PrivacyBody } from "./privacy";
@@ -307,9 +306,6 @@ export default function CommunityJoinPage() {
     // is the adoption moment. Hold here, show the rule card (its own adopt
     // button does the work), and let the person continue when ready.
     const offeringRule = autoJoinStatus === "success" && !!joinRule?.rule;
-    // Offered right here, so the home's GroupRulePrompt must not ask again —
-    // it keys on the same (group, rule) stamp.
-    if (offeringRule && slug) markGroupRuleSeen(slug, joinRule?.rule?.id ?? null);
     return (
       <Layout>
         <div className="max-w-md mx-auto w-full text-center py-16">
