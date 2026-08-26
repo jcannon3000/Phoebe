@@ -269,5 +269,16 @@ export function setCourseHiddenFromHome(courseId: string, hidden: boolean): void
     if (hidden) next.add(courseId); else next.delete(courseId);
     localStorage.setItem(HIDDEN_KEY, JSON.stringify([...next]));
     window.dispatchEvent(new Event(COURSE_HIDDEN_EVENT));
+    /**
+     * PUSH, or the removal comes back. phoebe:course-hidden rides
+     * ROUTINE_KEYS, but this setter fired only its own event — which nothing
+     * in routineSync listens for — so the hide never reached the server and
+     * never bumped the LWW clock. The next sync-down (login refresh, the
+     * 60s auth poll, an app restart) then rewrote the OLD value over it and
+     * the course card reappeared: "I clicked to remove a course from my home
+     * screen but it is still there." The progress writer eleven lines up has
+     * always pushed; this writer just never did.
+     */
+    try { pushRoutineConfig(); } catch { /* non-fatal */ }
   } catch { /* private mode — non-fatal */ }
 }
