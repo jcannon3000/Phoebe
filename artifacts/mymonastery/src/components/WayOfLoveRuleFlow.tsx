@@ -2744,6 +2744,24 @@ export default function WayOfLoveRuleFlow({
             </div>
           ))}
         </div>
+        {/* Owner: "at the bottom of edit-part-of-it, when it shows me my
+            rhythm, there needs to be an add flow."
+            
+            The list could take things OFF (every row has its ✕) and change
+            them (the gear), but there was no way to put something ON — so
+            "edit part of it" was really "edit or remove part of it", and
+            adding meant going back out and rebuilding from scratch. This opens
+            the standing-practices picker, which is where a practice gets added
+            to a rhythm, and Continue carries on from there into the rest of
+            the flow. Dashed, like the "add an additional practice" button on
+            the side-config slide, because it's the same kind of act. */}
+        <button
+          type="button"
+          onClick={() => { touchedRef.current = true; setManualMode("scratch"); setStep("contemplative"); }}
+          style={{ width: "100%", marginTop: 12, background: "transparent", border: `1px dashed ${CARD_B}`, borderRadius: 14, padding: "13px 16px", color: SAGE, fontSize: 14.5, fontFamily: FONT, cursor: "pointer" }}
+        >
+          {t("wol_rule.edit_add_practice", { defaultValue: "+ Add a practice" })}
+        </button>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setManualMode("scratch"))}
         <button
           type="button"
