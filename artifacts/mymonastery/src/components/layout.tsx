@@ -350,7 +350,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     prayer-requests feature (pilot-group-only, 2026-07-22). */}
                 {prayerRequestsEnabled && (hasGroup || isPilot) && (
                 <MenuRow
-                  emoji="🙏"
+                  // Medium skin tone (owner) — the app's own convention for
+                  // this emoji everywhere else; this row was the bare one.
+                  emoji="🙏🏽"
                   label={t("menu.prayer_list", { defaultValue: "Prayer list" })}
                   onClick={() => navigate("/prayer-list")}
                 />
