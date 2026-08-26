@@ -1113,8 +1113,30 @@ const CONTEMPLATION_GOAL_TIME = "20:30";
 // weekend send would nudge them toward something they already read.
 const VTS_PUSH_TIME = "08:00";
 
-function followsVts(ruleConfig: unknown): boolean {
+/**
+ * Who gets the nudge — and it has to be whoever SEES the card.
+ *
+ * Reported: "I don't seem to be getting a notification for the Dean's
+ * Commentary", from someone whose home shows the card every morning.
+ *
+ * This used to read only the reflection-source keys, with a comment claiming
+ * they were "the SAME keys the client uses to decide whether to render the
+ * card". They are not. useRhythmState picks its reflection cards from the HOME
+ * LAYOUT (`homeCardActive(hl, "vts")`), and falls back to reflection-source
+ * only for a user who has no saved layout at all. So anyone who has ever
+ * customized — which is everyone who deliberately added the Dean's Commentary —
+ * had the card and no push, unless their reflection SOURCE happened to be VTS
+ * too. Following it alongside CAC, as the rule presets do, missed entirely.
+ *
+ * Mirrors the client now, in the same order: layout first, source as the
+ * no-layout fallback.
+ */
+function followsVts(ruleConfig: unknown, homeLayout: unknown): boolean {
   try {
+    const layout = homeLayout as { order?: string[]; hidden?: string[] } | null;
+    if (layout && Array.isArray(layout.order)) {
+      return layout.order.includes("vts") && !(layout.hidden ?? []).includes("vts");
+    }
     const values = (ruleConfig as { values?: Record<string, string> } | null)?.values;
     if (!values) return false;
     return values["phoebe:office:reflection-source"] === "vts"
@@ -1130,6 +1152,7 @@ export async function runVtsCommentarySender(opts: { forceNow?: boolean } = {}):
         userId: usersTable.id,
         userTimezone: usersTable.timezone,
         ruleConfig: usersTable.ruleConfig,
+        homeLayout: usersTable.homeLayout,
       })
       .from(usersTable);
 
@@ -1139,7 +1162,7 @@ export async function runVtsCommentarySender(opts: { forceNow?: boolean } = {}):
 
     for (const r of rows) {
       try {
-        if (!followsVts(r.ruleConfig)) continue;
+        if (!followsVts(r.ruleConfig, r.homeLayout)) continue;
         const tz = r.userTimezone || "America/New_York";
         if (!opts.forceNow) {
           // Weekday check in the RECIPIENT's zone — "is it a weekday" differs
