@@ -61,31 +61,25 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, 'Times New Roman', serif";
 
 /**
- * The two questions, in the owner's words and in his order.
- *
- * Fixed, not a rotating pool: they are a sequence, not a variety pack.
- *
- * The first is said BEFORE the picture appears — "as you view the following
+ * THE prompt, said BEFORE the picture appears — "as you view the following
  * picture" — so it's an instruction for your eyes, given while there's still
  * nothing to look at. It only asks you to NOTICE: no interpreting, no meaning
  * yet, just what your eye keeps returning to.
  *
- * The second comes after the first look, and asks what that noticing might be
- * for. Asking it first would turn the practice into a quiz.
+ * There used to be a second one ("As you return to the image, consider what
+ * God might be speaking to you…"), on its own slide between two picture
+ * beats. Owner: "take the second prompt and the second image viewing out."
+ * What it asked is what the contemplation beat asks, and that beat asks it
+ * with the picture on the screen rather than a slide ahead of it.
+ *
+ * Owner walked back a mechanics-narrating version of this one too ("First
+ * you'll see the picture, with a background behind the work…"): "just going
+ * back to the first prompt without talking about the description then the
+ * image." The prompt points the eyes; the beat itself shows how the looking
+ * happens.
  */
-const QUESTIONS = [
-  // The first prompt, whether or not a reflection follows. Owner walked back
-  // the mechanics-narrating version ("First you'll see the picture, with a
-  // background behind the work…"): "just going back to the first prompt
-  // without talking about the description then the image." The prompt points
-  // the eyes; the first-look beat itself shows how the looking happens.
-  "As you view the following picture, notice anything that is sticking out to you, or grabs your attention.",
-  // Owner: "the next slide should be, as you return to the image..." — this
-  // beat comes AFTER the reflection, and the reader is being sent back to the
-  // same picture with what they've just read. The prompt says so rather than
-  // reading like the first question asked twice.
-  "As you return to the image, consider what God might be speaking to you through it in this moment.",
-];
+const NOTICE =
+  "As you view the following picture, notice anything that is sticking out to you, or grabs your attention.";
 
 /** "1050-1100" is a range, and a range takes an en dash. */
 function tidyDate(d: string): string {
@@ -285,29 +279,24 @@ export default function VisioPage() {
       : null;
 
   /**
-   * SEVEN beats: title · prompt · the picture-with-its-background · prompt ·
-   * picture · contemplation · completion.
+   * FIVE beats: title · prompt · the picture-with-its-background ·
+   * contemplation · completion.
    *
-   * Owner, in two messages: "show the first prompt before the picture, [it]
-   * may say first you will see the picture with a background behind the work.
-   * As you view and read, notice what might stick out for you" — and then
-   * "we can use the reflection as the first image view too."
+   * Owner: "take the second prompt and the second image viewing out, and just
+   * have it go to the third image viewing, which also has the prompt under
+   * it."
    *
-   * That second line is what collapsed the deck from eight beats to seven.
-   * The reflection page SHOWS the artwork alongside the commentary, so opening
-   * it IS the first look. The separate picture beat that used to follow it was
-   * the same picture a second time, one tap later, asking for nothing new —
-   * so it's gone, and the reflection does that work.
+   * It was seven. Between the first look and the contemplation sat a prompt
+   * slide ("as you return to the image…") and then the image again — and the
+   * beat after THOSE shows the same image with a prompt under it. So the pair
+   * was a prompt-then-picture that the next beat immediately repeated as
+   * picture-with-prompt, better, with the words and the work on screen at
+   * once. Two taps to arrive somewhere you were already going.
    *
-   * The prompt moved AHEAD of it for the same reason: once the reflection is
-   * the first view, the instruction for your eyes has to arrive before you
-   * open it, not after you come back. It now says what is about to happen —
-   * picture and background together — so the reader knows to do both at once.
-   *
-   * Which leaves the shape the practice was always after: look (guided, and
-   * informed), be asked what God might be saying to YOU, look AGAIN holding
-   * that, then sit with it and pray. The second look is the point of the
-   * sequence, and it is not the end.
+   * What's left: read the prompt, look (guided by the commentary, and held),
+   * then look again with the contemplation prompt under the work and pray
+   * what rises. Two looks, not three, and neither of them is a slide you page
+   * past.
    *
    * NO ESSAY, NO HAND-OFF. Every one of the 229 catalogued works has one, but
    * the bundled fallback may not, and a beat that opens nothing is the trap
@@ -317,11 +306,11 @@ export default function VisioPage() {
    *
    * NO SCRIPTURE SLIDE. It has been cut twice now; the passage the artwork
    * depicts is still NAMED — it's the eyebrow over the title on the picture
-   * beats — but its text isn't printed here. The office is where you read.
+   * beat — but its text isn't printed here. The office is where you read.
    */
-  const TITLE = 0, PROMPT_1 = 1, FIRST_LOOK = 2, PROMPT_2 = 3, PICTURE = 4, CONTEMPLATE = 5, DONE = 6;
+  const TITLE = 0, PROMPT_1 = 1, FIRST_LOOK = 2, CONTEMPLATE = 3, DONE = 4;
   const [step, setStep] = useState(TITLE);
-  const TOTAL = 7;
+  const TOTAL = 5;
   /**
    * Which beats hold the picture.
    *
@@ -343,7 +332,7 @@ export default function VisioPage() {
    *  to be a text slide when there WAS one, which put two slides of
    *  instructions back to back and made the reader tap twice before seeing
    *  anything. The reading is offered under the work instead. */
-  const showsImage = step === FIRST_LOOK || step === PICTURE || step === CONTEMPLATE;
+  const showsImage = step === FIRST_LOOK || step === CONTEMPLATE;
 
   /**
    * SIT WITH IT — a 12-second hold before each beat will let you move on.
@@ -382,8 +371,10 @@ export default function VisioPage() {
     }, HOLD_MS);
     return () => window.clearTimeout(t);
   }, [step, holdsThisBeat]);
-  /** The two beats that are ONLY the picture — where its label belongs. */
-  const isLookingBeat = step === FIRST_LOOK || step === PICTURE;
+  /** The beat that is ONLY the picture — where its label belongs. (The
+   *  contemplation beat shows the picture too, but carries a prompt under it,
+   *  so the title and artist would crowd the words being read.) */
+  const isLookingBeat = step === FIRST_LOOK;
 
   const atEnd = step >= TOTAL - 1;
   const goHome = () => setLocation("/dashboard");
@@ -564,10 +555,12 @@ export default function VisioPage() {
   const reopen = (id: number) => {
     setOverrideId(id);
     setLoadedSrc(null);
-    // The picture beat, NOT the first-look beat: coming back to a work you've
-    // already prayed with should show it, not hand you straight back out to
-    // its commentary.
-    setStep(PICTURE);
+    // The contemplation beat, NOT the first-look beat: coming back to a work
+    // you've already prayed with should show it, not hand you straight back
+    // out to its commentary. (It was the middle picture beat until that beat
+    // was removed; this is the one that still shows the work without the
+    // hand-off.)
+    setStep(CONTEMPLATE);
   };
 
   return (
@@ -824,14 +817,12 @@ export default function VisioPage() {
             reading offered under it, which is what the prompt promised and
             what the eyebrow already called it.) */}
 
-        {(step === PROMPT_1 || step === PROMPT_2) && (
+        {step === PROMPT_1 && (
           <p
             className="prompt-rise"
             style={{ color: WARM, fontFamily: FONT, fontSize: 21, fontWeight: 500, lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
           >
-            {step === PROMPT_2
-              ? t("visio.prompt_speaking", { defaultValue: QUESTIONS[1]! })
-              : t("visio.prompt_notice", { defaultValue: QUESTIONS[0]! })}
+            {t("visio.prompt_notice", { defaultValue: NOTICE })}
           </p>
         )}
 
@@ -963,6 +954,31 @@ export default function VisioPage() {
       </div>
 
       <div style={{ padding: "10px 20px calc(env(safe-area-inset-bottom) + 18px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+        {/**
+          * "Pause before continuing" (owner: "above the bar that loads for
+          * twelve seconds, have it say pause before continuing").
+          *
+          * The pill goes deliberately WORDLESS while the wash fills — a label
+          * for an action the button will refuse reads as broken. But wordless
+          * also says nothing about WHY it won't move, and a filling bar with
+          * no explanation reads as loading, which invites you to wait on the
+          * app rather than to look at the picture. One line above it names
+          * what the wait is for. It's the only text on the beat besides the
+          * work's own, so it sits in the caption size and colour, not the
+          * prompt's — an instruction about the deck, not part of the prayer.
+          *
+          * Only while the hold is actually running: once Continue arrives the
+          * line has nothing left to explain, and leaving it there would ask
+          * for a pause that is already over.
+          */}
+        {holdsThisBeat && !holdReady && (
+          <p
+            aria-hidden
+            style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, letterSpacing: "0.02em", margin: "0 0 2px", textAlign: "center" }}
+          >
+            {t("visio.hold_hint", { defaultValue: "Pause before continuing" })}
+          </p>
+        )}
         <button
           type="button"
           // Inert until the hold is up, rather than disabled: a `disabled`
