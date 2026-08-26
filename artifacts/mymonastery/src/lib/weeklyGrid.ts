@@ -7,7 +7,7 @@
 // that was written in two places instead of one — extracted here so there's
 // only one place left to get it right.
 import { getSideLevel } from "@/lib/officePrefs";
-import { getCustomAnchors, getCustomDoneDays, anchorOnDay } from "@/lib/customAnchors";
+import { getCustomAnchors, getCustomDoneDays } from "@/lib/customAnchors";
 import type { RhythmState } from "@/hooks/useRhythmState";
 
 // Carries every field GET /api/me/practice-week actually returns (see
@@ -91,15 +91,18 @@ export function computeWeeklyGrid(params: {
   const morningIsScripture = SCRIPTURE_LEVELS.has(getSideLevel("morning") ?? "");
   const eveningIsScripture = SCRIPTURE_LEVELS.has(getSideLevel("evening") ?? "");
   const learnedOn = (d: PracticeWeekDay) => d.reflection || (morningIsScripture && d.morning) || (eveningIsScripture && d.evening);
-  // Weekday-scoped anchors only count toward a day they're actually kept on —
-  // otherwise a weekdays-only practice would be asked for on Saturday and leave
-  // a dot that could never fill.
+  // HISTORY is a union of what was RECORDED — no schedule gate. This predicate
+  // only ever ADDS fills (it consults the kept-days record), so today's `days`
+  // scoping has nothing to protect here: a day with no record already doesn't
+  // fill. Gating on anchorOnDay meant editing an anchor's weekdays
+  // retroactively DISQUALIFIED genuinely kept past days — the same
+  // switch-not-union class as the Morning/Evening rows (see that fix above).
+  // Due-ness ("don't ask for it on Saturday") lives where the ASK lives
+  // (home cards / doneCount), not in the record of what happened.
   const customAnchorsForGrid = getCustomAnchors();
   const customAnchorIds = customAnchorsForGrid.map((a) => a.id);
-  const prayedOnCustom = (ymd: string) => {
-    const d = new Date(`${ymd}T12:00:00`);
-    return customAnchorsForGrid.some((a) => anchorOnDay(a, d) && getCustomDoneDays(a.id).has(ymd));
-  };
+  const prayedOnCustom = (ymd: string) =>
+    customAnchorsForGrid.some((a) => getCustomDoneDays(a.id).has(ymd));
   const prayedOn = (d: PracticeWeekDay) =>
     d.morning || d.evening || d.compline || d.contemplation || d.examen || d.cobreathe
     // A day kept ONLY as a side's second practice is still a day you prayed.
@@ -230,11 +233,11 @@ export function computeWeeklyGrid(params: {
     && rhythm.contemplationGoalMin > 0
     && rhythm.contemplationMin > 0
     && rhythm.contemplationMin < rhythm.contemplationGoalMin;
-  // Past days — the server already judges contemplationPartial against the
-  // CURRENT goal (see /me/practice-week), so a day that was short of the
-  // goal keeps reading as half-shaded once it rolls out of "today" instead
-  // of silently flipping to fully kept. Owner: "it was half shaded, but now
-  // that it's in the past its full colored, it needs to be half colored."
+  // Past days — the server judges contemplationPartial against the goal IN
+  // FORCE ON THAT DAY (contemplation_goal_history in /me/practice-week), so a
+  // day that was short keeps reading half-shaded once it rolls out of "today"
+  // instead of silently flipping. Owner: "it was half shaded, but now that
+  // it's in the past its full colored, it needs to be half colored."
   const contemplativePartialFor = (d: PracticeWeekDay) => d.contemplationPartial;
 
   /**

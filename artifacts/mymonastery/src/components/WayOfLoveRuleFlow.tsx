@@ -29,7 +29,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePresets";
-import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
+import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw } from "@/lib/guestSeed";
@@ -1574,7 +1574,10 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.visio ? [] : ["visio"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
-    const order = ["requests", "office", "contemplation", ...newsletters, ...onKeys, "feeds", "ncmp", "podcasts", ...offKeys, ...others];
+    // No hardcoded "podcasts" here — extras.podcasts already routes it through
+    // onKeys/offKeys, and the template copy meant every saved layout carried
+    // the key TWICE (order and hidden both) — found live in a committed layout.
+    const order = ["requests", "office", "contemplation", ...newsletters, ...onKeys, "feeds", "ncmp", ...offKeys, ...others];
     const hidden = ["ncmp", "podcasts", ...offKeys, ...others];
     // The captured rule-config is the DESIGNER's device snapshot — strip keys
     // that are personal state rather than routine structure. Without this,
@@ -1829,7 +1832,10 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.visio ? [] : ["visio"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
-    const order = ["requests", "office", "contemplation", ...newsletters, ...onKeys, "feeds", "ncmp", "podcasts", ...offKeys, ...others];
+    // No hardcoded "podcasts" here — extras.podcasts already routes it through
+    // onKeys/offKeys, and the template copy meant every saved layout carried
+    // the key TWICE (order and hidden both) — found live in a committed layout.
+    const order = ["requests", "office", "contemplation", ...newsletters, ...onKeys, "feeds", "ncmp", ...offKeys, ...others];
     // "feeds" stays visible (self-hides until you subscribe to a prayer feed).
     const hidden = ["ncmp", "podcasts", ...offKeys, ...others];
     // Cache the layout locally + PUT through the durable helper, so finishing
@@ -1891,7 +1897,17 @@ export default function WayOfLoveRuleFlow({
     // card + "Begin" read it from there. Set state alone and a breath rule
     // (VTS) adopts a practice whose card still says Contemplation.
     chooseContemplationStyle(preset.contemplationStyle ?? "silent");
-    setContemplative({ cobreathe: false, audio: false, examen: false, walk: false, visio: false, compline: false });
+    // Cleared first, then whatever the preset actually names — so a rule that
+    // wants Visio Divina and a Contemplative Walk gets exactly those, and
+    // nothing survives from the rule being replaced.
+    setContemplative({
+      cobreathe: false, audio: false, examen: false, walk: false, visio: false, compline: false,
+      ...(preset.practices ?? {}),
+    });
+    // …and at the part of the day the rule keeps them.
+    for (const [key, slot] of Object.entries(preset.practiceSlots ?? {}) as Array<[SlottedPractice, CustomSlot]>) {
+      if (slot) setPracticeSlot(key, slot);
+    }
     // A starter rule's silence applies to whichever sides it turns on.
     const presetContemplation = {
       morning: preset.silence && preset.sides.morning && preset.silenceSide !== "evening",
@@ -2366,10 +2382,29 @@ export default function WayOfLoveRuleFlow({
     const savesNow = !!singleEditRow && !(nextInFlow && stepBelongsToRow(nextInFlow, singleEditRow));
     const label = savesNow ? t("common.save", { defaultValue: "Save" }) : rawLabel;
     return (
-    // marginTop:auto pins Continue (+ Back) to the BOTTOM of the flow's flex
-    // column, so it sits in the same spot on every slide instead of riding up and
-    // down with each step's content. paddingTop keeps a gap on the tall steps.
-    <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+    /**
+     * Continue HOVERS at the bottom of the screen, and content fades under it.
+     *
+     * marginTop:auto still pins it to the bottom of the flow's flex column, so
+     * on a short slide it sits exactly where it always did. `sticky` is what's
+     * new: on a slide taller than the screen — the way steps, the extras list —
+     * the page scrolls under a button that stays put, instead of the button
+     * living at the end of the scroll where you have to go looking for it.
+     *
+     * The gradient is the "fades under it" half. Without a scrim, rows scroll
+     * up and collide with the button; with a hard edge it reads as a bar bolted
+     * over the page. It resolves to the app background so the fade lands on the
+     * same colour the page already is.
+     */
+    <div
+      style={{
+        marginTop: "auto", position: "sticky", bottom: 0, zIndex: 2,
+        paddingTop: 34,
+        paddingBottom: "max(6px, env(safe-area-inset-bottom))",
+        background: "linear-gradient(to top, rgba(9,26,16,0.98) 0%, rgba(9,26,16,0.96) 58%, rgba(9,26,16,0) 100%)",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+      }}
+    >
       <button onClick={onClick} style={{ width: "100%", background: "rgba(46,107,64,0.55)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
         {label}
       </button>
