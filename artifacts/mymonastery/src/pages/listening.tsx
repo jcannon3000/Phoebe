@@ -194,7 +194,7 @@ export default function ListeningPage() {
   }
   // Audio Divina is private — a personal listening log, no sharing with fellows.
   const logMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, felt, shared: false }),
+    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, felt: feltForSave(), shared: false }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
   const deleteMutation = useMutation({
@@ -217,6 +217,12 @@ export default function ListeningPage() {
    * A structured catalog reference is still what a tap gives you (title,
    * artist and artwork). Typing is the fallback, not the preference.
    */
+  /** The first three emoji of whatever they typed — the field itself doesn't
+   *  cap (see its own note), so the trim lives here, where saving happens. */
+  function feltForSave(): string {
+    return feltGraphemes(felt).filter((g) => /\p{Extended_Pictographic}/u.test(g)).slice(0, 3).join("");
+  }
+
   function logToday() {
     if (!what.trim()) return;
     logMutation.mutate();
@@ -395,7 +401,7 @@ export default function ListeningPage() {
                   Space Grotesk, upright, 21px, same measure. */}
               {deckStep === LISTEN && (
                 <p className="title-glow-breathe text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
-                  Listen once to a song that is on your heart. Take a moment to rest in the music, and listen to what might touch your heart as you do.
+                  Listen once to a song that is meaningful to you, or meaningful in this moment. Take a moment to rest in the music, and listen to what might touch your heart as you do.
                 </p>
               )}
 
@@ -407,9 +413,12 @@ export default function ListeningPage() {
 
               {atLog && (
                 <div className="w-full">
-                  <p className="text-[10.5px] uppercase tracking-[0.18em] mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                  {/* A TITLE, not a field label (owner) — every other beat in
+                      the deck leads with one, and this one led with a caption
+                      in 10px caps. */}
+                  <h1 className="text-[26px] font-bold leading-tight mb-4" style={{ color: WARM, fontFamily: SPACE_GROTESK, letterSpacing: "-0.02em" }}>
                     What did you listen to?
-                  </p>
+                  </h1>
                   <input
                     value={query}
                     onChange={(e) => { setQuery(e.target.value); setPicked(false); setWhat(e.target.value); setArtworkUrl(""); }}
@@ -477,24 +486,23 @@ export default function ListeningPage() {
                   </p>
                   <input
                     value={felt}
-                    onChange={(e) => {
-                      /**
-                       * TRIM to three rather than REFUSE the keystroke.
-                       *
-                       * Rejecting the whole value when it goes over is the
-                       * wrong shape for an emoji keyboard: iOS can deliver a
-                       * multi-scalar emoji, an autocorrect replacement or a
-                       * paste as one change, and refusing it wholesale makes
-                       * the field look broken — you tap an emoji and nothing
-                       * appears. Keep the first three of whatever arrives, and
-                       * never block a shorter value, so deleting always works.
-                       */
-                      const v = e.target.value;
-                      setFelt(feltCount(v) <= 3 ? v : feltGraphemes(v).slice(0, 3).join(""));
-                    }}
+                    /**
+                     * NO CAP IN THE FIELD — the trim happens on save.
+                     *
+                     * Reported: "I can't change the emojis." Capping here was
+                     * the cause. A controlled input that keeps the FIRST three
+                     * refuses every later keystroke by setting state to the
+                     * value it already had — React then has no re-render to do,
+                     * so the DOM keeps whatever the keyboard inserted while
+                     * state quietly disagrees, and swapping one emoji for
+                     * another does nothing at all. Type freely; logToday keeps
+                     * the first three (and the server trims again).
+                     */
+                    onChange={(e) => setFelt(e.target.value)}
                     inputMode="text"
                     placeholder="🕊️ 🌊 🙏🏽"
                     aria-label="Up to three emoji for what you felt"
+                    maxLength={40}
                     className="w-full rounded-2xl px-4 py-3.5 text-[22px] text-center outline-none"
                     style={glassField}
                   />
