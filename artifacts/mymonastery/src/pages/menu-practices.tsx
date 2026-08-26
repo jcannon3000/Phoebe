@@ -55,9 +55,16 @@ export default function MenuPracticesPage() {
             { emoji: "🌍", label: "Prayers for the Climate", sub: "Collects, prayers & words on creation", onClick: () => go("/creation-prayers") },
           ] : []),
           // Visio Divina — the looking sibling of Audio Divina, beside it.
-          ...(!isGuest ? [
-            { emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image, slowly", onClick: () => go("/visio") },
-          ] : []),
+          //
+          // NO GUEST GATE (owner: "Visio Divina should be available to users
+          // without an account and everyone"). Nothing in the practice needs
+          // one: the artwork and its licence are public, the lectionary fetch
+          // falls back to praying without it, and completion is a local flag
+          // whose server write already treats a 401 as "signed-out guest, no
+          // sync to do". The gate was also far wider than it read — isGuest is
+          // true for any signed-in non-beta account, so this row was hidden
+          // from nearly everyone, not just visitors without an account.
+          { emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image, slowly", onClick: () => go("/visio") },
           // Audio Divina sits at the BOTTOM of Practices (owner).
           ...(!isGuest ? [
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
