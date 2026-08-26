@@ -200,6 +200,12 @@ export default function VisioPage() {
   // An unreachable image (offline, or their host having a bad day) falls back
   // to a work bundled in the binary, so the practice still happens.
   const [imageFailed, setImageFailed] = useState(false);
+  // The failure belongs to ONE src. Left sticky, a single blip on the
+  // catalogue host locked this mount onto the bundled work for good —
+  // including a different painting tapped in the closing gallery, which then
+  // silently showed the wrong image. Cleared whenever the artwork changes so
+  // each src gets its own try. (loadedSrc needs no reset — it's keyed by src.)
+  useEffect(() => { setImageFailed(false); }, [active?.art.id]);
   /**
    * Which SOURCE has finished loading — not a bare boolean.
    *
@@ -558,8 +564,11 @@ export default function VisioPage() {
       sectionLabel: "",
     });
     // Nothing opened (a blocked popup on web) — don't strand them on a beat
-    // whose whole action just failed silently.
-    if (!opened) next();
+    // whose whole action just failed silently. Step DIRECTLY, never next():
+    // backgroundOpens is a render-scoped const that setReadBackground can't
+    // change until a re-render, so next() re-enters this function and the
+    // pair recurse to stack overflow — window.open on every frame of it.
+    if (!opened) setStep((n) => Math.min(TOTAL - 1, n + 1));
   };
 
   /** Jump back into a picture from the completion cards. */

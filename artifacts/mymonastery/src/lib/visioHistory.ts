@@ -1,25 +1,22 @@
 /**
  * The artworks this reader has looked at, most recent first.
  *
- * Two jobs, and the second is the reason it exists at all:
+ * ONE job: the closing beat shows them back — a small gallery of what they've
+ * been looking at lately, tappable to return to any of them. (Owner: "show the
+ * pictures they looked at recently, and they can click into them, kinda like
+ * the audio divina.")
  *
- *  1. The closing beat shows them back — a small gallery of what they've been
- *     looking at lately, tappable to return to any of them. (Owner: "show the
- *     pictures they looked at recently, and they can click into them, kinda
- *     like the audio divina.")
- *
- *  2. It gives the practice ONE PICTURE PER DAY. Owner: "just that there is a
- *     different one for each day" — a new image each morning, and the SAME
- *     image all day, so re-opening at lunchtime shows what you had at
- *     breakfast rather than reshuffling mid-prayer.
- *
- *     Both halves come from here. Today's entry pins today; everything older
- *     is subtracted so tomorrow lands somewhere new. Lectionary matching alone
- *     can't do the second part — Holy Week appoints the same Passion narrative
- *     several days running, and the same handful of paintings match it. With
- *     233 works and a 60-deep memory a daily reader goes two months without a
- *     repeat, and longer in practice because the lectionary keeps moving them
- *     around the collection.
+ * IT DOES NOT FEED SELECTION, AND MUST NEVER AGAIN. An earlier version
+ * subtracted this history inside chooseArtwork so tomorrow would "land
+ * somewhere new" — which quietly made the day's image PERSONAL, when the
+ * owner's rule is that everyone praying Visio on a given day sees the SAME
+ * work. chooseArtwork is now a pure function of (date, appointed lessons);
+ * day-to-day freshness comes from the date's ordinal walking a repeated
+ * reading through its matches, and "same all day" falls out because there is
+ * no state to drift. This header used to describe the subtracted design as
+ * current — precisely the comment-rot that invites the third rewiring (it has
+ * been removed twice already). If you're here to make tomorrow's picture
+ * depend on what THIS device has seen: don't.
  *
  * Device-local on purpose: it's a reading history, not a record of prayer, and
  * the practice is guest-allowed — there's no account to hang it on.

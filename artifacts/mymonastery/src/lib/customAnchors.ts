@@ -241,6 +241,12 @@ export function addCustomAnchor(
   if (!t) return;
   const list = getCustomAnchors();
   if (list.length >= MAX_CUSTOM) return;
+  // One practice per title, enforced at the ROOT. Every other add-path
+  // already checked; the manual "Create your own" form didn't, and the login
+  // sync now folds same-title copies into one — so a second "Stretch" made
+  // here would survive only until the next sign-in, then silently collapse.
+  // Refusing the duplicate up front is the honest version of that.
+  if (list.some((a) => titleKey(a) === t.toLowerCase())) return;
   // Unique-ish id from time + a little entropy (no server ids needed).
   const id = `c${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
   const clean: ReadingConfig | undefined =
@@ -721,16 +727,35 @@ export function importCustomAnchorSnapshot(snap: CustomAnchorSnapshot | null | u
     // and ones that are just another copy of a title we're already keeping.
     const localOnly: CustomAnchor[] = [];
     for (const a of getCustomAnchors()) {
-      if (serverIds.has(a.id) || tomb.has(a.id)) continue;
+      if (serverIds.has(a.id)) continue;
+      if (tomb.has(a.id)) {
+        // Another device already folded this copy. Its id must go — but a
+        // day logged HERE against it (a push still in the debounce when the
+        // other device synced) belongs to the survivor, not the grave.
+        const seen = keptByTitle.get(titleKey(a));
+        if (seen) folded.set(a.id, seen.id);
+        continue;
+      }
       const seen = keptByTitle.get(titleKey(a));
       if (seen) { folded.set(a.id, seen.id); continue; }
       keptByTitle.set(titleKey(a), a);
       localOnly.push(a);
     }
-    // What each folded copy had recorded, gathered BEFORE anything is removed.
+    // What each folded copy had recorded, gathered BEFORE anything is removed —
+    // from BOTH stores. The twin's record can live only in the incoming
+    // snapshot: log out (localStorage wiped) and back in, and the server's
+    // copy of the pair arrives with its done-day and reading totals in
+    // snap.log while localStorage has nothing. Reading localStorage alone
+    // dropped exactly the data this fold exists to preserve — and then the
+    // tombstone push had the server prune it too, unrecoverably. The 21-day
+    // grid history folds along with it, or a week of kept dots collapsed to
+    // at most today.
     const foldedInto = new Map<string, LogEntry[]>();
+    const foldedHist = new Map<string, string[]>();
     for (const [from, into] of folded) {
-      foldedInto.set(into, [...(foldedInto.get(into) ?? []), readLocalLogEntry(from)]);
+      const twin = mergeLogEntry(readLocalLogEntry(from), snap.log?.[from]);
+      foldedInto.set(into, [...(foldedInto.get(into) ?? []), twin]);
+      foldedHist.set(into, [...(foldedHist.get(into) ?? []), ...readDoneHist(from)]);
     }
 
     saveDefs([...serverDefs, ...localOnly]);
@@ -749,6 +774,12 @@ export function importCustomAnchorSnapshot(snap: CustomAnchorSnapshot | null | u
       for (const twin of twins) e = mergeLogEntry(e, twin);
       writeLocalLogEntry(a.id, e);
     }
+    // The weekly grid draws from each anchor's 21-day history — carry the
+    // folded copies' kept days onto the survivor (writeDoneHist dedupes,
+    // sorts, and keeps the most recent 21).
+    for (const [into, days] of foldedHist) {
+      if (days.length > 0) writeDoneHist(into, [...readDoneHist(into), ...days]);
+    }
     if (tomb.size > 0) pruneDeletedIds(tomb);
     // Retire the folded ids: tombstone (absence alone never deletes, so without
     // this the server would hand the twin straight back) and drop their state,
@@ -756,6 +787,7 @@ export function importCustomAnchorSnapshot(snap: CustomAnchorSnapshot | null | u
     for (const from of folded.keys()) {
       addDeletedId(from);
       writeLocalLogEntry(from, {});
+      try { localStorage.removeItem(DONE_HIST_PREFIX + from); } catch { /* ignore */ }
     }
     needsPush = localOnly.length > 0 || folded.size > 0;
     window.dispatchEvent(new Event(CUSTOM_ANCHORS_EVENT));
