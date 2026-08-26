@@ -621,18 +621,36 @@ export function exportCustomAnchorSnapshot(): CustomAnchorSnapshot {
   const defs = getCustomAnchors();
   const log: CustomAnchorSnapshot["log"] = {};
   for (const a of defs) {
-    const entry: { done?: string; skip?: string; readToday?: string; readTotal?: number } = {};
-    try {
-      const done = localStorage.getItem(DONE_PREFIX + a.id); if (done) entry.done = done;
-      const skip = localStorage.getItem(SKIP_PREFIX + a.id); if (skip) entry.skip = skip;
-      const rt = localStorage.getItem(READ_TODAY_PREFIX + a.id); if (rt) entry.readToday = rt;
-      const total = localStorage.getItem(READ_TOTAL_PREFIX + a.id);
-      if (total) { const n = Number(total); if (Number.isFinite(n) && n > 0) entry.readTotal = n; }
-    } catch { /* ignore */ }
+    const entry = readLocalLogEntry(a.id);
     if (Object.keys(entry).length > 0) log[a.id] = entry;
   }
   const deletedIds = getDeletedIds();
   return { defs, log, updatedAt: Date.now(), ...(deletedIds.length > 0 ? { deletedIds } : {}) };
+}
+
+/** One practice per TITLE — the key every add-path already dedupes on. */
+function titleKey(a: { title: string }): string {
+  return a.title.trim().toLowerCase();
+}
+
+/** One anchor's per-day state, read straight out of localStorage. */
+function readLocalLogEntry(id: string): LogEntry {
+  const entry: LogEntry = {};
+  try {
+    const done = localStorage.getItem(DONE_PREFIX + id); if (done) entry.done = done;
+    const skip = localStorage.getItem(SKIP_PREFIX + id); if (skip) entry.skip = skip;
+    const rt = localStorage.getItem(READ_TODAY_PREFIX + id); if (rt) entry.readToday = rt;
+    const total = localStorage.getItem(READ_TOTAL_PREFIX + id);
+    if (total) { const n = Number(total); if (Number.isFinite(n) && n > 0) entry.readTotal = n; }
+  } catch { /* ignore */ }
+  return entry;
+}
+
+function writeLocalLogEntry(id: string, e: LogEntry): void {
+  setOrRemove(DONE_PREFIX + id, e.done);
+  setOrRemove(SKIP_PREFIX + id, e.skip);
+  setOrRemove(READ_TODAY_PREFIX + id, e.readToday);
+  setOrRemove(READ_TOTAL_PREFIX + id, e.readTotal != null ? String(e.readTotal) : undefined);
 }
 
 function setOrRemove(key: string, value: string | undefined): void {
@@ -662,23 +680,84 @@ export function importCustomAnchorSnapshot(snap: CustomAnchorSnapshot | null | u
     // Drop any local copy so a delete genuinely propagates across devices, and
     // stop re-sending deletes the server has now acknowledged.
     const tomb = new Set<string>(snap.tombstones && typeof snap.tombstones === "object" ? Object.keys(snap.tombstones) : []);
-    const serverIds = new Set(snap.defs.map((d) => d.id));
+
+    /**
+     * ONE practice per title — the union is by id, and ids are random.
+     *
+     * Reported: "I logged in and logged out and somehow the Community Meal
+     * custom from the VTS preset was duplicated." Every path that CREATES an
+     * anchor already refuses a title it already has, but ids come from
+     * `Date.now()` + entropy, so the SAME practice made twice is two different
+     * ids — and a union by id keeps both. That's all it takes: adopt the VTS
+     * preset while signed out, sign in, and the server's Community Meal meets
+     * the device's, agreeing on everything except the one field the merge
+     * compares.
+     *
+     * So titles are collapsed here, where the two lists actually meet. The
+     * SURVIVOR is whichever comes first — server defs are walked first, so the
+     * id other devices already know is the one that lives, and the local twin
+     * is the one retired. Deduping only in the caller wouldn't have held:
+     * this function re-derives local-only anchors from localStorage, so the
+     * twin would simply be added back a line later.
+     *
+     * A folded twin's own record is merged into the survivor rather than
+     * dropped, so collapsing them can never un-log a day someone kept, and its
+     * id is TOMBSTONED so the next sync-down doesn't resurrect it.
+     */
+    const keptByTitle = new Map<string, CustomAnchor>();
+    /** folded id → the id that now carries it */
+    const folded = new Map<string, string>();
+    const serverDefs: CustomAnchor[] = [];
+    for (const d of snap.defs) {
+      if (tomb.has(d.id)) continue;
+      const seen = keptByTitle.get(titleKey(d));
+      if (seen) { folded.set(d.id, seen.id); continue; }
+      keptByTitle.set(titleKey(d), d);
+      serverDefs.push(d);
+    }
+    const serverIds = new Set(serverDefs.map((d) => d.id));
     // Local anchors the server hasn't seen yet — keep them rather than dropping
-    // (a not-yet-synced add survives), EXCEPT ones the server says are deleted.
-    const localOnly = getCustomAnchors().filter((a) => !serverIds.has(a.id) && !tomb.has(a.id));
-    const serverDefs = snap.defs.filter((d) => !tomb.has(d.id));
+    // (a not-yet-synced add survives), EXCEPT ones the server says are deleted
+    // and ones that are just another copy of a title we're already keeping.
+    const localOnly: CustomAnchor[] = [];
+    for (const a of getCustomAnchors()) {
+      if (serverIds.has(a.id) || tomb.has(a.id)) continue;
+      const seen = keptByTitle.get(titleKey(a));
+      if (seen) { folded.set(a.id, seen.id); continue; }
+      keptByTitle.set(titleKey(a), a);
+      localOnly.push(a);
+    }
+    // What each folded copy had recorded, gathered BEFORE anything is removed.
+    const foldedInto = new Map<string, LogEntry[]>();
+    for (const [from, into] of folded) {
+      foldedInto.set(into, [...(foldedInto.get(into) ?? []), readLocalLogEntry(from)]);
+    }
+
     saveDefs([...serverDefs, ...localOnly]);
     // Re-stamp per-day state + reading total for the server's anchors. Local-only
     // anchors keep their existing localStorage state untouched.
     for (const a of serverDefs) {
-      const e = snap.log?.[a.id] ?? {};
-      setOrRemove(DONE_PREFIX + a.id, e.done);
-      setOrRemove(SKIP_PREFIX + a.id, e.skip);
-      setOrRemove(READ_TODAY_PREFIX + a.id, e.readToday);
-      setOrRemove(READ_TOTAL_PREFIX + a.id, e.readTotal != null ? String(e.readTotal) : undefined);
+      let e: LogEntry = snap.log?.[a.id] ?? {};
+      for (const twin of foldedInto.get(a.id) ?? []) e = mergeLogEntry(e, twin);
+      writeLocalLogEntry(a.id, e);
+    }
+    // A local-only survivor keeps its own state, plus anything folded into it.
+    for (const a of localOnly) {
+      const twins = foldedInto.get(a.id);
+      if (!twins?.length) continue;
+      let e = readLocalLogEntry(a.id);
+      for (const twin of twins) e = mergeLogEntry(e, twin);
+      writeLocalLogEntry(a.id, e);
     }
     if (tomb.size > 0) pruneDeletedIds(tomb);
-    needsPush = localOnly.length > 0;
+    // Retire the folded ids: tombstone (absence alone never deletes, so without
+    // this the server would hand the twin straight back) and drop their state,
+    // which now lives on the survivor.
+    for (const from of folded.keys()) {
+      addDeletedId(from);
+      writeLocalLogEntry(from, {});
+    }
+    needsPush = localOnly.length > 0 || folded.size > 0;
     window.dispatchEvent(new Event(CUSTOM_ANCHORS_EVENT));
     window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
   } finally {
