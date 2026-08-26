@@ -12,11 +12,10 @@ import {
   getReflectionSource, setReflectionSource, setSideReflection,
   setPsalmCycle, setSideCustomName, OFFICE_PREFS_EVENT, OFFICE_LEVELS_SET, type OfficeLevel,
   type ReflectionSource,
-  setSideContemplationKind,
-} from "@/lib/officePrefs";
+  setSideContemplationKind, setSideDayRules } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset } from "@/lib/rulePresets";
-import { addCustomAnchor, getCustomAnchors } from "@/lib/customAnchors";
+import { addCustomAnchor, getCustomAnchors, setPracticeSlot, type SlottedPractice, type CustomSlot } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 
@@ -268,6 +267,46 @@ export default function CustomizePage() {
         addCustomAnchor(c.title, c.emoji, c.slot, undefined, c.days);
         existing.add(c.title.trim().toLowerCase());
       }
+    }
+
+    /**
+     * The rest of what a preset can carry.
+     *
+     * This page applies presets independently of the full customizer's
+     * adoptRule, so anything the RulePreset type grows has to be added in BOTH
+     * or the same rule behaves differently depending on where you adopt it —
+     * which is exactly what happened: VTS's weekday schedule and Contemplative
+     * Art's practices were silently dropped here.
+     */
+    // Saturday / Sunday alternatives.
+    for (const sd of ["morning", "evening"] as const) {
+      const rules = preset.dayRules?.[sd];
+      setSideDayRules(sd, (rules ?? []).map((r) => ({
+        days: r.days,
+        level: safeLevel(r.pray),
+        ...(r.pray === "ownPractice" ? { customName: r.name ?? "Worship" } : {}),
+      })));
+    }
+    // Practices with their own card (Visio Divina, a Contemplative Walk…), and
+    // the part of the day they ride at.
+    if (preset.practices) {
+      const existing = currentHomeLayout;
+      const order = [...(existing?.order ?? [])];
+      const hidden = new Set(existing?.hidden ?? []);
+      for (const [key, on] of Object.entries(preset.practices)) {
+        if (on) {
+          if (!order.includes(key)) order.push(key);
+          hidden.delete(key);
+        } else {
+          hidden.add(key);
+        }
+      }
+      const layout: HomeLayout = { order, hidden: [...hidden], v: HOME_LAYOUT_VERSION };
+      if (guest) cacheHomeLayoutLocalOnly(layout);
+      else void saveHomeLayout(layout).catch(() => { /* best-effort */ });
+    }
+    for (const [key, slot] of Object.entries(preset.practiceSlots ?? {}) as Array<[SlottedPractice, CustomSlot]>) {
+      if (slot) setPracticeSlot(key, slot);
     }
 
     setDailyPrayer(currentDailyPrayer());

@@ -9,7 +9,7 @@
 // editor you opened.
 
 import type { ReflectionSource } from "@/lib/officePrefs";
-import type { CustomSlot } from "@/lib/customAnchors";
+import type { CustomSlot, SlottedPractice } from "@/lib/customAnchors";
 import { WEEKDAYS } from "@/lib/customAnchors";
 
 export type OfficeSideKey = "morning" | "evening";
@@ -56,6 +56,18 @@ export type RulePreset = {
    * needs no rule of its own — it's what Saturday and Sunday are excused from.
    */
   dayRules?: Partial<Record<OfficeSideKey, Array<{ days: number[]; pray: PrayChoice; name?: string }>>>;
+  /**
+   * Standing practices that aren't a side's ANCHOR — Visio Divina, a
+   * Contemplative Walk, Audio Divina. They have their own home cards rather
+   * than replacing an office, so a rule whose morning IS Visio Divina sets
+   * `pray: "none"` for that side and turns the practice on here.
+   *
+   * adoptRule clears all of these first, so a preset only has to name what it
+   * wants — nothing carries over from the rule being replaced.
+   */
+  practices?: Partial<Record<"cobreathe" | "audio" | "examen" | "walk" | "visio" | "compline", boolean>>;
+  /** Which part of the day those practices ride at (customAnchors.setPracticeSlot). */
+  practiceSlots?: Partial<Record<SlottedPractice, CustomSlot>>;
 };
 
 // The order is the owner's, not a formula: A Gentle Start leads because it's
@@ -128,5 +140,25 @@ export const RULE_PRESETS: RulePreset[] = [
       { emoji: "🕯️", label: "10 minutes of contemplative prayer" },
       { emoji: "🌍", label: "Creation Prayer in the evening" },
       { emoji: "🍽️", label: "Community Meal, weekdays" },
+    ] },
+  // CONTEMPLATIVE ART (owner) — a rule for someone who prays with their eyes.
+  // The morning is Visio Divina, which is a practice with its OWN card rather
+  // than an office, so the morning side takes no anchor (`pray: "none"`) and
+  // the practice is turned on instead. Richard Rohr's daily meditation is the
+  // word between them, the day closes with the Examen, and the contemplation
+  // is a walk rather than a sit — nothing here asks you to sit still, which is
+  // the point of it.
+  { id: "contemplative-art", emoji: "🖼️", sides: { morning: true, evening: true },
+    pray: "none", evening: "examen",
+    practices: { visio: true, walk: true },
+    practiceSlots: { visio: "morning", walk: "afternoon" },
+    silence: false, goalMin: 0,
+    reflections: ["cac"],
+    title: "Contemplative Art", blurb: "Praying with your eyes — an artwork in the morning, Richard Rohr's meditation in the day, a walk instead of a sit, and the Examen at its close.",
+    rows: [
+      { emoji: "🖼️", label: "Visio Divina in the morning" },
+      { emoji: "📖", label: "The CAC Daily Meditation" },
+      { emoji: "🚶", label: "A Contemplative Walk" },
+      { emoji: "🌗", label: "The Examen in the evening" },
     ] },
 ];
