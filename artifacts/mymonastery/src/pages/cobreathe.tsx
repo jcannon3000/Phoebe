@@ -394,7 +394,7 @@ export default function CobreathePage() {
    */
   const { data: placeStats } = useQuery<{
     place: { id: number; name: string; subtitle: string | null };
-    people?: Array<{ userId: number; name: string; avatarUrl: string | null }>;
+    // (No `people` roster — it isn't requested and isn't shown.)
     today: number;
     month: { breaths: number; people: number };
     allTime: { breaths: number; people: number };
@@ -402,10 +402,11 @@ export default function CobreathePage() {
     // Ask by row id when there IS one, otherwise by the built-in slug — a
     // place nobody has breathed at yet has no row, and "how many today" still
     // has a true answer (zero). Keyed on whichever we asked with.
-    queryKey: ["/api/breath/places/stats", place && place.id > 0 ? place.id : place?.slug, day, mode === "done" ? "people" : "counts"],
-    // people=1 only on the DONE screen — the slide before the breath shows the
-    // place's numbers, not its roster (owner: "not beforehand").
-    queryFn: () => apiRequest("GET", `/api/breath/places/${place && place.id > 0 ? place.id : encodeURIComponent(place?.slug ?? "")}/stats?day=${day}${mode === "done" ? "&people=1" : ""}`),
+    queryKey: ["/api/breath/places/stats", place && place.id > 0 ? place.id : place?.slug, day],
+    // No `people=1` — the names are not shown anywhere any more (see
+    // CobreatheSummary), so there is no reason to ask the server for them.
+    // Owner: "don't show the names of people who prayed at a location."
+    queryFn: () => apiRequest("GET", `/api/breath/places/${place && place.id > 0 ? place.id : encodeURIComponent(place?.slug ?? "")}/stats?day=${day}`),
     // Also through the breath and the summary: the summary reports the place's
     // tally, and a query disabled by then would have nothing to report.
     // Not on the place slide any more — its numbers moved to the summary.
@@ -902,7 +903,6 @@ export default function CobreathePage() {
         others={othersDone}
         placeName={place?.name ?? null}
         placeBreathsToday={placeStats?.today}
-        placePeople={placeStats?.people}
         companions={summaryFaces}
         onContinue={() => setLocation("/")}
       />
