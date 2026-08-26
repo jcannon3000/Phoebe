@@ -90,6 +90,8 @@ type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: str
 export default function ListeningPage() {
   const [view, setView] = useState<View>("deck");
   const [deckStep, setDeckStep] = useState(0);
+  /** Has this run through the deck already passed the log beat? See prev(). */
+  const loggedHere = useRef(false);
   /** The leaf, picked once per open — the same backdrop Visio and its siblings use. */
   const deckBackdrop = useMemo(
     () => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
@@ -275,7 +277,13 @@ export default function ListeningPage() {
   if (view === "deck") {
     const atLog = deckStep === LOG;
     const next = () => { if (deckStep < LAST) setDeckStep((n) => n + 1); };
-    const prev = () => { if (deckStep > INTRO) setDeckStep((n) => n - 1); };
+    const prev = () => {
+      // Stepping back from the prayer beat skips the log once it's been done —
+      // logToday clears the form, so going back to it showed an empty one,
+      // which reads as "it didn't save".
+      if (deckStep === LIFT && loggedHere.current) { setDeckStep(LISTEN); return; }
+      if (deckStep > INTRO) setDeckStep((n) => n - 1);
+    };
     // Tap the left half to go back, the right half forward; swipe likewise —
     // lifted from the office deck and Visio Divina so every deck in the app
     // answers a gesture the same way. Not on the LOG beat: its taps belong to
@@ -499,26 +507,50 @@ export default function ListeningPage() {
         <div style={{ padding: "10px 20px calc(env(safe-area-inset-bottom) + 18px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
           <button
             onClick={() => {
-              // The log records and MOVES ON to the prayer beat — it isn't the
-              // end of the deck any more. The prayer beat is, and it closes out
-              // to the log view.
-              if (atLog) { logToday(); next(); return; }
-              if (deckStep === LAST) { setDeckStep(INTRO); setView("log"); return; }
+              /**
+               * The log records and MOVES ON to the prayer beat — it isn't the
+               * end of the deck any more. The prayer beat is, and it closes out
+               * to the log view.
+               *
+               * And with nothing to record it just moves on. Moving the log
+               * into the MIDDLE of the deck turned a disabled button from a
+               * "finish this to be done" into a locked door in front of the
+               * last beat — reachable simply by having already logged today,
+               * which leaves the field empty. Gesture nav is off on this beat
+               * (its taps belong to the search field), so there was no way
+               * past it at all. The practice must never trap you before its
+               * prayer.
+               */
+              if (atLog) {
+                // The flag means "a log was actually written", not "we passed
+                // this beat" — set unconditionally it made Back skip the log
+                // for someone who had recorded nothing, which is exactly the
+                // person who might want to go back and record something.
+                if (what.trim()) { logToday(); loggedHere.current = true; }
+                next();
+                return;
+              }
+              if (deckStep === LAST) { loggedHere.current = false; setDeckStep(INTRO); setView("log"); return; }
               next();
             }}
-            disabled={atLog && !what.trim()}
             style={{
               userSelect: "none", WebkitTapHighlightColor: "transparent",
               width: "100%", maxWidth: 420, borderRadius: 999, padding: "14px 20px",
               fontSize: 16, fontWeight: 600, fontFamily: SPACE_GROTESK,
-              cursor: (!atLog || what.trim()) ? "pointer" : "default",
+              cursor: "pointer",
               ...FROST_CTA,
               border: `1px solid ${DECK_BORDER}`,
-              background: (!atLog || what.trim()) ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.22)",
-              color: (!atLog || what.trim()) ? WARM : "rgba(240,237,230,0.42)",
+              background: "rgba(46,107,64,0.55)",
+              color: WARM,
             }}
           >
-            {deckStep === INTRO ? "Begin" : atLog ? "Log it" : deckStep === LAST ? "Done" : "Continue"}
+            {deckStep === INTRO
+              ? "Begin"
+              // Only "Log it" when there is something to log; otherwise it's
+              // simply the next beat, and saying "Log it" would promise a
+              // record that isn't being written.
+              : atLog ? (what.trim() ? "Log it" : "Continue")
+                : deckStep === LAST ? "Done" : "Continue"}
           </button>
           <span style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.12em" }}>
             {deckStep + 1} / {DECK_TOTAL}
