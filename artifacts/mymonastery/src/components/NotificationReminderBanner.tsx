@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { ensureWebPushSubscription, webPushCapable } from "@/lib/webPush";
+import { checkPushPermission, enablePushNotifications, type PermState } from "@/lib/pushPermission";
 
 // A standing (not one-shot) bottom reminder: whenever notifications are
 // currently OFF — never asked, or previously declined — this stays up as an
@@ -18,19 +18,6 @@ import { ensureWebPushSubscription, webPushCapable } from "@/lib/webPush";
 // now" without going silent forever like its one-shot siblings.
 const DISMISS_KEY = "phoebe:notif-reminder-dismissed";
 
-type PermState = "granted" | "denied" | "prompt" | "unknown";
-
-// The window.PhoebeNative global augmentation lives in phoebe-mobile's own
-// tsconfig project (a separate compile from this one) — same inline-cast
-// pattern lib/isNativeShell.ts uses rather than duplicating a declare global.
-type PhoebeNativeShape = {
-  checkPushPermission?: () => Promise<PermState>;
-  requestPushPermission?: () => void;
-};
-function phoebeNative(): PhoebeNativeShape | undefined {
-  return (window as unknown as { PhoebeNative?: PhoebeNativeShape }).PhoebeNative;
-}
-
 export function NotificationReminderBanner() {
   const { t } = useTranslation();
   const [location] = useLocation();
@@ -38,23 +25,10 @@ export function NotificationReminderBanner() {
   const [show, setShow] = useState(false);
   const [working, setWorking] = useState(false);
 
-  const checkPermission = async (): Promise<PermState> => {
-    if (isNativeShell()) {
-      try {
-        const result = await phoebeNative()?.checkPushPermission?.();
-        return result ?? "unknown";
-      } catch {
-        return "unknown";
-      }
-    }
-    if (!webPushCapable()) return "granted"; // can't do anything here — don't nag
-    // DOM Notification.permission is "default" | "denied" | "granted" — it
-    // never returns "prompt". Map "default" (never asked) to our "prompt"
-    // state, or the banner would only ever show for users who already
-    // explicitly denied, missing the never-asked majority it exists for.
-    const raw = Notification.permission;
-    return raw === "default" ? "prompt" : (raw as PermState);
-  };
+  // Both of these used to live inline here, and Settings needed the same two —
+  // so they moved to lib/pushPermission and this reads from there. One
+  // implementation, or the copies drift.
+  const checkPermission = checkPushPermission;
 
   useEffect(() => {
     let cancelled = false;
@@ -106,33 +80,14 @@ export function NotificationReminderBanner() {
     }
     setWorking(true);
     try {
-      if (isNativeShell()) {
-        // Reuses the exact flow PushPermissionPrompt fires — requests
-        // permission, registers with APNs/FCM, and POSTs the device token.
-        // "Turning on…" stays disabled until one of these fires (or the
-        // OS dialog result never arrives) rather than clearing on the
-        // synchronous `return` below, which used to re-enable the button
-        // while the permission prompt was still on screen.
-        const onReady = () => { setPermission("granted"); cleanup(); };
-        const onDenied = () => { setPermission("denied"); cleanup(); };
-        const cleanup = () => {
-          window.removeEventListener("phoebe:push-ready", onReady);
-          window.removeEventListener("phoebe:push-denied", onDenied);
-          setWorking(false);
-        };
-        window.addEventListener("phoebe:push-ready", onReady, { once: true });
-        window.addEventListener("phoebe:push-denied", onDenied, { once: true });
-        phoebeNative()?.requestPushPermission?.();
-        return;
-      }
-      const permission = await Notification.requestPermission();
-      setPermission(permission as PermState);
-      if (permission === "granted") {
-        await ensureWebPushSubscription().catch(() => { /* non-fatal */ });
-      }
-      setWorking(false);
+      // Requests permission, and on native also registers with APNs/FCM and
+      // posts the device token — "Turning on…" stays disabled until the OS
+      // dialog has actually been answered (its result arrives as an event),
+      // not until the request was merely fired.
+      setPermission(await enablePushNotifications());
     } catch (err) {
       console.warn("[notif-reminder] enable failed:", err);
+    } finally {
       setWorking(false);
     }
   }

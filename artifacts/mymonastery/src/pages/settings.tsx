@@ -3,6 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
+import { checkPushPermission, enablePushNotifications, type PermState } from "@/lib/pushPermission";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { useGuestMode } from "@/hooks/useGuestMode";
@@ -214,6 +215,85 @@ function WeeklyDigestSettings() {
 // for you, words of comfort. Reads pushEnabled off /auth/me; saves via
 // PUT /api/me/notifications-pref and re-reads auth so the granular
 // sections below still show their own state.
+/**
+ * Device-level permission, and the one control that can actually change it.
+ *
+ * Owner: "in the settings, if they don't have notifications on in the device
+ * they're working on, a button that says turn on notifications, that does the
+ * system prompt."
+ *
+ * The master switch above is Phoebe's OWN preference — it can be ON while the
+ * OS is refusing every push, which is the state that produces "I turned
+ * reminders on and nothing arrives". This row is about the OS, and it only
+ * appears when the OS is the thing standing in the way.
+ *
+ * DENIED gets a different row, not a disabled button: iOS shows its
+ * permission dialog exactly once, so after a refusal nothing in the app can
+ * re-ask, and a button that silently does nothing is worse than a sentence
+ * saying where to go.
+ */
+function DevicePermissionRow() {
+  const { t } = useTranslation();
+  const [perm, setPerm] = useState<PermState>("unknown");
+  const [working, setWorking] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const read = () => { void checkPushPermission().then((p) => { if (!cancelled) setPerm(p); }); };
+    read();
+    // Re-read on return from the OS settings app — someone who leaves to allow
+    // notifications should come back to a row that knows.
+    const onVis = () => { if (document.visibilityState === "visible") read(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { cancelled = true; document.removeEventListener("visibilitychange", onVis); };
+  }, []);
+
+  // "unknown" means we couldn't ask (an older shell, a browser with no push at
+  // all). Offering to fix something we can't see the state of would be a
+  // button that does nothing, so stay quiet — same for granted.
+  if (perm === "granted" || perm === "unknown") return null;
+
+  if (perm === "denied") {
+    return (
+      <div
+        className="w-full mt-3 py-3 px-3.5 rounded-xl"
+        style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}
+      >
+        <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+          {t("settings.notif_device_off", { defaultValue: "Notifications are off for Phoebe on this device" })}
+        </p>
+        <p className="text-[12.5px]" style={{ color: "#8FAF96", margin: "4px 0 0", lineHeight: 1.5 }}>
+          {t("settings.notif_device_denied_sub", { defaultValue: "This one has to be turned back on outside the app — open your device's Settings, find Phoebe, and allow Notifications." })}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={working}
+      onClick={async () => {
+        setWorking(true);
+        try { setPerm(await enablePushNotifications()); } finally { setWorking(false); }
+      }}
+      className="w-full mt-3 py-2.5 rounded-xl text-[14px]"
+      style={{
+        background: "rgba(46,107,64,0.18)",
+        border: "1px solid rgba(46,107,64,0.4)",
+        color: "#F0EDE6",
+        fontFamily: "'Space Grotesk', sans-serif",
+        cursor: working ? "default" : "pointer",
+        opacity: working ? 0.7 : 1,
+      }}
+    >
+      {working
+        ? t("settings.notif_device_turning_on", { defaultValue: "Turning on…" })
+        : t("settings.notif_device_turn_on", { defaultValue: "Turn on notifications" })}
+    </button>
+  );
+}
+
 function NotificationsSettings() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -317,6 +397,11 @@ function NotificationsSettings() {
           );
         })}
       </SettingsCard>
+
+      {/* The OS's own permission — above the test button on purpose: when the
+          device is refusing push, allowing it is the step that has to happen
+          first, and a test sent before it can only report failure. */}
+      <DevicePermissionRow />
 
       {/* Test notification — verify the whole pipeline (token + APNs) in one tap. */}
       <button
