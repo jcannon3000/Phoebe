@@ -8,6 +8,7 @@
  * then PUT — the rule replaces whatever rule came before it.
  */
 import { useEffect, useRef, useState } from "react";
+import { ROUTINE_KEYS } from "@/lib/routineSync";
 import { useParams, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import WayOfLoveRuleFlow, { type RoutineSpec } from "@/components/WayOfLoveRuleFlow";
@@ -22,13 +23,23 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 // community's rule must never disturb their own rhythm. (Same key set as
 // prescribe-routine.tsx / lib/routineSync ROUTINE_KEYS.)
 const ROUTINE_PREFIXES = ["phoebe:office:", "phoebe:slot:"];
+/**
+ * DERIVED from ROUTINE_KEYS, not hand-copied beside it.
+ *
+ * This list claimed to be "the same key set" and wasn't: it was missing
+ * phoebe:contemplation-log-method, phoebe:contemplation-sits,
+ * phoebe:practice-days and phoebe:hide-turn-learn-pray — so designing a
+ * community's rule permanently overwrote the leader's own values for those and
+ * pushed them to their devices. That is the third time a hand-copied mirror of
+ * this list has drifted (ROUTINE_KEYS' own comment records the first two).
+ * Deriving makes the next drift impossible.
+ */
 const ROUTINE_EXACT = [
-  "phoebe:scripture-scope", "phoebe:fdd-mode",
-  "phoebe:psalm-cycle", "phoebe:contemplation-style", "phoebe:routine:updated-at",
-  // Also written by the customizer's controls (breath-count picker) or carried
-  // in ROUTINE_KEYS — missing from this list, designing-for-others permanently
-  // overwrote the designer's own values and pushed them to their devices.
-  "phoebe:cobreathe-length", "phoebe:commitment-start", "phoebe:weekly-practices", "phoebe:rest-window",
+  ...ROUTINE_KEYS.filter((k) => !ROUTINE_PREFIXES.some((p) => k.startsWith(p))),
+  // Not routine CONFIG, but written by the same screens and equally the
+  // leader's own: restore them too.
+  "phoebe:scripture-scope", "phoebe:routine:updated-at",
+  "phoebe:commitment-start", "phoebe:weekly-practices", "phoebe:rest-window",
 ];
 function isRoutineKey(k: string): boolean {
   return ROUTINE_PREFIXES.some((p) => k.startsWith(p)) || ROUTINE_EXACT.includes(k);
