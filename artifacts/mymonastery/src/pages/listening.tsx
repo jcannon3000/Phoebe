@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Trash2 } from "lucide-react";
 import { RiseSheet } from "@/components/RiseSheet";
@@ -74,13 +74,15 @@ function relDay(day: string): string {
   return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
-type View = "log" | "history";
+type View = "deck" | "log" | "history";
 
 // One account-wide log entry (server-backed; syncs across the account).
 type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; shared?: boolean; createdAt: string };
 
 export default function ListeningPage() {
-  const [view, setView] = useState<View>("log");
+  const [view, setView] = useState<View>("deck");
+  const [deckStep, setDeckStep] = useState(0);
+  const deckTouch = useRef<{ x: number; y: number } | null>(null);
   // Kept today already? The form collapses behind a "Log another" button, so
   // the page reads as the practice rather than an empty form. This re-opens it.
   const [logAnother, setLogAnother] = useState(false);
@@ -196,6 +198,186 @@ export default function ListeningPage() {
   // Today's listen when there is one, otherwise the last one — the page always
   // opens on music rather than on an empty form.
   const heroEntry = todayEntry ?? sortedEntries[0] ?? null;
+
+  /**
+   * AUDIO DIVINA AS A DECK — three beats.
+   *
+   * Owner: "we want to make a slideshow for Audio Divina like Visio Divina",
+   * then "not seven beats", then the shape itself: "just intro slide, then
+   * listen to a song that is on your heart… then the next slide is the log."
+   *
+   *   intro · listen · lift it in prayer · log
+   *
+   * Same idiom as the picture practice — one thing per screen, tap or swipe to
+   * page, each beat fading in — and its own length, because the practice is
+   * shaped differently. You don't choose the music here: it's the song already
+   * on your heart, listened to ONCE (owner) — not a piece you return to the
+   * way you return to a painting — and the listening happens away from the
+   * screen. Prayer is its own beat after it, the way the picture practice
+   * ends in prayer rather than in a record. The last
+   * beat is the log this page already was, so nothing about what gets recorded
+   * changes; the deck is the way in to it, and the log stays its own view for
+   * going back over what you've sat with.
+   */
+  const INTRO = 0, LISTEN = 1, LIFT = 2, LOG = 3;
+  const DECK_TOTAL = 4;
+
+  if (view === "deck") {
+    const atLog = deckStep === LOG;
+    const next = () => { if (deckStep < LOG) setDeckStep((n) => n + 1); };
+    const prev = () => { if (deckStep > INTRO) setDeckStep((n) => n - 1); };
+    // Tap the left half to go back, the right half forward; swipe likewise —
+    // lifted from the office deck and Visio Divina so every deck in the app
+    // answers a gesture the same way. Not on the LOG beat: its taps belong to
+    // the search field and the button.
+    const gestureNav = !atLog;
+    const onTapNavigate = (e: React.MouseEvent) => {
+      if (!gestureNav) return;
+      if ((e.target as HTMLElement | null)?.closest('button, a, input, textarea, select, label, [role="button"]')) return;
+      if (e.clientX < window.innerWidth / 2) prev(); else next();
+    };
+    const onTouchStart = (e: React.TouchEvent) => {
+      if (!gestureNav) return;
+      deckTouch.current = { x: e.touches[0]!.clientX, y: e.touches[0]!.clientY };
+    };
+    const onTouchEnd = (e: React.TouchEvent) => {
+      const start = deckTouch.current; deckTouch.current = null;
+      if (!gestureNav || !start) return;
+      const dx = e.changedTouches[0]!.clientX - start.x;
+      const dy = e.changedTouches[0]!.clientY - start.y;
+      if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 50) return;
+      if (dx < 0) next(); else prev();
+    };
+    return (
+      <RiseSheet bgPhoto={null}>
+        {() => (
+          <div className="w-full" onClick={onTapNavigate} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+            <button
+              onClick={() => setView("log")}
+              className="text-[13px] mb-6 inline-flex items-center gap-1.5"
+              style={{ color: SAGE, fontFamily: SPACE_GROTESK }}
+            >
+              ✕ <span>Close</span>
+            </button>
+            <motion.div
+              key={deckStep}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.34, ease: "easeOut" }}
+              className="w-full flex flex-col items-center gap-4"
+            >
+              <p className="text-[10.5px] uppercase tracking-[0.18em] self-start" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
+                Audio Divina
+              </p>
+
+              {deckStep === INTRO && (
+                <div className="w-full">
+                  <h1 className="text-[30px] font-bold leading-tight mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK, letterSpacing: "-0.02em" }}>
+                    Sacred listening
+                  </h1>
+                  <p className="text-[16px] leading-relaxed" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                    Music held the way you'd hold a text — not for what it says, but for what it opens.
+                  </p>
+                </div>
+              )}
+
+              {deckStep === LISTEN && (
+                <p className="text-[21px] leading-relaxed text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, maxWidth: 480 }}>
+                  Listen once to a song that is on your heart. Take a moment to rest in the music, and listen to what might touch your heart as you do.
+                </p>
+              )}
+
+              {deckStep === LIFT && (
+                <p className="text-[21px] leading-relaxed text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, maxWidth: 480 }}>
+                  Take a moment to lift to God what may be on your heart.
+                </p>
+              )}
+
+              {atLog && (
+                <div className="w-full">
+                  <p className="text-[10.5px] uppercase tracking-[0.18em] mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                    What did you listen to?
+                  </p>
+                  <input
+                    value={query}
+                    onChange={(e) => { setQuery(e.target.value); setPicked(false); setWhat(""); setArtworkUrl(""); }}
+                    onFocus={() => setSearchFocused(true)}
+                    onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
+                    placeholder="Search a song, album, or artist…"
+                    className="w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
+                    style={glassField}
+                  />
+                  {results.length > 0 && (
+                    <div className="mt-2 flex flex-col gap-1.5 max-h-[34vh] overflow-y-auto">
+                      {results.map((r, i) => (
+                        <button key={`r-${i}`} type="button" onClick={() => chooseResult(r)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left active:scale-[0.99]" style={glassRow}>
+                          <span aria-hidden>{KIND_EMOJI[r.kind]}</span>
+                          <span className="min-w-0">
+                            <span className="block text-[14px] truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.title}</span>
+                            {r.subtitle && <span className="block text-[12px] truncate" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{r.subtitle}</span>}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchFocused && !picked && query.trim().length < 2 && recents.length > 0 && (
+                    <div className="mt-2 flex flex-col gap-1.5 max-h-[30vh] overflow-y-auto">
+                      <p className="text-[10px] uppercase tracking-[0.18em] px-1 pt-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Recent</p>
+                      {recents.map((r, i) => (
+                        <button key={`rec-${i}`} type="button" onClick={() => chooseRecent(r)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left active:scale-[0.99]" style={glassRow}>
+                          <span className="min-w-0 text-[14px] truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.what}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10.5px] uppercase tracking-[0.18em] mt-5 mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                    How did you listen?
+                  </p>
+                  <div className="flex gap-1.5">
+                    {MEDIA.map((x) => {
+                      const on = medium === x.id;
+                      return (
+                        <button
+                          key={x.id}
+                          type="button"
+                          onClick={() => chooseMedium(x.id)}
+                          className="flex-1 rounded-xl py-2.5 text-[12.5px] font-semibold active:scale-[0.98] transition-transform"
+                          style={{
+                            background: on ? "rgba(46,107,64,0.55)" : "rgba(9,26,16,0.297)",
+                            border: `1px solid ${on ? "rgba(168,197,160,0.6)" : "rgba(200,212,192,0.18)"}`,
+                            color: on ? WARM : SAGE,
+                            fontFamily: SPACE_GROTESK,
+                          }}
+                        >
+                          <span aria-hidden>{MEDIUM_EMOJI[x.id]}</span> {x.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+
+            <div className="w-full flex flex-col items-center gap-2 mt-8">
+              <button
+                onClick={() => { if (atLog) { logToday(); setDeckStep(INTRO); setView("log"); } else next(); }}
+                disabled={atLog && !what.trim()}
+                className="w-full py-4 rounded-2xl text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:active:scale-100"
+                style={(!atLog || what.trim())
+                  ? { ...FROST_CTA, background: "rgba(46,107,64,0.55)", color: WARM, fontFamily: SPACE_GROTESK }
+                  : { ...FROST_CTA, color: "rgba(240,237,230,0.42)", fontFamily: SPACE_GROTESK }}
+              >
+                {deckStep === INTRO ? "Begin" : atLog ? "Log it" : "Continue"}
+              </button>
+              <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK, letterSpacing: "0.12em" }}>
+                {deckStep + 1} / {DECK_TOTAL}
+              </span>
+            </div>
+          </div>
+        )}
+      </RiseSheet>
+    );
+  }
 
   // ——— History (the full log) ———
   if (view === "history") {
