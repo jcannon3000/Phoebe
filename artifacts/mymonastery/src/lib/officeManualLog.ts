@@ -105,6 +105,38 @@ export function undoOfficeToday(side: OfficeUndoSide, onlyMode?: string): void {
     else localStorage.setItem(UNDO_MODE_PREFIX + onlyMode, todayKey());
     window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
   } catch { /* private mode / quota — non-fatal */ }
+  /**
+   * …and TELL THE SERVER, so the undo is true on every device.
+   *
+   * Reported: "I unlogged my evening practice but it did not take effect for
+   * web." The tombstone above masks the server's signal only on the device
+   * that wrote it — every other device went on reading the prayer_sessions row
+   * and showing the office kept. This clears `completed` on today's rows for
+   * this side, which is the exact flag office-history-week already gates on:
+   * the session and its duration stay, what's retracted is the claim that it
+   * was finished.
+   *
+   * Whole-side undos only. A mode-scoped undo (a side's SECOND practice) has
+   * no server vocabulary yet — its tombstone stays device-local, which is no
+   * worse than before.
+   *
+   * Best-effort and un-awaited: the local tombstone has already made this
+   * device right, and a 401 (a guest, with no rows to clear) is expected.
+   */
+  if (!onlyMode) {
+    const tz = (() => {
+      try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
+    })();
+    void apiRequest("POST", `/api/me/office-undo?tz=${encodeURIComponent(tz)}`, { side })
+      .then(() => {
+        // Nudge the readers to re-fetch, so this device stops relying on its
+        // own tombstone and reads the corrected server answer. (The event, not
+        // a queryClient import — this module is imported by the shell and must
+        // not pull React Query in with it.)
+        try { window.dispatchEvent(new Event(OFFICE_DONE_EVENT)); } catch { /* non-fatal */ }
+      })
+      .catch(() => { /* offline / guest — the local tombstone still holds */ });
+  }
 }
 
 /**

@@ -839,4 +839,75 @@ router.delete("/me/contemplation-sessions/:id", async (req, res): Promise<void> 
   }
 });
 
+/**
+ * POST /api/me/office-undo { side } — un-keep a side's office for TODAY.
+ *
+ * Reported: "I unlogged my evening practice but it did not take effect for
+ * web." Undoing was DEVICE-LOCAL. undoOfficeToday writes a localStorage
+ * tombstone that masks the server's signal, and a tombstone only masks it on
+ * the device that wrote it — so the phone showed the evening open and every
+ * other device went on reading the prayer_sessions row and showing it kept.
+ *
+ * The fix needs no new table and no new concept, because office-history-week
+ * ALREADY gates on `completed = TRUE`: clearing that flag on today's rows for
+ * this side is exactly "this office was not finished", said in the vocabulary
+ * the read side already speaks. The session row itself is kept — its duration
+ * and its timestamp are still true; what the reader is retracting is the claim
+ * that they finished it.
+ *
+ * Only the completion-gated surfaces. A National Cathedral watch is gated on
+ * DURATION rather than on `completed`, and it records something that really
+ * did happen for three minutes; retracting an office you prayed is not the
+ * same act as denying you watched a service.
+ */
+const UNDO_SURFACES: Record<"morning" | "evening" | "compline", string[]> = {
+  morning: ["morning-prayer", "morning-devotion", "morning-office-podcast"],
+  evening: ["evening-prayer", "early-evening-devotion", "evening-office-podcast"],
+  compline: ["compline"],
+};
+
+router.post("/me/office-undo", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const side = (req.body as { side?: unknown })?.side;
+  if (side !== "morning" && side !== "evening" && side !== "compline") {
+    res.status(400).json({ error: "side must be morning, evening or compline" });
+    return;
+  }
+  try {
+    const [meTz] = await db
+      .select({ timezone: usersTable.timezone })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUserId));
+    // Same precedence users.ts's resolveUserTz uses: an explicit ?tz= wins,
+    // then the stored zone, then UTC. Inlined rather than imported — that
+    // helper is module-private to users.ts and also backfills the column,
+    // which an undo has no business doing.
+    const q = (req.query ?? {}) as Record<string, unknown>;
+    const qtz = typeof q["tz"] === "string" ? (q["tz"] as string) : null;
+    const tz = (qtz && isValidTimeZone(qtz) ? qtz : null) || meTz?.timezone || "UTC";
+    // Only surfaces this deployment actually knows — the same gate POST uses.
+    const surfaces = UNDO_SURFACES[side].filter((x) => SURFACE_SET.has(x));
+    if (surfaces.length === 0) { res.json({ ok: true, cleared: 0 }); return; }
+    // TODAY in the reader's own timezone — the same date arithmetic
+    // office-history-week uses, so the two agree about which day this is.
+    // Query builder + inArray rather than a raw `= ANY($1)`, which needs an
+    // explicit ::text[] cast to bind a JS array on Postgres.
+    const cleared = await db
+      .update(prayerSessionsTable)
+      .set({ completed: false })
+      .where(and(
+        eq(prayerSessionsTable.userId, sessionUserId),
+        eq(prayerSessionsTable.completed, true),
+        inArray(prayerSessionsTable.surface, surfaces as typeof prayerSurfaces[number][]),
+        sql`(${prayerSessionsTable.endedAt} AT TIME ZONE ${tz})::date = (NOW() AT TIME ZONE ${tz})::date`,
+      ))
+      .returning({ id: prayerSessionsTable.id });
+    res.json({ ok: true, cleared: cleared.length });
+  } catch (err) {
+    console.error("[office-undo] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 export default router;
