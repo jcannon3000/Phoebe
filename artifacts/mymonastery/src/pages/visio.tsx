@@ -308,22 +308,30 @@ export default function VisioPage() {
    * that's the whole practice gone — the one thing you cannot do quickly is
    * look slowly.
    *
-   * The five beats of the practice proper hold. The opening invitation doesn't
-   * (there's nothing to sit with yet) and neither does the close (holding
-   * someone at the exit is friction, not attention).
+   * ONLY where the picture is actually on screen (owner). The prompts are read,
+   * not looked at — holding someone on a sentence they finished in two seconds
+   * is just a locked door, and it delays the very thing the prompt sent them to
+   * do. The three beats that show the image are the ones worth sitting in; the
+   * title, the prompts and the close all move when you do.
    */
   const HOLD_MS = 12_000;
-  const holdsThisBeat = step === PROMPT_1 || step === PICTURE_1 || step === PROMPT_2
-    || step === PICTURE_2 || step === CONTEMPLATE;
+  const holdsThisBeat = showsImage;
   const [holdReady, setHoldReady] = useState(false);
   useEffect(() => {
     if (!holdsThisBeat) { setHoldReady(true); return; }
     setHoldReady(false);
     const t = window.setTimeout(() => {
       setHoldReady(true);
-      // The same soft "light" haptic the amen hold uses to mark the reveal —
-      // a different feel from the tap that follows it.
-      try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } })); } catch { /* non-fatal */ }
+      /**
+       * The release, felt (owner: "have a haptic when the button is done").
+       *
+       * MEDIUM, not the amen hold's "light". That one marks the end of a
+       * three-second wait you're already watching; this ends twelve seconds
+       * spent looking at a picture, which is exactly when your eyes are NOT on
+       * the button. A tap you can feel without looking is the whole point of
+       * it here, and "light" was too easy to miss.
+       */
+      try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "medium" } })); } catch { /* non-fatal */ }
     }, HOLD_MS);
     return () => window.clearTimeout(t);
   }, [step, holdsThisBeat]);
@@ -423,6 +431,11 @@ export default function VisioPage() {
            template literal and one would end it.) */
         @keyframes visio-hold-grow { from { width: 0%; } to { width: 100%; } }
         .visio-hold-fill { width: 0%; animation: visio-hold-grow 12s linear forwards; }
+        /* Continue arriving once the hold is up — the same 6px rise the app's
+           illuminated titles use (title-glow-fade-in), so the word lands the
+           way they do rather than blinking into place. */
+        @keyframes visio-cta-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .visio-cta-rise { animation: visio-cta-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 
         /* (The bespoke prompt glow that used to live here is gone — the
            prompts use .title-glow-breathe now, the same illuminated rise the
@@ -757,15 +770,28 @@ export default function VisioPage() {
               style={{ position: "absolute", left: 0, top: 0, bottom: 0, background: "rgba(168,197,160,0.16)", pointerEvents: "none" }}
             />
           )}
-          <span style={{ position: "relative" }}>
-            {step === TITLE
-              ? t("common.begin", { defaultValue: "Begin" })
-              // Audit: the closing slide's button doesn't continue anything — it
-              // marks the practice kept and leaves. Saying "Continue" there
-              // described the one tap in this deck that isn't one.
-              : step === DONE
-                ? t("common.done", { defaultValue: "Done" })
-                : t("common.continue", { defaultValue: "Continue" })}
+          <span
+            key={`${step}-${holdReady}`}
+            className={holdsThisBeat && holdReady ? "visio-cta-rise" : undefined}
+            style={{ position: "relative" }}
+          >
+            {/* NOTHING while the hold runs, and Continue RISES when it's time
+                (owner). A button labelled for an action it will refuse reads as
+                broken, and a substitute label ("Stay with it") is still a word
+                asking to be read on a beat whose whole job is looking. So: an
+                empty pill with its wash filling, then the word arrives — the
+                same 6px rise the app's illuminated titles use, which is what
+                makes it read as arriving rather than appearing. */}
+            {!holdReady
+              ? null
+              : step === TITLE
+                ? t("common.begin", { defaultValue: "Begin" })
+                // Audit: the closing slide's button doesn't continue anything —
+                // it marks the practice kept and leaves. Saying "Continue"
+                // there described the one tap in this deck that isn't one.
+                : step === DONE
+                  ? t("common.done", { defaultValue: "Done" })
+                  : t("common.continue", { defaultValue: "Continue" })}
           </span>
         </button>
         <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.12em" }}>{step + 1} / {TOTAL}</span>
