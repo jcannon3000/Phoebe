@@ -195,7 +195,23 @@ export function describeSpec(spec: {
        * Prayer opened Edit and could not find it — the one thing they keep
        * morning and evening was listed under a name they had never chosen.
        */
-      const isBreath = rc["phoebe:contemplation-style"] === "cobreathe";
+      /**
+       * WHICH practice, per side.
+       *
+       * This read the ONE global style key, which holds whichever side was
+       * written last — so a rule keeping silence in the morning and the breath
+       * at night described BOTH rows as Creation Prayer. The read-back then
+       * asked the reader to confirm a rule they don't keep.
+       *
+       * `phoebe:office:contemplation-kind:<side>` rides rule_config (it's in
+       * the client's ROUTINE_KEYS and sanitizeSpec passes rule-config keys
+       * through), so it's here to be read. The global stays the fallback for a
+       * rule that predates it.
+       */
+      const sideKind = rc[`phoebe:office:contemplation-kind:${side}`];
+      const isBreath = sideKind
+        ? sideKind === "creation"
+        : rc["phoebe:contemplation-style"] === "cobreathe";
       rows.push({
         // Per-SIDE id. Both sides used the bare "contemplation", so a rule
         // that keeps a sit morning and evening rendered two list rows sharing
@@ -205,7 +221,7 @@ export function describeSpec(spec: {
         emoji: isBreath ? "🌍" : "🕯️",
         label: isBreath ? `${cap} Creation Prayer` : `${cap} Contemplation`,
         sub: isBreath
-          ? ["Breathing with creation", logMethodLabel(rc)].join(" · ")
+          ? "Breathing with creation"
           : [mins ? `${mins} min` : "A silent sit", logMethodLabel(rc)].join(" · "),
         section: "contemplation",
       });

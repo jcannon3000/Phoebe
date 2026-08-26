@@ -1211,6 +1211,21 @@ export default function WayOfLoveRuleFlow({
     });
   }, [contemplativeForm.morning, contemplativeForm.evening]);
 
+  /**
+   * Is THIS SIDE'S contemplative practice the Creation Prayer breath?
+   *
+   * The flow used to ask `contemplationStyle === "cobreathe"` in six places
+   * with a side in hand. That state is ONE value for the whole rule, so on a
+   * split rule every one of them answered for whichever side was picked last:
+   * the silent side's config slide asked "how many breaths?", its review row
+   * said "N breaths" and linked to the wrong edit step, and commit() sized the
+   * daily goal from the wrong practice.
+   */
+  const sideIsCreation = (sd: OfficeSide) => contemplativeForm[sd] === "creation";
+  /** Does ANY side keep the breath / keep silence? For whole-rule questions. */
+  const anySideCreation = sideIsCreation("morning") || sideIsCreation("evening");
+  const anySideSilent = contemplativeForm.morning === "prayer" || contemplativeForm.evening === "prayer";
+
   /** Is this side set to a contemplative practice at all? */
   const contemplativeOnSide = (s: OfficeSide) => contemplativeForm[s] !== null;
   // Contemplative-Prayer silence sizing: a FIXED daily amount (the dropdown), or
@@ -1508,7 +1523,7 @@ export default function WayOfLoveRuleFlow({
     // Contemplative Prayer is an add-on now — its own per-side silence card
     // regardless of the office anchor — so a silent sit is wanted whenever it's
     // checked on either side.
-    const anySideSilentContemplation = anyContemplation && contemplationStyle === "silent";
+    const anySideSilentContemplation = anyContemplation && anySideSilent;
     const effGoalMin = goalMin > 0 ? goalMin : (anySideSilentContemplation ? 10 : 0);
     for (const side of SIDES) {
       if (sides[side]) {
@@ -1565,7 +1580,7 @@ export default function WayOfLoveRuleFlow({
     // "Add an additional practice" toggle (contemplative.cobreathe) — the
     // latter is only offered there when NEITHER side already carries it, so
     // the two paths never fight over the same card.
-    const wantCobreathe = (contemplationStyle === "cobreathe" && anyContemplation) || contemplative.cobreathe;
+    const wantCobreathe = (anyContemplation && anySideCreation) || contemplative.cobreathe;
     // Compline earns a home card ONLY as a standalone add-on. When it's a
     // side's office ANCHOR (the evening way-step choice) that side's own card
     // IS Compline, so a second "compline" module would double it on the home —
@@ -1708,7 +1723,7 @@ export default function WayOfLoveRuleFlow({
     // Silence is its own step now (a daily-minutes goal) — the chosen value IS the
     // goal (0 = None). Contemplative Prayer is an add-on (its own silence card),
     // so a silent sit is wanted whenever it's checked — fall back to 10 min then.
-    const anySideSilentContemplation = anyContemplation && contemplationStyle === "silent";
+    const anySideSilentContemplation = anyContemplation && anySideSilent;
     const effGoalMin = goalMin > 0 ? goalMin : (anySideSilentContemplation ? 10 : 0);
     for (const side of SIDES) {
       if (sides[side]) {
@@ -1823,7 +1838,7 @@ export default function WayOfLoveRuleFlow({
     // "Add an additional practice" toggle (contemplative.cobreathe) — the
     // latter is only offered there when NEITHER side already carries it, so
     // the two paths never fight over the same card.
-    const wantCobreathe = (contemplationStyle === "cobreathe" && anyContemplation) || contemplative.cobreathe;
+    const wantCobreathe = (anyContemplation && anySideCreation) || contemplative.cobreathe;
     // Compline earns a home card ONLY as a standalone add-on. When it's a
     // side's office ANCHOR (the evening way-step choice) that side's own card
     // IS Compline, so a second "compline" module would double it on the home —
@@ -2965,7 +2980,8 @@ export default function WayOfLoveRuleFlow({
     // "cobreathe" style) — only offer it again here as a standalone extra
     // when NEITHER side already carries it, so a user with it as their
     // primary prayer doesn't see a confusing duplicate toggle.
-    const creationAlreadyPrimary = contemplationStyle === "cobreathe" && (contemplationBySide.morning || contemplationBySide.evening);
+    const creationAlreadyPrimary = (contemplationBySide.morning && sideIsCreation("morning"))
+      || (contemplationBySide.evening && sideIsCreation("evening"));
     // Same reasoning for the Examen: since evening's "Simple Guided Prayer" row
     // now doubles as the Examen (see the morning/evening "way" step), a user who
     // reaches this step with evening set that way already has the Examen as
@@ -3680,7 +3696,7 @@ export default function WayOfLoveRuleFlow({
     // Creation Prayer side → the length question is a BREATHS preset, not a
     // silent-sit's minutes (owner: "it should not be minutes but the preset
     // for breaths").
-    const isCobreatheSide = contemplationBySide[side] && contemplationStyle === "cobreathe";
+    const isCobreatheSide = contemplationBySide[side] && sideIsCreation(side);
     return shell(
       <>
         {backRow(goPrev)}
@@ -4579,7 +4595,10 @@ export default function WayOfLoveRuleFlow({
     // length (breaths for the breath, minutes for a sit) — NOT the whole-day
     // goal, which read wrong ("144 min a day" on every card).
     ...((["morning", "evening"] as OfficeSide[]).filter((s) => contemplationBySide[s]).map((s) => {
-      const isCob = contemplationStyle === "cobreathe";
+      // THIS side's practice — the aggregate made both rows claim whichever
+      // was picked last, so the silent side's row read "N breaths" and its
+      // tap-to-edit went to the breath step.
+      const isCob = sideIsCreation(s);
       const cap = s === "morning" ? "Morning" : "Evening";
       return {
         emoji: isCob ? "🌍" : (silenceMode === "grow" ? "🌱" : "🕯️"),

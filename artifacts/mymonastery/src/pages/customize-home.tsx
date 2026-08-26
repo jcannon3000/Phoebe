@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { saveHomeLayout } from "@/lib/homeLayoutCache";
-import { getSideLevel, setSideLevel, type OfficeLevel } from "@/lib/officePrefs";
+import { getSideLevel, setSideLevel, type OfficeLevel, setSideContemplationKind } from "@/lib/officePrefs";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 
@@ -314,7 +314,15 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
     setSideLevel("evening", level);
     // Cobreathe is contemplation with the shared-breath style — mark it so the
     // home/contemplation card opens straight into the breath.
-    if (choice === "cobreathe") { try { localStorage.setItem("phoebe:contemplation-style", "cobreathe"); } catch { /* ignore */ } }
+    // Write the PER-SIDE kind too, not only the global. An explicit per-side
+    // key beats the global fallback, so a user who already had
+    // contemplation-kind:morning = "silent" picked Creation Prayer here and
+    // that side simply didn't change — the rule they just chose never took.
+    // (Both sides, because this picker sets both side levels above.)
+    if (choice === "cobreathe") {
+      setSideContemplationKind("morning", "creation");
+      setSideContemplationKind("evening", "creation");
+    }
     savePray.mutate(level);
   };
 

@@ -272,7 +272,7 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive, complineActive, contemplationStyle, morningContemplationActive, eveningContemplationActive, morningExtraLevel, eveningExtraLevel, intentionsTotalCount, visioActive } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive, complineActive, contemplationStyle, morningContemplationKind, eveningContemplationKind, morningContemplationActive, eveningContemplationActive, morningExtraLevel, eveningExtraLevel, intentionsTotalCount, visioActive } = useRhythmState();
   // When a side's contemplative practice IS the breath, that side's practice is
   // Creation Prayer — not a silent sit AND a breath. The daily cards already
   // collapse the two (the standalone Co-Breathe card is suppressed); this row
@@ -283,7 +283,13 @@ export function WeeklyGridCard() {
   // filled correctly. Collapse to the Creation Prayer row, and only when that
   // row is actually rendering (an older layout with the card hidden keeps the
   // silent row rather than losing both).
-  const creationPerSide = contemplationStyle === "cobreathe" && (morningContemplationActive || eveningContemplationActive);
+  // The 🕯️ Contemplation row is covered by the 🌍 Creation Prayer row only
+  // when EVERY active contemplative side is the breath. The aggregate meant a
+  // split rule (morning silence, evening breath) suppressed the silent row —
+  // the morning sit had a card and a dot but no weekly history at all.
+  const creationPerSide = (!morningContemplationActive || morningContemplationKind === "creation")
+    && (!eveningContemplationActive || eveningContemplationKind === "creation")
+    && (morningContemplationActive || eveningContemplationActive);
   const creationRowCovers = creationPerSide && cobreatheActive;
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
@@ -1808,8 +1814,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // mirror the office hero exactly: no emoji + a small-caps "CREATION PRAYER"
   // eyebrow above the title (the office hero shows "BOOK OF COMMON PRAYER" and
   // no emoji). The compact list card keeps its 🌍.
-  const heroIsCreation = !!contemplationHero && creationStyle
-    && (contemplationHero.key === "contemplation-morning" || contemplationHero.key === "contemplation-evening");
+  // The hero IS one side, so ask that side (the aggregate stripped the 🕯️ and
+  // put a "CREATION PRAYER" eyebrow over the title "Morning Contemplation").
+  const heroIsCreation = !!contemplationHero
+    && (contemplationHero.key === "contemplation-morning" ? sideIsCreation("morning")
+      : contemplationHero.key === "contemplation-evening" ? sideIsCreation("evening")
+        : false);
   const heroNode = officeHero ?? (contemplationHero ? (
     <PracticeCard
       href={contemplationHero.href}

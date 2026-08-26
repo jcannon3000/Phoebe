@@ -1789,8 +1789,16 @@ export default function RoutineInterviewPage() {
     const alreadyPrimary: Record<string, boolean> = {
       compline: levels.includes("compline"),
       examen: levels.includes("examen"),
-      cobreathe: rc["phoebe:contemplation-style"] === "cobreathe"
-        && (rc["phoebe:office:contemplation:morning"] === "1" || rc["phoebe:office:contemplation:evening"] === "1"),
+      // ANY side whose own kind is the breath — asked per side. The global
+      // holds whichever side was written last, so on a rule with the breath in
+      // the MORNING and silence at night it read "silent" and the extras slide
+      // re-offered Creation Prayer, giving a practice a side already anchors a
+      // second card and a second weekly row.
+      cobreathe: (["morning", "evening"] as const).some((sd) => {
+        if (rc[`phoebe:office:contemplation:${sd}`] !== "1") return false;
+        const kind = rc[`phoebe:office:contemplation-kind:${sd}`];
+        return kind ? kind === "creation" : rc["phoebe:contemplation-style"] === "cobreathe";
+      }),
     };
     /**
      * Also drop anything the interview ALREADY heard them say.
