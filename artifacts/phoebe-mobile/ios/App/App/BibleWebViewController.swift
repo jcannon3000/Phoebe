@@ -970,11 +970,32 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         else { return }
         // ["the-slug"] → "the-slug", already escaped for JS by JSONSerialization.
         let quoted = slugLiteral.dropFirst().dropLast()
+        // Owner: "when it goes into the reflection, have the page start at the
+        // picture not under [it]." The slug's element is the COMMENTARY block;
+        // on VCS the artwork it discusses sits just above. Landing on the text
+        // put the picture out of view — backwards for a looking practice. So:
+        // find the work's image nearest above the anchor and start there, with
+        // the commentary arriving as you scroll. Bounded to ~2000px so a
+        // different work three screens up can never capture the landing, and
+        // small images (icons, logos) never qualify. No image found → the
+        // anchor, exactly as before.
         let js = """
         (function () {
           var el = document.getElementById(\(quoted));
           if (!el) return false;
-          window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.pageYOffset));
+          var anchorTop = el.getBoundingClientRect().top + window.pageYOffset;
+          var target = anchorTop;
+          var best = null;
+          var imgs = document.images;
+          for (var i = 0; i < imgs.length; i++) {
+            var im = imgs[i];
+            var r = im.getBoundingClientRect();
+            if (r.width < 150 && (im.naturalWidth || 0) < 150) continue;
+            var top = r.top + window.pageYOffset;
+            if (top <= anchorTop + 8 && anchorTop - top < 2000 && (best === null || top > best)) best = top;
+          }
+          if (best !== null) target = best;
+          window.scrollTo(0, Math.max(0, target));
           return true;
         })()
         """

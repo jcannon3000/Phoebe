@@ -40,6 +40,7 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
+import { openExternal, openOfficeReading, preloadExternal } from "@/lib/openExternal";
 import { FROST_BLUR } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
@@ -73,11 +74,16 @@ const SERIF = "Georgia, 'Times New Roman', serif";
  * for. Asking it first would turn the practice into a quiz.
  */
 const QUESTIONS = [
-  // Before the first look, so it only has to point the eyes.
+  // The first prompt, whether or not a reflection follows. Owner walked back
+  // the mechanics-narrating version ("First you'll see the picture, with a
+  // background behind the work…"): "just going back to the first prompt
+  // without talking about the description then the image." The prompt points
+  // the eyes; the first-look beat itself shows how the looking happens.
   "As you view the following picture, notice anything that is sticking out to you, or grabs your attention.",
-  // Owner: "the next slide should be, as you return to the image..." — the
-  // reader is being sent back to the same picture, so the prompt says so
-  // rather than reading like the first question asked twice.
+  // Owner: "the next slide should be, as you return to the image..." — this
+  // beat comes AFTER the reflection, and the reader is being sent back to the
+  // same picture with what they've just read. The prompt says so rather than
+  // reading like the first question asked twice.
   "As you return to the image, consider what God might be speaking to you through it in this moment.",
 ];
 
@@ -259,6 +265,8 @@ export default function VisioPage() {
         scriptureRef: bundled.scriptureRef,
         attribution: bundled.attribution,
         licence: "Public domain",
+        // The commentary this artwork links to — LINKED, never reproduced.
+        essayUrl: bundled.essayUrl ?? null,
         followsToday: false,
       }
     : active
@@ -271,29 +279,41 @@ export default function VisioPage() {
           scriptureRef: active.ref,
           attribution: active.art.attribution,
           licence: active.art.licence,
+          essayUrl: active.art.essay,
           followsToday: active.followsToday,
         }
       : null;
 
   /**
-   * SEVEN beats: title · prompt · picture · prompt · picture · contemplation ·
-   * completion.
+   * SEVEN beats: title · prompt · the picture-with-its-background · prompt ·
+   * picture · contemplation · completion.
    *
-   * NO REFLECTION (owner: "I want to take the reflection out of the visio").
+   * Owner, in two messages: "show the first prompt before the picture, [it]
+   * may say first you will see the picture with a background behind the work.
+   * As you view and read, notice what might stick out for you" — and then
+   * "we can use the reflection as the first image view too."
    *
-   * The deck used to hand you out to VCS's commentary on the first look, and
-   * offered it again on the closing card. Both are gone. What's left is the
-   * shape the practice was always after, with nobody else's reading of the
-   * picture inside it: look, be asked what God might be saying to YOU, look
-   * again holding that, then sit with it and pray.
+   * That second line is what collapsed the deck from eight beats to seven.
+   * The reflection page SHOWS the artwork alongside the commentary, so opening
+   * it IS the first look. The separate picture beat that used to follow it was
+   * the same picture a second time, one tap later, asking for nothing new —
+   * so it's gone, and the reflection does that work.
    *
-   * The count doesn't change, because the beat that handed you off already
-   * showed the picture on days with no essay — it just always does now, and
-   * the two looking beats are the first and second look the prompts describe.
+   * The prompt moved AHEAD of it for the same reason: once the reflection is
+   * the first view, the instruction for your eyes has to arrive before you
+   * open it, not after you come back. It now says what is about to happen —
+   * picture and background together — so the reader knows to do both at once.
    *
-   * The catalogue still stores each work's `essay` URL. Nothing here reads it;
-   * it's data about the artwork, and deleting it would mean re-fetching 229
-   * records to get it back.
+   * Which leaves the shape the practice was always after: look (guided, and
+   * informed), be asked what God might be saying to YOU, look AGAIN holding
+   * that, then sit with it and pray. The second look is the point of the
+   * sequence, and it is not the end.
+   *
+   * NO ESSAY, NO HAND-OFF. Every one of the 229 catalogued works has one, but
+   * the bundled fallback may not, and a beat that opens nothing is the trap
+   * this deck has already had once. Without an essay the same beat simply
+   * shows the picture, on its own, held — see `hasEssay` below. The beat count
+   * doesn't change, so neither does the counter.
    *
    * NO SCRIPTURE SLIDE. It has been cut twice now; the passage the artwork
    * depicts is still NAMED — it's the eyebrow over the title on the picture
@@ -310,7 +330,19 @@ export default function VisioPage() {
    * image on the screen it was asking about something that wasn't there. It's
    * the third look, and the longest one.
    */
-  /** FIRST_LOOK is the first of the two looking beats — the picture, plainly. */
+  /**
+   * Whether today's work has a reflection to open.
+   *
+   * `view` is null while the day's artwork resolves, so this is false for a
+   * moment on load — which is the safe way round: the first-look beat falls
+   * back to being a plain picture beat, and flips to the hand-off once the
+   * essay is known. Never the reverse.
+   */
+  const hasEssay = !!view?.essayUrl;
+  /** FIRST_LOOK is the picture — with or without a reflection to open. It used
+   *  to be a text slide when there WAS one, which put two slides of
+   *  instructions back to back and made the reader tap twice before seeing
+   *  anything. The reading is offered under the work instead. */
   const showsImage = step === FIRST_LOOK || step === PICTURE || step === CONTEMPLATE;
 
   /**
@@ -356,6 +388,8 @@ export default function VisioPage() {
   const atEnd = step >= TOTAL - 1;
   const goHome = () => setLocation("/dashboard");
   const next = () => {
+    // The Background beat's forward action IS the hand-off — see openBackground.
+    if (backgroundOpens) { openBackground(); return; }
     if (!atEnd) { setStep((s) => s + 1); return; }
     // Kept by finishing, not by opening.
     try { markPracticeDoneToday("visio"); } catch { /* non-fatal */ }
@@ -411,20 +445,128 @@ export default function VisioPage() {
     if (e.clientX < window.innerWidth / 2) prev(); else if (holdReady) next();
   };
 
-  /* (The hand-off to VCS's commentary lived here: a readBackground flag, a
-     `phoebe:browserfinished` listener that stepped the deck back when you
-     swiped out of the reading, and the office-slide listeners that let the
-     reading page the deck underneath it — machinery whose only job was making
-     an external page behave like a slide. Owner: "I want to take the
-     reflection out of the visio", so there is no external page to dress.) */
+  /**
+   * FIRST_LOOK → the reflection, the way the office opens a lesson.
+   *
+   * Owner: "include the reflection of the visio as a slide with navigation
+   * like in the office", then "a first prompt after the title slide that says
+   * background, then goes to the reflection, then the three slide flow", and
+   * finally "we can use the reflection as the first image view too" — which
+   * is why this beat is now the FIRST LOOK and not a preamble to one.
+   *
+   * The commentary itself can't BE a slide — it's VCS's writing, their images
+   * are licensed from agencies, and their robots.txt excludes AI crawlers, so
+   * the app links it and never reproduces it. But the office already solved
+   * exactly this for its own lessons: openOfficeReading hands the page to the
+   * native browser wearing the office's chrome — top bar, and a floating
+   * bottom pill whose Back/Next dismiss it and step the deck underneath. The
+   * reading behaves like a slide with navigation because, to the reader, it is
+   * one.
+   *
+   * Which is why this beat's FORWARD action opens the reading rather than
+   * paging — the same thing the office's lesson slide does. Coming back
+   * through the browser's Next lands you on the second prompt, which sends you
+   * to the image again; Back lands you on the first, which offers the
+   * reflection again (see the readBackground reset below).
+   *
+   * Second tap advances instead of re-opening, and a day with no essay shows
+   * the picture here instead: a beat you can't leave is the trap this deck
+   * already had once.
+   */
+  const [readBackground, setReadBackground] = useState(false);
+  /** True only while OUR hand-off is the thing on screen — see the listener below. */
+  const handedOff = useRef(false);
+  /**
+   * Back out of the reflection, and you're back a slide.
+   *
+   * Owner: "if you click back on the reflection, let it go to the past slide."
+   * The bottom pill's Back already did — it fires phoebe:office-prev-slide and
+   * the deck steps. The EDGE SWIPE didn't: in office chrome there is no top-bar
+   * close (BibleWebViewController leaves the left item out on purpose), so the
+   * swipe is how you leave, and it only fires phoebe:browserfinished. That
+   * dropped you back on the beat that had just handed you out — a slide you'd
+   * finished with, whose Continue now pages straight past the reflection. The
+   * two ways of going back have to mean the same thing.
+   *
+   * browserfinished is a global event and the native side suppresses it for
+   * the pill's Back/Next (`handingOff`), so this fires only for a real dismiss
+   * — but it fires for any browser anyone opens, hence the ref.
+   */
+  useEffect(() => {
+    const onFinished = () => {
+      if (!handedOff.current) return;
+      // Belt and braces: see the step-change reset below for why this can't
+      // already be a stale flag from an earlier beat.
+      handedOff.current = false;
+      setStep((n) => Math.max(0, n - 1));
+    };
+    window.addEventListener("phoebe:browserfinished", onFinished);
+    return () => window.removeEventListener("phoebe:browserfinished", onFinished);
+  }, []);
+  /**
+   * Standing before the hand-off again means it's on offer again.
+   *
+   * readBackground exists to stop a second tap re-opening the reading instead
+   * of advancing. Once you've gone BACK past that beat, though, the next
+   * forward tap should hand you off exactly as the first one did — otherwise
+   * going back one slide silently deletes the reflection from the practice.
+   */
+  useEffect(() => { if (step < FIRST_LOOK) setReadBackground(false); }, [step, FIRST_LOOK]);
+  /**
+   * The hand-off flag belongs to ONE beat.
+   *
+   * Leaving the reflection doesn't change `step` (that's the whole point of the
+   * listener above), so this never fires on the path it protects. It fires when
+   * the deck moves on by any other route — and that matters because the closing
+   * slide opens VCS too ("Read reflection", openExternal). Without this, a flag
+   * left set at beat 3 would still be armed at beat 7, and closing THAT browser
+   * would walk the reader backwards out of their own completion screen.
+   *
+   * Unreachable today: on iOS every exit from the reading already clears it
+   * (the pill's Back/Next fire office-prev/next-slide, the edge swipe fires
+   * browserfinished), and on web no browserfinished is ever fired at all. It
+   * costs one line to stop being one native tweak away from true.
+   */
+  useEffect(() => { handedOff.current = false; }, [step]);
+  useEffect(() => { if (view?.essayUrl) preloadExternal(view.essayUrl); }, [view?.essayUrl]);
+  useEffect(() => {
+    const onNext = () => { handedOff.current = false; setStep((n) => Math.min(TOTAL - 1, n + 1)); };
+    const onPrev = () => { handedOff.current = false; setStep((n) => Math.max(0, n - 1)); };
+    window.addEventListener("phoebe:office-next-slide", onNext);
+    window.addEventListener("phoebe:office-prev-slide", onPrev);
+    return () => {
+      window.removeEventListener("phoebe:office-next-slide", onNext);
+      window.removeEventListener("phoebe:office-prev-slide", onPrev);
+    };
+  }, []);
+  /** True when this beat's forward action should open the reading, not page. */
+  const backgroundOpens = step === FIRST_LOOK && hasEssay && !readBackground;
+  const openBackground = () => {
+    if (!view?.essayUrl) return;
+    setReadBackground(true);
+    handedOff.current = true;
+    const opened = openOfficeReading(view.essayUrl, {
+      officeTitle: t("visio.title", { defaultValue: "Visio Divina" }),
+      slideLabel: `${step + 1} of ${TOTAL}`,
+      // Deliberately NOT the artwork's title — some run to eighty characters
+      // and overflow the web viewer's bottom bar.
+      sectionLabel: "",
+    });
+    // Nothing opened (a blocked popup on web) — don't strand them on a beat
+    // whose whole action just failed silently. Step DIRECTLY, never next():
+    // backgroundOpens is a render-scoped const that setReadBackground can't
+    // change until a re-render, so next() re-enters this function and the
+    // pair recurse to stack overflow — window.open on every frame of it.
+    if (!opened) setStep((n) => Math.min(TOTAL - 1, n + 1));
+  };
 
   /** Jump back into a picture from the completion cards. */
   const reopen = (id: number) => {
     setOverrideId(id);
     setLoadedSrc(null);
     // The picture beat, NOT the first-look beat: coming back to a work you've
-    // already prayed with lands on the second look, holding what you carried
-    // away from it, rather than restarting the sequence.
+    // already prayed with should show it, not hand you straight back out to
+    // its commentary.
     setStep(PICTURE);
   };
 
@@ -724,7 +866,38 @@ export default function VisioPage() {
             <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 2px", textAlign: "center" }}>
               {t("visio.close_eyebrow", { defaultValue: "Visio Divina complete" })}
             </p>
-            {cards.map((a) => (
+            {cards.map((a) => {
+              /**
+               * "Read reflection" belongs to TODAY'S card only (owner).
+               *
+               * The commentary left the practice itself — looking and prayer,
+               * with nobody else's reading of the picture in between — but the
+               * closing slide is after all of that, which is exactly where
+               * somebody else's reading is welcome. On the day's own card, so
+               * it reads as more about THIS picture rather than a stray link.
+               *
+               * Deliberately openExternal, NOT openOfficeReading: the office
+               * flavour carries a Back/Next pill that steps the deck it was
+               * opened from, and this deck is over — its Next would have
+               * nothing to move to and would sit there looking broken.
+               */
+              /**
+               * No reflection → no pill (owner: "if there isn't a reflection
+               * just don't show the reflection").
+               *
+               * A usable reflection is a real http(s) URL, not merely a
+               * non-empty string: anything else can only open the in-app
+               * browser onto nothing, which is how a reflection presented as a
+               * blank white page with a Back button. (A link that's well
+               * formed but unreachable is the browser's problem now — it shows
+               * what went wrong and offers Safari, rather than blankness.)
+               */
+              const hasReflection = (() => {
+                if (!a.essay) return false;
+                try { return /^https?:$/.test(new URL(a.essay).protocol); } catch { return false; }
+              })();
+              const isToday = !!active && a.id === active.art.id && hasReflection;
+              return (
                 <div
                   key={a.id}
                   role="button"
@@ -754,8 +927,29 @@ export default function VisioPage() {
                       {[tidyArtist(a.artist ?? ""), tidyDate(a.date ?? "")].filter(Boolean).join(" · ")}
                     </span>
                   </span>
+                  {isToday && (
+                    <button
+                      type="button"
+                      // The card underneath reopens the picture; without this
+                      // the pill would do both at once.
+                      // reader: the article chrome — one button, no Options,
+                      // no title. back: that button says "Back", because this
+                      // is a page you step into and out of, not a reading you
+                      // finish. Nothing else on the bar; the page IS the UI.
+                      onClick={(e) => { e.stopPropagation(); openExternal(a.essay, { reader: true, back: true }); }}
+                      style={{
+                        flex: "0 0 auto", userSelect: "none", WebkitTapHighlightColor: "transparent",
+                        background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)",
+                        color: WARM, borderRadius: 999, padding: "8px 12px",
+                        fontSize: 12, fontWeight: 600, fontFamily: FONT, cursor: "pointer", lineHeight: 1.2,
+                      }}
+                    >
+                      {t("visio.read_reflection", { defaultValue: "Read reflection" })}
+                    </button>
+                  )}
                 </div>
-            ))}
+              );
+            })}
             {view && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, lineHeight: 1.55, margin: "6px 0 0", textAlign: "center" }}>
                 {view.attribution}
@@ -816,6 +1010,14 @@ export default function VisioPage() {
                 makes it read as arriving rather than appearing. */}
             {!holdReady
               ? null
+              // The button that opens the reading says the SAME thing wherever
+              // it appears. It said "Look and read" here and "Read reflection"
+              // on the closing card — one destination under two names, which
+              // is how a reader ends up unsure whether they're two different
+              // things (owner, comparing the two: "why is there
+              // inconsistency"). One phrase, one key.
+              : backgroundOpens
+                ? `${t("visio.read_reflection", { defaultValue: "Read reflection" })} \u2192`
               : step === TITLE
                 ? t("common.begin", { defaultValue: "Begin" })
                 // Audit: the closing slide's button doesn't continue anything —
