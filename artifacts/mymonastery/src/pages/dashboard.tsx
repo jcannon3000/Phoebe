@@ -24,7 +24,7 @@ import { GroupRulePrompt } from "@/components/GroupRulePrompt";
 import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { getNcmpState, getSideLevel, setSideLevel, getSideEntry, getFddMode, getPsalmCycle, getSideCustomName, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { getNcmpState, getSideLevel, setSideLevel, getSideEntry, getFddMode, getPsalmCycle, getSideCustomName, OFFICE_PREFS_EVENT, useEffectiveReflectionSource, getSideContemplationKind } from "@/lib/officePrefs";
 import { EVENING_OPEN_HOUR } from "@/lib/customAnchors";
 import { BookOfficeLogSheet } from "@/components/BookOfficeLogSheet";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/lib/contemplationSideDone";
@@ -2226,9 +2226,14 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
   // cross-device echo, exactly like useRhythmState's morning/evening
   // Contemplation cards. Never derived from the shared minutes goal above,
   // so completing one side never flips the other.
-  const [localSideDone, setLocalSideDone] = useState(() => hasContemplationSideDoneToday(side));
+  // KIND-FILTERED, like every other reader of this flag. Passing no kind let a
+  // silent sit tick a Creation Prayer side (and the reverse) — this card would
+  // read "kept" while the /daily-progress card for the same side stayed open,
+  // two answers on one rhythm.
+  const sideKind: "silent" | "cobreathe" = getSideContemplationKind(side) === "creation" ? "cobreathe" : "silent";
+  const [localSideDone, setLocalSideDone] = useState(() => hasContemplationSideDoneToday(side, sideKind));
   useEffect(() => {
-    const refresh = () => setLocalSideDone(hasContemplationSideDoneToday(side));
+    const refresh = () => setLocalSideDone(hasContemplationSideDoneToday(side, sideKind));
     refresh();
     window.addEventListener(CONTEMPLATION_SIDE_DONE_EVENT, refresh);
     document.addEventListener("visibilitychange", refresh);
@@ -2244,21 +2249,24 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
   // it, reading a side as done when today's sit hasn't happened yet.
   const todayLocal = (() => { try { return new Date().toLocaleDateString("en-CA"); } catch { return todaySince.slice(0, 10); } })();
   const { data: sidesToday } = useQuery<{ morning: boolean; evening: boolean }>({
-    queryKey: ["/api/me/contemplation-sides-today", tz, todayLocal],
-    queryFn: () => apiRequest("GET", `/api/me/contemplation-sides-today?tz=${encodeURIComponent(tz)}`),
+    queryKey: ["/api/me/contemplation-sides-today", tz, todayLocal, sideKind],
+    queryFn: () => apiRequest("GET", `/api/me/contemplation-sides-today?tz=${encodeURIComponent(tz)}&kind=${sideKind}`),
     staleTime: 60_000,
     enabled: !guest,
   });
   const met = localSideDone || !!sidesToday?.[side];
 
-  // Creation Prayer is the breath style for this side — same source of truth
-  // as useRhythmState/DailyProgressBody, so the label + destination agree
-  // with the /daily-progress cards for the same side.
-  const contemplationStyle: "silent" | "cobreathe" = (() => {
-    try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { return "silent"; }
-  })();
-  const isCreation = contemplationStyle === "cobreathe";
-  const bothSides = isCreation && getSideLevel("morning") === "reflect-sit" && getSideLevel("evening") === "reflect-sit";
+  // WHICH practice THIS SIDE keeps — per side (see
+  // officePrefs.getSideContemplationKind). This read the ONE global style key,
+  // which holds the last-written side's kind, so a rule with silence in the
+  // morning and the breath at night rendered the MORNING card as 🌍 Creation
+  // Prayer and sent its Begin to the breath. Same source of truth as
+  // useRhythmState/DailyProgressBody, so the label + destination agree with
+  // the /daily-progress cards for the same side.
+  const isCreation = getSideContemplationKind(side) === "creation";
+  const bothSides = isCreation && getSideContemplationKind("morning") === "creation"
+    && getSideContemplationKind("evening") === "creation"
+    && getSideLevel("morning") === "reflect-sit" && getSideLevel("evening") === "reflect-sit";
   // Silent style always names the side (matches the /daily-progress cards);
   // Creation Prayer only splits into Morning/Evening when BOTH sides use it.
   const label = isCreation

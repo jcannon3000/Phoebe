@@ -174,8 +174,14 @@ export function attributeContemplationSit(opts: {
   // kindMatchesRhythm). Otherwise it belongs to no side.
   if (!anySideKeeps(kind)) return;
   const order = sideOrderByClock();
-  const undone = order.find((s) => activeSides[s] && !hasContemplationSideDoneToday(s, kind));
-  const anyActive = order.find((s) => activeSides[s]);
+  // Only sides whose OWN practice is this sit are candidates. `anySideKeeps`
+  // says a home exists somewhere; without this the find could still land on
+  // the other side — morning=breath, evening=silence, a generic silent sit
+  // before 5pm targeted MORNING (active, undone) and celebrated on the
+  // Creation Prayer card. The kinds are per-side now, so the pick must be too.
+  const eligible = (s: ContemplationSide) => activeSides[s] && kindMatchesRhythm(kind, s);
+  const undone = order.find((s) => eligible(s) && !hasContemplationSideDoneToday(s, kind));
+  const anyActive = order.find((s) => eligible(s));
   const target = undone ?? anyActive;
   if (target) markContemplationSideDone(target, kind);
 }
@@ -202,7 +208,9 @@ export function resolveContemplationSideForSit(kind: ContemplationKind = "silent
   // contemplationSide the completion path would then decline to honour.
   if (!anySideKeeps(kind)) return null;
   const order = sideOrderByClock();
-  return order.find((s) => active[s] && !hasContemplationSideDoneToday(s, kind))
-    ?? order.find((s) => active[s])
+  // Same candidate rule as attributeContemplationSit above.
+  const eligible = (s: ContemplationSide) => active[s] && kindMatchesRhythm(kind, s);
+  return order.find((s) => eligible(s) && !hasContemplationSideDoneToday(s, kind))
+    ?? order.find((s) => eligible(s))
     ?? null;
 }

@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { getSideLevel, getSideEntry, getSideContemplation, getSideReflectionExplicit, OFFICE_LEVELS_SET, type OfficeLevel, type OfficeSide } from "@/lib/officePrefs";
+import { getSideLevel, getSideEntry, getSideContemplation, getSideReflectionExplicit, OFFICE_LEVELS_SET, type OfficeLevel, type OfficeSide, getSideContemplationKind } from "@/lib/officePrefs";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { getOfficeBackdrop, officeVeilBg } from "@/lib/officeDisplay";
@@ -223,10 +223,15 @@ export default function BeginPrayerPage() {
     // Only when nothing more specific was asked for — an explicit ?practice=
     // is the whole point of the override, and this flag would swallow it.
     if (!practiceOverride && getSideContemplation(side)) {
-      let style: "silent" | "cobreathe" = "silent";
-      try { style = localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { /* ignore */ }
+      // PER SIDE. This read the one global style key — which holds the
+      // last-written side's kind — so a rule with silence in the morning and
+      // the breath at night sent the MORNING "begin prayer" (the notification
+      // tap, and every CTA that routes through here) into /cobreathe. This
+      // surface has been fixed once already for the mirror-image case; the
+      // fix that time kept the global, which is why it came back.
+      const kind = getSideContemplationKind(side);
       setLocation(
-        style === "cobreathe" ? `/cobreathe?begin=1&side=${side}` : `/contemplation?begin=1&side=${side}`,
+        kind === "creation" ? `/cobreathe?begin=1&side=${side}` : `/contemplation?begin=1&side=${side}`,
         { replace: true },
       );
       return;

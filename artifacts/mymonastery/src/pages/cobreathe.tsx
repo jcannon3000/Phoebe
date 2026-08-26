@@ -21,7 +21,7 @@ import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { verifyAtPlace, BUILT_IN_PLACES, type BreathPlace, type PlaceVerification } from "@/lib/breathPlaces";
 import { resolvePlacePhotos, BUNDLED_SET_PREFIX } from "@/lib/breathPlacePhotos";
 import { attributeContemplationSit } from "@/lib/contemplationSideDone";
-import { getSideContemplation, getSideLevel } from "@/lib/officePrefs";
+import { getSideContemplation, getSideLevel, getSideContemplationKind } from "@/lib/officePrefs";
 import { addGuestSilenceMinutes } from "@/lib/guestSilenceLog";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
@@ -499,11 +499,19 @@ export default function CobreathePage() {
     // flipped once the server echo landed — and never at all offline or for a
     // device-local guest, whose sides-today query is disabled.
     // Same key useRhythmState reads for `contemplationStyle`.
+    // A side carries THE BREATH only when its own kind says so. The flag alone
+    // used to qualify it, so on a rule with silence in the morning and the
+    // breath at night, opening /cobreathe with no ?side= before 5pm stamped
+    // the MORNING done and fired its completion celebration — on the silent
+    // card, for a practice that side doesn't keep. (The legacy reflect-sit
+    // branch still consults the global, which is the right fallback for a
+    // rule that predates per-side kinds.)
     const styleIsCobreathe = (() => {
       try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe"; } catch { return false; }
     })();
     const sideCarriesBreath = (s: "morning" | "evening") =>
-      getSideContemplation(s) || (styleIsCobreathe && getSideLevel(s) === "reflect-sit");
+      (getSideContemplation(s) && getSideContemplationKind(s) === "creation")
+      || (styleIsCobreathe && getSideLevel(s) === "reflect-sit");
     const morningBreath = sideCarriesBreath("morning");
     const eveningBreath = sideCarriesBreath("evening");
     // Only stamp the side flag on the first log — it's a same-day "kept"
