@@ -40,7 +40,7 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { openExternal } from "@/lib/openExternal";
+import { openExternal, openOfficeReading, preloadExternal } from "@/lib/openExternal";
 import { FROST_BLUR } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
@@ -245,6 +245,8 @@ export default function VisioPage() {
         scriptureRef: bundled.scriptureRef,
         attribution: bundled.attribution,
         licence: "Public domain",
+        // The commentary this artwork links to — LINKED, never reproduced.
+        essayUrl: bundled.essayUrl ?? null,
         followsToday: false,
       }
     : active
@@ -257,6 +259,7 @@ export default function VisioPage() {
           scriptureRef: active.ref,
           attribution: active.art.attribution,
           licence: active.art.licence,
+          essayUrl: active.art.essay,
           followsToday: active.followsToday,
         }
       : null;
@@ -285,9 +288,9 @@ export default function VisioPage() {
    * depicts is still NAMED — it's the eyebrow over the title on both picture
    * beats — but its text isn't printed here. The office is where you read.
    */
-  const TITLE = 0, PROMPT_1 = 1, PICTURE_1 = 2, PROMPT_2 = 3, PICTURE_2 = 4, CONTEMPLATE = 5, DONE = 6;
+  const TITLE = 0, BACKGROUND = 1, PROMPT_1 = 2, PICTURE_1 = 3, PROMPT_2 = 4, PICTURE_2 = 5, CONTEMPLATE = 6, DONE = 7;
   const [step, setStep] = useState(TITLE);
-  const TOTAL = 7;
+  const TOTAL = 8;
   /**
    * Which beats hold the picture.
    *
@@ -341,6 +344,8 @@ export default function VisioPage() {
   const atEnd = step >= TOTAL - 1;
   const goHome = () => setLocation("/dashboard");
   const next = () => {
+    // The Background beat's forward action IS the hand-off — see openBackground.
+    if (backgroundOpens) { openBackground(); return; }
     if (!atEnd) { setStep((s) => s + 1); return; }
     // Kept by finishing, not by opening.
     try { markPracticeDoneToday("visio"); } catch { /* non-fatal */ }
@@ -379,7 +384,11 @@ export default function VisioPage() {
     // Vertical-dominant is a scroll (the picture beats can overflow) — leave it.
     if (Math.abs(dy) > Math.abs(dx)) return;
     if (Math.abs(dx) < 50) return; // palm tremor
-    if (dx < 0) next(); else prev();
+    // FORWARD is subject to the same hold the button is. Gesture nav was added
+    // after the twelve-second sit and knew nothing about it, so a swipe — the
+    // most natural thing to do in a deck — walked straight past the one beat
+    // that asks you to stay. Back is always free.
+    if (dx < 0) { if (holdReady) next(); } else prev();
   };
   const onTapNavigate = (e: React.MouseEvent) => {
     if (!gestureNav) return;
@@ -389,7 +398,59 @@ export default function VisioPage() {
     // changes nothing now — it removes the trap for whoever enables gestures
     // on a slide with card surfaces later and finds every tap doing two things.
     if ((e.target as HTMLElement | null)?.closest('button, a, input, textarea, select, label, [role="button"]')) return;
-    if (e.clientX < window.innerWidth / 2) prev(); else next();
+    if (e.clientX < window.innerWidth / 2) prev(); else if (holdReady) next();
+  };
+
+  /**
+   * BACKGROUND → the reflection, the way the office opens a lesson.
+   *
+   * Owner: "include the reflection of the visio as a slide with navigation
+   * like in the office", then "a first prompt after the title slide that says
+   * background, then goes to the reflection, then the three slide flow."
+   *
+   * The commentary itself can't BE a slide — it's VCS's writing, their images
+   * are licensed from agencies, and their robots.txt excludes AI crawlers, so
+   * the app links it and never reproduces it. But the office already solved
+   * exactly this for its own lessons: openOfficeReading hands the page to the
+   * native browser wearing the office's chrome — top bar, and a floating
+   * bottom pill whose Back/Next dismiss it and step the deck underneath. The
+   * reading behaves like a slide with navigation because, to the reader, it is
+   * one.
+   *
+   * Which is why this beat's FORWARD action opens the reading rather than
+   * paging — the same thing the office's lesson slide does. Coming back
+   * through the browser's Next lands you on the first prompt.
+   *
+   * Second tap advances instead of re-opening, and a day with no essay just
+   * pages on: a beat you can't leave is the trap this deck already had once.
+   */
+  const [readBackground, setReadBackground] = useState(false);
+  useEffect(() => { if (view?.essayUrl) preloadExternal(view.essayUrl); }, [view?.essayUrl]);
+  useEffect(() => {
+    const onNext = () => setStep((n) => Math.min(TOTAL - 1, n + 1));
+    const onPrev = () => setStep((n) => Math.max(0, n - 1));
+    window.addEventListener("phoebe:office-next-slide", onNext);
+    window.addEventListener("phoebe:office-prev-slide", onPrev);
+    return () => {
+      window.removeEventListener("phoebe:office-next-slide", onNext);
+      window.removeEventListener("phoebe:office-prev-slide", onPrev);
+    };
+  }, []);
+  /** True when this beat's forward action should open the reading, not page. */
+  const backgroundOpens = step === BACKGROUND && !!view?.essayUrl && !readBackground;
+  const openBackground = () => {
+    if (!view?.essayUrl) return;
+    setReadBackground(true);
+    const opened = openOfficeReading(view.essayUrl, {
+      officeTitle: t("visio.title", { defaultValue: "Visio Divina" }),
+      slideLabel: `${step + 1} of ${TOTAL}`,
+      // Deliberately NOT the artwork's title — some run to eighty characters
+      // and overflow the web viewer's bottom bar.
+      sectionLabel: "",
+    });
+    // Nothing opened (a blocked popup on web) — don't strand them on a beat
+    // whose whole action just failed silently.
+    if (!opened) next();
   };
 
   /** Jump back into a picture from the completion cards. */
@@ -620,6 +681,22 @@ export default function VisioPage() {
           </div>
         )}
 
+        {/* Background — the slide that opens the reflection. Set like the
+            prompts, because it is one: an instruction for your attention
+            before the looking starts. */}
+        {step === BACKGROUND && (
+          <div style={{ textAlign: "center", maxWidth: 480 }}>
+            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
+              {t("visio.background_eyebrow", { defaultValue: "Background" })}
+            </p>
+            <p className="title-glow-breathe" style={{ color: WARM, fontFamily: FONT, fontSize: 21, fontWeight: 500, lineHeight: 1.6, margin: "14px 0 0" }}>
+              {view?.essayUrl
+                ? t("visio.background_line", { defaultValue: "A little about this image, before you look at it." })
+                : t("visio.background_none", { defaultValue: "No background for this one today. Look at it fresh." })}
+            </p>
+          </div>
+        )}
+
         {(step === PROMPT_1 || step === PROMPT_2) && (
           <p
             className="prompt-rise"
@@ -798,6 +875,10 @@ export default function VisioPage() {
                 makes it read as arriving rather than appearing. */}
             {!holdReady
               ? null
+              // The Background beat's button opens the reading, so it says so —
+              // the office's lesson slide names its hand-off the same way.
+              : backgroundOpens
+                ? t("visio.read_background", { defaultValue: "Read the background →" })
               : step === TITLE
                 ? t("common.begin", { defaultValue: "Begin" })
                 // Audit: the closing slide's button doesn't continue anything —

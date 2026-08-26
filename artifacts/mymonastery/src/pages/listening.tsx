@@ -108,11 +108,6 @@ export default function ListeningPage() {
    * length check on `.length` would let one emoji fill the field or cut
    * another in half.
    */
-  const [felt, setFelt] = useState("");
-  const feltGraphemes = (v: string): string[] => (typeof Intl.Segmenter === "function"
-    ? [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(v)].map((x) => x.segment)
-    : [...v]);
-  const feltCount = (v: string) => feltGraphemes(v).length;
   // `query` is the transient search text (never stored); `what` is the SELECTED
   // catalog title and is only ever set by tapping a result or a recent — you
   // can't log free-typed text. This keeps the log to structured Apple Music
@@ -194,7 +189,7 @@ export default function ListeningPage() {
   }
   // Audio Divina is private — a personal listening log, no sharing with fellows.
   const logMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, felt: feltForSave(), shared: false }),
+    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, shared: false }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
   const deleteMutation = useMutation({
@@ -219,15 +214,12 @@ export default function ListeningPage() {
    */
   /** The first three emoji of whatever they typed — the field itself doesn't
    *  cap (see its own note), so the trim lives here, where saving happens. */
-  function feltForSave(): string {
-    return feltGraphemes(felt).filter((g) => /\p{Extended_Pictographic}/u.test(g)).slice(0, 3).join("");
-  }
 
   function logToday() {
     if (!what.trim()) return;
     logMutation.mutate();
     markPracticeDoneToday("listening");
-    setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false); setFelt("");
+    setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false);
     // Stay on the practice — the new listen becomes the hero right here,
     // rather than throwing you onto the full-log screen to see that it saved.
     setLogAnother(false);
@@ -487,37 +479,12 @@ export default function ListeningPage() {
                       );
                     })}
                   </div>
-                  {/* Owner: "in addition to the song they chose, let them have
-                      an optional log where they can enter three emojis that
-                      represent what they felt." Optional and wordless — the
-                      alternative to writing a sentence, not a second thing to
-                      write. Three is the ceiling, counted in graphemes so a
-                      skin-toned 🙏🏽 or a family emoji counts as one. */}
-                  <p className="text-[10.5px] uppercase tracking-[0.18em] mt-5 mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                    What did you feel? <span style={{ textTransform: "none", letterSpacing: 0, opacity: 0.7 }}>— optional, up to three emoji</span>
-                  </p>
-                  <input
-                    value={felt}
-                    /**
-                     * NO CAP IN THE FIELD — the trim happens on save.
-                     *
-                     * Reported: "I can't change the emojis." Capping here was
-                     * the cause. A controlled input that keeps the FIRST three
-                     * refuses every later keystroke by setting state to the
-                     * value it already had — React then has no re-render to do,
-                     * so the DOM keeps whatever the keyboard inserted while
-                     * state quietly disagrees, and swapping one emoji for
-                     * another does nothing at all. Type freely; logToday keeps
-                     * the first three (and the server trims again).
-                     */
-                    onChange={(e) => setFelt(e.target.value)}
-                    inputMode="text"
-                    placeholder="🕊️ 🌊 🙏🏽"
-                    aria-label="Up to three emoji for what you felt"
-                    maxLength={40}
-                    className="w-full rounded-2xl px-4 py-3.5 text-[22px] text-center outline-none"
-                    style={glassField}
-                  />
+                  {/* (The three-emoji "what did you feel?" field was here.
+                      Owner: "let's take the emojis out from both practices" —
+                      so Visio never gained one and this one goes. The stored
+                      `felt` column and the entry line that renders it stay put:
+                      they hold what people already recorded, and dropping the
+                      field shouldn't erase their past.) */}
                 </div>
               )}
             </motion.div>
