@@ -29,8 +29,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePresets";
-import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
-import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
+import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
+import { pushRoutineConfig, collectRoutineValues, flushRoutineConfig } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw } from "@/lib/guestSeed";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
@@ -2385,7 +2385,21 @@ export default function WayOfLoveRuleFlow({
     setSingleEditReturnTo(null);
     if (ret) { setLocation(ret); return; }
     setManualMode("edit");
-    void reloadEditRows();
+    /**
+     * FLUSH before re-reading, or the list shows the routine you just left.
+     *
+     * Reported: changed the morning card to scripture, and the list it
+     * returned to still said Morning Office. commit() writes localStorage;
+     * routineSync mirrors that to the server on an 800ms debounce — but this
+     * list is DERIVED SERVER-SIDE (/routine-interview/current reads
+     * rule_config), so an immediate re-read races the debounce and loses.
+     * Await the push (rule levels AND custom anchors — a practice added or
+     * renamed in the edit rides the other pipe), then re-read.
+     */
+    void (async () => {
+      try { await Promise.all([flushRoutineConfig(), flushCustomAnchorPush()]); } catch { /* best-effort */ }
+      await reloadEditRows();
+    })();
   };
   /**
    * Does this step still belong to the practice being edited alone?

@@ -835,24 +835,34 @@ export function pushCustomAnchors(): void {
 // drop a just-logged practice before it reached the server — the recurring
 // "I logged it, then an update un-logged it" bug. `keepalive` lets the PUT
 // complete even as the page goes away. Registered on visibilitychange/pagehide.
-function flushPendingPush(): void {
-  if (!pushTimer || suppressPush) return;
+function flushPendingPush(): Promise<void> {
+  if (!pushTimer || suppressPush) return Promise.resolve();
   clearTimeout(pushTimer);
   pushTimer = null;
   // Use the snapshot captured at schedule time — never re-read a possibly
   // cleared localStorage on the way out.
   const payload = pendingSnapshot ?? exportCustomAnchorSnapshot();
   pendingSnapshot = null;
-  if (!safeToPush(payload)) return;
+  if (!safeToPush(payload)) return Promise.resolve();
   try {
-    fetch("/api/me/custom-anchors", {
+    return fetch("/api/me/custom-anchors", {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       keepalive: true,
-    }).catch(() => { /* best-effort */ });
-  } catch { doPush(payload); }
+    }).catch(() => { /* best-effort */ }).then(() => undefined);
+  } catch { doPush(payload); return Promise.resolve(); }
+}
+
+/**
+ * Send any pending (debounced) custom-anchor push NOW, and resolve once the
+ * server has it. For callers about to RE-READ derived state from the server
+ * (the customizer's edit list) — without this the read races the 800ms
+ * debounce and shows the state from before the edit.
+ */
+export function flushCustomAnchorPush(): Promise<void> {
+  return flushPendingPush();
 }
 
 // Day-stamps are ISO YYYY-MM-DD, which sort lexically — so the later string is
