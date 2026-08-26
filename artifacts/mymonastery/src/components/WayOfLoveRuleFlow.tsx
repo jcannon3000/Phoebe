@@ -73,6 +73,7 @@ import {
   getSideContemplationKind,
 } from "@/lib/officePrefs";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
+import { getPrayerListSlot, setPrayerListSlot, type PrayerListSlot } from "@/lib/prayerListSlot";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
 import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
@@ -231,7 +232,7 @@ type ExtraGroupId = "office" | "guided" | "examen" | "contemplative" | "newslett
 /** The top level, in the anchor step's own order. */
 const EXTRA_GROUPS: Array<{ id: ExtraGroupId; emoji: string; title: string; sub: string }> = [
   { id: "office", emoji: "📖", title: "From the prayer book", sub: "The office, a devotion, the psalms or the readings." },
-  { id: "guided", emoji: "🙌", title: "Simple Guided Prayer", sub: "Three minutes to start your day." },
+  { id: "guided", emoji: "🙌", title: "Simple Guided Prayer", sub: "Praise · Confession · Thanksgiving · Supplication." },
   { id: "examen", emoji: "🌗", title: "The Examen", sub: "Review the day with God." },
   { id: "contemplative", emoji: "🕯️", title: "A contemplative practice", sub: "Silence, a walk, sacred listening, Visio Divina, or Creation Prayer." },
   { id: "newsletter", emoji: "📰", title: "A reflection", sub: "Forward, SSJE, CAC, or VTS." },
@@ -241,7 +242,9 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   { title: (c) => `${c} Devotion`, emoji: "📖", sub: "A short devotion.", excludes: "devotion", maps: { kind: "level", level: "devotion" } , group: "office" },
   { title: (c) => `${c} Psalms`, emoji: "📜", sub: "The day's appointed psalms.", excludes: "psalms", maps: { kind: "level", level: "psalms" } , group: "office" },
   { title: (c) => `${c} Scripture Reading`, emoji: "📰", sub: "The day's appointed readings.", excludes: "readings", maps: { kind: "level", level: "readings" } , group: "office" },
-  { title: () => "Simple Guided Prayer", emoji: "🙌", sub: "Three minutes to start your day.", excludes: "guided-prayer", side: "morning", maps: { kind: "level", level: "guided-prayer" } , group: "guided" },
+  // No `side` — PACT is an evening practice too (owner). Its sub no longer
+  // says "to start your day" for the same reason.
+  { title: () => "Simple Guided Prayer", emoji: "🙌", sub: "Praise · Confession · Thanksgiving · Supplication.", excludes: "guided-prayer", maps: { kind: "level", level: "guided-prayer" } , group: "guided" },
   { title: () => "The Examen", emoji: "🌗", sub: "Review the day with God.", excludes: "examen", maps: { kind: "practice", key: "examen" } , group: "examen" },
   // Not excluded by any anchor level: which newsletter is chosen on the next
   // slide, so the row can't clash with the anchor until that's known (the
@@ -1148,6 +1151,10 @@ export default function WayOfLoveRuleFlow({
   // Which sides asked for the additional-practice slide. It's a real step in
   // the flow (see buildSteps) rather than an inline expansion — owner: "not
   // expand to a list, but advance to a second slide".
+  /** Which side (if any) praying the Prayer List keeps — see the row on the
+   *  anchor slide. Device-local, and read by useRhythmState's morningDone /
+   *  eveningDone, so it's a real way to pray a side rather than a label. */
+  const [prayerListSlot, setPrayerListSlotState] = useState<PrayerListSlot>(getPrayerListSlot);
   const [extraWantedBySide, setExtraWantedBySide] = useState<Record<OfficeSide, boolean>>(() => ({
     morning: !!getSideExtra("morning"),
     evening: !!getSideExtra("evening"),
@@ -1472,6 +1479,16 @@ export default function WayOfLoveRuleFlow({
     if (p !== "none") {
       setContemplativeForm((prev) => (prev[side] === null ? prev : { ...prev, [side]: null }));
       setContemplationBySide((prev) => (prev[side] ? { ...prev, [side]: false } : prev));
+      // …and the Prayer List, which is a THIRD piece of state this slide's rows
+      // read from (see the row's own note). Caught by testing: with the list
+      // chosen, tapping Simple Guided Prayer lit BOTH — the same two-rows-lit
+      // bug as the contemplative form, one state over. Every row on this slide
+      // must be cleared here, or the next one added will do it again.
+      setPrayerListSlotState((prev) => {
+        if (prev !== side) return prev;
+        setPrayerListSlot(null);
+        return null;
+      });
     }
   };
   const chooseMethodBySide = (side: OfficeSide, m: DefaultOfficeEntry) => { touchedRef.current = true; setMethodBySide((prev) => ({ ...prev, [side]: m })); };
@@ -3258,28 +3275,76 @@ export default function WayOfLoveRuleFlow({
               card you got called themselves different names. The card has
               always read "The Examen" (explicitLevelTitle); this is the side
               that was wrong. */}
+          {/**
+            * SIMPLE GUIDED PRAYER — both sides now (owner: "I want Simple
+            * Guided to be an evening option too, not Examen, the PACT").
+            *
+            * The evening used to REPLACE this row with the Examen — one row
+            * wearing two names, so choosing PACT in the evening was impossible
+            * and the Examen had no row of its own. They're two practices, so
+            * they're two rows, and the evening gets both.
+            */}
           {(() => {
-            const isEveningExamen = side === "evening";
-            const selected = isEveningExamen ? prayBySide[side] === "examen" : prayBySide[side] === "guidedPrayer";
-            const sub = isEveningExamen
-              ? t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God." })
-              : t("wol_rule.pray_guided_prayer_sub", { defaultValue: "Three Minutes to Start Your Day" });
-            const label = isEveningExamen
-              ? t("rhythm.card_examen", { defaultValue: "The Examen" })
-              : t("wol_rule.pray_guided_prayer_label", { defaultValue: "Simple Guided Prayer" });
+            const on = prayBySide[side] === "guidedPrayer";
             return choiceRow(
-              selected,
-              `🙌 ${label}`,
-              sub,
+              on,
+              `🙌 ${t("wol_rule.pray_guided_prayer_label", { defaultValue: "Simple Guided Prayer" })}`,
+              t("wol_rule.pray_guided_prayer_sub", { defaultValue: "Praise · Confession · Thanksgiving · Supplication" }),
               () => {
                 // Tapping the selected row CLEARS it. Owner: "instead of a
                 // 'none' card, let's just have it that if they don't click one
                 // ... I can't unclick either of them." A side with nothing
                 // chosen is a side that's off.
-                if (selected) { touchedRef.current = true; choosePrayBySide(side, "none"); return; }
+                if (on) { touchedRef.current = true; choosePrayBySide(side, "none"); return; }
                 touchedRef.current = true;
                 if (contemplationBySide[side]) toggleContemplationSide(side);
-                choosePrayBySide(side, isEveningExamen ? "examen" : "guidedPrayer");
+                choosePrayBySide(side, "guidedPrayer");
+              },
+            );
+          })()}
+          {/* THE EXAMEN — its own row, evening only: it's a review of the day
+              behind you, which is not a thing to do at breakfast. */}
+          {side === "evening" && (() => {
+            const on = prayBySide[side] === "examen";
+            return choiceRow(
+              on,
+              `🌗 ${t("rhythm.card_examen", { defaultValue: "The Examen" })}`,
+              t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God." }),
+              () => {
+                if (on) { touchedRef.current = true; choosePrayBySide(side, "none"); return; }
+                touchedRef.current = true;
+                if (contemplationBySide[side]) toggleContemplationSide(side);
+                choosePrayBySide(side, "examen");
+              },
+            );
+          })()}
+          {/**
+            * THE PRAYER LIST as this side's anchor (owner: "I also want Prayer
+            * List to be able to be an anchor").
+            *
+            * The MECHANISM already existed — prayerListSlot decides which side
+            * praying your list satisfies, and useRhythmState has read it in
+            * morningDone/eveningDone all along — but the only place to set it
+            * was a control buried on the prayer-list page itself. It's a way to
+            * pray a side, so it belongs on the slide where you choose how to
+            * pray that side.
+            *
+            * It sets the SLOT rather than a level: praying the list is what
+            * keeps it, and that's already how the flag is read.
+            */}
+          {(() => {
+            const on = prayerListSlot === side;
+            return choiceRow(
+              on,
+              `🙏🏽 ${t("wol_rule.pray_list_label", { defaultValue: "Your Prayer List" })}`,
+              t("wol_rule.pray_list_sub", { defaultValue: "The people and things you're carrying — praying them keeps this side." }),
+              () => {
+                touchedRef.current = true;
+                if (on) { setPrayerListSlotState(null); setPrayerListSlot(null); return; }
+                if (contemplationBySide[side]) toggleContemplationSide(side);
+                choosePrayBySide(side, "none");
+                setPrayerListSlotState(side);
+                setPrayerListSlot(side);
               },
             );
           })()}
