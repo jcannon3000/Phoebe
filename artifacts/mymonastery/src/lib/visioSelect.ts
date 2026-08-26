@@ -21,6 +21,8 @@
  */
 import { ACT_CATALOGUE, type CatalogueArtwork } from "./visioCatalogue";
 
+import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
+
 const BY_ID = new Map(ACT_CATALOGUE.map((a) => [a.id, a]));
 
 /** One specific artwork, for re-opening something from the history gallery. */
@@ -244,7 +246,7 @@ function tiersFor(lessons: string[]): string[][] {
  * praying today sees the same picture, which is the rule this whole file is
  * built around.
  */
-function rotationIndex(ymd: string, ids: number[]): number {
+export function rotationIndex(ymd: string, ids: number[]): number {
   const sig = ids.reduce((a, b) => (a + b) % 9973, 0);
   const n = ids.length;
   return (((dayOrdinal(ymd) + sig) % n) + n) % n;
@@ -261,7 +263,46 @@ function scoreAgainst(refs: string[]): { best: Array<{ art: CatalogueArtwork }>;
   return { best: scored.filter((x) => x.score === top), top };
 }
 
+/**
+ * Each tier's candidates, in order, with the score they reached.
+ *
+ * Factored out so the SCHEDULE GENERATOR and this file agree on "who matches
+ * this reading" by construction rather than by two copies staying in step.
+ * The generator needs the candidates rather than the winner, because it has to
+ * skip a work that has already had its three appearances this year and move to
+ * a different reading (see lib/visioSchedule).
+ */
+export function rankedTiers(lessons: string[]): Array<{ refs: string[]; best: CatalogueArtwork[]; top: number }> {
+  return tiersFor(lessons).map((refs) => {
+    const { best, top } = scoreAgainst(refs);
+    return { refs, best: best.map((x) => x.art), top };
+  });
+}
+
 export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
+  /**
+   * THE SCHEDULE FIRST — a day's picture is decided ahead of time.
+   *
+   * Owner: "if you have something that is shown more than three times
+   * throughout the year, go to matching for a different reading." A cap on
+   * appearances needs a YEAR-WIDE view, which nothing here can have: the
+   * client holds one day's lessons and the lectionary is server-side. And the
+   * cap is self-referential — skipping a spent work changes what every later
+   * day gets, and across tiers too, so it can't be a filter bolted onto a
+   * per-day choice. So the whole year is resolved by a build step
+   * (api-server/src/build-visio-schedule.ts) and read back here.
+   *
+   * Still pure, still the same picture for everyone on a given day. A date
+   * outside the generated range falls through to the live matching below —
+   * exactly the behaviour before the schedule existed, so running out of
+   * schedule degrades rather than breaks.
+   */
+  const scheduled = VISIO_SCHEDULE[ymd];
+  if (scheduled) {
+    const art = artworkById(scheduled.id);
+    if (art) return { art, ref: scheduled.ref, followsToday: scheduled.followsToday };
+  }
+
   // Gospel, then Epistle/OT, then psalms — the first tier that matches at
   // CHAPTER level or better wins, whatever the tiers below could have scored.
   const tiers = tiersFor(lessons);
