@@ -294,10 +294,13 @@ const EXTRA_PRACTICE_EMOJI: Record<string, string> = Object.fromEntries(
 type Step =
   // The opening slide: what this whole flow is for, and nothing else on it.
   | "intro"
-  | "morning-way" | "morning-custom" | "morning-config"
+  // A side's anchor is picked, then NAMED, then configured — three slides, the
+  // shape "Create your own" always had and the one the owner asked the other
+  // two kinds to match: pick the kind, choose WHICH one, then its details.
+  | "morning-way" | "morning-custom" | "morning-bcp" | "morning-contemplative" | "morning-config"
   | "fdd-mode"
   | "psalms-cycle"
-  | "evening-way" | "evening-custom" | "evening-config"
+  | "evening-way" | "evening-custom" | "evening-bcp" | "evening-contemplative" | "evening-config"
   // The "add an additional practice" slide — the same picker as the side's
   // first slide, minus whatever is already its anchor.
   | "morning-extra" | "evening-extra"
@@ -1119,13 +1122,20 @@ export default function WayOfLoveRuleFlow({
   // turns OFF the per-side silent-sit flag (one contemplative practice per
   // side), and deriving the dropdown's visibility from that flag would make
   // the dropdown vanish the moment you used it.
-  const CONTEMPLATIVE_FORMS = ["prayer", "creation", "walk", "audio", "examen", "compline"] as const;
+  // Visio Divina belongs here like the rest of them. It has a home card, a
+  // dot, a weekly row, a `contemplative.visio` flag this flow already writes,
+  // and its own row in the standing-practices multi-select — it was simply
+  // never added to THIS list, so the "which practice?" dropdown on a side
+  // couldn't offer the one contemplative practice that shipped last.
+  const CONTEMPLATIVE_FORMS = ["prayer", "creation", "walk", "audio", "visio"] as const;
   type ContemplativeForm = (typeof CONTEMPLATIVE_FORMS)[number];
-  // Compline IS the night office and the Examen is a review of the day behind
-  // you — neither belongs in a morning list (owner). Same rule the BCP
-  // dropdown already applies to Compline.
-  const formsForSide = (s: OfficeSide): readonly ContemplativeForm[] =>
-    s === "morning" ? CONTEMPLATIVE_FORMS.filter((f) => f !== "compline" && f !== "examen") : CONTEMPLATIVE_FORMS;
+  // Owner: "the Examen and Compline shouldn't be in contemplative practice in
+  // evening as they can be chosen other places." Compline is one of the prayer
+  // book's liturgies and the Examen is its own row on the anchor slide, so
+  // listing them here made the same practice reachable by two names — and a
+  // reader who picked Compline here had no way to tell it apart from picking
+  // it under the Book of Common Prayer. Same list for both sides now.
+  const formsForSide = (_s: OfficeSide): readonly ContemplativeForm[] => CONTEMPLATIVE_FORMS;
   const [contemplativeForm, setContemplativeForm] = useState<Record<OfficeSide, ContemplativeForm | null>>(() => {
     // Only the two per-side forms survive a reload — walk/audio/examen/compline
     // are standing all-day practices with no per-side storage, so a side set to
@@ -1315,6 +1325,28 @@ export default function WayOfLoveRuleFlow({
   const choosePrayBySide = (side: OfficeSide, p: PrayChoice) => {
     touchedRef.current = true;
     setPrayBySide((prev) => ({ ...prev, [side]: p }));
+    /**
+     * ONE anchor per side, cleared in ONE place.
+     *
+     * Reported: "something weird is happening in selecting more than one
+     * practice on the first slides of the anchors." The Contemplative Practice
+     * row reads its selected state from `contemplativeForm[side]`, which is a
+     * different piece of state from `prayBySide` — and every other row cleared
+     * `contemplationBySide` on the way past but never the FORM. So picking
+     * Contemplative Practice and then the Book of Common Prayer left both rows
+     * lit, and the slide looked like a checklist.
+     *
+     * Owner: "it's okay if they want a second, but they have to do that as the
+     * additional practice on the second slide." So the anchor slide is
+     * single-select, and it's enforced here rather than in six row handlers
+     * where the seventh will forget. Clearing only for a REAL choice matters:
+     * the Contemplative row itself calls this with "none" first and then sets
+     * the form, and clearing on "none" would undo it a line later.
+     */
+    if (p !== "none") {
+      setContemplativeForm((prev) => (prev[side] === null ? prev : { ...prev, [side]: null }));
+      setContemplationBySide((prev) => (prev[side] ? { ...prev, [side]: false } : prev));
+    }
   };
   const chooseMethodBySide = (side: OfficeSide, m: DefaultOfficeEntry) => { touchedRef.current = true; setMethodBySide((prev) => ({ ...prev, [side]: m })); };
   const chooseGoal = (g: string) => { touchedRef.current = true; setGoal(g); };
@@ -2043,9 +2075,9 @@ export default function WayOfLoveRuleFlow({
     : [
     "intro",
     "morning-way",
-    ...(sidesArg.morning ? ([...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config", ...(extraWantedBySide.morning ? ["morning-extra"] : []), ...(extraGroupNeedsPick("morning") ? ["morning-extra-pick"] : []), ...(extraNeedsConfig("morning") ? ["morning-extra-config"] : [])] as Step[]) : []),
+    ...(sidesArg.morning ? ([...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), ...(bcpOnSide("morning") ? ["morning-bcp"] : []), ...(contemplativeOnSide("morning") ? ["morning-contemplative"] : []), "morning-config", ...(extraWantedBySide.morning ? ["morning-extra"] : []), ...(extraGroupNeedsPick("morning") ? ["morning-extra-pick"] : []), ...(extraNeedsConfig("morning") ? ["morning-extra-config"] : [])] as Step[]) : []),
     "evening-way",
-    ...(sidesArg.evening ? ([...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), "evening-config", ...(extraWantedBySide.evening ? ["evening-extra"] : []), ...(extraGroupNeedsPick("evening") ? ["evening-extra-pick"] : []), ...(extraNeedsConfig("evening") ? ["evening-extra-config"] : [])] as Step[]) : []),
+    ...(sidesArg.evening ? ([...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), ...(bcpOnSide("evening") ? ["evening-bcp"] : []), ...(contemplativeOnSide("evening") ? ["evening-contemplative"] : []), "evening-config", ...(extraWantedBySide.evening ? ["evening-extra"] : []), ...(extraGroupNeedsPick("evening") ? ["evening-extra-pick"] : []), ...(extraNeedsConfig("evening") ? ["evening-extra-config"] : [])] as Step[]) : []),
     // Reflection (the daily word) is chosen BEFORE contemplation now — you pick
     // what you'll read/listen to, then how you'll sit with it.
     "learn",
@@ -3157,55 +3189,6 @@ export default function WayOfLoveRuleFlow({
           )}
         </div>
 
-        {/* Saturday / Sunday alternatives (owner). Only shown once this side
-            HAS a practice — offering "different on Saturday" for a side you
-            haven't chosen anything for is a question about nothing. */}
-        {prayBySide[side] !== "none" && (
-          <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-            <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, margin: 0 }}>
-              {t("wol_rule.weekend_intro", {
-                defaultValue: "Keep something different at the weekend? Leave these alone if the same practice runs all week.",
-              })}
-            </p>
-            {(["sat", "sun"] as const).map((day) => {
-              const alt = weekendBySide[side][day];
-              const label = day === "sat"
-                ? t("wol_rule.saturdays", { defaultValue: "Saturdays" })
-                : t("wol_rule.sundays", { defaultValue: "Sundays" });
-              return (
-                <div key={day} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <label style={{ color: CREAM, fontFamily: FONT, fontSize: 14, fontWeight: 500 }}>{label}</label>
-                  <select
-                    value={alt ? alt.choice : ""}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setWeekend(side, day, v === "" ? null : { choice: v as PrayChoice, name: alt?.name ?? "" });
-                    }}
-                    aria-label={label}
-                    style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-                  >
-                    <option value="">{t("wol_rule.weekend_same", { defaultValue: "Same as the rest of the week" })}</option>
-                    {weekendOptions(side).map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                  {/* Its own name, the way the weekday custom practice has one —
-                      "Worship", "Eucharist", whatever they actually keep. */}
-                  {alt?.choice === "ownPractice" && (
-                    <input
-                      type="text"
-                      value={alt.name}
-                      onChange={(e) => setWeekend(side, day, { choice: "ownPractice", name: e.target.value })}
-                      placeholder={t("wol_rule.weekend_name_ph", { defaultValue: "Worship" })}
-                      aria-label={t("wol_rule.weekend_name_label", { defaultValue: "Name this practice" })}
-                      style={{ ...FROST_BLUR, width: "100%", boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none" }}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => wayContinue(side))}
       </>,
     );
@@ -3218,19 +3201,13 @@ export default function WayOfLoveRuleFlow({
   if (step === "morning-custom" || step === "evening-custom") {
     const side: OfficeSide = step === "morning-custom" ? "morning" : "evening";
     const cap = side === "morning" ? "Morning" : "Evening";
-    // Quick picks below the text field, from Phoebe's own contemplative-
-    // practice vocabulary (same names/emoji as the "Add an additional
-    // practice" step) — minus The Examen, which is already its own primary-
-    // anchor choice on the previous step, so offering it again here would
-    // just be a confusing second way to pick the same thing.
-    const presets: Array<{ emoji: string; label: string; sub: string }> = [
-      { emoji: "🎵", label: t("wol_rule.cp_audio", { defaultValue: "Audio Divina" }),
-        sub: t("wol_rule.cp_audio_anchor_sub", { side: cap.toLowerCase(), defaultValue: `Sacred listening as your ${cap.toLowerCase()} prayer.` }) },
-      { emoji: "🌍", label: t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" }),
-        sub: t("wol_rule.cp_cobreathe_anchor_sub", { side: cap.toLowerCase(), defaultValue: `Breathing with creation as your ${cap.toLowerCase()} prayer.` }) },
-      { emoji: "🚶", label: t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" }),
-        sub: t("wol_rule.cp_walk_anchor_sub", { side: cap.toLowerCase(), defaultValue: `A walk as your ${cap.toLowerCase()} prayer.` }) },
-    ];
+    // (The quick picks that used to sit under this field are gone — owner:
+    // "on create your own, take the choose-a-practice out since those can be
+    // chosen now on contemplative practice." Audio Divina, Creation Prayer and
+    // the Contemplative Walk are all rows on the contemplative slide now, so
+    // offering them here too was a second door to the same three practices —
+    // and the one that arrived as a NAMED CUSTOM ANCHOR rather than as the
+    // practice itself, which is not the same thing at all.)
     const current = customNameBySide[side];
     return shell(
       <>
@@ -3251,20 +3228,6 @@ export default function WayOfLoveRuleFlow({
           placeholder={t("wol_rule.cp_custom_placeholder", { defaultValue: "e.g. Walking prayer" })}
           style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
         />
-        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
-          {t("wol_rule.custom_or_choose", { defaultValue: "Or choose a practice" })}
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {/* These names are what makes the anchor a real practice rather than a
-              label — lib/anchorPractices.ts matches on them, so the card opens
-              the practice and completing it there ticks this side. Rename one
-              here and it silently becomes a plain checkbox again. */}
-          {presets.map(({ emoji, label, sub }) => choiceRow(current === label, `${emoji} ${label}`, sub, () => {
-            touchedRef.current = true;
-            setCustomNameBySide((p) => ({ ...p, [side]: label }));
-            setSideCustomName(side, label);
-          }))}
-        </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );
@@ -3391,6 +3354,120 @@ export default function WayOfLoveRuleFlow({
     );
   }
 
+  /**
+   * WHICH LITURGY — the prayer book's own slide, back again.
+   *
+   * These options lived here as a standalone step, were merged into the config
+   * slide as a dropdown ("I don't need a whole slide for the liturgy"), and the
+   * owner has asked for the slide back: "let's do three slides again for both
+   * BCP and also contemplative practice, where the second slide you choose your
+   * practice, then the next slide is details." So a side is picked, then named,
+   * then configured — the shape "Create your own" always had.
+   *
+   * Rows, not a dropdown, and each carries its second line (owner) — a list of
+   * bare liturgy names asks the reader to already know what they are.
+   */
+  if (step === "morning-bcp" || step === "evening-bcp") {
+    const side: OfficeSide = step === "morning-bcp" ? "morning" : "evening";
+    const cap = side === "morning" ? "Morning" : "Evening";
+    const base = (!pilot ? (["psalms", "readings", "devotion", "offices"] as const) : (["readings", "devotion", "offices"] as const));
+    // Compline IS the night office — offering it as a morning form is nonsense.
+    const forms: ReadonlyArray<"psalms" | "readings" | "devotion" | "offices" | "compline"> =
+      side === "evening" ? [...base, "compline"] : base;
+    const row = (form: (typeof forms)[number]) => {
+      const label = form === "compline" ? t("wol_rule.pray_compline_label", { defaultValue: "Compline" })
+        : form === "psalms" ? t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })
+        : form === "readings" ? t("wol_rule.pray_readings_label", { defaultValue: "Daily Scripture Readings" })
+        : form === "devotion" ? `${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`
+        : `${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`;
+      const emoji = form === "compline" ? "🌙" : form === "psalms" ? "📜" : form === "readings" ? "📰" : "📖";
+      const sub = form === "compline" ? t("wol_rule.bcp_sub_compline", { defaultValue: "The night office — the day laid down before sleep." })
+        : form === "psalms" ? t("wol_rule.bcp_sub_psalms", { defaultValue: "The psalms appointed for today, and nothing else." })
+        : form === "readings" ? t("wol_rule.bcp_sub_readings", { defaultValue: "Today's appointed scripture, read on its own." })
+        : form === "devotion" ? t("wol_rule.bcp_sub_devotion", { side: cap.toLowerCase(), defaultValue: `A short ${cap.toLowerCase()} devotion — a few minutes.` })
+        : t("wol_rule.bcp_sub_office", { side: cap.toLowerCase(), defaultValue: `${cap} Prayer in full, from the Book of Common Prayer.` });
+      return choiceRow(prayBySide[side] === form, `${emoji} ${label}`, sub, () => {
+        touchedRef.current = true;
+        setBcpForm((p) => ({ ...p, [side]: form }));
+        choosePrayBySide(side, form);
+      });
+    };
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(cap, t("wol_rule.bcp_form_body_short", { defaultValue: "Which liturgy?" }))}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {t("wol_rule.bcp_form_body", { side: cap.toLowerCase(), defaultValue: `Which of the prayer book's ${cap.toLowerCase()} liturgies would you like to keep?` })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {forms.map((f) => <div key={f}>{row(f)}</div>)}
+        </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
+  /**
+   * WHICH CONTEMPLATIVE PRACTICE — the same slide, for the other kind.
+   *
+   * Owner: "contemplative practice is the different practices including
+   * Visio." Compline and the Examen are deliberately NOT here — both are
+   * choosable elsewhere (Compline under the prayer book, the Examen as its own
+   * row on the anchor slide), and listing them twice made the same practice
+   * reachable under two names.
+   */
+  if (step === "morning-contemplative" || step === "evening-contemplative") {
+    const side: OfficeSide = step === "morning-contemplative" ? "morning" : "evening";
+    const cap = side === "morning" ? "Morning" : "Evening";
+    const forms = formsForSide(side);
+    const meta = (f: ContemplativeForm): { emoji: string; label: string; sub: string } =>
+      f === "prayer" ? { emoji: "🕯️", label: t("wol_rule.cf_prayer", { defaultValue: "Contemplative Prayer" }), sub: t("wol_rule.cf_prayer_sub", { defaultValue: "Time set aside for silence." }) }
+      : f === "creation" ? { emoji: "🌍", label: t("wol_rule.cf_creation", { defaultValue: "Creation Prayer" }), sub: t("wol_rule.cf_creation_sub", { defaultValue: "Breathing with creation, at one shared pace." }) }
+      : f === "walk" ? { emoji: "🚶", label: t("wol_rule.cf_walk", { defaultValue: "Contemplative Walk" }), sub: t("wol_rule.cf_walk_sub", { defaultValue: "A walk kept as prayer, attentive to what's around you." }) }
+      : f === "audio" ? { emoji: "🎵", label: t("wol_rule.cf_audio", { defaultValue: "Audio Divina" }), sub: t("wol_rule.cf_audio_sub", { defaultValue: "Sacred listening — music held the way you'd hold a text." }) }
+      : { emoji: "🖼️", label: t("wol_rule.cf_visio", { defaultValue: "Visio Divina" }), sub: t("wol_rule.cp_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }) };
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(cap, t("wol_rule.contemplative_form_label", { defaultValue: "Which practice?" }))}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {t("wol_rule.contemplative_form_body", { side: cap.toLowerCase(), defaultValue: `Contemplative prayer is a family, not one thing. Which one will you keep in the ${cap.toLowerCase()}?` })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {forms.map((f) => {
+            const m = meta(f);
+            return (
+              <div key={f}>
+                {choiceRow(contemplativeForm[side] === f, `${m.emoji} ${m.label}`, m.sub, () => {
+                  touchedRef.current = true;
+                  setContemplativeForm((p) => ({ ...p, [side]: f }));
+                  // One contemplative practice per side: the two per-side forms
+                  // (the silent sit / the Creation Prayer breath) ride
+                  // contemplationBySide + the style flag; the rest are standing
+                  // all-day practices, so choosing one turns the per-side sit
+                  // OFF and that practice ON.
+                  const perSide = f === "prayer" || f === "creation";
+                  if (perSide) {
+                    if (!contemplationBySide[side]) toggleContemplationSide(side);
+                    chooseContemplationStyle(f === "creation" ? "cobreathe" : "silent");
+                    if (f === "prayer") {
+                      chooseSideMinutes(side, 10);
+                      if (goalMin === 0) { chooseGoal("20"); chooseSilenceMode("fixed"); }
+                    }
+                  } else {
+                    if (contemplationBySide[side]) toggleContemplationSide(side);
+                    setContemplative((c) => ({ ...c, [f]: true }));
+                  }
+                })}
+              </div>
+            );
+          })}
+        </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
   if (step === "morning-config" || step === "evening-config") {
     const side: OfficeSide = step === "morning-config" ? "morning" : "evening";
     const cap = side === "morning" ? "Morning" : "Evening";
@@ -3418,117 +3495,6 @@ export default function WayOfLoveRuleFlow({
                 ? t("wol_rule.side_config_plain_body", { side: cap.toLowerCase(), defaultValue: `Set up your ${cap.toLowerCase()} prayer.` })
                 : t("wol_rule.side_config_body_notime", { side: cap.toLowerCase(), defaultValue: `How would you like to pray in the ${cap.toLowerCase()}?` })}
         </p>
-        {/* The BCP FORM choice is merged INTO this slide as a dropdown — no
-            separate morning/evening-bcp step anymore (owner: "I don't need a
-            whole slide for the liturgy... just have a dropdown of which
-            liturgy would you like to pray first, and then move everything
-            down"). Same forms the old standalone step offered, same order
-            (Psalms second). Compline only appears in the evening list — it
-            IS the night office, so offering it as a morning form would be
-            nonsense. */}
-        {bcpOnSide(side) && (
-          <>
-            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
-              {t("wol_rule.bcp_form_body_short", { defaultValue: "Which liturgy?" })}
-            </p>
-            <div style={{ position: "relative", marginBottom: 22 }}>
-              {(() => {
-                const baseForms = (!pilot ? (["psalms", "readings", "devotion", "offices"] as const) : (["readings", "devotion", "offices"] as const));
-                const forms: ReadonlyArray<"psalms" | "readings" | "devotion" | "offices" | "compline"> =
-                  side === "evening" ? [...baseForms, "compline"] : baseForms;
-                const formLabel = (form: (typeof forms)[number]): string =>
-                  form === "compline" ? t("wol_rule.pray_compline_label", { defaultValue: "Compline" })
-                  : form === "psalms" ? t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })
-                  : form === "readings" ? t("wol_rule.pray_readings_label", { defaultValue: "Daily Scripture Readings" })
-                  : form === "devotion" ? `${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`
-                  : `${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`;
-                const formEmoji = (form: (typeof forms)[number]): string =>
-                  form === "compline" ? "🌙" : form === "psalms" ? "📜" : form === "readings" ? "📰" : "📖";
-                const current = (forms as readonly string[]).includes(prayBySide[side]) ? (prayBySide[side] as (typeof forms)[number]) : forms[0]!;
-                return (
-                  <>
-                    <select
-                      value={current}
-                      onChange={(e) => { const form = e.target.value as (typeof forms)[number]; setBcpForm((p) => ({ ...p, [side]: form })); choosePrayBySide(side, form); }}
-                      aria-label={t("wol_rule.bcp_form_body_short", { defaultValue: "Which liturgy?" })}
-                      style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-                    >
-                      {forms.map((form) => (
-                        <option key={form} value={form}>{formEmoji(form)} {formLabel(form)}</option>
-                      ))}
-                    </select>
-                    <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
-                  </>
-                );
-              })()}
-            </div>
-          </>
-        )}
-        {/* WHICH contemplative practice — the same shape as the BCP row's
-            "which liturgy?" dropdown above (owner: "just like if they chose
-            book of common prayer, they should first be a drop down of which
-            practice"). Contemplative Prayer leads; Compline and the Examen
-            are evening-only. */}
-        {contemplativeOnSide(side) && (
-          <>
-            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
-              {t("wol_rule.contemplative_form_label", { defaultValue: "Which practice?" })}
-            </p>
-            <div style={{ position: "relative", marginBottom: 22 }}>
-              {(() => {
-                const forms = formsForSide(side);
-                const formLabel = (f: ContemplativeForm): string =>
-                  f === "prayer" ? t("wol_rule.cf_prayer", { defaultValue: "Contemplative Prayer" })
-                  : f === "creation" ? t("wol_rule.cf_creation", { defaultValue: "Creation Prayer" })
-                  : f === "walk" ? t("wol_rule.cf_walk", { defaultValue: "Contemplative Walk" })
-                  : f === "audio" ? t("wol_rule.cf_audio", { defaultValue: "Audio Divina" })
-                  : f === "examen" ? t("wol_rule.cf_examen", { defaultValue: "The Examen" })
-                  : t("wol_rule.cf_compline", { defaultValue: "Compline" });
-                const formEmoji = (f: ContemplativeForm): string =>
-                  f === "prayer" ? "\uD83D\uDD6F\uFE0F" : f === "creation" ? "\uD83C\uDF0D" : f === "walk" ? "\uD83D\uDEB6"
-                  : f === "audio" ? "\uD83C\uDFB5" : f === "examen" ? "\uD83C\uDF17" : "\uD83C\uDF19";
-                const current = contemplativeForm[side] ?? forms[0]!;
-                // One contemplative practice per side: the two per-side forms
-                // (the silent sit / Creation Prayer breath) ride
-                // contemplationBySide + the style flag; the rest are standing
-                // all-day practices, so choosing one turns the per-side sit
-                // OFF and that practice ON.
-                const choose = (f: ContemplativeForm) => {
-                  touchedRef.current = true;
-                  setContemplativeForm((p) => ({ ...p, [side]: f }));
-                  const perSide = f === "prayer" || f === "creation";
-                  if (perSide) {
-                    if (!contemplationBySide[side]) toggleContemplationSide(side);
-                    chooseContemplationStyle(f === "creation" ? "cobreathe" : "silent");
-                    if (f === "prayer") {
-                      chooseSideMinutes(side, 10);
-                      if (goalMin === 0) { chooseGoal("20"); chooseSilenceMode("fixed"); }
-                    }
-                  } else {
-                    if (contemplationBySide[side]) toggleContemplationSide(side);
-                    setContemplative((c) => ({ ...c, [f]: true }));
-                  }
-                };
-                return (
-                  <>
-                    <select
-                      value={current}
-                      onChange={(e) => choose(e.target.value as ContemplativeForm)}
-                      aria-label={t("wol_rule.contemplative_form_label", { defaultValue: "Which practice?" })}
-                      style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-                    >
-                      {forms.map((f) => (
-                        <option key={f} value={f}>{formEmoji(f)} {formLabel(f)}</option>
-                      ))}
-                    </select>
-                    <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
-                  </>
-                );
-              })()}
-            </div>
-          </>
-        )}
-
         {/* Contemplative Prayer needs two more answers, and they are two
             DIFFERENT questions (owner): how long this side's sit is, and
             whether it's kept with a timer or just marked done.
@@ -3851,6 +3817,61 @@ export default function WayOfLoveRuleFlow({
             </button>
           )}
         </div>
+        {/* Saturday / Sunday alternatives (owner) — HERE, under "add an
+            additional practice", not on the anchor slide it used to sit on.
+            That slide is one question ("what do you pray?") and the weekend
+            is a second one; asking both at once made the first look longer
+            and less decided than it is.
+
+            Shown once this side has SOMETHING — an anchor or a contemplative
+            practice. Offering "different on Saturday" for a side you haven't
+            chosen anything for is a question about nothing. */}
+        {(prayBySide[side] !== "none" || contemplativeOnSide(side)) && (
+          <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
+            <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+              {t("wol_rule.weekend_intro", {
+                defaultValue: "Keep something different at the weekend? Leave these alone if the same practice runs all week.",
+              })}
+            </p>
+            {(["sat", "sun"] as const).map((day) => {
+              const alt = weekendBySide[side][day];
+              const label = day === "sat"
+                ? t("wol_rule.saturdays", { defaultValue: "Saturdays" })
+                : t("wol_rule.sundays", { defaultValue: "Sundays" });
+              return (
+                <div key={day} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <label style={{ color: CREAM, fontFamily: FONT, fontSize: 14, fontWeight: 500 }}>{label}</label>
+                  <select
+                    value={alt ? alt.choice : ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setWeekend(side, day, v === "" ? null : { choice: v as PrayChoice, name: alt?.name ?? "" });
+                    }}
+                    aria-label={label}
+                    style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+                  >
+                    <option value="">{t("wol_rule.weekend_same", { defaultValue: "Same as the rest of the week" })}</option>
+                    {weekendOptions(side).map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  {/* Its own name, the way the weekday custom practice has one —
+                      "Worship", "Eucharist", whatever they actually keep. */}
+                  {alt?.choice === "ownPractice" && (
+                    <input
+                      type="text"
+                      value={alt.name}
+                      onChange={(e) => setWeekend(side, day, { choice: "ownPractice", name: e.target.value })}
+                      placeholder={t("wol_rule.weekend_name_ph", { defaultValue: "Worship" })}
+                      aria-label={t("wol_rule.weekend_name_label", { defaultValue: "Name this practice" })}
+                      style={{ ...FROST_BLUR, width: "100%", boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none" }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );
