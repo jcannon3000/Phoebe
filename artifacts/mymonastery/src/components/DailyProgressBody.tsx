@@ -1406,11 +1406,16 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // can still pick longer explicitly in the timer's own length dropdown.
       href: `/contemplation?begin=1&sit=${Math.min(contemplationGoalMin, SESSION_SIT_CAP)}`,
       title: t("rhythm.card_silence", { defaultValue: "Contemplation" }),
-      // Owner: "take out... second line of sit again stuff" — once kept,
-      // the card just shows the title + "✓ Sit again →" CTA, no subtitle.
-      blurb: contemplationMin >= contemplationGoalMin
-        ? ""
-        : t("rhythm.silence_of_goal", { current: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` }),
+      // Owner: "when contemplative prayer is in done, it should say x of x
+      // minutes." The minutes STAY once the goal is met — this is the one
+      // card in the rhythm with a real number behind it, and blanking the
+      // line at the finish threw away the only thing it could say that the
+      // ✓ doesn't. (It read as an empty second line for a while under an
+      // earlier "take out the sit-again stuff" pass; that removed a
+      // repeat-CTA blurb, not the count.) Same string either side of the
+      // goal, so the line doesn't change shape when it's reached — and it
+      // keeps counting past it: sit 25 toward 20 and it says so.
+      blurb: t("rhythm.silence_of_goal", { current: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` }),
       progress: { current: contemplationMin, goal: contemplationGoalMin },
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
       doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
