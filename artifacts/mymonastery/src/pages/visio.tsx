@@ -437,16 +437,8 @@ export default function VisioPage() {
         @keyframes visio-cta-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .visio-cta-rise { animation: visio-cta-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 
-        /* The prompts RISE and then hold still.
-           
-           They used .title-glow-breathe, which is a fade-in PLUS an infinite
-           pulsing text-shadow — a glow that keeps swelling and fading for as
-           long as the beat is on screen. Owner: "Visio Divina is still having
-           draw animations." A practice about holding your attention on one
-           picture shouldn't have the words beside it moving the whole time, so
-           this is the same 6px arrival with nothing after it. */
-        @keyframes visio-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        .visio-rise { animation: visio-rise 700ms ease-out both; }
+        /* (The prompts rise and then hold still — .prompt-rise, in index.css,
+           shared with Audio Divina's deck. See its own note there.) */
       `}</style>
 
       {/* Header — Back / title / close, matching the office's reader chrome. */}
@@ -594,7 +586,7 @@ export default function VisioPage() {
         {step === TITLE && view && (
           <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
             <h1
-              className="visio-rise"
+              className="prompt-rise"
               style={{ fontFamily: FONT, fontSize: "clamp(30px, 7vw, 40px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: 0, lineHeight: 1.08 }}
             >
               {view.title}
@@ -630,7 +622,7 @@ export default function VisioPage() {
 
         {(step === PROMPT_1 || step === PROMPT_2) && (
           <p
-            className="visio-rise"
+            className="prompt-rise"
             style={{ color: WARM, fontFamily: FONT, fontSize: 21, fontWeight: 500, lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
           >
             {step === PROMPT_1
@@ -646,7 +638,7 @@ export default function VisioPage() {
             it is the same kind of thing: an instruction for the reader's
             attention, not a caption.
 
-            Owner: the illuminated rise, upright, Space Grotesk — .visio-rise,
+            Owner: the illuminated rise, upright, Space Grotesk — .prompt-rise,
             a 6px rise as it fades in and then nothing. It used the office's
             .title-glow-breathe, whose glow keeps pulsing for as long as the
             beat is on screen; owner: "Visio Divina is still having draw
@@ -654,7 +646,7 @@ export default function VisioPage() {
             can't have the words beside it moving the whole time. */}
         {step === CONTEMPLATE && (
           <p
-            className="visio-rise"
+            className="prompt-rise"
             style={{ color: WARM, fontFamily: FONT, fontSize: 21, fontWeight: 500, lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
           >
             {t("visio.prompt_contemplate", { defaultValue: "Take a moment in contemplation on what God may be putting on your heart through the image, and lift what arises in prayer." })}

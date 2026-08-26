@@ -561,6 +561,20 @@ textarea:focus {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+/**
+ * A line that ARRIVES and then holds still — a 6px rise as it fades in, and
+ * nothing after it.
+ *
+ * The sibling of .title-glow-breathe below, minus the infinite glow. Owner,
+ * of the practice decks: "still having draw animations." A screen whose whole
+ * job is holding your attention on one image, or on one song, can't have the
+ * words beside it moving the whole time it's up. Shared, so Visio Divina and
+ * Audio Divina can't drift apart on it.
+ */
+.prompt-rise {
+  animation: title-glow-fade-in 700ms ease-out both;
+}
+
 .title-glow-breathe {
   animation:
     title-glow-fade-in 0.7s ease-out both,

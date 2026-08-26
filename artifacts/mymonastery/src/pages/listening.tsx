@@ -276,8 +276,8 @@ export default function ListeningPage() {
    * picture practice ends too. Ending on the log made the last thing you did
    * data entry.
    */
-  const INTRO = 0, LISTEN = 1, LOG = 2, LIFT = 3;
-  const DECK_TOTAL = 4;
+  const INTRO = 0, LISTEN = 1, HOW = 2, LOG = 3, LIFT = 4;
+  const DECK_TOTAL = 5;
   const LAST = LIFT;
 
   if (view === "deck") {
@@ -386,7 +386,7 @@ export default function ListeningPage() {
                   centred column reads as a mistake rather than a choice. */}
               {deckStep === INTRO && (
                 <div className="w-full text-center" style={{ maxWidth: 480 }}>
-                  <h1 className="title-glow-breathe text-[30px] font-bold leading-tight mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK, letterSpacing: "-0.02em" }}>
+                  <h1 className="prompt-rise text-[30px] font-bold leading-tight mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK, letterSpacing: "-0.02em" }}>
                     Sacred listening
                   </h1>
                   <p className="text-[16px] leading-relaxed" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
@@ -396,17 +396,29 @@ export default function ListeningPage() {
               )}
 
               {/* The prompts are set exactly as Visio's are (owner: "the prompts
-                  are different") — .title-glow-breathe, the app's illuminated
+                  are different") — .prompt-rise, the app's illuminated
                   rise: a 6px lift as they fade in, then a slow breathing glow.
                   Space Grotesk, upright, 21px, same measure. */}
               {deckStep === LISTEN && (
-                <p className="title-glow-breathe text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
+                <p className="prompt-rise text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
                   Let a song come to mind that feels sacred to you in this moment. Listen to it once — rest in the music, and listen for what touches your heart as you do.
                 </p>
               )}
 
+              {/* Owner: a beat between choosing the song and logging it —
+                  "listen to the song in the way that is best for you at this
+                  moment, then come back to log the song and continue in this
+                  practice." The listening happens away from the screen, and
+                  this is the beat that says so: how you play it is yours, and
+                  the deck waits. */}
+              {deckStep === HOW && (
+                <p className="prompt-rise text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
+                  Listen to the song in the way that is best for you at this moment. Then come back to log it and continue in this practice.
+                </p>
+              )}
+
               {deckStep === LIFT && (
-                <p className="title-glow-breathe text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
+                <p className="prompt-rise text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
                   Take a moment to lift to God what may be on your heart.
                 </p>
               )}
