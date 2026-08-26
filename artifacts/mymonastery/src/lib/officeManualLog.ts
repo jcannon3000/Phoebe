@@ -107,6 +107,27 @@ export function undoOfficeToday(side: OfficeUndoSide, onlyMode?: string): void {
   } catch { /* private mode / quota — non-fatal */ }
 }
 
+/**
+ * Lift today's undo for a side — the exact mirror of undoOfficeToday.
+ *
+ * logOfficeToday already does this inline ("a deliberate re-log outranks an
+ * earlier undo today"), but a CUSTOM side practice never goes through it: it
+ * marks itself with its own local stamp. So undoing Chapel and then tapping it
+ * again left the tombstone standing, morningDone stayed masked, and the
+ * practice could not be marked done again for the rest of the day.
+ *
+ * Reported: "I had chapel as done, then I just tapped the card and it jumped
+ * to Next, then I could not get it to mark as done."
+ */
+export function clearOfficeUndoToday(side: OfficeUndoSide): void {
+  try {
+    const modes = side === "compline" ? ["compline"] : anchorModesFor(side);
+    localStorage.removeItem(UNDO_PREFIX + side);
+    for (const mode of modes) localStorage.removeItem(UNDO_MODE_PREFIX + mode);
+    window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
+  } catch { /* private mode / quota — non-fatal */ }
+}
+
 /** True if this office has already been logged/prayed today (local flag). */
 export function isOfficeLoggedToday(mode: string): boolean {
   try { return localStorage.getItem(flagKey(mode)) !== null; } catch { return false; }

@@ -20,6 +20,7 @@ import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL,
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
+import { useVisioToday } from "@/hooks/useVisioToday";
 import { undoOfficeToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
@@ -801,6 +802,10 @@ const SENTINEL_PRACTICES: Partial<Record<string, { title: (t: (k: string, o?: Re
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming, onRemainingCount, mountTag = "unlabeled" }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number; onRemainingCount?: (count: number) => void; /** Diagnostic only — see lib/celebrationDebugLog.ts. Identifies which of dashboard.tsx's mutually-exclusive render branches mounted this instance. */ mountTag?: string }) {
   const { t } = useTranslation();
+  // Today's Visio artwork, so its card can name the image. Called here at the
+  // top with the other hooks — never after an early return (this repo's
+  // recurring crash class).
+  const visioToday = useVisioToday();
   // ── The just-completed moment ────────────────────────────────────────────
   // Coming back from a practice, the card is already Done in state — so
   // without this it would simply be sitting in the Done list, with nothing to
@@ -1082,7 +1087,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     key: "visio", emoji: "🖼️", rgb: "150,130,170", done: visioDone, href: "/visio",
     onUnlog: () => unmarkPracticeDoneToday("visio"),
     title: t("rhythm.card_visio", { defaultValue: "Visio Divina" }),
-    blurb: visioDone ? kept : t("rhythm.blurb_visio", { defaultValue: "Pray with today's image" }),
+    // The image's own name (owner), from the same computation the practice
+    // uses — falls back to the generic line only while the lookup is settling,
+    // so the card never names a different picture from the one it opens.
+    blurb: visioDone ? kept : (visioToday.chosen?.art.title ?? t("rhythm.blurb_visio", { defaultValue: "Pray with today's image" })),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
   const listeningCard = {

@@ -1,7 +1,7 @@
 import { apiRequest } from "@/lib/queryClient";
 import { getSideLevel, getSideReflectionExplicit } from "@/lib/officePrefs";
 import { markRecentCompletion } from "@/lib/recentCompletion";
-import { undoOfficeToday } from "@/lib/officeManualLog";
+import { undoOfficeToday, clearOfficeUndoToday } from "@/lib/officeManualLog";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 
 // Does this side's rhythm actually prescribe `level`? Psalms and PACT credit a
@@ -236,7 +236,21 @@ const customPrayerTrackerMorning = makeDailyReadTracker("phoebe:custom-prayer:mo
 const customPrayerTrackerEvening = makeDailyReadTracker("phoebe:custom-prayer:evening:last-read-day", CUSTOM_PRAYER_READ_EVENT, () => syncCustomPrayerSession("evening"), "evening");
 const customPrayerTrackerFor = (side: "morning" | "evening") => (side === "evening" ? customPrayerTrackerEvening : customPrayerTrackerMorning);
 export function hasPrayedCustomToday(side: "morning" | "evening" = "morning"): boolean { return customPrayerTrackerFor(side).hasReadToday(); }
-export function markCustomPrayed(side: "morning" | "evening" = "morning"): void { customPrayerTrackerFor(side).markRead(); clearReminderIfAnchor(side, "custom"); }
+/**
+ * Mark a "Create your own" side practice as prayed.
+ *
+ * Lifts today's undo tombstone as well as setting the stamp. unmarkCustomPrayed
+ * writes that tombstone (it has to — see its note), and a side's done-state is
+ * masked by it for the rest of the day, so without this a practice undone once
+ * could never be marked done again. logOfficeToday clears the same keys inline
+ * for every other level, on the same reasoning: a deliberate re-log outranks an
+ * earlier undo.
+ */
+export function markCustomPrayed(side: "morning" | "evening" = "morning"): void {
+  customPrayerTrackerFor(side).markRead();
+  clearOfficeUndoToday(side);
+  clearReminderIfAnchor(side, "custom");
+}
 /**
  * Un-mark a "Create your own" side practice.
  *

@@ -46,6 +46,7 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
 import { chooseArtwork, artworkById, type Chosen } from "@/lib/visioSelect";
 import { getVisioHistory, recordVisioSeen } from "@/lib/visioHistory";
+import { VISIO_READINGS_SIDE } from "@/hooks/useVisioToday";
 import { apiRequest } from "@/lib/queryClient";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
@@ -106,9 +107,10 @@ export default function VisioPage() {
   const today = useMemo(() => {
     try { return new Date().toLocaleDateString("en-CA"); } catch { return "1970-01-01"; }
   }, []);
-  // Which office's readings to look at — the same 5 PM boundary the evening
-  // office and the evening home cards use.
-  const side = useMemo(() => (new Date().getHours() >= 17 ? "evening" : "morning"), []);
+  // FIXED, not the clock — see useVisioToday. Picking by the hour gave two
+  // people on the same day different paintings, and let the home card name a
+  // different image from the one this page then opened.
+  const side = VISIO_READINGS_SIDE;
 
   const { data: readings, isFetched } = useQuery<{ lessons?: string[] }>({
     queryKey: ["/api/office/readings", side, "office", today],
