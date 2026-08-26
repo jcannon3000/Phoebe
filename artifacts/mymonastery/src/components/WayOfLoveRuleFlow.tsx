@@ -26,6 +26,8 @@ import { FROST, FROST_BLUR } from "@/lib/frost";
 import { Spinner } from "@/components/ui/spinner";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
+import { adoptRoutineConfig } from "@/lib/routineSync";
+import { summarizeRuleSpec, type RuleSpec } from "@/lib/ruleSummary";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePresets";
@@ -1993,6 +1995,68 @@ export default function WayOfLoveRuleFlow({
     if (user) pushRoutineConfig();
     setStep("done");
   };
+  /**
+   * THE RULES YOUR GROUPS KEEP — offered above the app's own presets.
+   *
+   * Owner: "if this user is in a group that has a preset routine for the
+   * group, when they go to preset routines have their group's preset routine
+   * be there, and have it be at the top. All the ones from groups at the top."
+   *
+   * At the top because it's the one on this list that other people are already
+   * praying. The app's presets are schools of prayer; a group's rule is a
+   * standing invitation from people the reader has actually joined, and burying
+   * it under five general options would be reading the room wrong.
+   *
+   * Only the NAMES are fetched here (one cheap call the home's rule offer
+   * already uses). A group's spec is pulled when its row is tapped — three
+   * routine blobs nobody may look at is not a page load worth paying for.
+   *
+   * Skipped for guests, prescribe and pilot: guests have no groups, and the
+   * other two are designing for someone else, whose groups these aren't.
+   */
+  const { data: groupRules } = useQuery<{ offers: Array<{ slug: string; name: string; label: string | null }> }>({
+    queryKey: ["/api/me/rule-offers"],
+    queryFn: () => apiRequest("GET", "/api/me/rule-offers"),
+    enabled: !!user && !guest && !prescribe && !pilot,
+    staleTime: 5 * 60_000,
+  });
+  const groupRuleOffers = groupRules?.offers ?? [];
+  /** Which group's rule is being looked at on the confirm screen. */
+  const [groupPending, setGroupPending] = useState<{ slug: string; name: string } | null>(null);
+  const { data: groupPendingRule } = useQuery<{ rule: { label: string | null; spec: RuleSpec } | null }>({
+    queryKey: [`/api/groups/${groupPending?.slug}/rule`],
+    queryFn: () => apiRequest("GET", `/api/groups/${groupPending!.slug}/rule`),
+    enabled: !!groupPending,
+  });
+  const [adoptingGroup, setAdoptingGroup] = useState(false);
+  const [groupAdoptError, setGroupAdoptError] = useState(false);
+  /**
+   * Adopt a GROUP's rule — through the group's own endpoint, not adoptRule().
+   *
+   * adoptRule() replays a preset into this flow's state and lets commit() write
+   * it. A group's rule isn't a preset: it's a stored spec, and the server
+   * already knows how to apply one (the same call the group page's Follow
+   * button makes). Going through it means the adoption is COUNTED, the viewer
+   * shows as following on the group page, and the spec applied is byte-for-byte
+   * the one the leader designed — no round-trip through flow state that only
+   * carries what this customizer happens to model.
+   */
+  const adoptGroupRule = async () => {
+    if (!groupPending || adoptingGroup) return;
+    setAdoptingGroup(true); setGroupAdoptError(false);
+    try {
+      const res = await apiRequest("POST", `/api/groups/${groupPending.slug}/rule/adopt`, {}) as { ruleConfig?: Record<string, string> };
+      adoptRoutineConfig(res?.ruleConfig);
+      try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "medium" } })); } catch { /* non-fatal */ }
+      qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
+      qc.invalidateQueries({ queryKey: [`/api/groups/${groupPending.slug}/rule`] });
+      onDone();
+    } catch {
+      setGroupAdoptError(true);
+      setAdoptingGroup(false);
+    }
+  };
   const lastAdoptedPresetRef = useRef<string | null>(null);
   // The time-ladder dial's position (index into TIME_LADDER; default = 20 min:
   // Morning Prayer · FDD · 5 minutes of silence, no evening).
@@ -2494,6 +2558,7 @@ export default function WayOfLoveRuleFlow({
     // scratch-or-edit fork), so leaving the app entirely skips right past them.
     // Back out of the preset CONFIRM to the preset LIST first — one tap should
     // undo one tap, not drop you two slides back at the fork.
+    if (canEditParts && manualMode === "preset" && groupPending) { setGroupPending(null); return; }
     if (canEditParts && manualMode === "preset" && presetPending) { setPresetPending(null); return; }
     if (canEditParts && manualMode !== "edit") { setManualMode("edit"); return; }
     if (entryChoiceMade && showEntryChoice) { setEntryChoiceMade(false); return; }
@@ -2844,6 +2909,68 @@ export default function WayOfLoveRuleFlow({
   // you take one (emoji, name, what it actually contains). Adopting replaces the
   // whole rhythm, so a tap opens a confirm rather than committing outright.
   if (entrySettled && canEditParts && manualMode === "preset") {
+    // A GROUP's rule, being looked at before taking it up. Same shape as the
+    // app-preset confirm below it — the difference is where the rows come from
+    // (the stored spec, summarised the way the group page summarises it) and
+    // what Adopt does (the group's own adopt endpoint; see adoptGroupRule).
+    if (groupPending) {
+      const spec = groupPendingRule?.rule?.spec ?? null;
+      const lines = spec ? summarizeRuleSpec(spec) : [];
+      return shell(
+        <>
+          {stepHeader(
+            t("wol_rule.preset_group_eyebrow", { defaultValue: "A rhythm your group keeps" }),
+            groupPendingRule?.rule?.label?.trim() || groupPending.name,
+          )}
+          <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 18px" }}>
+            {t("wol_rule.preset_group_body", {
+              name: groupPending.name,
+              defaultValue: `Taking this up replaces your current rhythm with the one ${groupPending.name} keeps. You can change any part of it afterwards, and nothing you've already prayed is lost.`,
+            })}
+          </p>
+          <div style={{ ...FROST_BLUR, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "14px 16px" }}>
+            {lines.length > 0 ? lines.map((l) => (
+              <p key={l} style={{ color: CREAM, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.5, margin: "4px 0" }}>{l}</p>
+            )) : (
+              <p style={{ color: SAGE_DIM, fontSize: 14, fontFamily: FONT, margin: 0 }}>
+                {t("common.loading", { defaultValue: "Loading…" })}
+              </p>
+            )}
+          </div>
+          {groupAdoptError && (
+            <p style={{ color: "#E5A3A3", fontSize: 13.5, fontFamily: FONT, margin: "12px 0 0" }}>
+              {t("wol_rule.preset_group_error", { defaultValue: "Couldn't take up that rhythm just now. Try again." })}
+            </p>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
+            <button
+              type="button"
+              onClick={adoptGroupRule}
+              disabled={!spec || adoptingGroup}
+              style={{
+                background: "rgba(46,107,64,0.9)", border: "none", color: CREAM, borderRadius: 999,
+                padding: "13px 18px", fontSize: 15.5, fontWeight: 700, fontFamily: FONT,
+                cursor: !spec || adoptingGroup ? "default" : "pointer", opacity: !spec || adoptingGroup ? 0.6 : 1,
+              }}
+            >
+              {adoptingGroup
+                ? t("wol_rule.preset_group_adopting", { defaultValue: "Setting it up…" })
+                : t("wol_rule.preset_adopt", { defaultValue: "Adopt this rhythm" })}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setGroupPending(null); setGroupAdoptError(false); }}
+              style={{
+                background: "none", border: "none", color: SAGE_DIM, fontSize: 13.5,
+                fontFamily: FONT, textDecoration: "underline", cursor: "pointer", padding: "6px 10px",
+              }}
+            >
+              {t("common.cancel", { defaultValue: "Cancel" })}
+            </button>
+          </div>
+        </>,
+      );
+    }
     const pending = presetPending ? RULE_PRESETS.find((p) => p.id === presetPending) ?? null : null;
     if (pending) {
       return shell(
@@ -2906,6 +3033,42 @@ export default function WayOfLoveRuleFlow({
           })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* YOUR GROUPS FIRST (owner). These are the rhythms people the
+              reader has actually joined are already praying — the app's
+              presets below are schools of prayer offered to anyone. Under
+              their own eyebrow so it's clear whose they are, and named by the
+              group rather than by the rule, because that's what makes them
+              worth taking up. */}
+          {groupRuleOffers.length > 0 && (
+            <>
+              <p style={{ color: SAGE_DIM, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: FONT, margin: "0 0 2px" }}>
+                {t("wol_rule.preset_from_groups", { defaultValue: "From your groups" })}
+              </p>
+              {groupRuleOffers.map((g) => (
+                <button
+                  key={g.slug}
+                  type="button"
+                  onClick={() => { try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } })); } catch { /* ignore */ } setGroupPending({ slug: g.slug, name: g.name }); }}
+                  style={{
+                    ...FROST_BLUR,
+                    background: CARD, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 14,
+                    padding: "14px 16px", textAlign: "left", cursor: "pointer", width: "100%",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 24, flexShrink: 0 }} aria-hidden>🕯️</span>
+                    <span style={{ color: CREAM, fontSize: 16.5, fontWeight: 700, fontFamily: FONT }}>{g.name}</span>
+                  </div>
+                  <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, lineHeight: 1.5, margin: "8px 0 0" }}>
+                    {g.label?.trim() || t("wol_rule.preset_group_blurb", { defaultValue: "The daily rhythm this group keeps together." })}
+                  </p>
+                </button>
+              ))}
+              <p style={{ color: SAGE_DIM, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: FONT, margin: "12px 0 2px" }}>
+                {t("wol_rule.preset_from_phoebe", { defaultValue: "Schools of prayer" })}
+              </p>
+            </>
+          )}
           {RULE_PRESETS.map((preset) => (
             <button
               key={preset.id}
