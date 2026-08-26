@@ -72,6 +72,7 @@ import {
   setSideContemplationKind,
   getSideContemplationKind,
 } from "@/lib/officePrefs";
+import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
 import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
@@ -1167,11 +1168,29 @@ export default function WayOfLoveRuleFlow({
     // one of those re-opens showing Contemplative Prayer. Honest default: it's
     // the first entry, and their standing practice is still on either way.
     const seed = (s: OfficeSide): ContemplativeForm | null => {
+      /**
+       * A WALK, SACRED LISTENING or VISIO DIVINA as this side's anchor.
+       *
+       * Reported: "Visio Divina flattened into a custom practice — it was an
+       * anchor and it got flattened." Those three are stored as a `custom`
+       * level whose NAME lib/anchorPractices matches back to the real practice
+       * (that's the shape the anchor mechanism was designed around). But this
+       * seed only ever recovered the two per-side forms, so re-opening the
+       * customizer found no contemplative form, fell through to "Create your
+       * own", and the practice lost its identity on the way back in.
+       */
+      if (getSideLevel(s) === "custom") {
+        const named = anchorPracticeFor(getSideCustomName(s));
+        if (named?.key === "visio") return "visio";
+        if (named?.key === "walk") return "walk";
+        if (named?.key === "listening") return "audio";
+      }
       const on = getSideContemplationExplicit(s) ?? (getSideLevel(s) === "reflect-sit");
       if (!on) return null;
-      let style = "silent";
-      try { style = localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { /* ignore */ }
-      return style === "cobreathe" ? "creation" : "prayer";
+      // PER SIDE — the global was the last-written side's kind, so a split rule
+      // re-opened with both sides claiming whichever was written last, and the
+      // next commit wrote that back over the real one.
+      return getSideContemplationKind(s) === "creation" ? "creation" : "prayer";
     };
     return { morning: seed("morning"), evening: seed("evening") };
   });
@@ -4549,7 +4568,9 @@ export default function WayOfLoveRuleFlow({
     ...SIDES.filter((s) => sides[s] && prayBySide[s] !== "none").map((s) => ({
       emoji: s === "morning" ? "🌅" : "🌙",
       label: sideWayLabel(s),
-      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : prayBySide[s] === "guidedPrayer" ? "Praise · Confession · Thanksgiving · Supplication" : prayBySide[s] === "ownPractice" ? "Your own practice" : prayBySide[s] === "fdd" ? "Forward Movement" : prayBySide[s] === "readings" ? "Forward Movement" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
+      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : prayBySide[s] === "guidedPrayer" ? "Praise · Confession · Thanksgiving · Supplication" : prayBySide[s] === "ownPractice" ? (anchorPracticeFor(customNameBySide[s])
+        ? t("wol_rule.own_named_practice", { defaultValue: "Your anchor practice" })
+        : t("wol_rule.own_practice", { defaultValue: "Your own practice" })) : prayBySide[s] === "fdd" ? "Forward Movement" : prayBySide[s] === "readings" ? "Forward Movement" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
     })),
     // Per-side contemplative prayer — its own row per side. When the style is

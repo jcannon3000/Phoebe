@@ -21,16 +21,21 @@ import { anchorModesFor, getSideLevel, getExplicitSideLevel, getSideContemplatio
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
 import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
 
-// The contemplative practice the user's rhythm is set to — the Creation Prayer
-// breath or the silent sit. Read straight from localStorage (same key the
-// `contemplationStyle` value below uses) so the per-side done-flag check can
-// run inside state initializers/listeners that sit above that computation.
-function currentContemplationKind(): ContemplationKind {
-  try {
-    return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent";
-  } catch {
-    return "silent";
-  }
+/**
+ * The contemplative practice THIS SIDE is set to — the Creation Prayer breath
+ * or the silent sit.
+ *
+ * PER SIDE. This read the one global style key, which meant a rule keeping
+ * silence in the morning and the breath in the evening asked the wrong
+ * question of one of them: the global holds the LAST-written side's kind, so a
+ * finished morning silent sit (stamped `date|silent`) was checked against
+ * "cobreathe" and read as not kept — all day, on the card, the dot, the weekly
+ * grid and the widget. That is the completion-signal invariant broken at its
+ * source. Read straight from officePrefs so it can run inside the state
+ * initializers and listeners that sit above the derived values below.
+ */
+function sideContemplationKind(side: "morning" | "evening"): ContemplationKind {
+  return getSideContemplationKind(side) === "creation" ? "cobreathe" : "silent";
 }
 import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { useAuth } from "@/hooks/useAuth";
@@ -581,13 +586,13 @@ export function useRhythmState(): RhythmState {
   // must not tick the other's card. (Legacy flags carry no kind and satisfy
   // either, so a day already kept before this shipped doesn't flip back.)
   const [contemplationSideDone, setContemplationSideDone] = useState(() => ({
-    morning: hasContemplationSideDoneToday("morning", currentContemplationKind()),
-    evening: hasContemplationSideDoneToday("evening", currentContemplationKind()),
+    morning: hasContemplationSideDoneToday("morning", sideContemplationKind("morning")),
+    evening: hasContemplationSideDoneToday("evening", sideContemplationKind("evening")),
   }));
   useEffect(() => {
     const recheck = () => setContemplationSideDone({
-      morning: hasContemplationSideDoneToday("morning", currentContemplationKind()),
-      evening: hasContemplationSideDoneToday("evening", currentContemplationKind()),
+      morning: hasContemplationSideDoneToday("morning", sideContemplationKind("morning")),
+      evening: hasContemplationSideDoneToday("evening", sideContemplationKind("evening")),
     });
     window.addEventListener(CONTEMPLATION_SIDE_DONE_EVENT, recheck);
     window.addEventListener("focus", recheck);
@@ -851,15 +856,32 @@ export function useRhythmState(): RhythmState {
   // are actually set to, so a silent sit never reports a Creation Prayer side
   // kept (and vice versa) — the server-side half of the same rule the local
   // day-flags follow.
-  const sidesTodayKind = currentContemplationKind();
-  const { data: sidesToday } = useQuery<{ morning: boolean; evening: boolean }>({
+  // PER SIDE, so a split rule's echo is right on both. One `kind` for both
+  // sides meant the side whose practice differed from the global could never
+  // read done from another device — a morning sit finished on the phone stayed
+  // open on the web all day. Two narrow queries rather than one wide one: the
+  // server filters by kind, and the two sides may want different filters.
+  const morningEchoKind = sideContemplationKind("morning");
+  const eveningEchoKind = sideContemplationKind("evening");
+  const { data: sidesTodayMorning } = useQuery<{ morning: boolean; evening: boolean }>({
     // Date-scoped so a day rollover always re-fetches rather than serving a
     // pre-midnight cached answer (same reasoning as contemplation-stats' key).
-    queryKey: ["/api/me/contemplation-sides-today", tz, day, sidesTodayKind],
-    queryFn: () => apiRequest("GET", `/api/me/contemplation-sides-today?tz=${encodeURIComponent(tz)}&kind=${sidesTodayKind}`),
+    queryKey: ["/api/me/contemplation-sides-today", tz, day, morningEchoKind],
+    queryFn: () => apiRequest("GET", `/api/me/contemplation-sides-today?tz=${encodeURIComponent(tz)}&kind=${morningEchoKind}`) as Promise<{ morning: boolean; evening: boolean }>,
     staleTime: 60_000,
     enabled: !guest && !!user,
   });
+  const { data: sidesTodayEvening } = useQuery<{ morning: boolean; evening: boolean }>({
+    queryKey: ["/api/me/contemplation-sides-today", tz, day, eveningEchoKind],
+    queryFn: () => apiRequest("GET", `/api/me/contemplation-sides-today?tz=${encodeURIComponent(tz)}&kind=${eveningEchoKind}`) as Promise<{ morning: boolean; evening: boolean }>,
+    staleTime: 60_000,
+    enabled: !guest && !!user,
+  });
+  // Each side reads the echo fetched with ITS OWN kind.
+  const sidesToday = {
+    morning: !!sidesTodayMorning?.morning,
+    evening: !!sidesTodayEvening?.evening,
+  };
 
   const { data: prayerStreak } = useQuery<{ gardenPrayedTodayCount?: number }>({
     queryKey: ["/api/prayer-streak"],
@@ -963,8 +985,8 @@ export function useRhythmState(): RhythmState {
   // Same expression as morning/eveningContemplationDone below — inlined because
   // those are declared further down (after the per-side active flags) and this
   // block runs first.
-  const morningSatKept = contemplationSideDone.morning || !!sidesToday?.morning;
-  const eveningSatKept = contemplationSideDone.evening || !!sidesToday?.evening;
+  const morningSatKept = contemplationSideDone.morning || sidesToday.morning;
+  const eveningSatKept = contemplationSideDone.evening || sidesToday.evening;
   // Prayer List: "satisfies a side regardless of that side's chosen level"
   // driven by the user's own morning/evening slot pick (lib/prayerListSlot.ts) —
   // owner: "if they prayed their community prayers but have not prayed
@@ -1192,8 +1214,8 @@ export function useRhythmState(): RhythmState {
     : (!guest && getSideLevel("evening") === "reflect-sit");
   // Local day-flag OR the server's cross-device echo — a sit done on another
   // device (which POSTed its contemplationSide) reads done here too.
-  const morningContemplationDone = contemplationSideDone.morning || !!sidesToday?.morning;
-  const eveningContemplationDone = contemplationSideDone.evening || !!sidesToday?.evening;
+  const morningContemplationDone = contemplationSideDone.morning || sidesToday.morning;
+  const eveningContemplationDone = contemplationSideDone.evening || sidesToday.evening;
   // SOLO silence — a daily minutes goal with NO per-side contemplation card on
   // either side. The goal must still be visible somewhere, so it gets its own
   // single "Silence" card with a progress bar (DailyProgressBody) and exactly
