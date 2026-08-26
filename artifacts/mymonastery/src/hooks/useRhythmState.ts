@@ -1309,9 +1309,32 @@ export function useRhythmState(): RhythmState {
   // reflectActive/reflectDone honest when VTS is the ONLY chosen source
   // (otherwise the day could never read as complete).
   const vtsCountsToday = entitlements.vts && isVtsPublishingDay();
-  const selectedReflections = vtsCountsToday
+  /**
+   * …and drop a source a SIDE'S ANCHOR already is.
+   *
+   * Reported: "I turned on Forward Day by Day for morning, but it then had it
+   * twice" — a 🌅 "Forward Day by Day · Prayed today" anchor card AND a 📖
+   * "Forward Day by Day · Kept today" newsletter card, for one reading. FDD is
+   * the one reflection source that can also be an office level, and the
+   * newsletter set is read from the home layout, which knows nothing about the
+   * anchors. Same rule the standalone Examen card already follows (suppressed
+   * when a side's anchor IS the Examen): the anchor owns the practice, so the
+   * add-on card stands down. Filtered HERE, at the same seam as the VTS drop,
+   * so the card, the dot, reflectActive and the done-count all agree.
+   */
+  const anchorReflectionSources = new Set(
+    (["morning", "evening"] as const)
+      // "fdd" is a SENTINEL for "a newsletter is this side's prayer" — WHICH
+      // one comes from the side's own reflection pref, so match on the source,
+      // never on the level. Matching the level alone would hide the Forward
+      // Day by Day card for someone whose anchor actually reads the CAC.
+      .filter((sd) => getSideLevel(sd) === "fdd")
+      .map((sd) => getSideReflectionExplicit(sd) ?? "fdd"),
+  );
+  const selectedReflections = (vtsCountsToday
     ? chosenReflections
-    : chosenReflections.filter((s) => s !== "vts");
+    : chosenReflections.filter((s) => s !== "vts")
+  ).filter((s) => !anchorReflectionSources.has(s));
   const reflections = selectedReflections.map((s) => ({ source: s, done: reflectDoneFor(s) }));
   const reflectActive = reflections.length > 0;
   // Count contemplation PER SIDE (Morning + Evening Contemplation), matching the
