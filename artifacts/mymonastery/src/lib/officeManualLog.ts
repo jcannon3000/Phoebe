@@ -1,7 +1,8 @@
 import { apiRequest } from "@/lib/queryClient";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
-import { getSideLevel, anchorModesFor } from "@/lib/officePrefs";
+import { getSideLevel, getSideCustomName, anchorModesFor } from "@/lib/officePrefs";
+import { anchorPracticeFor } from "@/lib/anchorPractices";
 import type { PrayerSurface } from "@/hooks/usePrayerSession";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 import { enqueueSession } from "@/lib/sessionOutbox";
@@ -158,6 +159,40 @@ export function clearOfficeUndoToday(side: OfficeUndoSide): void {
     for (const mode of modes) localStorage.removeItem(UNDO_MODE_PREFIX + mode);
     window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
   } catch { /* private mode / quota — non-fatal */ }
+}
+
+/**
+ * A PRACTICE was just completed — if it is a side's anchor, lift that side's undo.
+ *
+ * The mirror of cacReadState's creditSideAnchor, for the other family of
+ * completions. Offices and reflections say "I was prayed" through
+ * mark*Prayed(side); the Examen, Creation Prayer and a named contemplative
+ * practice say it through markPracticeDoneToday(key), which knew nothing about
+ * sides and so never cleared the tombstone that un-logging leaves behind.
+ *
+ * Reported: "Examen is also not logging for the anchor." Once a side has been
+ * un-logged today, `morningDone`/`eveningDone` mask every non-local signal for
+ * the rest of the day — so praying the Examen set its own practice flag, the
+ * Examen card went green, and the ANCHOR stayed in Next. Exactly what Forward
+ * Day by Day and Simple Guided Prayer were doing, from the same tombstone.
+ *
+ * Which sides count: the level IS this practice ("examen", "creation"), or the
+ * side is a named custom practice that resolves to it. The per-side
+ * contemplation KIND is deliberately not consulted — that's the add-on sit,
+ * not the side's anchor, and clearing an anchor undo from it would credit a
+ * practice the reader didn't do.
+ */
+export function creditAnchorPractice(section: string): void {
+  for (const side of ["morning", "evening"] as const) {
+    let isAnchor = false;
+    try {
+      const lvl = getSideLevel(side);
+      if (lvl === "examen" && section === "examen") isAnchor = true;
+      else if (lvl === "creation" && section === "cobreathe") isAnchor = true;
+      else if (lvl === "custom") isAnchor = anchorPracticeFor(getSideCustomName(side))?.key === section;
+    } catch { /* storage unavailable — nothing to credit */ }
+    if (isAnchor) clearOfficeUndoToday(side);
+  }
 }
 
 /** True if this office has already been logged/prayed today (local flag). */

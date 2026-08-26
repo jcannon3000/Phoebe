@@ -1,6 +1,7 @@
 import { apiRequest, ApiError } from "@/lib/queryClient";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { markRecentCompletion } from "@/lib/recentCompletion";
+import { creditAnchorPractice } from "@/lib/officeManualLog";
 
 // Tracks whether the user has completed an *optional* daily practice today —
 // currently Gratitude and the Examen. These are the practices a user can add
@@ -69,6 +70,10 @@ export function markPracticeDoneToday(section: OptionalPractice): void {
   // stamp so the home can play this card's completion moment. The optional
   // practice ids double as their home-card keys.
   if (!wasAlreadyDone) { swellHaptic(); markRecentCompletion(section); }
+  // If this practice IS a side's anchor, completing it has to lift that side's
+  // undo — otherwise the practice card goes green while the anchor stays in
+  // Next for the rest of the day. See creditAnchorPractice for the report.
+  try { creditAnchorPractice(section); } catch { /* non-fatal */ }
   // Sync to the server so OTHER devices see this completion — this write is
   // the ENTIRE cross-device sync mechanism (see useRhythmState's serverDone,
   // ORed with the local flag above). A silent failure here used to have zero
