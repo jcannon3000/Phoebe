@@ -39,6 +39,7 @@ import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import {
   setSideLevel,
   setSideReflection,
+  getSideReflectionExplicit,
   setSideMinutes,
   getSideMinutes,
   setReflectionSource,
@@ -510,7 +511,14 @@ function anchorFromLevel(level: string | null | undefined, side?: "morning" | "e
   // of Common Prayer" as unselected for anyone whose side is actually set
   // to it, including the new evening default (owner: "the full customizer
   // should work from what the user has").
-  return p === "offices" || p === "compline" || p === "devotion" || p === "psalms" || p === "readings" || p === "community" || p === "creation" || p === "guidedPrayer" || p === "ownPractice" ? p : "none";
+  // "fdd" (a Reflection IS this side's prayer) is an anchor too. Leaving it out
+  // meant a morning set to Forward Day by Day opened the customizer with NOTHING
+  // selected on the way-step — and then, because commit() writes the whole rule
+  // from flow state, saving one unrelated edit wrote that "nothing" back over a
+  // rhythm the reader had. Screen-recorded. This is the THIRD level to be
+  // restored to this list for exactly that reason (see examen and readings
+  // above); the list is the bug, and every anchor level belongs in it.
+  return p === "offices" || p === "compline" || p === "devotion" || p === "psalms" || p === "readings" || p === "fdd" || p === "community" || p === "creation" || p === "guidedPrayer" || p === "ownPractice" ? p : "none";
 }
 // …and the existing PRACTICES option id, so the saved selections stay readable
 // by the Way of Love drawer / weekly review (commitmentLines).
@@ -710,7 +718,32 @@ export default function WayOfLoveRuleFlow({
    * newsletters[0] and would undo it a slide later. Empty for every rule that
    * doesn't ask (see rulePresets.anchorReflection).
    */
-  const [anchorReflectionBySide, setAnchorReflectionBySide] = useState<Partial<Record<OfficeSide, ReflectionSource>>>({});
+  /**
+   * WHICH reflection is each side's prayer — the side's own answer, seeded.
+   *
+   * It started empty, so commit() fell back to `newsletters[0]`: the first of
+   * the reader's followed reflection CARDS, which has nothing to do with the
+   * one their morning is set to. Screen-recorded: a morning anchored to
+   * Forward Day by Day opened the "Which reflection?" step with CAC selected —
+   * their day reflection — and saving moved the anchor to CAC.
+   *
+   * Worse, the picker wrote to `newsletters` rather than here, so choosing
+   * Forward Day by Day for the morning also pushed it to the head of the
+   * followed list and commit() gave them a second, separate "Forward Day by
+   * Day — Each day" card they never asked for.
+   *
+   * Both halves are one mistake: the side's anchor source and the reader's
+   * followed reflections are different questions and were sharing one answer.
+   */
+  const [anchorReflectionBySide, setAnchorReflectionBySide] = useState<Partial<Record<OfficeSide, ReflectionSource>>>(() => {
+    const out: Partial<Record<OfficeSide, ReflectionSource>> = {};
+    for (const s of ["morning", "evening"] as OfficeSide[]) {
+      if (getSideLevel(s) !== "fdd") continue;
+      const src = getSideReflectionExplicit(s);
+      if (src) out[s] = src;
+    }
+    return out;
+  });
   /**
    * Owner: "you can just edit one, and then it saves and goes back."
    *
@@ -2667,9 +2700,33 @@ export default function WayOfLoveRuleFlow({
     <div
       style={{
         marginTop: "auto", position: "sticky", bottom: 0, zIndex: 2,
-        paddingTop: 34,
-        paddingBottom: "max(6px, env(safe-area-inset-bottom))",
-        background: "linear-gradient(to top, rgba(9,26,16,0.98) 0%, rgba(9,26,16,0.96) 58%, rgba(9,26,16,0) 100%)",
+        /**
+         * IT HAS TO STAY DOWN AT THE END OF THE SCROLL.
+         *
+         * Reported: "when you scroll to the bottom of the page you get this …
+         * it goes up … it needs to stay down." Sticky only pins an element
+         * while its CONTAINING BLOCK is still being scrolled past; once the
+         * end arrives it settles at its natural place, which sat 40px above
+         * the bottom because the shell wraps every slide in paddingBottom: 40.
+         * That padding is what the button rose by, and the dead band under it
+         * was that padding laid bare. Eating it with a negative margin — and
+         * paying it back as our own padding — makes the natural resting place
+         * the true bottom, so the last scroll position looks identical to
+         * every one before it.
+         */
+        marginBottom: -40,
+        /**
+         * …and the cards FADE under it (owner: "there needs to be more of a
+         * shadow so the cards look like they are fading under it, just like we
+         * used to do with the prayer list cards"). A short, hard scrim read as
+         * a bar bolted over the page; this one is tall enough to be a fade —
+         * fully opaque behind the button, still washing the card above it, and
+         * gone by the top. The extra stop near the middle keeps the ramp from
+         * banding on the dark green.
+         */
+        paddingTop: 72,
+        paddingBottom: "calc(40px + max(6px, env(safe-area-inset-bottom)))",
+        background: "linear-gradient(to top, rgba(9,26,16,1) 0%, rgba(9,26,16,1) 38%, rgba(9,26,16,0.92) 58%, rgba(9,26,16,0.6) 78%, rgba(9,26,16,0.24) 90%, rgba(9,26,16,0) 100%)",
         display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
       }}
     >
@@ -4229,17 +4286,18 @@ export default function WayOfLoveRuleFlow({
               {NEWSLETTERS
                 .filter((n) => n.id !== "vts" || entitlements.vts || newsletters.includes("vts"))
                 .map((n) => choiceRow(
-                  (newsletters[0] ?? "fdd") === n.id,
+                  (anchorReflectionBySide[side] ?? getSideReflectionExplicit(side) ?? "fdd") === n.id,
                   n.label,
                   n.sub,
                   () => {
                     touchedRef.current = true;
-                    // The anchor's source is newsletters[0] at commit time
-                    // (setSideReflection(side, primary)) — so picking here
-                    // moves that source to the front rather than replacing
-                    // the list, which would silently drop the reader's other
-                    // followed reflections.
-                    setNewsletters((prev) => [n.id, ...prev.filter((x) => x !== n.id)]);
+                    // THIS SIDE's source, and only that. It used to move the
+                    // choice to the head of `newsletters` — the followed
+                    // reflection CARDS — which both mis-read the current
+                    // answer (showing whatever card happened to be first) and
+                    // handed the reader a duplicate daily card for a source
+                    // they'd only chosen as their morning prayer.
+                    setAnchorReflectionBySide((prev) => ({ ...prev, [side]: n.id }));
                   },
                 ))}
             </div>

@@ -7,7 +7,12 @@ import { getSideLevel, getSideEntry, getSideContemplation, getSideReflectionExpl
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { getOfficeBackdrop, officeVeilBg } from "@/lib/officeDisplay";
-import { getReadingsTodayUrl, recordReadingsOpened } from "@/lib/cacReadState";
+import {
+  getReadingsTodayUrl, recordReadingsOpened,
+  FDD_TODAY_URL, CAC_TODAY_URL, SSJE_TODAY_URL,
+  recordFddOpened, recordCacOpened, recordSsjeOpened,
+  markCacPrayed, markSsjePrayed,
+} from "@/lib/cacReadState";
 import { openExternalThenMarkRead } from "@/lib/openExternal";
 
 // /begin-prayer — landing page for the iOS "Begin prayer" home-screen
@@ -155,7 +160,55 @@ export default function BeginPrayerPage() {
     if (defaultPrayerLevel === "fdd") {
       const source = getSideReflectionExplicit(side) ?? "fdd";
       if (source === "vts") { setLocation(`/vts-reading?side=${side}`, { replace: true }); return; }
-      setLocation(`/dashboard?${source}=${side}`, { replace: true });
+      /**
+       * OPEN IT HERE — don't hand a param to a card and hope it mounts.
+       *
+       * This used to navigate to `/dashboard?<source>=<side>` and rely on that
+       * source's home card noticing the param on mount. Reported: "forward has
+       * an issue opening… it just flashed the home screen", and separately
+       * "it also didn't open in done."
+       *
+       * The card genuinely isn't there. FddHomeCard is mounted in exactly two
+       * places: as the office HERO for a side set to fdd, and as a reflection
+       * slot — and the reflection slot deliberately returns null whenever fdd
+       * is a side's anchor, to avoid rendering the card twice. So with FDD as
+       * the MORNING anchor in the afternoon, when evening holds the hero,
+       * nothing on the dashboard is listening for ?fdd=morning at all. The tap
+       * navigated home and stopped. CAC and SSJE are worse still: their slots
+       * render only when they hold the hero.
+       *
+       * The tap that got us here IS the user gesture, which is also the only
+       * moment a browser will let a new tab open. This is the identical fix
+       * the readings branch below already carries, for the identical report
+       * ("morning scripture reading isn't going forward, it just refreshes the
+       * home screen") — two anchors, one bug, and now one shape.
+       */
+      /**
+       * THE READING, not the podcast — owner: "we want Forward Day by Day as
+       * the reading reflection web page, the fade into web page, like CAC."
+       *
+       * Taking FDD by audio is a preference for the reflection CARD (its own
+       * tap plays today's episode, and still does). As a side's PRAYER it
+       * opens the reading, in the same in-app reader chrome CAC opens in — one
+       * treatment for "a reflection is my morning prayer", whichever
+       * publisher it comes from.
+       */
+      const url = source === "cac" ? CAC_TODAY_URL : source === "ssje" ? SSJE_TODAY_URL : FDD_TODAY_URL;
+      openExternalThenMarkRead(
+        url,
+        () => {
+          // Mark the READING and this side's anchor. recordFddOpened takes the
+          // side itself; CAC and SSJE have no side option (they were never
+          // reachable as an anchor through a working path), so the anchor mark
+          // is explicit — and it now also lifts an undo from earlier today,
+          // which is exactly the state this was reported from.
+          if (source === "cac") { recordCacOpened(); markCacPrayed(side); }
+          else if (source === "ssje") { recordSsjeOpened(); markSsjePrayed(side); }
+          else recordFddOpened({ side });
+        },
+        { reader: true },
+      );
+      setLocation("/dashboard", { replace: true });
       return;
     }
     /**
