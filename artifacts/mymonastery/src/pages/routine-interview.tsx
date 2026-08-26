@@ -649,7 +649,7 @@ export default function RoutineInterviewPage() {
       qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
       qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
       qc.invalidateQueries({ queryKey: ["/api/me/silence-ladder"] });
-      setLocation("/daily-progress");
+      setLocation("/dashboard");
     } catch {
       setError("Couldn't save that routine just now. Try again.");
       setApplying(false);

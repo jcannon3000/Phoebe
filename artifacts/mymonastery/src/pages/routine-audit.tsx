@@ -168,7 +168,7 @@ export default function RoutineAuditPage() {
 
         <button
           type="button"
-          onClick={() => setLocation("/daily-progress")}
+          onClick={() => setLocation("/dashboard")}
           style={{
             background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.25)",
             borderRadius: 14, padding: "12px 20px", fontSize: 14, fontWeight: 600,

@@ -80,7 +80,7 @@ export default function RoutineHistoryPage() {
       qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
       qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
       qc.invalidateQueries({ queryKey: ["/api/me/routine-snapshots"] });
-      setLocation("/daily-progress");
+      setLocation("/dashboard");
     } catch {
       setError("Couldn't go back to that routine just now. Try again.");
       setBusy(null);

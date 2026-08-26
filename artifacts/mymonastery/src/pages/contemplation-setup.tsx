@@ -65,7 +65,7 @@ export default function ContemplationSetupPage() {
   const next = () => {
     if (idx < sessions.length - 1) { setIdx(idx + 1); return; }
     setMode("sessions");
-    setLocation("/daily-progress");
+    setLocation("/dashboard");
   };
   const back = () => {
     if (step === "session" && idx > 0) { setIdx(idx - 1); return; }

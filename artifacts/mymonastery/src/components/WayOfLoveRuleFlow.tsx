@@ -2361,6 +2361,23 @@ export default function WayOfLoveRuleFlow({
   /** Finish a single-practice edit: write the rule, refresh the row, go back to
    *  the list. commit() ends on setStep("done"), but the edit list renders off
    *  manualMode and is checked before the step machine, so this lands there. */
+  /**
+   * Leave the customizer, rule written.
+   *
+   * The whole-rhythm counterpart to finishSingleEdit: that one saves ONE
+   * practice and returns to the list, this one saves and hands back to the
+   * page, which lands on the home screen (owner: "after any editing of the
+   * routine it should go to the home screen").
+   *
+   * Prescribe mode is the one case that must not call onDone — there commit()
+   * hands the captured spec to onPrescribe and writes nothing, and the
+   * prescribe page drives what happens next.
+   */
+  const saveAndClose = () => {
+    commit();
+    if (prescribe && onPrescribe) return;
+    onDone();
+  };
   const finishSingleEdit = () => {
     commit();
     const ret = singleEditReturnTo;
@@ -2932,7 +2949,15 @@ export default function WayOfLoveRuleFlow({
             the scroll it fell inline and its scrim painted a band across them.
             Moving it here keeps the hover AND the rows; a screen's final action
             belonging under everything it acts on is the ordinary arrangement. */}
-        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setManualMode("scratch"))}
+        {/* SAVE, not Continue (owner: "at the bottom of the shape your routine
+            have the bottom cta be save not continue" — "that would save it").
+            It used to read Continue and drop into the build-from-scratch flow,
+            which is a strange thing for the button under a finished rhythm to
+            do: the rhythm is right there, every row already editable, and the
+            one button that looked like the way out walked you into rebuilding
+            it. Starting over is still available — it's the "Start from a
+            preset" row above, which is where a whole-rhythm move belongs. */}
+        {ctaButton(t("common.save", { defaultValue: "Save" }), saveAndClose)}
 
         {deletingEditRow && (
           <div

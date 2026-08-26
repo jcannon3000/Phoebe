@@ -884,7 +884,7 @@ export default function RuleOfLifePage() {
           builderGuest && !showFullFlow ? (
             <SimpleRuleEditor
               onFull={() => setShowFullFlow(true)}
-              onDone={() => setLocation("/daily-progress")}
+              onDone={() => setLocation("/dashboard")}
             />
           ) : (
             <WayOfLoveRuleFlow
@@ -896,7 +896,7 @@ export default function RuleOfLifePage() {
                   ? setPhase("result")
                   : setLocation("/daily-progress")
               }
-              onDone={() => setLocation("/daily-progress")}
+              onDone={() => setLocation("/dashboard")}
             />
           )
         )}
