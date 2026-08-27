@@ -2532,6 +2532,34 @@ export default function WayOfLoveRuleFlow({
     if (prescribe && onPrescribe) return;
     onDone();
   };
+  /**
+   * A deletion on the REVIEW screen writes itself down.
+   *
+   * Reported: "when it's shown me the routine and I deleted things, they
+   * didn't actually go into effect" — three practices ✕'d off the review, then
+   * still on the home screen. This screen renders after commit() has already
+   * run (commit ends on setStep("done")), so its ✕ edited customizer state
+   * that nothing wrote again: the row vanished, convincingly, and the rule on
+   * disk never changed.
+   *
+   * Committing on the way out fixes the "Keep this rhythm" path, but not the
+   * ✕ in the corner — and someone who has just deleted three things and taps
+   * close has every reason to expect them gone. So the write happens at the
+   * DELETION instead, which covers both ways off the screen.
+   *
+   * Via an effect, not inside the handler: setState is async, so a commit()
+   * called straight after would capture the state as it was BEFORE the
+   * removal and faithfully write back the thing just deleted. Bumping a
+   * counter and committing once the re-render has landed is what makes it the
+   * new state that gets saved.
+   */
+  const [reviewEditTick, setReviewEditTick] = useState(0);
+  useEffect(() => {
+    if (reviewEditTick === 0) return;   // never on mount
+    commit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewEditTick]);
+
   const finishSingleEdit = () => {
     commit();
     const ret = singleEditReturnTo;
@@ -5439,7 +5467,7 @@ export default function WayOfLoveRuleFlow({
               It comes off when you keep this rhythm. You can add it back any time.
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-              <button type="button" onClick={() => { deletingReviewRow.remove(); setDeletingReviewRow(null); }} style={{ flex: 1, background: CTA, color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
+              <button type="button" onClick={() => { deletingReviewRow.remove(); setDeletingReviewRow(null); setReviewEditTick((n) => n + 1); }} style={{ flex: 1, background: CTA, color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
                 Remove
               </button>
               <button type="button" onClick={() => setDeletingReviewRow(null)} style={{ flex: 1, background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.25)", borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
@@ -5451,7 +5479,22 @@ export default function WayOfLoveRuleFlow({
       )}
       {/* One plain closing CTA — no 30-day offer, no "do it together" invite
           stage (owner, 2026-07-03): they chose the rhythm, it's set, done. */}
-      <button onClick={onDone} style={{ marginTop: 14, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
+      {/**
+        * saveAndClose, NOT onDone — this screen can now CHANGE the rhythm.
+        *
+        * Reported: "when it's shown me the routine and I deleted things, they
+        * didn't actually go into effect." commit() ends on setStep("done"), so
+        * this review renders AFTER the rule has already been written. The ✕
+        * added to these rows edits the customizer's own state, which made the
+        * row disappear — convincingly — while nothing wrote it down, and the
+        * next open read the rule from before the deletions.
+        *
+        * Committing again on the way out writes whatever the reader changed
+        * here. It's idempotent when they changed nothing: commit() rebuilds
+        * every value from current state rather than applying a diff, and the
+        * custom-anchor add it performs already guards on the title existing.
+        */}
+      <button onClick={saveAndClose} style={{ marginTop: 14, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
         {t("wol_rule.done_cta", { defaultValue: "Keep this rhythm" })}
       </button>
       {/* WEB save = an account (owner, 2026-07-03): on the web, browser storage
