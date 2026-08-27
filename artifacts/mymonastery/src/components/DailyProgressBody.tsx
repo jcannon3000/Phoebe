@@ -17,7 +17,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, sideOfficeTitle, extraPracticeTitle, extraOfficeMode, type OfficeLevel, type ReflectionSource } from "@/lib/officePrefs";
 import { daySwapNote } from "@/components/PracticeSwitcher";
-import { sortCardsByUserOrder } from "@/lib/routineOrder";
+import { sortCardsByUserOrder, rowIdToCardKeys } from "@/lib/routineOrder";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
@@ -1622,19 +1622,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // belongs to reflection → contemplation (small cards); the evening office
   // stays a quiet "later" card and only becomes the hero from 5 PM on (matches
   // the splash + the dashboard "what's next" hero — Evening never leads earlier).
-  const heroSide: "morning" | "evening" | null =
-    // Morning only leads as the hero while it's still morning — past noon a
-    // not-yet-prayed morning steps aside (matches the omitted morning card +
-    // the dashboard "what's next" gate), so the afternoon never shows a morning
-    // hero. Evening takes the hero from 5 PM.
-    (morningActive && !morningDone && hour < 12) ? "morning"
-    : (eveningActive && hour >= EVENING_OPEN_HOUR && !eveningDone) ? "evening"
-    : null;
-  const showOfficeHero = !!renderOfficeHero && heroSide !== null;
-  const officeHero = showOfficeHero ? renderOfficeHero!(heroSide!) : null;
-  // Shade each card along the green→purple ramp by its position in the FULL day
-  // order (so a card keeps its colour whether it's Next or Done, and the ramp
-  // doesn't reshuffle as things get kept). The office hero keeps its own colour.
   /**
    * THE USER'S OWN ORDER outranks the built-in slot order (owner: practices
    * are standalone "and then you as the user order them"). Colour is assigned
@@ -1643,6 +1630,50 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * Cards the saved order doesn't know keep build order at the end.
    */
   const coloredCards = sortCardsByUserOrder(cards.map((c, i) => ({ ...c, rgb: rhythmGradientRgb(i, cards.length) })));
+  /**
+   * THE NOTIFICATION'S PRACTICE IS THE HERO (owner: "the ones they set as
+   * their practices associated with their notification should be their
+   * heroes"). The customizer's last slide binds each nudge to a practice;
+   * the home leads with the morning notification's practice until the
+   * evening window opens (5 PM), then the evening's.
+   *
+   * Empty target ("your usual practice"), a target that's done or whose slot
+   * hasn't opened, or a target row that no longer exists all fall back to the
+   * time-led hero below — the pre-notification behaviour, so nobody who never
+   * touched the slide sees anything change.
+   */
+  const notifyHero = (() => {
+    if (!renderOfficeHero) return null;
+    const timeSide: "morning" | "evening" = hour >= EVENING_OPEN_HOUR ? "evening" : "morning";
+    let target = "";
+    try { target = localStorage.getItem(`phoebe:notify-target:${timeSide}`) ?? ""; } catch { /* private mode */ }
+    if (!target || target === `side:${timeSide}`) return null;
+    if (target === "side:morning" || target === "side:evening") {
+      const sd = target.slice(5) as "morning" | "evening";
+      const active = sd === "morning" ? morningActive : eveningActive;
+      const done = sd === "morning" ? morningDone : eveningDone;
+      return active && !done ? { kind: "side" as const, side: sd } : null;
+    }
+    const keys = rowIdToCardKeys(target);
+    const card = coloredCards.find((c) => keys.includes(c.key));
+    if (!card || card.done || card.later) return null;
+    return { kind: "card" as const, card };
+  })();
+  const heroSide: "morning" | "evening" | null =
+    notifyHero?.kind === "side" ? notifyHero.side
+    : notifyHero?.kind === "card" ? null
+    // Morning only leads as the hero while it's still morning — past noon a
+    // not-yet-prayed morning steps aside (matches the omitted morning card +
+    // the dashboard "what's next" gate), so the afternoon never shows a morning
+    // hero. Evening takes the hero from 5 PM.
+    : (morningActive && !morningDone && hour < 12) ? "morning"
+    : (eveningActive && hour >= EVENING_OPEN_HOUR && !eveningDone) ? "evening"
+    : null;
+  const showOfficeHero = !!renderOfficeHero && heroSide !== null;
+  const officeHero = showOfficeHero ? renderOfficeHero!(heroSide!) : null;
+  // Shade each card along the green→purple ramp by its position in the FULL day
+  // order (so a card keeps its colour whether it's Next or Done, and the ramp
+  // doesn't reshuffle as things get kept). The office hero keeps its own colour.
   // When the rhythm has NO office at all, the morning Contemplation card leads
   // the day as the hero — a big anchor card ABOVE the reflection — so a
   // contemplation-only rhythm still has a clear "start here". Only where heroes
@@ -1660,12 +1691,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           (c.key === "contemplation-evening" && hour >= EVENING_OPEN_HOUR)
         ))
     : undefined;
-  // Whether SOME card leads the Next list as a hero (office or contemplation).
-  const heroLeads = !!officeHero || !!contemplationHero;
+  // The generic card-hero seat: the notification's chosen practice when one
+  // is set (and undone, and open), else the contemplation hero as before.
+  const cardHero = (notifyHero?.kind === "card" ? notifyHero.card : undefined) ?? contemplationHero;
+  // Whether SOME card leads the Next list as a hero (office, target, or contemplation).
+  const heroLeads = !!officeHero || !!cardHero;
   const visibleCards = showOfficeHero
     ? coloredCards.filter((c) => c.key !== heroSide)
-    : contemplationHero
-      ? coloredCards.filter((c) => c.key !== contemplationHero.key)
+    : cardHero
+      ? coloredCards.filter((c) => c.key !== cardHero.key)
       : coloredCards;
 
   // Every undone practice stays in Next (never vanishes, never rolls to a
@@ -1871,24 +1905,25 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // no emoji). The compact list card keeps its 🌍.
   // The hero IS one side, so ask that side (the aggregate stripped the 🕯️ and
   // put a "CREATION PRAYER" eyebrow over the title "Morning Contemplation").
-  const heroIsCreation = !!contemplationHero
-    && (contemplationHero.key === "contemplation-morning" ? sideIsCreation("morning")
-      : contemplationHero.key === "contemplation-evening" ? sideIsCreation("evening")
+  const heroIsCreation = !!cardHero
+    && (cardHero.key === "contemplation-morning" ? sideIsCreation("morning")
+      : cardHero.key === "contemplation-evening" ? sideIsCreation("evening")
         : false);
-  const heroNode = officeHero ?? (contemplationHero ? (
+  const heroNode = officeHero ?? (cardHero ? (
     <PracticeCard
-      href={contemplationHero.href}
-      emoji={heroIsCreation ? "" : contemplationHero.emoji}
+      href={cardHero.href}
+      emoji={heroIsCreation ? "" : cardHero.emoji}
       eyebrow={heroIsCreation ? t("rhythm.creation_eyebrow", { defaultValue: "Creation Prayer" }) : undefined}
-      title={contemplationHero.title}
-      blurb={contemplationHero.blurb}
-      cta={contemplationHero.cta}
-      done={contemplationHero.done}
-      rgb={contemplationHero.rgb}
+      title={cardHero.title}
+      blurb={cardHero.blurb}
+      cta={cardHero.cta}
+      done={cardHero.done}
+      rgb={cardHero.rgb}
       hero
-      later={contemplationHero.later}
-      progress={(contemplationHero as { progress?: { current: number; goal: number } }).progress}
-      doneCta={(contemplationHero as { doneCta?: string }).doneCta}
+      later={cardHero.later}
+      progress={(cardHero as { progress?: { current: number; goal: number } }).progress}
+      doneCta={(cardHero as { doneCta?: string }).doneCta}
+      onClick={"onClick" in cardHero ? (cardHero as { onClick?: () => void }).onClick : undefined}
       pulseOnLoad={splashCleared}
     />
   ) : null);
