@@ -52,15 +52,24 @@ export const WEEKLY_ROW_CHOICES: Array<{ key: string; emoji: string; label: stri
  * the automatic three. Null is the only "not customized" value.
  */
 export function getWeeklyRows(): string[] | null {
-  try {
-    const raw = localStorage.getItem(WEEKLY_ROWS_KEY);
-    if (raw === null) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-    return parsed.filter((k): k is string => typeof k === "string" && k.length > 0 && k.length <= 80);
-  } catch {
-    return null;
-  }
+  /**
+   * DORMANT — the editor that wrote this was withdrawn.
+   *
+   * Owner: "take out the thing that allows you to change the rows, it's not
+   * working well right now." Removing only the editor would have been worse
+   * than leaving it in: a saved list would stay in force forever with no way
+   * left to change it, so anyone holding a bad one is stuck with exactly the
+   * state being complained about.
+   *
+   * So the choice goes back to the card for everyone — the "choose for me"
+   * path every reader had until they touched this.
+   *
+   * The stored value is deliberately NOT deleted. It is the reader's own
+   * selection, and if the editor returns it should return to what they chose
+   * rather than to nothing. The reading half lived here and is in git
+   * (removed alongside WeeklyRowsEditor); restore both together.
+   */
+  return null;
 }
 
 /** Save a selection, or pass null to hand the choice back to the card. */

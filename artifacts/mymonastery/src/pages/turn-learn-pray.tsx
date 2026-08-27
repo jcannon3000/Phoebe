@@ -116,99 +116,6 @@ interface ShowResponse {
   episodes?: PodcastEpisode[];
 }
 
-/**
- * The weekly card's rows, chosen by the reader.
- *
- * Saved as a plain ordered list (lib/weeklyRows); absent means "choose for me",
- * which is what everyone has until they touch this. Tapping a row adds it to
- * the END of the list, so the order you switch them on is the order they draw
- * — arranging is choosing, without a drag handle to build.
- */
-function WeeklyRowsEditor() {
-  const [open, setOpen] = useState(false);
-  const [chosen, setChosen] = useState<string[] | null>(() => getWeeklyRows());
-  // Custom anchors get rows too — a practice you named yourself is exactly the
-  // kind of thing you'd want to watch across a week.
-  const anchors = useMemo(() => getCustomAnchors(), []);
-  /**
-   * What the card is showing RIGHT NOW when nothing is saved — derived, not
-   * assumed. Hardcoding the three "usual" rows told a newsletter reader their
-   * middle row was Contemplative when it was Reflection, and told someone with
-   * a two-row card they had three; the first tap then wrote that fiction down.
-   */
-  const rhythm = useRhythmState();
-  const automatic = useMemo(() => automaticRowKeys(rhythm), [rhythm]);
-  const choices = useMemo(() => [
-    ...WEEKLY_ROW_CHOICES,
-    ...anchors.map((a) => ({ key: `${CUSTOM_ROW_PREFIX}${a.id}`, emoji: a.emoji || "✨", label: a.title, sub: "Your own practice." })),
-  ], [anchors]);
-
-  const apply = (next: string[] | null) => { setChosen(next); setWeeklyRows(next); };
-  const toggle = (key: string) => {
-    // First touch starts from what the card is ALREADY showing, so switching
-    // one practice on doesn't silently wipe the rows you were looking at.
-    const base = chosen ?? automatic;
-    apply(base.includes(key) ? base.filter((k) => k !== key) : [...base, key]);
-  };
-
-  return (
-    <div className="mt-6">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="text-[13px] font-semibold"
-        style={{ color: SAGE, fontFamily: FONT, background: "none", border: "none", padding: "6px 0", cursor: "pointer" }}
-      >
-        {open ? "Done choosing rows" : "Choose which rows show →"}
-      </button>
-      {open && (
-        <div className="flex flex-col gap-2 mt-2">
-          <p className="text-[13px] leading-relaxed" style={{ color: SAGE, fontFamily: FONT }}>
-            {chosen
-              ? "Tap to add or remove. They draw in the order you switch them on."
-              : "The card is choosing for you. Tap any row to take it over."}
-          </p>
-          {choices.map((c) => {
-            const on = chosen ? chosen.includes(c.key) : automatic.includes(c.key);
-            return (
-              <button
-                key={c.key}
-                type="button"
-                onClick={() => toggle(c.key)}
-                className="flex items-center gap-3 rounded-2xl text-left"
-                style={{
-                  padding: "11px 13px", cursor: "pointer",
-                  background: on ? "rgba(46,107,64,0.22)" : "rgba(46,107,64,0.07)",
-                  border: `1px solid ${on ? "rgba(168,197,160,0.55)" : CARD_BORDER}`,
-                }}
-              >
-                <span aria-hidden style={{ fontSize: 18 }}>{c.emoji}</span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-[15px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{c.label}</span>
-                  <span className="block text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>{c.sub}</span>
-                </span>
-                <span aria-hidden style={{ color: on ? "rgba(168,197,160,0.9)" : "rgba(143,175,150,0.35)", fontSize: 15 }}>
-                  {on ? "✓" : "+"}
-                </span>
-              </button>
-            );
-          })}
-          {chosen && (
-            <button
-              type="button"
-              onClick={() => apply(null)}
-              className="text-[13px] self-start"
-              style={{ color: SAGE, fontFamily: FONT, background: "none", border: "none", padding: "8px 0", cursor: "pointer", textDecoration: "underline" }}
-            >
-              Choose for me again
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function TurnLearnPrayPage() {
   const { t } = useTranslation();
   const { user, isLoading } = useAuth();
@@ -222,7 +129,10 @@ export default function TurnLearnPrayPage() {
   // Morning/Contemplative/Evening row-done flags — not calling that function
   // itself here since it also needs a practice-week network fetch this
   // summary doesn't; these three lines just mirror its one-line expressions.
-  const creationStyle = rhythm.contemplationStyle === "cobreathe";
+  /** The breath is this rhythm's contemplation — the global style SAYS so and
+   *  the practice is actually turned on. The style alone is not enough: see
+   *  the title it feeds below. */
+  const breathIsTheContemplation = rhythm.contemplationStyle === "cobreathe" && rhythm.cobreatheActive;
   // Which slots the viewer actually has turned on — a row with nothing kept
   // in it isn't a live status, so it's dropped rather than shown empty.
   /**
@@ -260,8 +170,29 @@ export default function TurnLearnPrayPage() {
    */
   const morningIsContemplation = rhythm.morningContemplationActive && !rhythm.morningActive;
   const eveningIsContemplation = rhythm.eveningContemplationActive && !rhythm.eveningActive;
-  // …so the middle row stops being the breath's home once a side has claimed it.
-  const contemplativeIsGoal = (morningIsContemplation || eveningIsContemplation) && rhythm.silenceGoalCardActive;
+  /**
+   * …so the middle row stops being the breath's home once a side has claimed
+   * it. THE DAILY SILENCE GOAL OWNS THIS ROW WHENEVER IT EXISTS.
+   *
+   * This used to also require that a SIDE be its own contemplation
+   * (`morningIsContemplation || eveningIsContemplation`), which is the VTS
+   * shape the note above was written for. But that is one arrangement, not the
+   * rule. Someone whose morning and evening are both real offices — Chapel and
+   * Evening Prayer — and who keeps a silence goal alongside them satisfied
+   * neither side test, so the row fell through to the branch below and was
+   * named by the GLOBAL contemplation style and marked done by ANY
+   * contemplative practice.
+   *
+   * Reported: "why is it counting Creation Prayer as my anchor when it's not
+   * in my routine." It wasn't in their routine. A stale global style named it,
+   * and a kept Visio Divina marked it — while the home screen, two taps away,
+   * correctly said "Contemplation, 29 of 60 min today". Two answers to one
+   * question, which is the thing this app is not allowed to do.
+   *
+   * Gating on the goal card alone makes this row read the SAME value the
+   * home's Contemplation card reads, which is the whole invariant.
+   */
+  const contemplativeIsGoal = rhythm.silenceGoalCardActive;
   const slotActive: Record<"morning" | "contemplative" | "evening", boolean> = {
     morning: rhythm.morningActive || morningIsContemplation,
     contemplative: contemplativeActive,
@@ -299,11 +230,18 @@ export default function TurnLearnPrayPage() {
       done: rhythm.silenceGoalCardDone,
       href: "/contemplation?begin=1",
     } : {
-      title: creationStyle ? t("rhythm.card_creation", { defaultValue: "Creation Prayer" }) : t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
-      emoji: creationStyle ? "🌍" : "🕯️",
+      // Only call it Creation Prayer when the breath is actually IN the
+      // rhythm. contemplationStyle is a device-global that outlives the
+      // practice it describes — a rule adopted months ago can leave it set to
+      // "cobreathe" forever — so on its own it will happily name a practice
+      // the person does not keep.
+      title: breathIsTheContemplation ? t("rhythm.card_creation", { defaultValue: "Creation Prayer" }) : t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
+      emoji: breathIsTheContemplation ? "🌍" : "🕯️",
       done: rhythm.morningContemplationDone || rhythm.eveningContemplationDone || rhythm.silenceGoalCardDone
         || rhythm.cobreatheDone || rhythm.walkDone || rhythm.listeningDone || rhythm.examenDone || rhythm.visioDone,
-      href: creationStyle ? "/cobreathe" : "/contemplation",
+      // Same test as the title — a row named Contemplation must not open the
+      // breath, and vice versa.
+      href: breathIsTheContemplation ? "/cobreathe" : "/contemplation",
     },
     evening: eveningIsContemplation ? sideContemplation("evening") : {
       title: sideOfficeTitle("Evening", rhythm.prayerKind, t),
@@ -394,7 +332,12 @@ export default function TurnLearnPrayPage() {
               which of them you actually kept. This is where that choice becomes
               yours. Left alone it stays automatic; nothing changes for anyone
               who doesn't open it. */}
-          {practiceMode && <WeeklyRowsEditor />}
+          {/* (The "Choose which rows show" editor was here. Owner: "take out
+              the thing that allows you to change the rows, it's not working
+              well right now." Its open/closed heading was also overlapping the
+              app header at the top of this page. The weekly card chooses its
+              own rows again — which is what everyone had until they touched
+              this, and what the saved list falls back to when it's absent.) */}
 
           {/* Second section — the three practice explanations, each with a
               "listen" CTA. */}
