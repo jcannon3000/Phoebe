@@ -34,6 +34,8 @@ import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePreset
 import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues, flushRoutineConfig } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
+import { Reorder } from "framer-motion";
+import { getRoutineOrder, setRoutineOrder } from "@/lib/routineOrder";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw } from "@/lib/guestSeed";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import {
@@ -46,6 +48,7 @@ import {
   setSideEntry,
   getSideLevel,
   getExplicitSideLevel,
+  type OfficeLevel,
   getSideEntry,
   getReflectionSource,
   getFddMode,
@@ -765,11 +768,31 @@ export default function WayOfLoveRuleFlow({
   const [returnToReview, setReturnToReview] = useState(false);
   const [editRows, setEditRows] = useState<Array<{ id: string; emoji: string; label: string; sub: string }>>([]);
   const [editLoaded, setEditLoaded] = useState(false);
-  // ORPHANED with the edit list (the entry is three doors now — see the
-  // manualMode "edit" screen). clearEditRow below stays with it: the ?edit=
-  // deep-link and any future per-row surface would need both back.
   const [deletingEditRow, setDeletingEditRow] = useState<{ id: string; label: string } | null>(null);
-  void deletingEditRow; void setDeletingEditRow;
+  /**
+   * THE FLAT ENTRY's phases (owner: the customizer opens on your routine as a
+   * plain reorderable list — no morning/evening slots for the sake of the
+   * routine; Add walks five categories; notifications close the flow as the
+   * light anchor system). Local phases rather than Steps: none of these
+   * belong to orderedSteps' walk, and a phase can't be goNext'd into.
+   */
+  const [entryPhase, setEntryPhase] = useState<"list" | "add-cat" | "add-items" | "add-minutes" | "add-custom" | "notify">("list");
+  const [addCat, setAddCat] = useState<"sgp" | "bcp" | "contemplative" | "reflections" | "custom" | null>(null);
+  const [sitMinutes, setSitMinutes] = useState("10");
+  const [newCustomName, setNewCustomName] = useState("");
+  /** The list's drag order — edit-row ids. Re-derived whenever rows load. */
+  const [orderIds, setOrderIds] = useState<string[]>([]);
+  useEffect(() => {
+    const saved = getRoutineOrder();
+    const ids = editRows.map((r) => r.id);
+    const known = saved.filter((id) => ids.includes(id));
+    const rest = ids.filter((id) => !known.includes(id));
+    setOrderIds([...known, ...rest]);
+  }, [editRows]);
+  const [notifyTarget, setNotifyTarget] = useState<Record<OfficeSide, string>>(() => {
+    const read = (sd: OfficeSide) => { try { return localStorage.getItem(`phoebe:notify-target:${sd}`) ?? ""; } catch { return ""; } };
+    return { morning: read("morning"), evening: read("evening") };
+  });
   /** The review screen's ✕ confirm — carries the row's own remove(), since
    *  review rows are built from local state rather than server row ids. */
   const [deletingReviewRow, setDeletingReviewRow] = useState<{ label: string; remove: () => void } | null>(null);
@@ -3498,49 +3521,392 @@ export default function WayOfLoveRuleFlow({
   // the same shape the questionnaire's review uses (owner).
   if (entrySettled && canEditParts && manualMode === "edit") {
     /**
-     * THE ENTRY, RE-SIMPLIFIED TO THREE DOORS (owner: "when you open shape
-     * your routine, you have three options: choose preset routine; build your
-     * own routine — build your own today or edit your current routine, and it
-     * just starts from the beginning, skips that intro slide, straight to the
-     * morning; and revert to past routine").
+     * THE FLAT ROUTINE (owner, superseding the three-door entry): the
+     * customizer opens on your routine as ONE reorderable list — every
+     * practice a standalone row with a gear and a ✕, no slot headings —
+     * because "there's no actual need to do morning and evening anchors now."
+     * Sides survive underneath as plumbing (streak, widget, sync), but the
+     * customizer stops asking about them: BCP practices carry Morning/Evening
+     * inside their OWN settings, which is the one place the question is real.
      *
-     * This screen was the per-practice edit list — every row with a gear and a
-     * ✕, an add-flow, a Save. That grew here one request at a time and the
-     * owner has now walked it back whole. "Build your own" carries the editing
-     * job the list did: the flow seeds every slide from the current rule, so
-     * walking it from the morning IS editing what you have — which is why its
-     * sub-line says both.
-     *
-     * It jumps to "morning-way", not "intro" (owner: "skips that intro
-     * slide"), and goPrev has the matching special case so Back from that
-     * first slide returns HERE rather than surfacing the intro sideways.
+     * Add walks five categories; drag writes phoebe:routine-order, which the
+     * home's Next list sorts by; "Next" closes on the notifications slide —
+     * the light anchor system: what you're notified about, and when.
      */
+    const circle: React.CSSProperties = {
+      width: 30, height: 30, flexShrink: 0, borderRadius: 999,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      background: "rgba(255,255,255,0.06)", border: `1px solid ${CARD_B}`,
+      color: SAGE, fontSize: 14, cursor: "pointer", padding: 0,
+    };
+    const sideFree = (sd: OfficeSide) => { const l = getExplicitSideLevel(sd); return l === null || l === "ask"; };
+    const sideHolds = (sd: OfficeSide, lvl: OfficeLevel) => getExplicitSideLevel(sd) === lvl;
+    const layoutNow = () => {
+      const hl = user?.homeLayout as { order?: string[]; hidden?: string[] } | undefined;
+      return { order: [...(hl?.order ?? [])], hidden: [...(hl?.hidden ?? [])] };
+    };
+    const unhideCard = (key: string) => {
+      const l = layoutNow();
+      if (!l.order.includes(key)) l.order.push(key);
+      l.hidden = l.hidden.filter((k) => k !== key);
+      cacheHomeLayoutLocalOnly({ order: l.order, hidden: l.hidden });
+      void saveHomeLayout({ order: l.order, hidden: l.hidden });
+    };
+    const afterAdd = () => {
+      touchedRef.current = true;
+      setEntryPhase("list"); setAddCat(null);
+      void reloadEditRows();
+      qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    };
+    /**
+     * One catalogue drives both the menu and the fades. `inRoutine` is per
+     * CONCRETE practice, not per family (owner: "if they've added Morning
+     * Prayer and go to find Evening Prayer, that needs to be available") —
+     * and a row that IS in the routine renders faded with "Already in your
+     * routine" rather than vanishing, so the menu reads the same every time.
+     */
+    type AddItem = { key: string; emoji: string; name: string; inRoutine: () => boolean; blocked?: () => string | null; add: () => void };
+    const sideItems = (lvl: OfficeLevel, nameM: string, nameE: string, emoji: string): AddItem[] =>
+      (["morning", "evening"] as OfficeSide[]).map((sd) => ({
+        key: `${lvl}:${sd}`, emoji, name: sd === "morning" ? nameM : nameE,
+        inRoutine: () => sideHolds(sd, lvl) || getSideExtra(sd) === lvl,
+        blocked: () => {
+          if (sideFree(sd)) return null;
+          // The office+devotion pairing rides the EXTRA seat (owner: "add the
+          // devotion too… they wouldn't conflict"); everything else needs the
+          // side's anchor seat.
+          if (lvl === "devotion" && getSideExtra(sd) == null) return null;
+          return sd === "morning" ? "Morning already has a practice" : "Evening already has a practice";
+        },
+        add: () => {
+          if (sideFree(sd)) setSideLevel(sd, lvl);
+          else if (lvl === "devotion") setSideExtra(sd, "devotion");
+          afterAdd();
+        },
+      }));
+    const practiceItem = (key: SlottedPractice | "compline", emoji: string, name: string): AddItem => ({
+      key: `practice:${key}`, emoji, name,
+      inRoutine: () => homeCardOn(user?.homeLayout, key === "listening" ? "listening" : key),
+      add: () => {
+        unhideCard(key);
+        if (key !== "compline") setPracticeSlot(key as SlottedPractice, "anytime");
+        afterAdd();
+      },
+    });
+    const reflectionItem = (src: "cac" | "fdd" | "ssje" | "vts", name: string): AddItem => ({
+      key: `refl:${src}`, emoji: src === "vts" ? "🦩" : "📖", name,
+      inRoutine: () => homeCardOn(user?.homeLayout, src),
+      add: () => { unhideCard(src); afterAdd(); },
+    });
+    const CATALOG: Record<string, { title: string; emoji: string; sub: string; items: AddItem[] }> = {
+      sgp: {
+        title: "Simple Guided Prayer", emoji: "🙌", sub: "Praise · Confession · Thanksgiving · Supplication.",
+        items: sideItems("guided-prayer", "Morning Guided Prayer", "Evening Guided Prayer", "🙌"),
+      },
+      bcp: {
+        title: "Book of Common Prayer", emoji: "📖", sub: "The offices, the Psalter, and the daily devotions.",
+        items: [
+          ...sideItems("office", "Morning Prayer", "Evening Prayer", "🌅"),
+          ...sideItems("devotion", "Morning Devotion", "Evening Devotion", "🕊️"),
+          ...sideItems("psalms", "Morning Psalms", "Evening Psalms", "📜"),
+          ...sideItems("readings", "Morning Scripture Readings", "Evening Scripture Readings", "📖"),
+          practiceItem("compline", "🌙", "Compline"),
+        ],
+      },
+      contemplative: {
+        title: "Contemplative practices", emoji: "🕯️", sub: "Silence, or another way of being still with God.",
+        items: [
+          {
+            key: "sit", emoji: "🕯️", name: "Contemplative Prayer",
+            inRoutine: () => (goalMin > 0),
+            add: () => { setEntryPhase("add-minutes"); },
+          },
+          practiceItem("cobreathe", "🌍", "Creation Prayer"),
+          practiceItem("walk", "🚶", "Contemplative Walk"),
+          practiceItem("listening", "🎵", "Audio Divina"),
+          practiceItem("visio", "🖼️", "Visio Divina"),
+          practiceItem("examen", "🌗", "The Examen"),
+        ],
+      },
+      reflections: {
+        title: "Reflections", emoji: "📖", sub: "A daily word to read and carry.",
+        items: [
+          reflectionItem("cac", "CAC Daily Meditation"),
+          reflectionItem("fdd", "Forward Day by Day"),
+          reflectionItem("ssje", "SSJE — Brother, Give Us a Word"),
+          reflectionItem("vts", "VTS Dean's Commentary"),
+        ],
+      },
+      custom: {
+        title: "Custom practice", emoji: "✍️", sub: "A practice of your own — named by you, kept with a tap.",
+        items: [],
+      },
+    };
+    const rowById = (id: string) => editRows.find((r) => r.id === id);
+    const notifyOptions = orderIds.map((id) => rowById(id)).filter(Boolean) as typeof editRows;
+    const saveNotify = () => {
+      try {
+        localStorage.setItem("phoebe:notify-target:morning", notifyTarget.morning);
+        localStorage.setItem("phoebe:notify-target:evening", notifyTarget.evening);
+      } catch { /* private mode */ }
+      pushRoutineConfig();
+      if (user) apiRequest("PUT", "/api/me/office-prefs", {
+        morning: reminderOnBySide.morning ? PRAY_REMINDER_PREF[prayBySide.morning] : "none",
+        evening: reminderOnBySide.evening ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
+        morningTime: reminderOnBySide.morning ? (/^\d{2}:\d{2}$/.test(timeBySide.morning) ? timeBySide.morning : DEFAULT_REMINDER_TIME) : null,
+        eveningTime: reminderOnBySide.evening ? (/^\d{2}:\d{2}$/.test(timeBySide.evening) ? timeBySide.evening : "18:00") : null,
+      }).then(() => qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] })).catch(() => { /* best-effort */ });
+      onDone();
+    };
+
+    // ── Notifications — the LAST slide, and the light anchor system ─────────
+    if (entryPhase === "notify") {
+      const block = (sd: OfficeSide, label: string) => (
+        <div style={{ ...FROST_BLUR, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 16, padding: "15px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ color: CREAM, fontSize: 15.5, fontWeight: 700, fontFamily: FONT }}>{label}</span>
+            <button
+              type="button"
+              onClick={() => { touchedRef.current = true; setReminderOnBySide((r) => ({ ...r, [sd]: !r[sd] })); }}
+              aria-label={`${label} on or off`}
+              style={{ width: 42, height: 24, borderRadius: 999, position: "relative", border: "none", cursor: "pointer", background: reminderOnBySide[sd] ? "#2D5E3F" : "rgba(255,255,255,0.12)" }}
+            >
+              <span style={{ position: "absolute", top: 3, left: reminderOnBySide[sd] ? 21 : 3, width: 18, height: 18, borderRadius: 999, background: CREAM, transition: "left 160ms ease" }} />
+            </button>
+          </div>
+          {reminderOnBySide[sd] && (
+            <>
+              <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, color: SAGE, fontSize: 13.5, fontFamily: FONT }}>
+                Opens
+                <select
+                  value={notifyTarget[sd]}
+                  onChange={(e) => { touchedRef.current = true; setNotifyTarget((p) => ({ ...p, [sd]: e.target.value })); }}
+                  style={{ background: "rgba(9,26,16,0.6)", color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 10, padding: "8px 10px", fontFamily: FONT, fontSize: 14, maxWidth: 210 }}
+                >
+                  <option value="">First thing in your routine</option>
+                  {notifyOptions.map((r) => <option key={r.id} value={r.id}>{r.emoji} {r.label}</option>)}
+                </select>
+              </label>
+              <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, color: SAGE, fontSize: 13.5, fontFamily: FONT }}>
+                At
+                <input
+                  type="time"
+                  value={timeBySide[sd]}
+                  onChange={(e) => { touchedRef.current = true; const v = e.target.value; setTimeBySide((p) => ({ ...p, [sd]: v })); saveReminderNow({ ...reminderOnBySide }, { ...timeBySide, [sd]: v }); }}
+                  style={{ background: "rgba(9,26,16,0.6)", color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 10, padding: "7px 10px", fontFamily: FONT, fontSize: 14 }}
+                />
+              </label>
+            </>
+          )}
+        </div>
+      );
+      return shell(
+        <>
+          {stepHeader(
+            t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" }),
+            t("wol_rule.notify_title", { defaultValue: "Notifications" }),
+          )}
+          <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 18px" }}>
+            {t("wol_rule.notify_body", { defaultValue: "Choose what each nudge opens, and when. This is the anchor of your day — everything else is yours to order." })}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {block("morning", "Morning notification")}
+            {block("evening", "Evening notification")}
+          </div>
+          <div style={{ marginTop: 8 }}>
+            {ctaButton(t("common.save", { defaultValue: "Save" }), saveNotify)}
+          </div>
+        </>,
+      );
+    }
+
+    // ── Add: the five categories ────────────────────────────────────────────
+    if (entryPhase === "add-cat") {
+      return shell(
+        <>
+          {stepHeader(t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" }), t("wol_rule.add_title", { defaultValue: "Add a practice" }))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
+            {(["sgp", "bcp", "contemplative", "reflections", "custom"] as const).map((cid) => menuRow(
+              CATALOG[cid]!.emoji, CATALOG[cid]!.title, CATALOG[cid]!.sub,
+              () => { if (cid === "custom") { setNewCustomName(""); setEntryPhase("add-custom"); } else { setAddCat(cid); setEntryPhase("add-items"); } },
+            ))}
+          </div>
+          <button type="button" onClick={() => setEntryPhase("list")} style={{ marginTop: 18, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
+            <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
+          </button>
+        </>,
+      );
+    }
+    if (entryPhase === "add-items" && addCat && addCat !== "custom") {
+      const cat = CATALOG[addCat]!;
+      return shell(
+        <>
+          {stepHeader(cat.title, t("wol_rule.add_pick", { defaultValue: "Choose one" }))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
+            {cat.items.map((it) => {
+              const already = it.inRoutine();
+              const blockReason = !already && it.blocked ? it.blocked() : null;
+              const dead = already || !!blockReason;
+              return (
+                <button
+                  key={it.key}
+                  type="button"
+                  disabled={dead}
+                  onClick={() => { if (!dead) it.add(); }}
+                  style={{
+                    ...FROST_BLUR, background: CARD, border: `1px solid ${CARD_B}`, color: CREAM,
+                    borderRadius: 14, padding: "13px 16px", textAlign: "left", width: "100%",
+                    display: "flex", alignItems: "center", gap: 12,
+                    opacity: dead ? 0.45 : 1, cursor: dead ? "default" : "pointer",
+                  }}
+                >
+                  <span aria-hidden style={{ fontSize: 20, flexShrink: 0 }}>{it.emoji}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: 15, fontWeight: 600, fontFamily: FONT }}>{it.name}</span>
+                    {(already || blockReason) && (
+                      <span style={{ display: "block", color: SAGE_DIM, fontSize: 12, fontFamily: FONT, marginTop: 2 }}>
+                        {already ? t("wol_rule.add_already", { defaultValue: "Already in your routine" }) : blockReason}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <button type="button" onClick={() => setEntryPhase("add-cat")} style={{ marginTop: 18, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
+            <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
+          </button>
+        </>,
+      );
+    }
+    if (entryPhase === "add-minutes") {
+      return shell(
+        <>
+          {stepHeader("Contemplative Prayer", t("wol_rule.add_sit_title", { defaultValue: "How long is your sit?" }))}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 18 }}>
+            {["5", "10", "15", "20", "30", "45", "60"].map((m) => (
+              <button key={m} type="button" onClick={() => setSitMinutes(m)}
+                style={{ flex: "1 0 28%", padding: "13px 0", borderRadius: 12, fontFamily: FONT, fontSize: 15, fontWeight: 600, cursor: "pointer",
+                  background: sitMinutes === m ? "rgba(46,107,64,0.55)" : CARD, color: CREAM,
+                  border: `1px solid ${sitMinutes === m ? CARD_B_ACTIVE : CARD_B}` }}>
+                {m} min
+              </button>
+            ))}
+          </div>
+          <div style={{ marginTop: 16 }}>
+            {ctaButton(t("wol_rule.add_cta", { defaultValue: "Add to my routine" }), () => {
+              const min = Math.max(1, Math.min(180, parseInt(sitMinutes, 10) || 10));
+              chooseGoal(String(min));
+              goalEngagedRef.current = true;
+              if (user) apiRequest("PUT", "/api/me/office-prefs", { contemplationGoalMinutes: min, contemplationReminderEnabled: true })
+                .then(() => qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] })).catch(() => { /* best-effort */ });
+              afterAdd();
+            })}
+          </div>
+        </>,
+      );
+    }
+    if (entryPhase === "add-custom") {
+      return shell(
+        <>
+          {stepHeader("Custom practice", t("wol_rule.add_custom_title", { defaultValue: "Name your practice" }))}
+          <input
+            type="text" value={newCustomName}
+            onChange={(e) => setNewCustomName(e.target.value)}
+            placeholder={t("wol_rule.cp_custom_placeholder", { defaultValue: "What do you call it?" })}
+            maxLength={60} autoFocus
+            style={{ width: "100%", boxSizing: "border-box", marginTop: 18, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none" }}
+          />
+          <div style={{ marginTop: 16 }}>
+            {ctaButton(t("wol_rule.add_cta", { defaultValue: "Add to my routine" }), () => {
+              const name = newCustomName.trim();
+              if (!name) { setEntryPhase("list"); return; }
+              addCustomAnchor(name, "🌿", "anytime");
+              afterAdd();
+            })}
+          </div>
+        </>,
+      );
+    }
+
+    // ── The routine itself — one flat, drag-reorderable list ────────────────
     return shell(
       <>
         {stepHeader(
           t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" }),
-          t("wol_rule.entry3_title", { defaultValue: "Shape your routine" }),
+          t("wol_rule.manual_edit_title", { defaultValue: "Your rhythm" }),
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 18px" }}>
+          {t("wol_rule.flat_body", { defaultValue: "Drag to order your day. The gear changes a practice; the ✕ takes it off." })}
+        </p>
+        <Reorder.Group
+          axis="y" values={orderIds}
+          onReorder={(ids: string[]) => { touchedRef.current = true; setOrderIds(ids); setRoutineOrder(ids); }}
+          style={{ display: "flex", flexDirection: "column", gap: 10, listStyle: "none", padding: 0, margin: 0 }}
+        >
+          {orderIds.map((id) => {
+            const r = rowById(id);
+            if (!r) return null;
+            return (
+              <Reorder.Item key={id} value={id} style={{ listStyle: "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 16, padding: "13px 14px", touchAction: "none", cursor: "grab" }}>
+                  <span aria-hidden style={{ color: SAGE_DIM, fontSize: 15, flexShrink: 0, letterSpacing: 1 }}>⠿</span>
+                  <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
+                    <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
+                  </span>
+                  {stepForRow(r.id) && (
+                    <button type="button" aria-label={`Settings for ${r.label}`}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => { const st = stepForRow(r.id); if (st) { setSingleEditRow(r.id); setManualMode("scratch"); setStep(st); } }}
+                      style={circle}>⚙</button>
+                  )}
+                  <button type="button" aria-label={`Remove ${r.label}`}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => setDeletingEditRow({ id: r.id, label: r.label })}
+                    style={circle}>✕</button>
+                </div>
+              </Reorder.Item>
+            );
+          })}
+        </Reorder.Group>
+        <button
+          type="button"
+          onClick={() => { touchedRef.current = true; setEntryPhase("add-cat"); }}
+          style={{ width: "100%", marginTop: 12, background: "transparent", border: `1px dashed ${CARD_B}`, borderRadius: 14, padding: "13px 16px", color: SAGE, fontSize: 14.5, fontFamily: FONT, cursor: "pointer" }}
+        >
+          {t("wol_rule.edit_add_practice", { defaultValue: "+ Add a practice" })}
+        </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
           {menuRow(
-            "\uD83D\uDCCB",
+            "📋",
             t("wol_rule.entry3_preset", { defaultValue: "Choose a preset routine" }),
             t("wol_rule.entry3_preset_sub", { defaultValue: "Adopt a complete rhythm that's already been shaped. You can change any part of it after." }),
             () => { setPresetPending(null); setManualMode("preset"); },
           )}
-          {menuRow(
-            "\uD83C\uDF05",
-            t("wol_rule.entry3_build", { defaultValue: "Build your own routine" }),
-            t("wol_rule.entry3_build_sub", { defaultValue: "Build a routine today, or edit your current one — it starts with the morning." }),
-            () => { touchedRef.current = true; setManualMode("scratch"); setStep("morning-way"); },
-          )}
           {canRevert && menuRow(
-            "\u21A9\uFE0F",
+            "↩️",
             t("wol_rule.entry_revert", { defaultValue: "Revert to a past routine" }),
             t("wol_rule.entry_revert_sub", { defaultValue: "Return to a rhythm you kept before, exactly as it was." }),
             () => setLocation("/routine-history"),
           )}
         </div>
+        {ctaButton(t("wol_rule.next_notifications", { defaultValue: "Next: notifications" }), () => setEntryPhase("notify"))}
+
+        {deletingEditRow && (
+          <div role="dialog" aria-modal="true" onClick={() => setDeletingEditRow(null)}
+            style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(4,12,7,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 18, padding: 18, maxWidth: 380, width: "100%", boxSizing: "border-box" }}>
+              <p style={{ color: CREAM, fontFamily: FONT, fontSize: 17, fontWeight: 700, margin: 0 }}>Remove {deletingEditRow.label}?</p>
+              <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14, lineHeight: 1.55, margin: "8px 0 0" }}>It comes off your rhythm now. You can add it back any time.</p>
+              <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+                <button type="button" onClick={() => clearEditRow(deletingEditRow.id)} style={{ flex: 1, background: CTA, color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>Remove</button>
+                <button type="button" onClick={() => setDeletingEditRow(null)} style={{ flex: 1, background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.25)", borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>Keep it</button>
+              </div>
+            </div>
+          </div>
+        )}
       </>,
     );
   }

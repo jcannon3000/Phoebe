@@ -17,6 +17,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, sideOfficeTitle, extraPracticeTitle, extraOfficeMode, type OfficeLevel, type ReflectionSource } from "@/lib/officePrefs";
 import { daySwapNote } from "@/components/PracticeSwitcher";
+import { sortCardsByUserOrder } from "@/lib/routineOrder";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
@@ -1634,7 +1635,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // Shade each card along the green→purple ramp by its position in the FULL day
   // order (so a card keeps its colour whether it's Next or Done, and the ramp
   // doesn't reshuffle as things get kept). The office hero keeps its own colour.
-  const coloredCards = cards.map((c, i) => ({ ...c, rgb: rhythmGradientRgb(i, cards.length) }));
+  /**
+   * THE USER'S OWN ORDER outranks the built-in slot order (owner: practices
+   * are standalone "and then you as the user order them"). Colour is assigned
+   * BEFORE the sort so a card keeps its place on the green→purple ramp by its
+   * build position — dragging a card up shouldn't repaint the whole rhythm.
+   * Cards the saved order doesn't know keep build order at the end.
+   */
+  const coloredCards = sortCardsByUserOrder(cards.map((c, i) => ({ ...c, rgb: rhythmGradientRgb(i, cards.length) })));
   // When the rhythm has NO office at all, the morning Contemplation card leads
   // the day as the hero — a big anchor card ABOVE the reflection — so a
   // contemplation-only rhythm still has a clear "start here". Only where heroes

@@ -79,6 +79,46 @@ export default function BeginPrayerPage() {
     const side: OfficeSide = isMorning ? "morning" : "evening";
 
     /**
+     * THE NOTIFICATION OPENS WHAT YOU CHOSE (owner: the customizer's last
+     * slide is notifications — "you choose from what's already in your
+     * routine what would open when you open that notification"). Behind
+     * &notify=1 ONLY — set by the push payload — so a home card's tap still
+     * opens that card's own practice even when the nudge points elsewhere.
+     * Unknown or stale targets fall through to the normal routing below,
+     * which is also what "First thing in your routine" (an empty target)
+     * does.
+     */
+    const fromNotification = (() => {
+      try { return new URLSearchParams(window.location.search).get("notify") === "1"; }
+      catch { return false; }
+    })();
+    if (fromNotification) {
+      const target = (() => {
+        try { return localStorage.getItem(`phoebe:notify-target:${side}`) ?? ""; } catch { return ""; }
+      })();
+      const hrefForTarget = (id: string): string | null => {
+        if (id === `side:${side}`) return null; // the side's own anchor = normal routing
+        if (id === "side:morning" || id === "side:evening") return null;
+        if (id.startsWith("slot:")) {
+          const k = id.slice(5);
+          if (k === "walk") return "/walk";
+          if (k === "listening" || k === "audio") return "/listening";
+          if (k === "visio") return "/visio";
+          if (k === "examen") return `/examen?side=${side}`;
+          if (k === "cobreathe") return "/cobreathe";
+          if (k === "compline") return "/bcp/daily-office?mode=compline";
+          return null;
+        }
+        if (id === "contemplation" || id.startsWith("contemplation:")) return "/contemplation?begin=1";
+        if (id.startsWith("card:")) return "/dashboard"; // reflections open from their card
+        if (id.startsWith("custom:")) return "/dashboard";
+        return null;
+      };
+      const href = hrefForTarget(target);
+      if (href) { setLocation(href, { replace: true }); return; }
+    }
+
+    /**
      * ?practice=<level> — open THAT practice on this side, whatever the side's
      * own anchor is.
      *

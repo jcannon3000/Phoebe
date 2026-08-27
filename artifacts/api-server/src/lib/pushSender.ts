@@ -1181,7 +1181,11 @@ export function sendParishOfficeReminderPush(
   return sendPushToUser(userId, {
     title,
     body,
-    path: `/begin-prayer?side=${side}`,
+    // &notify=1 marks "this arrival came from the daily nudge" — the client's
+    // begin-prayer only honours the user's chosen notification TARGET (the
+    // "Opens" dropdown on the customizer's notifications slide) behind this
+    // marker, so tapping a home CARD still opens that card's own practice.
+    path: `/begin-prayer?side=${side}&notify=1`,
     threadId: `parish-office-${side}`,
     collapseId: `parish-office-${side}-${userId}`,
     sound: PHOEBE_SOUND_MID,

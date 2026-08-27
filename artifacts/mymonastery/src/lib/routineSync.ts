@@ -29,6 +29,10 @@ export const ROUTINE_KEYS: string[] = [
   // can live in this list). Synced so the swap shows on every device today;
   // it self-expires by date, so a stale synced value is simply ignored.
   "phoebe:office:day-swap:morning", "phoebe:office:day-swap:evening",
+  // The user's own routine order + which practice each notification opens —
+  // the flat-routine model's two carriers (see lib/routineOrder.ts).
+  "phoebe:routine-order",
+  "phoebe:notify-target:morning", "phoebe:notify-target:evening",
   "phoebe:office:entry:morning", "phoebe:office:entry:evening",
   "phoebe:office:reflection:morning", "phoebe:office:reflection:evening",
   // Name of a side's own "Create your own" custom practice (level "custom").
