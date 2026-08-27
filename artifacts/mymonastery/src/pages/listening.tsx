@@ -101,13 +101,6 @@ export default function ListeningPage() {
   // Kept today already? The form collapses behind a "Log another" button, so
   // the page reads as the practice rather than an empty form. This re-opens it.
   const [logAnother, setLogAnother] = useState(false);
-  /**
-   * Up to three emoji for what the listening FELT like — optional, and the
-   * wordless alternative to writing a sentence about it (owner). Counted in
-   * GRAPHEMES: 🙏🏽 is four UTF-16 units and a family emoji is eleven, so a
-   * length check on `.length` would let one emoji fill the field or cut
-   * another in half.
-   */
   // `query` is the transient search text (never stored); `what` is the SELECTED
   // catalog title and is only ever set by tapping a result or a recent — you
   // can't log free-typed text. This keeps the log to structured Apple Music
@@ -187,20 +180,9 @@ export default function ListeningPage() {
     setResults([]);
     setSearchFocused(false);
   }
-  /**
-   * Up to three emoji for what the listening FELT like — optional, and the
-   * wordless alternative to writing a sentence about it (owner, restored
-   * 2026-08-26 after a brief removal). Counted in GRAPHEMES: 🙏🏽 is four
-   * UTF-16 units and a family emoji is eleven, so a length check on `.length`
-   * would let one emoji fill the field or cut another in half.
-   */
-  const [felt, setFelt] = useState("");
-  const feltCount = (v: string) => (typeof Intl.Segmenter === "function"
-    ? [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(v)].length
-    : [...v].length);
   // Audio Divina is private — a personal listening log, no sharing with fellows.
   const logMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, felt, shared: false }),
+    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, shared: false }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
   const deleteMutation = useMutation({
@@ -217,20 +199,16 @@ export default function ListeningPage() {
    * and searchCatalog needs an Apple Music token server-side or a Spotify one
    * (CLIENT_ID is empty), so when neither answers there are no results to tap,
    * nothing can be picked, and the practice becomes impossible to log at all —
-   * reported as "the logging wasn't working", and with it "the emojis weren't
-   * working", because nothing could be saved for them to ride along with.
+   * reported as "the logging wasn't working".
    *
    * A structured catalog reference is still what a tap gives you (title,
    * artist and artwork). Typing is the fallback, not the preference.
    */
-  /** The first three emoji of whatever they typed — the field itself doesn't
-   *  cap (see its own note), so the trim lives here, where saving happens. */
-
   function logToday() {
     if (!what.trim()) return;
     logMutation.mutate();
     markPracticeDoneToday("listening");
-    setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false); setFelt("");
+    setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false);
     // Stay on the practice — the new listen becomes the hero right here,
     // rather than throwing you onto the full-log screen to see that it saved.
     setLogAnother(false);
@@ -505,7 +483,7 @@ export default function ListeningPage() {
                               {e.what?.trim() || (MEDIUM_EMOJI[e.medium] ?? "🎧")}
                             </span>
                             <span style={{ display: "block", color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, marginTop: 2 }}>
-                              {relDay(e.day)}{e.felt ? ` ${e.felt}` : ""}
+                              {relDay(e.day)}
                             </span>
                           </span>
                         </div>
@@ -589,7 +567,6 @@ export default function ListeningPage() {
                         </span>
                         <span style={{ display: "block", color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11.5, marginTop: 3 }}>
                           {MEDIUM_EMOJI[e.medium] ?? "🎧"} {relDay(e.day)}
-                          {e.felt ? <span className="ml-1.5">{e.felt}</span> : null}
                         </span>
                       </span>
                     </div>
@@ -689,31 +666,6 @@ export default function ListeningPage() {
                       );
                     })}
                   </div>
-                  {/* Owner: "in addition to the song they chose, let them have
-                      an optional log where they can enter three emojis that
-                      represent what they felt." Taken out once and asked back
-                      2026-08-26 ("I want emojis back on audio divina and visio
-                      divina … put it back where it was, say optional").
-                      Optional and wordless — the alternative to writing a
-                      sentence, not a second thing to write. Three is the
-                      ceiling, counted in graphemes so a skin-toned 🙏🏽 or a
-                      family emoji counts as one. */}
-                  <p className="text-[10.5px] uppercase tracking-[0.18em] mt-5 mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                    What did you feel? <span style={{ textTransform: "none", letterSpacing: 0, opacity: 0.7 }}>— optional, up to three emoji</span>
-                  </p>
-                  <input
-                    value={felt}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      // Let them delete freely; only cap growth.
-                      if (feltCount(v) <= 3 || v.length < felt.length) setFelt(v);
-                    }}
-                    inputMode="text"
-                    placeholder="🕊️ 🌊 🙏🏽"
-                    aria-label="Up to three emoji for what you felt"
-                    className="w-full rounded-2xl px-4 py-3.5 text-[22px] text-center outline-none"
-                    style={glassField}
-                  />
                 </div>
               )}
             </motion.div>
@@ -1192,9 +1144,6 @@ function EntryRow({ e, onDelete, deleting }: { e: ServerEntry; onDelete: (id: nu
         <p className="text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{label}</p>
         <p className="text-[11.5px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
           {MEDIUM_EMOJI[e.medium] ?? "🎧"} {relDay(e.day)}
-          {/* What it felt like, if they said. Kept on this line rather than
-              given its own: it's a colour on the entry, not a second fact. */}
-          {e.felt ? <span className="ml-1.5" aria-label="what you felt">{e.felt}</span> : null}
         </p>
       </div>
       <button
