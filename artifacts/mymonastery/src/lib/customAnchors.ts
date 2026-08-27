@@ -695,7 +695,22 @@ export function importCustomAnchorSnapshot(snap: CustomAnchorSnapshot | null | u
     // Tombstones the server reports — ids the user deleted (here or elsewhere).
     // Drop any local copy so a delete genuinely propagates across devices, and
     // stop re-sending deletes the server has now acknowledged.
-    const tomb = new Set<string>(snap.tombstones && typeof snap.tombstones === "object" ? Object.keys(snap.tombstones) : []);
+    /**
+     * TWO sets, because "tombstoned" means two different things here and
+     * conflating them destroyed deletions. serverTomb is what the SERVER has
+     * ACKNOWLEDGED — the only thing that may retire a local pending delete.
+     * tomb (below) additionally carries the LOCAL pending deletes, and is
+     * used ONLY to filter incoming defs. The first version of this fix fed
+     * the combined set to pruneDeletedIds, so a delete whose push had FAILED
+     * (a 403, offline, a 500) pruned its own tombstone on the first
+     * sync-down: the deletion survived one reload and was silently undone on
+     * the second, with the local tombstone — the sole record the deletion
+     * ever happened — thrown away unacknowledged. Traced across two reloads
+     * with the push instrumented; the prune must gate on the server's echo
+     * and nothing else.
+     */
+    const serverTomb = new Set<string>(snap.tombstones && typeof snap.tombstones === "object" ? Object.keys(snap.tombstones) : []);
+    const tomb = new Set<string>(serverTomb);
     /**
      * LOCAL pending deletes count as tombstones too. The server's snapshot is
      * only as fresh as when it was fetched — commit() invalidates /auth/me,
@@ -802,7 +817,7 @@ export function importCustomAnchorSnapshot(snap: CustomAnchorSnapshot | null | u
     for (const [into, days] of foldedHist) {
       if (days.length > 0) writeDoneHist(into, [...readDoneHist(into), ...days]);
     }
-    if (tomb.size > 0) pruneDeletedIds(tomb);
+    if (serverTomb.size > 0) pruneDeletedIds(serverTomb);
     // Retire the folded ids: tombstone (absence alone never deletes, so without
     // this the server would hand the twin straight back) and drop their state,
     // which now lives on the survivor.
