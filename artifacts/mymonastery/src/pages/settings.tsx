@@ -1126,16 +1126,12 @@ function OfficesOnlyExtras() {
 // key and re-checks on the "phoebe:prefs-changed" event we fire below, so the
 // pill appears/disappears immediately without a reload.
 const HIDE_DP_PILL_KEY = "phoebe:hide-daily-progress-pill";
-// The "Turn · Learn · Pray" status band under the daily rhythm on home —
-// read by WayOfLoveTurnLearnPray.tsx itself via the same key/helpers.
-// Defaults SHOWN — owner: "just have it on by default and have that on the
-// settings page." It used to default hidden because the customizer had a step
-// presenting it as opt-in; that step is gone, so an unset key now means on.
-// Only an explicit "1" (turned off here) hides it.
+// The weekly dot card's own visibility key. Its Settings toggle is GONE along
+// with the card itself (owner: "we don't want it on the home screen anymore"),
+// so nothing writes this any more — the key stays exported because
+// WayOfLoveTurnLearnPray still reads it wherever that component is rendered,
+// and because a stored "1" from before should keep meaning what it meant.
 export const HIDE_TLP_KEY = "phoebe:hide-turn-learn-pray";
-function readTlpHiddenDefaultOn(): boolean {
-  try { return localStorage.getItem(HIDE_TLP_KEY) === "1"; } catch { return false; }
-}
 // Row-labeling mode for that same weekly grid: Morning/Contemplative/
 // Evening Practice (default), or the Way of Love's Turn/Learn/Pray framing
 // of the SAME three rows — same dots, same history, different lens on what
@@ -1226,21 +1222,6 @@ function HomeDisplaySettings() {
     try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
   };
 
-  const [tlpHidden, setTlpHidden] = useState<boolean>(readTlpHiddenDefaultOn);
-  const tlpShown = !tlpHidden;
-  const toggleTlp = () => {
-    const nextHidden = tlpShown;
-    setTlpHidden(nextHidden);
-    writeLsBool(HIDE_TLP_KEY, nextHidden);
-    try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
-    // A ROUTINE_SYNCED key — writing localStorage alone leaves the local
-    // sync clock un-bumped, so the next reconcile can revert this toggle
-    // back to whatever the server still has (owner: "showing up on my
-    // phone but not on web"). pushRoutineConfig stamps the clock AND
-    // pushes the new value up.
-    if (user) pushRoutineConfig();
-  };
-
   // Preset ON (readLsBool defaults false/"not hidden" when the key has
   // never been written), matching "on, but you can turn them off".
   const [doneHidden, setDoneHidden] = useState<boolean>(() => readLsBool(HIDE_DONE_KEY));
@@ -1287,29 +1268,6 @@ function HomeDisplaySettings() {
           </div>
         </button>
 
-        <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
-
-        <button
-          onClick={toggleTlp}
-          className="w-full flex items-center justify-between"
-        >
-          <div className="text-left">
-            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
-              Weekly Progress
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-              The status card under your daily routine, showing this week at a glance.
-            </p>
-          </div>
-          <div
-            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${tlpShown ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
-          >
-            <div
-              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${tlpShown ? "left-[21px]" : "left-[3px]"}`}
-              style={{ background: "#F0EDE6" }}
-            />
-          </div>
-        </button>
 
         <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
 
