@@ -160,7 +160,7 @@ export default function PsalmsPage() {
   const skipIntro = params.get("begin") === "1";
   // intro = the "before you begin" chooser; read = the verse slideshow; guide =
   // the physical-book page-number list.
-  const [step, setStep] = useState<"intro" | "read" | "guide">(
+  const [step, setStep] = useState<"intro" | "read" | "guide" | "circle">(
     skipIntro ? (params.get("book") === "1" ? "guide" : "read") : "intro",
   );
 
@@ -219,6 +219,31 @@ export default function PsalmsPage() {
     [display.backdrop],
   );
 
+  /**
+   * WHO ELSE PRAYED THE PSALMS TODAY — fetched only once the deck is finished.
+   *
+   * `enabled` on the closing step, so nobody's community roster is queried
+   * because they opened a psalm and changed their mind. The day sent is the
+   * READER'S own local midnight to midnight, as UTC instants: everyone's clock
+   * differs, and "today" on a slide someone is looking at right now can only
+   * sensibly mean their today.
+   *
+   * Failure is silent by contract — the endpoint answers an empty circle
+   * rather than an error, and the slide reads perfectly well with nobody in
+   * it. A closing prayer is the last place to show an error toast.
+   */
+  const dayBounds = useMemo(() => {
+    const from = new Date(); from.setHours(0, 0, 0, 0);
+    const to = new Date(from); to.setDate(to.getDate() + 1);
+    return { from: from.toISOString(), to: to.toISOString() };
+  }, [today]);
+  const { data: circle } = useQuery<{ people: Array<{ name: string; avatarUrl: string | null }>; count: number }>({
+    queryKey: ["/api/me/psalms-circle", dayBounds.from],
+    queryFn: () => apiRequest("GET", `/api/me/psalms-circle?from=${encodeURIComponent(dayBounds.from)}&to=${encodeURIComponent(dayBounds.to)}`),
+    enabled: step === "circle",
+    staleTime: 60_000,
+  });
+
   // ── Resume — a phone call at Psalm 78 shouldn't restart the deck. ─────────
   // Same per-day progress-key pattern as the office slideshow: restore once
   // the slides exist, persist on every advance, clear on finish. Keyed by
@@ -274,14 +299,30 @@ export default function PsalmsPage() {
   // Fade out FIRST, then swap routes — the destination's own fade-in picks up
   // from the same dark tone this settles to, so the handoff reads as one
   // continuous dim-then-lighten instead of a hard, flashing cut.
-  const finish = () => {
-    markPsalmsPrayed(office);
-    try { localStorage.removeItem(progressKey); } catch { /* private mode */ }
+  /** Leave the psalms — the practice is already kept by then (see finish). */
+  const depart = () => {
     setLeaving(true);
     window.setTimeout(() => {
       if (isDailyPrayer) setLocation(`/prayer-mode?closingOnly=1&side=${office}`);
       else goHome();
     }, 240);
+  };
+  /**
+   * The psalms are finished — keep the day, then show WHO ELSE PRAYED THEM.
+   *
+   * Owner: "it's like a glue — it's a dispersed monastic community, and we're
+   * holding … we're spiritual guardians together, coming together to pray for
+   * our community." So the practice doesn't end by vanishing to the home
+   * screen; it ends on the others who prayed the same psalms today.
+   *
+   * The day is marked FIRST and unconditionally, before anything about the
+   * circle is fetched or rendered — a closing slide must never be able to cost
+   * someone their completion.
+   */
+  const finish = () => {
+    markPsalmsPrayed(office);
+    try { localStorage.removeItem(progressKey); } catch { /* private mode */ }
+    setStep("circle");
   };
   const beginFromIntro = () => {
     setPsalmCycle(cycle); // remember the chosen lectionary
@@ -411,6 +452,97 @@ export default function PsalmsPage() {
   }
 
   // ── Physical-BCP guide — one card per psalm with its page number ─────────
+  /**
+   * THE CIRCLE — the others who prayed the psalms today.
+   *
+   * Owner: "for a group that is doing psalms as the two anchors … show the
+   * pictures of the others in their group who prayed the psalms … it's like a
+   * glue — a dispersed monastic community … spiritual guardians together."
+   *
+   * "Any level of that is praying the psalms" (owner) — so the server counts
+   * any completed office or devotion, not only this practice. Someone who
+   * prayed Morning Prayer in full has prayed the appointed psalms; they belong
+   * in this circle and would be a strange person to leave out of it.
+   *
+   * SELF-EFFACING. Nobody praying alone should be shown an empty room and told
+   * it was empty: with no one else yet, it says the psalms are being kept and
+   * says nothing about company. The request failing lands in the same place,
+   * which is why the endpoint answers an empty circle rather than an error.
+   */
+  if (step === "circle") {
+    const others = circle?.people ?? [];
+    return (
+      <div style={{ ...officeThemeStyle(display.backdrop, display.font), position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 999, background: CLOSING_BG, opacity: leaving ? 1 : 0, transition: "opacity 240ms ease", pointerEvents: "none" }} />
+        {Backdrop}
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 24px max(1.5rem, env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 10px", fontWeight: 600 }}>
+            {others.length > 0 ? "Prayed with you today" : "The psalms are kept"}
+          </p>
+          <h1 style={{ fontFamily: FONT, fontSize: "clamp(26px, 6vw, 36px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: "0 0 14px", textAlign: "center", maxWidth: 460, lineHeight: 1.2 }}>
+            {others.length > 0
+              ? "You are not praying these alone"
+              : "You have prayed today's psalms"}
+          </h1>
+
+          {others.length > 0 && (
+            <>
+              {/* The faces. A wrapped row rather than a list — this is a
+                  company standing together, not a leaderboard, so nothing is
+                  ranked, numbered, or timestamped. */}
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 14, maxWidth: 420, margin: "8px 0 18px" }}>
+                {others.map((p, i) => (
+                  <div key={`${p.name}-${i}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, width: 72 }}>
+                    {p.avatarUrl ? (
+                      <img
+                        src={p.avatarUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        style={{ width: 52, height: 52, borderRadius: 999, objectFit: "cover", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.45)" }}
+                      />
+                    ) : (
+                      <span
+                        aria-hidden
+                        style={{ width: 52, height: 52, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(var(--ot-green, 46,107,64),0.35)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.35)", color: WARM, fontFamily: FONT, fontSize: 19, fontWeight: 700 }}
+                      >
+                        {(p.name || "\u00b7").slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                    <span style={{ color: SOFT_GREEN, fontFamily: FONT, fontSize: 11.5, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                      {p.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p style={{ color: SOFT_GREEN, fontFamily: SERIF, fontStyle: "italic", fontSize: 16, lineHeight: 1.6, textAlign: "center", maxWidth: 420, margin: 0 }}>
+                {others.length === 1
+                  ? "One of your community prayed the psalms today. A dispersed house, keeping one office."
+                  : `${others.length} of your community prayed the psalms today. A dispersed house, keeping one office.`}
+              </p>
+            </>
+          )}
+
+          {others.length === 0 && (
+            /* Praying alone is not a lesser thing and is never reported as
+               one: no empty room, no "nobody else yet", nothing about who
+               didn't. Just the psalms, kept. */
+            <p style={{ color: SOFT_GREEN, fontFamily: SERIF, fontStyle: "italic", fontSize: 16, lineHeight: 1.6, textAlign: "center", maxWidth: 420, margin: 0 }}>
+              Prayed in company with the whole Church, whoever else is keeping them now.
+            </p>
+          )}
+
+          <button
+            onClick={depart}
+            style={{ marginTop: 28, background: "rgba(var(--ot-green, 46,107,64),0.6)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.4)", color: WARM, borderRadius: 999, padding: "12px 34px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+          >
+            Amen
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (step === "guide") {
     const psalms = data?.psalms ?? [];
     return (

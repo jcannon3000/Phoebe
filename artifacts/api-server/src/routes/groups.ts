@@ -4457,6 +4457,118 @@ router.post("/groups/:slug/rule/adopt", async (req, res): Promise<void> => {
 // face row, matching Creation Prayer's closing slide) is the one deliberate
 // exception — see its own k-anonymity note below. viewerPracticed drives the
 // copy ("you prayed with…" vs "…prayed this week"), same signals as viewer.
+/**
+ * GET /api/me/psalms-circle?from=<ISO>&to=<ISO> — WHO ELSE PRAYED THE PSALMS.
+ *
+ * Owner: "for a group that is doing psalms as the two anchors … build
+ * something that's the last slide of that flow that shows the pictures of the
+ * others in their group who prayed the psalms. It's like a glue — it's a
+ * dispersed monastic community, and we're holding … we're spiritual guardians
+ * together, coming together to pray for our community."
+ *
+ * So this one DOES return faces, and that is deliberate — it is the whole
+ * feature. It is not a departure from the aggregate-only rule that governs
+ * /me/prayed-with-week either; that rule exists because the weekly line spans
+ * every community you belong to and answers "how many", where a name would be
+ * surveillance of people you may barely know. This answers a different
+ * question, inside a bounded room you chose to join, about one practice on one
+ * day. The precedent already exists next door: /groups/:slug/prayer-activity
+ * has always returned member names and avatars for the week's praying.
+ *
+ * WHAT IT WILL NOT DO: say who did NOT pray. It returns only the people who
+ * did, never the roster, never a count of the missing, and never a time. A
+ * small group can of course infer absence from presence — that is true of any
+ * gathering, and the answer to it is that nobody is required to be here, not
+ * that the present should be hidden from each other.
+ *
+ * "ANY LEVEL OF THAT IS PRAYING THE PSALMS" (owner). The Psalter is not only
+ * the Psalms practice: the offices carry the appointed psalms too, and someone
+ * praying Morning Prayer in full has prayed them. So the signal is a COMPLETED
+ * office or devotion of any kind — which is also what the Psalms practice
+ * itself posts (see syncPsalmsSession, which rides the devotion surfaces).
+ *
+ * The day is the CALLER'S day, sent as their own local midnight boundaries in
+ * UTC. Everyone's clock differs; "today" here means today as the person
+ * praying reckons it, which is the only frame that makes sense on a closing
+ * slide they are looking at right now.
+ */
+const PSALTER_SURFACES = [
+  "morning-prayer", "evening-prayer", "morning-devotion", "early-evening-devotion", "compline",
+];
+router.get("/me/psalms-circle", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const from = new Date(String(req.query.from ?? ""));
+    const to = new Date(String(req.query.to ?? ""));
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to <= from) {
+      res.status(400).json({ error: "from/to must be ISO instants, to after from" }); return;
+    }
+    // A day, with room for a generous definition of one — never a window wide
+    // enough to mine a week's activity out of this endpoint.
+    if (to.getTime() - from.getTime() > 26 * 60 * 60 * 1000) {
+      res.status(400).json({ error: "window too wide" }); return;
+    }
+
+    // Every community the caller has actually joined, any tier.
+    const mine = await db.select({ groupId: groupMembersTable.groupId })
+      .from(groupMembersTable)
+      .where(and(eq(groupMembersTable.userId, user.id), isNotNull(groupMembersTable.joinedAt)));
+    const groupIds = [...new Set(mine.map((m) => m.groupId))];
+    if (!groupIds.length) { res.json({ people: [], count: 0 }); return; }
+
+    // Fellow members — hidden admins excluded, exactly as the prayer-activity
+    // ticker excludes them: an invisible member stays invisible here too.
+    const members = await db.select({
+      userId: groupMembersTable.userId,
+      role: groupMembersTable.role,
+    })
+      .from(groupMembersTable)
+      .where(and(
+        inArray(groupMembersTable.groupId, groupIds),
+        isNotNull(groupMembersTable.joinedAt),
+      ));
+    // userId is nullable on the membership row (invited-but-never-joined rows
+    // carry only an email), so the null guard is what makes this a number[].
+    const memberIds = [...new Set(
+      members
+        .filter((m) => m.role !== "hidden_admin" && m.userId != null && m.userId !== user.id)
+        .map((m) => m.userId as number),
+    )];
+    if (!memberIds.length) { res.json({ people: [], count: 0 }); return; }
+
+    const rows = await db.selectDistinct({
+      id: usersTable.id,
+      name: usersTable.name,
+      avatarUrl: usersTable.avatarUrl,
+    })
+      .from(prayerSessionsTable)
+      .innerJoin(usersTable, eq(prayerSessionsTable.userId, usersTable.id))
+      .where(and(
+        inArray(prayerSessionsTable.userId, memberIds),
+        inArray(prayerSessionsTable.surface, PSALTER_SURFACES),
+        eq(prayerSessionsTable.completed, true),
+        gte(prayerSessionsTable.endedAt, from),
+        lte(prayerSessionsTable.endedAt, to),
+      ));
+
+    res.json({
+      // First name only — this is a face and a name to hold in mind, not a
+      // directory entry.
+      people: rows.map((r) => ({
+        name: (r.name ?? "").trim().split(/\s+/)[0] ?? "",
+        avatarUrl: r.avatarUrl ?? null,
+      })),
+      count: rows.length,
+    });
+  } catch (err) {
+    console.error("[psalms-circle] failed:", err);
+    // Never break the closing slide over this — an empty circle is a fine
+    // thing for it to show.
+    res.json({ people: [], count: 0 });
+  }
+});
+
 router.get("/me/prayed-with-week", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
