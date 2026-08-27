@@ -397,7 +397,19 @@ export function getSideBaseLevel(side: OfficeSide): OfficeLevel | null {
  */
 type SideDaySwap = { ymd: string; level: OfficeLevel; from: OfficeLevel | null };
 const daySwapKey = (side: OfficeSide) => `phoebe:office:day-swap:${side}`;
+/**
+ * THE CUSTOMIZER MUST NOT SEE THE SWAP — suppressed wholesale while it's
+ * mounted, the same shape as routineSync's suspension. The customizer's
+ * seeds read getSideLevel in a dozen places to answer "what is the standing
+ * rule"; on a swapped day every one of them would have read today's stand-in
+ * instead, and Save would have quietly promoted a one-day whim into the rule
+ * itself. One flag beats patching each seed and hoping no future seed
+ * forgets — the hand-copied-mirror lesson, applied in reverse.
+ */
+let daySwapSuppressed = false;
+export function setDaySwapSuppressed(on: boolean): void { daySwapSuppressed = on; }
 export function getSideDaySwap(side: OfficeSide): SideDaySwap | null {
+  if (daySwapSuppressed) return null;
   try {
     const raw = localStorage.getItem(daySwapKey(side));
     if (!raw) return null;

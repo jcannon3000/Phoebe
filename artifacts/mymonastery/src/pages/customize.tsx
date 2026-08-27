@@ -12,7 +12,7 @@ import {
   getReflectionSource, setReflectionSource, setSideReflection,
   setPsalmCycle, setSideCustomName, OFFICE_PREFS_EVENT, OFFICE_LEVELS_SET, type OfficeLevel,
   type ReflectionSource,
-  setSideContemplationKind, setSideDayRules } from "@/lib/officePrefs";
+  setSideContemplationKind, setSideDayRules, setDaySwapSuppressed, clearSideDaySwap } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset, type OfficeSideKey } from "@/lib/rulePresets";
 import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot } from "@/lib/customAnchors";
@@ -138,11 +138,24 @@ export default function CustomizePage() {
   const currentHomeLayout: HomeLayout | null = guest ? readCachedHomeLayout() : (user?.homeLayout ?? null);
   const addPractice: AddPractice = addPracticeLocal ?? (PRACTICE_KEYS.find((k) => homeCardOn(currentHomeLayout, k)) ?? "none");
 
+  // The one-day practice swap is invisible in here (see officePrefs) — the
+  // Daily Prayer dropdown seeds from getSideLevel, and every apply below
+  // writes the STANDING rule; a swapped day would otherwise show the stand-in
+  // as the rule and re-save it as such. An explicit apply also ENDS the swap:
+  // the person just said what their practice is.
+  useEffect(() => {
+    setDaySwapSuppressed(true);
+    return () => setDaySwapSuppressed(false);
+  }, []);
+
   const applyDailyPrayer = (choice: DailyPrayer) => {
     // Re-selecting the current anchor is a no-op — without this, re-picking
     // Contemplative Prayer would re-clobber an adjusted goal back to 20.
     if (choice === dailyPrayer) return;
     setDailyPrayer(choice);
+    // An explicit choice of daily prayer ends today's one-day swap on both
+    // sides — whichever branch below it takes.
+    clearSideDaySwap("morning"); clearSideDaySwap("evening");
     if (choice === "contemplation") {
       // Contemplative Prayer = a silent sit as this side's prayer. Same per-side
       // anchor as Creation Prayer but the "silent" style, so the home renders
@@ -221,6 +234,7 @@ export default function CustomizePage() {
       return (OFFICE_LEVELS_SET.has(l) ? l : "ask") as OfficeLevel;
     };
     const eveningChoice = preset.evening ?? preset.pray;
+clearSideDaySwap("morning"); clearSideDaySwap("evening");
     setSideLevel("morning", safeLevel(preset.pray));
     setSideLevel("evening", safeLevel(eveningChoice));
     setSideEntry("morning", preset.pray === "offices" ? "venite" : "read");

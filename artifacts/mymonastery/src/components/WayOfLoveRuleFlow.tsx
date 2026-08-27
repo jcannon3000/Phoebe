@@ -73,6 +73,8 @@ import {
   setSideExtra,
   getSideExtra,
   setSideContemplationKind,
+  setDaySwapSuppressed,
+  clearSideDaySwap,
   getSideContemplationKind,
 } from "@/lib/officePrefs";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
@@ -1519,6 +1521,15 @@ export default function WayOfLoveRuleFlow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guest, prescribe, pilot]);
 
+  // The one-day practice swap is invisible in here — see officePrefs'
+  // setDaySwapSuppressed. Every seed below answers "what is the STANDING
+  // rule", and commit() writes the whole rule back; letting the swap through
+  // would promote today's stand-in into the rule on any Save.
+  useEffect(() => {
+    setDaySwapSuppressed(true);
+    return () => setDaySwapSuppressed(false);
+  }, []);
+
   useEffect(() => {
     if (guest || prescribe || pilot) return;
     apiRequest("POST", "/api/me/routine-snapshots", { source: "customizer" })
@@ -1923,6 +1934,12 @@ export default function WayOfLoveRuleFlow({
     // the guard down here, an admin who named a practice while designing
     // someone ELSE's rule permanently added it to their own account.
     if (prescribe && onPrescribe) { onPrescribe(buildPrescribeSpec()); return; }
+    // Saving the rule ends today's one-day swap on both sides: the person has
+    // just said, explicitly, what their practice is — a stand-in chosen this
+    // morning must not keep overriding the home after that, wearing a stale
+    // "switched from" line for a rule that no longer exists.
+    clearSideDaySwap("morning");
+    clearSideDaySwap("evening");
     commitExtraPractices();
     /**
      * The named-your-own contemplative practice becomes a CUSTOM ANCHOR — the
