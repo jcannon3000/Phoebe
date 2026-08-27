@@ -319,8 +319,11 @@ export default function CustomizePage() {
         // differs between the two vocabularies: the home-layout key is
         // "listening", the preset's practices key is "audio". Looking up
         // practices["listening"] always found undefined, so a preset could
-        // never turn Audio Divina ON here — it was hidden every time. Latent
-        // until a rule actually asked for it; Canterbury Downtown does.
+        // never turn Audio Divina ON here — it was hidden every time.
+        // Canterbury Downtown was the rule that exposed it; the owner has
+        // since reshaped that rule and no preset asks for Audio Divina right
+        // now, so the mapping is latent again — and wrong again the moment one
+        // does, which is why it stays.
         ...Object.fromEntries((["listening", "walk", "visio", "cobreathe", "examen", "compline", "reading", "podcasts", "prayer-list"] as const)
           .map((k) => {
             const practiceKey = k === "listening" ? "audio" : k;

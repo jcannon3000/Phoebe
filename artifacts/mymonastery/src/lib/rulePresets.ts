@@ -48,9 +48,14 @@ export type RulePreset = {
    * prayer" — whichever one; the source comes from that side's own reflection
    * pref, and sideOfficeTitle names the card from it. Adopting a rule
    * otherwise points every side at `reflections[0]`, which makes the two
-   * inseparable: Canterbury Downtown wants Forward Day by Day AS the morning
-   * office while the newsletter CARD is the CAC's meditation, and without
-   * this the morning anchor came out titled "CAC Daily Meditation".
+   * inseparable — a rule wanting Forward Day by Day AS its morning office
+   * while the newsletter CARD is the CAC's meditation got a morning anchor
+   * titled "CAC Daily Meditation" without this.
+   *
+   * NO PRESET USES IT TODAY. Canterbury Downtown was the case it was written
+   * for, and the owner has since reshaped that rule to the Psalter; this is
+   * kept because the seam it covers is real and the next rule pairing an
+   * anchor-reflection with a different newsletter would hit it again.
    * Omitted = the side follows the rule's newsletter, as before.
    */
   anchorReflection?: Partial<Record<OfficeSideKey, ReflectionSource>>;
@@ -174,34 +179,31 @@ export const RULE_PRESETS: RulePreset[] = [
       { emoji: "🚶", label: "A Contemplative Walk" },
       { emoji: "🌗", label: "The Examen in the evening" },
     ] },
-  // CANTERBURY DOWNTOWN (owner) — the chaplaincy's rhythm. Forward Day by Day
-  // IS the morning office here (level "fdd", not the newsletter card), Simple
-  // Guided Prayer closes the day, and the contemplation is Audio Divina —
-  // music as the way of prayer rather than a sit. Creation Prayer rides
-  // alongside as a standing practice.
+  // CANTERBURY DOWNTOWN (owner) — the chaplaincy's rhythm, reshaped: "Morning
+  // Psalms / Creation Prayer for Contemplation / Evening Psalms."
   //
-  // Audio Divina and Creation Prayer are practices with their own cards, not
-  // office anchors, so they're turned on in `practices` rather than named as a
-  // side's way. Note the vocabulary seam: the practices key is "audio" while
-  // the slot/home-layout key for the same thing is "listening".
+  // The Psalter on both sides, and the contemplation is Creation Prayer rather
+  // than a silent sit — `contemplationStyle: "cobreathe"` is that practice
+  // (the creation OFFICE, PrayChoice "creation", is flag-off and degrades to a
+  // normal office, so a preset must never reach for it by that name).
   //
-  // No silence goal and no per-side sit — the listening is the contemplation.
+  // `silence: true` with no silenceSide is what carries the contemplation onto
+  // every side the rule turns on; goalMin 10 sizes it, as VTS's does.
+  //
+  // Audio Divina and the standing Creation Prayer practice are BOTH gone from
+  // here: music WAS this rule's contemplation and Creation Prayer has taken
+  // that seat, so keeping either would leave the rule holding two answers to
+  // one question. The CAC meditation stays — a reflection is a different axis
+  // from the anchors, and the owner's three lines didn't touch it.
   { id: "canterbury-downtown", emoji: "🏙️", sides: { morning: true, evening: true },
-    pray: "fdd", evening: "guidedPrayer",
-    // The morning office IS Forward Day by Day; the newsletter card is the
-    // CAC's meditation. Two different readings, so the side's source is named
-    // here rather than inherited from `reflections`.
-    anchorReflection: { morning: "fdd" },
-    practices: { audio: true, cobreathe: true },
-    practiceSlots: { listening: "anytime", cobreathe: "anytime" },
-    silence: false, goalMin: 0,
+    pray: "psalms",
+    silence: true, contemplationStyle: "cobreathe", goalMin: 10,
     reflections: ["cac"],
-    title: "Canterbury Downtown", blurb: "Forward Day by Day to open the morning, music as the day's contemplation, Richard Rohr's meditation, and three minutes of guided prayer at its close.",
+    title: "Canterbury Downtown", blurb: "The Psalter morning and evening, Creation Prayer as the day's contemplation, and Richard Rohr's meditation between them.",
     rows: [
-      { emoji: "🌅", label: "Forward Day by Day in the morning" },
+      { emoji: "📜", label: "Psalms in the morning" },
+      { emoji: "🌍", label: "Creation Prayer for contemplation" },
       { emoji: "📖", label: "The CAC Daily Meditation" },
-      { emoji: "🎵", label: "Audio Divina" },
-      { emoji: "🌍", label: "Creation Prayer" },
-      { emoji: "🙌", label: "Simple Guided Prayer in the evening" },
+      { emoji: "📜", label: "Psalms in the evening" },
     ] },
 ];
