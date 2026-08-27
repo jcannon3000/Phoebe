@@ -680,7 +680,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // queries only fire when the pill is actually rendered (signed-in).
 function DailyProgressPill() {
   const { t } = useTranslation();
-  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, prayerListDone, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening } = useRhythmState();
+  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, visioActive, visioDone, prayerListDone, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -751,6 +751,15 @@ function DailyProgressPill() {
     // the standalone card, its dot would have no card (theirs are above).
     ...(cobreatheStandaloneActive ? [{ key: "cobreathe", done: cobreatheDone }] : []),
     ...(listeningActive ? [{ key: "listening", done: listeningDone }] : []),
+    /**
+     * Visio Divina was MISSING from this list entirely — a kept Visio card on
+     * the home with no dot in the pill. Owner, with a screenshot: "it only has
+     * three filled in yet there are four." Third recurrence of the same
+     * hand-copied-mirror hole (weeklyGrid and turn-learn-pray each grew their
+     * visio entry the same way); this pill is the third mirror of "which
+     * practices exist", and it drifted the same direction.
+     */
+    ...(visioActive ? [{ key: "visio", done: visioDone }] : []),
     ...(readingActive ? [{ key: "reading", done: readingDone }] : []),
     ...(podcastsActive ? [{ key: "podcasts", done: podcastsDone }] : []),
     ...(walkActive ? [{ key: "walk", done: walkDone }] : []),
