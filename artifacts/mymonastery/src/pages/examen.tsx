@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { PracticeSwitcher } from "@/components/PracticeSwitcher";
 import { getSideLevel } from "@/lib/officePrefs";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -258,6 +259,22 @@ export default function ExamenPage() {
                 <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15.5px, 4.2vw, 18px)", lineHeight: 1.55 }}>
                   {t("examen.intro_body")}
                 </p>
+                {/* A different practice, just for today (owner) — swaps this
+                    side's anchor for the day and walks into the chosen one.
+                    Side: the ?side= that brought us here, else the side whose
+                    anchor the Examen is, else evening (its natural home). */}
+                <div style={{ marginTop: 22 }}>
+                  <PracticeSwitcher
+                    side={(() => {
+                      try {
+                        const q = new URLSearchParams(window.location.search).get("side");
+                        if (q === "morning" || q === "evening") return q;
+                      } catch { /* ignore */ }
+                      return getSideLevel("morning") === "examen" ? "morning" : "evening";
+                    })()}
+                    current="examen"
+                  />
+                </div>
               </>
             )}
 

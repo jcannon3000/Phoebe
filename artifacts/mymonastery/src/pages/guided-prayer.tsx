@@ -9,6 +9,7 @@ import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { markGuidedPrayerPrayed } from "@/lib/cacReadState";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { getSideLevel } from "@/lib/officePrefs";
+import { PracticeSwitcher } from "@/components/PracticeSwitcher";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -410,6 +411,11 @@ export default function GuidedPrayerPage() {
               <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15.5px, 4.2vw, 18px)", lineHeight: 1.55 }}>
                 {t("guided_prayer.intro_body")}
               </p>
+              {/* A different practice, just for today (owner) — swaps this
+                  side's anchor for the day and walks into the chosen one. */}
+              <div style={{ marginTop: 22 }}>
+                <PracticeSwitcher side={side} current={isExamen ? "examen" : "guided-prayer"} />
+              </div>
             </motion.div>
           )}
 

@@ -25,6 +25,10 @@ export type RoutineConfig = { values: Record<string, string>; updatedAt: number 
 export const ROUTINE_KEYS: string[] = [
   // Per-side office method + entry + reflection (officePrefs.ts).
   "phoebe:office:level:morning", "phoebe:office:level:evening",
+  // The one-day practice swap (date inside the VALUE, so the key is fixed and
+  // can live in this list). Synced so the swap shows on every device today;
+  // it self-expires by date, so a stale synced value is simply ignored.
+  "phoebe:office:day-swap:morning", "phoebe:office:day-swap:evening",
   "phoebe:office:entry:morning", "phoebe:office:entry:evening",
   "phoebe:office:reflection:morning", "phoebe:office:reflection:evening",
   // Name of a side's own "Create your own" custom practice (level "custom").

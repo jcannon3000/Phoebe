@@ -19,6 +19,7 @@ import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
 import { markRecentCompletion } from "@/lib/recentCompletion";
+import { PracticeSwitcher } from "@/components/PracticeSwitcher";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
 import { FROST_BLUR } from "@/lib/frost";
@@ -4538,6 +4539,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           {/* Office welcome slide — same chooser, defaulting to the full Office
               (the reader can drop to a Devotion or the Intercessions feed). */}
           {(resolvedMode === "morning" || resolvedMode === "evening") && slideIdx === 0 && !onComplete && renderWayChooser()}
+          {/* A different practice, just for today (owner) — the one-day anchor
+              swap, on the welcome slide alongside the way-chooser. The chooser
+              above picks HOW to pray THIS office; this picks a different
+              practice altogether, so they are two controls, not one. */}
+          {(resolvedMode === "morning" || resolvedMode === "evening" || isDevotion) && slideIdx === 0 && !onComplete && (
+            <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+              <PracticeSwitcher
+                side={/evening/.test(resolvedMode) ? "evening" : "morning"}
+                current="office"
+              />
+            </div>
+          )}
           {/* Compline's welcome slide used to carry an "Evening Prayer" pill
               (a door back to the Evening Devotion) under a divider. Removed
               per owner: Compline is its own office, chosen deliberately, and

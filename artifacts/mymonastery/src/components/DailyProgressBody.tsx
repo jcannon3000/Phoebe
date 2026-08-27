@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, sideOfficeTitle, extraPracticeTitle, extraOfficeMode, type OfficeLevel, type ReflectionSource } from "@/lib/officePrefs";
+import { daySwapNote } from "@/components/PracticeSwitcher";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
@@ -1314,7 +1315,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         ? () => unmarkCustomPrayed("morning")
         : () => undoOfficeToday("morning"),
       title: officeTitle("Morning"),
-      blurb: morningDone ? prayed : morningBlurb,
+      // A one-day swap names what it stands in for — "Switched from Simple
+      // Guided Prayer" — while today's practice is still undone (owner). Done,
+      // the card says what done cards say.
+      blurb: morningDone ? prayed : (daySwapNote("morning") ?? morningBlurb),
       blurbCycle: (morningDone || !cycleFor("morning")) ? undefined : [morningBlurb, ...officeCycle],
       cta: getSideLevel("morning") === "custom" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
@@ -1366,7 +1370,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // evening method (Evening Prayer / Evening Devotion / Pray together).
       blurb: eveningDone
         ? prayed
-        : hour >= 20 ? officeTitle("Evening") : eveningBlurb,
+        : (daySwapNote("evening") ?? (hour >= 20 ? officeTitle("Evening") : eveningBlurb)),
       blurbCycle: (eveningDone || hour >= 20 || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycle],
       cta: getSideLevel("evening") === "custom" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < EVENING_OPEN_HOUR,

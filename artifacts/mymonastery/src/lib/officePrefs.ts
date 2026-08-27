@@ -374,9 +374,67 @@ export function getSideBaseLevel(side: OfficeSide): OfficeLevel | null {
   return null;
 }
 
+/**
+ * A ONE-DAY SWAP of a side's practice (owner: from any practice's opening
+ * slide, "choose a different practice … for that day only replace, for
+ * example, Simple Guided Prayer with the Psalms … but then tomorrow it'll be
+ * Simple Guided Prayer again").
+ *
+ * One key per side, the DATE INSIDE THE VALUE — a dated key name could never
+ * live in ROUTINE_KEYS' fixed list, and this way a stale swap simply stops
+ * matching rather than needing a cleanup pass. `from` is kept so the home
+ * card can say what today stands in for ("Switched from Simple Guided
+ * Prayer").
+ *
+ * getSideLevel consults it FIRST, above even the weekday day-rules: an
+ * explicit "today I'm praying X" outranks the schedule. getExplicitSideLevel
+ * deliberately does NOT see it — that getter answers "what did they CHOOSE",
+ * which is what the customizer seeds and side-on/off read, and a one-day swap
+ * is not a choice about the rule. Because every completion computation keys
+ * on getSideLevel, the swap carries the whole chain with it: the home card,
+ * begin-prayer's routing, the done-signal, and creditSideAnchor's undo-lift
+ * all follow today's practice with no further wiring.
+ */
+type SideDaySwap = { ymd: string; level: OfficeLevel; from: OfficeLevel | null };
+const daySwapKey = (side: OfficeSide) => `phoebe:office:day-swap:${side}`;
+export function getSideDaySwap(side: OfficeSide): SideDaySwap | null {
+  try {
+    const raw = localStorage.getItem(daySwapKey(side));
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<SideDaySwap>;
+    if (v?.ymd !== new Date().toLocaleDateString("en-CA")) return null; // stale = absent
+    if (typeof v.level !== "string" || !(OFFICE_LEVELS as string[]).includes(v.level)) return null;
+    return { ymd: v.ymd, level: coerceRetiredLevel(v.level as OfficeLevel), from: (typeof v.from === "string" && (OFFICE_LEVELS as string[]).includes(v.from)) ? coerceRetiredLevel(v.from as OfficeLevel) : null };
+  } catch { return null; }
+}
+export function setSideDaySwap(side: OfficeSide, level: OfficeLevel): void {
+  try {
+    // `from` is what TODAY would have been without the swap — the day-rule's
+    // answer on a Chapel Saturday, not the stored base — so the card's
+    // "switched from" names the practice actually displaced. On a SECOND swap
+    // the existing record's `from` is kept even when it's null: falling back
+    // to getSideLevel there would read the current swap back and call the
+    // stand-in the original.
+    const existing = getSideDaySwap(side);
+    const from = existing ? existing.from : getSideLevel(side);
+    localStorage.setItem(daySwapKey(side), JSON.stringify({ ymd: new Date().toLocaleDateString("en-CA"), level, from }));
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* private mode */ }
+}
+/** Picking your usual practice back clears the swap rather than recording a
+ *  swap-to-itself — the "switched from" line has nothing left to say. */
+export function clearSideDaySwap(side: OfficeSide): void {
+  try {
+    localStorage.removeItem(daySwapKey(side));
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* private mode */ }
+}
+
 // Depth/level per side. null = no per-side override → callers use the
 // server-side global defaultPrayerLevel (begin-prayer already reads it).
 export function getSideLevel(side: OfficeSide): OfficeLevel | null {
+  const swap = getSideDaySwap(side);
+  if (swap) return swap.level;
   const today = sideRuleForDay(side);
   if (today) return coerceRetiredLevel(today.level);
   try {

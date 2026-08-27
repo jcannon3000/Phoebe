@@ -9,6 +9,7 @@ import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
 import { PracticeIntro } from "@/components/PracticeIntro";
+import { PracticeSwitcher } from "@/components/PracticeSwitcher";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
 import { PointedLine } from "@/components/PointedLine";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
@@ -446,6 +447,9 @@ export default function PsalmsPage() {
           <button onClick={beginFromIntro} style={{ width: "100%", maxWidth: 380, background: "rgba(var(--ot-green, 46,107,64),0.6)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.45)", color: WARM, borderRadius: 999, padding: "14px 24px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}>
             Begin <span aria-hidden>→</span>
           </button>
+          {/* A different practice, just for today (owner) — swaps this side's
+              anchor for the day and walks into the chosen one. */}
+          <PracticeSwitcher side={office} current="psalms" />
         </div>
       </div>
     );

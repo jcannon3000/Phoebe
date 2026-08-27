@@ -21,6 +21,7 @@ import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
+import { daySwapNote } from "@/components/PracticeSwitcher";
 import { getNcmpState, getSideLevel, setSideLevel, getSideEntry, getFddMode, getPsalmCycle, getSideCustomName, OFFICE_PREFS_EVENT, useEffectiveReflectionSource, getSideContemplationKind } from "@/lib/officePrefs";
 import { EVENING_OPEN_HOUR } from "@/lib/customAnchors";
 import { BookOfficeLogSheet } from "@/components/BookOfficeLogSheet";
@@ -2585,7 +2586,7 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
             Guided Prayer
           </p>
           <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>🙌 {title}</p>
-          <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>Three Minutes to Start Your Day</p>
+          <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>{(!done && daySwapNote(side)) || "Three Minutes to Start Your Day"}</p>
           {done ? (
             <div className="mt-[12px] flex items-stretch gap-2">
               <div aria-label="Prayer completed today" className="flex-1 rounded-xl text-center" style={{ background: `rgba(${rgb},0.10)`, color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.22)` }}>
@@ -2620,7 +2621,7 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
             {title} 🙌
           </p>
           <p className="truncate" style={{ color: "#D8C2BA", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12.5 }}>
-            Three Minutes to Start Your Day
+            {(!done && daySwapNote(side)) || "Three Minutes to Start Your Day"}
           </p>
         </div>
         <div
@@ -3451,9 +3452,14 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
   const refs = (data?.psalms ?? []).map((p) => p.raw);
   // Named for the side, like the office hero — "Morning Psalms" / "Evening Psalms".
   const title = side === "evening" ? "Evening Psalms" : "Morning Psalms";
-  const subtitle = refs.length > 0
+  // A one-day swap names what it stands in for — the owner's example verbatim:
+  // "in the second line of the Psalms when it's undone for that day, say
+  // switched from Simple Guided Prayer." Once prayed (or on an unswapped day)
+  // the line is the appointed psalms as always.
+  const swapNote = !done ? daySwapNote(side) : null;
+  const subtitle = swapNote ?? (refs.length > 0
     ? `Psalm${refs.length > 1 ? "s" : ""} ${refs.join(", ")}`
-    : "Today's appointed psalms";
+    : "Today's appointed psalms");
   const onClick = () => goTo(`/psalms?office=${side}&begin=1`);
   // Same colour as the side's office card (green for morning, violet for
   // evening) — not a beige/parchment tone — so it sits with the other rhythm
