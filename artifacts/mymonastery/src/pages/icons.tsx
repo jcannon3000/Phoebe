@@ -131,6 +131,12 @@ export default function IconsPage() {
   const begin = () => {
     if (!chosen) return;
     setEndsAt(minutes != null ? Date.now() + minutes * 60_000 : null);
+    // Prime the remaining time IN THE SAME UPDATE. Left stale (its initial 0,
+    // or 0 from a finished earlier sit), the pray phase's first render saw
+    // timerDone=true — a one-frame tappable "Complete", and worse, the
+    // arrival-haptic effect read that frame's closure and buzzed at BEGIN,
+    // marking itself done so the real end arrived in silence.
+    setRemainingMs(minutes != null ? minutes * 60_000 : 0);
     setPhase("pray");
   };
 
@@ -152,7 +158,10 @@ export default function IconsPage() {
   const buzzed = useRef(false);
   useEffect(() => {
     if (phase !== "pray") { buzzed.current = false; return; }
-    if (endsAt != null && remainingMs <= 0 && !buzzed.current) {
+    // The clock is the truth, not the mirrored state — remainingMs can lag a
+    // render behind endsAt (see begin's priming), and a stale 0 here is
+    // exactly the frame that buzzed at Begin.
+    if (endsAt != null && remainingMs <= 0 && Date.now() >= endsAt && !buzzed.current) {
       buzzed.current = true;
       try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "medium" } })); } catch { /* non-fatal */ }
     }
@@ -304,7 +313,10 @@ export default function IconsPage() {
                   {t("icons.search_none", { defaultValue: "Nothing by that name — try one word, or an artist." })}
                 </p>
               )}
-              {results.length === RESULT_CAP && (
+              {/* Only when a search is actually running — browsing always
+                  fills the cap, and "keep typing" under an empty field asked
+                  for typing nobody had started. */}
+              {results.length === RESULT_CAP && query.trim() !== "" && (
                 <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12, textAlign: "center", margin: 0 }}>
                   {t("icons.search_more", { defaultValue: "Keep typing to narrow the search." })}
                 </p>

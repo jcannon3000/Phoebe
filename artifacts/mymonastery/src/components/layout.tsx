@@ -680,7 +680,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // queries only fire when the pill is actually rendered (signed-in).
 function DailyProgressPill() {
   const { t } = useTranslation();
-  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, visioActive, visioDone, prayerListDone, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening } = useRhythmState();
+  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, visioActive, visioDone, prayerListDone, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -721,6 +721,15 @@ function DailyProgressPill() {
     // DailyProgressBody's rawCards replace-mode entries (same gates).
     ...(novenaReplacesMorning && novenaActive ? [{ key: "novena-morning", done: novenaDone }] : []),
     ...(morningActive && !novenaReplacesMorning ? [{ key: "morning", done: morningDone }] : []),
+    /**
+     * The side's EXTRA practice — the fourth instance of this list drifting
+     * behind the home's cards, caught by audit rather than a screenshot this
+     * time: DailyProgressBody renders extra-morning/extra-evening cards
+     * whenever a side carries a second practice, and this pill had no dot for
+     * either. Same gate the cards use (a non-null level; extraModesFor already
+     * suppressed mode collisions upstream in useRhythmState).
+     */
+    ...(morningExtraLevel ? [{ key: "extra-morning", done: morningExtraDone }] : []),
     // Reflection is the DEFAULT second dot (right after Morning) — ahead of any
     // custom morning practice — unless the user reorders their rhythm.
     ...reflections.map((r) => ({ key: `reflect-${r.source}`, done: r.done })),
@@ -766,6 +775,7 @@ function DailyProgressPill() {
     ...cDots("afternoon"),
     ...(eveningActive && !novenaReplacesEvening ? [{ key: "evening", done: eveningDone }] : []),
     ...(novenaReplacesEvening && novenaActive ? [{ key: "novena-evening", done: novenaDone }] : []),
+    ...(eveningExtraLevel ? [{ key: "extra-evening", done: eveningExtraDone }] : []),
     ...(eveningContemplationActive ? [{ key: "contemplation-evening", done: eveningContemplationDone }] : []),
     ...plDot("evening"),
     // Compline closes the day — its own dot, after Evening Prayer. Its own
