@@ -344,7 +344,14 @@ export default function GuidedPrayerPage() {
           type="button"
           onClick={() => {
             if (step > 0 && step < MOVEMENTS.length + 1) setStep((s) => s - 1);
-            else setLocation("/bcp/daily-office");
+            // HOME, not the offices picker — same fix as the Examen's exit.
+            // Owner: "when i x out of the examen, it goes to daily prayer, it
+            // should go home … make sure this is not happening on simple
+            // guided." It was. Simple Guided is reached from the home card,
+            // the rhythm list, the Practices menu and the side switcher, so
+            // exiting to an office was a guess that was usually wrong. Amen and
+            // Done already land on the dashboard.
+            else setLocation("/dashboard");
           }}
           style={{
             color: "rgba(143,175,150,0.8)",
@@ -361,7 +368,7 @@ export default function GuidedPrayerPage() {
         {step > 0 && step < MOVEMENTS.length + 1 && (
           <button
             type="button"
-            onClick={() => setLocation("/bcp/daily-office")}
+            onClick={() => setLocation("/dashboard")}
             aria-label={t("guided_prayer.exit", { defaultValue: "Exit" })}
             className="flex items-center justify-center rounded-full"
             style={{

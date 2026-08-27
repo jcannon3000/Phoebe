@@ -138,8 +138,65 @@ export default function IconsPage() {
   );
 
   /**
-   * The search. Empty query browses: recent icons first (the ones a person
-   * actually returns to), then the front of the catalogue. A query matches
+   * THE BROWSE — a shuffle of the whole library, spread across its artists.
+   *
+   * Owner: "make sure the library on the first icon screen is a shuffle of all
+   * the icons … make sure its always a variety of the artists."
+   *
+   * It used to browse the catalogue in FILE ORDER and stop at 24, and the file
+   * is grouped as it was harvested — so the first screen was the same two dozen
+   * icons every time, most of them from one group, while the other ~100 could
+   * only be reached by already knowing what to search for. A library you can
+   * only see the front of isn't a library.
+   *
+   * Two moves, and the second is the one that matters. Shuffling alone doesn't
+   * give variety here: 123 icons share just 13 artists, and a straight shuffle
+   * of a pool that lopsided still deals the big groups over and over. So the
+   * pool is grouped by artist, each group shuffled, the groups themselves
+   * shuffled, and then dealt ROUND-ROBIN — one from each artist in turn. The
+   * 24 on screen come from as many different hands as there are hands to draw
+   * from, in a different order each time the page opens, and every icon in the
+   * library is reachable by reopening rather than only by searching.
+   *
+   * Unattributed works are one group of their own, so they take a turn like
+   * anyone else instead of flooding the top (they are the largest group).
+   */
+  const browse = useMemo(() => {
+    const shuffled = <T,>(xs: T[]): T[] => {
+      const a = [...xs];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j]!, a[i]!];
+      }
+      return a;
+    };
+    const byArtist = new Map<string, IconArtwork[]>();
+    for (const a of catalogue) {
+      const key = norm(a.artist ?? "") || "\u0000unattributed";
+      const bucket = byArtist.get(key);
+      if (bucket) bucket.push(a);
+      else byArtist.set(key, [a]);
+    }
+    const queues = shuffled([...byArtist.values()]).map(shuffled);
+    const out: IconArtwork[] = [];
+    for (let round = 0; out.length < catalogue.length; round++) {
+      let dealt = false;
+      for (const q of queues) {
+        const next = q[round];
+        if (next) { out.push(next); dealt = true; }
+      }
+      // Every queue is past its end — nothing left to deal.
+      if (!dealt) break;
+    }
+    return out;
+    // Keyed on the catalogue alone: re-shuffling as someone types, or each
+    // time their history changes, would move icons out from under a finger.
+    // A fresh order per visit is the intent; a fresh order per keystroke isn't.
+  }, [catalogue]);
+
+  /**
+   * The search. Empty query browses (see above): recent icons first, since
+   * those are the ones a person returns to, then the shuffle. A query matches
    * title OR artist, word-by-word, so "rublev trinity" and "trinity" both
    * land on the icon.
    */
@@ -149,7 +206,7 @@ export default function IconsPage() {
       const recent = history
         .map((h) => byId.get(h.id))
         .filter((a): a is IconArtwork => !!a);
-      const rest = catalogue.filter((a) => !recent.some((r) => r.id === a.id));
+      const rest = browse.filter((a) => !recent.some((r) => r.id === a.id));
       return [...recent, ...rest].slice(0, RESULT_CAP);
     }
     const words = q.split(/\s+/).filter(Boolean);
@@ -162,7 +219,7 @@ export default function IconsPage() {
         return words.every((w) => hay.includes(w));
       })
       .slice(0, RESULT_CAP);
-  }, [query, history, catalogue, byId]);
+  }, [query, history, catalogue, byId, browse]);
 
   const choose = (a: IconArtwork) => {
     setChosen(a);
@@ -457,8 +514,14 @@ export default function IconsPage() {
                   src={chosen.img}
                   alt={`${chosen.title}${chosen.artist ? ` — ${chosen.artist}` : ""}`}
                   decoding="async"
-                  ref={(el) => { if (el?.complete && el.naturalWidth > 0) setLoadedSrc(el.currentSrc || el.src); }}
-                  onLoad={(e) => setLoadedSrc(e.currentTarget.currentSrc || e.currentTarget.src)}
+                  // The src WE ASKED FOR, not the browser's resolved
+                  // `currentSrc` — that comes back percent-encoded, so a
+                  // filename with a space or an apostrophe never matched the
+                  // gate below and the icon sat at opacity 0 forever. Same bug
+                  // Visio had; these two lift the picture the same way, so they
+                  // had it identically.
+                  ref={(el) => { if (el?.complete && el.naturalWidth > 0) setLoadedSrc(chosen.img); }}
+                  onLoad={() => setLoadedSrc(chosen.img)}
                   onError={() => setImageFailed(true)}
                   style={{
                     maxWidth: "100%", maxHeight: "56vh", objectFit: "contain", borderRadius: 10, marginTop: 6,
@@ -492,23 +555,39 @@ export default function IconsPage() {
                 </p>
               )}
 
+              {/**
+                * ALWAYS TAPPABLE — the timer is an invitation, not a lock.
+                *
+                * Owner: "just like contemplation, let them advance on the icon
+                * even if they hadn't fully finished the time." This used to
+                * ignore the tap until the clock ran out and sat at 0.55 opacity
+                * saying "Sit with the icon", which reads as a broken button to
+                * anyone who is simply done praying. A sit you cannot leave is
+                * not stillness, it's a countdown holding you.
+                *
+                * Contemplation's End pill is the pattern: live the whole way
+                * through, worded for where you are — "End" before the bell,
+                * "Complete" after it. The prayer is recorded either way; this
+                * practice logs THAT the icon was prayed with, not for how long,
+                * so an early end costs nothing.
+                */}
               <button
                 type="button"
-                onClick={() => { if (timerDone) complete(); }}
-                aria-disabled={!timerDone}
-                aria-label={timerDone ? undefined : t("icons.hold_aria", { defaultValue: "Stay with the icon until the timer ends" })}
+                onClick={complete}
                 style={{
                   userSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420,
                   marginTop: 4, background: "rgba(46,107,64,0.55)", ...FROST_BLUR,
                   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", border: `1px solid ${BORDER}`,
                   color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600,
-                  fontFamily: FONT, cursor: timerDone ? "pointer" : "default",
-                  opacity: timerDone ? 1 : 0.55, transition: "opacity 420ms ease-out",
+                  fontFamily: FONT, cursor: "pointer",
+                  // Still quieter before the bell, so the clock stays the focus
+                  // while it runs — quieter, not unavailable.
+                  opacity: timerDone ? 1 : 0.72, transition: "opacity 420ms ease-out",
                 }}
               >
                 {timerDone
                   ? t("common.complete", { defaultValue: "Complete" })
-                  : t("icons.holding", { defaultValue: "Sit with the icon" })}
+                  : t("icons.end", { defaultValue: "End" })}
               </button>
             </>
           )}

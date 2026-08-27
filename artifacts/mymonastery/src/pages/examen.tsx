@@ -184,7 +184,17 @@ export default function ExamenPage() {
           type="button"
           onClick={() => {
             if (step > 0 && step < 6) setStep((s) => s - 1);
-            else setLocation("/bcp/daily-office");
+            // HOME, not the offices picker.
+            //
+            // Owner: "when i x out of the examen, it goes to daily prayer, it
+            // should go home." Simple Guided did the same. This route predates
+            // both practices being reachable from anywhere else, and they now
+            // come off the home card, the rhythm list and the Practices menu —
+            // so "back to where you came from" was a guess that was usually
+            // wrong, and it dropped people into an office they hadn't asked
+            // for. Done/Amen already land on the dashboard; leaving early now
+            // goes to the same place.
+            else setLocation("/dashboard");
           }}
           style={{
             color: "rgba(143,175,150,0.8)",
@@ -201,7 +211,7 @@ export default function ExamenPage() {
         {step > 0 && step < 6 && (
           <button
             type="button"
-            onClick={() => setLocation("/bcp/daily-office")}
+            onClick={() => setLocation("/dashboard")}
             aria-label={t("examen.exit", { defaultValue: "Exit" })}
             className="flex items-center justify-center rounded-full"
             style={{

@@ -661,10 +661,28 @@ export default function VisioPage() {
             src={view.img}
             alt={`${view.title}${view.artist ? ` — ${view.artist}` : ""}`}
             decoding="async"
-            // Both paths: the event for a fresh fetch, the ref for one the
-            // browser already had.
-            ref={(el) => { if (el?.complete && el.naturalWidth > 0) setLoadedSrc(el.currentSrc || el.src); }}
-            onLoad={(e) => setLoadedSrc(e.currentTarget.currentSrc || e.currentTarget.src)}
+            /**
+             * Record the src WE ASKED FOR, never the browser's `currentSrc`.
+             *
+             * `currentSrc` comes back RESOLVED and percent-encoded, so any URL
+             * containing a space, an apostrophe or a non-ASCII character never
+             * equalled `view.img` again and the gate below held the painting at
+             * opacity 0 for good. 136 of the 317 works in the catalogue have
+             * exactly such a filename ("Peter's Vision-Frank Wesley.jpg",
+             * "Miraculous Catch MAFA.jpg"), so roughly two days in five opened
+             * on a blank frame with the title and the artist underneath it —
+             * reported as "the picture was not showing". The image had loaded
+             * fine; nothing was ever wrong with the fetch.
+             *
+             * Comparing the string we handed the element sidesteps URL
+             * normalisation entirely, and still keys the flag by src, which is
+             * what stops a cached image from deadlocking at 0 (see above).
+             *
+             * Both paths stay: the event for a fresh fetch, the ref for one the
+             * browser already had decoded before React attached the handler.
+             */
+            ref={(el) => { if (el?.complete && el.naturalWidth > 0) setLoadedSrc(view.img); }}
+            onLoad={() => setLoadedSrc(view.img)}
             onError={() => setImageFailed(true)}
             style={{
               flex: "0 0 auto",
