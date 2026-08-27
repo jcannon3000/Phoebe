@@ -3130,7 +3130,20 @@ export default function WayOfLoveRuleFlow({
     // anchor, so its gear behaves exactly like the side row's: the way slide,
     // where the anchor itself can be swapped, then on through the side's own
     // slides.
-    if (id === "contemplation") return "contemplation-goal";
+    /**
+     * THE FIRST SLIDE, WITH ALL THE OPTIONS — owner, as a standing rule:
+     * "when a user hits settings on an anchor, it should be going to the first
+     * slide of that anchor's customizer with all the options."
+     *
+     * This sent the day's contemplation straight to "contemplation-goal",
+     * which is the SECOND slide and asks only how long. Someone opening the
+     * gear to change their contemplative practice — to a walk, to Visio
+     * Divina, to Creation Prayer — was handed a minutes picker instead, with
+     * no way to reach the choice they came for. The practice picker is
+     * "contemplative", it comes first in the flow, and Continue walks on to
+     * the length from there (see stepBelongsToRow, which already claims both).
+     */
+    if (id === "contemplation") return "contemplative";
     if (id.startsWith("contemplation:")) {
       return id.endsWith(":morning") ? "morning-way" : "evening-way";
     }
@@ -5395,7 +5408,9 @@ export default function WayOfLoveRuleFlow({
       emoji: (silenceMode === "grow" ? "🌱" : "🕯️"),
       label: "Silence",
       sub: silenceMode === "grow" ? "Growing toward 30 min" : `${goalMin} min a day`,
-      step: "contemplation-goal" as Step,
+      // The review row opens the same first slide its gear does — one door,
+      // one destination (see stepForRow's note on the standing rule).
+      step: "contemplative" as Step,
       editId: "contemplation",
       remove: () => chooseGoal("0"),
     }] : []),
