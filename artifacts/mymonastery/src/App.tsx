@@ -334,6 +334,7 @@ const DailyProgressPage = lazy(() => import("./pages/daily-progress"));
 const RoutinePrintPage = lazy(() => import("./pages/routine-print"));
 const RuleOfLifePage = lazy(() => import("./pages/rule-of-life"));
 const RuleOfLifeViewPage = lazy(() => import("./pages/rule-of-life-view"));
+const PracticeInvitePage = lazy(() => import("./pages/practice-invite"));
 const BeginPrayerPage = lazy(() => import("./pages/begin-prayer"));
 const PrayerStartPage = lazy(() => import("./pages/prayer-start"));
 const PrayerRequestDetailPage = lazy(() => import("./pages/prayer-request-detail"));
@@ -835,6 +836,8 @@ const GUEST_ALLOWED_PREFIX = [
   // account; a truly session-less visitor still sees the landing and the
   // accept simply asks them to try again after the app provisions one.
   "/routine/",
+  // Single-practice invite links (/practice/:key) — shareable the same way.
+  "/practice/",
   // Printable parish/community invite SIGN (/sign/:token) — a leader prints the
   // QR poster; it shows the community name + the routine QR, all public info.
   "/sign/",
@@ -1013,6 +1016,7 @@ function Router() {
       <Route path="/daily-progress" component={DailyProgressPage} />
       <Route path="/routine-print" component={RoutinePrintPage} />
       {/* /rule-of-life/:id must sit above /rule-of-life so the id param isn't lost */}
+      <Route path="/practice/:key" component={PracticeInvitePage} />
       <Route path="/rule-of-life/:id" component={RuleOfLifeViewPage} />
       <Route path="/rule-of-life" component={RuleOfLifePage} />
       {/* /customize-home/add must sit above /customize-home so it matches first */}
