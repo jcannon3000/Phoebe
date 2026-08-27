@@ -30,8 +30,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { ACT_CATALOGUE, type CatalogueArtwork } from "@/lib/visioCatalogue";
-import { artworkById } from "@/lib/visioSelect";
+import { ICON_CATALOGUE, type IconArtwork } from "@/lib/iconCatalogue";
 import { getIconHistory, recordIconPrayed } from "@/lib/iconHistory";
 import { FROST_BLUR } from "@/lib/frost";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -66,6 +65,10 @@ function norm(s: string): string {
 /** How many results the search shows at once — a screenful, not an archive. */
 const RESULT_CAP = 24;
 
+/** The icon pool's own lookup — history entries whose work left the
+ *  catalogue on a regeneration simply drop out of the closing cards. */
+const ICON_BY_ID = new Map(ICON_CATALOGUE.map((a) => [a.id, a]));
+
 type Phase = "search" | "timer" | "pray" | "done";
 
 export default function IconsPage() {
@@ -73,7 +76,7 @@ export default function IconsPage() {
   const [, setLocation] = useLocation();
   const [phase, setPhase] = useState<Phase>("search");
   const [query, setQuery] = useState("");
-  const [chosen, setChosen] = useState<CatalogueArtwork | null>(null);
+  const [chosen, setChosen] = useState<IconArtwork | null>(null);
   /** Minutes, 1–5 — or null for "no timer". */
   const [minutes, setMinutes] = useState<number | null>(null);
   /**
@@ -106,21 +109,24 @@ export default function IconsPage() {
     const q = norm(query.trim());
     if (!q) {
       const recent = history
-        .map((h) => artworkById(h.id))
-        .filter((a): a is CatalogueArtwork => !!a);
-      const rest = ACT_CATALOGUE.filter((a) => !recent.some((r) => r.id === a.id));
+        .map((h) => ICON_BY_ID.get(h.id))
+        .filter((a): a is IconArtwork => !!a);
+      const rest = ICON_CATALOGUE.filter((a) => !recent.some((r) => r.id === a.id));
       return [...recent, ...rest].slice(0, RESULT_CAP);
     }
     const words = q.split(/\s+/).filter(Boolean);
-    return ACT_CATALOGUE
+    return ICON_CATALOGUE
       .filter((a) => {
-        const hay = norm(`${a.title} ${a.artist ?? ""}`);
+        // The PEOPLE tags are searched too — "teresa" must find an icon whose
+        // title is only "St. Teresa of Avila" or whose tag carries the name
+        // (the owner's own failed search, against ACT's People facet).
+        const hay = norm(`${a.title} ${a.artist ?? ""} ${a.people.join(" ")}`);
         return words.every((w) => hay.includes(w));
       })
       .slice(0, RESULT_CAP);
   }, [query, history]);
 
-  const choose = (a: CatalogueArtwork) => {
+  const choose = (a: IconArtwork) => {
     setChosen(a);
     setMinutes(null);
     setLoadedSrc(null);
@@ -180,8 +186,8 @@ export default function IconsPage() {
   const recentCards = useMemo(
     () =>
       history
-        .map((h) => artworkById(h.id))
-        .filter((a): a is CatalogueArtwork => !!a)
+        .map((h) => ICON_BY_ID.get(h.id))
+        .filter((a): a is IconArtwork => !!a)
         .slice(0, 3),
     [history],
   );
@@ -265,8 +271,8 @@ export default function IconsPage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 // Every suggested example actually LANDS in the catalogue —
-                // "Good Shepherd" was here first and finds nothing.
-                placeholder={t("icons.search_placeholder", { defaultValue: "Search — “Trinity”, “Nativity”, “Rembrandt”…" })}
+                // "Good Shepherd" was here first and found nothing.
+                placeholder={t("icons.search_placeholder", { defaultValue: "Search — “Teresa”, “Trinity”, “Pantocrator”…" })}
                 inputMode="search"
                 aria-label={t("icons.search_heading", { defaultValue: "Choose an icon to pray with" })}
                 style={{

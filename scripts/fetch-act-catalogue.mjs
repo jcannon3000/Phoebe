@@ -119,10 +119,23 @@ const tidy = (v) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : v);
  *  against ACT's "Surname, Forename, dates" artist string. */
 const EXCLUDED_ARTISTS = ["blake, william"];
 
-function attribution(a, artist) {
+function attribution(a, artist, original = "Wikimedia Commons") {
   const who = artist ? `${artist}. ` : "";
-  return `${who}${tidy(a.title)}, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons.`;
+  return `${who}${tidy(a.title)}, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: ${original}.`;
 }
+
+/**
+ * ACT's per-record permission grant — "The artist has granted permission for
+ * the non-commercial use of this image with attribution." Phoebe is a
+ * non-profit ministry and every use here is non-commercial (owner, looking at
+ * Kelly Latimore's St. Teresa: "Phoebe is not a commercial entity — make sure
+ * you're including those too"), so a record carrying this grant is keepable
+ * WITHOUT a Commons-verifiable licence. The attribution the grant requires is
+ * exactly what the closing slide already prints, with the artist's own site
+ * as the named source instead of Commons.
+ */
+const ncPermitted = (a) => /non-?commercial/i.test(a.copyright_permission ?? "");
+const NC_LICENCE = "Used by permission of the artist (non-commercial, with attribution)";
 
 function place(a) {
   return [a.building, a.city, a.country].map(tidy).filter(Boolean).join(", ");
@@ -223,7 +236,7 @@ async function harvestForLectionary(alreadyIds) {
       if (h.image_is_public !== 1 || !h.image_filename) continue;
       if (!h.scriptures?.length) continue;
       if (!chapterMatches(h.scriptures, g.book, g.chapter)) continue;
-      if (!commonsTitle(h.copyright_source)) continue;
+      if (!commonsTitle(h.copyright_source) && !ncPermitted(h)) continue;
       found.set(h.id, h);
       keptHere++;
     }
@@ -252,15 +265,27 @@ const main = async () => {
   const lic = await resolveLicences(titles);
 
   const kept = [];
-  const dropped = { noCommonsSource: 0, unresolved: 0, notFree: 0, noScripture: 0 };
+  const dropped = { noRights: 0, unresolved: 0, notFree: 0, noScripture: 0 };
   for (const a of candidates) {
+    // Two ways in: a Commons-verified free licence, or the artist's own
+    // non-commercial grant (ncPermitted above). Neither → dropped, as before.
     const ct = commonsTitle(a.copyright_source);
-    if (!ct) { dropped.noCommonsSource++; continue; }
-    const l = lic.get(ct);
-    if (!l) { dropped.unresolved++; continue; }
-    // Strip any markup Commons wraps the licence name in.
-    const clean = String(l).replace(/<[^>]*>/g, "").trim();
-    if (!FREE.test(clean)) { dropped.notFree++; continue; }
+    let clean = null;
+    let original = "Wikimedia Commons";
+    if (ct) {
+      const l = lic.get(ct);
+      if (l) {
+        // Strip any markup Commons wraps the licence name in.
+        const c = String(l).replace(/<[^>]*>/g, "").trim();
+        if (FREE.test(c)) clean = c;
+        else if (!ncPermitted(a)) { dropped.notFree++; continue; }
+      } else if (!ncPermitted(a)) { dropped.unresolved++; continue; }
+    }
+    if (!clean) {
+      if (!ncPermitted(a)) { dropped.noRights++; continue; }
+      clean = NC_LICENCE;
+      original = tidy(a.copyright_source) || "the artist";
+    }
     // The passage is the point — an artwork with no scripture can't be prayed
     // against a reading, so it isn't part of this practice.
     if (!a.scriptures?.length) { dropped.noScripture++; continue; }
@@ -287,7 +312,7 @@ const main = async () => {
       essay: essayUrl(a.notes) ?? "",
       act: ACT_ARTWORK(a.id),
       licence: clean,
-      attribution: attribution(a, artist),
+      attribution: attribution(a, artist, original),
     });
   }
 
@@ -303,10 +328,12 @@ const main = async () => {
  * which re-harvests ACT and re-verifies every licence. That script's header
  * explains why this is fetchable and why each entry is safe to display.
  *
- * Every entry here has been checked individually against the Wikimedia Commons
- * API and came back public domain, CC0, or a CC BY/BY-SA variant — the licence
- * is recorded per entry so the closing slide can name it. Records whose rights
- * could not be resolved were dropped rather than assumed.
+ * Every entry here was either checked individually against the Wikimedia
+ * Commons API (public domain, CC0, or a CC BY/BY-SA variant) or carries ACT's
+ * recorded artist grant of non-commercial use with attribution (Phoebe is a
+ * non-profit; the grant's required attribution is printed on the closing
+ * slide, naming the artist's own source). Records with neither were dropped
+ * rather than assumed.
  *
  * \`img\` points at ACT's own S3 host rather than a bundled asset: at ${kept.length}
  * artworks this collection is far too large to ship inside the app binary, and
