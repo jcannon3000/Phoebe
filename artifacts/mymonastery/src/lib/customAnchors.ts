@@ -322,6 +322,16 @@ export function removeCustomAnchor(id: string): void {
   // (absence alone never deletes — that's what makes accidental wipes impossible).
   addDeletedId(id);
   saveDefs(getCustomAnchors().filter((a) => a.id !== id));
+  /**
+   * FLUSH — a deletion doesn't wait out the debounce. The 800ms window is
+   * fine for coalescing checkmarks; for a delete it's a window in which a
+   * boot-time or focus-time sync-down can land a stale snapshot, or the tab
+   * can close with the tombstone never sent (observed both ways: one
+   * environment resurrected the anchor locally, the other never pushed at
+   * all and the reload restored it). saveDefs above scheduled the push;
+   * this sends it now, with the snapshot captured post-removal.
+   */
+  try { void flushCustomAnchorPush(); } catch { /* best-effort */ }
   // Drop today's completion flag + any reading logs so a re-added title doesn't
   // inherit them.
   try {
@@ -686,6 +696,18 @@ export function importCustomAnchorSnapshot(snap: CustomAnchorSnapshot | null | u
     // Drop any local copy so a delete genuinely propagates across devices, and
     // stop re-sending deletes the server has now acknowledged.
     const tomb = new Set<string>(snap.tombstones && typeof snap.tombstones === "object" ? Object.keys(snap.tombstones) : []);
+    /**
+     * LOCAL pending deletes count as tombstones too. The server's snapshot is
+     * only as fresh as when it was fetched — commit() invalidates /auth/me,
+     * and a refetch racing the delete's own PUT hands back a blob that still
+     * carries the deleted anchor. Accepting it resurrected the practice
+     * locally seconds after the ✕ (observed live: local defs regained
+     * "Community Meal" while the SERVER had already deleted it). A local
+     * tombstone the server hasn't acknowledged yet is a delete in flight, and
+     * a delete in flight outranks a stale snapshot; pruneDeletedIds retires it
+     * once the server echoes it back.
+     */
+    for (const id of getDeletedIds()) tomb.add(id);
 
     /**
      * ONE practice per title — the union is by id, and ids are random.
@@ -924,6 +946,8 @@ export function syncCustomAnchorsFromServer(server: CustomAnchorSnapshot | null 
 
   // Union by id: server defs first (authoritative order), then any local-only —
   // excluding anything the server has tombstoned.
+  // Local pending deletes outrank a stale server snapshot here too.
+  for (const id of getDeletedIds()) tomb.add(id);
   const byId = new Map<string, CustomAnchor>();
   for (const d of serverDefs) if (d && typeof d.id === "string" && !tomb.has(d.id)) byId.set(d.id, d);
   for (const d of localDefs) if (!byId.has(d.id) && !tomb.has(d.id)) byId.set(d.id, d);
