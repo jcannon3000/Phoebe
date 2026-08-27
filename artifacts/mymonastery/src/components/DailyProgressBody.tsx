@@ -1657,11 +1657,23 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const keys = rowIdToCardKeys(target);
     const card = coloredCards.find((c) => keys.includes(c.key));
     if (!card || card.done || card.later) return null;
+    /**
+     * CONTEMPLATION IS NEVER THE HERO (owner: "if contemplation is one of the
+     * notification practices, don't make it a hero — just have it at the
+     * top"). A giant hero card whose whole content is "sit in silence" reads
+     * wrong; the pin keeps the notification's promise (this is where your day
+     * starts) without the billboard.
+     */
+    if (card.key === "silence" || card.key.startsWith("contemplation")) {
+      return { kind: "top" as const, card };
+    }
     return { kind: "card" as const, card };
   })();
   const heroSide: "morning" | "evening" | null =
     notifyHero?.kind === "side" ? notifyHero.side
-    : notifyHero?.kind === "card" ? null
+    // "top" suppresses the time-led office hero exactly as "card" does — a big
+    // office hero over a pinned contemplation would contradict the pin.
+    : notifyHero?.kind === "card" || notifyHero?.kind === "top" ? null
     // Morning only leads as the hero while it's still morning — past noon a
     // not-yet-prayed morning steps aside (matches the omitted morning card +
     // the dashboard "what's next" gate), so the afternoon never shows a morning
@@ -1693,14 +1705,23 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     : undefined;
   // The generic card-hero seat: the notification's chosen practice when one
   // is set (and undone, and open), else the contemplation hero as before.
-  const cardHero = (notifyHero?.kind === "card" ? notifyHero.card : undefined) ?? contemplationHero;
+  // A "top"-kind target (contemplation) suppresses the contemplation hero
+  // outright — otherwise a no-office rhythm's fallback would re-promote the
+  // very card the owner said to keep small.
+  const cardHero = notifyHero?.kind === "card" ? notifyHero.card
+    : notifyHero?.kind === "top" ? undefined
+    : contemplationHero;
   // Whether SOME card leads the Next list as a hero (office, target, or contemplation).
   const heroLeads = !!officeHero || !!cardHero;
-  const visibleCards = showOfficeHero
+  const unpinnedCards = showOfficeHero
     ? coloredCards.filter((c) => c.key !== heroSide)
     : cardHero
       ? coloredCards.filter((c) => c.key !== cardHero.key)
       : coloredCards;
+  // The pinned target leads the list as an ordinary small card.
+  const visibleCards = notifyHero?.kind === "top"
+    ? [notifyHero.card, ...unpinnedCards.filter((c) => c.key !== notifyHero.card.key)]
+    : unpinnedCards;
 
   // Every undone practice stays in Next (never vanishes, never rolls to a
   // separate "Tomorrow" section — both read as confusing / data-loss). A card

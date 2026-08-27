@@ -34,7 +34,7 @@ import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePreset
 import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues, flushRoutineConfig } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
-import { Reorder } from "framer-motion";
+import { Reorder, useDragControls } from "framer-motion";
 import { getRoutineOrder, setRoutineOrder } from "@/lib/routineOrder";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw } from "@/lib/guestSeed";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
@@ -102,6 +102,77 @@ const CARD_B = "rgba(46,107,64,0.4)";
 const CARD_B_ACTIVE = "rgba(168,197,160,0.7)";
 const CTA = "#2D5E3F";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
+
+/**
+ * One row of the flat routine list.
+ *
+ * Its own component because reordering has two gestures now (owner: "on each
+ * card an up arrow and a down arrow, just like a triangle — click it and it
+ * moves. But also if you hold, you can drag — but the whole card doesn't
+ * drag, just when you're touching the left UI"), and the drag half needs
+ * useDragControls, which is a hook and can't live inside the parent's map.
+ *
+ * dragListener={false} + the ⠿ handle's onPointerDown is what confines the
+ * drag to the left UI — the card body, the gear and the ✕ no longer start
+ * one, so scrolling a long routine with a thumb on a card just scrolls. The
+ * arrows move one step per tap and disable at their end of the list.
+ */
+function FlatRoutineRow({ id, emoji, label, sub, circle, onGear, onRemove, onMoveUp, onMoveDown }: {
+  id: string;
+  emoji: string;
+  label: string;
+  sub: string;
+  circle: React.CSSProperties;
+  onGear: (() => void) | null;
+  onRemove: () => void;
+  onMoveUp: (() => void) | null;
+  onMoveDown: (() => void) | null;
+}) {
+  const controls = useDragControls();
+  const arrow = (dir: "up" | "down", fn: (() => void) | null) => (
+    <button
+      type="button"
+      aria-label={`Move ${label} ${dir}`}
+      disabled={!fn}
+      onClick={fn ?? undefined}
+      style={{
+        background: "none", border: "none", padding: "3px 10px", lineHeight: 1,
+        color: fn ? SAGE : "rgba(143,175,150,0.22)", fontSize: 11,
+        cursor: fn ? "pointer" : "default", WebkitTapHighlightColor: "transparent",
+      }}
+    >
+      {dir === "up" ? "▲" : "▼"}
+    </button>
+  );
+  return (
+    <Reorder.Item key={id} value={id} dragListener={false} dragControls={controls} style={{ listStyle: "none" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 16, padding: "9px 14px 9px 4px" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+          {arrow("up", onMoveUp)}
+          <span
+            aria-hidden
+            // The hold-to-drag handle — arrows above and below stay plain
+            // taps; only a hold that starts HERE picks the card up.
+            onPointerDown={(e) => { e.preventDefault(); controls.start(e); }}
+            style={{ color: SAGE_DIM, fontSize: 14, letterSpacing: 1, lineHeight: 1, padding: "5px 10px", touchAction: "none", cursor: "grab", userSelect: "none", WebkitUserSelect: "none" }}
+          >
+            ⠿
+          </span>
+          {arrow("down", onMoveDown)}
+        </div>
+        <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{emoji}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT }}>{label}</span>
+          <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{sub}</span>
+        </span>
+        {onGear && (
+          <button type="button" aria-label={`Settings for ${label}`} onClick={onGear} style={circle}>⚙</button>
+        )}
+        <button type="button" aria-label={`Remove ${label}`} onClick={onRemove} style={circle}>✕</button>
+      </div>
+    </Reorder.Item>
+  );
+}
 
 // Keep in sync with dashboard.tsx / customize-home.tsx — finishing the rule
 // stamps the home layout with this version so it persists past a global reset.
@@ -793,6 +864,38 @@ export default function WayOfLoveRuleFlow({
     const read = (sd: OfficeSide) => { try { return localStorage.getItem(`phoebe:notify-target:${sd}`) ?? ""; } catch { return ""; } };
     return { morning: read("morning"), evening: read("evening") };
   });
+  /**
+   * Each nudge opens a CONCRETE practice from the routine — the vague "Your
+   * usual practice" option is gone (owner: "get rid of 'your usual practice';
+   * anything they chose that's most applicable for morning, make that the
+   * morning one, and the one most applicable for evening the evening one").
+   *
+   * Seeded when the notify slide opens, and only into an empty or orphaned
+   * target — a choice the person made stays theirs. Morning wants the row
+   * that reads most like a morning (the morning side's own practice, its
+   * extra, then a daily-word reflection, then the front of their order);
+   * evening wants the evening side, its extra, the Examen (a review of the
+   * day), then the back of their order.
+   */
+  useEffect(() => {
+    if (entryPhase !== "notify" || orderIds.length === 0) return;
+    const pick = (sd: OfficeSide, current: string, taken: string | null): string => {
+      if (current && orderIds.includes(current)) return current;
+      const prefs = sd === "morning"
+        ? ["side:morning", "extra:morning", ...orderIds.filter((id) => id.startsWith("card:"))]
+        : ["side:evening", "extra:evening", "slot:examen"];
+      for (const p of prefs) if (orderIds.includes(p) && p !== taken) return p;
+      const pool = orderIds.filter((id) => id !== taken);
+      if (pool.length === 0) return orderIds[0]!;
+      return sd === "morning" ? pool[0]! : pool[pool.length - 1]!;
+    };
+    setNotifyTarget((prev) => {
+      const morning = pick("morning", prev.morning, null);
+      const evening = pick("evening", prev.evening, morning);
+      if (morning === prev.morning && evening === prev.evening) return prev;
+      return { morning, evening };
+    });
+  }, [entryPhase, orderIds]);
   /** The review screen's ✕ confirm — carries the row's own remove(), since
    *  review rows are built from local state rather than server row ids. */
   const [deletingReviewRow, setDeletingReviewRow] = useState<{ label: string; remove: () => void } | null>(null);
@@ -3639,7 +3742,12 @@ export default function WayOfLoveRuleFlow({
         items: [
           {
             key: "sit", emoji: "🕯️", name: "Contemplative Prayer",
-            inRoutine: () => (goalMin > 0),
+            // Ask the ROUTINE, not the goal field: `goal` seeds to "5" as a
+            // picker convenience, so goalMin > 0 read true for accounts with
+            // NO sit at all — "Already in your routine" on a practice they'd
+            // never added, with no way to add it. The rows the flat list
+            // renders are the truth about what the routine holds.
+            inRoutine: () => orderIds.some((id) => id === "contemplation" || id.startsWith("contemplation:")),
             add: () => { setEntryPhase("add-minutes"); },
           },
           practiceItem("cobreathe", "🌍", "Creation Prayer"),
@@ -3709,7 +3817,9 @@ export default function WayOfLoveRuleFlow({
                   onChange={(e) => { touchedRef.current = true; setNotifyTarget((p) => ({ ...p, [sd]: e.target.value })); }}
                   style={{ background: "rgba(9,26,16,0.6)", color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 10, padding: "8px 10px", fontFamily: FONT, fontSize: 14, maxWidth: 210 }}
                 >
-                  <option value="">{sd === "morning" ? "Your usual morning practice" : "Your usual evening practice"}</option>
+                  {/* No "Your usual practice" option (owner) — the seed effect
+                      above guarantees a concrete row is selected whenever the
+                      routine has any. */}
                   {notifyOptions.map((r) => <option key={r.id} value={r.id}>{r.emoji} {r.label}</option>)}
                 </select>
               </label>
@@ -3875,30 +3985,27 @@ export default function WayOfLoveRuleFlow({
           onReorder={(ids: string[]) => { touchedRef.current = true; setOrderIds(ids); setRoutineOrder(ids); }}
           style={{ display: "flex", flexDirection: "column", gap: 10, listStyle: "none", padding: 0, margin: 0 }}
         >
-          {orderIds.map((id) => {
+          {orderIds.map((id, idx) => {
             const r = rowById(id);
             if (!r) return null;
+            /** One step per arrow tap — same write path as a drag. */
+            const moveRow = (delta: -1 | 1) => {
+              const j = idx + delta;
+              if (j < 0 || j >= orderIds.length) return;
+              const next = [...orderIds];
+              [next[idx], next[j]] = [next[j]!, next[idx]!];
+              touchedRef.current = true;
+              setOrderIds(next);
+              setRoutineOrder(next);
+            };
             return (
-              <Reorder.Item key={id} value={id} style={{ listStyle: "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 16, padding: "13px 14px", touchAction: "none", cursor: "grab" }}>
-                  <span aria-hidden style={{ color: SAGE_DIM, fontSize: 15, flexShrink: 0, letterSpacing: 1 }}>⠿</span>
-                  <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: "block", color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
-                    <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
-                  </span>
-                  {stepForRow(r.id) && (
-                    <button type="button" aria-label={`Settings for ${r.label}`}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={() => { const st = stepForRow(r.id); if (st) { setSingleEditRow(r.id); setManualMode("scratch"); setStep(st); } }}
-                      style={circle}>⚙</button>
-                  )}
-                  <button type="button" aria-label={`Remove ${r.label}`}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => setDeletingEditRow({ id: r.id, label: r.label })}
-                    style={circle}>✕</button>
-                </div>
-              </Reorder.Item>
+              <FlatRoutineRow
+                key={id} id={id} emoji={r.emoji} label={r.label} sub={r.sub} circle={circle}
+                onGear={stepForRow(r.id) ? () => { const st = stepForRow(r.id); if (st) { setSingleEditRow(r.id); setManualMode("scratch"); setStep(st); } } : null}
+                onRemove={() => setDeletingEditRow({ id: r.id, label: r.label })}
+                onMoveUp={idx > 0 ? () => moveRow(-1) : null}
+                onMoveDown={idx < orderIds.length - 1 ? () => moveRow(1) : null}
+              />
             );
           })}
         </Reorder.Group>
