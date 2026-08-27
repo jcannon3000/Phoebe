@@ -43,3 +43,45 @@ export function recordIconPrayed(id: number, ymd: string): void {
     /* private mode / quota — non-fatal */
   }
 }
+
+/**
+ * A PHYSICAL icon — one the person prays with in their own space, away from
+ * the app (owner: "as if it's a physical icon they're using in their physical
+ * space… they're doing it away from the Phoebe app"). Logging-first, the way
+ * Audio Divina treats music: the app records that the prayer happened and WHO
+ * the icon is of, nothing more. Named entries, not catalogue ids — their icon
+ * isn't in any catalogue.
+ */
+const PHYSICAL_KEY = "phoebe:icon-physical-log";
+
+export type PhysicalIconLog = { name: string; ymd: string };
+
+export function getPhysicalIconLogs(): PhysicalIconLog[] {
+  try {
+    const raw = localStorage.getItem(PHYSICAL_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (v): v is PhysicalIconLog =>
+        !!v && typeof v === "object" &&
+        typeof (v as PhysicalIconLog).name === "string" &&
+        typeof (v as PhysicalIconLog).ymd === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+/** Re-logging the same icon (case-insensitively) moves it to the front with
+ *  today's date — the previous-logs list is "your icons", not a diary. */
+export function recordPhysicalIcon(name: string, ymd: string): void {
+  const clean = name.replace(/\s+/g, " ").trim().slice(0, 80);
+  if (!clean) return;
+  try {
+    const rest = getPhysicalIconLogs().filter((v) => v.name.toLowerCase() !== clean.toLowerCase());
+    localStorage.setItem(PHYSICAL_KEY, JSON.stringify([{ name: clean, ymd }, ...rest].slice(0, CAP)));
+  } catch {
+    /* private mode / quota — non-fatal */
+  }
+}

@@ -31,7 +31,7 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { ICON_CATALOGUE, type IconArtwork } from "@/lib/iconCatalogue";
-import { getIconHistory, recordIconPrayed } from "@/lib/iconHistory";
+import { getIconHistory, recordIconPrayed, getPhysicalIconLogs, recordPhysicalIcon } from "@/lib/iconHistory";
 import { FROST_BLUR } from "@/lib/frost";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
@@ -69,7 +69,7 @@ const RESULT_CAP = 24;
  *  catalogue on a regeneration simply drop out of the closing cards. */
 const ICON_BY_ID = new Map(ICON_CATALOGUE.map((a) => [a.id, a]));
 
-type Phase = "search" | "timer" | "pray" | "done";
+type Phase = "search" | "timer" | "pray" | "done" | "log" | "log-done";
 
 export default function IconsPage() {
   const { t } = useTranslation();
@@ -93,6 +93,21 @@ export default function IconsPage() {
   /** Read once at mount, like Visio's — this session's own completion joins
    *  it in state so the closing cards update without a re-read. */
   const [history, setHistory] = useState(() => getIconHistory());
+  /** The PHYSICAL icons this person has logged — the "choose from previous
+   *  logs" list on the log screen (owner, after the Audio Divina pattern). */
+  const [physicalLogs, setPhysicalLogs] = useState(() => getPhysicalIconLogs());
+  const [logName, setLogName] = useState("");
+  const [loggedName, setLoggedName] = useState("");
+  const logPhysical = (name: string) => {
+    const clean = name.replace(/\s+/g, " ").trim();
+    if (!clean) return;
+    const ymd = new Date().toLocaleDateString("en-CA");
+    try { recordPhysicalIcon(clean, ymd); } catch { /* non-fatal */ }
+    setPhysicalLogs((l) => [{ name: clean, ymd }, ...l.filter((v) => v.name.toLowerCase() !== clean.toLowerCase())]);
+    setLoggedName(clean);
+    setLogName("");
+    setPhase("log-done");
+  };
 
   const backdropPhoto = useMemo(
     () => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
@@ -202,6 +217,8 @@ export default function IconsPage() {
   /** Header Back steps phases; ✕ leaves for the Practices menu it came from. */
   const back = () => {
     if (phase === "timer") { setPhase("search"); return; }
+    if (phase === "log") { setPhase("search"); return; }
+    if (phase === "log-done") { setPhase("search"); return; }
     if (phase === "pray") { setPhase("timer"); return; }
     if (phase === "done") { setPhase("search"); setQuery(""); return; }
     setLocation("/menu/practices");
@@ -280,6 +297,26 @@ export default function IconsPage() {
                   borderRadius: 14, outline: "none", color: WARM, fontFamily: FONT, ...frosted,
                 }}
               />
+              {/* The pill under the search (owner): the door for an icon that
+                  lives in THEIR space, not the catalogue — prayed away from
+                  the app and logged here, the way Audio Divina logs music.
+                  Hidden the moment a search is typed (owner: "when they
+                  search, it'll just hide this") — searching means they're
+                  here for the catalogue. */}
+              {query.trim() === "" && (
+                <button
+                  type="button"
+                  onClick={() => setPhase("log")}
+                  style={{
+                    userSelect: "none", WebkitTapHighlightColor: "transparent",
+                    borderRadius: 999, padding: "11px 20px", fontSize: 13.5, fontWeight: 600,
+                    fontFamily: FONT, cursor: "pointer", color: WARM,
+                    background: "rgba(46,107,64,0.28)", border: "1px solid rgba(143,175,150,0.4)",
+                  }}
+                >
+                  {t("icons.log_pill", { defaultValue: "🕯️ Log your own icon" })}
+                </button>
+              )}
               <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {results.map((a) => (
                   <button
@@ -505,6 +542,101 @@ export default function IconsPage() {
                 style={{
                   userSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420,
                   marginTop: 6, background: "rgba(46,107,64,0.55)", ...FROST_BLUR,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", border: `1px solid ${BORDER}`,
+                  color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600,
+                  fontFamily: FONT, cursor: "pointer",
+                }}
+              >
+                {t("common.done", { defaultValue: "Done" })}
+              </button>
+            </>
+          )}
+
+          {/* LOG YOUR OWN — a physical icon in their space, prayed away from
+              the app (owner). Plain text in, save; the last three logs sit
+              underneath to re-log with a tap. */}
+          {phase === "log" && (
+            <>
+              <p style={{ color: WARM, fontFamily: FONT, fontSize: 20, fontWeight: 600, textAlign: "center", margin: "10px 0 0", lineHeight: 1.4 }}>
+                {t("icons.log_heading", { defaultValue: "Who is your icon of?" })}
+              </p>
+              <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, textAlign: "center", margin: 0, lineHeight: 1.55 }}>
+                {t("icons.log_sub", { defaultValue: "For an icon you prayed with in your own space." })}
+              </p>
+              <input
+                value={logName}
+                onChange={(e) => setLogName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") logPhysical(logName); }}
+                placeholder={t("icons.log_placeholder", { defaultValue: "St. Teresa of Avila, Christ Pantocrator…" })}
+                maxLength={80}
+                autoFocus
+                aria-label={t("icons.log_heading", { defaultValue: "Who is your icon of?" })}
+                style={{
+                  width: "100%", boxSizing: "border-box", fontSize: 16, padding: "13px 16px",
+                  borderRadius: 14, outline: "none", color: WARM, fontFamily: FONT, ...frosted,
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => logPhysical(logName)}
+                aria-disabled={logName.trim() === ""}
+                style={{
+                  userSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420,
+                  background: "rgba(46,107,64,0.55)", ...FROST_BLUR,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", border: `1px solid ${BORDER}`,
+                  color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600,
+                  fontFamily: FONT, cursor: logName.trim() === "" ? "default" : "pointer",
+                  opacity: logName.trim() === "" ? 0.55 : 1, transition: "opacity 300ms ease-out",
+                }}
+              >
+                {t("icons.log_cta", { defaultValue: "Log it" })}
+              </button>
+              {physicalLogs.length > 0 && (
+                <>
+                  <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "10px 0 0", textAlign: "center" }}>
+                    {t("icons.log_prev", { defaultValue: "Your icons" })}
+                  </p>
+                  <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+                    {physicalLogs.slice(0, 3).map((v) => (
+                      <button
+                        key={v.name}
+                        type="button"
+                        onClick={() => logPhysical(v.name)}
+                        style={{
+                          userSelect: "none", WebkitTapHighlightColor: "transparent",
+                          display: "flex", alignItems: "center", gap: 10, width: "100%",
+                          padding: "12px 14px", borderRadius: 14, cursor: "pointer", textAlign: "left", ...frosted,
+                        }}
+                      >
+                        <span aria-hidden style={{ fontSize: 18, flexShrink: 0 }}>🕯️</span>
+                        <span style={{ color: WARM, fontFamily: SERIF, fontSize: 15, fontStyle: "italic", flex: 1, minWidth: 0 }}>{v.name}</span>
+                        <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11.5, flexShrink: 0 }}>{v.ymd}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {phase === "log-done" && (
+            <>
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "14px 0 2px", textAlign: "center" }}>
+                {t("icons.log_done_eyebrow", { defaultValue: "Icon prayer logged" })}
+              </p>
+              <span aria-hidden style={{ fontSize: 40 }}>🕯️</span>
+              <p style={{ color: WARM, fontFamily: SERIF, fontSize: 21, fontStyle: "italic", textAlign: "center", margin: 0, lineHeight: 1.35 }}>
+                {loggedName}
+              </p>
+              <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, textAlign: "center", margin: 0, lineHeight: 1.55 }}>
+                {t("icons.log_done_sub", { defaultValue: "Kept ✓ — prayed in your own space." })}
+              </p>
+              <button
+                type="button"
+                onClick={() => setLocation("/dashboard")}
+                style={{
+                  userSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420,
+                  marginTop: 10, background: "rgba(46,107,64,0.55)", ...FROST_BLUR,
                   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", border: `1px solid ${BORDER}`,
                   color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600,
                   fontFamily: FONT, cursor: "pointer",
