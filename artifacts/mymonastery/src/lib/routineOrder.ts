@@ -41,17 +41,23 @@ export function rowIdToCardKeys(id: string): string[] {
   if (id === "side:evening") return ["evening"];
   if (id === "extra:morning") return ["extra-morning"];
   if (id === "extra:evening") return ["extra-evening"];
-  if (id === "contemplation") return ["contemplation"];
+  // The day's silence goal renders as the "silence" card (audited against the
+  // real keys in DailyProgressBody — guessing them cost the first live check).
+  if (id === "contemplation") return ["silence", "contemplation"];
   if (id === "contemplation:morning") return ["contemplation-morning"];
   if (id === "contemplation:evening") return ["contemplation-evening"];
   if (id.startsWith("slot:")) {
     const k = id.slice(5);
-    // The one vocabulary seam: the slot/practice key for Audio Divina is
-    // "listening" everywhere the home is concerned.
-    return [k === "audio" ? "listening" : k];
+    // Two vocabulary seams: Audio Divina's card key is "listening", and the
+    // prayer list's card is "prayer-list-card".
+    if (k === "audio") return ["listening"];
+    if (k === "prayer-list") return ["prayer-list-card", "prayer-list"];
+    return [k];
   }
-  if (id === "card:reflection") return ["cac", "fdd", "ssje", "vts"];
-  if (id.startsWith("card:")) return [id.slice(5)];
+  // Reflection cards render as reflect-<source>; keep the bare source too for
+  // any surface keyed the module way.
+  if (id === "card:reflection") return ["reflect-cac", "reflect-fdd", "reflect-ssje", "reflect-vts", "cac", "fdd", "ssje", "vts"];
+  if (id.startsWith("card:")) { const k = id.slice(5); return [`reflect-${k}`, k]; }
   if (id.startsWith("custom:")) return [`custom-${id.slice(7)}`];
   return [];
 }

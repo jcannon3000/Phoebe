@@ -98,7 +98,11 @@ export default function BeginPrayerPage() {
       })();
       const hrefForTarget = (id: string): string | null => {
         if (id === `side:${side}`) return null; // the side's own anchor = normal routing
-        if (id === "side:morning" || id === "side:evening") return null;
+        // The OTHER side's anchor as a target ("open Evening Psalms from the
+        // morning nudge") — re-enter begin-prayer pinned to that side, without
+        // the notify marker so this branch can't loop.
+        if (id === "side:morning") return "/begin-prayer?side=morning";
+        if (id === "side:evening") return "/begin-prayer?side=evening";
         if (id.startsWith("slot:")) {
           const k = id.slice(5);
           if (k === "walk") return "/walk";

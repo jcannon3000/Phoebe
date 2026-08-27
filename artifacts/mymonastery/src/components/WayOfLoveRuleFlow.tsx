@@ -2877,6 +2877,18 @@ export default function WayOfLoveRuleFlow({
       setManualMode("edit");
       return;
     }
+    /**
+     * The flat entry's phases: Back walks the phase stack, never out of the
+     * customizer. Without this, the ctaButton's Back on the notifications and
+     * add slides fell through to onBack() and EXITED — Save's neighbour
+     * silently abandoning the routine you were mid-way through shaping.
+     */
+    if (canEditParts && manualMode === "edit" && entryPhase !== "list") {
+      if (entryPhase === "add-items" || entryPhase === "add-custom") { setEntryPhase("add-cat"); return; }
+      if (entryPhase === "add-minutes") { setEntryPhase("add-items"); return; }
+      setEntryPhase("list");
+      return;
+    }
     // "Build your own" enters at morning-way, SKIPPING the intro (owner) — so
     // Back from that first real slide returns to the three-door entry, rather
     // than stepping onto the intro slide the owner asked to skip.
@@ -3572,10 +3584,19 @@ export default function WayOfLoveRuleFlow({
         inRoutine: () => sideHolds(sd, lvl) || getSideExtra(sd) === lvl,
         blocked: () => {
           if (sideFree(sd)) return null;
-          // The office+devotion pairing rides the EXTRA seat (owner: "add the
-          // devotion too… they wouldn't conflict"); everything else needs the
-          // side's anchor seat.
-          if (lvl === "devotion" && getSideExtra(sd) == null) return null;
+          /**
+           * The office+devotion pairing rides the EXTRA seat (owner: "add the
+           * devotion too… they wouldn't conflict") — but ONLY beside the full
+           * Office. Completion is tracked per MODE, and psalms, readings and
+           * guided prayer all complete as the side's devotion mode
+           * (extraOfficeMode) — an extra whose mode collides with the anchor's
+           * is suppressed by extraModesFor, so offering it here stored a row
+           * the home could never show. Audited live: Morning Devotion beside
+           * Morning Psalms sat in the edit list and never on the home — one
+           * routine, two answers, which is the thing this app is not allowed
+           * to do. Offer only what the home can render.
+           */
+          if (lvl === "devotion" && getExplicitSideLevel(sd) === "office" && getSideExtra(sd) == null) return null;
           return sd === "morning" ? "Morning already has a practice" : "Evening already has a practice";
         },
         add: () => {
@@ -3645,6 +3666,11 @@ export default function WayOfLoveRuleFlow({
     const rowById = (id: string) => editRows.find((r) => r.id === id);
     const notifyOptions = orderIds.map((id) => rowById(id)).filter(Boolean) as typeof editRows;
     const saveNotify = () => {
+      // Saving the routine ends today's one-day swaps — the same invariant
+      // commit() and the light editor keep: an explicit save supersedes a
+      // stand-in chosen this morning.
+      clearSideDaySwap("morning");
+      clearSideDaySwap("evening");
       try {
         localStorage.setItem("phoebe:notify-target:morning", notifyTarget.morning);
         localStorage.setItem("phoebe:notify-target:evening", notifyTarget.evening);
@@ -3683,7 +3709,7 @@ export default function WayOfLoveRuleFlow({
                   onChange={(e) => { touchedRef.current = true; setNotifyTarget((p) => ({ ...p, [sd]: e.target.value })); }}
                   style={{ background: "rgba(9,26,16,0.6)", color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 10, padding: "8px 10px", fontFamily: FONT, fontSize: 14, maxWidth: 210 }}
                 >
-                  <option value="">First thing in your routine</option>
+                  <option value="">{sd === "morning" ? "Your usual morning practice" : "Your usual evening practice"}</option>
                   {notifyOptions.map((r) => <option key={r.id} value={r.id}>{r.emoji} {r.label}</option>)}
                 </select>
               </label>
@@ -3839,6 +3865,11 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 18px" }}>
           {t("wol_rule.flat_body", { defaultValue: "Drag to order your day. The gear changes a practice; the ✕ takes it off." })}
         </p>
+        {orderIds.length === 0 && (
+          <p style={{ color: SAGE_DIM, fontSize: 14, fontFamily: FONT, lineHeight: 1.6, margin: "4px 0 10px" }}>
+            {t("wol_rule.flat_empty", { defaultValue: "Nothing here yet — add your first practice below, or start from a preset." })}
+          </p>
+        )}
         <Reorder.Group
           axis="y" values={orderIds}
           onReorder={(ids: string[]) => { touchedRef.current = true; setOrderIds(ids); setRoutineOrder(ids); }}
