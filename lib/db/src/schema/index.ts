@@ -36,6 +36,7 @@ export * from "./user_public_keys";
 export * from "./fellow_plan_rsvps";
 export * from "./prayers_for";
 export * from "./waitlist";
+export * from "./act_overrides";
 export * from "./prayer_feeds";
 export * from "./prayer_feed_entries";
 export * from "./prayer_feed_subscriptions";

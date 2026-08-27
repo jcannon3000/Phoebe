@@ -1,37 +1,47 @@
 // Catalogue Vanderbilt's Art in the Christian Tradition (ACT) into
-// artifacts/mymonastery/src/lib/visioCatalogue.ts — the artwork pool that
-// Visio Divina prays with.
+// artifacts/mymonastery/src/lib/visioCatalogue.ts — the artwork LIBRARY that
+// Visio Divina prays with and the admin art-library tool curates.
 //
 // Usage:
 //   node scripts/fetch-act-catalogue.mjs
 //
+// ── The CURATED-ARTIST model ──
+//
+// Owner (after finding only 11 of Frank Wesley's 118 works had made it in):
+// "let's limit the library of photos to these artists, but make sure ALL
+// their images from the Vanderbilt library are in there." So the harvest is
+// no longer query-shaped (the old VCS-subset + lectionary-expansion phases
+// only caught works that happened to match a reading search): it walks the
+// allowlist below with ACT's own `artists` filter and takes EVERY record
+// each artist has. Works with scripture refs feed Visio's day-matching;
+// works without refs still live in the library (the admin tool and the icon
+// toggle can surface them). The Benaki Museum entry is a BUILDING, not an
+// artist — its four Byzantine icons come via the building filter.
+//
 // ── Why this can be fetched at all ──
 //
 // ACT's robots.txt is "User-agent: * / Disallow:" — an EMPTY disallow, which
-// permits everything, with none of the AI-crawler exclusions that thevcs.org
-// sets. Their search is a public Meilisearch proxy at POST /api/search, and
-// their images are public objects on S3. So this reads a published catalogue
-// through its own published interface. (Contrast lib/vcsExhibitions.ts, where
-// we deliberately DON'T fetch, and link at book level instead.)
+// permits everything. Their search is a public Meilisearch proxy at
+// POST /api/search, and their images are public objects on S3. So this reads
+// a published catalogue through its own published interface.
 //
 // ── Why the result is safe to display ──
 //
-// ACT is an INDEX, not a rights holder: each record names its own copyright
-// source and defers to it. "It's on ACT" is not a licence. So this script
-// refuses to take ACT's word for anything — for every record it resolves the
-// Wikimedia file page named in `copyright_source` and asks the Commons API for
-// that file's ACTUAL licence, keeping only those that come back public domain,
-// CC0, or a CC BY/BY-SA variant. Anything unresolvable, non-free, or hosted
-// somewhere we can't check is DROPPED rather than guessed at. The counts are
-// printed at the end so the drop rate is visible, not silent.
+// ACT is an INDEX, not a rights holder. Two doors in, per record:
+//  1. The Wikimedia file page named in `copyright_source`, resolved against
+//     the Commons API, coming back public domain / CC0 / CC BY(-SA).
+//  2. ACT's recorded artist grant of non-commercial use with attribution
+//     (Phoebe is a non-profit; owner: "make sure you're including those").
+// Records with neither are DROPPED rather than guessed at.
 //
-// ── Why the VCS subset ──
+// ── The nudity screen ──
 //
-// The records tagged "Visual Commentary on Scripture" are the ones that carry
-// (a) a scripture passage, (b) a lectionary day, and (c) a link to a short
-// essay on thevcs.org. That triple is exactly what the practice needs: an
-// image for the looking, the passage to read against it, and somewhere to go
-// afterwards. The essay is LINKED, never copied — see visio.tsx.
+// Owner: "any image with nudity should not be in there." ACT has no nudity
+// tag (probed: no subject matches), so this is a keyword screen over title +
+// notes + subjects — it catches what the records SAY, not what the paint
+// shows. The admin art-library tool is the second line: the owner deletes
+// what the screen can't see, and those deletions live in act_overrides, not
+// here, so a regeneration never resurrects them.
 
 import { writeFileSync } from "fs";
 import { dirname, resolve } from "path";
@@ -44,13 +54,45 @@ const OUT_PATH = resolve(REPO_ROOT, "artifacts/mymonastery/src/lib/visioCatalogu
 const UA = "Phoebe/1.0 (prayer app; +https://withphoebe.app; jcannon3000@gmail.com)";
 const ACT_SEARCH = "https://act.library.vanderbilt.edu/api/search";
 const ACT_ARTWORK = (id) => `https://act.library.vanderbilt.edu/artworks/${id}`;
-// Their image host. Named "iiif-" but it serves plain full-size JPEGs off S3;
-// there is no IIIF derivative endpoint (info.json 403s), so there is no way to
-// ask for a smaller one — see the note on `img` in the generated file.
+// Their image host. Named "iiif-" but it serves plain full-size JPEGs off S3.
 const ACT_IMAGE = (f) => `https://iiif-act.library.vanderbilt.edu/jpeg/${f}.jpg`;
 
-/** Licences we will actually ship an image under. */
+/**
+ * THE LIBRARY'S ARTISTS (owner's list, 2026-08-27) — exact ACT artist
+ * strings, verified against the API. Adding an artist here and re-running is
+ * the whole procedure for growing the library.
+ */
+const ARTISTS = [
+  "JESUS MAFA",
+  "Latimore, Kelly",
+  "Johnson, William H., 1901-1970",
+  "Pittman, Lauren Wright",
+  "Reid, Patricia",
+  "Miller, Mary Jane",
+  "Ceballos Fernández, Lázaro A.",
+  "Catlett, Elizabeth, 1915-2012",
+  "Swanson, John August",
+  "Hernández, Salvador",
+  "Wesley, Frank, 1923-2002",
+];
+/** Collections included whole, by ACT's `building` value. */
+const BUILDINGS = ["Benaki Museum"];
+
+/** Single works the owner has asked out of the library, by ACT record id.
+ *  59230 = Frank Wesley, "Before Abraham Was I Am". Runtime deletions made
+ *  through the admin tool live in act_overrides instead — this list is only
+ *  for works that must never even enter the generated file. */
+const EXCLUDED_IDS = new Set([59230]);
+
+/** Owner: "any image with nudity should not be in there." Keyword screen —
+ *  see the header for its limits and the admin tool's role. */
+const NUDITY = /\bnudes?\b|\bnaked\b|\bnudity\b/i;
+
+/** Licences we will ship an image under (door 1). */
 const FREE = /^(public domain|cc0|cc by(-sa)? [0-9.]+( [a-z]{2})?)$/i;
+/** Door 2 — the artist's own recorded non-commercial grant. */
+const ncPermitted = (a) => /non-?commercial/i.test(a.copyright_permission ?? "");
+const NC_LICENCE = "Used by permission of the artist (non-commercial, with attribution)";
 
 async function actSearch(body) {
   const res = await fetch(ACT_SEARCH, {
@@ -62,20 +104,17 @@ async function actSearch(body) {
   return res.json();
 }
 
-/**
- * Meilisearch caps any single query's window at 500 hits, so a broad sweep
- * can't reach the whole collection. The subject query below is well under the
- * cap, so it IS complete for this subset; widening the catalogue later means
- * unioning several narrower queries rather than paging one broad one.
- */
-async function harvest() {
-  const byId = new Map();
-  for (let page = 1; page <= 5; page++) {
-    const d = await actSearch({ q: "Visual Commentary on Scripture", page, hitsPerPage: 100 });
-    for (const h of d.hits) byId.set(h.id, h);
-    if (page >= (d.totalPages ?? 1)) break;
+/** Every record matching one Meilisearch filter, paged. */
+async function harvestFilter(filter) {
+  const out = [];
+  let pages = 1;
+  for (let page = 1; page <= pages && page <= 10; page++) {
+    const d = await actSearch({ q: "", page, hitsPerPage: 100, filter });
+    pages = d.totalPages ?? 1;
+    out.push(...(d.hits ?? []));
+    await new Promise((r) => setTimeout(r, 150));
   }
-  return [...byId.values()];
+  return out;
 }
 
 /** The thevcs.org essay URL ACT records in the notes field. */
@@ -107,6 +146,7 @@ async function resolveLicences(titles) {
       const lic = p.imageinfo?.[0]?.extmetadata?.LicenseShortName?.value;
       if (lic) out.set(p.title, lic);
     }
+    await new Promise((r) => setTimeout(r, 120));
   }
   return out;
 }
@@ -114,168 +154,48 @@ async function resolveLicences(titles) {
 /** Their catalogue has stray whitespace in a handful of fields ("Jonah "). */
 const tidy = (v) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : v);
 
-/** ACT's requested citation, in the form their own pages ask for. */
-/** Owner: "take out the William Blake stuff." Matched on the surname, lower-cased,
- *  against ACT's "Surname, Forename, dates" artist string. */
-const EXCLUDED_ARTISTS = ["blake, william", "herrel, edie mae", "wesley, frank"];
-
 function attribution(a, artist, original = "Wikimedia Commons") {
   const who = artist ? `${artist}. ` : "";
   return `${who}${tidy(a.title)}, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: ${original}.`;
 }
 
-/**
- * ACT's per-record permission grant — "The artist has granted permission for
- * the non-commercial use of this image with attribution." Phoebe is a
- * non-profit ministry and every use here is non-commercial (owner, looking at
- * Kelly Latimore's St. Teresa: "Phoebe is not a commercial entity — make sure
- * you're including those too"), so a record carrying this grant is keepable
- * WITHOUT a Commons-verifiable licence. The attribution the grant requires is
- * exactly what the closing slide already prints, with the artist's own site
- * as the named source instead of Commons.
- */
-const ncPermitted = (a) => /non-?commercial/i.test(a.copyright_permission ?? "");
-const NC_LICENCE = "Used by permission of the artist (non-commercial, with attribution)";
-
 function place(a) {
   return [a.building, a.city, a.country].map(tidy).filter(Boolean).join(", ");
 }
 
-/**
- * ── Phase 2: the LECTIONARY expansion ──
- *
- * The VCS subset above is ~230 works — the ones with a thevcs.org essay. The
- * practice's whole point is that the day's picture follows the day's readings,
- * and an audit across the full two-year Daily Office cycle (2026–2027, MP+EP
- * lessons and psalms) found the VCS subset alone connects at chapter level or
- * better on barely 60% of days, with psalms almost entirely uncovered.
- *
- * So this phase reads scripts/visio-target-readings.json (generated from the
- * server's own lectionary by artifacts/api-server/src/gen-visio-targets.mjs),
- * collapses the uncovered readings to book+chapter groups, and queries ACT for
- * each. Hits are kept only when ACT's own scripture tags actually match the
- * chapter — the query is fuzzy text search, so the tags are the truth — and
- * every image still goes through the same Commons licence gate as phase 1.
- *
- * These works have no VCS essay. `essay` is "" for them: the practice already
- * treats an essay-less day as "show the picture, plainly" (visio.tsx hasEssay),
- * and the closing card's reflection pill guards on a real http(s) URL.
- */
-import { readFileSync, existsSync } from "fs";
-
-/** Book-name normalisation, mirroring the client's parseRef ("Samuel I" ⇄ "1 Samuel"). */
-function bookAndChapters(ref) {
-  const cleaned = String(ref || "").trim().replace(/\s+/g, " ").replace(/\./g, "");
-  const lead = /^([123])\s+/.exec(cleaned);
-  const rest = lead ? cleaned.slice(lead[0].length) : cleaned;
-  const digit = rest.search(/\d/);
-  let name = (digit < 0 ? rest : rest.slice(0, digit)).replace(/[\s,]+$/, "").trim().toLowerCase();
-  if (!name) return null;
-  const roman = /^(.*?)\s+(i{1,3})$/.exec(name);
-  if (roman) name = `${roman[2].length} ${roman[1]}`;
-  else if (lead) name = `${lead[1]} ${name}`;
-  const chapters = new Set();
-  const nums = digit < 0 ? "" : rest.slice(digit);
-  const m = /^(\d+)(?::\d+)?(?:\s*[-\u2013]\s*(?:(\d+):)?\d+)?/.exec(nums);
-  if (m) {
-    const c1 = parseInt(m[1], 10);
-    const c2 = m[2] ? parseInt(m[2], 10) : c1;
-    for (let c = c1; c <= Math.min(c2, c1 + 40); c++) chapters.add(c);
-  }
-  return { book: name, chapters };
-}
-
-function chapterMatches(artRefs, book, chapter) {
-  for (const r of artRefs ?? []) {
-    const p = bookAndChapters(r);
-    if (p && p.book === book && p.chapters.has(chapter)) return true;
-  }
-  return false;
-}
-
-const TARGETS_PATH = resolve(REPO_ROOT, "scripts/visio-target-readings.json");
-/** How many works we try to hold per uncovered chapter — more than one so the
- *  rotation has something to rotate through on repeated lections (owner). */
-const PER_CHAPTER = 4;
-
-async function harvestForLectionary(alreadyIds) {
-  if (!existsSync(TARGETS_PATH)) {
-    console.log("No visio-target-readings.json — skipping the lectionary expansion phase.");
-    return [];
-  }
-  const rows = JSON.parse(readFileSync(TARGETS_PATH, "utf8"));
-  // Collapse uncovered readings (score<2 = nothing at chapter level today)
-  // to book+chapter groups, weighted by how many days they appear on.
-  const groups = new Map(); // "book|chapter" -> { book, chapter, days, label }
-  for (const r of rows) {
-    if (r.score >= 2) continue;
-    const p = bookAndChapters(r.ref);
-    if (!p || p.chapters.size === 0) continue;
-    for (const c of p.chapters) {
-      const k = `${p.book}|${c}`;
-      const g = groups.get(k) ?? { book: p.book, chapter: c, days: 0 };
-      g.days += r.days;
-      groups.set(k, g);
-    }
-  }
-  const ordered = [...groups.values()].sort((a, b) => b.days - a.days);
-  console.log(`Lectionary expansion: ${ordered.length} uncovered chapters to query`);
-  const found = new Map();
-  let done = 0;
-  for (const g of ordered) {
-    done++;
-    // Query text the way ACT's own tags write it ("1 Samuel 7" not "1 samuel 7").
-    const label = `${g.book.replace(/^(\d) /, "$1 ").replace(/\b\w/g, (ch) => ch.toUpperCase())} ${g.chapter}`;
-    let d;
-    try { d = await actSearch({ q: label, page: 1, hitsPerPage: 50 }); }
-    catch (e) { console.warn(`  query failed for ${label}: ${e.message}`); continue; }
-    let keptHere = 0;
-    for (const h of d.hits ?? []) {
-      if (keptHere >= PER_CHAPTER) break;
-      if (found.has(h.id) || alreadyIds.has(h.id)) continue;
-      if (h.image_is_public !== 1 || !h.image_filename) continue;
-      if (!h.scriptures?.length) continue;
-      if (!chapterMatches(h.scriptures, g.book, g.chapter)) continue;
-      if (!commonsTitle(h.copyright_source) && !ncPermitted(h)) continue;
-      found.set(h.id, h);
-      keptHere++;
-    }
-    if (done % 50 === 0) console.log(`  …${done}/${ordered.length} chapters, ${found.size} candidates`);
-    await new Promise((r) => setTimeout(r, 150));
-  }
-  console.log(`  ${found.size} candidate records from the lectionary expansion`);
-  return [...found.values()];
-}
-
 const main = async () => {
-  console.log("Harvesting ACT…");
-  const all = await harvest();
-  console.log(`  ${all.length} records in the "Visual Commentary on Scripture" subject`);
+  const byId = new Map();
+  for (const artist of ARTISTS) {
+    const hits = await harvestFilter(`artists = ${JSON.stringify(artist)}`);
+    for (const h of hits) byId.set(h.id, h);
+    console.log(`${artist}: ${hits.length} records (pool ${byId.size})`);
+  }
+  for (const b of BUILDINGS) {
+    const hits = await harvestFilter(`building = ${JSON.stringify(b)}`);
+    for (const h of hits) byId.set(h.id, h);
+    console.log(`${b} (building): ${hits.length} records (pool ${byId.size})`);
+  }
 
-  const withEssay = all.filter((a) => essayUrl(a.notes) && a.image_filename && a.image_is_public === 1);
-  console.log(`  ${withEssay.length} have a VCS essay AND a public image`);
-
-  // Phase 2 — works matched to the lectionary's uncovered chapters. No essay
-  // required (see the phase's own header); everything else identical.
-  const expansion = await harvestForLectionary(new Set(withEssay.map((a) => a.id)));
-  const candidates = [...withEssay, ...expansion];
-
+  const candidates = [...byId.values()];
   const titles = [...new Set(candidates.map((a) => commonsTitle(a.copyright_source)).filter(Boolean))];
   console.log(`Verifying ${titles.length} file licences against Commons…`);
   const lic = await resolveLicences(titles);
 
   const kept = [];
-  const dropped = { noRights: 0, unresolved: 0, notFree: 0, noScripture: 0 };
+  const dropped = { noImage: 0, noRights: 0, unresolved: 0, notFree: 0, excludedWork: 0, nudity: 0, sampleRecord: 0 };
   for (const a of candidates) {
-    // Two ways in: a Commons-verified free licence, or the artist's own
-    // non-commercial grant (ncPermitted above). Neither → dropped, as before.
+    if (a.image_is_public !== 1 || !a.image_filename) { dropped.noImage++; continue; }
+    // ACT keeps placeholder rows ("Sample record for Frank Wesley artwork").
+    if (/^sample record\b/i.test(a.title ?? "")) { dropped.sampleRecord++; continue; }
+    if (EXCLUDED_IDS.has(a.id)) { dropped.excludedWork++; continue; }
+    const screen = [a.title, a.notes, ...(a.subjects ?? [])].filter(Boolean).join(" ");
+    if (NUDITY.test(screen)) { dropped.nudity++; continue; }
     const ct = commonsTitle(a.copyright_source);
     let clean = null;
     let original = "Wikimedia Commons";
     if (ct) {
       const l = lic.get(ct);
       if (l) {
-        // Strip any markup Commons wraps the licence name in.
         const c = String(l).replace(/<[^>]*>/g, "").trim();
         if (FREE.test(c)) clean = c;
         else if (!ncPermitted(a)) { dropped.notFree++; continue; }
@@ -286,18 +206,7 @@ const main = async () => {
       clean = NC_LICENCE;
       original = tidy(a.copyright_source) || "the artist";
     }
-    // The passage is the point — an artwork with no scripture can't be prayed
-    // against a reading, so it isn't part of this practice.
-    if (!a.scriptures?.length) { dropped.noScripture++; continue; }
     const artist = a.artists?.[0] ?? null;
-    // Artists the practice deliberately doesn't carry (owner). Kept HERE as
-    // well as removed from the generated file, or the next regeneration
-    // quietly puts them back — the same "a regen undid it" trap the catalogue
-    // header already warns about.
-    if (artist && EXCLUDED_ARTISTS.some((x) => String(artist).toLowerCase().includes(x))) {
-      dropped.excludedArtist = (dropped.excludedArtist ?? 0) + 1;
-      continue;
-    }
     kept.push({
       id: a.id,
       title: tidy(a.title),
@@ -305,10 +214,12 @@ const main = async () => {
       date: tidy(a.creation_date) || null,
       where: place(a) || null,
       img: ACT_IMAGE(a.image_filename),
-      refs: a.scriptures,
+      refs: a.scriptures ?? [],
       days: a.liturgicalDays ?? [],
-      // "" = no VCS essay (a lectionary-expansion work). The practice shows
-      // the picture plainly on those days; the reflection pill self-hides.
+      // Who the work depicts + ACT's subject tags — the searchable metadata
+      // the admin art-library tool shows, and what a search can match on.
+      people: (a.people ?? []).map(tidy),
+      subjects: (a.subjects ?? []).map(tidy),
       essay: essayUrl(a.notes) ?? "",
       act: ACT_ARTWORK(a.id),
       licence: clean,
@@ -317,35 +228,33 @@ const main = async () => {
   }
 
   kept.sort((x, y) => x.id - y.id);
-  console.log(`\nKEPT ${kept.length}`);
+  const withRefs = kept.filter((k) => k.refs.length > 0).length;
+  console.log(`\nKEPT ${kept.length} (${withRefs} with scripture refs for Visio's day-matching)`);
   console.log("DROPPED", dropped);
 
   const header = `/**
- * Art in the Christian Tradition — the Visio Divina catalogue.
+ * Art in the Christian Tradition — the curated artwork LIBRARY.
  *
  * GENERATED FILE. Do not edit by hand: run
  *   node scripts/fetch-act-catalogue.mjs
- * which re-harvests ACT and re-verifies every licence. That script's header
- * explains why this is fetchable and why each entry is safe to display.
+ * which re-harvests EVERY ACT work by the library's artists (the allowlist
+ * in that script — owner-curated) and re-verifies rights per record: either
+ * a Commons-verified free licence, or ACT's recorded artist grant of
+ * non-commercial use with attribution (Phoebe is a non-profit; the required
+ * attribution is printed on the closing slide). Records with neither were
+ * dropped rather than assumed. A keyword nudity screen runs at harvest;
+ * runtime deletions and icon toggles made in the admin art-library tool
+ * live in act_overrides, NOT here, and survive regeneration.
  *
- * Every entry here was either checked individually against the Wikimedia
- * Commons API (public domain, CC0, or a CC BY/BY-SA variant) or carries ACT's
- * recorded artist grant of non-commercial use with attribution (Phoebe is a
- * non-profit; the grant's required attribution is printed on the closing
- * slide, naming the artist's own source). Records with neither were dropped
- * rather than assumed.
+ * \`img\` points at ACT's own S3 host rather than a bundled asset — the
+ * collection is far too large to ship in the binary, and their host serves
+ * only full-size JPEGs. The image is fetched when the practice opens.
  *
- * \`img\` points at ACT's own S3 host rather than a bundled asset: at ${kept.length}
- * artworks this collection is far too large to ship inside the app binary, and
- * their host serves only full-size JPEGs (there is no IIIF derivative
- * endpoint). So the image is fetched when the practice opens.
- *
- * \`refs\` are the passages ACT tags the work to, and they are what lets the
- * image follow the day: visioSelect crosses them against the office's appointed
- * lessons. \`days\` are ACT's own lectionary labels ("Year B Lent 3rd Sunday"),
- * kept as a cross-check but not used for selection — they're free text, and the
- * passage match is exact. \`essay\` is a short commentary at thevcs.org —
- * LINKED, never reproduced.
+ * \`refs\` are the passages ACT tags a work to; visioSelect crosses them
+ * against the day's appointed lessons. Works with NO refs are library-only:
+ * they can never be chosen as the day's Visio image, but the admin tool and
+ * the icon toggle can surface them. \`people\` and \`subjects\` are ACT's own
+ * tags — searchable metadata, shown in the admin tool.
  */
 
 export type CatalogueArtwork = {
@@ -358,9 +267,11 @@ export type CatalogueArtwork = {
   img: string;
   refs: string[];
   days: string[];
+  people: string[];
+  subjects: string[];
   essay: string;
   act: string;
-  /** The verified licence, named on the closing slide. */
+  /** The verified licence (or the artist's recorded grant), named on the closing slide. */
   licence: string;
   attribution: string;
 };
@@ -369,6 +280,10 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = `;
 
   writeFileSync(OUT_PATH, header + JSON.stringify(kept, null, 1) + ";\n");
   console.log(`\nWrote ${OUT_PATH}`);
+  // The pre-built Visio schedule pins dates to ACT ids — a regenerated
+  // catalogue orphans every pin SILENTLY (chooseArtwork falls through to
+  // uncapped live matching), so the schedule must be rebuilt with it.
+  console.log("NOW REGENERATE THE SCHEDULE:  pnpm --filter @workspace/api-server run build:visio-schedule");
 };
 
 main().catch((e) => { console.error(e); process.exit(1); });

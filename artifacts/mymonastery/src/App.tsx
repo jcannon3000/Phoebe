@@ -410,6 +410,7 @@ const CommunityJoinPage = lazy(() => import("./pages/community-join"));
 const BetaAdminPage = lazy(() => import("./pages/beta-admin"));
 const BetaClaimPage = lazy(() => import("./pages/beta-claim"));
 const AdminToolsPage = lazy(() => import("./pages/admin-tools"));
+const AdminArtLibraryPage = lazy(() => import("./pages/admin-art-library"));
 const PilotHomePage = lazy(() => import("./pages/pilot-home"));
 const PilotBuildPage = lazy(() => import("./pages/pilot-build"));
 const CustomizePage = lazy(() => import("./pages/customize"));
@@ -1006,6 +1007,7 @@ function Router() {
       <Route path="/people/:email/report" component={ReportUserPage} />
       <Route path="/admin/reports" component={ReportsAdminPage} />
       <Route path="/admin/tools" component={AdminToolsPage} />
+      <Route path="/admin/art-library" component={AdminArtLibraryPage} />
       <Route path="/admin/ministries" component={AdminMinistriesPage} />
       <Route path="/admin/breath-places" component={AdminBreathPlacesPage} />
       <Route path="/admin/users" component={AdminUserMetricsPage} />

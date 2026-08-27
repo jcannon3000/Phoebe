@@ -31,6 +31,8 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { ICON_CATALOGUE, type IconArtwork } from "@/lib/iconCatalogue";
+import { ACT_CATALOGUE } from "@/lib/visioCatalogue";
+import { isActHidden, actIconOn, actIconOff, ACT_OVERRIDES_EVENT } from "@/lib/actOverrides";
 import { getIconHistory, recordIconPrayed, getPhysicalIconLogs, recordPhysicalIcon } from "@/lib/iconHistory";
 import { FROST_BLUR } from "@/lib/frost";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -65,9 +67,21 @@ function norm(s: string): string {
 /** How many results the search shows at once — a screenful, not an archive. */
 const RESULT_CAP = 24;
 
-/** The icon pool's own lookup — history entries whose work left the
- *  catalogue on a regeneration simply drop out of the closing cards. */
-const ICON_BY_ID = new Map(ICON_CATALOGUE.map((a) => [a.id, a]));
+/**
+ * The pool this page actually searches: the harvested icon catalogue minus
+ * the admin tool's deletions and icon-toggle-OFFs, plus any library work the
+ * owner toggled icon-ON (mapped down to the icon shape). Recomputed when the
+ * overrides change (ACT_OVERRIDES_EVENT), so an admin edit shows without a
+ * reload.
+ */
+function iconPool(): IconArtwork[] {
+  const base = ICON_CATALOGUE.filter((a) => !isActHidden(a.id) && !actIconOff(a.id));
+  const seen = new Set(base.map((a) => a.id));
+  const added: IconArtwork[] = ACT_CATALOGUE
+    .filter((a) => actIconOn(a.id) && !isActHidden(a.id) && !seen.has(a.id))
+    .map((a) => ({ id: a.id, title: a.title, artist: a.artist, date: a.date, where: a.where, img: a.img, people: a.people, act: a.act, licence: a.licence, attribution: a.attribution }));
+  return [...base, ...added];
+}
 
 type Phase = "search" | "timer" | "pray" | "done" | "log" | "log-done";
 
@@ -93,6 +107,15 @@ export default function IconsPage() {
   /** Read once at mount, like Visio's — this session's own completion joins
    *  it in state so the closing cards update without a re-read. */
   const [history, setHistory] = useState(() => getIconHistory());
+  /** Bumped when the admin overrides change, re-deriving the pool below. */
+  const [ovVersion, setOvVersion] = useState(0);
+  useEffect(() => {
+    const on = () => setOvVersion((v) => v + 1);
+    window.addEventListener(ACT_OVERRIDES_EVENT, on);
+    return () => window.removeEventListener(ACT_OVERRIDES_EVENT, on);
+  }, []);
+  const catalogue = useMemo(iconPool, [ovVersion]);
+  const byId = useMemo(() => new Map(catalogue.map((a) => [a.id, a])), [catalogue]);
   /** The PHYSICAL icons this person has logged — the "choose from previous
    *  logs" list on the log screen (owner, after the Audio Divina pattern). */
   const [physicalLogs, setPhysicalLogs] = useState(() => getPhysicalIconLogs());
@@ -124,13 +147,13 @@ export default function IconsPage() {
     const q = norm(query.trim());
     if (!q) {
       const recent = history
-        .map((h) => ICON_BY_ID.get(h.id))
+        .map((h) => byId.get(h.id))
         .filter((a): a is IconArtwork => !!a);
-      const rest = ICON_CATALOGUE.filter((a) => !recent.some((r) => r.id === a.id));
+      const rest = catalogue.filter((a) => !recent.some((r) => r.id === a.id));
       return [...recent, ...rest].slice(0, RESULT_CAP);
     }
     const words = q.split(/\s+/).filter(Boolean);
-    return ICON_CATALOGUE
+    return catalogue
       .filter((a) => {
         // The PEOPLE tags are searched too — "teresa" must find an icon whose
         // title is only "St. Teresa of Avila" or whose tag carries the name
@@ -139,7 +162,7 @@ export default function IconsPage() {
         return words.every((w) => hay.includes(w));
       })
       .slice(0, RESULT_CAP);
-  }, [query, history]);
+  }, [query, history, catalogue, byId]);
 
   const choose = (a: IconArtwork) => {
     setChosen(a);
@@ -201,7 +224,7 @@ export default function IconsPage() {
   const recentCards = useMemo(
     () =>
       history
-        .map((h) => ICON_BY_ID.get(h.id))
+        .map((h) => byId.get(h.id))
         .filter((a): a is IconArtwork => !!a)
         .slice(0, 3),
     [history],

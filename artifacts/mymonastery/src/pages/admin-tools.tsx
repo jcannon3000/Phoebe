@@ -215,6 +215,12 @@ export default function AdminToolsPage() {
                   onClick={() => setLocation("/admin/users")}
                 />
                 <LinkRow
+                  emoji="🖼️"
+                  label="Art Library"
+                  description="Curate the Visio + icon artwork — delete works, toggle icons"
+                  onClick={() => setLocation("/admin/art-library")}
+                />
+                <LinkRow
                   emoji="📨"
                   label="Newsletter"
                   description="Email Phoebe users"

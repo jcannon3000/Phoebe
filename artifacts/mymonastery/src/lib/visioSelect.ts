@@ -22,11 +22,25 @@
 import { ACT_CATALOGUE, type CatalogueArtwork } from "./visioCatalogue";
 
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
+import { isActHidden } from "@/lib/actOverrides";
 
 const BY_ID = new Map(ACT_CATALOGUE.map((a) => [a.id, a]));
 
+/**
+ * The library minus the owner's runtime DELETIONS (the admin art-library
+ * tool). Consulted per call, not captured at module load, so an override
+ * that arrives mid-session takes effect on the next choice. Everything below
+ * draws from this — a deleted work must be unreachable by every path,
+ * including a stale pre-built schedule entry (artworkById refuses it, and
+ * chooseArtwork falls through to live matching).
+ */
+function pool(): CatalogueArtwork[] {
+  return ACT_CATALOGUE.filter((a) => !isActHidden(a.id));
+}
+
 /** One specific artwork, for re-opening something from the history gallery. */
 export function artworkById(id: number): CatalogueArtwork | null {
+  if (isActHidden(id)) return null;
   return BY_ID.get(id) ?? null;
 }
 
@@ -144,8 +158,9 @@ function dayOrdinal(ymd: string): number {
 
 /** The plain rotation — no readings needed, and the floor under everything. */
 export function rotationForDay(ymd: string): CatalogueArtwork {
-  const n = ACT_CATALOGUE.length;
-  return ACT_CATALOGUE[((dayOrdinal(ymd) % n) + n) % n]!;
+  const p = pool();
+  const n = p.length;
+  return p[((dayOrdinal(ymd) % n) + n) % n]!;
 }
 
 export type Chosen = {
@@ -266,7 +281,7 @@ function scoreAgainst(refs: string[]): {
   essayRunnerUp: CatalogueArtwork[];
 } {
   if (!refs.length) return { best: [], top: 0, essayRunnerUp: [] };
-  const scored = ACT_CATALOGUE
+  const scored = pool()
     .map((art) => ({ art, score: matchScore(art.refs, refs) }))
     .filter((x) => x.score > 0);
   if (!scored.length) return { best: [], top: 0, essayRunnerUp: [] };

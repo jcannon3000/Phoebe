@@ -877,6 +877,17 @@ export async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    // The admin art-library tool's runtime curation of the ACT catalogue —
+    // deletions and icon toggles, keyed by ACT record id so they survive
+    // catalogue regenerations (see lib/db schema act_overrides.ts).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS act_overrides (
+        act_id INTEGER PRIMARY KEY,
+        hidden BOOLEAN NOT NULL DEFAULT FALSE,
+        is_icon BOOLEAN,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
     // One-time backfill: every user who already saw the popup before the
     // column existed (the earlier PATCH 500'd, so their stamp never
     // landed). Seed today's server-local date so we don't re-prompt them
