@@ -156,7 +156,19 @@ function build() {
         .filter((x) => x.score > 0);
       const top = scored.length ? Math.max(...scored.map((x) => x.score)) : 0;
       const best = scored.filter((x) => x.score === top).map((x) => x.art);
-      const pick = pickFrom(best, true) ?? pickFrom(best, false);
+      /**
+       * BOOK-LEVEL RESPECTS THE CAP — no bend here.
+       *
+       * PASS 2 bends because a work that genuinely depicts today's GOSPEL
+       * beats a stranger, and the owner said so. That reasoning does not carry
+       * down here: a book-level hit is "same book, different passage" — a thin
+       * thread already, and the row even reports followsToday:false. Bending
+       * it was unlimited, so a sole Joshua painting won every Joshua day all
+       * year: measured 10 appearances in 2026 against a cap of 3. Falling
+       * through to the rotation costs a weak thread and buys a fresh work,
+       * which is the better trade at this depth.
+       */
+      const pick = pickFrom(best, true);
       if (pick) { chosen = { art: pick, tierRefs: refs, top }; stats.book++; }
     }
 
