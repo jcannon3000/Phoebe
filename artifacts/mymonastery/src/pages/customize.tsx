@@ -485,6 +485,20 @@ export default function CustomizePage() {
                 {preset.blurb && (
                   <span style={{ display: "block", fontSize: 12.5, color: SOFT_GREEN, marginTop: 3, lineHeight: 1.4 }}>{preset.blurb}</span>
                 )}
+                {/* The rows ARE the contract — the full customizer shows them
+                    before adopting, and this picker showed only the blurb, so
+                    a reader here agreed to a rule they'd never seen itemized
+                    (today's incident shipped precisely because nobody compared
+                    rows-promised to rows-produced). */}
+                {(preset.rows ?? []).length > 0 && (
+                  <span style={{ display: "block", marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(200,212,192,0.14)" }}>
+                    {(preset.rows ?? []).map((r) => (
+                      <span key={r.label} style={{ display: "block", fontSize: 12.5, color: WARM, opacity: 0.85, padding: "2px 0" }}>
+                        <span aria-hidden>{r.emoji}</span> {r.label}
+                      </span>
+                    ))}
+                  </span>
+                )}
               </button>
             ))}
           </div>

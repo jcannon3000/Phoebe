@@ -52,13 +52,25 @@ function markSynced(): void {
 // dirty flag clears; on failure it stays set so flushHomeLayout() retries on
 // the next app-active/launch. Returns the PUT promise so callers can chain a
 // query invalidation as before.
+/**
+ * SINGLE-FLIGHT by sequence, not by queue: rapid saves (three review-screen
+ * deletions in a row) issue overlapping PUTs, and an EARLIER one resolving
+ * last used to run markSynced() unconditionally — clearing the dirty flag that
+ * belonged to a LATER save. If that later PUT then failed (offline, suspended
+ * WebView), the retry path saw "clean" and never retried, AND
+ * applyCachedHomeLayout let the stale server layout win on the next /auth/me:
+ * "I deleted three practices and two came back." Only the latest save may
+ * declare the state synced.
+ */
+let saveSeq = 0;
 export function saveHomeLayout(layout: HomeLayout): Promise<unknown> {
   markDirty(layout);
+  const mine = ++saveSeq;
   return apiRequest("PUT", "/api/me/home-layout", {
     order: layout.order,
     hidden: layout.hidden,
     v: layout.v ?? HOME_LAYOUT_VERSION,
-  }).then((r) => { markSynced(); return r; });
+  }).then((r) => { if (mine === saveSeq) markSynced(); return r; });
 }
 
 // PUBLIC no-login version: a guest's layout is device-local TRUTH, not a

@@ -326,6 +326,16 @@ export function describeSpec(spec: {
     const key = k.slice("phoebe:slot:".length);
     const name = PRACTICE_LABEL[key];
     if (!name || !SLOT_LABEL[v]) continue;
+    /**
+     * The HOME LAYOUT decides whether the practice is ON; the slot key only
+     * says WHEN it rides. A slot key outlives its practice (adoption sets
+     * slots and hides cards but never removed old slot keys), so this list
+     * showed a ghost 🎵 Audio Divina — "✕ to take it off" — for a practice
+     * the rhythm had switched off and the home correctly didn't render. The
+     * newsletters loop above already answers to `hidden`; practices now do
+     * too, so "what's in my rhythm" has one source of truth.
+     */
+    if (hidden.has(key)) continue;
     // Owner: "if there's a contemplative walk or something in it as well, don't
     // have that on the third section's 'is this right' page — because we want
     // it to focus just on the sit: asking how much time, how often, things like

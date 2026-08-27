@@ -758,6 +758,9 @@ export default function WayOfLoveRuleFlow({
    *  (?edit=<rowId>&return=<path>). Saving returns there rather than to the
    *  customizer's own list, so the reader lands back where they started. */
   const [singleEditReturnTo, setSingleEditReturnTo] = useState<string | null>(null);
+  /** Single edit begun ON the review screen — Save returns there ("done"),
+   *  not to the edit list. */
+  const [returnToReview, setReturnToReview] = useState(false);
   const [editRows, setEditRows] = useState<Array<{ id: string; emoji: string; label: string; sub: string }>>([]);
   const [editLoaded, setEditLoaded] = useState(false);
   const [deletingEditRow, setDeletingEditRow] = useState<{ id: string; label: string } | null>(null);
@@ -935,11 +938,14 @@ export default function WayOfLoveRuleFlow({
   }));
   // Per-side SIT LENGTH — each side's contemplation card opens a sit of THIS
   // length; it is NOT the daily minutes goal (a 90-minute goal must never put
-  // "90 minutes" on each card — owner). Values outside the picker's 5–30
-  // range are legacy artifacts of the old goal-splash and read as unset.
+  // "90 minutes" on each card — owner). Only values the picker itself offers
+  // (SIT_LENGTHS) are trusted; anything else is a legacy artifact of the old
+  // goal-splash and reads as unset. The old guard was 5–30, which silently
+  // rewrote a saved 45- or 60-minute sit (and the 2-minute one) to 15 on the
+  // next save — the picker offered lengths its own seed then destroyed.
   const sideSit = (side: OfficeSide): number => {
     const raw = getSideMinutes(side);
-    return raw >= 5 && raw <= 30 ? raw : 15;
+    return SIT_LENGTHS.includes(raw) ? raw : 15;
   };
   const [minutesBySide, setMinutesBySide] = useState<Record<OfficeSide, number>>(() => ({
     morning: sideSit("morning"),
@@ -1540,7 +1546,14 @@ export default function WayOfLoveRuleFlow({
     }
   };
   const chooseMethodBySide = (side: OfficeSide, m: DefaultOfficeEntry) => { touchedRef.current = true; setMethodBySide((prev) => ({ ...prev, [side]: m })); };
-  const chooseGoal = (g: string) => { touchedRef.current = true; setGoal(g); };
+  /** True once the reader (or hydration from a REAL stored goal) has engaged
+   *  the goal at all — the PUT below omits the goal fields otherwise. The
+   *  seed defaults to "5", and the server's GET answers 5 for a null goal, so
+   *  an unconditional write MANUFACTURED a 5-minute silence habit plus its
+   *  daily bell for anyone who opened the customizer and saved. Omitted
+   *  fields leave the server value untouched (the PUT is field-conditional). */
+  const goalEngagedRef = useRef(false);
+  const chooseGoal = (g: string) => { touchedRef.current = true; goalEngagedRef.current = true; setGoal(g); };
   // Owner: "we want a second row that says log method two options. We want
   // it to be either timer or manual log. or mark as done." Device-local,
   // read fresh each mount (matches contemplationStyle's own pattern above).
@@ -1580,6 +1593,7 @@ export default function WayOfLoveRuleFlow({
     // local per-side minutes value must not win, which is why it showed 15 when
     // the real goal was 60).
     if (typeof prefs.contemplationGoalMinutes === "number" && prefs.contemplationGoalMinutes > 0) {
+      goalEngagedRef.current = true;   // a real stored goal — echoing it back is a no-op
       setGoal(String(prefs.contemplationGoalMinutes));
       /**
        * A goal NO LONGER implies per-side sits.
@@ -1638,8 +1652,11 @@ export default function WayOfLoveRuleFlow({
     // Contemplative Prayer is an add-on now — its own per-side silence card
     // regardless of the office anchor — so a silent sit is wanted whenever it's
     // checked on either side.
-    const anySideSilentContemplation = anyContemplation && anySideSilent;
-    const effGoalMin = goalMin > 0 ? goalMin : (anySideSilentContemplation ? 10 : 0);
+    // effGoalMin IS goalMin. The fallback here manufactured a 10-minute daily
+    // quota out of a per-side silent sit — the converse of "a goal never
+    // implies per-side sits", and just as forbidden. A sit with no quota is a
+    // complete, coherent rule.
+    const effGoalMin = goalMin > 0 ? goalMin : 0;
     for (const side of SIDES) {
       if (sides[side]) {
         setSideLevel(side, PRAY_LEVEL[prayBySide[side]]);
@@ -1680,7 +1697,12 @@ export default function WayOfLoveRuleFlow({
     const primarySide: OfficeSide = officeSides[0] ?? (sides.morning ? "morning" : "evening");
     // The "grow toward 30" ladder was removed — always a fixed goal now, so the
     // ladder is never enabled (and a returning grow-user is switched to fixed).
-    const wantLadder = false;
+    // The ladder the reader is ON stays on. This was a hard `false`, so
+    // opening the customizer and saving — changing nothing — sent
+    // silenceLadderEnabled:false and quietly ended a kept ladder. The seed
+    // reads the real state into silenceMode ("grow"); the commit now honours
+    // it, and only an explicit switch to a fixed goal turns the ladder off.
+    const wantLadder = silenceMode === "grow";
     const officePrefs = {
       defaultPrayerLevel: (() => {
         const lvl = PRAY_LEVEL[prayBySide[primarySide]];
@@ -1707,12 +1729,16 @@ export default function WayOfLoveRuleFlow({
     // IS Compline, so a second "compline" module would double it on the home —
     // same one-practice-two-paths guard wantCobreathe applies above.
     const wantComplineCard = contemplative.compline && prayBySide.evening !== "compline" && prayBySide.morning !== "compline";
+    // Same guard for the Examen — it was the one add-on WITHOUT it, so a rule
+    // whose evening anchor IS the Examen (A Gentle Start, Contemplative Art)
+    // grew a second standalone Examen card on its first re-save.
+    const wantExamenCard = contemplative.examen && prayBySide.evening !== "examen" && prayBySide.morning !== "examen";
     const onKeys = [
       ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
       ...(wantComplineCard ? ["compline"] : []),
-      ...(contemplative.examen ? ["examen"] : []),
+      ...(wantExamenCard ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
       ...(contemplative.visio ? ["visio"] : []),
@@ -1723,7 +1749,7 @@ export default function WayOfLoveRuleFlow({
       ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
       ...(wantComplineCard ? [] : ["compline"]),
-      ...(contemplative.examen ? [] : ["examen"]),
+      ...(wantExamenCard ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
       ...(contemplative.visio ? [] : ["visio"]),
@@ -1826,6 +1852,12 @@ export default function WayOfLoveRuleFlow({
   };
 
   const commit = () => {
+    // PRESCRIBE FIRST. commitExtraPractices() and the custom-anchor add below
+    // WRITE — localStorage and, through customAnchors' own debounced pipe, a
+    // server PUT that prescribe-routine's snapshot/suspend does not gate. With
+    // the guard down here, an admin who named a practice while designing
+    // someone ELSE's rule permanently added it to their own account.
+    if (prescribe && onPrescribe) { onPrescribe(buildPrescribeSpec()); return; }
     commitExtraPractices();
     /**
      * The named-your-own contemplative practice becomes a CUSTOM ANCHOR — the
@@ -1840,17 +1872,18 @@ export default function WayOfLoveRuleFlow({
         if (!already) addCustomAnchor(title, "🌿", "anytime");
       }
     }
-    // Prescribe mode: capture the routine and hand it back, writing NOTHING to
-    // the (admin) user's own account. The prescribe page takes it from here.
-    if (prescribe && onPrescribe) { onPrescribe(buildPrescribeSpec()); return; }
+    // (Prescribe already returned at the top — before ANY write.)
     // "none" reflection → no newsletter card; otherwise the first picked source
     // is the per-side close-slide reflection.
     const primary: ReflectionSource = newsletters[0] ?? "none";
     // Silence is its own step now (a daily-minutes goal) — the chosen value IS the
     // goal (0 = None). Contemplative Prayer is an add-on (its own silence card),
     // so a silent sit is wanted whenever it's checked — fall back to 10 min then.
-    const anySideSilentContemplation = anyContemplation && anySideSilent;
-    const effGoalMin = goalMin > 0 ? goalMin : (anySideSilentContemplation ? 10 : 0);
+    // effGoalMin IS goalMin. The fallback here manufactured a 10-minute daily
+    // quota out of a per-side silent sit — the converse of "a goal never
+    // implies per-side sits", and just as forbidden. A sit with no quota is a
+    // complete, coherent rule.
+    const effGoalMin = goalMin > 0 ? goalMin : 0;
     for (const side of SIDES) {
       if (sides[side]) {
         setSideLevel(side, PRAY_LEVEL[prayBySide[side]]);
@@ -1901,7 +1934,12 @@ export default function WayOfLoveRuleFlow({
     // explicitly disable it so a previously-enabled ladder stops driving the goal.
     // The "grow toward 30" ladder was removed — always a fixed goal now, so the
     // ladder is never enabled (and a returning grow-user is switched to fixed).
-    const wantLadder = false;
+    // The ladder the reader is ON stays on. This was a hard `false`, so
+    // opening the customizer and saving — changing nothing — sent
+    // silenceLadderEnabled:false and quietly ended a kept ladder. The seed
+    // reads the real state into silenceMode ("grow"); the commit now honours
+    // it, and only an explicit switch to a fixed goal turns the ladder off.
+    const wantLadder = silenceMode === "grow";
     // PUBLIC no-login version: every guest commit writes the device-local
     // silence goal — the home's single "Silence" progress-bar card reads this
     // key, and the ANONYMOUS DEVICE USER is a guest too (keying on `!user`
@@ -1918,8 +1956,15 @@ export default function WayOfLoveRuleFlow({
         const lvl = PRAY_LEVEL[prayBySide[primarySide]];
         return lvl === "office" || lvl === "devotion" || lvl === "intercessions" ? lvl : "devotion";
       })(),
-      contemplationGoalMinutes: effGoalMin,
-      contemplationReminderEnabled: effGoalMin > 0 || wantLadder,
+      // Goal fields only when the goal was ENGAGED (chosen, or hydrated from a
+      // real stored value): the state seeds "5" and the server GET answers 5
+      // for null, so writing unconditionally manufactured a 5-minute silence
+      // habit + bell out of opening the customizer. Omitted fields leave the
+      // stored value as-is (this PUT is field-conditional).
+      ...(guest || goalEngagedRef.current ? {
+        contemplationGoalMinutes: effGoalMin,
+        contemplationReminderEnabled: effGoalMin > 0 || wantLadder,
+      } : {}),
       // Each chosen side turns its reminder ON (a non-"none" pref is what makes
       // the server's daily office-reminder push fire) at its chosen time.
       // A side reminds only when it's part of the rhythm AND they didn't pick
@@ -1976,12 +2021,16 @@ export default function WayOfLoveRuleFlow({
     // IS Compline, so a second "compline" module would double it on the home —
     // same one-practice-two-paths guard wantCobreathe applies above.
     const wantComplineCard = contemplative.compline && prayBySide.evening !== "compline" && prayBySide.morning !== "compline";
+    // Same guard for the Examen — it was the one add-on WITHOUT it, so a rule
+    // whose evening anchor IS the Examen (A Gentle Start, Contemplative Art)
+    // grew a second standalone Examen card on its first re-save.
+    const wantExamenCard = contemplative.examen && prayBySide.evening !== "examen" && prayBySide.morning !== "examen";
     const onKeys = [
       ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
       ...(wantComplineCard ? ["compline"] : []),
-      ...(contemplative.examen ? ["examen"] : []),
+      ...(wantExamenCard ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
       ...(contemplative.visio ? ["visio"] : []),
@@ -1992,7 +2041,7 @@ export default function WayOfLoveRuleFlow({
       ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
       ...(wantComplineCard ? [] : ["compline"]),
-      ...(contemplative.examen ? [] : ["examen"]),
+      ...(wantExamenCard ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
       ...(contemplative.visio ? [] : ["visio"]),
@@ -2137,6 +2186,48 @@ export default function WayOfLoveRuleFlow({
       cobreathe: false, audio: false, examen: false, walk: false, visio: false, compline: false,
       ...(preset.practices ?? {}),
     });
+    /**
+     * REPLACEMENT, NOT ACCUMULATION. The header on RulePreset promises
+     * "nothing carries over from the rule being replaced", and that was true
+     * only of the practices flags above. Three families survived — verified
+     * from a clean state against the server (the leftovers are
+     * server-persisted, so clearing localStorage proves nothing):
+     *
+     *  · the SECOND practice (phoebe:office:extra:<side>): extraBySide seeds
+     *    from the OLD rule at mount, and commitExtraPractices faithfully
+     *    re-wrote it — a literal "extra practice that shouldn't be there".
+     *  · SLOT KEYS for practices the new rule doesn't name: commit() hides
+     *    their cards, but the server's edit list derives rows from slot keys,
+     *    so a ghost 🎵 Audio Divina sat in "Your rhythm" with its card off.
+     *  · per-side KIND + MINUTES on sides the new rule turns off: inert until
+     *    the side is re-enabled, then a stale "creation"/2-minute sit speaks
+     *    for a rule that never chose it.
+     *
+     * (Custom anchors also survive adoption — deliberately for now: they're
+     * the reader's own practices and deleting them tombstones server data.
+     * Whether they're part of "the rhythm this replaces" is the owner's call;
+     * the confirm copy currently overpromises. Flagged, not swept.)
+     */
+    setExtraBySide({ morning: null, evening: null });
+    setExtraWantedBySide({ morning: false, evening: false });
+    for (const k of ["cobreathe", "listening", "examen", "walk", "reading", "visio"] as const) {
+      const wanted = (preset.practiceSlots ?? {})[k] != null
+        || (k === "cobreathe" && preset.practices?.cobreathe)
+        || (k === "listening" && preset.practices?.audio)
+        || (k === "examen" && preset.practices?.examen)
+        || (k === "walk" && preset.practices?.walk)
+        || (k === "visio" && preset.practices?.visio);
+      if (!wanted) { try { localStorage.removeItem(`phoebe:slot:${k}`); } catch { /* ignore */ } }
+    }
+    for (const sd of SIDES) {
+      const keeps = preset.silence && preset.sides[sd] && preset.silenceSide !== (sd === "morning" ? "evening" : "morning");
+      if (!keeps) {
+        try {
+          localStorage.removeItem(`phoebe:office:contemplation-kind:${sd}`);
+          localStorage.removeItem(`phoebe:office:minutes:${sd}`);
+        } catch { /* ignore */ }
+      }
+    }
     // …and at the part of the day the rule keeps them.
     for (const [key, slot] of Object.entries(preset.practiceSlots ?? {}) as Array<[SlottedPractice, CustomSlot]>) {
       if (slot) setPracticeSlot(key, slot);
@@ -2212,7 +2303,7 @@ export default function WayOfLoveRuleFlow({
       }
       return next;
     });
-    if (preset.customAnchors?.length) {
+    if (preset.customAnchors?.length && !prescribe) {
       const existing = new Set(getCustomAnchors().map((a) => a.title.trim().toLowerCase()));
       for (const c of preset.customAnchors) {
         const key = c.title.trim().toLowerCase();
@@ -2566,6 +2657,9 @@ export default function WayOfLoveRuleFlow({
     setSingleEditRow(null);
     setSingleEditReturnTo(null);
     if (ret) { setLocation(ret); return; }
+    // A review-born edit lands back on the review (its rows rebuild from the
+    // state commit() just wrote), not on the edit list it never came from.
+    if (returnToReview) { setReturnToReview(false); setStep("done"); return; }
     setManualMode("edit");
     /**
      * FLUSH before re-reading, or the list shows the routine you just left.
@@ -2649,13 +2743,17 @@ export default function WayOfLoveRuleFlow({
   };
   const goPrev = () => {
     // One practice, one slide: Back returns to the list rather than reversing
-    // into a flow the reader never entered. Nothing is written — Continue is
-    // what saves.
+    // into a flow the reader never entered. The COMMIT-owned choices aren't
+    // written (Continue is what saves those) — but note the slides also hold
+    // immediate writers (breath length, psalm cycle, reminder time, FDD mode),
+    // which persist the moment they're tapped. Backing out is only a full
+    // undo for the practice choice itself.
     if (singleEditRow) {
       const ret = singleEditReturnTo;
       setSingleEditRow(null);
       setSingleEditReturnTo(null);
       if (ret) { setLocation(ret); return; }
+      if (returnToReview) { setReturnToReview(false); setStep("done"); return; }
       setManualMode("edit");
       return;
     }
@@ -3038,6 +3136,18 @@ export default function WayOfLoveRuleFlow({
     }
     setEditRows((prev) => prev.filter((r) => r.id !== id));
     setDeletingEditRow(null);
+    /**
+     * WRITE IT DOWN NOW — this list's removals were half-real. A custom
+     * practice was removed immediately (tombstoned, pushed), the slot key was
+     * removed immediately, while the office anchors / reflections / silence
+     * goal only changed customizer STATE that commit() would write "when you
+     * finish" — so leaving via the corner ✕ produced a TORN rule: the custom
+     * half gone forever, the rest back on the next open. Same tick-deferred
+     * commit as the review's ✕ (inline commit would capture pre-removal
+     * state); now every removal is durable the moment the dialog closes,
+     * whichever way the reader leaves.
+     */
+    setReviewEditTick((n) => n + 1);
   };
 
   // The manual path's own first question.
@@ -3366,7 +3476,7 @@ export default function WayOfLoveRuleFlow({
                 Remove {deletingEditRow.label}?
               </p>
               <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14, lineHeight: 1.55, margin: "8px 0 0" }}>
-                It comes off when you finish. You can add it back any time.
+                It comes off your rhythm now. You can add it back any time.
               </p>
               <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
                 <button type="button" onClick={() => clearEditRow(deletingEditRow.id)} style={{ flex: 1, background: CTA, color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
@@ -3845,7 +3955,14 @@ export default function WayOfLoveRuleFlow({
               if (!contemplationBySide[side]) toggleContemplationSide(side);
               chooseContemplationStyle("silent");
               chooseSideMinutes(side, 10);
-              if (goalMin === 0) { chooseGoal("20"); chooseSilenceMode("fixed"); }
+              // NO goal manufacture. This wrote chooseGoal("20") when the goal
+              // was 0 — a per-side sit implying a daily quota, the exact
+              // converse of the invariant this repo has now removed FOUR
+              // times in the goal→sit direction. Invisible while the side
+              // stayed silent (a silent side suppresses the goal card), then
+              // a 20-minute Silence card nobody created appeared the moment
+              // the side switched to a breath or a Visio. The sit is the sit;
+              // the daily quota is its own choice on the Silence slide.
             },
           )}
           {/* A reflection as the morning prayer itself — morning only, above
@@ -4200,7 +4317,8 @@ export default function WayOfLoveRuleFlow({
                     chooseContemplationStyle(f === "creation" ? "cobreathe" : "silent");
                     if (f === "prayer") {
                       chooseSideMinutes(side, 10);
-                      if (goalMin === 0) { chooseGoal("20"); chooseSilenceMode("fixed"); }
+                      // No goal manufacture — see the way slide's note: a
+                      // per-side sit never implies a daily quota.
                     }
                   } else {
                     /**
@@ -5146,7 +5264,12 @@ export default function WayOfLoveRuleFlow({
    * so each names its own way off rather than routing through clearEditRow.
    * A row with no `remove` shows only the gear.
    */
-  const reviewRows: Array<{ emoji: string; label: string; sub: string; step: Step; remove?: () => void }> = [
+  /** `editId` — the edit-list row id this review row corresponds to, when one
+   *  exists. The gear uses it to enter SINGLE-EDIT mode (walk that practice's
+   *  slides, Save, come back) instead of dropping into the middle of the full
+   *  flow — from which goPrev could never return here ("done" isn't in
+   *  orderedSteps) and the corner ✕ silently discarded the edit. */
+  const reviewRows: Array<{ emoji: string; label: string; sub: string; step: Step; editId?: string; remove?: () => void }> = [
     // One row per side that has an OFFICE ANCHOR. A side with only add-ons
     // (contemplation/examen) has no office card — those surface as their own
     // rows below (Silence / The Examen), so it isn't listed here as an office.
@@ -5157,6 +5280,7 @@ export default function WayOfLoveRuleFlow({
         ? t("wol_rule.own_named_practice", { defaultValue: "Your anchor practice" })
         : t("wol_rule.own_practice", { defaultValue: "Your own practice" })) : prayBySide[s] === "fdd" ? "Forward Movement" : prayBySide[s] === "readings" ? "Forward Movement" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
+      editId: `side:${s}`,
       // Taking the office off leaves the side itself alone — its add-ons
       // (a sit, the Examen) keep their own rows below.
       remove: () => choosePrayBySide(s, "none"),
@@ -5183,6 +5307,7 @@ export default function WayOfLoveRuleFlow({
         // row displays (minutesBySide / breaths). The silent branch used to
         // open the day's GOAL slide, which cannot change the sit it came from.
         step: (s === "morning" ? "morning-config" : "evening-config") as Step,
+        editId: `contemplation:${s}`,
         // Same pair clearEditRow's "contemplation:<side>" branch clears — the
         // flag AND the form, or the side reopens claiming a practice it no
         // longer keeps.
@@ -5222,12 +5347,13 @@ export default function WayOfLoveRuleFlow({
       label: "Silence",
       sub: silenceMode === "grow" ? "Growing toward 30 min" : `${goalMin} min a day`,
       step: "contemplation-goal" as Step,
+      editId: "contemplation",
       remove: () => chooseGoal("0"),
     }] : []),
     // No time-of-day sub-label anymore — these add-ons are just available
     // all day (see the "contemplative" step for the "with your prayer"
     // exception, when Creation Prayer IS the side's primary sit style).
-    ...(contemplative.compline ? [{ emoji: "🌙", label: "Compline", sub: "Available from 7pm", step: "contemplative" as Step, remove: () => toggleContemplative("compline") }] : []),
+    ...(contemplative.compline ? [{ emoji: "🌙", label: "Compline", sub: "Available from 7pm", step: "contemplative" as Step, editId: "slot:compline", remove: () => toggleContemplative("compline") }] : []),
     /**
      * The standing Creation Prayer add-on — but NOT when a side already lists
      * it as that side's own practice.
@@ -5240,11 +5366,11 @@ export default function WayOfLoveRuleFlow({
      * one — it names when and how long — so the add-on row stands down.
      */
     ...((contemplative.cobreathe && !(cobreatheIsSideStyle && (contemplationBySide.morning || contemplationBySide.evening)))
-      ? [{ emoji: "🌍", label: "Creation Prayer", sub: "Available all day", step: "contemplative" as Step, remove: () => toggleContemplative("cobreathe") }] : []),
-    ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: "Available all day", step: "contemplative" as Step, remove: () => toggleContemplative("audio") }] : []),
-    ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Available all day", step: "contemplative" as Step, remove: () => toggleContemplative("examen") }] : []),
+      ? [{ emoji: "🌍", label: "Creation Prayer", sub: "Available all day", step: "contemplative" as Step, editId: "slot:cobreathe", remove: () => toggleContemplative("cobreathe") }] : []),
+    ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: "Available all day", step: "contemplative" as Step, editId: "slot:listening", remove: () => toggleContemplative("audio") }] : []),
+    ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Available all day", step: "contemplative" as Step, editId: "slot:examen", remove: () => toggleContemplative("examen") }] : []),
     ...(newsletters.length
-      ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step, remove: chooseNoReflection }]
+      ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step, editId: "card:reflection", remove: chooseNoReflection }]
       : []),
     ...(extras.prayerList ? [{ emoji: "🕊️", label: "My Prayer List", sub: "Pray through your own list", step: "extras" as Step, remove: () => { touchedRef.current = true; setExtras((e) => ({ ...e, prayerList: false })); } }] : []),
     // The user's own custom practices — each tappable back into "Create your own".
@@ -5257,6 +5383,7 @@ export default function WayOfLoveRuleFlow({
         ? `${SLOT_LABEL[a.slot]} · ${describeDays(a.days)}`
         : SLOT_LABEL[a.slot],
       step: "custom" as Step,
+      editId: `custom:${a.id}`,
       // A real anchor with server state — removeCustomAnchor tombstones it, so
       // dropping the row alone would let the next sync bring it straight back.
       remove: () => { touchedRef.current = true; removeCustomAnchor(a.id); setCustomList(getCustomAnchors()); },
@@ -5417,7 +5544,16 @@ export default function WayOfLoveRuleFlow({
               <button
                 type="button"
                 aria-label={`Settings for ${r.label}`}
-                onClick={() => setStep(r.step)}
+                // SINGLE-EDIT when the row maps to one (walk that practice,
+                // Save, return here). Bare setStep dropped into the middle of
+                // the full flow: goPrev couldn't come back ("done" isn't in
+                // orderedSteps), nothing committed until the flow's end, and
+                // the corner ✕ silently discarded the edit — the reported
+                // vanish-without-effect bug wearing the gear instead of the ✕.
+                onClick={() => {
+                  if (r.editId) { setSingleEditRow(r.editId); setReturnToReview(true); }
+                  setStep(r.step);
+                }}
                 style={circle}
               >
                 ⚙
@@ -5434,7 +5570,10 @@ export default function WayOfLoveRuleFlow({
               )}
               <button
                 type="button"
-                onClick={() => setStep(r.step)}
+                onClick={() => {
+                  if (r.editId) { setSingleEditRow(r.editId); setReturnToReview(true); }
+                  setStep(r.step);
+                }}
                 style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
@@ -5464,7 +5603,7 @@ export default function WayOfLoveRuleFlow({
               Remove {deletingReviewRow.label}?
             </p>
             <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14, lineHeight: 1.55, margin: "8px 0 0" }}>
-              It comes off when you keep this rhythm. You can add it back any time.
+              It comes off your rhythm now. You can add it back any time.
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
               <button type="button" onClick={() => { deletingReviewRow.remove(); setDeletingReviewRow(null); setReviewEditTick((n) => n + 1); }} style={{ flex: 1, background: CTA, color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
