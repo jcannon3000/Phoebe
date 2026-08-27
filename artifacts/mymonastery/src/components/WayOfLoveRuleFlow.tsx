@@ -1660,14 +1660,41 @@ export default function WayOfLoveRuleFlow({
       morning: prefs.morning !== "none",
       evening: prefs.evening !== "none",
     });
-    // Which sides are part of the rhythm comes from the SERVER office pref
-    // ("none" = off) — the authoritative on/off. The local per-side level has no
-    // "off" state, so seeding `sides` from it kept a side the user had turned
-    // off still looking selected. Fall back to morning-only if neither is on.
+    /**
+     * Which sides are part of the rhythm: the EXPLICIT LEVEL first, the server
+     * pref only as fallback.
+     *
+     * The server's morning/evening office pref is the REMINDER level — commit()
+     * writes it as `sides.X && reminderOnBySide.X ? … : "none"`, so "none"
+     * means "side off OR reminder off" and cannot distinguish the two. Seeding
+     * side-on/off from it alone conflated them, and the conflation DELETED
+     * PRACTICES: the time-ladder starter turns the evening reminder off, so
+     * its server pref reads evening:"none" — reopening the customizer then
+     * seeded sides.evening=false, and the next Save of ANYTHING (caught live:
+     * a single edit of the morning sit) committed the whole rule with the
+     * evening gone. Evening Prayer deleted by a tap on Save for a different
+     * practice, with no step ever showing it deselected.
+     *
+     * The explicit per-side level is the record of what the person actually
+     * chose — "ask" IS its off state (commit writes it on a side turned off),
+     * so the old note's premise that the level "has no off state" was stale.
+     * This is the standing rule elsewhere in the app: side-active reads
+     * getExplicitSideLevel, not an inference. The pref-based read stays only
+     * for accounts with no explicit level stored (pre-sync rules on a fresh
+     * device, where rule-config hasn't landed yet).
+     */
     {
-      const mOn = prefs.morning !== "none";
-      const eOn = prefs.evening !== "none";
-      setSides(mOn || eOn ? { morning: mOn, evening: eOn } : { morning: true, evening: false });
+      const mLvl = getExplicitSideLevel("morning");
+      const eLvl = getExplicitSideLevel("evening");
+      if (mLvl !== null || eLvl !== null) {
+        const mOn = mLvl !== null && mLvl !== "ask";
+        const eOn = eLvl !== null && eLvl !== "ask";
+        setSides(mOn || eOn ? { morning: mOn, evening: eOn } : { morning: true, evening: false });
+      } else {
+        const mOn = prefs.morning !== "none";
+        const eOn = prefs.evening !== "none";
+        setSides(mOn || eOn ? { morning: mOn, evening: eOn } : { morning: true, evening: false });
+      }
     }
     if (prefs.notificationStyle === "nudge") setNotificationStyle("nudge");
   }, [prefs]);
@@ -5025,6 +5052,11 @@ export default function WayOfLoveRuleFlow({
   }
 
   // ── Step 4 — Add to your day (optional practices) ─────────────────────────
+  // UNREACHABLE today: "extras" is in no orderedSteps build, and the one
+  // review row that pointed here was retargeted (see the Prayer List row) —
+  // its Continue was dead (indexOf -1). Kept because the reading/podcasts
+  // toggles it carries have no other home; give it a place in the flow before
+  // pointing anything at it again.
   if (step === "extras") {
     return shell(
       <>
@@ -5364,11 +5396,20 @@ export default function WayOfLoveRuleFlow({
         sub: isCob
           ? t("wol_rule.n_breaths", { count: cobreatheBreaths, defaultValue: `${cobreatheBreaths} breaths` })
           : (silenceMode === "grow" ? "Growing toward 30 min" : (minutesBySide[s] > 0 ? t("wol_rule.n_min", { count: minutesBySide[s], defaultValue: `${minutesBySide[s]} min` }) : "A silent sit")),
-        // Tapping edits THIS side (its config step sets the length + reminder).
-        // Its own config slide for BOTH kinds — the slide that sets what this
-        // row displays (minutesBySide / breaths). The silent branch used to
-        // open the day's GOAL slide, which cannot change the sit it came from.
-        step: (s === "morning" ? "morning-config" : "evening-config") as Step,
+        /**
+         * THE FIRST SLIDE, WITH ALL THE OPTIONS (owner's standing rule) — the
+         * side's WAY slide, where the practice itself can be swapped.
+         *
+         * This pointed at the side's CONFIG slide, arguing that config "sets
+         * what this row displays". True, and beside the point: someone tapping
+         * their contemplation row to change the practice got a length-and-
+         * reminder form with no route to the choice they came for — while the
+         * SAME row's gear on the edit list (stepForRow, same editId) already
+         * opened the way slide. One door, two destinations, and this was the
+         * wrong one. Continue still reaches config: stepBelongsToRow claims
+         * the side's whole run, so nothing the old target offered is lost.
+         */
+        step: (s === "morning" ? "morning-way" : "evening-way") as Step,
         editId: `contemplation:${s}`,
         // Same pair clearEditRow's "contemplation:<side>" branch clears — the
         // flag AND the form, or the side reopens claiming a practice it no
@@ -5436,7 +5477,16 @@ export default function WayOfLoveRuleFlow({
     ...(newsletters.length
       ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step, editId: "card:reflection", remove: chooseNoReflection }]
       : []),
-    ...(extras.prayerList ? [{ emoji: "🕊️", label: "My Prayer List", sub: "Pray through your own list", step: "extras" as Step, remove: () => { touchedRef.current = true; setExtras((e) => ({ ...e, prayerList: false })); } }] : []),
+    /**
+     * Prayer List's home CARD. Its only edit is on/off, and the ✕ is the off —
+     * there is no slide of options for it, so the row deliberately doesn't
+     * navigate ("done" re-renders this review). It pointed at "extras", a
+     * slide NO flow order contains: goNext's indexOf came back -1 there, so
+     * Continue did nothing (this file's twice-documented dead-Continue bug),
+     * and the slide had itself stopped offering Prayer List — a dead end that
+     * couldn't even change the thing tapped.
+     */
+    ...(extras.prayerList ? [{ emoji: "🕊️", label: "My Prayer List", sub: "Pray through your own list", step: "done" as Step, remove: () => { touchedRef.current = true; setExtras((e) => ({ ...e, prayerList: false })); } }] : []),
     // The user's own custom practices — each tappable back into "Create your own".
     // A weekday-scoped practice says so: "Midday" alone described Community
     // Meal as an every-day practice, which is not what the rule set up.
