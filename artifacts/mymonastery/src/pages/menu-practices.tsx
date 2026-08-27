@@ -65,6 +65,12 @@ export default function MenuPracticesPage() {
           // true for any signed-in non-beta account, so this row was hidden
           // from nearly everyone, not just visitors without an account.
           { emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image, slowly", onClick: () => go("/visio") },
+          // Praying with Icons — beside Visio because they share the same
+          // catalogue, with the choice inverted: there the day picks the
+          // image, here the person searches it out by name and sits with it
+          // on a timer. Same guest posture as Visio for the same reasons —
+          // the artworks and licences are public and completion is device-local.
+          { emoji: "🪟", label: "Praying with Icons", sub: "Choose an icon and sit with it", onClick: () => go("/icon-prayer") },
           // Audio Divina sits at the BOTTOM of Practices (owner).
           ...(!isGuest ? [
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },

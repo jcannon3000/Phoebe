@@ -287,6 +287,9 @@ const RitualDetail = lazy(() => import("./pages/ritual-detail"));
 const PsalmsPage = lazy(() => import("./pages/psalms"));
 const WeeklyRoutinesPage = lazy(() => import("./pages/weekly"));
 const VisioPage = lazy(() => import("./pages/visio"));
+// Praying with Icons — choose a work by name and sit with it (the person-chosen
+// inversion of Visio's day-chosen image).
+const IconsPage = lazy(() => import("./pages/icons"));
 const ContemplationSetupPage = lazy(() => import("./pages/contemplation-setup"));
 const ReportUserPage = lazy(() => import("./pages/report-user"));
 const ReportsAdminPage = lazy(() => import("./pages/reports-admin"));
@@ -792,7 +795,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // and this gate is not guests-only — useGuestMode is true for any signed-in
   // non-beta account, so leaving it out bounced the practice to the dashboard
   // for nearly everyone who could see the card.
-  "/psalms", "/contemplation", "/contemplation-log", "/examen", "/guided-prayer", "/visio", "/reflect/fdd", "/customize",
+  "/psalms", "/contemplation", "/contemplation-log", "/examen", "/guided-prayer", "/visio", "/icon-prayer", "/reflect/fdd", "/customize",
   // The Morning/Evening Prayer + Compline picker — reached from the new
   // "Daily Offices" row in Practices (a guest-visible menu), so the target
   // must be guest-allowed too or the tap just bounces back to the dashboard.
@@ -974,6 +977,10 @@ function Router() {
       <Route path="/this-week" component={WayOfLoveWeekPage} />
       <Route path="/way-of-love" component={WayOfLoveJourneyPage} />
       <Route path="/visio" component={VisioPage} />
+      {/* /icon-prayer, NOT /icons: dist/public/icons/ is the PWA icon
+          directory, and the static server 301s /icons → /icons/ before the
+          router ever sees it. */}
+      <Route path="/icon-prayer" component={IconsPage} />
       <Route path="/turn-learn-pray" component={TurnLearnPrayPage} />
       <Route path="/videos" component={VideosPage} />
       <Route path="/home-beta/:section" component={HomeBetaSectionPage} />
