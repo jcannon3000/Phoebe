@@ -957,7 +957,22 @@ export function syncCustomAnchorsFromServer(server: CustomAnchorSnapshot | null 
   // must drop from the union so a delete genuinely propagates (not resurrect).
   const tombstones = (server?.tombstones && typeof server.tombstones === "object") ? server.tombstones : undefined;
   const tomb = new Set<string>(tombstones ? Object.keys(tombstones) : []);
-  if (serverDefs.length === 0 && localDefs.length === 0) return; // nothing anywhere
+  if (serverDefs.length === 0 && localDefs.length === 0) {
+    /**
+     * Nothing anywhere — but the ACK still has to be honoured on the way out.
+     *
+     * This early return sits BEFORE the prune, and "no defs on either side" is
+     * exactly the state you land in after deleting your last practice. So the
+     * server could echo the tombstone back forever and the local pending
+     * delete was never retired: harmless in effect (it only ever filters a def
+     * that no longer exists) but the deleted-list then grows without bound and
+     * re-sends on every push, which is the one thing the prune exists to stop.
+     * Traced end-to-end on a real network: three reloads, server tombstone
+     * present throughout, local list never shrinking.
+     */
+    if (tombstones) pruneDeletedIds(new Set(Object.keys(tombstones)));
+    return;
+  }
 
   // Union by id: server defs first (authoritative order), then any local-only —
   // excluding anything the server has tombstoned.
