@@ -197,7 +197,25 @@ export const RULE_PRESETS: RulePreset[] = [
   // from the anchors, and the owner's three lines didn't touch it.
   { id: "canterbury-downtown", emoji: "🏙️", sides: { morning: true, evening: true },
     pray: "psalms",
-    silence: true, contemplationStyle: "cobreathe", goalMin: 10,
+    /**
+     * "Creation Prayer for contemplation" is the STANDALONE practice — one 🌍
+     * card, available all day — so it's said with `practices`, the vocabulary
+     * for exactly that (as Contemplative Art says its walk and its artwork).
+     *
+     * It was said with `silence: true, contemplationStyle: "cobreathe",
+     * goalMin: 10` — and with no silenceSide that means a breath ANCHOR on
+     * BOTH sides plus a ten-minute silence goal: the adopted rule grew
+     * "Morning Creation Prayer", "Evening Creation Prayer" AND "Silence ·
+     * 10 min a day", three rows the card never promised (owner, with
+     * screenshots: "those extra practices shouldn't have been there in the
+     * first place"). silence/goalMin/contemplationStyle describe SITS; a
+     * standing practice is `practices`. The card's rows are the contract —
+     * if an encoding produces a row the card doesn't show, the encoding is
+     * wrong, not the card.
+     */
+    silence: false, goalMin: 0,
+    practices: { cobreathe: true },
+    practiceSlots: { cobreathe: "anytime" },
     reflections: ["cac"],
     title: "Canterbury Downtown", blurb: "The Psalter morning and evening, Creation Prayer as the day's contemplation, and Richard Rohr's meditation between them.",
     rows: [
