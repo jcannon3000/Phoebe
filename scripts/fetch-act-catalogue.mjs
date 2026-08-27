@@ -117,7 +117,7 @@ const tidy = (v) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : v);
 /** ACT's requested citation, in the form their own pages ask for. */
 /** Owner: "take out the William Blake stuff." Matched on the surname, lower-cased,
  *  against ACT's "Surname, Forename, dates" artist string. */
-const EXCLUDED_ARTISTS = ["blake, william"];
+const EXCLUDED_ARTISTS = ["blake, william", "herrel, edie mae"];
 
 function attribution(a, artist, original = "Wikimedia Commons") {
   const who = artist ? `${artist}. ` : "";

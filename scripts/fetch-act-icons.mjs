@@ -102,7 +102,7 @@ async function resolveLicences(titles) {
 }
 
 const tidy = (v) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : v);
-const EXCLUDED_ARTISTS = ["blake, william"];
+const EXCLUDED_ARTISTS = ["blake, william", "herrel, edie mae"];
 
 function attribution(a, artist, original) {
   const who = artist ? `${artist}. ` : "";
