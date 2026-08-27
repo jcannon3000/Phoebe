@@ -22,18 +22,28 @@
  * go" looks the same wherever the app offers one.
  */
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   getSideDaySwap, setSideDaySwap, clearSideDaySwap, getSideLevel, getSideCustomName,
+  getExplicitSideLevel, getSideExtra,
   type OfficeSide, type OfficeLevel,
 } from "@/lib/officePrefs";
+import { useRhythmState } from "@/hooks/useRhythmState";
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
-/** The practices with an in-app slideshow a swap can walk straight into. */
+/**
+ * EVERY practice with an in-app flow a swap can walk straight into — the
+ * full menu, not the four it launched with (owner, recording the Examen's
+ * sheet: "this is not showing all the available practices"). What a given
+ * person actually sees is this MINUS what their routine already keeps — see
+ * the filter in the component (same owner note: "…but also showing a
+ * practice already in my routine").
+ */
 const SWITCHABLE: Array<{
   level: OfficeLevel;
   emoji: (side: OfficeSide) => string;
@@ -46,11 +56,20 @@ const SWITCHABLE: Array<{
     name: (s) => (s === "morning" ? "Morning Prayer" : "Evening Prayer"),
     href: (s) => `/bcp/daily-office?mode=${s}`,
   },
+  {
+    level: "devotion",
+    emoji: () => "🕊️",
+    name: (s) => (s === "morning" ? "Morning Devotion" : "Early Evening Devotion"),
+    href: (s) => `/bcp/daily-office?mode=${s === "morning" ? "morning-devotion" : "early-evening-devotion"}`,
+  },
   // NOTE the param name: the psalms page reads `?office=`, not `?side=` — a
   // side= here silently opened MORNING psalms for an evening swap.
   { level: "psalms", emoji: () => "📜", name: () => "Praying the Psalms", href: (s) => `/psalms?office=${s}` },
   { level: "guided-prayer", emoji: () => "🙌", name: () => "Simple Guided Prayer", href: (s) => `/guided-prayer?side=${s}` },
   { level: "examen", emoji: () => "🌗", name: () => "The Examen", href: (s) => `/examen?side=${s}` },
+  { level: "compline", emoji: () => "🌙", name: () => "Compline", href: () => "/bcp/daily-office?mode=compline" },
+  { level: "reflect-sit", emoji: () => "🕯️", name: () => "Contemplative Prayer", href: () => "/contemplation?begin=1" },
+  { level: "creation", emoji: () => "🌍", name: () => "Creation Prayer", href: () => "/cobreathe" },
 ];
 
 /**
@@ -95,6 +114,29 @@ export function PracticeSwitcher({ side, current }: {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
+  // What the routine already keeps — silence and Creation Prayer come from
+  // the same computation every other surface reads (the one-computation rule).
+  const { silenceActive, cobreatheActive } = useRhythmState();
+
+  /**
+   * The menu = every switchable practice MINUS what their routine already
+   * keeps (owner, on seeing his own Evening Prayer offered as "a different
+   * practice": a swap is for praying something DIFFERENT today). Already-kept
+   * means: the practice whose opener this pill sits on, either side's anchor,
+   * either side's extra, an active silence goal (reflect-sit), an active
+   * Creation Prayer card. "ask" (no explicit anchor) excludes nothing.
+   */
+  const kept = new Set<OfficeLevel | null>([
+    current,
+    getExplicitSideLevel("morning"), getExplicitSideLevel("evening"),
+    getSideExtra("morning"), getSideExtra("evening"),
+  ]);
+  const options = SWITCHABLE.filter((p) => {
+    if (kept.has(p.level)) return false;
+    if (p.level === "reflect-sit" && silenceActive) return false;
+    if (p.level === "creation" && cobreatheActive) return false;
+    return true;
+  });
 
   const choose = (level: OfficeLevel, href: string) => {
     setOpen(false);
@@ -124,6 +166,17 @@ export function PracticeSwitcher({ side, current }: {
       >
         {t("practice_switch.pill", { defaultValue: "Choose a different practice" })} <span aria-hidden>▾</span>
       </button>
+      {/**
+        * PORTALED to <body>, and it has to be. The pill sits inside a deck
+        * slide that framer-motion TRANSFORMS (the fade/rise), and a transform
+        * makes that ancestor the containing block for position:fixed — so the
+        * "fixed inset-0" sheet was laying itself out against the SLIDE's box,
+        * not the viewport. Measured: the ✕ rendered at y = −49, off screen
+        * (owner, on the phone: "the x doesn't work" — it was under the status
+        * bar, tappable by nobody). From <body>, fixed means the viewport
+        * again on every page that mounts this.
+        */}
+      {typeof document !== "undefined" && createPortal(
       <AnimatePresence>
         {open && (
           <motion.div
@@ -159,7 +212,7 @@ export function PracticeSwitcher({ side, current }: {
                 {t("practice_switch.sub", { defaultValue: "Just for today — tomorrow your rhythm is back to normal." })}
               </p>
               <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-                {SWITCHABLE.filter((p) => p.level !== current).map((p) => (
+                {options.map((p) => (
                   <button
                     key={p.level}
                     type="button"
@@ -171,11 +224,17 @@ export function PracticeSwitcher({ side, current }: {
                     <span style={{ color: "#F0EDE6", fontFamily: FONT, fontSize: 14, fontWeight: 600 }}>{p.name(side)}</span>
                   </button>
                 ))}
+                {options.length === 0 && (
+                  <p style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, margin: "4px 0 8px", textAlign: "center" }}>
+                    {t("practice_switch.none", { defaultValue: "Everything else is already part of your rhythm." })}
+                  </p>
+                )}
               </div>
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body)}
     </>
   );
 }
