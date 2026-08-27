@@ -1465,8 +1465,42 @@ export default function WayOfLoveRuleFlow({
    *  single-practice edit so the row shows its new value straight away. */
   const reloadEditRows = async (): Promise<void> => {
     try {
+      /**
+       * FLUSH BEFORE DESCRIBING — the list must describe THIS DEVICE'S rhythm.
+       *
+       * The rows are derived SERVER-side (describeSpec over rule_config +
+       * customAnchors), while the home reads local state — and local is ahead
+       * of the server whenever a push is in flight or dropped, which is
+       * precisely what an adopt leaves behind. Verified on a clean state:
+       * adopt Canterbury then VTS, reload, and the home showed VTS while this
+       * list showed a BLEND of both — including no row at all for a custom
+       * anchor that exists, which made it undeletable (an anchor you cannot
+       * see is an anchor you cannot remove). Pushing both pipes up first
+       * makes the server describe what the device holds.
+       */
+      try { await Promise.all([flushRoutineConfig(), flushCustomAnchorPush()]); } catch { /* best-effort */ }
       const r: any = await apiRequest("GET", "/api/routine-interview/current");
-      setEditRows(Array.isArray(r?.settings) ? r.settings : []);
+      const rows: Array<{ id: string; emoji: string; label: string; sub: string }> = Array.isArray(r?.settings) ? r.settings : [];
+      /**
+       * …and the CUSTOM-ANCHOR rows answer to the LOCAL store regardless.
+       * customAnchors.ts is tombstone-correct and authoritative on-device; if
+       * the flush above failed (offline, a dropped PUT), the server's answer
+       * is stale in both directions — it can list an anchor the reader
+       * deleted, or omit one they hold. Local defs replace the server's
+       * custom rows wholesale, so every anchor that exists has its ✕ and
+       * nothing deleted can linger.
+       */
+      const local = getCustomAnchors();
+      const serverCustomless = rows.filter((row) => !row.id.startsWith("custom:"));
+      const localCustomRows = local.map((a) => ({
+        id: `custom:${a.id}`,
+        emoji: a.emoji || "🌿",
+        label: a.title,
+        sub: a.days && a.days.length > 0 && a.days.length < 7
+          ? `${SLOT_LABEL[a.slot]} · ${describeDays(a.days)}`
+          : SLOT_LABEL[a.slot],
+      }));
+      setEditRows([...serverCustomless, ...localCustomRows]);
     } catch { /* no routine to edit — the scratch path is the fallback */ }
   };
   useEffect(() => {
