@@ -15,7 +15,7 @@ import {
   setSideContemplationKind, setSideDayRules } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset, type OfficeSideKey } from "@/lib/rulePresets";
-import { addCustomAnchor, getCustomAnchors, setPracticeSlot, type SlottedPractice, type CustomSlot } from "@/lib/customAnchors";
+import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 
@@ -263,6 +263,24 @@ export default function CustomizePage() {
       if (src) setSideReflection(side, src);
     }
 
+    // A side's custom NAME goes with the rule that named it — mirrors
+    // adoptRule's sweep, or the two paths disagree ("Chapel" survived here
+    // and prefilled "Create your own" for a side VTS once owned).
+    for (const sd of ["morning", "evening"] as const) {
+      const namedHere = preset.customNames?.[sd]
+        || (preset.dayRules?.[sd] ?? []).some((r) => r.pray === "ownPractice" && r.name);
+      if (!namedHere) { try { localStorage.removeItem(`phoebe:office:custom-name:${sd}`); } catch { /* ignore */ } }
+    }
+    // Custom anchors are part of the rhythm (owner: "replaces" means
+    // replaces) — any anchor the new rule doesn't name by title is removed,
+    // tombstoned and pushed like any other deletion. Mirrors adoptRule; the
+    // two adopt paths must not disagree about what a preset replaces.
+    {
+      const named = new Set((preset.customAnchors ?? []).map((c) => c.title.trim().toLowerCase()));
+      for (const a of getCustomAnchors()) {
+        if (!named.has(a.title.trim().toLowerCase())) removeCustomAnchor(a.id);
+      }
+    }
     // The rule's own standing practices, idempotent by title.
     if (preset.customAnchors?.length) {
       const existing = new Set(getCustomAnchors().map((a) => a.title.trim().toLowerCase()));

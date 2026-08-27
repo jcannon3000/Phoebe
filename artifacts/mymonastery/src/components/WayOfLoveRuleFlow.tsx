@@ -2237,13 +2237,22 @@ export default function WayOfLoveRuleFlow({
      *    the side is re-enabled, then a stale "creation"/2-minute sit speaks
      *    for a rule that never chose it.
      *
-     * (Custom anchors also survive adoption — deliberately for now: they're
-     * the reader's own practices and deleting them tombstones server data.
-     * Whether they're part of "the rhythm this replaces" is the owner's call;
-     * the confirm copy currently overpromises. Flagged, not swept.)
+     * Custom anchors are part of the rhythm too (owner's ruling, 2026-08-26:
+     * "replaces" means replaces). Any anchor the new preset doesn't name by
+     * title is removed — tombstoned and pushed immediately, like any other
+     * deletion — so adopting VTS then A Gentle Start no longer keeps the
+     * Community Meal forever. Never in prescribe (that would delete the
+     * DESIGNER's own practices while drafting someone else's rule).
      */
     setExtraBySide({ morning: null, evening: null });
     setExtraWantedBySide({ morning: false, evening: false });
+    if (!prescribe) {
+      const named = new Set((preset.customAnchors ?? []).map((c) => c.title.trim().toLowerCase()));
+      for (const a of getCustomAnchors()) {
+        if (!named.has(a.title.trim().toLowerCase())) removeCustomAnchor(a.id);
+      }
+      setCustomList(getCustomAnchors());
+    }
     for (const k of ["cobreathe", "listening", "examen", "walk", "reading", "visio"] as const) {
       const wanted = (preset.practiceSlots ?? {})[k] != null
         || (k === "cobreathe" && preset.practices?.cobreathe)
@@ -2261,6 +2270,12 @@ export default function WayOfLoveRuleFlow({
           localStorage.removeItem(`phoebe:office:minutes:${sd}`);
         } catch { /* ignore */ }
       }
+      // The side's custom NAME goes with the rule that named it. Inert while
+      // the level isn't "custom", but it prefilled "Chapel" the day someone
+      // picked "Create your own" for a side VTS once owned.
+      const namedHere = preset.customNames?.[sd]
+        || (preset.dayRules?.[sd] ?? []).some((r) => r.pray === "ownPractice" && r.name);
+      if (!namedHere) { try { localStorage.removeItem(`phoebe:office:custom-name:${sd}`); } catch { /* ignore */ } }
     }
     // …and at the part of the day the rule keeps them.
     for (const [key, slot] of Object.entries(preset.practiceSlots ?? {}) as Array<[SlottedPractice, CustomSlot]>) {
