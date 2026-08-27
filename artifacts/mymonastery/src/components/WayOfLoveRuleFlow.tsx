@@ -763,7 +763,11 @@ export default function WayOfLoveRuleFlow({
   const [returnToReview, setReturnToReview] = useState(false);
   const [editRows, setEditRows] = useState<Array<{ id: string; emoji: string; label: string; sub: string }>>([]);
   const [editLoaded, setEditLoaded] = useState(false);
+  // ORPHANED with the edit list (the entry is three doors now — see the
+  // manualMode "edit" screen). clearEditRow below stays with it: the ?edit=
+  // deep-link and any future per-row surface would need both back.
   const [deletingEditRow, setDeletingEditRow] = useState<{ id: string; label: string } | null>(null);
+  void deletingEditRow; void setDeletingEditRow;
   /** The review screen's ✕ confirm — carries the row's own remove(), since
    *  review rows are built from local state rather than server row ids. */
   const [deletingReviewRow, setDeletingReviewRow] = useState<{ label: string; remove: () => void } | null>(null);
@@ -2833,6 +2837,10 @@ export default function WayOfLoveRuleFlow({
       setManualMode("edit");
       return;
     }
+    // "Build your own" enters at morning-way, SKIPPING the intro (owner) — so
+    // Back from that first real slide returns to the three-door entry, rather
+    // than stepping onto the intro slide the owner asked to skip.
+    if (canEditParts && manualMode === "scratch" && step === "morning-way") { setManualMode("edit"); return; }
     const i = orderedSteps.indexOf(step);
     if (i > 0) { setStep(orderedSteps[i - 1]); return; }
     // Reported: "the back goes to the home screen and not the previous thing in
@@ -3389,6 +3397,17 @@ export default function WayOfLoveRuleFlow({
             defaultValue: "Each of these is a complete daily rule, drawn from a real school of prayer. Take one whole and tune it later.",
           })}
         </p>
+        {/* A way BACK to the three-door entry. The list used to be reached
+            from a screen that stayed mounted behind it; as a first-class door
+            it was a room with no exit — no Back anywhere on it, and the
+            browser's own Back leaves the customizer entirely. */}
+        <button
+          type="button"
+          onClick={goPrev}
+          style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "2px 0 14px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}
+        >
+          <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
+        </button>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {/* YOUR GROUPS FIRST (owner). These are the rhythms people the
               reader has actually joined are already praying — the app's
@@ -3461,123 +3480,50 @@ export default function WayOfLoveRuleFlow({
   // "Edit part of it" — the routine as a list, each row with a gear and an ✕,
   // the same shape the questionnaire's review uses (owner).
   if (entrySettled && canEditParts && manualMode === "edit") {
-    const circle: React.CSSProperties = {
-      width: 30, height: 30, flexShrink: 0, borderRadius: 999,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      background: "rgba(255,255,255,0.06)", border: `1px solid ${CARD_B}`,
-      color: SAGE, fontSize: 14, cursor: "pointer", padding: 0,
-    };
+    /**
+     * THE ENTRY, RE-SIMPLIFIED TO THREE DOORS (owner: "when you open shape
+     * your routine, you have three options: choose preset routine; build your
+     * own routine — build your own today or edit your current routine, and it
+     * just starts from the beginning, skips that intro slide, straight to the
+     * morning; and revert to past routine").
+     *
+     * This screen was the per-practice edit list — every row with a gear and a
+     * ✕, an add-flow, a Save. That grew here one request at a time and the
+     * owner has now walked it back whole. "Build your own" carries the editing
+     * job the list did: the flow seeds every slide from the current rule, so
+     * walking it from the morning IS editing what you have — which is why its
+     * sub-line says both.
+     *
+     * It jumps to "morning-way", not "intro" (owner: "skips that intro
+     * slide"), and goPrev has the matching special case so Back from that
+     * first slide returns HERE rather than surfacing the intro sideways.
+     */
     return shell(
       <>
         {stepHeader(
           t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" }),
-          t("wol_rule.manual_edit_title", { defaultValue: "Your rhythm" }),
+          t("wol_rule.entry3_title", { defaultValue: "Shape your routine" }),
         )}
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 18px" }}>
-          {t("wol_rule.manual_edit_body", { defaultValue: "Tap the gear to change a practice, or the ✕ to take it off." })}
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {editRows.map((r) => (
-            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 16, padding: "13px 14px" }}>
-              <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: "block", color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
-                <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
-              </span>
-              {stepForRow(r.id) && (
-                <button
-                  type="button"
-                  aria-label={`Settings for ${r.label}`}
-                  onClick={() => { const st = stepForRow(r.id); if (st) { setSingleEditRow(r.id); setManualMode("scratch"); setStep(st); } }}
-                  style={circle}
-                >
-                  ⚙
-                </button>
-              )}
-              <button type="button" aria-label={`Remove ${r.label}`} onClick={() => setDeletingEditRow({ id: r.id, label: r.label })} style={circle}>
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-        {/* Owner: "at the bottom of edit-part-of-it, when it shows me my
-            rhythm, there needs to be an add flow."
-            
-            The list could take things OFF (every row has its ✕) and change
-            them (the gear), but there was no way to put something ON — so
-            "edit part of it" was really "edit or remove part of it", and
-            adding meant going back out and rebuilding from scratch. This opens
-            the standing-practices picker, which is where a practice gets added
-            to a rhythm, and Continue carries on from there into the rest of
-            the flow. Dashed, like the "add an additional practice" button on
-            the side-config slide, because it's the same kind of act. */}
-        <button
-          type="button"
-          onClick={() => { touchedRef.current = true; setManualMode("scratch"); setStep("contemplative"); }}
-          style={{ width: "100%", marginTop: 12, background: "transparent", border: `1px dashed ${CARD_B}`, borderRadius: 14, padding: "13px 16px", color: SAGE, fontSize: 14.5, fontFamily: FONT, cursor: "pointer" }}
-        >
-          {t("wol_rule.edit_add_practice", { defaultValue: "+ Add a practice" })}
-        </button>
-        {/* The two WHOLE-rhythm moves, under the rhythm they'd replace
-            (owner). Everything above changes one practice; these two change
-            all of it, so they sit apart, below every per-practice row — going
-            back to an old rhythm
-            especially, which is the exception, not a way of building one. */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
           {menuRow(
             "\uD83D\uDCCB",
-            t("wol_rule.manual_preset", { defaultValue: "Start from a preset" }),
-            t("wol_rule.manual_preset_sub", { defaultValue: "Adopt a complete rhythm that's already been shaped. You can change any part of it after." }),
+            t("wol_rule.entry3_preset", { defaultValue: "Choose a preset routine" }),
+            t("wol_rule.entry3_preset_sub", { defaultValue: "Adopt a complete rhythm that's already been shaped. You can change any part of it after." }),
             () => { setPresetPending(null); setManualMode("preset"); },
+          )}
+          {menuRow(
+            "\uD83C\uDF05",
+            t("wol_rule.entry3_build", { defaultValue: "Build your own routine" }),
+            t("wol_rule.entry3_build_sub", { defaultValue: "Build a routine today, or edit your current one — it starts with the morning." }),
+            () => { touchedRef.current = true; setManualMode("scratch"); setStep("morning-way"); },
           )}
           {canRevert && menuRow(
             "\u21A9\uFE0F",
-            t("wol_rule.entry_revert", { defaultValue: "Go back to a past routine" }),
+            t("wol_rule.entry_revert", { defaultValue: "Revert to a past routine" }),
             t("wol_rule.entry_revert_sub", { defaultValue: "Return to a rhythm you kept before, exactly as it was." }),
             () => setLocation("/routine-history"),
           )}
         </div>
-        {/* Continue LAST, so it can hover at the bottom with everything else
-            scrolling under it (owner, twice). It used to sit above the two rows
-            just above, which meant it could never stay pinned — at the end of
-            the scroll it fell inline and its scrim painted a band across them.
-            Moving it here keeps the hover AND the rows; a screen's final action
-            belonging under everything it acts on is the ordinary arrangement. */}
-        {/* SAVE, not Continue (owner: "at the bottom of the shape your routine
-            have the bottom cta be save not continue" — "that would save it").
-            It used to read Continue and drop into the build-from-scratch flow,
-            which is a strange thing for the button under a finished rhythm to
-            do: the rhythm is right there, every row already editable, and the
-            one button that looked like the way out walked you into rebuilding
-            it. Starting over is still available — it's the "Start from a
-            preset" row above, which is where a whole-rhythm move belongs. */}
-        {ctaButton(t("common.save", { defaultValue: "Save" }), saveAndClose)}
-
-        {deletingEditRow && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            onClick={() => setDeletingEditRow(null)}
-            style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(4,12,7,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-          >
-            <div onClick={(e) => e.stopPropagation()} style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 18, padding: 18, maxWidth: 380, width: "100%", boxSizing: "border-box" }}>
-              <p style={{ color: CREAM, fontFamily: FONT, fontSize: 17, fontWeight: 700, margin: 0 }}>
-                Remove {deletingEditRow.label}?
-              </p>
-              <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14, lineHeight: 1.55, margin: "8px 0 0" }}>
-                It comes off your rhythm now. You can add it back any time.
-              </p>
-              <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-                <button type="button" onClick={() => clearEditRow(deletingEditRow.id)} style={{ flex: 1, background: CTA, color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
-                  Remove
-                </button>
-                <button type="button" onClick={() => setDeletingEditRow(null)} style={{ flex: 1, background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.25)", borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-                  Keep it
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </>,
     );
   }
