@@ -321,21 +321,35 @@ export function describeSpec(spec: {
     rows.push({ id: `card:${key}`, emoji: key === "vts" ? "🦩" : "📖", label: NEWSLETTER_LABEL[key], sub: "Each day", section: "newsletters" });
   }
 
-  for (const [k, v] of Object.entries(rc)) {
-    if (!k.startsWith("phoebe:slot:")) continue;
-    const key = k.slice("phoebe:slot:".length);
+  /**
+   * DRIVEN BY THE LAYOUT, NOT BY THE SLOT KEYS.
+   *
+   * The home layout is what decides a practice is ON; `phoebe:slot:<key>` only
+   * says WHEN it rides. Iterating the slot keys meant a practice was listed
+   * only if something had happened to write one — and the customizer's own
+   * "add a practice" toggle does NOT: commit() unhides the card in the layout
+   * and never calls setPracticeSlot (only preset adoption and the
+   * /practice/:key invite do). So turning Visio Divina on in the customizer
+   * gave you a card on the home and NO row in your rhythm: nothing to tap the
+   * gear on, nothing to ✕. Reported by the owner for Visio, and it hit Audio
+   * Divina, the Examen, a Walk and Creation Prayer identically.
+   *
+   * Reading the layout fixes it for every activation path at once, including
+   * ones added later, and keeps the invariant this list is built on: what the
+   * home shows and what the editor lists are the same question with the same
+   * answer. The slot key is now consulted only for the sub-label, defaulting
+   * to "any time of day" when it's absent — which is also what the home
+   * assumes (getPracticeSlot returns "anytime" by default).
+   *
+   * The earlier direction of this bug — a stale slot key outliving its
+   * practice and showing a ghost row the home didn't render — stays fixed:
+   * `hidden` still gates, and a key that isn't in the layout at all can no
+   * longer produce a row.
+   */
+  for (const key of spec.homeLayout.order) {
     const name = PRACTICE_LABEL[key];
-    if (!name || !SLOT_LABEL[v]) continue;
-    /**
-     * The HOME LAYOUT decides whether the practice is ON; the slot key only
-     * says WHEN it rides. A slot key outlives its practice (adoption sets
-     * slots and hides cards but never removed old slot keys), so this list
-     * showed a ghost 🎵 Audio Divina — "✕ to take it off" — for a practice
-     * the rhythm had switched off and the home correctly didn't render. The
-     * newsletters loop above already answers to `hidden`; practices now do
-     * too, so "what's in my rhythm" has one source of truth.
-     */
-    if (hidden.has(key)) continue;
+    if (!name || hidden.has(key)) continue;
+    const v = rc[`phoebe:slot:${key}`] ?? "anytime";
     // Owner: "if there's a contemplative walk or something in it as well, don't
     // have that on the third section's 'is this right' page — because we want
     // it to focus just on the sit: asking how much time, how often, things like
@@ -358,7 +372,7 @@ export function describeSpec(spec: {
     // removed from the customizer — so a read-back promising "in the
     // afternoon" describes a gate the app does not apply. Reading is the one
     // that still honours its slot, and still reads back as chosen.
-    const sub = ALWAYS_ANYTIME.has(key) ? SLOT_LABEL["anytime"]! : SLOT_LABEL[v];
+    const sub = ALWAYS_ANYTIME.has(key) ? SLOT_LABEL["anytime"]! : (SLOT_LABEL[v] ?? SLOT_LABEL["anytime"]!);
     rows.push({ id: `slot:${key}`, emoji: PRACTICE_EMOJI[key] ?? "✨", label: name, sub, section });
   }
 
