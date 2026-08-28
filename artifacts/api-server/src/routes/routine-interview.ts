@@ -180,15 +180,49 @@ their day is whatever else they keep (a newsletter, a walk). Don't invent a
 second sit to fill it, and if you can't tell what the middle of their day is,
 ASK.
 
-Silent prayer. A side's contemplation flag is ONLY for a side whose PRAYER IS
-the silent sit. If they pray Morning Prayer AND sit in silence, that is one
-morning practice plus a silence habit — put the minutes in
+THE RULE ABOVE IS ABOUT A SIT, NOT ABOUT EVERY CONTEMPLATIVE PRACTICE. Silence
+has a level of its own ("reflect-sit"), and so does Creation Prayer
+("creation"), so for those two the anchor is the level and the flag stays off.
+A contemplative WALK, Audio Divina and Visio Divina have no level — the side's
+contemplation flag plus its kind IS how that side's practice is recorded. So
+someone whose whole evening is a contemplative walk gets
+  "phoebe:office:contemplation:evening" = "1"
+  "phoebe:office:contemplation-kind:evening" = "walk"
+and no evening level. Don't force that onto the nearest level, and don't demote
+it to an all-day slot — a slot means "somewhere in the day", which is a
+different claim from "this is how they pray the evening".
+
+Contemplative prayer. A side's contemplation flag is ONLY for a side whose
+PRAYER IS that contemplative practice. If they pray Morning Prayer AND sit in
+silence, that is one morning practice plus a silence habit — put the minutes in
 officePrefs.contemplationGoalMinutes and leave the side's flag off. Set the
 per-side flag only when that side has no other practice.
-  "phoebe:office:contemplation:<side>" = "1" or "0" — a silent sit attached to
-      that side, shown as its own Morning/Evening Contemplation card
-  "phoebe:office:minutes:<side>" = minutes for THAT side's sit, e.g. "10"
-  "phoebe:contemplation-style" = "silent" or "cobreathe" (a guided breath)
+
+The silence GOAL is silence only. officePrefs.contemplationGoalMinutes counts
+SITTING, so it is never where a walk, a breath, Audio Divina or Visio Divina
+goes — those are a side's practice (flag + kind) or an all-day practice with a
+slot, and folding their minutes into the goal reports a day of silence nobody
+sat. A goal also never implies a per-side practice: someone can keep twenty
+minutes of silence a day with neither side contemplative.
+  "phoebe:office:contemplation:<side>" = "1" or "0" — a contemplative practice
+      attached to that side, shown as its own Morning/Evening card
+  "phoebe:office:contemplation-kind:<side>" = WHAT that side's contemplative
+      practice is. One of:
+        "silent"   — sitting in silence
+        "creation" — Creation Prayer, a guided breath
+        "walk"     — a contemplative walk
+        "audio"    — Audio Divina, praying with music
+        "visio"    — Visio Divina, praying with an image
+      SET THIS WHENEVER you set a side's contemplation flag to "1". A side
+      whose practice is a walk is not a sit that happens to move: the card, the
+      timer, what completes it and whether it counts toward a silence goal all
+      follow this key. Leaving it off means the side is read as silent, so an
+      evening of Creation Prayer becomes an evening of silence.
+  "phoebe:office:minutes:<side>" = minutes for THAT side's practice, e.g. "10"
+  "phoebe:contemplation-style" = "silent" or "cobreathe" — a GLOBAL fallback
+      for surfaces with no side in hand. Don't set it: it applies to both
+      sides at once, so writing it here retypes a side you didn't ask about.
+      Say what each side is with the per-side kind above.
   "phoebe:contemplation-sits" = "one" or "several" — whether the daily minutes
       are a single sit or spread across the day. Doesn't change what's counted
       (the goal is a daily TOTAL either way); it's what makes the number mean
@@ -702,6 +736,14 @@ const RC_ENTRIES = new Set(["read", "listen", "watch", "book", "venite"]);
 const RC_REFLECTIONS = new Set(["cac", "fdd", "ssje", "vts", "none"]);
 const RC_SLOTS = new Set(["morning", "anytime", "midday", "afternoon", "evening"]);
 const RC_STYLES = new Set(["silent", "cobreathe"]);
+/**
+ * What a side's contemplative practice IS — the per-side model.
+ *
+ * Mirrors CONTEMPLATION_KINDS in the client's officePrefs. Deliberately NOT
+ * the two-valued global above: "cobreathe" is that global's spelling of the
+ * breath, while a side says "creation".
+ */
+const RC_KINDS = new Set(["silent", "creation", "walk", "audio", "visio"]);
 
 function labelFor(key: string): string {
   const side = key.endsWith(":morning") ? "morning" : key.endsWith(":evening") ? "evening" : null;
@@ -712,6 +754,7 @@ function labelFor(key: string): string {
   if (key.includes(":entry:") && side) return `a way to pray the ${side} office`;
   if (key.includes(":reflection")) return "a daily reflection";
   if (key.startsWith("phoebe:slot:")) return `a time of day for ${key.slice("phoebe:slot:".length)}`;
+  if (key.startsWith("phoebe:office:contemplation-kind:") && side) return `a ${side} contemplative practice`;
   if (key === "phoebe:contemplation-style") return "a style of silent prayer";
   if (key === "phoebe:contemplation-log-method") return "a way to keep a silent sit";
   return "a setting";
@@ -734,6 +777,13 @@ function scrubRuleConfig(rc: Record<string, string>): string[] {
     if (k.includes(":reflection")) { if (!RC_REFLECTIONS.has(v)) reject(k, v); continue; }
     if (k.startsWith("phoebe:slot:")) { if (!RC_SLOTS.has(v)) reject(k, v); continue; }
     if (k === "phoebe:contemplation-style") { if (!RC_STYLES.has(v)) reject(k, v); continue; }
+    // A SIDE's contemplative practice has a KIND, and it validates like every
+    // other enum here. Without this case the key fell through unchecked and
+    // any string the model invented was stored — the same hole that let an
+    // invented practice through phoebe:office:extra: before it got a case.
+    // The client's reader validates on the way out and falls back, so a bad
+    // value showed up as "this side is silent" rather than as an error.
+    if (k.startsWith("phoebe:office:contemplation-kind:")) { if (!RC_KINDS.has(v)) reject(k, v); continue; }
     if (k === "phoebe:contemplation-log-method") { if (v !== "timer" && v !== "manual") reject(k, v); continue; }
     if (k === "phoebe:contemplation-sits") { if (v !== "one" && v !== "several") delete rc[k]; continue; }
     if (k.includes(":contemplation:")) { if (v !== "1" && v !== "0") delete rc[k]; continue; }

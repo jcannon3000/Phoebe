@@ -43,6 +43,7 @@ import { loadFeedDigest } from "./feedDigest";
 import { sendWeeklyDigestEmail } from "./email";
 import { withSchedulerLog } from "./schedulerHeartbeat";
 import { getCurrentTimeInTz, todayDateInTz, todayInZone } from "./tz";
+import { isAtOrJustAfterMinute, addHoursToHHMM } from "./reminderTiming";
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getLectionaryReadings } from "./lectionary";
 import { buildOfficeOrdoDay } from "./officeOrdo";
@@ -560,18 +561,9 @@ function isWithinTickWindow(
 // Callers MUST pass `now` — one instant captured at the top of the tick —
 // so every user in the fan-out is judged against the same clock reading
 // rather than one that advances as the loop grinds through them.
-const REMINDER_GRACE_MINUTES = 10;
-
-function isAtOrJustAfterMinute(parishTz: string, targetHHMM: string, now: Date): boolean {
-  const [hStr, mStr] = targetHHMM.split(":");
-  const target = parseInt(hStr, 10) * 60 + parseInt(mStr, 10);
-  const { hour, minute } = getCurrentTimeInTz(parishTz, now);
-  const delta = hour * 60 + minute - target;
-  // Negative = target hasn't arrived yet in this zone (or the local day has
-  // already wrapped past midnight, in which case the sent-date is keyed to a
-  // new day anyway) — either way, don't fire.
-  return delta >= 0 && delta < REMINDER_GRACE_MINUTES;
-}
+// isAtOrJustAfterMinute / REMINDER_GRACE_MINUTES / addHoursToHHMM now live in
+// lib/reminderTiming.ts — pure, and therefore testable without the database
+// this module pulls in. See reminderTiming.test.ts.
 
 // Owner: "if the notification... is for them to pray the morning office or
 // to do the devotions, have it in the second line of the notification
@@ -916,14 +908,6 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
 const EVENING_FOLLOWUP_HOURS_AFTER = 3;
 const EVENING_FOLLOWUP_CUTOFF_HOUR = 22; // 10pm local — never nudge later
 
-// Add whole hours to a HH:MM string, clamped to 23:59 (a follow-up that would
-// roll past the cutoff simply never fires — the hour>=22 gate catches it).
-function addHoursToHHMM(hhmm: string, hours: number): string {
-  const [hStr, mStr] = hhmm.split(":");
-  const h = parseInt(hStr, 10) + hours;
-  const hh = String(Math.min(23, Math.max(0, h))).padStart(2, "0");
-  return `${hh}:${(mStr ?? "00").padStart(2, "0")}`;
-}
 
 export async function runParishOfficeEveningFollowUpSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   // One clock reading for the whole fan-out — see isAtOrJustAfterMinute.

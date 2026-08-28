@@ -68,3 +68,6 @@ AuthKey_*.p8
 *.jks
 *.keystore
 keystore.properties
+
+# Bundled test output (artifacts/api-server: pnpm run test)
+.test-build/
