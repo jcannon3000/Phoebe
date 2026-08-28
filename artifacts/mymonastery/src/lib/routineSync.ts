@@ -173,6 +173,23 @@ const ADDITIVE_KEYS = new Set<string>([
   "phoebe:course:spiritual-journey:v1",
   "phoebe:course:centering-prayer:v1",
   "phoebe:course:way-of-love:v1",
+  /**
+   * …and WHICH COURSES were taken off the home, for exactly the reason above.
+   *
+   * Reported: "somehow a course i removed from my home screen got back on it."
+   * The hide is a routine key, so an incoming config that OMITS it deletes it
+   * — and a routine spec never carries it: adopting a preset, a prescribed
+   * routine or a community rule pushes a config built from that spec, so the
+   * next sync-down removed the hide and the course returned. This is the
+   * second time this removal has come back by a different road (the setter
+   * itself used not to push at all, see setCourseHiddenFromHome), which is
+   * what a key that is a PREFERENCE rather than part of the rule's shape
+   * earns by living in this list at all.
+   *
+   * Safe as additive: un-hiding writes the key as an empty array rather than
+   * deleting it, so "show it again" still travels between devices.
+   */
+  "phoebe:course-hidden",
 ]);
 
 // Mirror an authoritative server config into localStorage: set the keys it
