@@ -884,15 +884,19 @@ export default function WayOfLoveRuleFlow({
    * day), then the back of their order.
    */
   useEffect(() => {
-    if (entryPhase !== "notify" || orderIds.length === 0) return;
+    // The Prayer List row orders the home card but is NOT a nudge target
+    // (notifyOptions filters it out) — seed from the same filtered set, or a
+    // routine where it sits first/last seeds a target the select can't show.
+    const targetIds = orderIds.filter((id) => id !== "slot:prayer-list");
+    if (entryPhase !== "notify" || targetIds.length === 0) return;
     const pick = (sd: OfficeSide, current: string, taken: string | null): string => {
-      if (current && orderIds.includes(current)) return current;
+      if (current && targetIds.includes(current)) return current;
       const prefs = sd === "morning"
-        ? ["side:morning", "extra:morning", ...orderIds.filter((id) => id.startsWith("card:"))]
+        ? ["side:morning", "extra:morning", ...targetIds.filter((id) => id.startsWith("card:"))]
         : ["side:evening", "extra:evening", "slot:examen"];
-      for (const p of prefs) if (orderIds.includes(p) && p !== taken) return p;
-      const pool = orderIds.filter((id) => id !== taken);
-      if (pool.length === 0) return orderIds[0]!;
+      for (const p of prefs) if (targetIds.includes(p) && p !== taken) return p;
+      const pool = targetIds.filter((id) => id !== taken);
+      if (pool.length === 0) return targetIds[0]!;
       return sd === "morning" ? pool[0]! : pool[pool.length - 1]!;
     };
     setNotifyTarget((prev) => {

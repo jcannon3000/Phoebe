@@ -290,8 +290,10 @@ function StreakCard() {
                 )}
               </div>
             )}
+            {/* Faces only — the "N others have prayed" count line is gone
+                (owner: no prayed-count copy anywhere in the app). */}
             <p className="text-[12px]" style={{ color: SAGE, fontFamily: FONT, fontStyle: "italic" }}>
-              {t("rhythm.garden_week_line", { count: gardenWeekCount, defaultValue: `${gardenWeekCount} ${gardenWeekCount === 1 ? "other in your gardens has" : "others in your gardens have"} prayed this week` })}
+              {t("rhythm.garden_week_faces", { defaultValue: "Praying alongside you" })}
             </p>
           </div>
         )}

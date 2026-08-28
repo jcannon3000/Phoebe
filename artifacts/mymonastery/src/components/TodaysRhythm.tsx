@@ -201,14 +201,7 @@ export function TodaysRhythm() {
         ) : null}
       </div>
 
-      {/* Garden social-proof line — our common life. Hidden in pilot. */}
-      {!isPilot && gardenCount > 0 && (
-        <Link href="/prayer-list">
-          <p className="text-[11.5px] text-center mt-3 cursor-pointer" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SERIF, fontStyle: "italic" }}>
-            {t("rhythm.garden_line", { count: gardenCount, defaultValue: `${gardenCount} ${gardenCount === 1 ? "person" : "people"} in your garden ${gardenCount === 1 ? "has" : "have"} prayed today` })}
-          </p>
-        </Link>
-      )}
+      {/* The garden count line is gone — owner: no "N prayed" copy anywhere. */}
       </div>
     </div>
   );

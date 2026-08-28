@@ -4320,17 +4320,9 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
 // uses, so the prayer experience is identical; only the home anchor
 // changes shape.
 export function FeedHeroCard({ feed: row }: { feed: SubscribedFeed }) {
-  const { feed, prayedToday, weekPrayers, weekPrayerCount } = row;
+  const { feed, prayedToday, weekPrayers } = row;
   const upcomingEvents = row.upcomingEvents ?? [];
   const faces = (weekPrayers ?? []).filter((p) => !!p.avatarUrl);
-  // Honest total (uncapped) — falls back to the capped array length on
-  // older API builds that don't return weekPrayerCount yet.
-  const total = weekPrayerCount ?? (weekPrayers?.length ?? 0);
-  const countCopy = total === 0
-    ? null
-    : total === 1
-      ? "1 person prayed this week"
-      : `${total} people prayed this week`;
   const walkHref = `/prayer-mode?queue=feed&slug=${feed.slug}`;
 
   return (
@@ -4370,14 +4362,6 @@ export function FeedHeroCard({ feed: row }: { feed: SubscribedFeed }) {
             >
               {feed.title} {feed.coverEmoji ?? "🌿"}
             </p>
-            {countCopy && (
-              <p
-                className="text-[11px]"
-                style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, marginTop: 10 }}
-              >
-                {countCopy}
-              </p>
-            )}
           </div>
           {faces.length > 0 && (
             <div className="flex items-center -space-x-2 shrink-0">
