@@ -32,7 +32,38 @@ import { PrayerPromptsSlide } from "@/components/PrayerPromptsSlide";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
-import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, setSideLevel, getSideExtra, extraOfficeMode, type OfficeSide, type DefaultOfficeEntry } from "@/lib/officePrefs";
+import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, getSideDaySwap, setSideDaySwap, clearSideDaySwap, getSideExtra, extraOfficeMode, type OfficeSide, type OfficeLevel, type DefaultOfficeEntry } from "@/lib/officePrefs";
+
+/**
+ * CHOOSING HOW TO PRAY TODAY IS NOT EDITING YOUR RULE.
+ *
+ * Owner: "i had chapel in my routine and somehow it got changed to morning
+ * prayer when i opened the practice through the practice menu page, that
+ * shouldnt happen, and it was reflected in my roule shaper."
+ *
+ * Both pickers on this page used to call setSideLevel, which writes the
+ * STANDING rule. So opening the office and touching either dropdown replaced
+ * whatever that side actually keeps — for him a custom anchor called Chapel
+ * — with Morning Prayer, permanently, and the customizer then showed the
+ * change as though he had made it there. A page you opened to pray this
+ * morning had quietly rewritten the rule of life.
+ *
+ * The app already has the right mechanism and this page simply wasn't using
+ * it: officePrefs' DAY SWAP, which PracticeSwitcher writes and getSideLevel
+ * consults ahead of the stored level, so every surface follows today's
+ * practice together and tomorrow returns to the rule. Its own note is
+ * written about "a Chapel Saturday", which is precisely this case.
+ *
+ * Picking what today would have been anyway clears the swap rather than
+ * recording a swap-to-itself — same rule as the switcher, so the two
+ * surfaces can't disagree about what "switched from" means.
+ */
+const chooseTodaysPractice = (side: OfficeSide, level: OfficeLevel) => {
+  const standing = getSideDaySwap(side);
+  const base = standing ? standing.from : getSideLevel(side);
+  if (level === base) clearSideDaySwap(side);
+  else setSideDaySwap(side, level);
+};
 import { getOfficeCacheEntry, putOfficeCacheEntry } from "@/lib/officeOfflineCache";
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
@@ -2537,11 +2568,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               setWayToPray(w);
               // Intercessions + Psalms are on-screen only — snap the method back.
               if (w === "intercessions" || w === "psalms") setPrayMethod("screen");
-              // Persist an explicit office-method choice so it holds next time —
-              // Psalms especially, which round-trips through getSideLevel and
-              // shows up across the home cards + splash. Intercessions isn't a
-              // per-side level, so it isn't persisted.
-              if (w === "psalms" || w === "office" || w === "devotion") setSideLevel(officeSide, w);
+              // Records TODAY's practice (a day swap), not the standing rule —
+              // see chooseTodaysPractice. Psalms especially round-trips through
+              // getSideLevel and shows up across the home cards + splash, and
+              // the swap is read there too, so the day follows along and the
+              // rule survives. Intercessions isn't a per-side level, so it
+              // records nothing.
+              if (w === "psalms" || w === "office" || w === "devotion") chooseTodaysPractice(officeSide, w);
             }, (
               <>
                 <option value="psalms">Today's Psalms</option>
@@ -6102,9 +6135,10 @@ export default function BcpDailyOfficePage() {
                 onChange={(e) => {
                   const p = e.target.value as Practice;
                   setPracticePick(p);
-                  // Persist the choice for this side so it holds (Praying the
-                  // Psalms round-trips through getSideLevel + the home cards).
-                  setSideLevel(todPick, p === "psalms" ? "psalms" : p === "full" ? "office" : "devotion");
+                  // TODAY only — a day swap, not the rule (see
+                  // chooseTodaysPractice). Praying the Psalms round-trips
+                  // through getSideLevel + the home cards, which read the swap.
+                  chooseTodaysPractice(todPick, p === "psalms" ? "psalms" : p === "full" ? "office" : "devotion");
                 }}
                 style={officeRowSelect}
                 aria-label="Practice"
