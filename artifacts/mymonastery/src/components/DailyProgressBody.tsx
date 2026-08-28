@@ -2014,7 +2014,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
                 : t("rhythm.log_open_evening_prayer", { defaultValue: "Open Evening Prayer" }),
               onClick: () => {
                 markAnchorOfficeIntent(a.id);
-                navigate(`/begin-prayer?side=${a.office}`);
+                // The BCP office ITSELF, not "whatever my morning practice
+                // is" — /begin-prayer opens the person's own morning practice,
+                // which for VTS is Simple Guided Prayer. The whole point here
+                // is praying Morning Prayer in place of the physical book.
+                navigate(`/bcp/daily-office?mode=${a.office}`);
               },
             } : null}
           />

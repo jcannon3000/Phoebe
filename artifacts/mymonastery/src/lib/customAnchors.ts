@@ -224,6 +224,13 @@ export function getCustomAnchors(): CustomAnchor[] {
         const days = Array.isArray(rawDays)
           ? [...new Set(rawDays.filter((d): d is number => typeof d === "number" && d >= 0 && d <= 6))].sort()
           : undefined;
+        // WHITELIST — every field a practice carries has to be listed here.
+        // This reader REBUILDS each practice rather than passing the stored
+        // object through, so a field that isn't named below is silently
+        // dropped on every read: it survives in storage and on the server, and
+        // simply never reaches the app. That is how `office` first behaved —
+        // written by the preset, present in localStorage, and invisible.
+        const office = (a as { office?: unknown }).office;
         return {
           id: a.id,
           title: a.title,
@@ -231,6 +238,7 @@ export function getCustomAnchors(): CustomAnchor[] {
           slot: CUSTOM_SLOTS.includes(a.slot as CustomSlot) ? (a.slot as CustomSlot) : "afternoon",
           ...(reading ? { reading } : {}),
           ...(days && days.length > 0 && days.length < 7 ? { days } : {}),
+          ...(office === "morning" || office === "evening" ? { office } : {}),
         };
       });
   } catch {
