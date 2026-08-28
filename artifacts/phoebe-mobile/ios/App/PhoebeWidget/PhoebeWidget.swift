@@ -23,6 +23,45 @@ private let phoebeWarm = Color(red: 0.941, green: 0.929, blue: 0.902)  // #F0EDE
 private let phoebeSage = Color(red: 0.561, green: 0.686, blue: 0.588)  // #8FAF96
 
 // ── Shared data ───────────────────────────────────────────────────────────
+
+/// One of the home's NEXT cards, exactly as DailyProgressBody renders it —
+/// the app computes the two (widgetSync.ts nextCards: same titles, blurbs,
+/// CTAs, emoji, accent ramp colour, tint position, Later state), the widget
+/// only paints. r/g/b are the accent's 0-255 channels.
+struct NextCard {
+    var emoji: String
+    var title: String
+    var subtitle: String
+    var cta: String
+    var r: Double
+    var g: Double
+    var b: Double
+    var tint: Double
+    var later: Bool
+
+    var accent: Color { Color(red: r / 255.0, green: g / 255.0, blue: b / 255.0) }
+
+    static func parse(_ raw: Any?) -> [NextCard]? {
+        guard let arr = raw as? [[String: Any]] else { return nil }
+        return arr.compactMap { o in
+            guard let title = o["title"] as? String else { return nil }
+            // rgb arrives as the web card's own "r,g,b" string.
+            let parts = ((o["rgb"] as? String) ?? "46,107,64").split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+            return NextCard(
+                emoji: (o["emoji"] as? String) ?? "",
+                title: title,
+                subtitle: (o["subtitle"] as? String) ?? "",
+                cta: (o["cta"] as? String) ?? "Begin",
+                r: parts.count == 3 ? parts[0] : 46,
+                g: parts.count == 3 ? parts[1] : 107,
+                b: parts.count == 3 ? parts[2] : 64,
+                tint: (o["tint"] as? NSNumber)?.doubleValue ?? 0.4,
+                later: (o["later"] as? NSNumber)?.boolValue ?? false
+            )
+        }
+    }
+}
+
 struct PhoebeStats {
     var kind: String          // "office" | "reflect" | "summary"
     var eyebrow: String       // the small label above the title (mirrors home hero)
@@ -68,6 +107,9 @@ struct PhoebeStats {
     // (WayOfLoveTurnLearnPray.tsx's dayInitials), which the widget was
     // missing entirely (owner: "the letters to label the day aren't there").
     var weeklyDayInitials: [String]
+    // nil = a payload from an app build that predates nextCards (render the
+    // old weekly grid rather than an empty card list); [] = the day is kept.
+    var nextCards: [NextCard]?
 
     static let placeholder = PhoebeStats(
         kind: "office", eyebrow: "Book of Common Prayer", title: "Evening Devotion",
@@ -89,7 +131,11 @@ struct PhoebeStats {
             [false, false, false, false, false, false, true],
             [false, false, false, false, false, false, false],
         ],
-        weeklyDayInitials: ["S", "M", "T", "W", "T", "F", "S"]
+        weeklyDayInitials: ["S", "M", "T", "W", "T", "F", "S"],
+        nextCards: [
+            NextCard(emoji: "🌅", title: "Morning Prayer", subtitle: "Begin the day with the office", cta: "Begin", r: 120, g: 166, b: 130, tint: 0, later: false),
+            NextCard(emoji: "🌗", title: "The Examen", subtitle: "Review the day with God", cta: "Begin", r: 108, g: 152, b: 119, tint: 1, later: false),
+        ]
     )
 
     // Before the app has ever pushed data (or if the App Group store can't be
@@ -117,7 +163,13 @@ struct PhoebeStats {
             weeklyEmoji: ["🔄", "📖", "🙏🏽"],
             weeklyGrid: [[Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7)],
             weeklyPartial: [[Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7)],
-            weeklyDayInitials: ["S", "M", "T", "W", "T", "F", "S"]
+            weeklyDayInitials: ["S", "M", "T", "W", "T", "F", "S"],
+            nextCards: [
+                NextCard(emoji: morning ? "🌅" : "🌙",
+                         title: morning ? "Morning Prayer" : "Evening Prayer",
+                         subtitle: morning ? "Begin the day with the office" : "Mark the day's end with the office",
+                         cta: "Begin", r: 120, g: 166, b: 130, tint: 0, later: false),
+            ]
         )
     }
 
@@ -172,6 +224,7 @@ struct PhoebeStats {
             ?? (obj["weeklyPartial"] as? [[NSNumber]])?.map { $0.map { $0.boolValue } }
             ?? weeklyLabels.map { _ in [Bool](repeating: false, count: 7) }
         let weeklyDayInitials = (obj["weeklyDayInitials"] as? [String]) ?? ["S", "M", "T", "W", "T", "F", "S"]
+        let nextCards = NextCard.parse(obj["nextCards"])
         return PhoebeStats(kind: kind, eyebrow: eyebrow, title: title, subtitle: subtitle, cta: cta,
                            deepLink: deepLink, streakDays: streak, prayedToday: prayed,
                            nextOffice: nextOffice, newPrayers: newPrayers,
@@ -180,7 +233,8 @@ struct PhoebeStats {
                            eveningDone: eveningDone, reflectAvailable: reflectAvailable,
                            contemplationMin: contemplationMin, contemplationGoalMin: contemplationGoalMin,
                            weeklyLabels: weeklyLabels, weeklyEmoji: weeklyEmoji, weeklyGrid: weeklyGrid,
-                           weeklyPartial: weeklyPartial, weeklyDayInitials: weeklyDayInitials)
+                           weeklyPartial: weeklyPartial, weeklyDayInitials: weeklyDayInitials,
+                           nextCards: nextCards)
     }
 
     var streakText: String { streakDays > 0 ? "\(streakDays)-day streak" : "Begin a streak" }
@@ -308,7 +362,15 @@ struct PhoebeWidgetView: View {
                 }
             }
         case .systemMedium:
-            homeWeeklyGrid
+            // The wide widget shows the NEXT TWO CARDS (owner: "rebuild the
+            // wide widget to show the next two cards, and have the UI match
+            // EXACTLY"). An old app build's payload has no nextCards field —
+            // those keep the weekly grid they were pushed for.
+            if let cards = stats.nextCards {
+                homeNextCards(cards)
+            } else {
+                homeWeeklyGrid
+            }
         default:
             // .systemSmall is no longer OFFERED (see supportedFamilies), but
             // removing a family from the gallery doesn't remove widgets people
@@ -317,6 +379,108 @@ struct PhoebeWidgetView: View {
             // small widget would go blank.
             homeSmall
         }
+    }
+
+    // ── The wide widget: "Phoebe" top-left + the next two home cards ──────
+    //
+    // Every value below is transcribed from DailyProgressBody's PracticeCard
+    // compact row (CSS px → pt): rounded-3xl card (24) with a 1px
+    // rgba(200,212,192,0.35) border on cardTintBg(tint); a 4px left accent at
+    // rgba(accent, 0.7) (0.4 when Later); content px-4 py-3.5 (16/14 — the
+    // vertical trimmed to 12 so two cards + header fit every widget canvas,
+    // the one deliberate deviation); row gap-3 (12); emoji 15; title 14.5
+    // semibold #F0EDE6; blurb 12 #8FAF96 with mt-0.5 (2); CTA pill
+    // rgba(accent,0.85) fill, #F0EDE6 12 semibold, px-3.5 py-1.5 (14/6),
+    // min-width 84, label "{cta} →"; the Later pill is transparent with a
+    // rgba(143,175,150,0.22) border and rgba(182,210,188,0.5) text, and the
+    // whole card sits at opacity 0.72 — exactly the home's waiting card.
+    private func nextCardRow(_ c: NextCard) -> some View {
+        HStack(spacing: 0) {
+            Rectangle()
+                .fill(c.accent.opacity(c.later ? 0.4 : 0.7))
+                .frame(width: 4)
+            HStack(spacing: 12) {
+                if !c.emoji.isEmpty {
+                    Text(c.emoji).font(.system(size: 15))
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(c.title)
+                        .font(sgBold(14.5))
+                        .foregroundColor(phoebeWarm)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    if !c.subtitle.isEmpty {
+                        Text(c.subtitle)
+                            .font(sgRegular(12))
+                            .foregroundColor(phoebeSage)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                }
+                Spacer(minLength: 8)
+                if c.later {
+                    Text("Later")
+                        .font(sgRegular(12))
+                        .foregroundColor(Color(red: 182/255, green: 210/255, blue: 188/255).opacity(0.5))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .frame(minWidth: 84)
+                        .overlay(
+                            Capsule().stroke(Color(red: 143/255, green: 175/255, blue: 150/255).opacity(0.22), lineWidth: 1)
+                        )
+                } else if !c.cta.isEmpty {
+                    Text("\(c.cta) →")
+                        .font(sgBold(12))
+                        .foregroundColor(phoebeWarm)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .frame(minWidth: 84)
+                        .background(Capsule().fill(c.accent.opacity(0.85)))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+        .background(
+            // cardTintBg(tint): rgba(26−16t, 52−24t, 36−18t, 0.27+0.09t) —
+            // the home's per-position card ground, over the widget's leaf.
+            RoundedRectangle(cornerRadius: 24)
+                .fill(Color(red: (26 - 16 * c.tint) / 255.0,
+                            green: (52 - 24 * c.tint) / 255.0,
+                            blue: (36 - 18 * c.tint) / 255.0)
+                    .opacity(0.27 + 0.09 * c.tint))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(Color(red: 200/255, green: 212/255, blue: 192/255).opacity(0.35), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .opacity(c.later ? 0.72 : 1)
+    }
+
+    private func homeNextCards(_ cards: [NextCard]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // App identity top-left (owner: "Phoebe in the top left still").
+            Text("Phoebe").font(sgBold(15)).foregroundColor(.white)
+            if cards.isEmpty {
+                // Nothing left to pray — the home's summary state, worn as a
+                // single quiet card.
+                nextCardRow(NextCard(emoji: "🌿", title: "The day is kept", subtitle: stats.subtitle.isEmpty ? "Every practice prayed" : stats.subtitle, cta: "", r: 110, g: 180, b: 130, tint: 0.4, later: false))
+                Spacer(minLength: 0)
+            } else {
+                VStack(spacing: 6) {
+                    ForEach(Array(cards.prefix(2).enumerated()), id: \.offset) { _, c in
+                        nextCardRow(c)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     // "Past 7 Days" — the SAME dot grid the home card shows (Turn/Learn/Pray,
@@ -580,7 +744,7 @@ struct PhoebeWidget: Widget {
             }
         }
         .configurationDisplayName("Daily rhythm")
-        .description("Your past 7 days at a glance.")
+        .description("Your next practices, exactly as they sit on your home.")
         // Owner: "let's not offer the small square widget, just the wide dots
         // one." .systemSmall is gone from the gallery — the wide
         // (.systemMedium) family renders homeWeeklyGrid, which is the dot grid

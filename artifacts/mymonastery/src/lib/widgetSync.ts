@@ -17,7 +17,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { getSideLevel, getSideCustomName, getSideReflectionExplicit, extraPracticeTitle } from "@/lib/officePrefs";
-import { getPracticeSlot, SLOT_RANK, isSlotPast, type CustomSlot } from "@/lib/customAnchors";
+import { getPracticeSlot, SLOT_RANK, isSlotPast, isSlotOpen, type CustomSlot } from "@/lib/customAnchors";
+import { anchorPracticeFor } from "@/lib/anchorPractices";
+import { sortCardsByUserOrder } from "@/lib/routineOrder";
+import { rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { computeWeeklyGrid, type PracticeWeekDay } from "@/lib/weeklyGrid";
 
@@ -54,6 +57,18 @@ type WidgetState = {
   // widget can tell "kept" from "partial" apart, same as the web card does.
   weeklyPartial: boolean[][];
   weeklyDayInitials: string[];
+  /**
+   * THE NEXT TWO CARDS, exactly as the home's Next list would render them
+   * (owner: "rebuild the wide widget to show the next two cards, and have
+   * the UI match EXACTLY"). Same titles/blurbs/CTAs/emoji as the home
+   * cards, same green ramp for the accent (`rgb` is "r,g,b"), same card
+   * tint position, and the same Later state for a slot that hasn't opened.
+   * Empty array = the day is kept (the summary state).
+   */
+  nextCards: Array<{
+    emoji: string; title: string; subtitle: string; cta: string;
+    rgb: string; tint: number; later: boolean;
+  }>;
   updatedAt: string;
 };
 type WidgetBridge = { updateWidget?: (s: Partial<WidgetState>) => void };
@@ -76,10 +91,23 @@ const HOME_URL = "https://withphoebe.app/";
 
 // One entry per practice that can be "next". `kind` only tunes the widget's
 // accent colour (office green / reflect teal); `slot` drives the ordering.
+/** The extra card's emoji by level — hand-mirrors DailyProgressBody's
+ *  EXTRA_EMOJI (same values, same default). */
+const EXTRA_EMOJI: Record<string, string> = {
+  office: "📖", devotion: "🕊️", psalms: "📜",
+  readings: "📰", compline: "🌙", "guided-prayer": "🙌",
+};
+
 type NextItem = {
   active: boolean;
   done: boolean;
   slot: CustomSlot;
+  /** The HOME CARD's key — what sortCardsByUserOrder ranks by, so the
+   *  widget's next-two follow the person's own drag order exactly. */
+  key: string;
+  /** The home card's emoji, so the widget never badges a practice
+   *  differently from the card it mirrors. */
+  emoji: string;
   title: string;
   eyebrow: string;
   subtitle: string;
@@ -159,14 +187,23 @@ export function useWidgetSync(): void {
     const tPass = (_k: string, o?: Record<string, unknown>): string => String(o?.["defaultValue"] ?? "");
     /** The face a contemplative SIDE card wears, by its kind — mirrors
      *  DailyProgressBody's per-side card naming exactly. */
-    const contemplationSideFace = (cap: "Morning" | "Evening", kind: string): { title: string; eyebrow: string; subtitle: string } => {
+    const contemplationSideFace = (cap: "Morning" | "Evening", kind: string): { title: string; eyebrow: string; subtitle: string; emoji: string } => {
       switch (kind) {
-        case "creation": return { title: `${cap} Creation Prayer`, eyebrow: "A prayer for the earth", subtitle: "Breathing with creation" };
-        case "walk": return { title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray" };
-        case "audio": return { title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music" };
-        case "visio": return { title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image" };
-        default: return { title: `${cap} Contemplation`, eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence" };
+        case "creation": return { title: `${cap} Creation Prayer`, eyebrow: "A prayer for the earth", subtitle: "Breathing with creation", emoji: "🌍" };
+        case "walk": return { title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray", emoji: "🚶" };
+        case "audio": return { title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music", emoji: "🎵" };
+        case "visio": return { title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image", emoji: "🖼️" };
+        default: return { title: `${cap} Contemplation`, eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", emoji: "🕯️" };
       }
+    };
+    /** The side anchor card's emoji — a custom anchor wears its own practice
+     *  face, exactly as the home's morning/evening cards do. */
+    const officeEmoji = (side: "morning" | "evening"): string => {
+      if (getSideLevel(side) === "custom") {
+        const e = anchorPracticeFor(getSideCustomName(side))?.emoji;
+        if (e) return e;
+      }
+      return side === "morning" ? "🌅" : "🌙";
     };
     const officeTitle = (side: "Morning" | "Evening"): string => {
       const lvl = getSideLevel(side.toLowerCase() as "morning" | "evening");
@@ -228,7 +265,7 @@ export function useWidgetSync(): void {
     // slot rank then reproduces the home's time-of-day ordering; within a slot
     // the base order below is preserved.
     const items: NextItem[] = [
-      { active: r.morningActive && !r.novenaReplacesMorning, done: r.morningDone, slot: "morning", title: officeTitle("Morning"), eyebrow: officeEyebrow("Morning"), subtitle: officeSubtitle(true), cta: "Begin prayer", kind: "office", isPrimary: true },
+      { active: r.morningActive && !r.novenaReplacesMorning, done: r.morningDone, slot: "morning", key: "morning", emoji: officeEmoji("morning"), title: officeTitle("Morning"), eyebrow: officeEyebrow("Morning"), subtitle: officeSubtitle(true), cta: getSideLevel("morning") === "custom" ? "Mark done" : "Begin", kind: "office", isPrimary: true },
       /**
        * A side's SECOND practice. It has a card on the home and a dot in the
        * pill, so leaving it out here made the widget count fewer anchors than
@@ -236,12 +273,13 @@ export function useWidgetSync(): void {
        * were actually next to pray. Not isPrimary: within the slot the anchor
        * still leads.
        */
-      { active: !!r.morningExtraLevel, done: r.morningExtraDone, slot: "morning", title: r.morningExtraLevel ? extraPracticeTitle("Morning", r.morningExtraLevel, tPass) : "", eyebrow: "Also this morning", subtitle: "Alongside your main practice", cta: "Begin", kind: "office" },
+      { active: !!r.morningExtraLevel, done: r.morningExtraDone, slot: "morning", key: "extra-morning", emoji: (r.morningExtraLevel && EXTRA_EMOJI[r.morningExtraLevel]) || "🌿", title: r.morningExtraLevel ? extraPracticeTitle("Morning", r.morningExtraLevel, tPass) : "", eyebrow: "Also this morning", subtitle: "Alongside your main practice", cta: "Begin", kind: "office" },
       // A novena in "replace" mode takes over its slot's item entirely — same
       // gate as the rawCards/dotDefs replace-mode entries — so it's primary too.
-      { active: !!(r.novenaReplacesMorning && r.novenaActive), done: r.novenaDone, slot: "morning", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office", isPrimary: true },
+      { active: !!(r.novenaReplacesMorning && r.novenaActive), done: r.novenaDone, slot: "morning", key: "novena", emoji: "🕊️", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office", isPrimary: true },
       ...r.reflections.map((rf) => ({
         active: true, done: rf.done, slot: "morning" as CustomSlot,
+        key: `reflect-${rf.source}`, emoji: rf.source === "vts" ? "🦩" : "📖",
         title: REFLECTION_NAME[rf.source] ?? "Today's reflection",
         eyebrow: REFLECTION_NAME[rf.source] ?? "Today's reflection",
         subtitle: (rf.source === "cac" && cacMetaQ.data?.title) ? cacMetaQ.data.title : "A few minutes with the day's word",
@@ -251,26 +289,26 @@ export function useWidgetSync(): void {
       // walk, or Audio Divina) side "Contemplation … in silence" while every
       // in-app surface named it correctly, and this file's whole contract is
       // "exactly what's on the home screen".
-      { active: r.morningContemplationActive, done: r.morningContemplationDone, slot: "morning", ...contemplationSideFace("Morning", r.morningContemplationKind), cta: "Begin", kind: "office" },
+      { active: r.morningContemplationActive, done: r.morningContemplationDone, slot: "morning", key: "contemplation-morning", ...contemplationSideFace("Morning", r.morningContemplationKind), cta: "Begin", kind: "office" },
       // The solo "Silence" goal card — shown whenever there's a minutes goal
       // but no per-side contemplation card carries it (same gate as rawCards'
       // "silence" card in DailyProgressBody). Was missing entirely, which
       // undercounted totalAnchors/dots for the default guest shape.
-      { active: r.silenceGoalCardActive, done: r.silenceGoalCardDone, slot: "anytime", title: "Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
+      { active: r.silenceGoalCardActive, done: r.silenceGoalCardDone, slot: "anytime", key: "silence", emoji: "🕯️", title: "Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
       // (contemplationSideFace lives just above this list's builder.)
       // cobreatheStandaloneActive (not raw cobreatheActive) — when Creation
       // Prayer is riding as the per-side Morning/Evening Contemplation card
       // instead, the standalone card above is suppressed (same gate as
       // rawCards), so this must be too or it double-counts.
-      { active: r.cobreatheStandaloneActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), title: "Creation Prayer", eyebrow: "A prayer for the earth", subtitle: "Twelve breaths, prayed together", cta: "Begin", kind: "office" },
-      { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music", cta: "Begin", kind: "reflect" },
-      { active: r.podcastsActive, done: r.podcastsDone, slot: "afternoon" as CustomSlot, title: "Way of Love", eyebrow: "A podcast episode", subtitle: "Listen to today's episode", cta: "Listen", kind: "reflect" },
-      { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray", cta: "Log", kind: "office" },
-      { active: r.visioActive, done: r.visioDone, slot: getPracticeSlot("visio"), title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image", cta: "Begin", kind: "office" },
+      { active: r.cobreatheStandaloneActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), key: "cobreathe", emoji: "🌍", title: "Creation Prayer", eyebrow: "A prayer for the earth", subtitle: "Breathing together with God's creation", cta: "Begin", kind: "office" },
+      { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), key: "listening", emoji: "🎵", title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music", cta: "Begin", kind: "reflect" },
+      { active: r.podcastsActive, done: r.podcastsDone, slot: "afternoon" as CustomSlot, key: "podcasts", emoji: "🎙️", title: "Podcasts", eyebrow: "A podcast episode", subtitle: "Log what you listened to", cta: "Log", kind: "reflect" },
+      { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), key: "walk", emoji: "🚶", title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "A walk as prayer", cta: "Log", kind: "office" },
+      { active: r.visioActive, done: r.visioDone, slot: getPracticeSlot("visio"), key: "visio", emoji: "🖼️", title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image", cta: "Begin", kind: "office" },
       // Compline rides the evening slot — same fixed placement the home card
       // and the header dot use (it IS the night office, so no slot picker).
-      { active: r.complineActive, done: r.complineDone, slot: "evening", title: "Compline", eyebrow: "The night office", subtitle: "Hand the day to God", cta: "Begin", kind: "office" },
-      { active: r.readingActive, done: r.readingDone, slot: getPracticeSlot("reading"), title: "Reading", eyebrow: "Your reading rule", subtitle: "Log today's reading", cta: "Log", kind: "office" },
+      { active: r.complineActive, done: r.complineDone, slot: "evening", key: "compline", emoji: "🌙", title: "Compline", eyebrow: "The night office", subtitle: "The night office", cta: "Begin", kind: "office" },
+      { active: r.readingActive, done: r.readingDone, slot: getPracticeSlot("reading"), key: "reading", emoji: "📚", title: "Reading", eyebrow: "Your reading rule", subtitle: "Log what you read", cta: "Log", kind: "office" },
       // Prayer List is NOT a routine anchor here either — same exclusion as
       // DailyProgressBody.tsx (see its comment there): it's woven into the
       // offices and gets its own always-visible section, not a Next/Done slot,
@@ -280,17 +318,18 @@ export function useWidgetSync(): void {
       // Suppressed when a side's own anchor IS the Examen (already rendered
       // above via officeTitle's "The Examen" rename) — same gate as
       // rawCards' standalone Examen card, else the widget could show it twice.
-      { active: r.examenActive && getSideLevel("morning") !== "examen" && getSideLevel("evening") !== "examen", done: r.examenDone, slot: getPracticeSlot("examen"), title: "The Examen", eyebrow: "Review the day", subtitle: "Look back with God", cta: "Begin", kind: "office" },
+      { active: r.examenActive && getSideLevel("morning") !== "examen" && getSideLevel("evening") !== "examen", done: r.examenDone, slot: getPracticeSlot("examen"), key: "examen", emoji: "🌗", title: "The Examen", eyebrow: "Review the day", subtitle: "Review the day with God", cta: "Begin", kind: "office" },
       // The active novena — same novenaActive/Done DailyProgressBody's card
       // and the header pill's dot use, so the widget can't drift from either.
-      { active: !!(r.novenaActive && !r.novenaReplacesMorning && !r.novenaReplacesEvening), done: r.novenaDone, slot: "anytime", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
-      { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", ...contemplationSideFace("Evening", r.eveningContemplationKind), cta: "Begin", kind: "office" },
-      { active: r.eveningActive && !r.novenaReplacesEvening, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office", isPrimary: true },
-      { active: !!r.eveningExtraLevel, done: r.eveningExtraDone, slot: "evening", title: r.eveningExtraLevel ? extraPracticeTitle("Evening", r.eveningExtraLevel, tPass) : "", eyebrow: "Also this evening", subtitle: "Alongside your main practice", cta: "Begin", kind: "office" },
-      { active: !!(r.novenaReplacesEvening && r.novenaActive), done: r.novenaDone, slot: "evening", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office", isPrimary: true },
+      { active: !!(r.novenaActive && !r.novenaReplacesMorning && !r.novenaReplacesEvening), done: r.novenaDone, slot: "anytime", key: "novena", emoji: "🕊️", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
+      { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", key: "contemplation-evening", ...contemplationSideFace("Evening", r.eveningContemplationKind), cta: "Begin", kind: "office" },
+      { active: r.eveningActive && !r.novenaReplacesEvening, done: r.eveningDone, slot: "evening", key: "evening", emoji: officeEmoji("evening"), title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: getSideLevel("evening") === "custom" ? "Mark done" : "Begin", kind: "office", isPrimary: true },
+      { active: !!r.eveningExtraLevel, done: r.eveningExtraDone, slot: "evening", key: "extra-evening", emoji: (r.eveningExtraLevel && EXTRA_EMOJI[r.eveningExtraLevel]) || "🌿", title: r.eveningExtraLevel ? extraPracticeTitle("Evening", r.eveningExtraLevel, tPass) : "", eyebrow: "Also this evening", subtitle: "Alongside your main practice", cta: "Begin", kind: "office" },
+      { active: !!(r.novenaReplacesEvening && r.novenaActive), done: r.novenaDone, slot: "evening", key: "novena", emoji: "🕊️", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office", isPrimary: true },
       ...r.customAnchors.filter((a) => !a.skipped).map((a) => ({
         active: true, done: !!a.done, slot: a.slot,
-        title: a.title, eyebrow: "Your practice", subtitle: "A daily practice", cta: "Log", kind: "office" as const,
+        key: `custom-${a.id}`, emoji: a.emoji || "🌿",
+        title: a.title, eyebrow: "Your practice", subtitle: "Tap to mark done", cta: "Mark done", kind: "office" as const,
       })),
     ];
 
@@ -299,14 +338,44 @@ export function useWidgetSync(): void {
     // within a slot — the office/replacing-novena item first, so "what's next"
     // always surfaces the morning/evening anchor over an add-on sharing that
     // slot (e.g. Morning Contemplation as an extra, alongside Morning Prayer).
-    const ordered = [...active].sort((a, b) => {
+    const slotOrdered = [...active].sort((a, b) => {
       const slotDiff = SLOT_RANK[a.slot] - SLOT_RANK[b.slot];
       if (slotDiff !== 0) return slotDiff;
       return (a.isPrimary ? 0 : 1) - (b.isPrimary ? 0 : 1);
     });
+    /**
+     * The accent ramp is assigned by BUILD position, before the user's own
+     * order is applied — the same two-step the home runs (colour before sort,
+     * so dragging a card up doesn't repaint the whole rhythm), through the
+     * same rhythmGradientRgb.
+     */
+    const withRgb = slotOrdered.map((it, i) => ({ ...it, rgb: rhythmGradientRgb(i, slotOrdered.length) }));
+    /**
+     * THE PERSON'S OWN ORDER, via the same sortCardsByUserOrder the home's
+     * Next list runs — the items carry real home-card keys for exactly this.
+     * Without it the widget's "next two" could disagree with the top of the
+     * person's own list, which is the drift this file's contract forbids.
+     */
+    const ordered = sortCardsByUserOrder(withRgb);
     // "Next" = the first not-done practice whose slot HASN'T already passed
     // today (a passed slot is "tomorrow", not next). Falls back to summary.
-    const next = ordered.find((i) => !i.done && !isSlotPast(i.slot, now)) ?? null;
+    const upNext = ordered.filter((i) => !i.done && !isSlotPast(i.slot, now));
+    const next = upNext[0] ?? null;
+    /**
+     * The wide widget's card list — the next TWO, wearing the home card's
+     * exact face: emoji, title, blurb, CTA, accent colour by ramp position,
+     * card-tint by stack position, and the dimmed "Later" state for a slot
+     * that hasn't opened (the home's own gate, isSlotOpen).
+     */
+    const nextCards = upNext.slice(0, 2).map((i, idx) => ({
+      emoji: i.emoji,
+      title: i.title,
+      subtitle: i.subtitle,
+      cta: i.cta,
+      rgb: i.rgb,
+      tint: upNext.length <= 1 ? 0.4 : idx / (upNext.length - 1),
+      later: !isSlotOpen(i.slot, now),
+    }));
 
     // One dot per active anchor in the person's ACTUAL routine — the same
     // `ordered` list "next" is resolved from, so the widget can never show a
@@ -381,6 +450,7 @@ export function useWidgetSync(): void {
       weeklyGrid: weeklyHidden ? [] : weekly.rows.map((row) => row.kept),
       weeklyPartial: weeklyHidden ? [] : weekly.rows.map((row) => row.partial),
       weeklyDayInitials: weeklyHidden ? [] : weekly.dayInitials,
+      nextCards,
       updatedAt: new Date().toISOString(),
     });
   }, [
