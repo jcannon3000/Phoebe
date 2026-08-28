@@ -651,6 +651,13 @@ const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
 // longer asked in the customizer; they're set in Settings → Daily reminders,
 // which uses these same defaults (settings.tsx DEFAULT_MORNING/DEFAULT_EVENING).
 const DEFAULT_REMINDER_TIME = "07:00";
+/**
+ * The slide column's bottom padding — and the exact amount the sticky CTA
+ * cancels with a negative margin so it can sit at the true bottom of the
+ * screen. ONE constant because the two must agree: when they drifted, the
+ * button floated a padding's worth above the bottom edge.
+ */
+const SHELL_PAD_BOTTOM = 40;
 
 // Is a home module currently surfaced? Mirrors the dashboard's gate: only a
 // current-version layout counts, and the key must be in `order` and not
@@ -854,7 +861,6 @@ export default function WayOfLoveRuleFlow({
   const [entryPhase, setEntryPhase] = useState<"list" | "add-cat" | "add-items" | "add-minutes" | "add-custom" | "notify">("list");
   const [addCat, setAddCat] = useState<"sgp" | "bcp" | "contemplative" | "reflections" | "custom" | null>(null);
   // The top-bar ⚙ dropdown on the flat list (preset / revert) — see shell.
-  const [gearMenuOpen, setGearMenuOpen] = useState(false);
   const [sitMinutes, setSitMinutes] = useState("10");
   const [newCustomName, setNewCustomName] = useState("");
   /** The list's drag order — edit-row ids. Re-derived whenever rows load. */
@@ -2629,33 +2635,23 @@ export default function WayOfLoveRuleFlow({
    * renders through: any future intrinsically-wide control — another native
    * input, a long unbroken string — would have hit exactly the same wall.
    */
-  /**
-   * The slide's primary action, surfaced as a TOP pill (owner: "make there be
-   * next and back cta pills at the top alongside the x to free the bottom so
-   * there doesn't need to be that overlay"). ctaButton() fills this during
-   * render — JSX arguments evaluate before shell() is called, so by the time
-   * the top bar renders the slot holds the current slide's CTA. Plain render-
-   * scoped mutable, reset implicitly every render; NOT state (setting state
-   * during render is a re-render loop).
-   */
-  let topBarCta: { label: string; onClick: () => void } | null = null;
   const shell = (children: ReactNode) => {
-    // The settings gear lives in the top bar only on the flat routine list —
-    // it holds the two whole-routine actions that used to be rows below the
-    // list (owner: "a settings wheel in the top nav … choose preset routine
-    // and revert to previous routine").
-    const gearHere = entrySettled && canEditParts && manualMode === "edit" && entryPhase === "list" && !singleEditRow;
+    // The top bar carries Back and the Layout X only. The primary action sits
+    // at the BOTTOM (see ctaButton), and the two whole-routine actions are
+    // rows at the foot of the list — both back where the owner asked for them.
     return (
     <div style={{ flex: 1, minHeight: 0, minWidth: 0, background: "transparent", position: "relative", isolation: "isolate", display: "flex", flexDirection: "column" }}>
-      <div className="px-4 sm:px-6 md:px-8" style={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0, display: "flex", flexDirection: "column", paddingTop: 24, paddingBottom: 40 }}>
-        {/* Back / Next pills pinned at the very top, sharing the row with the
-            Layout X. The negative margin pulls this bar up over the space the
+      <div className="px-4 sm:px-6 md:px-8" style={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0, display: "flex", flexDirection: "column", paddingTop: 24, paddingBottom: SHELL_PAD_BOTTOM }}>
+        {/* BACK, pinned at the very top, sharing the row with the Layout X.
+            (Next lived here too until the owner asked for Continue back at the
+            bottom; Back stays because it belongs beside the X it steps
+            toward.) The negative margin pulls this bar up over the space the
             chromeless X row + main's pt-2 + this shell's paddingTop occupy
             (36px X + 8 + 24 = 68, plus the safe-area --top-chrome the X row
             pads with); sticky top-0 then pins it — including in the one host
             that renders the flow without Layout, where sticky simply clamps
-            the over-pulled bar back to the viewport top. paddingRight clears
-            the 36px X + its gap so the Next pill never slides under it. */}
+            the over-pulled bar back to the viewport top. paddingRight keeps
+            the row clear of the 36px X. */}
         <div
           style={{
             position: "sticky", top: 0, zIndex: 15, pointerEvents: "none",
@@ -2673,52 +2669,6 @@ export default function WayOfLoveRuleFlow({
               <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
             </button>
             <div style={{ flex: 1 }} />
-            {gearHere && (
-              <div style={{ position: "relative", pointerEvents: "auto" }}>
-                <button
-                  type="button"
-                  aria-label={t("wol_rule.routine_options", { defaultValue: "Routine options" })}
-                  onClick={() => setGearMenuOpen((o) => !o)}
-                  style={{ width: 36, height: 36, borderRadius: 999, ...FROST_BLUR, background: CARD, border: `1px solid ${gearMenuOpen ? CARD_B_ACTIVE : CARD_B}`, color: SAGE, fontSize: 16, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}
-                >
-                  ⚙
-                </button>
-                {gearMenuOpen && (
-                  <>
-                    <div onClick={() => setGearMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 1 }} aria-hidden />
-                    {/* Near-opaque flat color, no backdrop blur — at 0.94 the
-                        blur adds nothing and composites unreliably here. */}
-                    <div style={{ position: "absolute", top: 42, right: 0, zIndex: 2, minWidth: 260, background: "#0d2114", border: `1px solid ${CARD_B}`, borderRadius: 14, padding: 6, display: "flex", flexDirection: "column", gap: 2, boxShadow: "0 12px 32px rgba(0,0,0,0.4)" }}>
-                      <button
-                        type="button"
-                        onClick={() => { setGearMenuOpen(false); setPresetPending(null); setManualMode("preset"); }}
-                        style={{ textAlign: "left", background: "transparent", border: "none", borderRadius: 10, padding: "11px 12px", color: CREAM, fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
-                      >
-                        📋 {t("wol_rule.entry3_preset", { defaultValue: "Choose a preset routine" })}
-                      </button>
-                      {canRevert && (
-                        <button
-                          type="button"
-                          onClick={() => { setGearMenuOpen(false); setLocation("/routine-history"); }}
-                          style={{ textAlign: "left", background: "transparent", border: "none", borderRadius: 10, padding: "11px 12px", color: CREAM, fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
-                        >
-                          ↩️ {t("wol_rule.entry_revert", { defaultValue: "Revert to a past routine" })}
-                        </button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-            {topBarCta && (
-              <button
-                type="button"
-                onClick={topBarCta.onClick}
-                style={{ pointerEvents: "auto", ...FROST_BLUR, background: "rgba(46,107,64,0.72)", border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", color: CREAM, borderRadius: 999, padding: "0 18px", height: 36, fontSize: 14.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer", whiteSpace: "nowrap" }}
-              >
-                {topBarCta.label}
-              </button>
-            )}
           </div>
         </div>
         {/* Full width on mobile; on larger screens capped + centered at the SAME
@@ -3248,10 +3198,31 @@ export default function WayOfLoveRuleFlow({
   );
 
   // The slide's primary action. Renders NOTHING in place — it registers the
-  // label + handler for the top pill bar (owner moved Continue/Back to the
-  // top, next to the X, to free the bottom of the slide). Back is always the
-  // bar's left pill and uses goPrev, which steps back through the dynamic
-  // flow (or exits on the first step).
+  /**
+   * The slide's primary action — AT THE BOTTOM, hovering, content fading under.
+   *
+   * Owner: "lets put the continue back at the bottom, but all the way at
+   * bottom" and "reduce the gap between the cta and the bottom while still
+   * doing the hover." It spent a while as a pill in the top bar; this puts it
+   * back where the thumb is, on the same sticky-with-a-fade treatment it had
+   * before, only sitting lower.
+   *
+   * Back and the ⚙ stay in the top bar. He asked for the CONTINUE to come
+   * down, not the whole pair, and Back belongs beside the X it steps toward.
+   *
+   * HOW THE HOVER IS BUILT, since three parts have to agree:
+   *   marginTop:auto      — on a short slide it still sits at the bottom
+   *                         rather than floating under the last card.
+   *   sticky + bottom:0   — on a long slide it rides above the scroll.
+   *   marginBottom:-GAP   — cancels the shell's own bottom padding so the
+   *                         button can reach the true bottom of the screen.
+   *   paddingTop + the gradient — the fade content passes under.
+   *   boxShadow           — a SOLID skirt below the gradient. Without it the
+   *                         last few pixels under the button stayed
+   *                         transparent and you could see content through the
+   *                         bottom of the fade (owner: "did you notice how
+   *                         bellow the cta on the fade you could stills see").
+   */
   const ctaButton = (rawLabel: string, onClick: () => void) => {
     // Editing one practice, this button is the end of the road — call it Save,
     // not Continue, because there is nothing after it to continue to. Only on
@@ -3261,11 +3232,40 @@ export default function WayOfLoveRuleFlow({
     // this practice, scanning forward rather than testing the adjacent one.
     const savesNow = !!singleEditRow && !nextStepForRow(step, singleEditRow);
     const label = savesNow ? t("common.save", { defaultValue: "Save" }) : rawLabel;
-    // No longer a bottom overlay: the primary action renders as a pill in the
-    // TOP bar (see topBarCta / shell) alongside Back and the Layout X, so the
-    // bottom of the slide is free and nothing fades under a scrim any more.
-    topBarCta = { label, onClick };
-    return null;
+    return (
+      <div
+        style={{
+          marginTop: "auto",
+          position: "sticky",
+          bottom: 0,
+          zIndex: 2,
+          // The shell pads the column by SHELL_PAD_BOTTOM; cancelling it here
+          // is what lets the button sit "all the way at bottom" instead of
+          // floating one paragraph above it.
+          marginBottom: -SHELL_PAD_BOTTOM,
+          paddingTop: 56,
+          // The gap he asked to reduce: the safe-area inset (the home
+          // indicator) plus a hair, rather than the old 40px on top of it.
+          paddingBottom: "calc(8px + max(6px, env(safe-area-inset-bottom)))",
+          background:
+            "linear-gradient(to top, rgba(9,26,16,1) 0%, rgba(9,26,16,1) 66%, rgba(9,26,16,0.9) 80%, rgba(9,26,16,0.45) 91%, rgba(9,26,16,0) 100%)",
+          boxShadow: "0 24px 0 24px rgba(9,26,16,1)",
+        }}
+      >
+        <button
+          type="button"
+          onClick={onClick}
+          style={{
+            width: "100%", ...FROST_BLUR, background: "rgba(46,107,64,0.72)",
+            border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
+            color: CREAM, borderRadius: 999, padding: "15px 20px", fontSize: 16.5,
+            fontWeight: 700, fontFamily: FONT, cursor: "pointer",
+          }}
+        >
+          {label}
+        </button>
+      </div>
+    );
   };
 
   // A radio-style choice row (single-select), with the home cards' left accent
@@ -4080,8 +4080,31 @@ export default function WayOfLoveRuleFlow({
         >
           {t("wol_rule.edit_add_practice", { defaultValue: "+ Add a practice" })}
         </button>
-        {/* Preset + revert moved into the top bar's ⚙ menu (owner) — the list
-            body now ends at Add a practice. */}
+        {/**
+          * Preset + revert, at the FOOT of the list (owner: "lets put the
+          * options back at the bottom").
+          *
+          * They spent a spell in a ⚙ menu in the top bar. Two problems with
+          * that, and he saw both: the menu dropped down over the list's own
+          * instructions, and at 260px wide anchored to a gear ~46px from the
+          * right edge it overflowed the LEFT of the content box and got
+          * clipped — his screenshot read "ose a preset routine" / "ert to a
+          * past routine".
+          *
+          * As rows they need no anchoring, can't be clipped, and read in the
+          * order the decision actually happens: here is your day, and if you'd
+          * rather start over, here are the two ways to. menuRow's chevron says
+          * they navigate rather than select.
+          */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
+          {menuRow("📋", t("wol_rule.entry3_preset", { defaultValue: "Choose a preset routine" }),
+            t("wol_rule.entry3_preset_sub", { defaultValue: "Start from a rhythm someone else keeps" }),
+            () => { setPresetPending(null); setManualMode("preset"); })}
+          {canRevert && menuRow("↩️", t("wol_rule.entry_revert", { defaultValue: "Revert to a past routine" }),
+            t("wol_rule.entry_revert_sub", { defaultValue: "Go back to a rhythm you kept before" }),
+            () => setLocation("/routine-history"))}
+        </div>
+
         {ctaButton(t("wol_rule.next_notifications", { defaultValue: "Next: notifications" }), () => setEntryPhase("notify"))}
 
         {deletingEditRow && (
