@@ -1341,23 +1341,6 @@ declare global {
         // The wide widget's next two home cards — see widgetSync.ts nextCards.
         nextCards?: Array<{ emoji: string; title: string; subtitle: string; cta: string; rgb: string; tint: number; later: boolean }> | null;
         heroDeepLink?: string | null;
-        // "Past 7 Days" grid — the SAME data + row-label mode the home
-        // card's WayOfLoveTurnLearnPray shows (Turn/Learn/Pray, or
-        // Morning/Contemplative/Evening if the viewer set that in
-        // Settings). weeklyGrid[row][day], oldest day first / today last,
-        // matching the home card's column order; weeklyLabels[row] names it.
-        weeklyLabels?: string[] | null;
-        // Per-row emoji (🌅/🕯️/🌙 or 🔄/📖/🙏🏽) — the widget shows these as
-        // its row labels instead of a letter, matching the home card.
-        weeklyEmoji?: string[] | null;
-        weeklyGrid?: boolean[][] | null;
-        // "Started but not yet met the day's quota" — the home card's
-        // half-shaded dot (currently only ever true for Contemplation,
-        // today's column). Parallel to weeklyGrid, same [row][day] shape.
-        weeklyPartial?: boolean[][] | null;
-        // Day-of-week initials for the grid's header row (S/M/T/W/T/F/S),
-        // oldest day first / today last — same order as weeklyGrid's columns.
-        weeklyDayInitials?: string[] | null;
       }) => void;
       isNative: () => boolean;
       // Synchronous front door for Browser.open. The previous bridge
@@ -1477,11 +1460,6 @@ function exposePublicApi() {
           heroSubtitle: state.heroSubtitle ?? null,
           heroCta: state.heroCta ?? null,
           heroDeepLink: state.heroDeepLink ?? null,
-          weeklyLabels: state.weeklyLabels ?? null,
-          weeklyEmoji: state.weeklyEmoji ?? null,
-          weeklyGrid: state.weeklyGrid ?? null,
-          weeklyPartial: state.weeklyPartial ?? null,
-          weeklyDayInitials: state.weeklyDayInitials ?? null,
           /**
            * THIS LIST IS A HAND-COPIED MIRROR of widgetSync's payload, and it
            * BITES: a field missing here is silently dropped at the bridge —

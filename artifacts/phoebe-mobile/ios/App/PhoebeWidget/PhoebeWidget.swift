@@ -380,15 +380,18 @@ struct PhoebeWidgetView: View {
         case .systemMedium:
             // The wide widget shows the NEXT TWO CARDS (owner: "rebuild the
             // wide widget to show the next two cards, and have the UI match
-            // EXACTLY"). An old app build's payload has no nextCards field —
-            // those keep the weekly grid they were pushed for.
-            if let cards = stats.nextCards {
+            // EXACTLY"). The weekly grid is RETIRED — the app no longer sends
+            // weekly fields at all, so the only payload that still carries
+            // them is one written by the previous build and left in the App
+            // Group container across an upgrade, read in the window before the
+            // new bundle runs once. A retired surface shouldn't reappear even
+            // for that window, so fall back to the time-based cards rather
+            // than to homeWeeklyGrid (which is now unreachable; it stays
+            // defined until someone with Xcode open can compile its removal).
+            if let cards = stats.nextCards, !cards.isEmpty {
                 homeNextCards(cards)
-            } else if stats.weeklyLabels.isEmpty {
-                // No cards AND no grid rows — never render just the wordmark.
-                homeNextCards(PhoebeStats.timeBasedFallback().nextCards ?? [])
             } else {
-                homeWeeklyGrid
+                homeNextCards(PhoebeStats.timeBasedFallback().nextCards ?? [])
             }
         default:
             // .systemSmall is no longer OFFERED (see supportedFamilies), but

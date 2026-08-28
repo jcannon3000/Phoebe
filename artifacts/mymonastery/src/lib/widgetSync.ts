@@ -22,7 +22,6 @@ import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { sortCardsByUserOrder, getRoutineOrder } from "@/lib/routineOrder";
 import { rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { computeWeeklyGrid, type PracticeWeekDay } from "@/lib/weeklyGrid";
 
 type WidgetState = {
   heroKind: "office" | "reflect" | "summary";
@@ -44,19 +43,6 @@ type WidgetState = {
   reflectAvailable: boolean;
   contemplationMin: number;
   contemplationGoalMin: number;
-  // "Past 7 Days" grid — the SAME data + row-label mode
-  // (Turn/Learn/Pray vs Morning/Contemplative/Evening) the home card shows,
-  // via the shared computeWeeklyGrid (lib/weeklyGrid.ts). weeklyGrid[row][day],
-  // oldest day first / today last, matching the home card's column order.
-  weeklyLabels: string[];
-  weeklyEmoji: string[];
-  weeklyGrid: boolean[][];
-  // "Started but not yet met the day's quota" — the home card's half-shaded
-  // dot (currently only ever true for Contemplation, today's column). Kept
-  // as its own parallel grid rather than folded into weeklyGrid so the
-  // widget can tell "kept" from "partial" apart, same as the web card does.
-  weeklyPartial: boolean[][];
-  weeklyDayInitials: string[];
   /**
    * THE NEXT TWO CARDS, exactly as the home's Next list would render them
    * (owner: "rebuild the wide widget to show the next two cards, and have
@@ -144,17 +130,6 @@ export function useWidgetSync(): void {
     queryFn: () => apiRequest("GET", "/api/cac/today-meta"),
     enabled: enabled && cacSource, staleTime: 30 * 60_000,
   });
-  // Same tz + query key WayOfLoveTurnLearnPray.tsx uses for the identical
-  // fetch, so React Query shares the one cached result instead of doubling
-  // the request — this hook and the home card end up reading the exact
-  // same server response.
-  const weekTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
-  const weekQ = useQuery<{ days: PracticeWeekDay[] }>({
-    queryKey: ["/api/me/practice-week", weekTz],
-    queryFn: () => apiRequest("GET", `/api/me/practice-week?tz=${encodeURIComponent(weekTz)}`),
-    enabled, staleTime: 60_000,
-  });
-  const practiceMode = true; // Morning/Contemplative/Evening — see usePracticeModePref.
 
   // Stable signatures for the array-valued rhythm state, so the push effect
   // re-runs only when the reflections / custom anchors actually change (their
@@ -410,20 +385,10 @@ export function useWidgetSync(): void {
       heroCta = "";
     }
 
-    // Same shared function the home card renders from (lib/weeklyGrid.ts) —
-    // `turned` is just `true` here rather than reading the local per-day
-    // stamp: this effect only ever runs inside the native app with an
-    // authenticated user, so its running AT ALL already satisfies Turn's
-    // actual definition ("opened Phoebe today").
-    const weekly = computeWeeklyGrid({ rhythm: r, week: weekQ.data, practiceMode, turned: true });
-    // Settings → Home display → Weekly Progress governs the widget's grid too.
-    // widgetSync never read the key, so turning the weekly card off on the home
-    // left the same seven-day grid sitting on the Home Screen — the one place
-    // you can't dismiss it. Same key settings.tsx and the card itself write.
-    const weeklyHidden = (() => {
-      try { return localStorage.getItem("phoebe:hide-turn-learn-pray") === "1"; } catch { return false; }
-    })();
-
+    // The weekly seven-day grid is RETIRED (owner: "we got rid of the weekly
+    // progress"), so the widget no longer computes or sends one. The wide
+    // widget has rendered the next two cards since 0a4b7cde; with these fields
+    // gone the Swift's legacy grid branch is simply never reached.
     const bridge = (window as unknown as { PhoebeNative?: WidgetBridge }).PhoebeNative;
     bridge?.updateWidget?.({
       heroKind,
@@ -445,18 +410,12 @@ export function useWidgetSync(): void {
       reflectAvailable: r.reflectActive,
       contemplationMin: r.contemplationMin,
       contemplationGoalMin: r.contemplationGoalMin,
-      weeklyLabels: weeklyHidden ? [] : weekly.rows.map((row) => row.label),
-      weeklyEmoji: weeklyHidden ? [] : weekly.rows.map((row) => row.emoji),
-      weeklyGrid: weeklyHidden ? [] : weekly.rows.map((row) => row.kept),
-      weeklyPartial: weeklyHidden ? [] : weekly.rows.map((row) => row.partial),
-      weeklyDayInitials: weeklyHidden ? [] : weekly.dayInitials,
       nextCards,
       updatedAt: new Date().toISOString(),
     });
   }, [
     enabled,
     r.ready,
-    weekQ.data, practiceMode,
     r.morningActive, r.morningDone, r.eveningActive, r.eveningDone,
     r.morningContemplationActive, r.morningContemplationDone,
     r.eveningContemplationActive, r.eveningContemplationDone,
