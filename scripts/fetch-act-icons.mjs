@@ -102,7 +102,11 @@ async function resolveLicences(titles) {
 }
 
 const tidy = (v) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : v);
-const EXCLUDED_ARTISTS = ["blake, william", "herrel, edie mae", "wesley, frank"];
+const EXCLUDED_ARTISTS = ["blake, william", "herrel, edie mae"];
+/** Single works the owner has asked out of the library, by ACT record id —
+ *  the artist stays. 59230 = Frank Wesley, "Before Abraham Was I Am"
+ *  (owner: "no, I just didn't want that image"). */
+const EXCLUDED_IDS = new Set([59230]);
 
 function attribution(a, artist, original) {
   const who = artist ? `${artist}. ` : "";
@@ -162,6 +166,7 @@ const main = async () => {
     if (artist && EXCLUDED_ARTISTS.some((x) => String(artist).toLowerCase().includes(x))) {
       dropped.excludedArtist++; continue;
     }
+    if (EXCLUDED_IDS.has(a.id)) { dropped.excludedWork = (dropped.excludedWork ?? 0) + 1; continue; }
     kept.push({
       id: a.id,
       title: tidy(a.title),

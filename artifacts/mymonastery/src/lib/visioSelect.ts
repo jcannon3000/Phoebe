@@ -35,7 +35,12 @@ const BY_ID = new Map(ACT_CATALOGUE.map((a) => [a.id, a]));
  * chooseArtwork falls through to live matching).
  */
 function pool(): CatalogueArtwork[] {
-  return ACT_CATALOGUE.filter((a) => !isActHidden(a.id));
+  const p = ACT_CATALOGUE.filter((a) => !isActHidden(a.id));
+  // Everything hidden (or a corrupted overrides snapshot marking it so) must
+  // not crash the practice — rotationForDay indexes this array. A hidden work
+  // showing again is the recoverable failure; a blank Visio is not (the
+  // blank-screen rule this repo keeps).
+  return p.length > 0 ? p : ACT_CATALOGUE;
 }
 
 /** One specific artwork, for re-opening something from the history gallery. */

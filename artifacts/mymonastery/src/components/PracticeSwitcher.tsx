@@ -69,7 +69,16 @@ const SWITCHABLE: Array<{
   { level: "examen", emoji: () => "🌗", name: () => "The Examen", href: (s) => `/examen?side=${s}` },
   { level: "compline", emoji: () => "🌙", name: () => "Compline", href: () => "/bcp/daily-office?mode=compline" },
   { level: "reflect-sit", emoji: () => "🕯️", name: () => "Contemplative Prayer", href: () => "/contemplation?begin=1" },
-  { level: "creation", emoji: () => "🌍", name: () => "Creation Prayer", href: () => "/cobreathe" },
+  /**
+   * NO "creation" entry, on purpose (audit). A swap sets the SIDE'S LEVEL,
+   * and level "creation" cannot complete: the creation-devotion deck flags
+   * `office-completed:creation-<side>`, which anchorModesFor never reads,
+   * and sideDone in useRhythmState has no creation clause — so the swapped
+   * day would sit un-keepable however it was prayed. (Creation Prayer as a
+   * contemplation KIND is a different, working subsystem — not a level.)
+   * If the Season-of-Creation level is ever finished, add the entry with
+   * href /creation-devotion?mode=creation-<side> — never /cobreathe.
+   */
 ];
 
 /**
@@ -114,9 +123,9 @@ export function PracticeSwitcher({ side, current }: {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
-  // What the routine already keeps — silence and Creation Prayer come from
-  // the same computation every other surface reads (the one-computation rule).
-  const { silenceActive, cobreatheActive } = useRhythmState();
+  // What the routine already keeps — silence comes from the same computation
+  // every other surface reads (the one-computation rule).
+  const { silenceActive } = useRhythmState();
 
   /**
    * The menu = every switchable practice MINUS what their routine already
@@ -134,7 +143,6 @@ export function PracticeSwitcher({ side, current }: {
   const options = SWITCHABLE.filter((p) => {
     if (kept.has(p.level)) return false;
     if (p.level === "reflect-sit" && silenceActive) return false;
-    if (p.level === "creation" && cobreatheActive) return false;
     return true;
   });
 
