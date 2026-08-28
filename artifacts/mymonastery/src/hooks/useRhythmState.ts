@@ -14,7 +14,7 @@ import {
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { practiceOnDay } from "@/lib/practiceDays";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay, hasAnchorOfficeIntentToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
-import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday } from "@/lib/officeManualLog";
+import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday, isOfficeLoggedToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { anchorModesFor, getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, getSideReflectionExplicit, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT, getSideContemplationKind, getContemplationStyleGlobal, type ContemplationKind as SideContemplationKind } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
@@ -1399,7 +1399,16 @@ export function useRhythmState(): RhythmState {
    */
   const customAnchorsWithOfficeCredit = customAnchors.map((a) => (
     !a.done && a.office && hasAnchorOfficeIntentToday(a.id)
-      && (a.office === "morning" ? morningDone : eveningDone)
+      // THE OFFICE'S OWN FLAG, not the side's done-state.
+      //
+      // morningDone answers "is this person's morning practice complete",
+      // which is a different question. VTS's morning is Simple Guided
+      // Prayer, so completing SGP would have credited Chapel for an office
+      // nobody prayed — and on a side carrying a second practice the reverse
+      // also failed, because the side's completion modes exclude the full
+      // office there. isOfficeLoggedToday asks the only question this
+      // feature is about: was Morning Prayer itself prayed today.
+      && isOfficeLoggedToday(a.office)
       ? { ...a, done: true }
       : a
   ));
