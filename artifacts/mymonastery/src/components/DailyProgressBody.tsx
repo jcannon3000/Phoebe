@@ -1490,12 +1490,21 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // the splash + the dashboard "what's next" hero — Evening never leads earlier).
   /**
    * THE USER'S OWN ORDER outranks the built-in slot order (owner: practices
-   * are standalone "and then you as the user order them"). Colour is assigned
-   * BEFORE the sort so a card keeps its place on the green→purple ramp by its
-   * build position — dragging a card up shouldn't repaint the whole rhythm.
-   * Cards the saved order doesn't know keep build order at the end.
+   * are standalone "and then you as the user order them"). Cards the saved
+   * order doesn't know keep build order at the end.
+   *
+   * SORT FIRST, THEN COLOUR (owner: "make sure the shading of the ctas are in
+   * the vertical custom order"). Colour used to be assigned by BUILD position
+   * and the list sorted afterwards — deliberately, so dragging a card up
+   * wouldn't repaint the rhythm. But that guarantee is what broke the ramp:
+   * the accent no longer descends in the order the person actually sees, so a
+   * list read top to bottom showed its greens shuffled. The ramp is a property
+   * of POSITION IN THE LIST, so it has to be read off the sorted list. A drag
+   * now does re-shade the cards it moves past, which is the correct behaviour
+   * — the gradient belongs to the column, not to the practice.
    */
-  const coloredCards = sortCardsByUserOrder(cards.map((c, i) => ({ ...c, rgb: rhythmGradientRgb(i, cards.length) })));
+  const coloredCards = sortCardsByUserOrder(cards)
+    .map((c, i, arr) => ({ ...c, rgb: rhythmGradientRgb(i, arr.length) }));
   /**
    * THE NOTIFICATION'S PRACTICE IS THE HERO (owner: "the ones they set as
    * their practices associated with their notification should be their

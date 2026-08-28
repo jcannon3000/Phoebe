@@ -876,7 +876,9 @@ export default function RuleOfLifePage() {
       <Layout
         bgPhoto={flowLeaf}
         chromeless
-        onClose={() => (result ? setPhase("result") : setLocation("/daily-progress"))}
+        // Leaving the editor lands on the HOME screen, not Daily progress
+        // (owner) — the home is where the routine you just edited is shown.
+        onClose={() => (result ? setPhase("result") : setLocation("/dashboard"))}
       >
         {/* Hold the flow until the guest shape is settled — mounting it while
             /auth/me is in flight would run one render as the FULL flow and let
@@ -899,7 +901,7 @@ export default function RuleOfLifePage() {
                   ? setShowFullFlow(false)
                   : result
                   ? setPhase("result")
-                  : setLocation("/daily-progress")
+                  : setLocation("/dashboard")
               }
               onDone={() => setLocation("/dashboard")}
             />

@@ -321,19 +321,19 @@ export function useWidgetSync(): void {
       return (a.isPrimary ? 0 : 1) - (b.isPrimary ? 0 : 1);
     });
     /**
-     * The accent ramp is assigned by BUILD position, before the user's own
-     * order is applied — the same two-step the home runs (colour before sort,
-     * so dragging a card up doesn't repaint the whole rhythm), through the
-     * same rhythmGradientRgb.
-     */
-    const withRgb = slotOrdered.map((it, i) => ({ ...it, rgb: rhythmGradientRgb(i, slotOrdered.length) }));
-    /**
      * THE PERSON'S OWN ORDER, via the same sortCardsByUserOrder the home's
      * Next list runs — the items carry real home-card keys for exactly this.
      * Without it the widget's "next two" could disagree with the top of the
      * person's own list, which is the drift this file's contract forbids.
+     *
+     * …and the accent ramp is read off the SORTED list, exactly as the home
+     * now does (owner: the shading follows the vertical order). Colouring
+     * before the sort left the widget's two cards carrying whatever ramp
+     * position they happened to be built at, which could put the darker green
+     * above the lighter one — the same shuffle the home showed.
      */
-    const ordered = sortCardsByUserOrder(withRgb);
+    const ordered = sortCardsByUserOrder(slotOrdered)
+      .map((it, i, arr) => ({ ...it, rgb: rhythmGradientRgb(i, arr.length) }));
     // "Next" = the first not-done practice whose slot HASN'T already passed
     // today (a passed slot is "tomorrow", not next). Falls back to summary.
     const upNext = ordered.filter((i) => !i.done && !isSlotPast(i.slot, now));

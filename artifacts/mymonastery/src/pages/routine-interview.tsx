@@ -771,7 +771,7 @@ export default function RoutineInterviewPage() {
       ? "Reading what you wrote…"
       : "Shaping your rhythm in Phoebe…";
     return (
-      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
         <div style={{ ...wrap, minHeight: "60dvh", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
           <div
             aria-hidden
@@ -796,7 +796,7 @@ export default function RoutineInterviewPage() {
   // ── 0. Adjust, or start over? Only for someone who already has a routine. ──
   if (phase === "mode") {
     return (
-      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
         <div style={wrap}>
           {progressBars}
           <div>
@@ -870,7 +870,7 @@ export default function RoutineInterviewPage() {
     // you like to change?" about a routine that doesn't exist.
     const adjusting = effectiveMode === "adjust";
     return (
-      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
         <div style={wrap}>
           {progressBars}
           <div>
@@ -956,7 +956,7 @@ export default function RoutineInterviewPage() {
     const chosen = choices.find((c) => c === answer) ?? null;
     const wroteInstead = answer.length > 0 && !chosen;
     return (
-      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
         <div style={wrap}>
           {progressBars}
           <div>
@@ -1224,7 +1224,7 @@ export default function RoutineInterviewPage() {
     };
 
     return (
-      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
         <div style={wrap}>
           {progressBars}
           <div>
@@ -1883,7 +1883,7 @@ export default function RoutineInterviewPage() {
     };
 
     return (
-      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
         <div style={wrap}>
           {progressBars}
           <div>
@@ -2080,7 +2080,7 @@ export default function RoutineInterviewPage() {
     .filter((l): l is string => l !== null);
 
   return (
-    <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
+    <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
       <div style={wrap}>
           {progressBars}
         <div>
