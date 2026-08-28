@@ -63,4 +63,19 @@ router.put("/admin/act-overrides", async (req, res): Promise<void> => {
   res.json({ override: row });
 });
 
+// GET /api/admin/lectionary-check — the forward lection checker's latest
+// report (see lib/lectionaryCheck). ?run=1 forces a fresh run. Lives here
+// beside the other owner-operator surface rather than its own file.
+router.get("/admin/lectionary-check", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "not_authenticated" }); return; }
+  if (!(await isSuperAdminUser(session.id))) { res.status(403).json({ error: "forbidden" }); return; }
+  const { getLectionaryReport, runLectionaryCheck } = await import("../lib/lectionaryCheck");
+  if (req.query.run === "1" || !getLectionaryReport()) {
+    try { await runLectionaryCheck(Number(req.query.days ?? 14) || 14); }
+    catch (e) { res.status(502).json({ error: "check_failed", detail: String(e) }); return; }
+  }
+  res.json(getLectionaryReport());
+});
+
 export default router;

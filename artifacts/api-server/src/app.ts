@@ -209,6 +209,11 @@ if (runInWeb) {
   import("./lib/bellSender").then(({ startBellScheduler }) => startBellScheduler()).catch((err) => {
     logger.error({ err }, "[bell-scheduler] failed to boot");
   });
+  // The forward lection checker — 3 AM ET daily + a boot run, diffing our
+  // appointed readings against Forward Movement's published lectionary.
+  import("./lib/lectionaryCheck").then(({ startLectionaryChecker }) => startLectionaryChecker()).catch((err) => {
+    logger.error({ err }, "[lectionary-check] failed to boot");
+  });
 }
 
 // ─── Shared server clock ───────────────────────────────────────────────────
