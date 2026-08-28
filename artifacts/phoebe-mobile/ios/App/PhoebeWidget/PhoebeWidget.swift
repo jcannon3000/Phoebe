@@ -519,18 +519,38 @@ struct PhoebeWidgetView: View {
     /// actual card width over it, so the widget card is the home card
     /// proportionally smaller rather than the same card squeezed narrower.
     private static let homeCardWidth: CGFloat = 390 - 32
+    /// One card's height at scale 1, from this file's own numbers: the title
+    /// and blurb lines, their 2pt gap, 14pt of padding top and bottom, and the
+    /// 1pt border on each edge. Used to keep the stack from filling the widget.
+    private static let cardHeightAt1: CGFloat = 14.5 * 1.2 + 2 + 12 * 1.2 + 28 + 2
 
     private func homeNextCards(_ cards: [NextCard]) -> some View {
         // No wordmark (owner reversal: "take the Phoebe title out so the
         // pills can be more centered") — the cards ARE the widget, centered.
         GeometryReader { geo in
-            nextCardsStack(
-                cards,
-                // Clamped so a very small or unusually wide canvas can't push
-                // the type past legibility in either direction.
-                max(0.7, min(1.0, (geo.size.width - 24) / Self.homeCardWidth))
-            )
+            nextCardsStack(cards, Self.cardScale(geo.size, count: max(1, min(2, cards.count))))
         }
+    }
+
+    /// The single factor every measurement in a card is multiplied by.
+    ///
+    /// It was derived from WIDTH alone, which is what kept the cards looking
+    /// uncentred however the alignment was written: at that scale two cards
+    /// came to roughly 119pt inside the ~126pt a medium widget actually gives
+    /// its content, so they FILLED the space — three points of margin top and
+    /// bottom is not a centred layout, it is a full one, and no amount of
+    /// spacers or alignment can centre something with nothing left over.
+    ///
+    /// So height constrains it too: the stack is held to ~84% of the available
+    /// height, and the remainder is what the spacers split. Because the factor
+    /// is shared by every value in the card, honouring height costs nothing in
+    /// fidelity — the card stays the home card's exact proportions, just a
+    /// little smaller (owner: "just proportionally smaller").
+    private static func cardScale(_ size: CGSize, count: Int) -> CGFloat {
+        let byWidth = (size.width - 24) / homeCardWidth
+        let stackAt1 = CGFloat(count) * cardHeightAt1 + CGFloat(count - 1) * 8
+        let byHeight = stackAt1 > 0 ? (size.height * 0.84) / stackAt1 : 1
+        return max(0.62, min(1.0, min(byWidth, byHeight)))
     }
 
     private func nextCardsStack(_ cards: [NextCard], _ s: CGFloat) -> some View {
