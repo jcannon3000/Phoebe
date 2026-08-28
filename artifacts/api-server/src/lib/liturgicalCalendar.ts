@@ -165,8 +165,15 @@ export function getSeason(date: Date): LiturgicalSeason {
   // Season after Pentecost: day after Pentecost through day before Advent 1
   if (d > pentecost && d < advent1ThisYear) return "season_after_pentecost";
 
-  // Advent: Advent 1 through Dec 24
-  if (d >= advent1ThisYear && d.getMonth() === 11 && d.getDate() < 25) return "advent";
+  // Advent: Advent 1 through Dec 24.
+  //
+  // The month test used to be `getMonth() === 11`, which silently excluded
+  // NOVEMBER — and Advent 1 falls between November 27 and December 3, so in
+  // most years the first days of Advent (Advent Sunday itself, the start of the
+  // church year) failed every branch here and landed in the fallback, which
+  // reported them as the season after Pentecost: Advent Sunday served as
+  // Proper 29. Bound the season by its real end date instead.
+  if (d >= advent1ThisYear && d < new Date(year, 11, 25)) return "advent";
 
   // Christmas: Dec 25 through Jan 5
   if (d.getMonth() === 11 && d.getDate() >= 25) return "christmas";
@@ -264,6 +271,24 @@ export function getProperNumber(date: Date): number | null {
 
 // ── Week in Season ─────────────────────────────────────────────────────────────
 
+/**
+ * The First Sunday after the Epiphany (the Baptism of our Lord) — the Sunday
+ * that opens "Week of 1 Epiphany". Strictly AFTER January 6: in a year when
+ * the Epiphany itself falls on a Sunday, Epiphany 1 is the following week.
+ */
+function firstSundayAfterEpiphany(year: number): Date {
+  const epiphany = new Date(year, 0, 6);
+  const dow = epiphany.getDay();
+  return addDays(epiphany, dow === 0 ? 7 : 7 - dow);
+}
+
+/** The First Sunday in Lent — the Sunday after Ash Wednesday, which opens
+ *  "Week of 1 Lent". The four days from Ash Wednesday to the Saturday before
+ *  it are their own block (see epiphany_last_* in getLectionaryWeekKey). */
+function lent1Sunday(year: number): Date {
+  return addDays(addDays(computeEaster(year), -46), 4);
+}
+
 function getWeekInSeason(date: Date, season: LiturgicalSeason): number {
   const d = startOfDay(date);
   const year = d.getFullYear();
@@ -280,14 +305,30 @@ function getWeekInSeason(date: Date, season: LiturgicalSeason): number {
           : new Date(year - 1, 11, 25);
       return Math.floor(daysBetween(christmas, d) / 7) + 1;
     }
+    /**
+     * A LITURGICAL WEEK IS NAMED FOR THE SUNDAY THAT BEGINS IT.
+     *
+     * "Week of 2 Epiphany" begins on the Second Sunday after the Epiphany;
+     * "Week of 4 Lent" begins on the Fourth Sunday in Lent. Advent, Easter and
+     * the season after Pentecost got this right for free, because they are
+     * counted from a date that IS a Sunday (Advent 1, Easter Day, Pentecost).
+     *
+     * Epiphany and Lent were counted from January 6 and from ASH WEDNESDAY —
+     * neither of which is a Sunday — so their 7-day blocks straddled the week
+     * and the number rolled over mid-week. Every Wednesday through Saturday of
+     * Lent, and (in a year like 2027, when January 6 is a Wednesday) of
+     * Epiphany, was served the NEXT week's psalms, lessons and collect.
+     *
+     * The tail of Lent is where it finally became visible: the last four days
+     * computed lent_6_*, a key the lectionary has no entry for — the week after
+     * 5 Lent is Holy Week — so those days fell through to the generic
+     * placeholder readings the resolver hands back on a miss.
+     */
     case "epiphany": {
-      const epiphany = new Date(year, 0, 6);
-      return Math.floor(daysBetween(epiphany, d) / 7) + 1;
+      return Math.max(1, Math.floor(daysBetween(firstSundayAfterEpiphany(year), d) / 7) + 1);
     }
     case "lent": {
-      const easter = computeEaster(year);
-      const ashWed = addDays(easter, -46);
-      return Math.floor(daysBetween(ashWed, d) / 7) + 1;
+      return Math.max(1, Math.floor(daysBetween(lent1Sunday(year), d) / 7) + 1);
     }
     case "holy_week":
       return 1;
@@ -594,6 +635,13 @@ function getCollectKey(
         ? "collect_christmas_1"
         : "collect_christmas_2";
     case "epiphany": {
+      // Before the First Sunday after the Epiphany there is no "week of N"
+      // collect yet — the Epiphany's own collect carries those days. (Its
+      // weekInSeason is clamped to 1, so without this the gap days would have
+      // borrowed Epiphany 1's collect a few days early.)
+      if (startOfDay(date) < startOfDay(firstSundayAfterEpiphany(date.getFullYear()))) {
+        return "collect_epiphany";
+      }
       if (weekInSeason === 1 && dayOfWeek === 0) return "collect_epiphany_1";
       // Last Sunday after Epiphany
       const year = date.getFullYear();
@@ -610,7 +658,11 @@ function getCollectKey(
       const year = date.getFullYear();
       const easter = computeEaster(year);
       const ashWed = addDays(easter, -46);
-      if (startOfDay(date).getTime() === startOfDay(ashWed).getTime()) {
+      // Ash Wednesday AND the days after it, up to the First Sunday in Lent:
+      // the BCP appoints the Ash Wednesday collect through that Saturday, and
+      // there is no "week of N Lent" to draw from until Lent 1.
+      if (startOfDay(date) >= startOfDay(ashWed)
+          && startOfDay(date) < startOfDay(lent1Sunday(year))) {
         return "collect_ash_wednesday";
       }
       return `collect_lent_${Math.min(weekInSeason, 5)}`;
@@ -766,6 +818,22 @@ function getLectionaryWeekKey(
   }
   if (m === 0 && dom >= 2 && dom <= 5 && dayOfWeek !== 0) {
     return `christmas_jan${dom}`;
+  }
+  // The Epiphany itself. It is not in the Holy Days readings table, so without
+  // this it fell through to the weekly cycle and was served an ordinary
+  // weekday's psalms and lessons (Genesis 3 and Hebrews 2 in 2026) while its
+  // own proper — Isaiah 52:7-10, Revelation 21:22-27, Matthew 12:14-21 — sat
+  // unreachable in the lectionary as `epiphany_day`.
+  if (m === 0 && dom === 6) return "epiphany_day";
+  // January 7–12 are DATED entries (epiphany_jan7 … epiphany_jan12): they
+  // cover the gap between the Epiphany and the First Sunday after it, whose
+  // date floats between the 7th and the 13th. The weekly cycle takes over from
+  // that Sunday, so a dated key applies only strictly before it — and never on
+  // the Sunday itself, which is Epiphany 1. Without this branch all six table
+  // entries were unreachable and those days were served week-1 content.
+  if (m === 0 && dom >= 7 && dom <= 12
+      && startOfDay(date) < startOfDay(firstSundayAfterEpiphany(year))) {
+    return `epiphany_jan${dom}`;
   }
 
   // Easter-relative special days

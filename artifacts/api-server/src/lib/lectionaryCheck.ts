@@ -23,6 +23,7 @@
  */
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getLectionaryReadings } from "./lectionary";
+import { lectionary } from "../data/lectionary1979";
 
 const FM_BASE = "https://prayer.forwardmovement.org/data/lectionary";
 const UA = "Phoebe/1.0 (prayer app; +https://withphoebe.app; jcannon3000@gmail.com)";
@@ -98,11 +99,12 @@ export function fmSlugCandidates(weekKey: string): string[] {
   // FM has no ash-wednesday slug — the BCP lectionary places Ash Wednesday
   // in the Last Epiphany week, and FM keys it that way.
   if (weekKey === "ash_wednesday") out.push("ash-wednesday", "wednesday-last-epiphany");
-  if (weekKey === "trinity_sunday") out.push("trinity-sunday");
+  // FM prefixes both of these with the weekday, like its ordinary days.
+  if (weekKey === "trinity_sunday") out.push("sunday-trinity-sunday", "trinity-sunday");
   if (weekKey === "trinity_eve") out.push("eve-trinity-sunday");
   if (weekKey === "pentecost_eve") out.push("eve-of-pentecost");
   if (weekKey === "ascension_eve") out.push("eve-of-ascension");
-  if (/^pentecost/.test(weekKey)) out.push("pentecost", "day-of-pentecost");
+  if (/^pentecost/.test(weekKey)) out.push("sunday-pentecost", "pentecost", "day-of-pentecost");
   return out;
 }
 
@@ -284,9 +286,69 @@ export async function runLectionaryCheck(daysAhead = 14): Promise<LectionaryRepo
             ...(saintFirst ? [`st-${saintFirst}`] : []),
             slugify(base.replace(/^the /, "")),
             slugify(base.replace(/ day$/, "")),
+            // "Saint" abbreviates to "st" ANYWHERE in FM's slugs, not just at
+            // the front: "The Nativity of Saint John the Baptist" is
+            // "nativity-of-st-john-the-baptist".
+            slugify(base.replace(/^the /, "").replace(/\bsaint\b/g, "st")),
           ];
         })()
       : [];
+    /**
+     * SELF-CHECKS — the ones this checker structurally cannot make against FM.
+     *
+     * Every comparison below derives its FM slug from OUR OWN week key, so a
+     * calendar that serves the right content on the WRONG DATE agrees with
+     * itself and passes. That blind spot hid three real defects for as long as
+     * this checker has existed: Lent and Epiphany counted their weeks from Ash
+     * Wednesday and January 6 rather than from the Sunday that names the week
+     * (so Wednesday through Saturday of every such week served the next week's
+     * readings and collect), Advent's season test excluded November (Advent
+     * Sunday came back as Proper 29), and the Epiphany's own proper was
+     * unreachable. These assertions are date-anchored instead of slug-anchored,
+     * so they catch that class without asking anyone.
+     */
+    const dow = date.getDay();
+    // (a) The key must EXIST. A miss falls back to generic placeholder readings
+    //     with only a console.warn — which is how lent_6_* went unnoticed.
+    if (!od.holyDayReadings && !lectionary[od.lectionaryWeekKey]) {
+      problems.push(`no lectionary entry for key "${od.lectionaryWeekKey}" — serving fallback readings`);
+      check.ok = false;
+    }
+    // (b) The key's day name must match the real weekday.
+    const expectedDayName = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][dow]!;
+    if (/_(sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/.test(od.lectionaryWeekKey)
+        && !od.lectionaryWeekKey.endsWith(`_${expectedDayName}`)) {
+      problems.push(`key "${od.lectionaryWeekKey}" does not match weekday ${expectedDayName}`);
+      check.ok = false;
+    }
+    // (c) A week is named for the Sunday that begins it: every day must carry
+    //     the same week number as the Sunday on or before it. Compared only
+    //     within one season — a boundary week legitimately changes name.
+    const weekNum = (k: string) => /^([a-z_]+?)_(\d+)_/.exec(k);
+    const mine = weekNum(od.lectionaryWeekKey);
+    if (mine && dow !== 0) {
+      const sunday = new Date(date); sunday.setDate(sunday.getDate() - dow);
+      const sod = getOfficeDay(sunday);
+      const theirs = weekNum(sod.lectionaryWeekKey);
+      if (theirs && theirs[1] === mine[1] && theirs[2] !== mine[2]) {
+        problems.push(
+          `week rolls over mid-week: ${od.lectionaryWeekKey} but its Sunday is ${sod.lectionaryWeekKey}`,
+        );
+        check.ok = false;
+      }
+    }
+    // (d) Nothing the office serves may be one of the printed book's dash
+    //     rules — those mean "nothing appointed", not a reference to look up.
+    for (const o of ["morning", "evening"] as const) {
+      const r = getLectionaryReadings(od, o);
+      const dashy = [...(r.psalms ?? []), r.lesson1, r.lesson2, r.lesson3]
+        .filter((v) => typeof v === "string" && /^\s*-+\s*$/.test(v));
+      if (dashy.length > 0) {
+        problems.push(`${o} office serves a placeholder rule ("${dashy[0]}") as a reading`);
+        check.ok = false;
+      }
+    }
+
     const candidates = [...feastSlugs, ...fmSlugCandidates(od.lectionaryWeekKey)];
     const slug = candidates.find((c) => slugSet.has(c)) ?? null;
     check.fmSlug = slug;

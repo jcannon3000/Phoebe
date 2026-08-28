@@ -442,7 +442,7 @@ export const lectionary: Record<string, LectionaryEntry> = {
     lesson3_y1: "Matt. 12:14-21",
     lesson1_y2: "Isa. 49:1-7",
     lesson2_y2: "Rev. 21:22-27",
-    lesson3_y2: "Matt. 12-14-21",
+    lesson3_y2: "Matt. 12:14-21",
   },
   epiphany_jan7: {
     psalms_mp: ["103"],

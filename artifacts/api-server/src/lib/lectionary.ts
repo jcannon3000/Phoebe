@@ -67,11 +67,32 @@ export function getLectionaryReadings(
 
   const isYear1 = officeDay.liturgicalYear === 1;
 
+  /**
+   * THE PRINTED BOOK'S DASH RULES ARE NOT REFERENCES.
+   *
+   * The lectionary table transcribes the BCP faithfully, dashes and all: the
+   * book prints a rule ("----------") where nothing separate is appointed —
+   * Easter Day's middle lesson, and the evening psalms on days whose Evening
+   * Prayer belongs to the eve of the feast that follows (December 31, January
+   * 5). Transcribing them was right; SERVING them was not. They reached the
+   * office as a lesson reference and a psalm number, so Easter Day asked
+   * scripture lookup for a passage called "----------".
+   *
+   * A dash means absent, so treat it as absent: an empty lesson, which the
+   * office already knows how to skip (Palm Sunday's blank third lesson takes
+   * the same path), and evening psalms that fall back to the morning's rather
+   * than rendering a rule as a psalm.
+   */
+  const isDash = (v: string | undefined | null): boolean => !!v && /^\s*-+\s*$/.test(v);
+  const clean = (v: string | undefined): string => (isDash(v) ? "" : (v ?? ""));
+  const psalmsRaw = office === "evening" ? (entry.psalms_ep ?? entry.psalms_mp) : entry.psalms_mp;
+  const psalms = (psalmsRaw ?? []).filter((p) => !isDash(p));
+
   return {
-    psalms: office === "evening" ? (entry.psalms_ep ?? entry.psalms_mp) : entry.psalms_mp,
-    lesson1: isYear1 ? entry.lesson1_y1 : entry.lesson1_y2,
-    lesson2: isYear1 ? entry.lesson2_y1 : entry.lesson2_y2,
-    lesson3: isYear1 ? entry.lesson3_y1 : entry.lesson3_y2,
+    psalms: psalms.length > 0 ? psalms : (entry.psalms_mp ?? []).filter((p) => !isDash(p)),
+    lesson1: clean(isYear1 ? entry.lesson1_y1 : entry.lesson1_y2),
+    lesson2: clean(isYear1 ? entry.lesson2_y1 : entry.lesson2_y2),
+    lesson3: clean(isYear1 ? entry.lesson3_y1 : entry.lesson3_y2),
     weekKey: key,
     isEveOverride,
   };
