@@ -504,7 +504,7 @@ export function WeeklyGridCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 export function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, alwaysShowProgress, hero, eyebrow, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate, onCheckClick,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, alwaysShowProgress, hero, eyebrow, onClick, ctaOnly, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate, onCheckClick,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   /** Small uppercase label ABOVE the title in the hero layout — mirrors the
@@ -528,6 +528,11 @@ export function PracticeCard({
   /** When set, the card runs this instead of navigating to `href` — e.g. the
    *  CAC reflection opens the meditation directly in the in-app browser. */
   onClick?: () => void;
+  /** With `onClick`: only the CTA pill runs it — the card body is inert.
+   *  Owner ("tapping the chapel card goes to done, it should just be on the
+   *  cta"): for a card whose click LOGS rather than navigates, the whole
+   *  body as a tap target logs on stray taps. */
+  ctaOnly?: boolean;
   /** When set (and not done), the subtitle cross-fades between these values
    *  instead of showing the static blurb. */
   blurbCycle?: string[];
@@ -637,7 +642,12 @@ export function PracticeCard({
         </AnimatePresence>
       </div>
     ) : (
-      <div className="mt-4 w-full text-center rounded-full text-[15px] font-semibold py-3" style={{ background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT }}>
+      <div
+        role={ctaOnly && onClick ? "button" : undefined}
+        tabIndex={ctaOnly && onClick ? 0 : undefined}
+        onClick={ctaOnly && onClick ? (e) => { e.preventDefault(); e.stopPropagation(); onClick(); } : undefined}
+        onKeyDown={ctaOnly && onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onClick(); } } : undefined}
+        className="mt-4 w-full text-center rounded-full text-[15px] font-semibold py-3" style={{ background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT, cursor: ctaOnly && onClick ? "pointer" : undefined }}>
         {cta} <span aria-hidden className="ml-1">→</span>
       </div>
     );
@@ -683,6 +693,8 @@ export function PracticeCard({
       </motion.div>
     );
     if (waiting) return heroRow;
+    // ctaOnly: the CTA above carries the handler; the body stays inert.
+    if (onClick && ctaOnly) return <div className="block w-full">{heroRow}</div>;
     // A plain div (not a native <button>) for the onClick path — buttons
     // establish their own layout and don't let the flex middle shrink, which
     // shoved the pill off the right edge. role/tabIndex keep it accessible.
@@ -754,7 +766,14 @@ export function PracticeCard({
       style={{ minWidth: 84, background: "transparent", color: "rgba(182,210,188,0.5)", border: "1px solid rgba(143,175,150,0.22)" }}
     >{laterLabel}</span>
   ) : (
-    <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center" style={{ minWidth: 84, background: `rgba(${rgb},0.85)`, color: WARM }}>
+    <span
+      role={ctaOnly && onClick ? "button" : undefined}
+      tabIndex={ctaOnly && onClick ? 0 : undefined}
+      onClick={ctaOnly && onClick ? (e) => { e.preventDefault(); e.stopPropagation(); onClick(); } : undefined}
+      onKeyDown={ctaOnly && onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onClick(); } } : undefined}
+      className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
+      style={{ minWidth: 84, background: `rgba(${rgb},0.85)`, color: WARM, cursor: ctaOnly && onClick ? "pointer" : undefined }}
+    >
       {cta} <span aria-hidden>→</span>
     </span>
   );
@@ -824,6 +843,8 @@ export function PracticeCard({
       {row}
     </div>
   );
+  // ctaOnly: the pill carries the handler; the body stays inert.
+  if (onClick && ctaOnly) return <div className="block w-full">{row}</div>;
   // Plain div (not a native <button>) so the flex middle can shrink and the
   // pill stays put; role/tabIndex/keydown keep it accessible.
   if (onClick) return (
@@ -1340,7 +1361,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
        * the ✓ and its popup.
        */
       ...(getSideLevel("morning") === "custom" && !anchorPracticeFor(getSideCustomName("morning"))?.href
-        ? { onClick: () => { if (!morningDone) markCustomPrayed("morning"); } } : {}),
+        ? { onClick: () => { if (!morningDone) markCustomPrayed("morning"); }, ctaOnly: true } : {}),
       // Owner: "make sure I can click the check mark on the offices to undo
       // them" — and then: the same for a custom practice.
       //
@@ -1402,7 +1423,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         : "/begin-prayer?side=evening",
       // Marks only, never un-marks — see the morning card's note.
       ...(getSideLevel("evening") === "custom" && !anchorPracticeFor(getSideCustomName("evening"))?.href
-        ? { onClick: () => { if (!eveningDone) markCustomPrayed("evening"); } } : {}),
+        ? { onClick: () => { if (!eveningDone) markCustomPrayed("evening"); }, ctaOnly: true } : {}),
       // Same as morning above — a named evening practice's ✓ undoes it too.
       onUnlog: getSideLevel("evening") === "custom"
         ? () => unmarkCustomPrayed("evening")
@@ -1949,6 +1970,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       alwaysShowProgress={(c as { alwaysShowProgress?: boolean }).alwaysShowProgress}
       blurbCycle={(c as { blurbCycle?: string[] }).blurbCycle}
       onClick={"onClick" in c ? (c.onClick as (() => void) | undefined) : undefined}
+      ctaOnly={(c as { ctaOnly?: boolean }).ctaOnly}
       doneCta={(c as { doneCta?: string }).doneCta}
       pulse={pulse}
       pulseOnLoad={splashCleared}
@@ -1988,6 +2010,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       progress={(cardHero as { progress?: { current: number; goal: number } }).progress}
       doneCta={(cardHero as { doneCta?: string }).doneCta}
       onClick={"onClick" in cardHero ? (cardHero as { onClick?: () => void }).onClick : undefined}
+      ctaOnly={(cardHero as { ctaOnly?: boolean }).ctaOnly}
       pulseOnLoad={splashCleared}
     />
   ) : null);

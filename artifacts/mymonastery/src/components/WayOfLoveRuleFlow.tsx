@@ -124,7 +124,9 @@ function FlatRoutineRow({ id, emoji, label, sub, circle, onGear, onRemove, onMov
   sub: string;
   circle: React.CSSProperties;
   onGear: (() => void) | null;
-  onRemove: () => void;
+  // Null hides the X — the Prayer List row is orderable but not removable
+  // (its presence follows prayer requests and groups, not the routine).
+  onRemove: (() => void) | null;
   onMoveUp: (() => void) | null;
   onMoveDown: (() => void) | null;
 }) {
@@ -168,7 +170,9 @@ function FlatRoutineRow({ id, emoji, label, sub, circle, onGear, onRemove, onMov
         {onGear && (
           <button type="button" aria-label={`Settings for ${label}`} onClick={onGear} style={circle}>⚙</button>
         )}
-        <button type="button" aria-label={`Remove ${label}`} onClick={onRemove} style={circle}>✕</button>
+        {onRemove && (
+          <button type="button" aria-label={`Remove ${label}`} onClick={onRemove} style={circle}>✕</button>
+        )}
       </div>
     </Reorder.Item>
   );
@@ -849,6 +853,8 @@ export default function WayOfLoveRuleFlow({
    */
   const [entryPhase, setEntryPhase] = useState<"list" | "add-cat" | "add-items" | "add-minutes" | "add-custom" | "notify">("list");
   const [addCat, setAddCat] = useState<"sgp" | "bcp" | "contemplative" | "reflections" | "custom" | null>(null);
+  // The top-bar ⚙ dropdown on the flat list (preset / revert) — see shell.
+  const [gearMenuOpen, setGearMenuOpen] = useState(false);
   const [sitMinutes, setSitMinutes] = useState("10");
   const [newCustomName, setNewCustomName] = useState("");
   /** The list's drag order — edit-row ids. Re-derived whenever rows load. */
@@ -1097,16 +1103,26 @@ export default function WayOfLoveRuleFlow({
   });
   // When to nudge them to pray, per side. Finishing turns the matching reminder
   // pref ON (pref != "none") so the server's daily push actually fires.
-  const [timeBySide, setTimeBySide] = useState<Record<OfficeSide, string>>(() => ({
-    morning: DEFAULT_REMINDER_TIME,
-    evening: "18:00",
+  // NULL means "not known yet" — not the default. Owner: "i had notifications
+  // set to 6:30am but it sent at 7". The stored 6:30 was overwritten with the
+  // default: this state used to initialise to 07:00 and hydrate from the
+  // server behind an all-or-nothing touched gate, so touching ANY control
+  // before the office-prefs GET resolved stranded the default here, and every
+  // save path then wrote it over the real stored time. With null, the display
+  // falls back to the server pref (then the default), and a save OMITS the
+  // field entirely when the value was never learned — the route keeps the
+  // stored column for an omitted field, so this bug is now inexpressible.
+  const [timeBySide, setTimeBySide] = useState<Record<OfficeSide, string | null>>(() => ({
+    morning: null,
+    evening: null,
   }));
   // Whether to nudge at all on each side. "No reminder" sets the side's pref to
   // "none" so the server's daily push doesn't fire — the practice still counts
-  // toward the rhythm, it just goes un-prompted. Default on.
-  const [reminderOnBySide, setReminderOnBySide] = useState<Record<OfficeSide, boolean>>(() => ({
-    morning: true,
-    evening: true,
+  // toward the rhythm, it just goes un-prompted. Null = not known yet (falls
+  // back to the server pref, then "on"), same contract as timeBySide above.
+  const [reminderOnBySide, setReminderOnBySide] = useState<Record<OfficeSide, boolean | null>>(() => ({
+    morning: null,
+    evening: null,
   }));
   // Owner: "I had my notification set for 7:30am but it sent at 7" → "maybe it
   // never saved the setting."
@@ -1126,8 +1142,8 @@ export default function WayOfLoveRuleFlow({
   const reminderSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (reminderSaveTimer.current) clearTimeout(reminderSaveTimer.current); }, []);
   const saveReminderNow = (
-    nextOn: Record<OfficeSide, boolean>,
-    nextTime: Record<OfficeSide, string>,
+    nextOn: Record<OfficeSide, boolean | null>,
+    nextTime: Record<OfficeSide, string | null>,
   ) => {
     // Guests have no office-prefs row to write to; their rhythm is local-only
     // until they have an account.
@@ -1152,11 +1168,13 @@ export default function WayOfLoveRuleFlow({
     if (prescribe) return;
     if (reminderSaveTimer.current) clearTimeout(reminderSaveTimer.current);
     reminderSaveTimer.current = setTimeout(() => {
+      const onM = nextOn.morning ?? prefsReminderOn("morning") ?? true;
+      const onE = nextOn.evening ?? prefsReminderOn("evening") ?? true;
       apiRequest("PUT", "/api/me/office-prefs", {
-        morning: sides.morning && nextOn.morning ? PRAY_REMINDER_PREF[prayBySide.morning] : "none",
-        evening: sides.evening && nextOn.evening ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
-        morningTime: nextOn.morning ? (/^\d{2}:\d{2}$/.test(nextTime.morning) ? nextTime.morning : DEFAULT_REMINDER_TIME) : null,
-        eveningTime: nextOn.evening ? (/^\d{2}:\d{2}$/.test(nextTime.evening) ? nextTime.evening : "18:00") : null,
+        morning: sides.morning && onM ? PRAY_REMINDER_PREF[prayBySide.morning] : "none",
+        evening: sides.evening && onE ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
+        ...reminderTimeField("morning", onM, nextTime.morning),
+        ...reminderTimeField("evening", onE, nextTime.evening),
       }).catch(() => { /* best-effort; commit() writes it again at the end */ });
     }, 600);
   };
@@ -1632,7 +1650,23 @@ export default function WayOfLoveRuleFlow({
           ? `${SLOT_LABEL[a.slot]} · ${describeDays(a.days)}`
           : SLOT_LABEL[a.slot],
       }));
-      setEditRows([...serverCustomless, ...localCustomRows]);
+      // The Prayer List rides the list as a synthetic, always-present row so
+      // it can be ORDERED like any practice (owner). It has no gear and no X:
+      // whether it appears on the home follows prayer requests and groups,
+      // not this editor — only its position is theirs to set. The id is
+      // already in routineOrder's vocabulary ("slot:prayer-list" →
+      // prayer-list-card), so a drag orders the home card end-to-end.
+      const prayerListRow = {
+        id: "slot:prayer-list",
+        emoji: "🕊️",
+        label: "My Prayer List",
+        sub: "Prayers you and your groups are keeping",
+      };
+      setEditRows([
+        ...serverCustomless.filter((row) => row.id !== "slot:prayer-list"),
+        ...localCustomRows,
+        prayerListRow,
+      ]);
     } catch { /* no routine to edit — the scratch path is the fallback */ }
   };
   useEffect(() => {
@@ -1791,16 +1825,10 @@ export default function WayOfLoveRuleFlow({
        * Per-side contemplation is now only ever what someone explicitly chose.
        */
     }
-    setTimeBySide((prev) => ({
-      morning: typeof prefs.morningTime === "string" && /^\d{2}:\d{2}$/.test(prefs.morningTime) ? prefs.morningTime : prev.morning,
-      evening: typeof prefs.eveningTime === "string" && /^\d{2}:\d{2}$/.test(prefs.eveningTime) ? prefs.eveningTime : prev.evening,
-    }));
-    // A saved side pref of "none" means they'd previously turned that reminder
-    // off — reflect it so reopening Customize shows "No reminder" selected.
-    setReminderOnBySide({
-      morning: prefs.morning !== "none",
-      evening: prefs.evening !== "none",
-    });
+    // Reminder time and on/off no longer hydrate here — they read the server
+    // pref directly through shownReminderTime/reminderIsOn while their local
+    // state is null, so there is nothing to strand behind this gate (see the
+    // note on timeBySide's declaration).
     /**
      * Which sides are part of the rhythm: the EXPLICIT LEVEL first, the server
      * pref only as fallback.
@@ -1839,6 +1867,32 @@ export default function WayOfLoveRuleFlow({
     }
     if (prefs.notificationStyle === "nudge") setNotificationStyle("nudge");
   }, [prefs]);
+
+  // Reminder state resolution (see the note on timeBySide's declaration):
+  // local state when the person touched it, the server pref while it's null,
+  // the default only when neither exists. Guests never read prefs — react-query
+  // can hand this component another surface's cached anonymous response.
+  const prefsKnown = !!prefs && !guest && !isDeviceLocalGuest(user);
+  const prefsReminderTime = (sd: OfficeSide): string | null => {
+    if (!prefsKnown) return null;
+    const v = sd === "morning" ? prefs!.morningTime : prefs!.eveningTime;
+    return typeof v === "string" && /^\d{2}:\d{2}$/.test(v) ? v : null;
+  };
+  const prefsReminderOn = (sd: OfficeSide): boolean | null =>
+    prefsKnown ? (sd === "morning" ? prefs!.morning : prefs!.evening) !== "none" : null;
+  const reminderIsOn = (sd: OfficeSide): boolean => reminderOnBySide[sd] ?? prefsReminderOn(sd) ?? true;
+  const shownReminderTime = (sd: OfficeSide): string =>
+    timeBySide[sd] ?? prefsReminderTime(sd) ?? (sd === "morning" ? DEFAULT_REMINDER_TIME : "18:00");
+  // What a save may write for a side's reminder time: the chosen (or known)
+  // value, an explicit null when the reminder is off, or NOTHING when the
+  // value was never learned — the route keeps the stored column for an
+  // omitted field, which is the whole point.
+  const reminderTimeField = (sd: OfficeSide, on: boolean, v: string | null): Record<string, string | null> => {
+    const key = sd === "morning" ? "morningTime" : "eveningTime";
+    if (!on) return { [key]: null };
+    const chosen = v ?? prefsReminderTime(sd);
+    return chosen && /^\d{2}:\d{2}$/.test(chosen) ? { [key]: chosen } : {};
+  };
 
   const goalMin = Math.max(0, Math.min(180, parseInt(goal, 10) || 0));
 
@@ -1914,10 +1968,13 @@ export default function WayOfLoveRuleFlow({
       })(),
       contemplationGoalMinutes: effGoalMin,
       contemplationReminderEnabled: effGoalMin > 0 || wantLadder,
-      morning: (sides.morning && reminderOnBySide.morning ? PRAY_REMINDER_PREF[prayBySide.morning] : "none") as "office" | "devotion" | "none",
-      evening: (sides.evening && reminderOnBySide.evening ? PRAY_REMINDER_PREF[prayBySide.evening] : "none") as "office" | "devotion" | "none",
-      morningTime: reminderOnBySide.morning ? (/^\d{2}:\d{2}$/.test(timeBySide.morning) ? timeBySide.morning : DEFAULT_REMINDER_TIME) : null,
-      eveningTime: reminderOnBySide.evening ? (/^\d{2}:\d{2}$/.test(timeBySide.evening) ? timeBySide.evening : "18:00") : null,
+      morning: (sides.morning && reminderIsOn("morning") ? PRAY_REMINDER_PREF[prayBySide.morning] : "none") as "office" | "devotion" | "none",
+      evening: (sides.evening && reminderIsOn("evening") ? PRAY_REMINDER_PREF[prayBySide.evening] : "none") as "office" | "devotion" | "none",
+      // A prescribed spec is applied to SOMEONE ELSE'S account, so it carries
+      // the concrete displayed values — "omit what we never learned" protects
+      // the designer's own row, not the recipient's.
+      morningTime: reminderIsOn("morning") ? shownReminderTime("morning") : null,
+      eveningTime: reminderIsOn("evening") ? shownReminderTime("evening") : null,
     };
     const others = (["cac", "fdd", "ssje", "vts"] as const).filter((n) => !newsletters.includes(n));
     // Creation Prayer earns a home card either through the per-side "way"
@@ -2177,10 +2234,10 @@ export default function WayOfLoveRuleFlow({
       // the server's daily office-reminder push fire) at its chosen time.
       // A side reminds only when it's part of the rhythm AND they didn't pick
       // "No reminder"; otherwise "none" keeps the daily push silent.
-      morning: sides.morning && reminderOnBySide.morning ? PRAY_REMINDER_PREF[prayBySide.morning] : "none",
-      evening: sides.evening && reminderOnBySide.evening ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
-      morningTime: reminderOnBySide.morning ? (/^\d{2}:\d{2}$/.test(timeBySide.morning) ? timeBySide.morning : DEFAULT_REMINDER_TIME) : null,
-      eveningTime: reminderOnBySide.evening ? (/^\d{2}:\d{2}$/.test(timeBySide.evening) ? timeBySide.evening : "18:00") : null,
+      morning: sides.morning && reminderIsOn("morning") ? PRAY_REMINDER_PREF[prayBySide.morning] : "none",
+      evening: sides.evening && reminderIsOn("evening") ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
+      ...reminderTimeField("morning", reminderIsOn("morning"), timeBySide.morning),
+      ...reminderTimeField("evening", reminderIsOn("evening"), timeBySide.evening),
       notificationStyle,
     })
       // Sync the silence ladder AFTER office-prefs lands so, when enabled, the
@@ -2568,9 +2625,98 @@ export default function WayOfLoveRuleFlow({
    * renders through: any future intrinsically-wide control — another native
    * input, a long unbroken string — would have hit exactly the same wall.
    */
-  const shell = (children: ReactNode) => (
+  /**
+   * The slide's primary action, surfaced as a TOP pill (owner: "make there be
+   * next and back cta pills at the top alongside the x to free the bottom so
+   * there doesn't need to be that overlay"). ctaButton() fills this during
+   * render — JSX arguments evaluate before shell() is called, so by the time
+   * the top bar renders the slot holds the current slide's CTA. Plain render-
+   * scoped mutable, reset implicitly every render; NOT state (setting state
+   * during render is a re-render loop).
+   */
+  let topBarCta: { label: string; onClick: () => void } | null = null;
+  const shell = (children: ReactNode) => {
+    // The settings gear lives in the top bar only on the flat routine list —
+    // it holds the two whole-routine actions that used to be rows below the
+    // list (owner: "a settings wheel in the top nav … choose preset routine
+    // and revert to previous routine").
+    const gearHere = entrySettled && canEditParts && manualMode === "edit" && entryPhase === "list" && !singleEditRow;
+    return (
     <div style={{ flex: 1, minHeight: 0, minWidth: 0, background: "transparent", position: "relative", isolation: "isolate", display: "flex", flexDirection: "column" }}>
       <div className="px-4 sm:px-6 md:px-8" style={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0, display: "flex", flexDirection: "column", paddingTop: 24, paddingBottom: 40 }}>
+        {/* Back / Next pills pinned at the very top, sharing the row with the
+            Layout X. The negative margin pulls this bar up over the space the
+            chromeless X row + main's pt-2 + this shell's paddingTop occupy
+            (36px X + 8 + 24 = 68, plus the safe-area --top-chrome the X row
+            pads with); sticky top-0 then pins it — including in the one host
+            that renders the flow without Layout, where sticky simply clamps
+            the over-pulled bar back to the viewport top. paddingRight clears
+            the 36px X + its gap so the Next pill never slides under it. */}
+        <div
+          style={{
+            position: "sticky", top: 0, zIndex: 15, pointerEvents: "none",
+            marginTop: "calc(-68px - var(--top-chrome, 0px))",
+            paddingTop: "var(--top-chrome, 0px)",
+            marginBottom: 10,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10, height: 36, paddingRight: 46 }}>
+            <button
+              type="button"
+              onClick={goPrev}
+              style={{ pointerEvents: "auto", display: "inline-flex", alignItems: "center", gap: 2, ...FROST_BLUR, background: CARD, border: `1px solid ${CARD_B}`, color: SAGE, borderRadius: 999, padding: "0 14px 0 8px", height: 36, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+            >
+              <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
+            </button>
+            <div style={{ flex: 1 }} />
+            {gearHere && (
+              <div style={{ position: "relative", pointerEvents: "auto" }}>
+                <button
+                  type="button"
+                  aria-label={t("wol_rule.routine_options", { defaultValue: "Routine options" })}
+                  onClick={() => setGearMenuOpen((o) => !o)}
+                  style={{ width: 36, height: 36, borderRadius: 999, ...FROST_BLUR, background: CARD, border: `1px solid ${gearMenuOpen ? CARD_B_ACTIVE : CARD_B}`, color: SAGE, fontSize: 16, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                >
+                  ⚙
+                </button>
+                {gearMenuOpen && (
+                  <>
+                    <div onClick={() => setGearMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 1 }} aria-hidden />
+                    {/* Near-opaque flat color, no backdrop blur — at 0.94 the
+                        blur adds nothing and composites unreliably here. */}
+                    <div style={{ position: "absolute", top: 42, right: 0, zIndex: 2, minWidth: 260, background: "#0d2114", border: `1px solid ${CARD_B}`, borderRadius: 14, padding: 6, display: "flex", flexDirection: "column", gap: 2, boxShadow: "0 12px 32px rgba(0,0,0,0.4)" }}>
+                      <button
+                        type="button"
+                        onClick={() => { setGearMenuOpen(false); setPresetPending(null); setManualMode("preset"); }}
+                        style={{ textAlign: "left", background: "transparent", border: "none", borderRadius: 10, padding: "11px 12px", color: CREAM, fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+                      >
+                        📋 {t("wol_rule.entry3_preset", { defaultValue: "Choose a preset routine" })}
+                      </button>
+                      {canRevert && (
+                        <button
+                          type="button"
+                          onClick={() => { setGearMenuOpen(false); setLocation("/routine-history"); }}
+                          style={{ textAlign: "left", background: "transparent", border: "none", borderRadius: 10, padding: "11px 12px", color: CREAM, fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+                        >
+                          ↩️ {t("wol_rule.entry_revert", { defaultValue: "Revert to a past routine" })}
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            {topBarCta && (
+              <button
+                type="button"
+                onClick={topBarCta.onClick}
+                style={{ pointerEvents: "auto", ...FROST_BLUR, background: "rgba(46,107,64,0.72)", border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", color: CREAM, borderRadius: 999, padding: "0 18px", height: 36, fontSize: 14.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                {topBarCta.label}
+              </button>
+            )}
+          </div>
+        </div>
         {/* Full width on mobile; on larger screens capped + centered at the SAME
             56rem the home uses (.dash-shell) so the customizer cards are exactly
             as wide as the home-screen cards, not a narrower column. */}
@@ -2579,7 +2725,8 @@ export default function WayOfLoveRuleFlow({
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   // The ordered input steps depend on which sides they chose — so the progress
   // bar and the "N/M" both adjust to the options picked.
@@ -3047,10 +3194,10 @@ export default function WayOfLoveRuleFlow({
     // Hide the eyebrow when it just restates the title (e.g. "EVENING" over
     // "Evening", "ADD TO YOUR DAY" over "Add to your day") — otherwise the
     // step header reads the same word twice.
-    // …and hide it when it just restates the FIXED line printed above it. The
-    // fork slide passes wol_rule.walk as its eyebrow, which is the very string
-    // this header already prints unconditionally — comparing only against the
-    // title let "YOUR DAILY RHYTHM OF PRAYER" render twice, one above the other.
+    // …and hide the old fixed walk line entirely: several slides still pass
+    // wol_rule.walk as their eyebrow, and the owner removed that line ("take
+    // the your daily rhythm of prayer eyebrow out so you can move the type
+    // up"), so it renders for no one.
     const walkLine = t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" });
     const showEyebrow = eyebrow.trim().toLowerCase() !== title.trim().toLowerCase()
       && eyebrow.trim().toLowerCase() !== walkLine.trim().toLowerCase();
@@ -3059,9 +3206,6 @@ export default function WayOfLoveRuleFlow({
         <div style={{ height: 3, background: CARD_B, borderRadius: 2, overflow: "hidden", marginBottom: 16 }}>
           <div style={{ width: `${(n / totalSteps) * 100}%`, height: "100%", background: SAGE, transition: "width 0.3s ease" }} />
         </div>
-        <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.2px", margin: 0, fontFamily: FONT }}>
-          {t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" })}
-        </p>
         {showEyebrow && (
           <p style={{ color: SAGE, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.9px", margin: "16px 0 0", fontFamily: FONT }}>{eyebrow}</p>
         )}
@@ -3070,20 +3214,40 @@ export default function WayOfLoveRuleFlow({
     );
   };
 
-  // Continue + a bottom Back bar (the top Back row was removed). Back uses
-  // goPrev, which steps back through the dynamic flow (or exits on the first
-  // step). Tapping the right side of the screen also goes back (see shell).
-  /**
-   * THIS MUST BE THE LAST THING ON THE SLIDE.
-   *
-   * It hovers at the bottom with a gradient scrim so content scrolls and fades
-   * under it. That only works while it IS the final element: put anything after
-   * it and, at the end of the scroll, it falls inline and the scrim paints an
-   * opaque band across whatever follows — reported as a "weird green overlay"
-   * below Continue on the edit-your-routine step, which had two rows beneath
-   * it. The rows moved above it. Audited: 17 call sites, and this is the only
-   * one that ever had trailing content.
-   */
+  // A MENU row, not a choice row (owner). Some slides aren't a set of answers
+  // you pick between — they're a fork where tapping takes you somewhere. A
+  // radio circle on those is a lie twice over: nothing is selected, and
+  // nothing ever will be, because the tap navigates. This reads like the rest
+  // of the app's menus instead: emoji, label, sub, and a chevron saying "this
+  // goes somewhere". Same card treatment as MenuHub.
+  const menuRow = (emoji: string, label: string, sub: string, onClick: () => void) => (
+    <button
+      key={label}
+      type="button"
+      onClick={onClick}
+      style={{
+        ...FROST_BLUR,
+        background: CARD,
+        border: `1px solid ${CARD_B}`,
+        color: CREAM, borderRadius: 16, padding: "16px 18px", textAlign: "left",
+        display: "flex", alignItems: "center", gap: 14, cursor: "pointer",
+        transition: "background 0.15s, border-color 0.15s",
+      }}
+    >
+      <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, width: 28, textAlign: "center" }} aria-hidden>{emoji}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 16, fontWeight: 700, fontFamily: FONT }}>{label}</span>
+        <span style={{ display: "block", color: SAGE, fontSize: 13, fontFamily: FONT, marginTop: 3, lineHeight: 1.35 }}>{sub}</span>
+      </span>
+      <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 22, lineHeight: 1, flexShrink: 0 }}>›</span>
+    </button>
+  );
+
+  // The slide's primary action. Renders NOTHING in place — it registers the
+  // label + handler for the top pill bar (owner moved Continue/Back to the
+  // top, next to the X, to free the bottom of the slide). Back is always the
+  // bar's left pill and uses goPrev, which steps back through the dynamic
+  // flow (or exits on the first step).
   const ctaButton = (rawLabel: string, onClick: () => void) => {
     // Editing one practice, this button is the end of the road — call it Save,
     // not Continue, because there is nothing after it to continue to. Only on
@@ -3091,91 +3255,13 @@ export default function WayOfLoveRuleFlow({
     // a Save that actually continues is a lie about what the tap does.
     // Ask the SAME question goNext asks — the next slide still belonging to
     // this practice, scanning forward rather than testing the adjacent one.
-    // With adjacency the config slide said "Save" and then walked on to the
-    // format step, which is a button lying about what it does.
     const savesNow = !!singleEditRow && !nextStepForRow(step, singleEditRow);
     const label = savesNow ? t("common.save", { defaultValue: "Save" }) : rawLabel;
-    return (
-    /**
-     * Continue HOVERS at the bottom of the screen, and content fades under it.
-     *
-     * marginTop:auto still pins it to the bottom of the flow's flex column, so
-     * on a short slide it sits exactly where it always did. `sticky` is what's
-     * new: on a slide taller than the screen — the way steps, the extras list —
-     * the page scrolls under a button that stays put, instead of the button
-     * living at the end of the scroll where you have to go looking for it.
-     *
-     * The gradient is the "fades under it" half. Without a scrim, rows scroll
-     * up and collide with the button; with a hard edge it reads as a bar bolted
-     * over the page. It resolves to the app background so the fade lands on the
-     * same colour the page already is.
-     */
-    <div
-      style={{
-        marginTop: "auto", position: "sticky", bottom: 0, zIndex: 2,
-        /**
-         * IT HAS TO STAY DOWN AT THE END OF THE SCROLL.
-         *
-         * Reported: "when you scroll to the bottom of the page you get this …
-         * it goes up … it needs to stay down." Sticky only pins an element
-         * while its CONTAINING BLOCK is still being scrolled past; once the
-         * end arrives it settles at its natural place, which sat 40px above
-         * the bottom because the shell wraps every slide in paddingBottom: 40.
-         * That padding is what the button rose by, and the dead band under it
-         * was that padding laid bare. Eating it with a negative margin — and
-         * paying it back as our own padding — makes the natural resting place
-         * the true bottom, so the last scroll position looks identical to
-         * every one before it.
-         */
-        marginBottom: -40,
-        /**
-         * …and the cards FADE under it (owner: "there needs to be more of a
-         * shadow so the cards look like they are fading under it, just like we
-         * used to do with the prayer list cards"). A short, hard scrim read as
-         * a bar bolted over the page; this one is tall enough to be a fade —
-         * fully opaque behind the button, still washing the card above it, and
-         * gone by the top. The extra stop near the middle keeps the ramp from
-         * banding on the dark green.
-         */
-        paddingTop: 56,
-        paddingBottom: "calc(40px + max(6px, env(safe-area-inset-bottom)))",
-        /**
-         * A SOLID BED, then a short fade — not a long gentle ramp.
-         *
-         * The first attempt ramped from opaque at 38% to nothing at the top,
-         * which over a ~220px container left a card's text still 40% visible
-         * behind the buttons: legible enough to read, which reads as a
-         * rendering fault rather than a fade (owner: "the shadow is not
-         * working properly"). Opaque through two thirds means nothing shows
-         * anywhere near the buttons; the fade is a band at the top edge, doing
-         * the one job it has — letting a card dissolve as it scrolls under.
-         */
-        background: "linear-gradient(to top, rgba(9,26,16,1) 0%, rgba(9,26,16,1) 66%, rgba(9,26,16,0.9) 80%, rgba(9,26,16,0.45) 91%, rgba(9,26,16,0) 100%)",
-        /**
-         * …and a solid skirt BELOW the box (owner: "below the CTA on the fade
-         * you could still see").
-         *
-         * A gradient can only paint inside its own border-box. Measured at the
-         * end of the scroll there was a ~20px strip under the container — the
-         * shell's own bottom padding — through which a card kept showing; I
-         * had measured that gap earlier and wrongly read "same at every scroll
-         * position" as "nothing shows". An offset, spread shadow in the same
-         * flat colour paints outside the box and closes it, whatever the exact
-         * cause of the strip. Downward only, so it never touches the fade at
-         * the top edge.
-         */
-        boxShadow: "0 24px 0 24px rgba(9,26,16,1)",
-        display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-      }}
-    >
-      <button onClick={onClick} style={{ width: "100%", background: "rgba(46,107,64,0.55)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-        {label}
-      </button>
-      <button onClick={goPrev} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
-        <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
-      </button>
-    </div>
-    );
+    // No longer a bottom overlay: the primary action renders as a pill in the
+    // TOP bar (see topBarCta / shell) alongside Back and the Layout X, so the
+    // bottom of the slide is free and nothing fades under a scrim any more.
+    topBarCta = { label, onClick };
+    return null;
   };
 
   // A radio-style choice row (single-select), with the home cards' left accent
@@ -3212,34 +3298,6 @@ export default function WayOfLoveRuleFlow({
     </button>
   );
 
-  // A MENU row, not a choice row (owner). Some slides aren't a set of answers
-  // you pick between — they're a fork where tapping takes you somewhere. A
-  // radio circle on those is a lie twice over: nothing is selected, and
-  // nothing ever will be, because the tap navigates. This reads like the rest
-  // of the app's menus instead: emoji, label, sub, and a chevron saying "this
-  // goes somewhere". Same card treatment as MenuHub.
-  const menuRow = (emoji: string, label: string, sub: string, onClick: () => void) => (
-    <button
-      key={label}
-      type="button"
-      onClick={onClick}
-      style={{
-        ...FROST_BLUR,
-        background: CARD,
-        border: `1px solid ${CARD_B}`,
-        color: CREAM, borderRadius: 16, padding: "16px 18px", textAlign: "left",
-        display: "flex", alignItems: "center", gap: 14, cursor: "pointer",
-        transition: "background 0.15s, border-color 0.15s",
-      }}
-    >
-      <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, width: 28, textAlign: "center" }} aria-hidden>{emoji}</span>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 16, fontWeight: 700, fontFamily: FONT }}>{label}</span>
-        <span style={{ display: "block", color: SAGE, fontSize: 13, fontFamily: FONT, marginTop: 3, lineHeight: 1.35 }}>{sub}</span>
-      </span>
-      <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 22, lineHeight: 1, flexShrink: 0 }}>›</span>
-    </button>
-  );
 
   // ── The "technology of holding" prelude — shown once before the first author
   // reaches the preset picker (all hooks above have already run). ────────────
@@ -3772,7 +3830,9 @@ export default function WayOfLoveRuleFlow({
       },
     };
     const rowById = (id: string) => editRows.find((r) => r.id === id);
-    const notifyOptions = orderIds.map((id) => rowById(id)).filter(Boolean) as typeof editRows;
+    // The Prayer List row orders the home card but isn't a nudge target —
+    // the reminder must open a practice, and prayer-mode has its own entry.
+    const notifyOptions = orderIds.filter((id) => id !== "slot:prayer-list").map((id) => rowById(id)).filter(Boolean) as typeof editRows;
     const saveNotify = () => {
       // Saving the routine ends today's one-day swaps — the same invariant
       // commit() and the light editor keep: an explicit save supersedes a
@@ -3785,10 +3845,10 @@ export default function WayOfLoveRuleFlow({
       } catch { /* private mode */ }
       pushRoutineConfig();
       if (user) apiRequest("PUT", "/api/me/office-prefs", {
-        morning: reminderOnBySide.morning ? PRAY_REMINDER_PREF[prayBySide.morning] : "none",
-        evening: reminderOnBySide.evening ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
-        morningTime: reminderOnBySide.morning ? (/^\d{2}:\d{2}$/.test(timeBySide.morning) ? timeBySide.morning : DEFAULT_REMINDER_TIME) : null,
-        eveningTime: reminderOnBySide.evening ? (/^\d{2}:\d{2}$/.test(timeBySide.evening) ? timeBySide.evening : "18:00") : null,
+        morning: reminderIsOn("morning") ? PRAY_REMINDER_PREF[prayBySide.morning] : "none",
+        evening: reminderIsOn("evening") ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
+        ...reminderTimeField("morning", reminderIsOn("morning"), timeBySide.morning),
+        ...reminderTimeField("evening", reminderIsOn("evening"), timeBySide.evening),
       }).then(() => qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] })).catch(() => { /* best-effort */ });
       onDone();
     };
@@ -3801,14 +3861,14 @@ export default function WayOfLoveRuleFlow({
             <span style={{ color: CREAM, fontSize: 15.5, fontWeight: 700, fontFamily: FONT }}>{label}</span>
             <button
               type="button"
-              onClick={() => { touchedRef.current = true; setReminderOnBySide((r) => ({ ...r, [sd]: !r[sd] })); }}
+              onClick={() => { touchedRef.current = true; const now = reminderIsOn(sd); setReminderOnBySide((r) => ({ ...r, [sd]: !now })); }}
               aria-label={`${label} on or off`}
-              style={{ width: 42, height: 24, borderRadius: 999, position: "relative", border: "none", cursor: "pointer", background: reminderOnBySide[sd] ? "#2D5E3F" : "rgba(255,255,255,0.12)" }}
+              style={{ width: 42, height: 24, borderRadius: 999, position: "relative", border: "none", cursor: "pointer", background: reminderIsOn(sd) ? "#2D5E3F" : "rgba(255,255,255,0.12)" }}
             >
-              <span style={{ position: "absolute", top: 3, left: reminderOnBySide[sd] ? 21 : 3, width: 18, height: 18, borderRadius: 999, background: CREAM, transition: "left 160ms ease" }} />
+              <span style={{ position: "absolute", top: 3, left: reminderIsOn(sd) ? 21 : 3, width: 18, height: 18, borderRadius: 999, background: CREAM, transition: "left 160ms ease" }} />
             </button>
           </div>
-          {reminderOnBySide[sd] && (
+          {reminderIsOn(sd) && (
             <>
               <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, color: SAGE, fontSize: 13.5, fontFamily: FONT }}>
                 Opens
@@ -3827,7 +3887,7 @@ export default function WayOfLoveRuleFlow({
                 At
                 <input
                   type="time"
-                  value={timeBySide[sd]}
+                  value={shownReminderTime(sd)}
                   onChange={(e) => { touchedRef.current = true; const v = e.target.value; setTimeBySide((p) => ({ ...p, [sd]: v })); saveReminderNow({ ...reminderOnBySide }, { ...timeBySide, [sd]: v }); }}
                   style={{ background: "rgba(9,26,16,0.6)", color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 10, padding: "7px 10px", fontFamily: FONT, fontSize: 14 }}
                 />
@@ -4001,8 +4061,8 @@ export default function WayOfLoveRuleFlow({
             return (
               <FlatRoutineRow
                 key={id} id={id} emoji={r.emoji} label={r.label} sub={r.sub} circle={circle}
-                onGear={stepForRow(r.id) ? () => { const st = stepForRow(r.id); if (st) { setSingleEditRow(r.id); setManualMode("scratch"); setStep(st); } } : null}
-                onRemove={() => setDeletingEditRow({ id: r.id, label: r.label })}
+                onGear={r.id !== "slot:prayer-list" && stepForRow(r.id) ? () => { const st = stepForRow(r.id); if (st) { setSingleEditRow(r.id); setManualMode("scratch"); setStep(st); } } : null}
+                onRemove={r.id === "slot:prayer-list" ? null : () => setDeletingEditRow({ id: r.id, label: r.label })}
                 onMoveUp={idx > 0 ? () => moveRow(-1) : null}
                 onMoveDown={idx < orderIds.length - 1 ? () => moveRow(1) : null}
               />
@@ -4016,20 +4076,8 @@ export default function WayOfLoveRuleFlow({
         >
           {t("wol_rule.edit_add_practice", { defaultValue: "+ Add a practice" })}
         </button>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
-          {menuRow(
-            "📋",
-            t("wol_rule.entry3_preset", { defaultValue: "Choose a preset routine" }),
-            t("wol_rule.entry3_preset_sub", { defaultValue: "Adopt a complete rhythm that's already been shaped. You can change any part of it after." }),
-            () => { setPresetPending(null); setManualMode("preset"); },
-          )}
-          {canRevert && menuRow(
-            "↩️",
-            t("wol_rule.entry_revert", { defaultValue: "Revert to a past routine" }),
-            t("wol_rule.entry_revert_sub", { defaultValue: "Return to a rhythm you kept before, exactly as it was." }),
-            () => setLocation("/routine-history"),
-          )}
-        </div>
+        {/* Preset + revert moved into the top bar's ⚙ menu (owner) — the list
+            body now ends at Add a practice. */}
         {ctaButton(t("wol_rule.next_notifications", { defaultValue: "Next: notifications" }), () => setEntryPhase("notify"))}
 
         {deletingEditRow && (
@@ -5138,16 +5186,17 @@ export default function WayOfLoveRuleFlow({
             type="button"
             onClick={() => {
               touchedRef.current = true;
+              const now = reminderIsOn(side);
               setReminderOnBySide((r) => {
-                const next = { ...r, [side]: !r[side] };
+                const next = { ...r, [side]: !now };
                 saveReminderNow(next, timeBySide);
                 return next;
               });
             }}
             style={{
               width: "100%", textAlign: "left", cursor: "pointer",
-              background: reminderOnBySide[side] ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${reminderOnBySide[side] ? CARD_B_ACTIVE : CARD_B}`,
+              background: reminderIsOn(side) ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${reminderIsOn(side) ? CARD_B_ACTIVE : CARD_B}`,
               borderRadius: 16, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
               transition: "background 0.2s, border-color 0.2s",
             }}
@@ -5157,16 +5206,16 @@ export default function WayOfLoveRuleFlow({
                 {`🔔 ${t("wol_rule.reminder_on", { defaultValue: "Remind me" })}`}
               </p>
               <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
-                {reminderOnBySide[side]
+                {reminderIsOn(side)
                   ? t("wol_rule.reminder_on_sub", { side: cap.toLowerCase(), defaultValue: `A gentle nudge to pray in the ${cap.toLowerCase()}.` })
                   : t("wol_rule.reminder_off_sub", { defaultValue: "No daily nudge — pray when you like." })}
               </p>
             </div>
-            <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: reminderOnBySide[side] ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
-              <span style={{ position: "absolute", top: 3, left: reminderOnBySide[side] ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
+            <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: reminderIsOn(side) ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
+              <span style={{ position: "absolute", top: 3, left: reminderIsOn(side) ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
             </span>
           </button>
-          {reminderOnBySide[side] && (
+          {reminderIsOn(side) && (
             // Width constraints on the WRAPPER as well — see the twin of this
             // row in routine-interview.tsx.
             <div style={{ position: "relative", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}>
@@ -5184,7 +5233,7 @@ export default function WayOfLoveRuleFlow({
                 * silently moved.
                 */}
               <select
-                value={timeBySide[side]}
+                value={shownReminderTime(side)}
                 onChange={(e) => {
                   touchedRef.current = true;
                   const v = e.target.value;
@@ -5197,7 +5246,7 @@ export default function WayOfLoveRuleFlow({
                 aria-label={t("wol_rule.reminder_time", { defaultValue: "Reminder time" })}
                 style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
               >
-                {reminderTimeOptions(timeBySide[side]).map((opt) => (
+                {reminderTimeOptions(shownReminderTime(side)).map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
@@ -5839,7 +5888,7 @@ export default function WayOfLoveRuleFlow({
       label: sideWayLabel(s),
       sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : prayBySide[s] === "guidedPrayer" ? "Praise · Confession · Thanksgiving · Supplication" : prayBySide[s] === "ownPractice" ? (anchorPracticeFor(customNameBySide[s])
         ? t("wol_rule.own_named_practice", { defaultValue: "Your anchor practice" })
-        : t("wol_rule.own_practice", { defaultValue: "Your own practice" })) : prayBySide[s] === "fdd" ? "Forward Movement" : prayBySide[s] === "readings" ? "Forward Movement" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
+        : t("wol_rule.own_practice", { defaultValue: "Your own practice" })) : prayBySide[s] === "fdd" ? "Forward Movement" : prayBySide[s] === "readings" ? "Forward Movement" : methodLabel(methodBySide[s])} · ${shownReminderTime(s)}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
       editId: `side:${s}`,
       // Taking the office off leaves the side itself alone — its add-ons

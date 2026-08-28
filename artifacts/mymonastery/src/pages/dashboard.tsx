@@ -2686,22 +2686,24 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
               Done today <span aria-hidden>✓</span>
             </div>
           ) : (
-            <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="mt-[12px] w-full rounded-xl text-center cursor-pointer" style={{ background: `rgba(${rgb},0.22)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.45)` }}>
-              Mark done <span aria-hidden>✓</span>
+            // Owner: the CTA says "Log" and matches the other hero CTAs'
+            // full-width pill — and it is the ONLY tap target ("if i just tap
+            // the chapel card it goes to done, it should just be on the cta").
+            <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="mt-4 w-full text-center rounded-full cursor-pointer" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600, padding: "12px 12px" }}>
+              Log <span aria-hidden>→</span>
             </div>
           )}
         </div>
       </div>
     );
   }
+  // The pill is the only tap target (owner: "it should just be on the cta")
+  // — a stray tap on the body of a card that LOGS is a wrong prayer record,
+  // unlike a card that merely navigates.
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={done ? onUnmark : onClick}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") (done ? onUnmark() : onClick()); }}
       className="relative flex rounded-xl overflow-hidden"
-      style={{ background: `rgba(${rgb},0.13)`, border: `1px solid rgba(${rgb},0.40)`, cursor: "pointer" }}
+      style={{ background: `rgba(${rgb},0.13)`, border: `1px solid rgba(${rgb},0.40)` }}
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3 min-w-0">
@@ -2714,14 +2716,18 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
           </p>
         </div>
         <div
-          className="rounded-full text-center shrink-0"
+          role="button"
+          tabIndex={0}
+          onClick={done ? onUnmark : onClick}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") (done ? onUnmark() : onClick()); }}
+          className="rounded-full text-center shrink-0 cursor-pointer"
           style={{
             background: `rgba(${rgb},0.28)`, color: "#F0EDE6",
             fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500,
-            padding: "6px 14px", border: `1px solid rgba(${rgb},0.50)`, whiteSpace: "nowrap",
+            padding: "6px 14px", border: `1px solid rgba(${rgb},0.50)`, whiteSpace: "nowrap", minWidth: 84,
           }}
         >
-          {done ? "Done ✓" : "Mark done"}
+          {done ? "Done ✓" : "Log →"}
         </div>
       </div>
     </div>
@@ -7408,7 +7414,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           /daily-progress. Once everything's kept, the only
                           things left here are Turn·Learn·Pray and a "sit
                           again" invitation (below). */}
-                      <DailyProgressBody showStreak={false} showDone={doneShownPref} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} mountTag="done-no-events" />
+                      <DailyProgressBody showStreak={false} showDone={doneShownPref} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} mountTag="done-no-events" />
                       {/* layout on every section below DailyProgressBody: when a
                           card above completes and the Next/Done list shrinks,
                           Framer Motion detects each of these siblings landed at
@@ -7477,7 +7483,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     {/* Events live UNDER the prayer requests now (below), not here. */}
                     {/* Kept cards drop off the home once done — see the
                         no-events branch note above. */}
-                    <DailyProgressBody showStreak={false} showDone={doneShownPref} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} mountTag="done-events" />
+                    <DailyProgressBody showStreak={false} showDone={doneShownPref} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} mountTag="done-events" />
                     {/* layout on each section below — see HOME_REFLOW_TRANSITION's
                         definition for why. */}
                     {/* Extra Contemplation card removed (owner) — the Done
@@ -7509,7 +7515,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   showDone={doneShownPref}
                   /* Cap the Next list at 7 cards on the home; the rest live on
                      /daily-progress. */
-                  maxUpcoming={7}
+                 
                   /* The "N prayer requests waiting" lead card was removed — new
                      requests now announce themselves with a glowing border in
                      the prayer list below instead of a separate top card. */
