@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -20,7 +20,7 @@ import { daySwapNote } from "@/components/PracticeSwitcher";
 import { sortCardsByUserOrder, rowIdToCardKeys } from "@/lib/routineOrder";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
+import { markCustomDoneToday, setCustomNotToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
 import { useVisioToday } from "@/hooks/useVisioToday";
 import { undoOfficeToday } from "@/lib/officeManualLog";
@@ -667,6 +667,7 @@ const SENTINEL_PRACTICES: Partial<Record<string, { title: (t: (k: string, o?: Re
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming, onRemainingCount, mountTag = "unlabeled" }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number; onRemainingCount?: (count: number) => void; /** Diagnostic only — see lib/celebrationDebugLog.ts. Identifies which of dashboard.tsx's mutually-exclusive render branches mounted this instance. */ mountTag?: string }) {
   const { t } = useTranslation();
+  const [, navigate] = useLocation();
   // Today's Visio artwork, so its card can name the image. Called here at the
   // top with the other hooks — never after an early return (this repo's
   // recurring crash class).
@@ -1996,7 +1997,28 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       ) : logAnchorId && (() => {
         const a = customAnchors.find((x) => x.id === logAnchorId);
         if (!a) return null;
-        return <LogSheet anchor={a} onClose={() => setLogAnchorId(null)} t={t} />;
+        return (
+          <LogSheet
+            anchor={a}
+            onClose={() => setLogAnchorId(null)}
+            t={t}
+            // VTS's Chapel: a second door to keeping it — pray the office here
+            // and it counts (owner: "chapel is sometimes morning prayer, and a
+            // student could use it instead of the physical BCP"). The stamp is
+            // the INTENT; useRhythmState credits the practice once that office
+            // is actually completed, so tapping through and abandoning the
+            // office keeps nothing.
+            middle={a.office ? {
+              label: a.office === "morning"
+                ? t("rhythm.log_open_morning_prayer", { defaultValue: "Open Morning Prayer" })
+                : t("rhythm.log_open_evening_prayer", { defaultValue: "Open Evening Prayer" }),
+              onClick: () => {
+                markAnchorOfficeIntent(a.id);
+                navigate(`/begin-prayer?side=${a.office}`);
+              },
+            } : null}
+          />
+        );
       })()}
 
       {/* Tapping the ✓ on a Done card opens this instead of navigating —
@@ -2080,12 +2102,16 @@ function LogSheet({
   t,
   onLog,
   onSkip,
+  middle,
 }: {
   anchor: { id: string; title: string; emoji: string; reading?: ReadingConfig };
   onClose: () => void;
   t: (k: string, o?: Record<string, unknown>) => string;
   onLog?: () => void;
   onSkip?: () => void;
+  /** A SECOND way to keep this practice, offered between Done and Not today
+   *  — VTS's Chapel can be kept by praying Morning Prayer here. */
+  middle?: { label: string; onClick: () => void } | null;
 }) {
   const reading = anchor.reading;
   const loggedToday = reading ? getReadingToday(anchor.id) : 0;
@@ -2171,6 +2197,17 @@ function LogSheet({
             style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
           >
             ✓ {t("rhythm.log_done", { defaultValue: "Done" })}
+          </button>
+        )}
+
+        {middle && (
+          <button
+            type="button"
+            onClick={() => { middle.onClick(); onClose(); }}
+            className="w-full rounded-2xl py-3.5 mt-2 text-[15px] font-semibold active:scale-[0.99]"
+            style={{ background: "rgba(46,107,64,0.28)", color: WARM, border: "1px solid rgba(46,107,64,0.5)", fontFamily: FONT }}
+          >
+            {middle.label} <span aria-hidden>→</span>
           </button>
         )}
 

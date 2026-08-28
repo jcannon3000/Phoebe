@@ -65,7 +65,13 @@ export type RulePreset = {
    * you keep": its own card, its own dot, kept with a tap. `days` scopes it to
    * weekdays (see customAnchors.anchorOnDay).
    */
-  customAnchors?: Array<{ title: string; emoji: string; slot: CustomSlot; days?: number[] }>;
+  customAnchors?: Array<{
+    title: string; emoji: string; slot: CustomSlot; days?: number[];
+    /** BESPOKE TO VTS (owner): this practice can also be kept by praying an
+     *  office in the app — its log popup offers that as a third choice, and
+     *  finishing the office credits it. Nothing else sets this. */
+    office?: "morning" | "evening";
+  }>;
   /**
    * A DIFFERENT practice on given weekdays — the seminary keeps Chapel Monday
    * to Friday, Morning Prayer on Saturday and worship on Sunday. Written as
@@ -133,16 +139,26 @@ export const RULE_PRESETS: RulePreset[] = [
   // 0`), and that card opens the SILENT timer, so the ten minutes are a real
   // sit rather than breaths.
   { id: "vts", emoji: "🦩", sides: { morning: true, evening: true },
-    pray: "ownPractice", evening: "none",
-    customNames: { morning: "Chapel" },
+    // The morning is SIMPLE GUIDED PRAYER (owner). Chapel is no longer the
+    // morning's named practice: it stands on its own below, with its own card
+    // and its own "Open Morning Prayer" door. Carrying it in BOTH places put
+    // two Chapels in the rhythm — one from the side, one from the practice.
+    pray: "guidedPrayer", evening: "none",
     silence: true, silenceSide: "evening", contemplationStyle: "cobreathe", goalMin: 10,
     reflections: ["vts"],
-    customAnchors: [{ title: "Community Meal", emoji: "🍽️", slot: "midday", days: WEEKDAYS }],
-    // Chapel is a WEEKDAY thing (owner). It needs no rule of its own — these
-    // two excuse the weekend from it: Saturday keeps Morning Prayer, and
-    // Sunday is worship, which is a thing you go to rather than a thing the
-    // app leads, so it's a practice of your own that you keep with a tap.
-    // Rename it "Eucharist" here if that's the truer word for the Sunday.
+    customAnchors: [
+      // CHAPEL — the seminary's own practice, and the reason `office` exists.
+      // Chapel is sometimes Morning Prayer, so its log popup offers "Open
+      // Morning Prayer" alongside Done: a student without the physical prayer
+      // book prays it here and it counts (owner). It arrives ONLY with this
+      // preset — it isn't in the customizer's list of practices to add.
+      { title: "Chapel", emoji: "⛪", slot: "morning", days: WEEKDAYS, office: "morning" as const },
+      { title: "Community Meal", emoji: "🍽️", slot: "midday", days: WEEKDAYS },
+    ],
+    // Chapel scopes ITSELF to weekdays now (its own `days`), so these rules are
+    // only about the weekend's own shape: Saturday keeps Morning Prayer, and
+    // Sunday is worship — a thing you go to rather than a thing the app leads,
+    // so it stays a practice of your own that you keep with a tap.
     dayRules: {
       morning: [
         { days: [6], pray: "offices" },
@@ -151,7 +167,8 @@ export const RULE_PRESETS: RulePreset[] = [
     },
     title: "VTS Chapel & Commentary", blurb: "The seminary's day — Chapel on weekdays, Morning Prayer on Saturday, worship on Sunday, the Dean's word, ten minutes of silence, and Creation Prayer at its close.",
     rows: [
-      { emoji: "⛪", label: "Chapel on weekdays" },
+      { emoji: "⛪", label: "Chapel on weekdays — or pray Morning Prayer here" },
+      { emoji: "🙌", label: "Simple Guided Prayer in the morning" },
       { emoji: "📖", label: "Morning Prayer on Saturdays" },
       { emoji: "🕊️", label: "Worship on Sundays" },
       { emoji: "🦩", label: "The VTS Dean's Commentary" },

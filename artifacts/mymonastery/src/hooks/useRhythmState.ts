@@ -13,7 +13,7 @@ import {
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { practiceOnDay } from "@/lib/practiceDays";
-import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
+import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay, hasAnchorOfficeIntentToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { anchorModesFor, getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, getSideReflectionExplicit, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT, getSideContemplationKind, getContemplationStyleGlobal, type ContemplationKind as SideContemplationKind } from "@/lib/officePrefs";
@@ -1382,6 +1382,28 @@ export function useRhythmState(): RhythmState {
     ...(eveningExtraLevel ? [eveningExtraDone] : []),
     ...(eveningContemplationActive ? [eveningContemplationDone] : []),
   ];
+  /**
+   * A practice that can ALSO be kept by praying the office (VTS's Chapel).
+   *
+   * Chapel is sometimes Morning Prayer, and a student without the physical
+   * prayer book should be able to pray it here and have it count (owner). The
+   * practice's log sheet offers "Open Morning Prayer"; taking that door leaves
+   * an intent stamp, and the credit is DERIVED here from that stamp plus the
+   * office's own completion — rather than written when the office finishes.
+   *
+   * Derived, because the office already owns the fact of being prayed (it
+   * counts only when its slideshow is finished) and a second stamp could
+   * disagree with it. Doing it HERE, above the flags, is what keeps the card,
+   * the day's dots and the widget reading one value — the completion-signal
+   * invariant this hook exists to hold.
+   */
+  const customAnchorsWithOfficeCredit = customAnchors.map((a) => (
+    !a.done && a.office && hasAnchorOfficeIntentToday(a.id)
+      && (a.office === "morning" ? morningDone : eveningDone)
+      ? { ...a, done: true }
+      : a
+  ));
+
   const extraFlags = [
     ...(cobreatheStandaloneActive ? [cobreatheDone] : []),
     ...(listeningActive ? [listeningDone] : []),
@@ -1405,7 +1427,7 @@ export function useRhythmState(): RhythmState {
     // NO card on that day, so counting it here would add a dot that can never
     // fill and hold `allHabitsDone` false all Saturday — the day could never
     // read as complete.
-    ...customAnchors.filter((a) => !a.skipped && anchorOnDay(a)).map((a) => a.done),
+    ...customAnchorsWithOfficeCredit.filter((a) => !a.skipped && anchorOnDay(a)).map((a) => a.done),
   ];
   const allFlags = [...coreFlags, ...extraFlags];
   const totalAnchors = allFlags.length;
@@ -1481,7 +1503,7 @@ export function useRhythmState(): RhythmState {
     prayerListDone,
     intentionsTotalCount,
     intentionsPrayedCount,
-    customAnchors,
+    customAnchors: customAnchorsWithOfficeCredit,
     totalAnchors,
     doneCount,
     streak: rhythm?.streak ?? 0,

@@ -140,6 +140,19 @@ export type CustomAnchor = {
    * shows no gap to feel bad about, rather than a dot you could never fill.
    */
   days?: number[];
+  /**
+   * This practice can ALSO be kept by praying an office in the app.
+   *
+   * VTS's Chapel is the case it exists for (owner): chapel is sometimes
+   * Morning Prayer, and a student who doesn't have the physical BCP in front
+   * of them should be able to pray it here and have that count. The practice
+   * stays a plain named practice — this only adds a second door to keeping it,
+   * offered on its log sheet and credited when that office is completed.
+   *
+   * A FLAG, never a name match: the practice can be renamed (the seminary's
+   * Sunday is "Worship") without changing what it does.
+   */
+  office?: "morning" | "evening";
 };
 
 /** Mon–Fri, the common case (a weekday practice). */
@@ -236,6 +249,8 @@ export function addCustomAnchor(
   reading?: ReadingConfig,
   /** Weekdays this is kept on (0–6). Omit for every day. */
   days?: number[],
+  /** See CustomAnchor.office — the office that can also keep this practice. */
+  office?: "morning" | "evening",
 ): void {
   const t = title.trim();
   if (!t) return;
@@ -262,6 +277,7 @@ export function addCustomAnchor(
     ...(days && days.length > 0 && days.length < 7
       ? { days: [...new Set(days.filter((d) => d >= 0 && d <= 6))].sort() }
       : {}),
+    ...(office ? { office } : {}),
   });
   saveDefs(list);
 }
@@ -358,6 +374,30 @@ export function isCustomDoneToday(id: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * "I'm keeping this practice by praying the office" — set when someone opens
+ * the office from a practice's log sheet, read when the office completes.
+ *
+ * DERIVED, NOT WRITTEN AT COMPLETION. The office's own completion is the
+ * source of truth (see the office-completed invariant: an office counts only
+ * when its slideshow is finished), so rather than hooking that path and
+ * writing a second done-stamp — two records that can disagree — the practice
+ * simply asks: did I send someone to this office today, and is that office
+ * done? One computation, and it survives the app being backgrounded mid-office.
+ */
+const OFFICE_INTENT_PREFIX = "phoebe:anchor-office-intent:";
+export function markAnchorOfficeIntent(id: string): void {
+  try { localStorage.setItem(OFFICE_INTENT_PREFIX + id, todayISO()); } catch { /* private mode */ }
+}
+export function hasAnchorOfficeIntentToday(id: string): boolean {
+  try { return localStorage.getItem(OFFICE_INTENT_PREFIX + id) === todayISO(); } catch { return false; }
+}
+/** Clear the intent — used when the practice is explicitly un-logged, so the
+ *  office no longer keeps it on the reader's behalf. */
+export function clearAnchorOfficeIntent(id: string): void {
+  try { localStorage.removeItem(OFFICE_INTENT_PREFIX + id); } catch { /* private mode */ }
 }
 
 /** Toggle today's check for a custom practice (tap to check, tap to undo). */

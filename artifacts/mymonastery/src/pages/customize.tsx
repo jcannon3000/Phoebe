@@ -300,7 +300,10 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
       const existing = new Set(getCustomAnchors().map((a) => a.title.trim().toLowerCase()));
       for (const c of preset.customAnchors) {
         if (existing.has(c.title.trim().toLowerCase())) continue;
-        addCustomAnchor(c.title, c.emoji, c.slot, undefined, c.days);
+        // Pass `office` too — the simple customizer adopts the same presets,
+        // and dropping it here made a VTS Chapel without its "Open Morning
+        // Prayer" door depending on which editor you adopted from.
+        addCustomAnchor(c.title, c.emoji, c.slot, undefined, c.days, c.office);
         existing.add(c.title.trim().toLowerCase());
       }
     }

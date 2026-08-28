@@ -2598,7 +2598,10 @@ export default function WayOfLoveRuleFlow({
       for (const c of preset.customAnchors) {
         const key = c.title.trim().toLowerCase();
         if (existing.has(key)) continue;
-        addCustomAnchor(c.title, c.emoji, c.slot, undefined, c.days);
+        // …including `office`, which is how VTS's Chapel gets its "Open
+        // Morning Prayer" door. Dropping it here silently created a Chapel
+        // that looked right and couldn't be kept by praying the office.
+        addCustomAnchor(c.title, c.emoji, c.slot, undefined, c.days, c.office);
         existing.add(key);
       }
     }
