@@ -19,7 +19,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { getSideLevel, getSideCustomName, getSideReflectionExplicit, extraPracticeTitle } from "@/lib/officePrefs";
 import { getPracticeSlot, SLOT_RANK, isSlotPast, isSlotOpen, type CustomSlot } from "@/lib/customAnchors";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
-import { sortCardsByUserOrder } from "@/lib/routineOrder";
+import { sortCardsByUserOrder, getRoutineOrder } from "@/lib/routineOrder";
 import { rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { computeWeeklyGrid, type PracticeWeekDay } from "@/lib/weeklyGrid";
@@ -170,6 +170,14 @@ export function useWidgetSync(): void {
   // refs are fresh every render).
   const reflSig = r.reflections.map((x) => `${x.source}:${x.done ? 1 : 0}`).join(",");
   const customSig = r.customAnchors.map((a) => `${a.id}:${a.done ? 1 : 0}:${a.slot}:${a.skipped ? 1 : 0}`).join(",");
+  /**
+   * The person's drag order — nextCards follows it (audit find). A PURE
+   * reorder changes no other dep: useRhythmState re-renders on
+   * OFFICE_PREFS_EVENT (setRoutineOrder dispatches it), so this signature is
+   * re-read here, and without it the widget would keep yesterday's order
+   * until some unrelated completion happened to wake the effect.
+   */
+  const orderSig = getRoutineOrder().join(",");
 
   useEffect(() => {
     if (!enabled) return;
@@ -480,7 +488,7 @@ export function useWidgetSync(): void {
     // old face until an unrelated refetch.
     r.morningContemplationKind, r.eveningContemplationKind,
     r.cobreatheStandaloneActive, r.silenceGoalCardActive, r.silenceGoalCardDone,
-    customSig, r.prayerKind, r.streak, r.contemplationMin, r.contemplationGoalMin,
+    customSig, orderSig, r.prayerKind, r.streak, r.contemplationMin, r.contemplationGoalMin,
     prayedWithQ.data, coPrayersQ.data, prayerReqsQ.data, cacMetaQ.data,
   ]);
 }
