@@ -924,7 +924,7 @@ export default function WayOfLoveRuleFlow({
   // admin opening this; manual is the opt-out.
   // "Ask me" is the default only for those who have it — everyone else came
   // here to edit, so the manual path leads.
-  const [entryChoice, setEntryChoice] = useState<"ask" | "manual" | "revert">("ask");
+  const [entryChoice, setEntryChoice] = useState<"ask" | "manual" | "preset" | "revert">("ask");
   // (Removed: the weekly-cards step's own on/off state. That step is gone and
   // the card defaults ON — its toggle lives in Settings → Home display, which
   // owns the same phoebe:hide-turn-learn-pray key.)
@@ -3339,9 +3339,25 @@ export default function WayOfLoveRuleFlow({
    * straight into the intro.
    */
   const interviewOnOffer = isSuperAdmin && !ROUTINE_INTERVIEW_ENTRY_HIDDEN;
+  /**
+   * THE INTRO SLIDE, BACK FOR EVERYONE (owner: "i want an intro slide again
+   * before we see the routine with the three options of edit your routine,
+   * chose preset routine, and revert").
+   *
+   * It was gated on `interviewOnOffer` — super admins with the interview flag
+   * on — so in practice nobody met it, which is why preset and revert had to
+   * be found somewhere else (a ⚙ menu, then rows at the foot of the list).
+   * They belong here: they are things you decide BEFORE reading your routine,
+   * not footnotes after it.
+   *
+   * Waits for editLoaded so the Revert row can't pop in a beat late. While it
+   * loads, showEntryChoice is false, which makes entrySettled true and hands
+   * the screen to the existing "Finding your rhythm…" splash rather than a
+   * flash of the wrong slide.
+   */
   const showEntryChoice = prescribe
     ? isSuperAdmin && !guest && !pilot
-    : interviewOnOffer && !guest && !pilot;
+    : !guest && !pilot && editLoaded;
   // "Ask me" is the stored default (owner), but it's only offered to super
   // admins — so for everyone else it resolves to the manual path rather than
   // leaving no row selected and a Continue that walks into a page they can't
@@ -3349,7 +3365,7 @@ export default function WayOfLoveRuleFlow({
   // query: seeding the state from it would race, and a super admin who loaded
   // slowly would silently lose their default.
   const canRevert = hasRoutineHistory && !prescribe;
-  const effectiveEntryChoice: "ask" | "manual" | "revert" =
+  const effectiveEntryChoice: "ask" | "manual" | "preset" | "revert" =
     entryChoice === "ask" && (!isSuperAdmin || ROUTINE_INTERVIEW_ENTRY_HIDDEN) ? "manual"
       : entryChoice === "revert" && !canRevert ? "manual"
         : entryChoice;
@@ -4086,31 +4102,9 @@ export default function WayOfLoveRuleFlow({
         >
           {t("wol_rule.edit_add_practice", { defaultValue: "+ Add a practice" })}
         </button>
-        {/**
-          * Preset + revert, at the FOOT of the list (owner: "lets put the
-          * options back at the bottom").
-          *
-          * They spent a spell in a ⚙ menu in the top bar. Two problems with
-          * that, and he saw both: the menu dropped down over the list's own
-          * instructions, and at 260px wide anchored to a gear ~46px from the
-          * right edge it overflowed the LEFT of the content box and got
-          * clipped — his screenshot read "ose a preset routine" / "ert to a
-          * past routine".
-          *
-          * As rows they need no anchoring, can't be clipped, and read in the
-          * order the decision actually happens: here is your day, and if you'd
-          * rather start over, here are the two ways to. menuRow's chevron says
-          * they navigate rather than select.
-          */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
-          {menuRow("📋", t("wol_rule.entry3_preset", { defaultValue: "Choose a preset routine" }),
-            t("wol_rule.entry3_preset_sub", { defaultValue: "Start from a rhythm someone else keeps" }),
-            () => { setPresetPending(null); setManualMode("preset"); })}
-          {canRevert && menuRow("↩️", t("wol_rule.entry_revert", { defaultValue: "Revert to a past routine" }),
-            t("wol_rule.entry_revert_sub", { defaultValue: "Go back to a rhythm you kept before" }),
-            () => setLocation("/routine-history"))}
-        </div>
-
+        {/* Preset + revert are on the INTRO slide now (owner), so the list
+            body ends at Add a practice — one place to choose a whole different
+            rhythm, reached before you read this one. */}
         {ctaButton(t("wol_rule.next_notifications", { defaultValue: "Next: notifications" }), () => setEntryPhase("notify"))}
 
         {deletingEditRow && (
@@ -4149,7 +4143,7 @@ export default function WayOfLoveRuleFlow({
             is operative: open the slide, press Continue, you're in the
             interview. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {isSuperAdmin && !ROUTINE_INTERVIEW_ENTRY_HIDDEN && choiceRow(
+          {interviewOnOffer && choiceRow(
             effectiveEntryChoice === "ask",
             prescribe
               ? `💬 ${t("wol_rule.entry_ask_prescribe", { defaultValue: "Describe their practice" })}`
@@ -4161,9 +4155,19 @@ export default function WayOfLoveRuleFlow({
           )}
           {choiceRow(
             effectiveEntryChoice === "manual",
-            `✍️ ${t("wol_rule.entry_manual", { defaultValue: "I'll set it up myself" })}`,
-            t("wol_rule.entry_manual_sub", { defaultValue: "Go through the slides and choose each practice." }),
+            `✍️ ${t("wol_rule.entry_manual", { defaultValue: "Edit your routine" })}`,
+            t("wol_rule.entry_manual_sub", { defaultValue: "Your day as it stands — reorder it, change a practice, take one off." }),
             () => setEntryChoice("manual"),
+          )}
+          {/* Adopting REPLACES the rhythm (the owner's own ruling), so this is
+              a fork taken before you've read your routine, not a tweak to it —
+              which is the argument for it living on this slide rather than at
+              the foot of the list. */}
+          {choiceRow(
+            effectiveEntryChoice === "preset",
+            `📋 ${t("wol_rule.entry3_preset", { defaultValue: "Choose a preset routine" })}`,
+            t("wol_rule.entry3_preset_sub", { defaultValue: "Start from a rhythm someone else keeps." }),
+            () => setEntryChoice("preset"),
           )}
           {/* Owner: "a third option where it says revert to past routine, and
               we have a backlog that saves routines." Changing a rule of life
@@ -4187,6 +4191,10 @@ export default function WayOfLoveRuleFlow({
             return;
           }
           if (effectiveEntryChoice === "revert") { setLocation("/routine-history"); return; }
+          // The preset list is a mode of the same flow, not another page: mark
+          // the entry answered and switch modes, so Back from the list returns
+          // here rather than leaving the customizer altogether.
+          if (effectiveEntryChoice === "preset") { setPresetPending(null); setManualMode("preset"); setEntryChoiceMade(true); return; }
           setEntryChoiceMade(true);
         })}
       </>,
