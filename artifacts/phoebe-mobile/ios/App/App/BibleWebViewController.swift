@@ -324,12 +324,16 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'color:#F0EDE6!important;font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
         'body::before{content:"";position:fixed;inset:0;z-index:-2;background-image:url("' + ASSETS + 'leaf.jpg");',
         'background-size:cover;background-position:center;opacity:0.22;}',
+        /* The practice decks' own wash weights — the earlier 0.88–0.97 buried
+           the leaf entirely (owner's screenshot: a flat dark green). */
         'body::after{content:"";position:fixed;inset:0;z-index:-1;',
-        'background:linear-gradient(180deg,rgba(10,26,16,0.88) 0%,rgba(10,26,16,0.94) 55%,rgba(10,26,16,0.97) 100%);}',
+        'background:linear-gradient(180deg,rgba(10,26,16,0.62) 0%,rgba(10,26,16,0.80) 55%,rgba(10,26,16,0.90) 100%);}',
         /* oremus's own furniture. .copyright is deliberately NOT here. */
         '#dcheck,#h1screen,#overDiv,.quicklink,hr.quicklink,.visbuttons,.another,.credits,.adj,form{display:none!important;}',
         /* The reading. */
-        '.bible,.bibletext{max-width:34rem;margin:0 auto!important;padding:0 22px!important;background:transparent!important;}',
+        /* FULL WIDTH (owner: "get rid of the line breaks so it goes full
+           width") — no measure cap, just the side gutters. */
+        '.bible,.bibletext{max-width:none;margin:0!important;padding:0 20px!important;background:transparent!important;}',
         /* font-family is repeated HERE, not just on body: oremus sets Verdana
            on .bibletext itself, and an element's own rule beats an inherited
            one however important the ancestor's is. Caught in testing — the
@@ -338,9 +342,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.bibletext{font-size:19px!important;line-height:1.72!important;color:#F0EDE6!important;}',
         '.bibletext p{margin:0 0 1.15em!important;}',
         'h2.passageref,.copyright,.phoebe-reader-note{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
-        'h2.passageref{max-width:34rem;margin:0 auto!important;padding:26px 22px 6px!important;',
+        'h2.passageref{max-width:none;margin:0!important;padding:14px 20px 6px!important;',
         'font-size:13px!important;letter-spacing:.16em;text-transform:uppercase;color:rgba(200,212,192,0.75)!important;font-weight:600!important;}',
-        'h2.plus-S,h2.sectVis{max-width:34rem;margin:1.5em auto 0.5em!important;padding:0 22px!important;',
+        'h2.plus-S,h2.sectVis{max-width:none;margin:1.5em 0 0.5em!important;padding:0 20px!important;',
         'font-size:15px!important;color:rgba(200,212,192,0.8)!important;font-weight:600!important;}',
         /* Verse numbers recede; they are wayfinding, not the text. */
         'sup.ww,sup.ii,span.cc,sup.vnumVis,span.vnumVis{color:rgba(143,175,150,0.72)!important;font-size:0.66em!important;font-weight:600!important;',
@@ -350,12 +354,16 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'sup.fnote{color:rgba(143,175,150,0.5)!important;}',
         '.sc{font-variant:small-caps;}',
         /* KEPT, and legible: the NRSV notice. */
-        '.copyright{max-width:34rem;margin:2em auto 0!important;padding:16px 22px!important;',
+        '.copyright{max-width:none;margin:2em 0 0!important;padding:16px 20px!important;',
         'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.62)!important;',
         'border-top:1px solid rgba(200,212,192,0.16);background:transparent!important;}',
-        '.phoebe-reader-note{max-width:34rem;margin:0 auto!important;padding:10px 22px 40px!important;',
+        '.phoebe-reader-note{max-width:none;margin:0!important;padding:10px 20px 40px!important;',
         'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.45)!important;}',
         '.phoebe-reader-note a{color:rgba(168,197,160,0.75)!important;text-decoration:underline;}',
+        /* The site's name at the very top (owner: "keep the oremus title at
+           the top and such so we know it's the webpage"). */
+        '.phoebe-reader-masthead{padding:10px 20px 0!important;font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'font-size:11px!important;letter-spacing:.18em;text-transform:uppercase;color:rgba(143,175,150,0.6)!important;}',
       ].join('');
 
       function addStyle() {
@@ -406,7 +414,28 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         cp.parentNode.insertBefore(note, cp.nextSibling);
       }
 
-      function run() { addStyle(); tidy(); credit(); }
+      /** The site named at the top of the page — it stays in BOTH views. */
+      function masthead() {
+        if (document.querySelector('.phoebe-reader-masthead') || !document.body) return;
+        var m = document.createElement('div');
+        m.className = 'phoebe-reader-masthead';
+        m.textContent = 'the oremus Bible Browser';
+        document.body.insertBefore(m, document.body.firstChild);
+      }
+
+      /**
+       * The top-left "Standard" toggle (native bar) calls this: false shows
+       * the page as oremus styles it, true brings the reader view back. Only
+       * the STYLESHEET toggles — the empty-paragraph tidy is a DOM edit and
+       * stays either way, which standard view survives fine (the removed
+       * blocks were empty).
+       */
+      window.__phoebeReaderSet = function (on) {
+        var st = document.getElementById('phoebe-reader');
+        if (st) st.media = on ? '' : 'not all';
+      };
+
+      function run() { addStyle(); tidy(); credit(); masthead(); }
       if (document.readyState !== 'loading') run();
       document.addEventListener('DOMContentLoaded', run);
       // oremus paints in one pass, but a late stylesheet or a re-render
@@ -621,6 +650,15 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             navigationItem.rightBarButtonItem = nextItem
             // The title pill: same text the office's own header pill shows.
             title = officeTitleText
+            // Top-left: "Standard" flips the oremus reading back to the page
+            // as oremus styles it; "Reader" brings Phoebe's view back (owner:
+            // "in the left top corner have some button that says standard").
+            // oremus pages only — the reader view exists nowhere else.
+            if (url.host ?? "").lowercased().hasSuffix("oremus.org") {
+                let standardItem = UIBarButtonItem(title: "Standard", style: .plain, target: self, action: #selector(toggleReaderView))
+                standardItem.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
+                navigationItem.leftBarButtonItem = standardItem
+            }
         } else if isArticle {
             // No Options, no Reader button — owner reverted both. Every
             // Options item is about praying an office; on a newsletter they
@@ -1280,6 +1318,15 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         handingOff = true
         dismiss(animated: true) { [weak self] in self?.onOfficePrev?() }
     }
+    /** Reader view on/off for the oremus reading — see the JS side's
+     *  __phoebeReaderSet. State lives here so the button can rename itself. */
+    private var readerViewOn = true
+    @objc private func toggleReaderView() {
+        readerViewOn.toggle()
+        webView?.evaluateJavaScript("window.__phoebeReaderSet && window.__phoebeReaderSet(\(readerViewOn))", completionHandler: nil)
+        navigationItem.leftBarButtonItem?.title = readerViewOn ? "Standard" : "Reader"
+    }
+
     @objc private func officeNavNext() {
         handingOff = true
         dismiss(animated: true) { [weak self] in self?.onOfficeNext?() }
