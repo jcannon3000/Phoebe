@@ -545,6 +545,13 @@ struct PhoebeWidgetView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                 Spacer(minLength: 0)
             } else {
+                // VERTICALLY CENTRED (owner). The frame below is set to fill
+                // the widget, and .leading alignment centres vertically on
+                // paper — but the cards still sat high, so this stops relying
+                // on that and says it outright: equal spacers above and below
+                // split whatever room is left over, whether there are two
+                // cards or one.
+                Spacer(minLength: 0)
                 // gap-2 (8) — the home's Next list spacing, was 6.
                 VStack(spacing: 8 * s) {
                     ForEach(Array(cards.prefix(2).enumerated()), id: \.offset) { _, c in
@@ -555,6 +562,7 @@ struct PhoebeWidgetView: View {
                         Link(destination: c.destination) { nextCardRow(c, s) }
                     }
                 }
+                Spacer(minLength: 0)
             }
         }
         .padding(.horizontal, 12)
