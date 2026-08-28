@@ -128,18 +128,9 @@ export function useWidgetSync(): void {
   // The single source of truth for the rhythm — same flags the home renders.
   const r = useRhythmState();
 
-  // Community summary counts (for the "day is kept" hero) + new prayer requests
-  // (the lock-screen rectangular leads with these) — not part of useRhythmState.
-  const prayedWithQ = useQuery<{ people?: unknown[]; total?: number }>({
-    queryKey: ["/api/prayer-streak/community-prayed-week"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-week"),
-    enabled, staleTime: 5 * 60_000,
-  });
-  const coPrayersQ = useQuery<{ people?: unknown[] }>({
-    queryKey: ["/api/prayer-streak/co-prayers-week"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/co-prayers-week"),
-    enabled, staleTime: 5 * 60_000,
-  });
+  // New prayer requests (the lock-screen rectangular leads with these) — not
+  // part of useRhythmState. (The community prayed-with queries left with the
+  // copy that used them — owner: no "prayed with you" anywhere.)
   const prayerReqsQ = useQuery<Array<{ isAnswered?: boolean; isOwnRequest?: boolean; closedAt?: string | null; myAmenedEver?: boolean }>>({
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
@@ -182,8 +173,6 @@ export function useWidgetSync(): void {
   useEffect(() => {
     if (!enabled) return;
     const now = new Date();
-    const withYou = prayedWithQ.data?.total ?? prayedWithQ.data?.people?.length ?? 0;
-    const youFor = coPrayersQ.data?.people?.length ?? 0;
     const newPrayersCount = (prayerReqsQ.data ?? []).filter(
       (x) => !x.isAnswered && !x.isOwnRequest && !x.closedAt && !x.myAmenedEver,
     ).length;
@@ -264,10 +253,10 @@ export function useWidgetSync(): void {
       // Compline IS the prayer book's night office, so the eyebrow stands.
       return "Book of Common Prayer";
     };
+    // No community counts on cards (owner: "don't do any of the 'prayed with
+    // you' copy anywhere") — the card describes the practice, nothing else.
     const officeSubtitle = (isMorning: boolean): string =>
-      withYou > 0
-        ? `${withYou} ${withYou === 1 ? "person" : "people"} prayed with you this week`
-        : isMorning ? "Begin the day with the office" : "Mark the day's end with the office";
+      isMorning ? "Begin the day with the office" : "Mark the day's end with the office";
 
     // Every active practice, in DailyProgressBody's base order. A stable sort by
     // slot rank then reproduces the home's time-of-day ordering; within a slot
@@ -414,7 +403,8 @@ export function useWidgetSync(): void {
       heroKind = "summary";
       heroEyebrow = "The day is kept";
       heroTitle = "The day is kept";
-      heroSubtitle = `${withYou} prayed with you · you prayed for ${youFor}`;
+      // No counts (owner) — the kept day needs no scoreboard.
+      heroSubtitle = "";
       heroCta = "";
     }
 
@@ -489,7 +479,7 @@ export function useWidgetSync(): void {
     r.morningContemplationKind, r.eveningContemplationKind,
     r.cobreatheStandaloneActive, r.silenceGoalCardActive, r.silenceGoalCardDone,
     customSig, orderSig, r.prayerKind, r.streak, r.contemplationMin, r.contemplationGoalMin,
-    prayedWithQ.data, coPrayersQ.data, prayerReqsQ.data, cacMetaQ.data,
+    prayerReqsQ.data, cacMetaQ.data,
   ]);
 }
 

@@ -3718,22 +3718,10 @@ function NcmpHomeCard() {
 }
 
 // ── HomeDoneSummaryCard — the all-kept hero ──────────────────────────────────
-// Shown as the home hero once the day's rhythm is fully kept (morning +
-// reflection + evening). A quiet benediction over a community summary: how many
-// people prayed with you this week, and how many you prayed for.
+// Shown as the home hero once the day's rhythm is fully kept. A quiet
+// benediction, nothing else — the "N prayed with you" scoreboard left with
+// the owner's rule: no prayed-with copy anywhere.
 function HomeDoneSummaryCard() {
-  const { data: prayedWith } = useQuery<{ people: { id: number; name: string; avatarUrl: string | null }[]; total?: number }>({
-    queryKey: ["/api/prayer-streak/community-prayed-week"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-week"),
-    staleTime: 5 * 60_000,
-  });
-  const { data: youPrayed } = useQuery<{ people: Array<{ id: number; name: string | null; avatarUrl: string | null }> }>({
-    queryKey: ["/api/prayer-streak/co-prayers-week"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/co-prayers-week"),
-    staleTime: 5 * 60_000,
-  });
-  const withYou = prayedWith?.total ?? prayedWith?.people?.length ?? 0;
-  const youFor = youPrayed?.people?.length ?? 0;
   return (
     <div
       className="relative flex rounded-xl overflow-hidden"
@@ -3747,17 +3735,7 @@ function HomeDoneSummaryCard() {
         <p className="text-[15px] leading-relaxed mt-1.5 mb-4" style={{ color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic" }}>
           Rest now — the work and the prayer will keep till morning.
         </p>
-        <div className="flex gap-3">
-          {[
-            { n: withYou, label: withYou === 1 ? "prayed with you this week" : "prayed with you this week" },
-            { n: youFor, label: youFor === 1 ? "you prayed for this week" : "you prayed for this week" },
-          ].map((s, idx) => (
-            <div key={idx} className="flex-1 rounded-lg px-3 py-2.5" style={{ background: "rgba(46,107,64,0.16)" }}>
-              <p className="font-bold leading-none" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 26 }}>{s.n}</p>
-              <p className="text-[11.5px] mt-1 leading-snug" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>{s.label}</p>
-            </div>
-          ))}
-        </div>
+
       </div>
     </div>
   );

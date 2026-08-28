@@ -476,6 +476,12 @@ struct PhoebeWidgetView: View {
                 .stroke(Color(red: 200/255, green: 212/255, blue: 192/255).opacity(0.35), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 24))
+        // HUG CONTENT HEIGHT, always. The accent Rectangle is greedy on both
+        // axes, so with spare vertical room (one card, or the synthesized
+        // fallback) it stretched its whole row to fill the widget — the
+        // owner's screenshot: a single double-height card. fixedSize keeps
+        // every card at the standard height however many there are.
+        .fixedSize(horizontal: false, vertical: true)
         .opacity(c.later ? 0.72 : 1)
     }
 
@@ -484,9 +490,13 @@ struct PhoebeWidgetView: View {
             // App identity top-left (owner: "Phoebe in the top left still").
             Text("Phoebe").font(sgBold(15)).foregroundColor(.white)
             if cards.isEmpty {
-                // Nothing left to pray — the home's summary state, worn as a
-                // single quiet card.
-                nextCardRow(NextCard(emoji: "🌿", title: "The day is kept", subtitle: stats.subtitle.isEmpty ? "Every practice prayed" : stats.subtitle, cta: "", r: 110, g: 180, b: 130, tint: 0.4, later: false))
+                // Nothing left to pray — just the words, in Space Grotesk
+                // (owner: "if it's done, just show 'The day is kept'").
+                Spacer(minLength: 0)
+                Text("The day is kept")
+                    .font(sgBold(22))
+                    .foregroundColor(phoebeWarm)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 Spacer(minLength: 0)
             } else {
                 VStack(spacing: 6) {
