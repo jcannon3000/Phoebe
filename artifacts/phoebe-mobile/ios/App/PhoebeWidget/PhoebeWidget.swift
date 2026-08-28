@@ -566,7 +566,14 @@ struct PhoebeWidgetView: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        // Vertical padding of our OWN is nearly all redundant: iOS already
+        // insets widget content by its default margins (~16pt each side) on
+        // top of this. Two cards plus 10pt top and bottom came to more than
+        // the medium widget's usable height, so the layout had no slack left
+        // — which is why the cards read as pinned rather than centred, and why
+        // spacers alone could not have fixed it. 2pt keeps them off the
+        // margin without eating the room the centring needs.
+        .padding(.vertical, 2)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
