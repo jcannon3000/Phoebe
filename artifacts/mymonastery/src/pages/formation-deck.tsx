@@ -18,7 +18,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
-import { FROST } from "@/lib/frost";
 
 const BG = "#0C1F12";
 const WARM = "#F0EDE6";
@@ -31,13 +30,12 @@ const ACCENT = "rgba(168,197,160,0.55)";
 /** A big set-apart quotation — the deck's opening and closing register. */
 function Quote({ text, cite }: { text: string; cite?: string }) {
   return (
-    <div style={{ maxWidth: 620, textAlign: "left" }}>
-      <p className="title-glow-breathe" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(22px, 4.6vw, 32px)", lineHeight: 1.45, margin: 0 }}>
-        “{text}”
+    <div className="flex flex-col items-center text-center" style={{ gap: 22 }}>
+      <span aria-hidden style={{ color: ACCENT, fontFamily: SERIF, fontSize: 64, lineHeight: 0.5, marginBottom: 8 }}>“</span>
+      <p className="title-glow-breathe" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(21px, 4.2vw, 30px)", lineHeight: 1.5, maxWidth: 600, margin: 0 }}>
+        {text}
       </p>
-      {cite && (
-        <p style={{ color: SAGE, fontFamily: FONT, fontSize: "clamp(13px, 2.4vw, 16px)", margin: "18px 0 0" }}>{cite}</p>
-      )}
+      {cite && <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: 13, letterSpacing: "0.06em", marginTop: 4 }}>— {cite}</p>}
     </div>
   );
 }
@@ -46,10 +44,10 @@ function Quote({ text, cite }: { text: string; cite?: string }) {
 function Step({ label, sub, small }: { label: string; sub: string; small?: boolean }) {
   return (
     <div>
-      <p className="title-glow-breathe" style={{ color: WARM, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", fontSize: small ? "clamp(13px, 2.4vw, 16px)" : "clamp(16px, 3.2vw, 22px)", margin: 0 }}>
+      <p className="title-glow-breathe" style={{ color: WARM, fontFamily: FONT, fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.01em", fontSize: small ? "clamp(17px, 3.4vw, 24px)" : "clamp(25px, 5.2vw, 38px)", margin: 0 }}>
         {label}
       </p>
-      <p style={{ color: SAGE, fontFamily: FONT, fontSize: small ? "clamp(12.5px, 2.2vw, 15px)" : "clamp(14px, 2.6vw, 18px)", lineHeight: 1.5, margin: "4px 0 0" }}>{sub}</p>
+      <p style={{ color: SAGE, fontFamily: FONT, fontSize: small ? "clamp(13.5px, 2.5vw, 15.5px)" : 16, lineHeight: 1.6, margin: "6px 0 0" }}>{sub}</p>
     </div>
   );
 }
@@ -79,9 +77,9 @@ const SLIDES: Array<() => React.ReactElement> = [
   // 2 — the gap the whole talk lives in.
   () => (
     <div style={{ maxWidth: 560, textAlign: "left" }}>
-      <Step label="Content consumption" sub="Learning Information About Love" />
+      <Step label="Content consumption" sub="Learning information about love" />
       <Arrow />
-      <Step label="Formation" sub="Becoming a More Loving Person" />
+      <Step label="Formation" sub="Becoming a more loving person" />
     </div>
   ),
   // 3 — the book behind the argument.
@@ -100,14 +98,14 @@ const SLIDES: Array<() => React.ReactElement> = [
   // 6 — the frontline.
   () => (
     <div style={{ maxWidth: 620, textAlign: "center" }}>
-      <p className="title-glow-breathe" style={{ color: WARM, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", fontSize: "clamp(17px, 3.4vw, 24px)", lineHeight: 1.35, margin: 0 }}>
+      <p className="title-glow-breathe" style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(25px, 5.2vw, 38px)", lineHeight: 1.18, letterSpacing: "-0.01em", margin: 0 }}>
         Occasional consumption
       </p>
-      <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: "clamp(14px, 2.6vw, 18px)", margin: "8px 0" }}>vs.</p>
-      <p className="title-glow-breathe" style={{ color: WARM, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", fontSize: "clamp(17px, 3.4vw, 24px)", lineHeight: 1.35, margin: 0 }}>
+      <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: "clamp(14px, 2.6vw, 18px)", margin: "10px 0" }}>vs.</p>
+      <p className="title-glow-breathe" style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(25px, 5.2vw, 38px)", lineHeight: 1.18, letterSpacing: "-0.01em", margin: 0 }}>
         Habitual immersion
       </p>
-      <p style={{ color: SAGE, fontFamily: FONT, fontSize: "clamp(14px, 2.7vw, 18px)", lineHeight: 1.55, margin: "20px 0 0" }}>
+      <p style={{ color: SAGE, fontFamily: FONT, fontSize: 16, lineHeight: 1.6, margin: "22px 0 0", fontStyle: "italic" }}>
         The frontline between content consumption and formation
       </p>
     </div>
@@ -121,10 +119,10 @@ const SLIDES: Array<() => React.ReactElement> = [
   // 10 — the design stance.
   () => (
     <div style={{ maxWidth: 620, textAlign: "left" }}>
-      <p style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(16px, 3vw, 21px)", lineHeight: 1.5, margin: 0 }}>
+      <p style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(19px, 3.8vw, 27px)", lineHeight: 1.35, letterSpacing: "-0.01em", margin: 0 }}>
         Rather than relying on motivation or telling people what they <em style={{ fontStyle: "italic" }}>should</em> do, we can design environments that make desired practices easier to begin and easier to sustain.
       </p>
-      <ul style={{ color: SAGE, fontFamily: FONT, fontSize: "clamp(14px, 2.6vw, 17px)", lineHeight: 1.75, margin: "18px 0 0", paddingLeft: 22 }}>
+      <ul style={{ color: SAGE, fontFamily: FONT, fontSize: 16, lineHeight: 1.75, margin: "18px 0 0", paddingLeft: 22 }}>
         <li>Lower the barrier to entry</li>
         <li>Reduce friction</li>
         <li>Create invitations and cues</li>
@@ -199,11 +197,7 @@ export default function FormationDeck() {
         <button aria-label="Previous" onClick={prev} style={{ position: "fixed", left: 0, top: 56, bottom: 64, width: "28%", background: "none", border: "none", cursor: i > 0 ? "pointer" : "default", zIndex: 1 }} />
         <button aria-label="Next" onClick={next} style={{ position: "fixed", right: 0, top: 56, bottom: 64, width: "28%", background: "none", border: "none", cursor: i < total - 1 ? "pointer" : "default", zIndex: 1 }} />
         <div key={i} style={{ position: "relative", zIndex: 2, width: "100%", maxWidth: 760, display: "flex", justifyContent: "center", animation: "fd-fade 0.45s ease", margin: "auto 0" }}>
-          {/* The frosted stage — the same glass the practices set their words
-              on (owner: "glowing titles and such on frost and leaf"). */}
-          <div style={{ ...FROST, border: "1px solid rgba(46,107,64,0.4)", borderRadius: 22, padding: "clamp(20px, 4vw, 34px)", width: "100%", display: "flex", justifyContent: "center" }}>
-            <Slide />
-          </div>
+          <Slide />
         </div>
       </div>
 
