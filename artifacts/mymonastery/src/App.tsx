@@ -314,7 +314,6 @@ const WayOfLoveWeekPage = lazy(() => import("./pages/way-of-love-week"));
 const WeeklyReviewPage = lazy(() => import("./pages/weekly-review"));
 const VideosPage = lazy(() => import("./pages/videos"));
 const WayOfLoveJourneyPage = lazy(() => import("./pages/way-of-love-journey"));
-const TurnLearnPrayPage = lazy(() => import("./pages/turn-learn-pray"));
 const OfficeFmPage = lazy(() => import("./pages/office-fm"));
 const BuildingFaithPage = lazy(() => import("./pages/building-faith"));
 const NewsPage = lazy(() => import("./pages/news"));
@@ -990,7 +989,6 @@ function Router() {
           directory, and the static server 301s /icons → /icons/ before the
           router ever sees it. */}
       <Route path="/icon-prayer" component={IconsPage} />
-      <Route path="/turn-learn-pray" component={TurnLearnPrayPage} />
       <Route path="/videos" component={VideosPage} />
       <Route path="/home-beta/:section" component={HomeBetaSectionPage} />
       <Route path="/home-beta">{() => <RedirectTo to="/dashboard" />}</Route>

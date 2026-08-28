@@ -699,7 +699,7 @@ export function extraOfficeMode(side: OfficeSide, level: OfficeLevel): string | 
 }
 
 // What a side's card actually calls itself — extracted from DailyProgressBody
-// so /turn-learn-pray's per-slot summary (in Morning/Contemplative/Evening
+// so the per-slot summary (in Morning/Contemplative/Evening
 // mode) names the SAME practice the home card does instead of a
 // separately-maintained guess that drifts. `prayerKind` is useRhythmState's
 // field of the same name; `t` is the caller's i18n function.

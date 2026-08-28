@@ -102,7 +102,7 @@ export const ROUTINE_KEYS: string[] = [
   // The optional rest WINDOW ("an event to rest" — day lives in users.restDays,
   // the time window here). Rides rules so a community's rule can carry it.
   "phoebe:rest-window",
-  // Weekly-card visibility (WayOfLoveTurnLearnPray.tsx) — was plain
+  // Weekly-card visibility (the retired Turn/Learn/Pray card) — was plain
   // per-device localStorage, so toggling it on phone never showed up on
   // web. Owner: "showing up on my phone but not on web."
   "phoebe:hide-turn-learn-pray",
