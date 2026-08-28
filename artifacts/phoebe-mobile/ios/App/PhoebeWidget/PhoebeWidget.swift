@@ -486,9 +486,9 @@ struct PhoebeWidgetView: View {
     }
 
     private func homeNextCards(_ cards: [NextCard]) -> some View {
+        // No wordmark (owner reversal: "take the Phoebe title out so the
+        // pills can be more centered") — the cards ARE the widget, centered.
         VStack(alignment: .leading, spacing: 6) {
-            // App identity top-left (owner: "Phoebe in the top left still").
-            Text("Phoebe").font(sgBold(15)).foregroundColor(.white)
             if cards.isEmpty {
                 // Nothing left to pray — just the words, in Space Grotesk
                 // (owner: "if it's done, just show 'The day is kept'").
@@ -507,9 +507,8 @@ struct PhoebeWidgetView: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
     // "Past 7 Days" — the SAME dot grid the home card shows (Turn/Learn/Pray,

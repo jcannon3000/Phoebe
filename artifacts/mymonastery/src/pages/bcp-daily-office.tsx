@@ -4379,20 +4379,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               Renders the same RequestWordField the prayer-mode
               slideshow uses, so the comment composer is identical
               between the two surfaces. */}
-          {currentSlide.type === "intercessions" && (() => {
-            const meta = currentSlide.metadata as
-              | { source?: unknown; requestId?: unknown }
-              | undefined;
-            if (meta?.source !== "request" || typeof meta?.requestId !== "number") {
-              return null;
-            }
-            return (
-              <RequestWordField
-                requestId={meta.requestId}
-                initialWord={null}
-              />
-            );
-          })()}
+          {/* (The "N from your parish prayed with you" pill was removed —
+              owner: no prayed-with counts anywhere in the app.) */}
           {/* No more Read-online pill on lesson/lesson_title slides. Owner:
               "take out the Read Online button, and just have it the way the
               canticles or psalms work — show the title, then go to next,
