@@ -386,6 +386,11 @@ const EXTRA_PRACTICE_EMOJI: Record<string, string> = Object.fromEntries(
 type Step =
   // The opening slide: what this whole flow is for, and nothing else on it.
   | "intro"
+  // Which sides are part of the day at all — the flow's opening question
+  // (owner: "it starts asking if you would like morning or evening, and you
+  // can turn them off or on"). A side has always been derivable from its way
+  // slide (nothing chosen = off); this asks it outright, first.
+  | "sides"
   // A side's anchor is picked, then NAMED, then configured — three slides, the
   // shape "Create your own" always had and the one the owner asked the other
   // two kinds to match: pick the kind, choose WHICH one, then its details.
@@ -915,6 +920,8 @@ export default function WayOfLoveRuleFlow({
   /** The review screen's ✕ confirm — carries the row's own remove(), since
    *  review rows are built from local state rather than server row ids. */
   const [deletingReviewRow, setDeletingReviewRow] = useState<{ label: string; remove: () => void } | null>(null);
+  /** Bumped when the review screen reorders, so it re-reads the saved order. */
+  const [orderTick, setOrderTick] = useState(0);
   // Whether this person has any past routine to go back to — read synchronously
   // from the flag the snapshot save leaves behind (see the effect below).
   const [hasRoutineHistory] = useState(() => {
@@ -2875,13 +2882,17 @@ export default function WayOfLoveRuleFlow({
         "custom",
       ]
     : [
-    "intro",
+    "sides",
     "morning-way",
     ...(sidesArg.morning ? ([...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), ...(bcpOnSide("morning") ? ["morning-bcp"] : []), ...(contemplativeOnSide("morning") ? ["morning-contemplative"] : []), "morning-config", ...(extraWantedBySide.morning ? ["morning-extra"] : []), ...(extraGroupNeedsPick("morning") ? ["morning-extra-pick"] : []), ...(extraNeedsConfig("morning") ? ["morning-extra-config"] : [])] as Step[]) : []),
     "evening-way",
     ...(sidesArg.evening ? ([...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), ...(bcpOnSide("evening") ? ["evening-bcp"] : []), ...(contemplativeOnSide("evening") ? ["evening-contemplative"] : []), "evening-config", ...(extraWantedBySide.evening ? ["evening-extra"] : []), ...(extraGroupNeedsPick("evening") ? ["evening-extra-pick"] : []), ...(extraNeedsConfig("evening") ? ["evening-extra-config"] : [])] as Step[]) : []),
-    // Reflection (the daily word) is chosen BEFORE contemplation now — you pick
-    // what you'll read/listen to, then how you'll sit with it.
+    // CONTEMPLATIVE FIRST, THEN THE NEWSLETTERS (owner, restoring the older
+    // order: "then you choose any of the contemplative practices, and you can
+    // choose none, and then you choose any of the newsletters"). The two are
+    // independent choices, so the order is simply his.
+    "contemplative",
+    ...(wantsSilence ? (["contemplation-goal"] as Step[]) : []),
     "learn",
     // FDD medium choice — asked AFTER the reflection/prayer is picked, so it
     // covers FDD-as-reflection too (applies wherever FDD is used: both sides).
@@ -2902,8 +2913,6 @@ export default function WayOfLoveRuleFlow({
      * contemplative practice", and minutes only enter for the practice that was
      * actually asked about them.
      */
-    "contemplative",
-    ...(wantsSilence ? (["contemplation-goal"] as Step[]) : []),
     "custom",
     // The weekly Way of Love rhythm (Commune / Go / Bless / Rest) closes the
     // flow — restored per owner (2026-07-09): a rule of life turns weekly too.
@@ -4238,6 +4247,17 @@ export default function WayOfLoveRuleFlow({
           // the entry answered and switch modes, so Back from the list returns
           // here rather than leaving the customizer altogether.
           if (effectiveEntryChoice === "preset") { setPresetPending(null); setManualMode("preset"); setEntryChoiceMade(true); return; }
+          /**
+           * "Edit your routine" WALKS THE FLOW again (owner, restoring the
+           * older customizer): when you pray → the morning practice → the
+           * evening practice → the contemplative practices → the newsletters
+           * → your own practices. It had been opening the single flat list
+           * instead, which is the same rule seen all at once rather than
+           * asked about a step at a time. The three-option entry above is
+           * unchanged — edit, preset, revert (owner).
+           */
+          setManualMode("scratch");
+          setStep("sides");
           setEntryChoiceMade(true);
         })}
       </>,
@@ -4448,6 +4468,68 @@ export default function WayOfLoveRuleFlow({
   // only thing on the slide, so it gets headline-ish type (clamped, so it does
   // not run to 30px on a phone and 30px on a tablet alike) instead of the 14.5
   // it had while squeezed into a card.
+  if (step === "sides") {
+    /**
+     * THE OPENING QUESTION: which ends of the day are part of this rule.
+     *
+     * Restored per owner. A side could already be turned off implicitly, by
+     * choosing nothing on its way slide, but nothing ever ASKED — so the flow
+     * opened straight into "how would you like to pray in the morning?" for a
+     * person who may not want a morning at all. Turning one off here skips its
+     * slides entirely (buildSteps is computed from `sides`).
+     */
+    const row = (side: OfficeSide, label: string, sub: string) => {
+      const on = sides[side];
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            touchedRef.current = true;
+            setSides((prev) => {
+              const next = { ...prev, [side]: !prev[side] };
+              // Never leave the rule with no day at all — the flow has nothing
+              // left to ask, and the home would have no anchor to lead with.
+              return next.morning || next.evening ? next : prev;
+            });
+            // Turning a side back on re-arms its reminder, matching wayContinue.
+            if (!on) setReminderOnBySide((r) => ({ ...r, [side]: true }));
+          }}
+          style={{
+            width: "100%", textAlign: "left", cursor: "pointer",
+            background: on ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
+            border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
+            borderRadius: 16, padding: 16, display: "flex", alignItems: "center",
+            justifyContent: "space-between", gap: 12, transition: "background 0.2s, border-color 0.2s",
+          }}
+        >
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 16, fontWeight: 700, color: CREAM, fontFamily: FONT }}>{label}</span>
+            <span style={{ display: "block", fontSize: 13, color: SAGE, fontFamily: FONT, marginTop: 3 }}>{sub}</span>
+          </span>
+          <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: on ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
+            <span style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
+          </span>
+        </button>
+      );
+    };
+    return shell(
+      <>
+        {stepHeader(
+          t("wol_rule.sides_eyebrow", { defaultValue: "Your day" }),
+          t("wol_rule.sides_title", { defaultValue: "When will you pray?" }),
+        )}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {t("wol_rule.sides_body", { defaultValue: "Keep a morning, an evening, or both. You can change this whenever you like." })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {row("morning", t("wol_rule.sides_morning", { defaultValue: "Morning" }), t("wol_rule.sides_morning_sub", { defaultValue: "A practice to open the day" }))}
+          {row("evening", t("wol_rule.sides_evening", { defaultValue: "Evening" }), t("wol_rule.sides_evening_sub", { defaultValue: "A practice to close it" }))}
+        </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
   if (step === "intro") {
     return shell(
       <>
@@ -6048,7 +6130,7 @@ export default function WayOfLoveRuleFlow({
    *  slides, Save, come back) instead of dropping into the middle of the full
    *  flow — from which goPrev could never return here ("done" isn't in
    *  orderedSteps) and the corner ✕ silently discarded the edit. */
-  const reviewRows: Array<{ emoji: string; label: string; sub: string; step: Step; editId?: string; remove?: () => void }> = [
+  const reviewRowsRaw: Array<{ emoji: string; label: string; sub: string; step: Step; editId?: string; remove?: () => void }> = [
     // One row per side that has an OFFICE ANCHOR. A side with only add-ons
     // (contemplation/examen) has no office card — those surface as their own
     // rows below (Silence / The Examen), so it isn't listed here as an office.
@@ -6193,6 +6275,38 @@ export default function WayOfLoveRuleFlow({
     // the home; the review just doesn't offer to edit what this flow can't.
   ].filter((r) => orderedSteps.includes(r.step));
 
+  /**
+   * THE LAST SCREEN ORDERS THE DAY TOO (owner: "have the last screen where it
+   * used to just show the routine also be able to reorder it").
+   *
+   * It listed the practices in whatever order the flow happened to build them
+   * and offered no way to move one, so a day could only be ordered from the
+   * flat list — a different screen entirely. These rows already carry the ids
+   * the saved order speaks in (`editId`), so they can be sorted by it and
+   * written back to it. A row with no id has nothing orderable behind it and
+   * keeps its build position; the sort is stable, so it stays where it is.
+   */
+  const orderedReviewRows = (() => {
+    void orderTick; // re-read the saved order after a move
+    const saved = getRoutineOrder();
+    const rank = (r: { editId?: string }) => {
+      const k = r.editId ? saved.indexOf(r.editId) : -1;
+      return k < 0 ? Number.MAX_SAFE_INTEGER : k;
+    };
+    return [...reviewRowsRaw].sort((a, b) => rank(a) - rank(b));
+  })();
+  /** Move a row, and persist it to the SAME store the home list and the widget
+   *  read (lib/routineOrder) — so the order set here is the order everywhere. */
+  const moveReviewRow = (index: number, delta: -1 | 1) => {
+    const to = index + delta;
+    if (to < 0 || to >= orderedReviewRows.length) return;
+    const next = [...orderedReviewRows];
+    [next[index], next[to]] = [next[to]!, next[index]!];
+    touchedRef.current = true;
+    setRoutineOrder(next.map((r) => r.editId).filter((x) => !!x) as string[]);
+    setOrderTick((n) => n + 1);
+  };
+
   // ── Starter — a first author receives a named rule (adopt whole, tune later),
   // or chooses to build their own. Adopting commits the preset, then beholds it.
   if (step === "starter") {
@@ -6289,7 +6403,7 @@ export default function WayOfLoveRuleFlow({
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
-          {reviewRows.map((r, i) => (
+          {reviewRowsRaw.map((r, i) => (
             <button key={`tend-${r.label}-${i}`} onClick={() => setStep(r.step)} style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" }}>
               <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
@@ -6328,7 +6442,7 @@ export default function WayOfLoveRuleFlow({
             the inner taps. The body stays tappable (it's still "tap any
             practice to adjust it"), with the gear and ✕ beside it — the same
             pair, the same `circle` styling, as the edit list's rows. */}
-        {reviewRows.map((r, i) => {
+        {orderedReviewRows.map((r, i) => {
           const circle: React.CSSProperties = {
             width: 30, height: 30, flexShrink: 0, borderRadius: 999,
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -6340,6 +6454,22 @@ export default function WayOfLoveRuleFlow({
               key={`${r.label}-${i}`}
               style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10 }}
             >
+              <span style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                <button
+                  type="button"
+                  aria-label={`Move ${r.label} up`}
+                  disabled={i === 0}
+                  onClick={() => moveReviewRow(i, -1)}
+                  style={{ background: "none", border: "none", padding: "2px 8px", lineHeight: 1, color: i === 0 ? "rgba(143,175,150,0.22)" : SAGE, fontSize: 11, cursor: i === 0 ? "default" : "pointer" }}
+                >▲</button>
+                <button
+                  type="button"
+                  aria-label={`Move ${r.label} down`}
+                  disabled={i === orderedReviewRows.length - 1}
+                  onClick={() => moveReviewRow(i, 1)}
+                  style={{ background: "none", border: "none", padding: "2px 8px", lineHeight: 1, color: i === orderedReviewRows.length - 1 ? "rgba(143,175,150,0.22)" : SAGE, fontSize: 11, cursor: i === orderedReviewRows.length - 1 ? "default" : "pointer" }}
+                >▼</button>
+              </span>
               <button
                 type="button"
                 aria-label={`Settings for ${r.label}`}
@@ -6387,7 +6517,7 @@ export default function WayOfLoveRuleFlow({
         })}
       </div>
       <p style={{ textAlign: "center", color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "16px 0 0" }}>
-        {t("wol_rule.done_edit_hint", { defaultValue: "Tap the gear to change a practice, or the ✕ to take it off." })}
+        {t("wol_rule.done_edit_hint_order", { defaultValue: "Tap the gear to change a practice, the ✕ to take it off, or the arrows to order your day." })}
       </p>
       {/* Same confirm the edit list uses — nothing comes off a rule on one tap. */}
       {deletingReviewRow && (
