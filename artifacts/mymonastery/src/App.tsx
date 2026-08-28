@@ -437,7 +437,7 @@ const UserOnboarding = lazy(() => import("./pages/user-onboarding"));
 const PrayerFeedManagePage = lazy(() => import("./pages/prayer-feed-manage"));
 const PrayerFeedsBrowsePage = lazy(() => import("./pages/prayer-feeds-browse"));
 const PrayerFeedDetailPage = lazy(() => import("./pages/prayer-feed-detail"));
-import { useAuth as useAuthForGate } from "@/hooks/useAuth";
+import { useAuth as useAuthForGate, hasEverAuthenticated } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
@@ -877,15 +877,26 @@ const WEB_CUSTOMIZER_ROUTES = new Set<string>([
 function GuestGate({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const { isGuest, isLoading } = useGuestMode();
-  const { user, isLoading: authLoading } = useAuthForGate();
+  const { user, isLoading: authLoading, settled: authSettled } = useAuthForGate();
 
   useEffect(() => {
     if (isLoading || !isGuest) return;
+    // A NULL user reads as "guest", and fetchMe returns null for a transient
+    // failure as readily as for a real logout — so without this a blip in
+    // /auth/me bounced a signed-in person out of wherever they were going
+    // ("sometimes when we go to the menu and click something it goes just to
+    // the home screen and then i go again it goes through"). Once we have seen
+    // this person signed in, a later absence is a blip, not an answer.
+    if (!user && hasEverAuthenticated()) return;
+    // …and never redirect off a PERSISTED answer: on a cold boot the cached
+    // /auth/me hydrates as settled, so this would fire before the network had
+    // said anything at all.
+    if (!authSettled) return;
     const allowed =
       GUEST_ALLOWED_EXACT.has(location) ||
       GUEST_ALLOWED_PREFIX.some((p) => location.startsWith(p));
     if (!allowed) setLocation("/dashboard");
-  }, [location, isGuest, isLoading, setLocation]);
+  }, [location, isGuest, isLoading, user, authSettled, setLocation]);
 
   // A logged-out / anonymous visitor who opens the FULL customizer (Shape your
   // rhythm / pilot build / questionnaire / office settings) gets the SIMPLE
@@ -897,11 +908,15 @@ function GuestGate({ children }: { children: ReactNode }) {
   // who has a real durable account, reaches the full customizer directly.
   useEffect(() => {
     if (authLoading) return;
+    // Same blip, same rule — see the gate above. This one sent a signed-in
+    // person to the simple customizer instead of the builder they asked for.
+    if (!user && hasEverAuthenticated()) return;
+    if (!authSettled) return;
     if (!isDeviceLocalGuest(user)) return;
     if (WEB_CUSTOMIZER_ROUTES.has(location)) {
       setLocation("/customize", { replace: true });
     }
-  }, [location, authLoading, user, setLocation]);
+  }, [location, authLoading, user, authSettled, setLocation]);
 
   return <>{children}</>;
 }

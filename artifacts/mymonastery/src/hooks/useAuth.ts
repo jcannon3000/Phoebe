@@ -120,6 +120,7 @@ async function fetchMe(): Promise<AuthUser | null> {
       if (retry.status === 401) return null;
       if (!retry.ok) throw new Error("Failed to fetch user");
       const user = (await retry.json()) as AuthUser;
+      sawAuthedUser = true;
       return applyCachedHomeLayout(user);
     }
     return await finishFetchMe(res);
@@ -128,9 +129,34 @@ async function fetchMe(): Promise<AuthUser | null> {
   }
 }
 
+/**
+ * HAVE WE EVER SEEN A SIGNED-IN USER on this page load?
+ *
+ * fetchMe returns NULL for a transient failure as readily as for a real
+ * logout — a 401 the persistent-token recovery can't fix, the whole-resolution
+ * timeout aborting, a network stumble. React Query then holds that null as a
+ * settled answer, and every "is this a guest?" reader agrees the person is
+ * logged out for as long as it lasts.
+ *
+ * Reported: "sometimes when we go to the menu and click something it goes just
+ * to the home screen and then i go again it goes through." That is this — the
+ * route gates saw a momentary null, decided the visitor was a guest, and
+ * bounced them home; by the next tap auth had re-resolved.
+ *
+ * So the gates get to ask a second question: had we already established that
+ * this person is signed in? If so, a null is a blip and must not be acted on.
+ * Module-level, so it survives the gate components remounting; cleared on a
+ * real logout, which is the only place "signed out" is a fact rather than an
+ * absence of an answer.
+ */
+let sawAuthedUser = false;
+export function hasEverAuthenticated(): boolean { return sawAuthedUser; }
+export function clearEverAuthenticated(): void { sawAuthedUser = false; }
+
 async function finishFetchMe(res: Response): Promise<AuthUser | null> {
   if (!res.ok) throw new Error("Failed to fetch user");
   const user = (await res.json()) as AuthUser;
+  sawAuthedUser = true;
   // First-time authenticated load on this device — stash a durable token
   // so we can recover from a future cookie loss. No-op on subsequent
   // loads (helper short-circuits when a token is already stored).
@@ -142,7 +168,7 @@ async function finishFetchMe(res: Response): Promise<AuthUser | null> {
 }
 
 export function useAuth() {
-  const { data: user, isLoading } = useQuery<AuthUser | null>({
+  const { data: user, isLoading, isFetchedAfterMount } = useQuery<AuthUser | null>({
     queryKey: ["/api/auth/me"],
     queryFn: fetchMe,
     retry: false,
@@ -159,7 +185,21 @@ export function useAuth() {
     refetchInterval: 60 * 1000,
   });
 
-  return { user: user ?? null, isLoading };
+  /**
+   * `settled` — has /auth/me been answered by the NETWORK on this page load?
+   *
+   * The signed-in user is deliberately persisted (see PERSISTED_QUERY_KEYS) so
+   * the home can paint from the last session instead of blocking on a
+   * round-trip. That cold-boot win has a sharp edge for anything that
+   * REDIRECTS: a persisted null hydrates as a settled answer, so a gate asking
+   * "is this a guest?" gets yes before the network has said anything, and
+   * bounces the person somewhere else — reported as landing on the home, or on
+   * the light customizer, on the first try and working on the second.
+   *
+   * Painting from the cache is right. Navigating on it is not, so redirects
+   * wait for this.
+   */
+  return { user: user ?? null, isLoading, settled: isFetchedAfterMount };
 }
 
 export function useLogout() {
@@ -207,6 +247,7 @@ export function useLogout() {
     // SAME user re-signing-in gets it restored in full (blank device + zeroed
     // clock → routineSync adopts the server config). (The routine/course flush
     // already ran at the TOP of logout, while the session was still valid.)
+    clearEverAuthenticated();
     try { resetDeviceRuleForLogout(); } catch { /* ignore */ }
     // Belt-and-suspenders: explicitly drop the Spotify OAuth token so the next
     // person on a shared device can't inherit it (audit #19). resetDeviceRuleForLogout's
