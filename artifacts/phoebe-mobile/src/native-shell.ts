@@ -1339,7 +1339,9 @@ declare global {
         heroSubtitle?: string | null;
         heroCta?: string | null;        // "" → no button
         // The wide widget's next two home cards — see widgetSync.ts nextCards.
-        nextCards?: Array<{ emoji: string; title: string; subtitle: string; cta: string; rgb: string; tint: number; later: boolean }> | null;
+        // `href` is the card's own deep link — the practice it opens, not the
+        // app's home. Empty for a card the home logs in place.
+        nextCards?: Array<{ emoji: string; title: string; subtitle: string; cta: string; rgb: string; tint: number; later: boolean; href?: string }> | null;
         heroDeepLink?: string | null;
       }) => void;
       isNative: () => boolean;

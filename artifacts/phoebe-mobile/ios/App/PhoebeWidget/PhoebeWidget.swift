@@ -38,8 +38,17 @@ struct NextCard {
     var b: Double
     var tint: Double
     var later: Bool
+    /// The practice this card opens — the same route the home card links to.
+    /// Empty for a card the home LOGS in place (a widget can't log), which
+    /// falls back to the home. Owner: "if we click the cta on a card we want
+    /// it to not just open the app but open the practice."
+    var href: String = ""
 
     var accent: Color { Color(red: r / 255.0, green: g / 255.0, blue: b / 255.0) }
+    var destination: URL {
+        URL(string: href.isEmpty ? "https://withphoebe.app/" : href)
+            ?? URL(string: "https://withphoebe.app/")!
+    }
 
     static func parse(_ raw: Any?) -> [NextCard]? {
         guard let arr = raw as? [[String: Any]] else { return nil }
@@ -56,7 +65,8 @@ struct NextCard {
                 g: parts.count == 3 ? parts[1] : 107,
                 b: parts.count == 3 ? parts[2] : 64,
                 tint: (o["tint"] as? NSNumber)?.doubleValue ?? 0.4,
-                later: (o["later"] as? NSNumber)?.boolValue ?? false
+                later: (o["later"] as? NSNumber)?.boolValue ?? false,
+                href: (o["href"] as? String) ?? ""
             )
         }
     }
@@ -408,77 +418,92 @@ struct PhoebeWidgetView: View {
     // Every value below is transcribed from DailyProgressBody's PracticeCard
     // compact row (CSS px → pt): rounded-3xl card (24) with a 1px
     // rgba(200,212,192,0.35) border on cardTintBg(tint); a 4px left accent at
-    // rgba(accent, 0.7) (0.4 when Later); content px-4 py-3.5 (16/14 — the
-    // vertical trimmed to 12 so two cards + header fit every widget canvas,
-    // the one deliberate deviation); row gap-3 (12); emoji 15; title 14.5
-    // semibold #F0EDE6; blurb 12 #8FAF96 with mt-0.5 (2); CTA pill
-    // rgba(accent,0.85) fill, #F0EDE6 12 semibold, px-3.5 py-1.5 (14/6),
-    // min-width 84, label "{cta} →"; the Later pill is transparent with a
-    // rgba(143,175,150,0.22) border and rgba(182,210,188,0.5) text, and the
-    // whole card sits at opacity 0.72 — exactly the home's waiting card.
-    private func nextCardRow(_ c: NextCard) -> some View {
+    // rgba(accent, 0.7); content px-4 py-3.5 (16/14); row gap-3 (12); emoji
+    // 15; title 14.5 semibold #F0EDE6; blurb 12 #8FAF96 with mt-0.5 (2); CTA
+    // pill rgba(accent,0.85) fill, #F0EDE6 12 semibold, px-3.5 py-1.5 (14/6),
+    // min-width 84, label "{cta} →".
+    //
+    // …ALL OF IT SCALED BY `s` (owner: "i want the proportions to be the same,
+    // between height and length" / "just proportionally smaller").
+    //
+    // Copying the home's ABSOLUTE pixel values onto a card that is narrower
+    // than the phone's is what made the widget read as a different card: same
+    // type and padding in a shorter row is a taller, tighter box — the aspect
+    // ratio drifts even though every individual number matches. So one factor,
+    // the widget card's width over the home card's, multiplies every geometry
+    // value here: radius, accent bar, paddings, gaps, type sizes, pill.
+    private func nextCardRow(_ c: NextCard, _ s: CGFloat) -> some View {
         HStack(spacing: 0) {
             Rectangle()
                 .fill(c.accent.opacity(c.later ? 0.4 : 0.7))
-                .frame(width: 4)
-            HStack(spacing: 12) {
+                .frame(width: 4 * s)
+            HStack(spacing: 12 * s) {
                 if !c.emoji.isEmpty {
-                    Text(c.emoji).font(.system(size: 15))
+                    Text(c.emoji).font(.system(size: 15 * s))
                 }
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 2 * s) {
                     Text(c.title)
-                        .font(sgBold(14.5))
+                        .font(sgBold(14.5 * s))
                         .foregroundColor(phoebeWarm)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     if !c.subtitle.isEmpty {
                         Text(c.subtitle)
-                            .font(sgRegular(12))
+                            .font(sgRegular(12 * s))
                             .foregroundColor(phoebeSage)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
                 }
-                Spacer(minLength: 8)
+                Spacer(minLength: 8 * s)
                 if c.later {
                     Text("Later")
-                        .font(sgRegular(12))
+                        .font(sgRegular(12 * s))
                         .foregroundColor(Color(red: 182/255, green: 210/255, blue: 188/255).opacity(0.5))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .frame(minWidth: 84)
+                        .padding(.horizontal, 14 * s)
+                        .padding(.vertical, 6 * s)
+                        .frame(minWidth: 84 * s)
                         .overlay(
-                            Capsule().stroke(Color(red: 143/255, green: 175/255, blue: 150/255).opacity(0.22), lineWidth: 1)
+                            Capsule().strokeBorder(Color(red: 143/255, green: 175/255, blue: 150/255).opacity(0.22), lineWidth: 1)
                         )
                 } else if !c.cta.isEmpty {
                     Text("\(c.cta) →")
-                        .font(sgBold(12))
+                        .font(sgBold(12 * s))
                         .foregroundColor(phoebeWarm)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .frame(minWidth: 84)
+                        .padding(.horizontal, 14 * s)
+                        .padding(.vertical, 6 * s)
+                        .frame(minWidth: 84 * s)
                         .background(Capsule().fill(c.accent.opacity(0.85)))
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 16 * s)
+            .padding(.vertical, 14 * s)
         }
+        // Sit INSIDE the 1pt border, the way a CSS border-box does: the web
+        // card's accent bar and content begin at the border's inner edge, not
+        // underneath it.
+        .padding(1)
         .background(
             // cardTintBg(tint): rgba(26−16t, 52−24t, 36−18t, 0.27+0.09t) —
             // the home's per-position card ground, over the widget's leaf.
-            RoundedRectangle(cornerRadius: 24)
+            RoundedRectangle(cornerRadius: 24 * s)
                 .fill(Color(red: (26 - 16 * c.tint) / 255.0,
                             green: (52 - 24 * c.tint) / 255.0,
                             blue: (36 - 18 * c.tint) / 255.0)
                     .opacity(0.27 + 0.09 * c.tint))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(Color(red: 200/255, green: 212/255, blue: 192/255).opacity(0.35), lineWidth: 1)
+            // strokeBorder, NOT stroke. SwiftUI centres a stroke ON the path,
+            // so half of it fell outside the shape and the .clipShape below
+            // then cut that half away — the border rendered at half weight
+            // against the web's full 1px, which is what read as "the borders
+            // weren't the same". strokeBorder insets the whole line.
+            RoundedRectangle(cornerRadius: 24 * s)
+                .strokeBorder(Color(red: 200/255, green: 212/255, blue: 192/255).opacity(0.35), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .clipShape(RoundedRectangle(cornerRadius: 24 * s))
         // HUG CONTENT HEIGHT, always. The accent Rectangle is greedy on both
         // axes, so with spare vertical room (one card, or the synthesized
         // fallback) it stretched its whole row to fill the widget — the
@@ -488,23 +513,46 @@ struct PhoebeWidgetView: View {
         .opacity(c.later ? 0.72 : 1)
     }
 
+    /// The home card's own width on a reference phone: a 390pt screen less the
+    /// home's px-4 gutters (16 each side). Every geometry value in
+    /// nextCardRow is expressed at THAT width and scaled by the widget's
+    /// actual card width over it, so the widget card is the home card
+    /// proportionally smaller rather than the same card squeezed narrower.
+    private static let homeCardWidth: CGFloat = 390 - 32
+
     private func homeNextCards(_ cards: [NextCard]) -> some View {
         // No wordmark (owner reversal: "take the Phoebe title out so the
         // pills can be more centered") — the cards ARE the widget, centered.
-        VStack(alignment: .leading, spacing: 6) {
+        GeometryReader { geo in
+            nextCardsStack(
+                cards,
+                // Clamped so a very small or unusually wide canvas can't push
+                // the type past legibility in either direction.
+                max(0.7, min(1.0, (geo.size.width - 24) / Self.homeCardWidth))
+            )
+        }
+    }
+
+    private func nextCardsStack(_ cards: [NextCard], _ s: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 6 * s) {
             if cards.isEmpty {
                 // Nothing left to pray — just the words, in Space Grotesk
                 // (owner: "if it's done, just show 'The day is kept'").
                 Spacer(minLength: 0)
                 Text("The day is kept")
-                    .font(sgBold(22))
+                    .font(sgBold(22 * s))
                     .foregroundColor(phoebeWarm)
                     .frame(maxWidth: .infinity, alignment: .center)
                 Spacer(minLength: 0)
             } else {
-                VStack(spacing: 6) {
+                // gap-2 (8) — the home's Next list spacing, was 6.
+                VStack(spacing: 8 * s) {
                     ForEach(Array(cards.prefix(2).enumerated()), id: \.offset) { _, c in
-                        nextCardRow(c)
+                        // Each card is its OWN tap target, opening its practice
+                        // rather than the app's home (owner). Multiple links are
+                        // allowed in .systemMedium; the widget-level .widgetURL
+                        // still catches taps outside the cards.
+                        Link(destination: c.destination) { nextCardRow(c, s) }
                     }
                 }
             }

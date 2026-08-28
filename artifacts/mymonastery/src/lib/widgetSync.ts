@@ -54,6 +54,11 @@ type WidgetState = {
   nextCards: Array<{
     emoji: string; title: string; subtitle: string; cta: string;
     rgb: string; tint: number; later: boolean;
+    /** Absolute deep link to the PRACTICE this card opens (owner: "if we click
+     *  the cta on a card we want it to not just open the app but open the
+     *  practice"). Empty for a card the home logs in place rather than
+     *  navigating to — a widget can't log, so those open the home. */
+    href: string;
   }>;
   updatedAt: string;
 };
@@ -341,6 +346,51 @@ export function useWidgetSync(): void {
      * later and faded anymore — all available"); later is always false now,
      * kept in the payload shape for older widget builds.
      */
+    /**
+     * Where each card's tap goes — the SAME route the home card's href uses.
+     *
+     * A FOURTH MIRROR of DailyProgressBody, like the titles and CTAs above:
+     * the home builds its cards inside the component (hooks), so there is
+     * nothing to import. Keep these in step with the `href:` on the matching
+     * card there. A card the home LOGS in place (walk, reading, podcasts, a
+     * custom anchor, the non-VTS reflections, a manual contemplation sit)
+     * has no route at all — the widget can't log, so it opens the home and
+     * lets the person tap the card they were already looking at.
+     */
+    const STATIC_HREF: Record<string, string> = {
+      cobreathe: "/cobreathe",
+      listening: "/listening",
+      visio: "/visio",
+      examen: "/examen",
+      novena: "/novena",
+      compline: "/bcp/daily-office?mode=compline",
+      "reflect-vts": "/vts-reading",
+    };
+    const contemplationHref = (side: "morning" | "evening", kind: string): string => {
+      if (kind === "walk") return "";
+      if (kind === "audio") return "/listening";
+      if (kind === "visio") return "/visio";
+      if (kind === "creation") return `/cobreathe?side=${side}`;
+      return `/contemplation?begin=1&side=${side}`;
+    };
+    const cardHref = (key: string): string => {
+      if (STATIC_HREF[key]) return STATIC_HREF[key]!;
+      for (const side of ["morning", "evening"] as const) {
+        // A side set to "Create your own" is logged on the home, not opened.
+        if (key === side) return getSideLevel(side) === "custom" ? "" : `/begin-prayer?side=${side}`;
+        if (key === `extra-${side}`) {
+          const lvl = side === "morning" ? r.morningExtraLevel : r.eveningExtraLevel;
+          return lvl ? `/begin-prayer?side=${side}&practice=${lvl}` : "";
+        }
+        if (key === `contemplation-${side}`) {
+          return contemplationHref(side, side === "morning" ? r.morningContemplationKind : r.eveningContemplationKind);
+        }
+      }
+      // The day's silence goal — same shape the home card links to, including
+      // the per-session cap (SESSION_SIT_CAP = 20 in DailyProgressBody).
+      if (key === "silence") return `/contemplation?begin=1&sit=${Math.min(r.contemplationGoalMin || 10, 20)}`;
+      return "";
+    };
     const nextCards = upNext.slice(0, 2).map((i, idx) => ({
       emoji: i.emoji,
       title: i.title,
@@ -349,6 +399,7 @@ export function useWidgetSync(): void {
       rgb: i.rgb,
       tint: upNext.length <= 1 ? 0.4 : idx / (upNext.length - 1),
       later: false,
+      href: (() => { const h = cardHref(i.key); return h ? `https://withphoebe.app${h}` : ""; })(),
     }));
 
     // One dot per active anchor in the person's ACTUAL routine — the same
