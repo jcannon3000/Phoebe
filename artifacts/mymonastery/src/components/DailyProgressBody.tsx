@@ -1074,7 +1074,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       title: extraPracticeTitle(cap, level, t),
       blurb: done ? prayed : t("rhythm.extra_blurb", { defaultValue: "Alongside your main practice" }),
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
-      later: side === "evening" && hour < EVENING_OPEN_HOUR,
+      // NEVER later (owner: "we don't want any cards to be later and faded
+      // anymore — all available"): every practice opens whenever it's tapped.
+      later: false,
     };
   };
 
@@ -1231,7 +1233,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     onUnlog: () => undoOfficeToday("compline"),
     title: t("rhythm.card_compline", { defaultValue: "Compline" }),
     blurb: complineDone ? kept : t("rhythm.blurb_compline", { defaultValue: "The night office" }),
-    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: hour < 19,
+    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false, // never later (owner: all available)
   };
   // Every rhythm card carries the time of day it belongs to (its CustomSlot).
   // We assemble them in a sensible base order, then STABLE-sort by that slot so
@@ -1359,7 +1361,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // the card says what done cards say.
       blurb: morningDone ? prayed : (daySwapNote("morning") ?? morningBlurb),
       blurbCycle: (morningDone || !cycleFor("morning")) ? undefined : [morningBlurb, ...officeCycle],
-      cta: getSideLevel("morning") === "custom" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+      cta: getSideLevel("morning") === "custom" ? t("rhythm.log", { defaultValue: "Log" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
     /**
      * A side's SECOND practice — a real card that opens the real practice.
@@ -1412,8 +1414,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         ? prayed
         : (daySwapNote("evening") ?? (hour >= 20 ? officeTitle("Evening") : eveningBlurb)),
       blurbCycle: (eveningDone || hour >= 20 || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycle],
-      cta: getSideLevel("evening") === "custom" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }),
-      later: hour < EVENING_OPEN_HOUR,
+      cta: getSideLevel("evening") === "custom" ? t("rhythm.log", { defaultValue: "Log" }) : t("rhythm.begin", { defaultValue: "Begin" }),
+      later: false, // never later (owner: all available)
     }] : []),
     ...(eveningExtraLevel ? [extraCard("evening", eveningExtraLevel, eveningExtraDone)] : []),
     // Reflection cards lead the morning (default second, right after Morning).
@@ -1649,10 +1651,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // window opens (Midday 10 AM, Afternoon 2 PM, Evening 5 PM). Morning + Anytime
   // are always open. A gated card stays a quiet, non-tappable "Later" card (the
   // existing `later` treatment) until its window arrives — no time on the pill.
-  const cards = sortedCards.map((c) => {
-    if (c.done || isSlotOpen(c.slot)) return c;
-    return { ...c, later: true };
-  });
+  // No slot-window "Later" state any more (owner: "we don't want any cards
+  // to be later and faded anymore — all available"). Slots still ORDER the
+  // day; they no longer gate it.
+  const cards = sortedCards;
 
   // When a dedicated office hero is supplied (the beta home), the office shows
   // as that full hero instead of a practice row. The hero is the next office to

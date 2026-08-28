@@ -17,7 +17,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { getSideLevel, getSideCustomName, getSideReflectionExplicit, extraPracticeTitle } from "@/lib/officePrefs";
-import { getPracticeSlot, SLOT_RANK, isSlotPast, isSlotOpen, type CustomSlot } from "@/lib/customAnchors";
+import { getPracticeSlot, SLOT_RANK, isSlotPast, type CustomSlot } from "@/lib/customAnchors";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { sortCardsByUserOrder, getRoutineOrder } from "@/lib/routineOrder";
 import { rhythmGradientRgb } from "@/components/DailyProgressBody";
@@ -262,7 +262,7 @@ export function useWidgetSync(): void {
     // slot rank then reproduces the home's time-of-day ordering; within a slot
     // the base order below is preserved.
     const items: NextItem[] = [
-      { active: r.morningActive && !r.novenaReplacesMorning, done: r.morningDone, slot: "morning", key: "morning", emoji: officeEmoji("morning"), title: officeTitle("Morning"), eyebrow: officeEyebrow("Morning"), subtitle: officeSubtitle(true), cta: getSideLevel("morning") === "custom" ? "Mark done" : "Begin", kind: "office", isPrimary: true },
+      { active: r.morningActive && !r.novenaReplacesMorning, done: r.morningDone, slot: "morning", key: "morning", emoji: officeEmoji("morning"), title: officeTitle("Morning"), eyebrow: officeEyebrow("Morning"), subtitle: officeSubtitle(true), cta: getSideLevel("morning") === "custom" ? "Log" : "Begin", kind: "office", isPrimary: true },
       /**
        * A side's SECOND practice. It has a card on the home and a dot in the
        * pill, so leaving it out here made the widget count fewer anchors than
@@ -320,13 +320,13 @@ export function useWidgetSync(): void {
       // and the header pill's dot use, so the widget can't drift from either.
       { active: !!(r.novenaActive && !r.novenaReplacesMorning && !r.novenaReplacesEvening), done: r.novenaDone, slot: "anytime", key: "novena", emoji: "🕊️", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
       { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", key: "contemplation-evening", ...contemplationSideFace("Evening", r.eveningContemplationKind), cta: "Begin", kind: "office" },
-      { active: r.eveningActive && !r.novenaReplacesEvening, done: r.eveningDone, slot: "evening", key: "evening", emoji: officeEmoji("evening"), title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: getSideLevel("evening") === "custom" ? "Mark done" : "Begin", kind: "office", isPrimary: true },
+      { active: r.eveningActive && !r.novenaReplacesEvening, done: r.eveningDone, slot: "evening", key: "evening", emoji: officeEmoji("evening"), title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: getSideLevel("evening") === "custom" ? "Log" : "Begin", kind: "office", isPrimary: true },
       { active: !!r.eveningExtraLevel, done: r.eveningExtraDone, slot: "evening", key: "extra-evening", emoji: (r.eveningExtraLevel && EXTRA_EMOJI[r.eveningExtraLevel]) || "🌿", title: r.eveningExtraLevel ? extraPracticeTitle("Evening", r.eveningExtraLevel, tPass) : "", eyebrow: "Also this evening", subtitle: "Alongside your main practice", cta: "Begin", kind: "office" },
       { active: !!(r.novenaReplacesEvening && r.novenaActive), done: r.novenaDone, slot: "evening", key: "novena", emoji: "🕊️", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office", isPrimary: true },
       ...r.customAnchors.filter((a) => !a.skipped).map((a) => ({
         active: true, done: !!a.done, slot: a.slot,
         key: `custom-${a.id}`, emoji: a.emoji || "🌿",
-        title: a.title, eyebrow: "Your practice", subtitle: "Tap to mark done", cta: "Mark done", kind: "office" as const,
+        title: a.title, eyebrow: "Your practice", subtitle: "Tap to mark done", cta: "Log", kind: "office" as const,
       })),
     ];
 
@@ -362,7 +362,9 @@ export function useWidgetSync(): void {
      * The wide widget's card list — the next TWO, wearing the home card's
      * exact face: emoji, title, blurb, CTA, accent colour by ramp position,
      * card-tint by stack position, and the dimmed "Later" state for a slot
-     * that hasn't opened (the home's own gate, isSlotOpen).
+     * that hasn't opened — RETIRED (owner: "we don't want any cards to be
+     * later and faded anymore — all available"); later is always false now,
+     * kept in the payload shape for older widget builds.
      */
     const nextCards = upNext.slice(0, 2).map((i, idx) => ({
       emoji: i.emoji,
@@ -371,7 +373,7 @@ export function useWidgetSync(): void {
       cta: i.cta,
       rgb: i.rgb,
       tint: upNext.length <= 1 ? 0.4 : idx / (upNext.length - 1),
-      later: !isSlotOpen(i.slot, now),
+      later: false,
     }));
 
     // One dot per active anchor in the person's ACTUAL routine — the same

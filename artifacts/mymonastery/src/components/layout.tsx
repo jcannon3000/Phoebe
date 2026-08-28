@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, LogIn, ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { FROST, FROST_DARK } from "@/lib/frost";
 import { LEAF_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
+import { sortCardsByUserOrder } from "@/lib/routineOrder";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
@@ -716,7 +717,7 @@ function DailyProgressPill() {
       ? [{ key: "prayer-list", done: prayerListDone }]
       : [];
 
-  const dotDefs = [
+  const dotDefsBuilt = [
     // A novena in "replace" mode takes over this slot's dot entirely — mirrors
     // DailyProgressBody's rawCards replace-mode entries (same gates).
     ...(novenaReplacesMorning && novenaActive ? [{ key: "novena-morning", done: novenaDone }] : []),
@@ -784,6 +785,14 @@ function DailyProgressPill() {
     ...(complineActive ? [{ key: "compline", done: complineDone }] : []),
     ...cDots("evening"),
   ];
+  /**
+   * THE PERSON'S OWN ORDER (owner: "the daily progress dots need to be in
+   * the order of the routine") — the same sortCardsByUserOrder the home's
+   * card list runs, over the same card keys these dots deliberately carry.
+   * Unknown keys (the novena's replace-mode dots) keep the built order after
+   * the ranked ones, so nothing can vanish.
+   */
+  const dotDefs = sortCardsByUserOrder(dotDefsBuilt);
 
   // Per-dot "just completed" pulse: when an activity flips done, its dot glows
   // for ~2 minutes — then settles. We stamp the completion time per local day in
