@@ -430,6 +430,7 @@ const CacHomePage = lazy(() => import("./pages/cac-home"));
 const CacReflectionPage = lazy(() => import("./pages/cac-reflection"));
 const ChurchDeck = lazy(() => import("./pages/church-deck"));
 const VisionDeck = lazy(() => import("./pages/vision-deck"));
+const FormationDeck = lazy(() => import("./pages/formation-deck"));
 const FeaturesDeck = lazy(() => import("./pages/features-deck"));
 const AboutDeck = lazy(() => import("./pages/about-deck"));
 const OverviewDeck = lazy(() => import("./pages/overview-deck"));
@@ -1143,6 +1144,7 @@ function Router() {
       <Route path="/onboarding" component={UserOnboarding} />
       <Route path="/church-deck" component={ChurchDeck} />
       <Route path="/vision-deck" component={VisionDeck} />
+      <Route path="/formation-deck" component={FormationDeck} />
       <Route path="/learn/features" component={FeaturesDeck} />
       <Route path="/about-deck" component={AboutDeck} />
       <Route path="/overview-deck" component={OverviewDeck} />

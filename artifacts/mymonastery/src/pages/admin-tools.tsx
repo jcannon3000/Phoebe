@@ -215,6 +215,12 @@ export default function AdminToolsPage() {
                   onClick={() => setLocation("/admin/users")}
                 />
                 <LinkRow
+                  emoji="🎞️"
+                  label="Formation Deck"
+                  description="Content consumption → formation — the daily-practice talk"
+                  onClick={() => setLocation("/formation-deck")}
+                />
+                <LinkRow
                   emoji="🖼️"
                   label="Art Library"
                   description="Curate the Visio + icon artwork — delete works, toggle icons"
