@@ -341,6 +341,47 @@ export async function clearCustomAnchors(): Promise<void> {
   }
 }
 
+/**
+ * Edit ONE practice in place — its name, emoji, time of day, days.
+ *
+ * There was no way to change a practice once made: the editor could only add
+ * or remove, so the gear on a named practice had nothing to open and showed
+ * the whole "Create your own" list instead. Reported when Chapel became a
+ * practice of its own: "I now can't edit the chapel custom on its own."
+ *
+ * Fields absent from the patch are LEFT ALONE, which is what protects the
+ * ones this form doesn't show — the reading config, and `office` (the door
+ * that lets VTS's Chapel be kept by praying Morning Prayer). Rewriting the
+ * record wholesale here would quietly drop them.
+ */
+export function updateCustomAnchor(
+  id: string,
+  patch: { title?: string; emoji?: string; slot?: CustomSlot; days?: number[] | null },
+): void {
+  const list = getCustomAnchors();
+  const i = list.findIndex((a) => a.id === id);
+  if (i < 0) return;
+  const cur = list[i]!;
+  const title = patch.title?.trim();
+  const emoji = patch.emoji?.trim();
+  const days = patch.days === null
+    ? undefined
+    : patch.days
+      ? [...new Set(patch.days.filter((d) => d >= 0 && d <= 6))].sort()
+      : cur.days;
+  list[i] = {
+    ...cur,
+    ...(title ? { title: title.slice(0, 40) } : {}),
+    ...(emoji ? { emoji: emoji.slice(0, 8) } : {}),
+    ...(patch.slot && CUSTOM_SLOTS.includes(patch.slot) ? { slot: patch.slot } : {}),
+    // A 7-day (or empty) selection means "every day", which this shape spells
+    // as the field being absent — same rule addCustomAnchor writes by.
+    ...(days && days.length > 0 && days.length < 7 ? { days } : {}),
+  };
+  if (!(days && days.length > 0 && days.length < 7)) delete (list[i] as { days?: number[] }).days;
+  saveDefs(list); // schedules the server push, as add/remove do
+}
+
 export function removeCustomAnchor(id: string): void {
   // Record the tombstone FIRST so the next push tells the server to retire it
   // (absence alone never deletes — that's what makes accidental wipes impossible).

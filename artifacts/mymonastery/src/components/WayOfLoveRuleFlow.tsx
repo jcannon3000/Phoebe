@@ -31,7 +31,7 @@ import { summarizeRuleSpec, type RuleSpec } from "@/lib/ruleSummary";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePresets";
-import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
+import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, updateCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues, flushRoutineConfig } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
 import { Reorder, useDragControls } from "framer-motion";
@@ -1554,6 +1554,46 @@ export default function WayOfLoveRuleFlow({
     window.addEventListener(CUSTOM_ANCHORS_EVENT, refresh);
     return () => window.removeEventListener(CUSTOM_ANCHORS_EVENT, refresh);
   }, []);
+  /**
+   * The gear on a NAMED PRACTICE edits that practice.
+   *
+   * Reported: "I now can't edit the chapel custom on its own." Its gear
+   * landed on "Create your own" — the whole list of practices, where the only
+   * things you can do are add another or delete this one. There was no edit
+   * anywhere, in the UI or under it (customAnchors could add and remove and
+   * nothing else), so a practice's name, emoji, time of day and days were
+   * fixed the moment it was made.
+   */
+  const editingCustomId = singleEditRow?.startsWith("custom:") ? singleEditRow.slice(7) : null;
+  useEffect(() => {
+    if (!editingCustomId) return;
+    const a = getCustomAnchors().find((x) => x.id === editingCustomId);
+    if (!a) return;
+    setCustomTitle(a.title);
+    setCustomEmoji(a.emoji);
+    setCustomSlot(a.slot);
+    setCustomDays(a.days && a.days.length > 0 && a.days.length < 7 ? [...a.days] : null);
+  }, [editingCustomId]);
+  /** null = every day; otherwise the chosen weekday numbers. */
+  const [customDays, setCustomDays] = useState<number[] | null>(null);
+  const saveCustomEdit = () => {
+    if (!editingCustomId) return;
+    touchedRef.current = true;
+    updateCustomAnchor(editingCustomId, {
+      title: customTitle,
+      emoji: customEmoji,
+      slot: customSlot,
+      days: customDays,
+    });
+    setCustomList(getCustomAnchors());
+    // Re-derive the list rows, or the row keeps its OLD sub-label ("Morning ·
+    // weekdays") after the edit — the rows are described server-side.
+    void reloadEditRows();
+    setSingleEditRow(null);
+    setManualMode("edit");
+    setEntryPhase("list");
+  };
+
   const addCustom = () => {
     const title = customTitle.trim();
     if (!title) return;
@@ -5675,6 +5715,91 @@ export default function WayOfLoveRuleFlow({
   // ── Create-your-own — title + emoji → a custom Daily-progress anchor.
   // Reached from the "Create your own" card in the extras step. ───────────────
   if (step === "custom") {
+    // ONE practice, opened by its own gear — its settings, not the catalogue.
+    const editingAnchor = editingCustomId ? customList.find((a) => a.id === editingCustomId) ?? null : null;
+    if (editingAnchor) {
+      const dayOn = (d: number) => customDays === null || customDays.includes(d);
+      const toggleDay = (d: number) => {
+        touchedRef.current = true;
+        setCustomDays((prev) => {
+          const cur = prev === null ? [0, 1, 2, 3, 4, 5, 6] : prev;
+          const next = cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d].sort();
+          // Every day is spelled as "no days set" everywhere else.
+          return next.length === 0 || next.length === 7 ? null : next;
+        });
+      };
+      return shell(
+        <>
+          {stepHeader(
+            t("wol_rule.custom_eyebrow", { defaultValue: "Add to your day" }),
+            editingAnchor.title,
+          )}
+          <div style={{ display: "flex", gap: 8, margin: "20px 0 0" }}>
+            <input
+              value={customEmoji}
+              onChange={(e) => { touchedRef.current = true; setCustomEmoji(e.target.value.slice(0, 2)); }}
+              aria-label={t("wol_rule.custom_emoji", { defaultValue: "Emoji" })}
+              placeholder="🌿"
+              style={{ width: 56, flexShrink: 0, textAlign: "center", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 0", fontSize: 18, color: CREAM, fontFamily: FONT }}
+            />
+            <input
+              value={customTitle}
+              onChange={(e) => { touchedRef.current = true; setCustomTitle(e.target.value); }}
+              aria-label={t("wol_rule.custom_name", { defaultValue: "Practice name" })}
+              style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
+            />
+          </div>
+
+          <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
+            {t("wol_rule.custom_when", { defaultValue: "When in the day?" })}
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
+            {CUSTOM_SLOTS.map((sl) => {
+              const on = customSlot === sl;
+              return (
+                <button
+                  key={sl}
+                  type="button"
+                  onClick={() => { touchedRef.current = true; setCustomSlot(sl); }}
+                  style={{ background: on ? "rgba(46,107,64,0.30)" : CARD, border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`, color: on ? CREAM : SAGE, borderRadius: 10, padding: "10px 0", fontSize: 12.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+                >
+                  {sl}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* WHICH DAYS — Chapel is a weekday thing, and until now the only
+              way to change that was to delete the practice and make it again. */}
+          <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
+            {t("wol_rule.custom_days", { defaultValue: "Which days?" })}
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 5 }}>
+            {["S", "M", "T", "W", "T", "F", "S"].map((lbl, d) => {
+              const on = dayOn(d);
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => toggleDay(d)}
+                  aria-label={`${lbl} ${on ? "on" : "off"}`}
+                  style={{ background: on ? "rgba(46,107,64,0.30)" : CARD, border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`, color: on ? CREAM : SAGE, borderRadius: 10, padding: "10px 0", fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+                >
+                  {lbl}
+                </button>
+              );
+            })}
+          </div>
+          <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "8px 0 0" }}>
+            {customDays === null
+              ? t("wol_rule.custom_days_all", { defaultValue: "Every day" })
+              : describeDays(customDays)}
+          </p>
+
+          {ctaButton(t("common.save", { defaultValue: "Save" }), saveCustomEdit)}
+        </>,
+      );
+    }
     const hasCustoms = customList.length > 0;
     // Once they have at least one practice, the list leads with a wide "Add new"
     // pill, and the add form moves to its own sub-slide (addingCustom). A
