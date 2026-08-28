@@ -234,7 +234,13 @@ export default function VisioPage() {
     () => (chosen ? alternatesForDay(today, dayLessons, chosen.art.id) : []),
     [today, dayLessons, chosen],
   );
-  const [optionsOpen, setOptionsOpen] = useState(false);
+  /**
+   * OPEN by default (owner, with the expanded slide: "have it just be like
+   * this by default, showing all the options"). The earlier closed-default
+   * reasoning — the day's picture is THE picture — holds in the cards' own
+   * ORDER (today's work still leads the slide); a tap can still fold them.
+   */
+  const [optionsOpen, setOptionsOpen] = useState(true);
   /** Pick one of today's other works and pray the whole deck with it. */
   const chooseAlternate = (pick: Chosen | null) => {
     // null = back to today's own picture.
@@ -911,9 +917,11 @@ export default function VisioPage() {
                     color: SAGE, fontFamily: FONT, fontSize: 13.5, letterSpacing: "0.01em",
                   }}
                 >
-                  {optionsOpen
-                    ? t("visio.fewer_options", { defaultValue: "Fewer options" })
-                    : t("visio.more_options", { defaultValue: "More options" })}
+                  {/* The label reads "More options" even while the cards are
+                      showing (owner: "have it say more options while the
+                      cards are there") — it names the SECTION, not the
+                      toggle's next action. */}
+                  {t("visio.more_options", { defaultValue: "More options" })}
                 </button>
 
                 {optionsOpen && (
