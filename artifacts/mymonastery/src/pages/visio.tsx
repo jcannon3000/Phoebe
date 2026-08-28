@@ -334,6 +334,7 @@ export default function VisioPage() {
         // The bundled fallback is a single hard-coded work, not an ACT record,
         // so it carries none of ACT's tags.
         people: [] as string[],
+        subjects: [] as string[],
         followsToday: false,
       }
     : active
@@ -352,6 +353,8 @@ export default function VisioPage() {
            *  guess (owner). Searchable metadata in the admin tool already;
            *  this simply surfaces the same field in the practice. */
           people: active.art.people ?? [],
+          /** ACT's subject tags — what the work is OF, beside who is in it. */
+          subjects: active.art.subjects ?? [],
           followsToday: active.followsToday,
         }
       : null;
@@ -973,6 +976,14 @@ export default function VisioPage() {
             {view.people.length > 0 && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: "3px 0 0", lineHeight: 1.5 }}>
                 {view.people.join(" · ")}
+              </p>
+            )}
+            {/* …and what it is OF. Kept as its own line rather than folded in
+                with the figures: ACT holds them as separate tags, and running
+                them together would read as one list of names. */}
+            {view.subjects.length > 0 && (
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: "3px 0 0", lineHeight: 1.5 }}>
+                {view.subjects.join(" · ")}
               </p>
             )}
             {view.scriptureRef && (
