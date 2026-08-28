@@ -3383,19 +3383,25 @@ export default function WayOfLoveRuleFlow({
     // where the anchor itself can be swapped, then on through the side's own
     // slides.
     /**
-     * THE FIRST SLIDE, WITH ALL THE OPTIONS — owner, as a standing rule:
-     * "when a user hits settings on an anchor, it should be going to the first
-     * slide of that anchor's customizer with all the options."
+     * SILENCE OPENS SILENCE — not the picker of contemplative practices.
      *
-     * This sent the day's contemplation straight to "contemplation-goal",
-     * which is the SECOND slide and asks only how long. Someone opening the
-     * gear to change their contemplative practice — to a walk, to Visio
-     * Divina, to Creation Prayer — was handed a minutes picker instead, with
-     * no way to reach the choice they came for. The practice picker is
-     * "contemplative", it comes first in the flow, and Continue walks on to
-     * the length from there (see stepBelongsToRow, which already claims both).
+     * Owner: "when i click silence, it goes to the general anchor
+     * contemplation rather then that practice."
+     *
+     * This row IS a practice ("Silence · 60 min a day · with a timer"), and
+     * the gear on a practice configures THAT practice. It used to open the
+     * picker instead, under the older rule that a gear opens the first slide
+     * of the ANCHOR it belongs to, with every option on it — which was right
+     * while contemplation was a side's anchor and the gear's job was to let
+     * you swap the anchor itself. Standing on its own, Silence has nothing to
+     * swap: changing practice means taking this row off and adding the one you
+     * want, and what the gear is for is how long, and how it's kept.
+     *
+     * "contemplation-goal" sits after "contemplative" in the flow, so opening
+     * here means nothing further belongs to the row and the button reads Save
+     * — the gear is a round trip to this practice's settings and back.
      */
-    if (id === "contemplation") return "contemplative";
+    if (id === "contemplation") return "contemplation-goal";
     if (id.startsWith("contemplation:")) {
       return id.endsWith(":morning") ? "morning-way" : "evening-way";
     }
