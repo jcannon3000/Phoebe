@@ -224,7 +224,23 @@ struct PhoebeStats {
             ?? (obj["weeklyPartial"] as? [[NSNumber]])?.map { $0.map { $0.boolValue } }
             ?? weeklyLabels.map { _ in [Bool](repeating: false, count: 7) }
         let weeklyDayInitials = (obj["weeklyDayInitials"] as? [String]) ?? ["S", "M", "T", "W", "T", "F", "S"]
-        let nextCards = NextCard.parse(obj["nextCards"])
+        /**
+         * A payload without nextCards (an app build that predates the field,
+         * or one whose stored push is stale) must still show SOMETHING real —
+         * the owner's Home Screen showed a bare "Phoebe" on a leaf, because
+         * the old fallback was the weekly grid and the weekly rows arrive
+         * EMPTY whenever the home's weekly card is hidden/removed. So when
+         * the field is missing, synthesize one card from the hero fields the
+         * old payload does carry; a summary payload becomes the kept-day
+         * card via the empty list.
+         */
+        let nextCards: [NextCard] = NextCard.parse(obj["nextCards"]) ?? {
+            if kind == "summary" { return [] }
+            let t = title
+            guard !t.isEmpty else { return [] }
+            return [NextCard(emoji: "", title: t, subtitle: subtitle, cta: cta.isEmpty ? "Begin" : cta,
+                             r: 120, g: 166, b: 130, tint: 0.4, later: false)]
+        }()
         return PhoebeStats(kind: kind, eyebrow: eyebrow, title: title, subtitle: subtitle, cta: cta,
                            deepLink: deepLink, streakDays: streak, prayedToday: prayed,
                            nextOffice: nextOffice, newPrayers: newPrayers,
@@ -368,6 +384,9 @@ struct PhoebeWidgetView: View {
             // those keep the weekly grid they were pushed for.
             if let cards = stats.nextCards {
                 homeNextCards(cards)
+            } else if stats.weeklyLabels.isEmpty {
+                // No cards AND no grid rows — never render just the wordmark.
+                homeNextCards(PhoebeStats.timeBasedFallback().nextCards ?? [])
             } else {
                 homeWeeklyGrid
             }

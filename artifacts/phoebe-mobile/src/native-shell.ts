@@ -1338,6 +1338,8 @@ declare global {
         heroTitle?: string | null;
         heroSubtitle?: string | null;
         heroCta?: string | null;        // "" → no button
+        // The wide widget's next two home cards — see widgetSync.ts nextCards.
+        nextCards?: Array<{ emoji: string; title: string; subtitle: string; cta: string; rgb: string; tint: number; later: boolean }> | null;
         heroDeepLink?: string | null;
         // "Past 7 Days" grid — the SAME data + row-label mode the home
         // card's WayOfLoveTurnLearnPray shows (Turn/Learn/Pray, or
@@ -1480,6 +1482,15 @@ function exposePublicApi() {
           weeklyGrid: state.weeklyGrid ?? null,
           weeklyPartial: state.weeklyPartial ?? null,
           weeklyDayInitials: state.weeklyDayInitials ?? null,
+          /**
+           * THIS LIST IS A HAND-COPIED MIRROR of widgetSync's payload, and it
+           * BITES: a field missing here is silently dropped at the bridge —
+           * nextCards shipped in the app and the widget stayed blank because
+           * this whitelist didn't know the field (owner: "nothing showing up
+           * on my phoebe widget"). When widgetSync grows a field, it must be
+           * added HERE too, or it never reaches the App Group.
+           */
+          nextCards: state.nextCards ?? null,
         });
         window.localStorage.setItem("phoebe:persist:widget", payload);
         // Belt-and-suspenders: also write directly to Preferences in case
