@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { FROST } from "@/lib/frost";
 
 const BG = "#0C1F12";
 const WARM = "#F0EDE6";
@@ -31,7 +32,7 @@ const ACCENT = "rgba(168,197,160,0.55)";
 function Quote({ text, cite }: { text: string; cite?: string }) {
   return (
     <div style={{ maxWidth: 620, textAlign: "left" }}>
-      <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(22px, 4.6vw, 32px)", lineHeight: 1.45, margin: 0 }}>
+      <p className="title-glow-breathe" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(22px, 4.6vw, 32px)", lineHeight: 1.45, margin: 0 }}>
         “{text}”
       </p>
       {cite && (
@@ -45,7 +46,7 @@ function Quote({ text, cite }: { text: string; cite?: string }) {
 function Step({ label, sub, small }: { label: string; sub: string; small?: boolean }) {
   return (
     <div>
-      <p style={{ color: WARM, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", fontSize: small ? "clamp(13px, 2.4vw, 16px)" : "clamp(16px, 3.2vw, 22px)", margin: 0 }}>
+      <p className="title-glow-breathe" style={{ color: WARM, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", fontSize: small ? "clamp(13px, 2.4vw, 16px)" : "clamp(16px, 3.2vw, 22px)", margin: 0 }}>
         {label}
       </p>
       <p style={{ color: SAGE, fontFamily: FONT, fontSize: small ? "clamp(12.5px, 2.2vw, 15px)" : "clamp(14px, 2.6vw, 18px)", lineHeight: 1.5, margin: "4px 0 0" }}>{sub}</p>
@@ -87,32 +88,24 @@ const SLIDES: Array<() => React.ReactElement> = [
   () => <DeckImage src="/decks/yawyl-cover.jpg" alt="You Are What You Love — The Spiritual Power of Habit, James K. A. Smith" maxH="62vh" />,
   // 4 — Smith's own words.
   () => <Quote text="You are what you love, and your ultimate loves are formed and aimed by your immersion in practices and cultural rituals… Such rituals aren't something that you do; they do something to you." cite="Smith, p. 22." />,
-  // 5 — what daily practice IS, over Swanson's Daniel.
+  // 5 — Swanson's Daniel, standing alone (the revised deck lets it speak).
   () => (
-    <div style={{ maxWidth: 640, textAlign: "center" }}>
-      <DeckImage
-        src="/decks/swanson-daniel.jpg"
-        alt="Daniel in the Lions' Den, John August Swanson"
-        maxH="44vh"
-        credit="John August Swanson, Daniel in the Lions' Den — Art in the Christian Tradition, Vanderbilt Divinity Library. Used by permission of the artist (non-commercial, with attribution)."
-      />
-      <p style={{ color: WARM, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", fontSize: "clamp(15px, 2.9vw, 21px)", lineHeight: 1.4, margin: "22px 0 0" }}>
-        Daily practice as immersion<br />in a Christian contemplative worldview
-      </p>
-      <p style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(13px, 2.5vw, 16px)", margin: "10px 0 0" }}>
-        A form of resistance to dehumanizing forces
-      </p>
-    </div>
+    <DeckImage
+      src="/decks/swanson-daniel.jpg"
+      alt="Daniel in the Lions' Den, John August Swanson"
+      maxH="54vh"
+      credit="John August Swanson, Daniel in the Lions' Den — Art in the Christian Tradition, Vanderbilt Divinity Library. Used by permission of the artist (non-commercial, with attribution)."
+    />
   ),
   // 6 — the frontline.
   () => (
     <div style={{ maxWidth: 620, textAlign: "center" }}>
-      <p style={{ color: WARM, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", fontSize: "clamp(17px, 3.4vw, 24px)", lineHeight: 1.35, margin: 0 }}>
-        Intention to practice
+      <p className="title-glow-breathe" style={{ color: WARM, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", fontSize: "clamp(17px, 3.4vw, 24px)", lineHeight: 1.35, margin: 0 }}>
+        Occasional consumption
       </p>
-      <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: "clamp(14px, 2.6vw, 18px)", margin: "8px 0" }}>vs</p>
-      <p style={{ color: WARM, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", fontSize: "clamp(17px, 3.4vw, 24px)", lineHeight: 1.35, margin: 0 }}>
-        Obstacles of modern life
+      <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: "clamp(14px, 2.6vw, 18px)", margin: "8px 0" }}>vs.</p>
+      <p className="title-glow-breathe" style={{ color: WARM, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", fontSize: "clamp(17px, 3.4vw, 24px)", lineHeight: 1.35, margin: 0 }}>
+        Habitual immersion
       </p>
       <p style={{ color: SAGE, fontFamily: FONT, fontSize: "clamp(14px, 2.7vw, 18px)", lineHeight: 1.55, margin: "20px 0 0" }}>
         The frontline between content consumption and formation
@@ -206,7 +199,11 @@ export default function FormationDeck() {
         <button aria-label="Previous" onClick={prev} style={{ position: "fixed", left: 0, top: 56, bottom: 64, width: "28%", background: "none", border: "none", cursor: i > 0 ? "pointer" : "default", zIndex: 1 }} />
         <button aria-label="Next" onClick={next} style={{ position: "fixed", right: 0, top: 56, bottom: 64, width: "28%", background: "none", border: "none", cursor: i < total - 1 ? "pointer" : "default", zIndex: 1 }} />
         <div key={i} style={{ position: "relative", zIndex: 2, width: "100%", maxWidth: 760, display: "flex", justifyContent: "center", animation: "fd-fade 0.45s ease", margin: "auto 0" }}>
-          <Slide />
+          {/* The frosted stage — the same glass the practices set their words
+              on (owner: "glowing titles and such on frost and leaf"). */}
+          <div style={{ ...FROST, border: "1px solid rgba(46,107,64,0.4)", borderRadius: 22, padding: "clamp(20px, 4vw, 34px)", width: "100%", display: "flex", justifyContent: "center" }}>
+            <Slide />
+          </div>
         </div>
       </div>
 
