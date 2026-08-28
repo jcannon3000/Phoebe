@@ -164,27 +164,3 @@ export function CommunitySeasonCard({ slug }: { slug: string }) {
   );
 }
 
-/**
- * CommunityPulseLine — the LEADER's aggregate weekly read (beta).
- * "9 of 24 of us prayed this week." Aggregate only; the server withholds the
- * count entirely for groups under 4 members (privacy floor), and this renders
- * nothing in that case — presence, never attendance.
- */
-export function CommunityPulseLine({ slug }: { slug: string }) {
-  const weekStart = (() => {
-    const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay());
-    return d.toLocaleDateString("en-CA");
-  })();
-  const { data } = useQuery<{ count: number | null; memberCount: number }>({
-    queryKey: [`/api/groups/${slug}/pulse`, weekStart],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/pulse?weekStart=${weekStart}`),
-    staleTime: 5 * 60_000,
-    retry: false,
-  });
-  if (!data || data.count == null || data.count < 1) return null;
-  return (
-    <p className="text-[12.5px] mb-3 px-0.5" style={{ color: "rgba(168,197,160,0.85)", fontFamily: FONT }}>
-      🕊️ {data.count} of {data.memberCount} of us prayed this week
-    </p>
-  );
-}

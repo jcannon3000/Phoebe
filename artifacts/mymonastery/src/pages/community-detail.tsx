@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { CommunityRuleCard } from "@/components/CommunityRuleCard";
-import { CommunitySeasonCard, CommunityPulseLine } from "@/components/CommunitySeasonCard";
+import { CommunitySeasonCard } from "@/components/CommunitySeasonCard";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -1361,7 +1361,6 @@ export default function CommunityDetailPage() {
         {/* BETA — the leader's aggregate weekly pulse (never names, floored
             under 4 members) and the community SEASON (the rule kept together
             for a bounded few weeks; leaders start it, everyone checks in). */}
-        {rawIsBeta && isAdmin && <CommunityPulseLine slug={slug} />}
         {rawIsBeta && <CommunitySeasonCard slug={slug} />}
 
         {/* Beta-only — daily reflection entry (CAC / Forward Day by
