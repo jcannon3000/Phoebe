@@ -331,6 +331,9 @@ export default function VisioPage() {
         licence: "Public domain",
         // The commentary this artwork links to — LINKED, never reproduced.
         essayUrl: bundled.essayUrl ?? null,
+        // The bundled fallback is a single hard-coded work, not an ACT record,
+        // so it carries none of ACT's tags.
+        people: [] as string[],
         followsToday: false,
       }
     : active
@@ -344,6 +347,11 @@ export default function VisioPage() {
           attribution: active.art.attribution,
           licence: active.art.licence,
           essayUrl: active.art.essay,
+          /** ACT's own "people" tags — who the work depicts. Shown so the
+           *  detail names the figures rather than leaving the looker to
+           *  guess (owner). Searchable metadata in the admin tool already;
+           *  this simply surfaces the same field in the practice. */
+          people: active.art.people ?? [],
           followsToday: active.followsToday,
         }
       : null;
@@ -886,6 +894,7 @@ export default function VisioPage() {
                   {view.followsToday ? ` · ${t("visio.follows_today", { defaultValue: "Today's reading" })}` : ""}
                 </p>
               )}
+
             </div>
 
             {/**
@@ -956,6 +965,15 @@ export default function VisioPage() {
             <p style={{ color: WARM, fontFamily: SERIF, fontSize: 19, fontStyle: "italic", margin: 0 }}>{view.title}</p>
             {view.artist && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>{tidyArtist(view.artist)}</p>
+            )}
+            {/* Who the work depicts, in ACT's own words — on the beat where the
+                picture is FIRST shown, not over the title (owner). It belongs
+                with the looking: a museum label names the figures beside the
+                painting, not on the door. */}
+            {view.people.length > 0 && (
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: "3px 0 0", lineHeight: 1.5 }}>
+                {view.people.join(" · ")}
+              </p>
             )}
             {view.scriptureRef && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "3px 0 0" }}>

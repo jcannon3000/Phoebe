@@ -458,6 +458,7 @@ export default function IconsPage() {
                 {chosen.artist && (
                   <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>{tidyArtist(chosen.artist)}</p>
                 )}
+
               </div>
               <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14, textAlign: "center", margin: "8px 0 0", lineHeight: 1.55 }}>
                 {t("icons.timer_ask", { defaultValue: "How long will you sit with it?" })}
@@ -538,6 +539,13 @@ export default function IconsPage() {
                 <p style={{ color: WARM, fontFamily: SERIF, fontSize: 17, fontStyle: "italic", margin: 0 }}>{chosen.title}</p>
                 {chosen.artist && (
                   <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: "5px 0 0" }}>{tidyArtist(chosen.artist)}</p>
+                )}
+                {/* Who the icon depicts, in ACT's own words — beside the
+                    picture on the sit, not on the chooser (owner). */}
+                {chosen.people.length > 0 && (
+                  <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12, margin: "4px 0 0", lineHeight: 1.5 }}>
+                    {chosen.people.join(" · ")}
+                  </p>
                 )}
               </div>
 
