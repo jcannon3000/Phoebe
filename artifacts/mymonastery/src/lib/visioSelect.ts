@@ -382,6 +382,102 @@ export function pickFromTier(
   return null;
 }
 
+/**
+ * THREE OTHER WORKS FOR THE SAME DAY.
+ *
+ * Owner: "under the visio for the day, have a button that says more options,
+ * and for each day have three others displayed as cards … if they chose it
+ * they would go through it with that image."
+ *
+ * PURE, like everything else here — the date and the appointed lessons, and
+ * nothing about the reader. Everyone who opens More options on a given day is
+ * offered the same three, which is the point of the practice: a parish looking
+ * at the same picture, and now at the same alternatives to it.
+ *
+ * Candidates are gathered in falling order of relevance:
+ *
+ *   1. Tier by tier at CHAPTER level or better, in the owner's order (gospel,
+ *      then Epistle or OT, then psalm), taking each tier's candidates in the
+ *      order pickFromTier would — reflection-bearing works first, then the
+ *      runner-up that carries one, then the bare matches, each group rotated
+ *      by the same day counter. These genuinely depict what is appointed.
+ *   2. Tier by tier at BOOK level. Not "today's reading", and labelled as not,
+ *      but the same book is a real thread and it beats an unrelated painting.
+ *      This step is why the list isn't usually random: on 27 August the whole
+ *      gospel tier (John 7) reaches book level and no further, so without it
+ *      all three cards fell through to the rotation floor.
+ *   3. The plain rotation, so three cards can always be filled.
+ *
+ * THEN A VARIETY PASS. The catalogue is lopsided — one tier can be 62 works
+ * from a single series, and the rotation pool is grouped by artist, so simply
+ * taking the first three gave three paintings by the same hand (three
+ * Swansons, three JESUS MAFA). So the first pass takes only works by artists
+ * not already offered, and a second pass fills any shortfall in relevance
+ * order. Variety breaks ties; it never outranks a work that actually depicts
+ * today's reading — three Nativities on Christmas is the right answer.
+ */
+export function alternatesForDay(
+  ymd: string,
+  lessons: string[],
+  excludeId: number | null,
+  count = 3,
+): Chosen[] {
+  const ranked: Chosen[] = [];
+  const seen = new Set<number>(excludeId == null ? [] : [excludeId]);
+  const push = (art: CatalogueArtwork, ref: string, followsToday: boolean) => {
+    if (seen.has(art.id)) return;
+    seen.add(art.id);
+    ranked.push({ art, ref, followsToday });
+  };
+  /** A group's candidates from today's place in it, as pickFromTier walks. */
+  const rotated = (group: CatalogueArtwork[]): CatalogueArtwork[] => {
+    if (!group.length) return [];
+    const start = rotationIndex(ymd, group.map((a) => a.id));
+    return group.map((_, k) => group[(start + k) % group.length]!);
+  };
+
+  const tiers = rankedTiers(lessons);
+  // 1. Chapter level or better — the works that nearly won today.
+  for (const { refs, best, top, essayRunnerUp } of tiers) {
+    if (top < 2 || !best.length) continue;
+    for (const group of [best.filter(hasUsableEssay), essayRunnerUp, best.filter((a) => !hasUsableEssay(a))]) {
+      for (const art of rotated(group)) {
+        push(art, art.refs.find((r) => matchScore([r], refs) >= 2) ?? art.refs[0] ?? "", true);
+      }
+    }
+  }
+  // 2. Book level — same book, a different passage. Never called today's.
+  for (const { refs, best, top } of tiers) {
+    if (top !== 1 || !best.length) continue;
+    for (const art of rotated(best)) {
+      push(art, art.refs.find((r) => matchScore([r], refs) >= 1) ?? art.refs[0] ?? "", false);
+    }
+  }
+  // 3. The floor: walk on from today's place in the pool.
+  const p = pool();
+  for (let k = 0; k < p.length; k++) {
+    push(p[(((dayOrdinal(ymd) + 1 + k) % p.length) + p.length) % p.length]!, "", false);
+  }
+
+  // Variety first, then fill.
+  const out: Chosen[] = [];
+  const hands = new Set<string>();
+  const handOf = (c: Chosen) => (c.art.artist ?? "").trim().toLowerCase();
+  for (const c of ranked) {
+    if (out.length >= count) break;
+    const hand = handOf(c);
+    if (hand && hands.has(hand)) continue;
+    if (hand) hands.add(hand);
+    out.push(c);
+  }
+  for (const c of ranked) {
+    if (out.length >= count) break;
+    if (!out.includes(c)) out.push(c);
+  }
+  // A floor work carries no reference of its own to show; give it its first.
+  return out.map((c) => (c.ref ? c : { ...c, ref: c.art.refs[0] ?? "" }));
+}
+
 export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
   /**
    * THE SCHEDULE FIRST — a day's picture is decided ahead of time.

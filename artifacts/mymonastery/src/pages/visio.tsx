@@ -44,7 +44,7 @@ import { openExternal, openOfficeReading, preloadExternal } from "@/lib/openExte
 import { FROST_BLUR } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
-import { chooseArtwork, artworkById, type Chosen } from "@/lib/visioSelect";
+import { chooseArtwork, artworkById, alternatesForDay, type Chosen } from "@/lib/visioSelect";
 import { getVisioHistory, recordVisioSeen } from "@/lib/visioHistory";
 import { useVisioLessons } from "@/hooks/useVisioToday";
 import { apiRequest } from "@/lib/queryClient";
@@ -100,6 +100,59 @@ function tidyArtist(a: string): string {
 /** How long we'll wait on today's readings before praying without them. */
 const READINGS_CAP_MS = 1500;
 
+/**
+ * One of today's other works, as a card.
+ *
+ * Deliberately a PLATE, not a poster: a small square, the title, the hand that
+ * made it, and the passage it answers. Enough to choose by, not enough to have
+ * already looked at — the looking belongs to the beats after this, on a full
+ * screen, and a card big enough to pray with would spend the picture here.
+ */
+function OptionCard({
+  pick, active, badge, onPick,
+}: {
+  pick: Chosen;
+  active: boolean;
+  badge?: string;
+  onPick: () => void;
+}) {
+  const { t } = useTranslation();
+  const label = badge
+    ?? (pick.followsToday ? t("visio.follows_today", { defaultValue: "Today's reading" }) : "");
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      aria-current={active || undefined}
+      style={{
+        display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
+        padding: 10, borderRadius: 12, cursor: "pointer",
+        background: active ? "rgba(46,107,64,0.42)" : "rgba(240,237,230,0.05)",
+        border: `1px solid ${active ? "rgba(143,175,150,0.55)" : BORDER}`,
+        WebkitTapHighlightColor: "transparent",
+      }}
+    >
+      <img
+        src={pick.art.img}
+        alt=""
+        aria-hidden
+        loading="lazy"
+        decoding="async"
+        style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, flex: "0 0 auto", boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}
+      />
+      <span style={{ minWidth: 0, flex: 1 }}>
+        <span style={{ display: "block", color: WARM, fontFamily: SERIF, fontSize: 15, fontStyle: "italic", lineHeight: 1.3 }}>
+          {pick.art.title}
+        </span>
+        <span style={{ display: "block", color: FAINT, fontFamily: FONT, fontSize: 11.5, marginTop: 3, lineHeight: 1.45 }}>
+          {[tidyArtist(pick.art.artist ?? ""), pick.ref].filter(Boolean).join(" · ")}
+          {label ? ` · ${label}` : ""}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 export default function VisioPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
@@ -127,12 +180,17 @@ export default function VisioPage() {
    */
   const [history] = useState(() => getVisioHistory());
   /**
-   * Set when the reader taps something in the closing gallery. From then on
-   * the deck shows THAT artwork instead of today's — a way back into a picture
-   * they've been carrying, without disturbing which one today's is.
+   * Set when the reader taps something in the closing gallery, or picks one of
+   * today's other options. From then on the deck shows THAT artwork instead of
+   * today's — a way into a different picture without disturbing which one
+   * today's is.
+   *
+   * The whole pick, not just an id: an alternate knows the passage it matched
+   * and whether that passage is appointed today, and throwing that away to
+   * re-derive `refs[0]` would mislabel a work that genuinely does follow
+   * today's reading.
    */
-  const [overrideId, setOverrideId] = useState<number | null>(null);
-  const override = overrideId != null ? artworkById(overrideId) : null;
+  const [override, setOverride] = useState<Chosen | null>(null);
 
   /**
    * The choice is made ONCE and then frozen. Re-picking when the readings
@@ -159,9 +217,32 @@ export default function VisioPage() {
 
   /** Whichever artwork the deck is actually showing — today's, or one the
    *  reader tapped back into from the closing gallery. */
-  const active: Chosen | null = override
-    ? { art: override, ref: override.refs[0] ?? "", followsToday: false }
-    : chosen;
+  const active: Chosen | null = override ?? chosen;
+
+  /**
+   * TODAY'S OTHER OPTIONS (owner: "under the visio for the day, have a button
+   * that says more options, and for each day have three others displayed as
+   * cards … if they chose it they would go through it with that image").
+   *
+   * The three works that came closest to winning today, by the same tiered
+   * rules — see alternatesForDay. Derived from the date and the appointed
+   * lessons ONLY, so the options are the same for everyone praying today, like
+   * the day's own picture. Computed against TODAY's work, never the active
+   * one, so switching doesn't reshuffle the sheet underneath the reader.
+   */
+  const alternates = useMemo(
+    () => (chosen ? alternatesForDay(today, dayLessons, chosen.art.id) : []),
+    [today, dayLessons, chosen],
+  );
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  /** Pick one of today's other works and pray the whole deck with it. */
+  const chooseAlternate = (pick: Chosen | null) => {
+    // null = back to today's own picture.
+    setOverride(pick);
+    setLoadedSrc(null);
+    setImageFailed(false);
+    setOptionsOpen(false);
+  };
 
   // An unreachable image (offline, or their host having a bad day) falls back
   // to a work bundled in the binary, so the practice still happens.
@@ -369,7 +450,12 @@ export default function VisioPage() {
     try { markPracticeDoneToday("visio"); } catch { /* non-fatal */ }
     goHome();
   };
-  const prev = () => { if (step > 0) setStep((s) => s - 1); };
+  // Clamp INSIDE the updater, not against the render-scoped `step`. Two Back
+  // taps landing in the same render both read the same stale value, both pass
+  // `step > 0`, and both decrement — step -1, a beat nothing renders for, and
+  // "0 / 5" in the counter. Caught by double-tapping while testing More
+  // options. The other two back paths (556, 589) already clamp this way.
+  const prev = () => setStep((s) => Math.max(0, s - 1));
 
   /**
    * Tap and swipe, the same way the office deck pages.
@@ -536,7 +622,10 @@ export default function VisioPage() {
 
   /** Jump back into a picture from the completion cards. */
   const reopen = (id: number) => {
-    setOverrideId(id);
+    const art = artworkById(id);
+    if (!art) return;
+    // A work reopened from the gallery is not being claimed as today's.
+    setOverride({ art, ref: art.refs[0] ?? "", followsToday: false });
     setLoadedSrc(null);
     // The contemplation beat, NOT the first-look beat: coming back to a work
     // you've already prayed with should show it, not hand you straight back
@@ -792,6 +881,65 @@ export default function VisioPage() {
                 </p>
               )}
             </div>
+
+            {/**
+              * MORE OPTIONS — today's other three works, as cards.
+              *
+              * Owner: "under the visio for the day, have a button that says
+              * more options, and for each day have three others displayed as
+              * cards … if they chose it they would go through it with that
+              * image." So picking one isn't a preview: it replaces the work
+              * for the whole deck, and the practice runs from here with it.
+              *
+              * Closed by default. The day's picture is still THE picture — the
+              * practice is a parish looking at the same image, and a chooser
+              * opened on arrival would turn the first beat into a menu. This
+              * sits under it for the reader who wants a different door in.
+              */}
+            {alternates.length > 0 && (
+              // alignSelf:stretch — the title slide is a centred flex column
+              // that sizes to its content, so width:100% here resolved against
+              // the title's width and left the cards at 256px on a 375px
+              // screen. Stretch fills the slide instead.
+              <div style={{ alignSelf: "stretch", width: "100%", maxWidth: 420, marginLeft: "auto", marginRight: "auto" }}>
+                <button
+                  type="button"
+                  onClick={() => setOptionsOpen((o) => !o)}
+                  aria-expanded={optionsOpen}
+                  style={{
+                    background: "none", border: "none", padding: "6px 10px", cursor: "pointer",
+                    color: SAGE, fontFamily: FONT, fontSize: 13.5, letterSpacing: "0.01em",
+                  }}
+                >
+                  {optionsOpen
+                    ? t("visio.fewer_options", { defaultValue: "Fewer options" })
+                    : t("visio.more_options", { defaultValue: "More options" })}
+                </button>
+
+                {optionsOpen && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, textAlign: "left" }}>
+                    {/* Back to today's own work — only once they've left it,
+                        so the way back is never further than the way out. */}
+                    {override && chosen && (
+                      <OptionCard
+                        pick={chosen}
+                        active={false}
+                        badge={t("visio.todays_picture", { defaultValue: "Today's picture" })}
+                        onPick={() => chooseAlternate(null)}
+                      />
+                    )}
+                    {alternates.map((alt) => (
+                      <OptionCard
+                        key={alt.art.id}
+                        pick={alt}
+                        active={override?.art.id === alt.art.id}
+                        onPick={() => chooseAlternate(alt)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
