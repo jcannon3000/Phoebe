@@ -1,3 +1,14 @@
+import type { QueryClient } from "@tanstack/react-query";
+
+/**
+ * The app's QueryClient, registered by App.tsx at creation so plain libs
+ * (practiceCompletion's cache-forgetting unlog) can reach the cache without
+ * importing App — which would be a module cycle.
+ */
+let appQueryClient: QueryClient | null = null;
+export function registerQueryClient(c: QueryClient): void { appQueryClient = c; }
+export function getQueryClient(): QueryClient | null { return appQueryClient; }
+
 // ApiError carries the parsed JSON body alongside a user-readable
 // `.message`. Callers that just want to display an error can read
 // `err.message` (preferred from `body.message`, then `body.error`,

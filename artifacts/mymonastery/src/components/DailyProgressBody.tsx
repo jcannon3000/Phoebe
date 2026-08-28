@@ -13,12 +13,12 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { apiRequest } from "@/lib/queryClient";
+import { getQueryClient, apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, sideOfficeTitle, extraPracticeTitle, extraOfficeMode, type OfficeLevel, type ReflectionSource } from "@/lib/officePrefs";
 import { daySwapNote } from "@/components/PracticeSwitcher";
 import { sortCardsByUserOrder, rowIdToCardKeys } from "@/lib/routineOrder";
-import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
+import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
@@ -99,6 +99,41 @@ function weeklyRowGreen(i: number, n: number): string {
 // Returns an "r,g,b" string (the format the cards' rgba() helpers expect).
 // Exported so other home surfaces (e.g. the Prayer List carousel) can shade
 // their cards along the SAME green→violet ramp and read as one family.
+/**
+ * Unlog helpers for the server-backed cards (owner: every home card unlogs
+ * by its ✓). Each one is practiceCompletion's unmark pattern: server DELETE
+ * (with one retry) + a synchronous purge of THIS device's query cache — done
+ * flags read `local || cachedServer`, and a stale cache held cards in Done
+ * after the write landed (the iOS report that exposed the class).
+ */
+function unlogBreathToday(): void {
+  const day = new Date().toLocaleDateString("en-CA");
+  const del = () => apiRequest("DELETE", "/api/breath/today", { day });
+  del().catch(() => { setTimeout(() => { del().catch(() => { /* offline */ }); }, 3000); });
+  try {
+    const qc = getQueryClient();
+    qc?.setQueriesData({ queryKey: ["/api/breath/today"] }, (old: unknown) => {
+      const o = old as { done?: boolean } | undefined;
+      return o && typeof o === "object" ? { ...o, done: false } : old;
+    });
+    void qc?.invalidateQueries({ queryKey: ["/api/breath/today"] });
+  } catch { /* non-fatal */ }
+}
+function unlogNovenaToday(): void {
+  const localDate = new Date().toLocaleDateString("en-CA");
+  const post = () => apiRequest("POST", "/api/me/novena/uncomplete", { localDate });
+  post().catch(() => { setTimeout(() => { post().catch(() => { /* offline */ }); }, 3000); });
+  try {
+    const qc = getQueryClient();
+    qc?.setQueriesData({ queryKey: ["/api/me/novena"] }, (old: unknown) => {
+      const o = old as { lastCompletedLocalDate?: string | null } | undefined;
+      if (!o || typeof o !== "object") return old;
+      return { ...o, lastCompletedLocalDate: null };
+    });
+    void qc?.invalidateQueries({ queryKey: ["/api/me/novena"] });
+  } catch { /* non-fatal */ }
+}
+
 export function rhythmGradientRgb(i: number, n: number): string {
   const t = n <= 1 ? 0 : i / (n - 1);
   // A calm MONOCHROME green ramp — one held hue, easing from a lighter green to a
@@ -1080,6 +1115,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // the same way custom anchors do.
   const cobreatheCard = {
     key: "cobreathe", emoji: "🌍", rgb: "62,124,122", done: cobreatheDone,
+    onUnlog: () => unlogBreathToday(),
     // Lands on the intro, NOT straight in: that screen carries Enter location.
     href: "/cobreathe",
     title: t("rhythm.card_cobreathe", { defaultValue: "Creation Prayer" }),
@@ -1170,6 +1206,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // it go to the prayer list page not the slideshow") there's nothing
     // left to pray through — land on the list itself instead.
     key: "prayer-list-card", emoji: "🕊️", rgb: "96,140,180", done: prayerListDoneCard,
+    onUnlog: () => unmarkPracticeDoneToday("prayer-list"),
     href: prayerListDoneCard ? "/prayer-list" : "/prayer-mode?reset=1",
     title: t("rhythm.card_prayer_list", { defaultValue: "Prayer List" }),
     // No count (owner). "2 of 3" turned a prayer list into a checklist and was
@@ -1254,6 +1291,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // mirror this same novenaReplacesMorning/Evening gate).
     ...(novenaReplacesMorning && novena ? [{
       key: "novena", slot: "morning" as CustomSlot, emoji: "🕊️", rgb: "150,120,90", done: novenaDone,
+      onUnlog: () => unlogNovenaToday(),
       href: "/novena",
       title: novena.title,
       blurb: novenaDone
@@ -1340,6 +1378,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(morningExtraLevel ? [extraCard("morning", morningExtraLevel, morningExtraDone)] : []),
     ...(novenaReplacesEvening && novena ? [{
       key: "novena", slot: "evening" as CustomSlot, emoji: "🕊️", rgb: "150,120,90", done: novenaDone,
+      onUnlog: () => unlogNovenaToday(),
       href: "/novena",
       title: novena.title,
       blurb: novenaDone
@@ -1391,6 +1430,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       const waitingForUpdate = isVts && vtsWaitingForUpdate;
       return {
         key: `reflect-${r.source}`, slot: "morning" as CustomSlot, emoji: isVts ? "🦩" : "📖", rgb: "96,141,209", done: r.done, href: isVts ? "/vts-reading" : "",
+        onUnlog: () => unlogReflectionToday(r.source),
         title: PUBLICATION_NAME[r.source],
         blurb: waitingForUpdate
           ? t("rhythm.vts_waiting", { defaultValue: "Waiting for update" })
@@ -1504,6 +1544,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // the thing silently pushed out by a passive add-on practice.
     ...(novenaActive && novena && !novenaReplacesMorning && !novenaReplacesEvening ? [{
       key: "novena", slot: "anytime" as CustomSlot, emoji: "🕊️", rgb: "150,120,90", done: novenaDone,
+      onUnlog: () => unlogNovenaToday(),
       href: "/novena",
       title: novena.title,
       blurb: novenaDone

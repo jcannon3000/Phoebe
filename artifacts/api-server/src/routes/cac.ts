@@ -259,6 +259,21 @@ router.get("/cac/today-full", async (_req: Request, res: Response): Promise<void
 
 // POST /api/cac/read { ymd } — record that the caller opened today's
 // reflection (idempotent per local day). ymd is the caller's local date.
+// The undo half of /cac/read — same contract as DELETE /reflections/read.
+router.delete("/cac/read", async (req: Request, res: Response): Promise<void> => {
+  const u = req.user as { id?: number } | undefined;
+  if (typeof u?.id !== "number") { res.status(401).json({ error: "not_authenticated" }); return; }
+  const ymd = String(req.body?.ymd ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) { res.status(400).json({ error: "bad_request" }); return; }
+  try {
+    await pool.query(`DELETE FROM cac_reads WHERE user_id = $1 AND ymd = $2`, [u.id, ymd]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/cac/read DELETE] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 router.post("/cac/read", async (req: Request, res: Response): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }

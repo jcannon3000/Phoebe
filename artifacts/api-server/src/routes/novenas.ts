@@ -272,6 +272,30 @@ router.post("/me/novena/complete", async (req: Request, res: Response): Promise<
   res.json({ ok: true, currentDay: finished ? progress.currentDay : nextDay, completed: finished });
 });
 
+/** The undo half of /me/novena/complete — takes back TODAY's completion
+ *  only, stepping currentDay back with it, so the ✓ on the novena card can
+ *  unlog like every other card. A completed-status novena is not reopened
+ *  (finishing the whole novena is a bigger act than a same-day mis-tap). */
+router.post("/me/novena/uncomplete", async (req: Request, res: Response): Promise<void> => {
+  const userId = uid(req);
+  if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
+  const localDate = String(req.body?.localDate ?? "");
+  if (!YMD.test(localDate)) { res.status(400).json({ error: "bad_request" }); return; }
+  const [progress] = await db
+    .select()
+    .from(novenaProgressTable)
+    .where(and(eq(novenaProgressTable.userId, userId), eq(novenaProgressTable.status, "active")))
+    .limit(1);
+  if (!progress) { res.status(404).json({ error: "no_active_novena" }); return; }
+  if (progress.lastCompletedLocalDate !== localDate) { res.json({ ok: true, currentDay: progress.currentDay }); return; }
+  const prevDay = Math.max(1, progress.currentDay - 1);
+  await db
+    .update(novenaProgressTable)
+    .set({ currentDay: prevDay, lastCompletedLocalDate: null })
+    .where(eq(novenaProgressTable.id, progress.id));
+  res.json({ ok: true, currentDay: prevDay });
+});
+
 router.post("/me/novena/stop", async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }

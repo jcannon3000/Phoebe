@@ -1,4 +1,4 @@
-import { apiRequest, ApiError } from "@/lib/queryClient";
+import { apiRequest, ApiError, getQueryClient } from "@/lib/queryClient";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 import { creditAnchorPractice } from "@/lib/officeManualLog";
@@ -134,6 +134,29 @@ export function unmarkPracticeDoneToday(section: OptionalPractice): void {
     /* private mode / quota — non-fatal */
   }
   const localDate = todayLocalISO();
+  /**
+   * THE CACHED SERVER ROWS MUST FORGET THIS TOO, immediately. A card's done
+   * is `localFlag || serverDone`, and serverDone reads the React-Query cache
+   * of /api/practice-completion — so clearing the flag and DELETEing the row
+   * left THIS device's cache still carrying today's row, and the card sat in
+   * Done until some later refetch. Reported: "I tried to unlog some
+   * practices on iOS and they didn't move — but they showed up unlogged on
+   * the web" (the web was a fresh fetch; the phone was the stale cache).
+   * Drop the row from every cached page synchronously, then invalidate so
+   * the server's truth reconciles behind it.
+   */
+  try {
+    const qc = getQueryClient();
+    qc?.setQueriesData(
+      { queryKey: ["/api/practice-completion"] },
+      (old: unknown) => {
+        const o = old as { completions?: Array<{ section?: string; localDate?: string }> } | undefined;
+        if (!o?.completions) return old;
+        return { ...o, completions: o.completions.filter((c) => !(c.section === section && c.localDate === localDate)) };
+      },
+    );
+    void qc?.invalidateQueries({ queryKey: ["/api/practice-completion"] });
+  } catch { /* non-fatal — the refetch on next focus still reconciles */ }
   const del = () => apiRequest("DELETE", "/api/practice-completion", { section, localDate });
   del().catch(() => {
     setTimeout(() => {

@@ -5,7 +5,7 @@ import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persist
 import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
 import { retryPendingReflectionReads } from "@/lib/cacReadState";
 import { installSessionOutboxFlush } from "@/lib/sessionOutbox";
-import { ApiError, apiRequest } from "@/lib/queryClient";
+import { ApiError, apiRequest, registerQueryClient } from "@/lib/queryClient";
 import { reportClientError } from "@/lib/reportClientError";
 import { getGuestStepGoal } from "@/lib/guestSeed";
 // Side-effect import: warms the server-clock offset on app load (re-syncs on
@@ -568,6 +568,13 @@ const queryClient = new QueryClient({
     },
   },
 });
+// Register the client for plain libs (practiceCompletion / cacReadState's
+// cache-forgetting unlogs) — MUST be a top-level statement: an earlier
+// version sat inside the QueryCache onError callback above, so it only ran
+// if an offline toast ever fired, and every unlog's cache purge silently
+// no-opped (the "unlogged on web but the phone card didn't move" report).
+registerQueryClient(queryClient);
+
 
 // Persist a SMALL set of "daily progress" queries to localStorage so the home
 // renders the user's rhythm INSTANTLY on a cold boot (from the last session)

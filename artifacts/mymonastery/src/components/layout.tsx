@@ -1251,7 +1251,14 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
         </div>
       )}
       {!chromeless && <header
-        className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
+        // NOT sticky. It carried sticky top-0 for ages while the container's
+        // overflow-x:hidden quietly disabled it (one hidden axis makes the
+        // other compute to auto — the root became the scrollport and never
+        // scrolled). Yesterday's overflow-x:clip fix for the customizer's
+        // floating Continue re-armed it, and a TRANSPARENT header suddenly
+        // floating over scrolled content is the owner's "something is messed
+        // up with the scroll on web". The header belongs to the page flow.
+        className="z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
         style={{
           // No bar over a backdrop photo — the image runs all the way to the top;
           // the wordmark + pills sit directly on the washed photo. Solid otherwise.

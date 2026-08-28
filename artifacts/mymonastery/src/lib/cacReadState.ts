@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/queryClient";
+import { getQueryClient, apiRequest } from "@/lib/queryClient";
 import { getSideLevel, getSideReflectionExplicit } from "@/lib/officePrefs";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 import { undoOfficeToday, clearOfficeUndoToday } from "@/lib/officeManualLog";
@@ -216,6 +216,39 @@ const vtsTracker = makeDailyReadTracker(
   (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "vts", ymd }).catch(() => { /* best effort */ }); },
   "reflect-vts",
 );
+
+/**
+ * FULLY unlog today's reflection read — the ✓ on a reflection card (owner:
+ * every home card unlogs by its check). Three coordinated halves, mirroring
+ * practiceCompletion's unmark:
+ *   1. the local read stamp (tracker.unmarkRead) + its synced marker, so the
+ *      pending-sync retry doesn't quietly re-mark the day;
+ *   2. the server row (DELETE — /api/cac/read for CAC, /api/reflections/read
+ *      for the rest), so other devices agree;
+ *   3. THIS device's React-Query cache of /api/me/reflections-read — done is
+ *      local || server, and a cache still carrying today's read kept the
+ *      card in Done after both writes landed (the same stale-cache class the
+ *      iOS unlog report exposed on practice-completion).
+ */
+export function unlogReflectionToday(source: "cac" | "fdd" | "ssje" | "vts"): void {
+  const ymd = todayLocalISO();
+  const tracker = source === "cac" ? cacTracker : source === "fdd" ? fddTracker : source === "ssje" ? ssjeTracker : vtsTracker;
+  tracker.unmarkRead();
+  try { localStorage.removeItem(`phoebe:${source}:last-read-day:synced`); } catch { /* non-fatal */ }
+  const del = source === "cac"
+    ? () => apiRequest("DELETE", "/api/cac/read", { ymd })
+    : () => apiRequest("DELETE", "/api/reflections/read", { source, ymd });
+  del().catch(() => { setTimeout(() => { del().catch(() => { /* offline — local already cleared */ }); }, 3000); });
+  try {
+    const qc = getQueryClient();
+    qc?.setQueriesData({ queryKey: ["/api/me/reflections-read"] }, (old: unknown) => {
+      const o = old as Record<string, boolean> | undefined;
+      if (!o || typeof o !== "object") return old;
+      return { ...o, [source]: false };
+    });
+    void qc?.invalidateQueries({ queryKey: ["/api/me/reflections-read"] });
+  } catch { /* non-fatal */ }
+}
 
 /**
  * Re-send any read the server hasn't acknowledged yet.

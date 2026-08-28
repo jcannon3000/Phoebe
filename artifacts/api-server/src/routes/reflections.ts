@@ -49,6 +49,26 @@ router.post("/reflections/read", async (req: Request, res: Response): Promise<vo
   }
 });
 
+/** The undo half of /reflections/read — the ✓ on a reflection card must be
+ *  able to take today's read back (owner: every home card unlogs by its
+ *  check). Idempotent: deleting a row that isn't there is a no-op. */
+router.delete("/reflections/read", async (req: Request, res: Response): Promise<void> => {
+  const userId = uid(req);
+  if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
+  const source = String(req.body?.source ?? "");
+  const ymd = String(req.body?.ymd ?? "");
+  if (!SOURCES.has(source) || !isValidYmd(ymd)) { res.status(400).json({ error: "bad_request" }); return; }
+  try {
+    await db
+      .delete(reflectionReadsTable)
+      .where(and(eq(reflectionReadsTable.userId, userId), eq(reflectionReadsTable.source, source), eq(reflectionReadsTable.ymd, ymd)));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/reflections/read DELETE] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 router.get("/me/reflections-read", async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }

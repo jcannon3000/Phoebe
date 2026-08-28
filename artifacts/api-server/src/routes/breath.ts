@@ -121,6 +121,25 @@ router.get("/breath/today", async (req: Request, res: Response): Promise<void> =
   }
 });
 
+/** The undo half of the day's breath log — the ✓ on the Creation Prayer card
+ *  must be able to take today back (owner: every home card unlogs by its
+ *  check). Deletes the user's breath rows for that LOCAL day only. The
+ *  contemplation minutes a breath also logged stay — time spent praying is
+ *  history, not a flag. */
+router.delete("/breath/today", async (req: Request, res: Response): Promise<void> => {
+  const userId = uid(req);
+  if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
+  const day = String(req.body?.day ?? "");
+  if (!isValidYmd(day)) { res.status(400).json({ error: "bad_request" }); return; }
+  try {
+    await db.delete(breathSessionsTable).where(and(eq(breathSessionsTable.userId, userId), eq(breathSessionsTable.day, day)));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/breath/today DELETE] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 /**
  * The built-in places, server-side — the same handful the client bundles (see
  * mymonastery/src/lib/breathPlaces.ts BUILT_IN_PLACES). Keep the two in step;
