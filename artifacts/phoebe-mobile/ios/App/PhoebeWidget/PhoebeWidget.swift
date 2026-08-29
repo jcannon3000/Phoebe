@@ -591,12 +591,29 @@ struct PhoebeWidgetView: View {
          * small and quiet — the app's name on its own widget, not a header.
          */
         GeometryReader { geo in
+            let s = Self.cardScale(geo.size, count: max(1, min(2, cards.count)))
             VStack(alignment: .leading, spacing: 2) {
+                /**
+                 * ALIGNED WITH THE CARD'S OWN CONTENT, not with the card's
+                 * outer edge. Owner: "move the phoebe text over to the right
+                 * a little bit."
+                 *
+                 * It sat at the stack's 12pt gutter, which is where the card's
+                 * BORDER begins — so the name hung a little left of everything
+                 * inside the card and read as not-quite-lined-up. A card's
+                 * content starts further in than that: the 12pt gutter, the
+                 * 1pt border, the accent bar (4 * s) and the row's own
+                 * horizontal padding (16 * s). Adding those puts the wordmark
+                 * exactly above the emoji and title beneath it, and it moves
+                 * with the scale rather than being a number that happens to
+                 * look right on one widget size.
+                 */
                 Text("Phoebe")
                     .font(sgBold(12))
                     .foregroundColor(phoebeWarm.opacity(0.75))
-                    .padding(.horizontal, 12)
-                nextCardsStack(cards, Self.cardScale(geo.size, count: max(1, min(2, cards.count))))
+                    .padding(.leading, 12 + 1 + (4 + 16) * s)
+                    .padding(.trailing, 12)
+                nextCardsStack(cards, s)
             }
         }
     }
