@@ -1612,7 +1612,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
      * not right when the alternative is no hero. Evening first — by the time
      * this applies the morning is usually behind you.
      */
-    : (eveningActive && !eveningDone) ? "evening"
+    // …BUT THE EVENING STILL WAITS FOR 4:30. This fallback is what actually
+    // put Evening Prayer at the top of the screen at 3:32pm after the gate
+    // above was added: the gate was necessary and not sufficient, because
+    // this arm fires "whatever the hour" and an unprayed evening always
+    // matched it. The owner allowed the consequence in advance — "unless
+    // there is no hero" — so between a kept morning and 4:30 the home now
+    // leads with nothing, which is the point.
+    : (eveningActive && !eveningDone && minutesNow >= EVENING_HERO_AFTER) ? "evening"
     : (morningActive && !morningDone) ? "morning"
     : null;
   const showOfficeHero = !!renderOfficeHero && heroSide !== null;
@@ -1625,7 +1632,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // contemplation-only rhythm still has a clear "start here". Only where heroes
   // render (renderOfficeHero present), while a contemplation sit is still undone.
   // Morning Contemplation leads all day; Evening Contemplation only takes the
-  // hero from 5 PM on (mirroring the evening office, which never leads earlier).
+  // hero from 4:30 on — mirroring the evening office, which never leads
+  // earlier, and moving with it when that time changes.
   const noOffice = !morningActive && !eveningActive;
   const contemplationHero = (!!renderOfficeHero && noOffice)
     ? coloredCards.find((c) =>
@@ -1634,7 +1642,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           // office heroSide (past noon an undone morning steps aside; it never
           // sits as a giant hero at night). Evening takes the hero from 5 PM.
           (c.key === "contemplation-morning" && hour < 12) ||
-          (c.key === "contemplation-evening" && hour >= EVENING_OPEN_HOUR)
+          (c.key === "contemplation-evening" && minutesNow >= EVENING_HERO_AFTER)
         ))
     : undefined;
   // The generic card-hero seat: the notification's chosen practice when one

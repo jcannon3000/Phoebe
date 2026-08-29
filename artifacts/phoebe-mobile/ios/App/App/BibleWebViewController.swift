@@ -609,9 +609,19 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'color:rgba(143,175,150,0.9)!important;}',
         'h1,h2,h3,h4,p,li,article,div{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
         /* The date, and on FDD the feast under it. */
-        'h1{font-size:15px!important;letter-spacing:.14em;text-transform:uppercase;',
+        /* SCOPED. This is the DATE treatment — small, uppercase, letterspaced
+           — and it belongs to Nouwen and FDD, whose h1 IS the date. Grist's h1
+           is the lead story's headline, and it was being set in 15px uppercase
+           until the shipped stylesheet was read back and checked against the
+           page (the hand-written test CSS had a headline rule and the real one
+           did not — the drift is the bug). */
+        '.blog-item-inner-wrapper h1,article.fdd h1{font-size:15px!important;',
+        'letter-spacing:.14em;text-transform:uppercase;',
         'line-height:1.45!important;font-weight:600!important;margin:0 0 18px!important;',
         'color:rgba(200,212,192,0.75)!important;}',
+        /* Grist: a headline, set like one. */
+        'h1{font-size:26px!important;line-height:1.2!important;font-weight:700!important;',
+        'margin:0 0 14px!important;color:#F0EDE6!important;letter-spacing:-0.01em;}',
         /* Nouwen's meditation title. */
         'h3{font-size:27px!important;line-height:1.18!important;font-weight:700!important;',
         'margin:0 0 16px!important;color:#F0EDE6!important;}',
@@ -625,7 +635,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'article.fdd > p:last-of-type{font-size:14px!important;',
         'color:rgba(200,212,192,0.72)!important;}',
         'a,a:visited{color:#A8C5A0!important;}',
-        'img,figure,.sqs-block-image{display:none!important;}',
+        /* SCOPED, for the same reason. Nouwen illustrates its meditations with
+           stock photography that adds nothing to a reading; Grist's lead photo
+           is part of the story and Sojourners' images are its own. An
+           unscoped `img{display:none}` blanked all three. */
+        '.blog-item-inner-wrapper img,.blog-item-inner-wrapper figure,',
+        '.blog-item-inner-wrapper .sqs-block-image{display:none!important;}',
       ]).concat([
         '.phoebe-reader-note{max-width:none;margin:0!important;padding:10px 20px 40px!important;',
         'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.45)!important;}',
