@@ -535,11 +535,11 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
   const daily: WolCard[] = [
     { key: "turn", emoji: "🔄", label: t("wol.turn", { defaultValue: "Begin" }), done: turnDone, route: "/home-beta/turn" },
     { key: "learn", emoji: "📖", label: t("wol.learn", { defaultValue: "Learn" }), done: learnDone, route: "/home-beta/learn" },
-    { key: "pray", emoji: "🙏", label: t("wol.pray", { defaultValue: "Pray" }), done: prayDone, route: "/home-beta/pray" },
+    { key: "pray", emoji: "🙏🏽", label: t("wol.pray", { defaultValue: "Pray" }), done: prayDone, route: "/home-beta/pray" },
   ];
   const weekly: WolCard[] = [
     { key: "worship", emoji: "⛪", label: t("wol.worship", { defaultValue: "Connect" }), done: weeklyDone("worship"), route: "/home-beta/worship" },
-    { key: "bless", emoji: "🤲", label: t("wol.bless", { defaultValue: "Serve" }), done: weeklyDone("bless"), route: "/home-beta/bless" },
+    { key: "bless", emoji: "🤲🏽", label: t("wol.bless", { defaultValue: "Serve" }), done: weeklyDone("bless"), route: "/home-beta/bless" },
     { key: "go", emoji: "🌍", label: t("wol.go", { defaultValue: "Bridge" }), done: weeklyDone("go"), route: "/home-beta/go" },
     { key: "rest", emoji: "🌙", label: t("wol.rest", { defaultValue: "Rest" }), done: weeklyDone("rest"), route: "/home-beta/rest" },
   ];

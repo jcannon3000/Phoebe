@@ -91,14 +91,14 @@ const ACTIONS: Record<SectionKey, ActionDef[]> = {
   pray: [
     { emoji: "📿", label: "Pray the Daily Office", sub: "Morning or Evening Prayer", route: "/prayer-chooser", tkey: "office" },
     { emoji: "🤍", label: "Sit in silence", sub: "Contemplative prayer", route: "/contemplation", tkey: "contemplation" },
-    { emoji: "🙏", label: "Your prayer list", sub: "Pray for others", route: "/prayer-list", tkey: "prayer_list" },
+    { emoji: "🙏🏽", label: "Your prayer list", sub: "Pray for others", route: "/prayer-list", tkey: "prayer_list" },
   ],
   worship: [
     { emoji: "⛪", label: "Find a gathering", sub: "Services and communities", route: "/gatherings", tkey: "gatherings" },
   ],
   bless: [
-    { emoji: "🙏", label: "Your prayer list", sub: "Pray for others", route: "/prayer-list", tkey: "prayer_list" },
-    { emoji: "✍️", label: "Your prayer requests", sub: "Ask for prayer", route: "/my-prayer-requests", tkey: "my_requests" },
+    { emoji: "🙏🏽", label: "Your prayer list", sub: "Pray for others", route: "/prayer-list", tkey: "prayer_list" },
+    { emoji: "✍🏽", label: "Your prayer requests", sub: "Ask for prayer", route: "/my-prayer-requests", tkey: "my_requests" },
   ],
   go: [
     { emoji: "🌍", label: "Pray for the world", sub: "Justice & intercession feeds", route: "/prayer-feeds", tkey: "feeds" },

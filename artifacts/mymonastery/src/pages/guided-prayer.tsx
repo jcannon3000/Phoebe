@@ -501,7 +501,7 @@ export default function GuidedPrayerPage() {
               style={{ maxWidth: 480, textAlign: "center" }}
             >
               <p style={{ fontSize: 40, marginBottom: 18 }} aria-hidden>
-                🙌
+                🙌🏽
               </p>
               <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 16 }}>
                 {t("guided_prayer.day_is_held")}

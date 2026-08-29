@@ -65,7 +65,7 @@ const SWITCHABLE: Array<{
   // NOTE the param name: the psalms page reads `?office=`, not `?side=` — a
   // side= here silently opened MORNING psalms for an evening swap.
   { level: "psalms", emoji: () => "📜", name: () => "Praying the Psalms", href: (s) => `/psalms?office=${s}` },
-  { level: "guided-prayer", emoji: () => "🙌", name: () => "Simple Guided Prayer", href: (s) => `/guided-prayer?side=${s}` },
+  { level: "guided-prayer", emoji: () => "🙌🏽", name: () => "Simple Guided Prayer", href: (s) => `/guided-prayer?side=${s}` },
   { level: "examen", emoji: () => "🌗", name: () => "The Examen", href: (s) => `/examen?side=${s}` },
   { level: "compline", emoji: () => "🌙", name: () => "Compline", href: () => "/bcp/daily-office?mode=compline" },
   { level: "reflect-sit", emoji: () => "🕯️", name: () => "Contemplative Prayer", href: () => "/contemplation?begin=1" },

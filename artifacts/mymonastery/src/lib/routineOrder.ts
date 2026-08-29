@@ -13,7 +13,7 @@
  * In ROUTINE_KEYS: synced LWW across devices, cleared on logout, snapshotted
  * by prescribe — an ORDER is part of the rule.
  */
-import { OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { OFFICE_PREFS_EVENT, TRACKED_REFLECTION_SOURCES } from "@/lib/officePrefs";
 import { pushRoutineConfig } from "@/lib/routineSync";
 
 export const ROUTINE_ORDER_KEY = "phoebe:routine-order";
@@ -56,7 +56,12 @@ export function rowIdToCardKeys(id: string): string[] {
   }
   // Reflection cards render as reflect-<source>; keep the bare source too for
   // any surface keyed the module way.
-  if (id === "card:reflection") return ["reflect-cac", "reflect-fdd", "reflect-ssje", "reflect-vts", "cac", "fdd", "ssje", "vts"];
+  // Both spellings of every tracked source — the card key and the bare module
+  // key. Naming four of seven here left a Nouwen/Sojourners/Grist card unable
+  // to find its place in the order.
+  if (id === "card:reflection") {
+    return [...TRACKED_REFLECTION_SOURCES.map((s) => `reflect-${s}`), ...TRACKED_REFLECTION_SOURCES];
+  }
   if (id.startsWith("card:")) { const k = id.slice(5); return [`reflect-${k}`, k]; }
   if (id.startsWith("custom:")) return [`custom-${id.slice(7)}`];
   return [];

@@ -128,7 +128,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     listening:    { label: t("menu.listening", { defaultValue: "Audio Divina" }), emoji: "🎧", sub: t("customize_home.module_listening_sub", { defaultValue: "Music as a way of prayer" }) },
     cobreathe:    { label: t("rhythm.row_cobreathe", { defaultValue: "Creation Prayer" }), emoji: "🌍", sub: t("customize_home.module_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }) },
     reading:      { label: t("rhythm.row_reading", { defaultValue: "Reading" }), emoji: "📚", sub: t("customize_home.module_reading_sub", { defaultValue: "Read by chapter, page, or time" }) },
-    walk:         { label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶", sub: t("customize_home.module_walk_sub", { defaultValue: "A prayerful walk, counted as you go" }) },
+    walk:         { label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶🏽", sub: t("customize_home.module_walk_sub", { defaultValue: "A prayerful walk, counted as you go" }) },
     visio:        { label: t("rhythm.row_visio", { defaultValue: "Visio Divina" }), emoji: "🖼️", sub: t("customize_home.module_visio_sub", { defaultValue: "Pray with the day's image, slowly" }) },
     compline:     { label: t("rhythm.card_compline", { defaultValue: "Compline" }), emoji: "🌙", sub: t("customize_home.module_compline_sub", { defaultValue: "The night office · available from 7pm" }) },
     examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },

@@ -92,7 +92,7 @@ export const WAY_OF_LOVE: WolCourse = {
         {
           key: "pray",
           practice: "Pray",
-          emoji: "🙏",
+          emoji: "🙏🏽",
           blurb: "Dwell intentionally with God each day.",
           match: ["to pray", "pray"],
         },
@@ -106,14 +106,14 @@ export const WAY_OF_LOVE: WolCourse = {
         {
           key: "bless",
           practice: "Bless",
-          emoji: "🤲",
+          emoji: "🤲🏽",
           blurb: "Share your faith and give of yourself in love.",
           match: ["to bless", "bless"],
         },
         {
           key: "go",
           practice: "Go",
-          emoji: "🚶",
+          emoji: "🚶🏽",
           blurb: "Cross boundaries, listen deeply, and live like Jesus.",
           match: ["to go", "go"],
         },

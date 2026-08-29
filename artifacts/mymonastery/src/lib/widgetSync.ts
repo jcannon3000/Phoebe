@@ -87,7 +87,7 @@ const HOME_URL = "https://withphoebe.app/";
  *  EXTRA_EMOJI (same values, same default). */
 const EXTRA_EMOJI: Record<string, string> = {
   office: "📖", devotion: "🕊️", psalms: "📜",
-  readings: "📰", compline: "🌙", "guided-prayer": "🙌",
+  readings: "📰", compline: "🌙", "guided-prayer": "🙌🏽",
 };
 
 type NextItem = {
@@ -168,7 +168,7 @@ export function useWidgetSync(): void {
     const contemplationSideFace = (cap: "Morning" | "Evening", kind: string): { title: string; eyebrow: string; subtitle: string; emoji: string } => {
       switch (kind) {
         case "creation": return { title: `${cap} Creation Prayer`, eyebrow: "A prayer for the earth", subtitle: "Breathing with creation", emoji: "🌍" };
-        case "walk": return { title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray", emoji: "🚶" };
+        case "walk": return { title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray", emoji: "🚶🏽" };
         case "audio": return { title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music", emoji: "🎵" };
         case "visio": return { title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image", emoji: "🖼️" };
         default: return { title: `${cap} Contemplation`, eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", emoji: "🕯️" };
@@ -281,7 +281,7 @@ export function useWidgetSync(): void {
       { active: r.cobreatheStandaloneActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), key: "cobreathe", emoji: "🌍", title: "Creation Prayer", eyebrow: "A prayer for the earth", subtitle: "Breathing together with God's creation", cta: "Begin", kind: "office" },
       { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), key: "listening", emoji: "🎵", title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music", cta: "Begin", kind: "reflect" },
       { active: r.podcastsActive, done: r.podcastsDone, slot: "afternoon" as CustomSlot, key: "podcasts", emoji: "🎙️", title: "Podcasts", eyebrow: "A podcast episode", subtitle: "Log what you listened to", cta: "Log", kind: "reflect" },
-      { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), key: "walk", emoji: "🚶", title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "A walk as prayer", cta: "Log", kind: "office" },
+      { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), key: "walk", emoji: "🚶🏽", title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "A walk as prayer", cta: "Log", kind: "office" },
       { active: r.visioActive, done: r.visioDone, slot: getPracticeSlot("visio"), key: "visio", emoji: "🖼️", title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image", cta: "Begin", kind: "office" },
       // Compline rides the evening slot — same fixed placement the home card
       // and the header dot use (it IS the night office, so no slot picker).

@@ -255,7 +255,7 @@ export default function PublicPrayerRequestPage() {
             and N others" right after. */}
         {request.prayedCount > 0 && phase === "viewing" && (
           <p style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK, fontSize: 13, textAlign: "center", margin: "0 0 18px" }}>
-            🙏 Prayed by {request.prayedCount} {request.prayedCount === 1 ? "person" : "people"}
+            🙏🏽 Prayed by {request.prayedCount} {request.prayedCount === 1 ? "person" : "people"}
           </p>
         )}
 
@@ -280,7 +280,7 @@ export default function PublicPrayerRequestPage() {
                 boxShadow: "0 4px 14px rgba(0,0,0,0.4)",
               }}
             >
-              {submitting ? "…" : "🙏  Amen"}
+              {submitting ? "…" : "🙏🏽  Amen"}
             </button>
             {error && (
               <p style={{ color: "#E8B872", fontSize: 12, textAlign: "center", marginTop: 12, fontFamily: SPACE_GROTESK }}>
@@ -361,7 +361,7 @@ function AmenedSignupCTA({
 }) {
   return (
     <div style={{ textAlign: "center" }}>
-      <p style={{ fontSize: 40, margin: "8px 0 6px" }}>🙏</p>
+      <p style={{ fontSize: 40, margin: "8px 0 6px" }}>🙏🏽</p>
       <p
         style={{
           color: WARM_TEXT,

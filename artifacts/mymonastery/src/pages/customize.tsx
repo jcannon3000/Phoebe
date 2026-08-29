@@ -12,7 +12,9 @@ import {
   getReflectionSource, setReflectionSource, setSideReflection,
   setPsalmCycle, setSideCustomName, OFFICE_PREFS_EVENT, OFFICE_LEVELS_SET, type OfficeLevel,
   type ReflectionSource,
-  setSideContemplationKind, setSideDayRules, setDaySwapSuppressed, clearSideDaySwap } from "@/lib/officePrefs";
+  setSideContemplationKind, setSideDayRules, setDaySwapSuppressed, clearSideDaySwap,
+  TRACKED_REFLECTION_SOURCES,
+} from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset, type OfficeSideKey } from "@/lib/rulePresets";
 import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot } from "@/lib/customAnchors";
@@ -404,7 +406,12 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
     if (choice === addPractice) return;
     setAddPracticeLocal(choice);
     const existing = currentHomeLayout;
-    const otherNewsletters = (["cac", "fdd", "ssje", "vts"] as const).filter((n) => n !== newsletter);
+    // EVERY tracked source, not the four this list used to name. The fallback
+    // layout below hides the newsletters the person did NOT pick — and a
+    // source missing from here is a source left UNHIDDEN, which (see
+    // cleanHomeLayout: every known key gets backfilled into `order`) is how a
+    // card nobody asked for arrives on the home screen.
+    const otherNewsletters = TRACKED_REFLECTION_SOURCES.filter((n) => n !== newsletter);
     const baseOrder = existing?.order ?? ["requests", "office", "contemplation", newsletter, "feeds", "ncmp", "podcasts", ...otherNewsletters];
     const baseHidden = existing?.hidden ?? ["ncmp", "podcasts", "reading", "cobreathe", "prayer-list", ...otherNewsletters];
     const order = baseOrder.filter((k) => !PRACTICE_KEYS.includes(k as AddPractice));

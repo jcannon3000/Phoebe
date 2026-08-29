@@ -250,7 +250,7 @@ function DashboardMock() {
         <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
         <div className="flex-1 px-3 py-3">
           <div className="flex items-start gap-2">
-            <span className="text-[19px] leading-none flex-shrink-0">🙌</span>
+            <span className="text-[19px] leading-none flex-shrink-0">🙌🏽</span>
             <div className="min-w-0">
               <p className="text-[15px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_home_office_title")}</p>
               <p className="text-[9px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}>{t("church_deck.mock_home_office_sub")}</p>
@@ -1625,7 +1625,7 @@ function ContemplativeMock() {
     { emoji: "🎵", label: "Audio Divina", sub: "Connecting with God through music.", on: true },
     { emoji: "🌗", label: "The Examen", sub: "Review the day with God.", on: false },
     { emoji: "🌍", label: "Creation Prayer", sub: "Breathing with God's creation.", on: true },
-    { emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", on: false },
+    { emoji: "🚶🏽", label: "Contemplative Walk", sub: "A walk as prayer.", on: false },
   ];
   return (
     <MockPhone>

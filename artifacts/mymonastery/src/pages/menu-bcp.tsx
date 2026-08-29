@@ -18,7 +18,7 @@ export default function MenuBcpPage() {
           // PRACTICES (owner, 2026-07-03) — nothing creation in the BCP menu.
           { emoji: "📖", label: "Prayers", sub: "Intercessions & thanksgivings", onClick: () => go("/bcp/intercessions") },
           { emoji: "📜", label: "Psalter", sub: "The Psalms", onClick: () => go("/bcp/psalter") },
-          { emoji: "🙏", label: "Collects", sub: "Prayers for the day & season", onClick: () => go("/bcp/collects") },
+          { emoji: "🙏🏽", label: "Collects", sub: "Prayers for the day & season", onClick: () => go("/bcp/collects") },
         ],
       }]}
     />

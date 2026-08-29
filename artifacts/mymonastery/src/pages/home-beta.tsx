@@ -80,9 +80,9 @@ export const SECTIONS: SectionDef[] = [
   // Learn and Pray also stand alone (their own detail pages, reached from the
   // Way of Love drawer); the combined learn_pray above still drives the home.
   { key: "learn", practices: ["learn"], theme: "learn", daily: true, emoji: "📖", title: "Learn", definition: "Reflect on Scripture and the life and teachings of Jesus." },
-  { key: "pray", practices: ["pray"], theme: "pray", daily: true, emoji: "🙏", title: "Pray", definition: "Dwell intentionally with God in prayer each day." },
+  { key: "pray", practices: ["pray"], theme: "pray", daily: true, emoji: "🙏🏽", title: "Pray", definition: "Dwell intentionally with God in prayer each day." },
   { key: "worship", practices: ["worship"], theme: "worship", daily: false, emoji: "⛪", title: "Connect", definition: "Worship together, and show up for your community's gatherings and events." },
-  { key: "bless", practices: ["bless"], theme: "bless", daily: false, emoji: "🤲", title: "Serve", definition: "Give and serve generously, and share your faith." },
+  { key: "bless", practices: ["bless"], theme: "bless", daily: false, emoji: "🤲🏽", title: "Serve", definition: "Give and serve generously, and share your faith." },
   { key: "go", practices: ["go"], theme: "go", daily: false, emoji: "🌍", title: "Bridge", definition: "Bridge what divides — cross boundaries, listen, and love like Jesus." },
   { key: "rest", practices: ["rest"], theme: "rest", daily: false, emoji: "🌙", title: "Rest", definition: "Receive the gift of God's grace, peace, and restoration." },
 ];

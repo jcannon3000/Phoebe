@@ -28,10 +28,10 @@ export type MeditationApp = {
 // Christian/prayer apps first (closest to Phoebe's heart), then the mainstream
 // mindfulness apps. Easy to extend — add a row with its scheme + website.
 export const MEDITATION_APPS: MeditationApp[] = [
-  { key: "hallow",    name: "Hallow",         emoji: "🙏", blurb: "Catholic prayer & meditation", scheme: "hallow://",       website: "https://hallow.com" },
+  { key: "hallow",    name: "Hallow",         emoji: "🙏🏽", blurb: "Catholic prayer & meditation", scheme: "hallow://",       website: "https://hallow.com" },
   { key: "abide",     name: "Abide",          emoji: "✝️", blurb: "Christian meditation & sleep",  scheme: "abide://",        website: "https://abide.com" },
   { key: "calm",      name: "Calm",           emoji: "🌊", blurb: "Meditation & sleep",            scheme: "calm://",         website: "https://www.calm.com" },
-  { key: "headspace", name: "Headspace",      emoji: "🧘", blurb: "Guided meditation",             scheme: "headspace://",    website: "https://www.headspace.com" },
+  { key: "headspace", name: "Headspace",      emoji: "🧘🏽", blurb: "Guided meditation",             scheme: "headspace://",    website: "https://www.headspace.com" },
   { key: "insight",   name: "Insight Timer",  emoji: "🔔", blurb: "Free timer & talks",            scheme: "insighttimer://", website: "https://insighttimer.com" },
 ];
 

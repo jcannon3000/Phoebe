@@ -377,7 +377,7 @@ export default function OfficeSettingsPage() {
         sub={t("office_settings.confession_sub")}
       >
         {([
-          { value: true, emoji: "🤲", label: t("office_settings.confession_include_label"), sub: t("office_settings.confession_include_sub") },
+          { value: true, emoji: "🤲🏽", label: t("office_settings.confession_include_label"), sub: t("office_settings.confession_include_sub") },
           { value: false, emoji: "🌅", label: t("office_settings.confession_skip_label"), sub: t("office_settings.confession_skip_sub") },
         ]).map((o) => (
           <OptionCard

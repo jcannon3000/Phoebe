@@ -27,9 +27,9 @@ export const SERIES_SOURCE = "The Episcopal Church";
 // standalone episode; the series trailer that used to lead was removed.)
 export const WAY_OF_LOVE_VIDEOS: WayOfLoveVideo[] = [
   { id: "u04ilt0dvb", section: "learn_pray", emoji: "📖", title: "Presiding Bishop Michael Curry", label: "Learn", blurb: "Why the Way of Love — a teaching to begin." },
-  { id: "q4zzab2h1y", section: "learn_pray", emoji: "🙏", title: "Pop Up Prayer",                  label: "Pray",  blurb: "Prayer carried into the life of the city." },
+  { id: "q4zzab2h1y", section: "learn_pray", emoji: "🙏🏽", title: "Pop Up Prayer",                  label: "Pray",  blurb: "Prayer carried into the life of the city." },
   { id: "pisvfusoig", section: "worship",    emoji: "⛪", title: "St. Lydia's, Brooklyn",          blurb: "Dinner church — worship around the table." },
-  { id: "2ckcg82pkz", section: "bless",      emoji: "🤲", title: "Thistle Farms, Nashville",       blurb: "Radical love and welcome for survivors." },
+  { id: "2ckcg82pkz", section: "bless",      emoji: "🤲🏽", title: "Thistle Farms, Nashville",       blurb: "Radical love and welcome for survivors." },
   { id: "b1l0elf3jd", section: "go",         emoji: "🌍", title: "Bishop Walker School",           blurb: "Crossing boundaries to serve and teach." },
   { id: "duye4nftap", section: "rest",       emoji: "🌙", title: "Honoré Farm & Mill",             blurb: "Sabbath and restoration on the land." },
 ];

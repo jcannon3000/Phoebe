@@ -32,7 +32,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
   "For the Environment": "🌎",
   "For Cities and Towns": "🏙️",
   "For Vocation and Work": "🛠️",
-  "For Families": "👨‍👩‍👧‍👦",
+  "For Families": "👨🏽‍👩🏽‍👧🏽‍👦🏽",
   "Thanksgivings": "🌾",
   "Personal Prayers": "🕊️",
 };

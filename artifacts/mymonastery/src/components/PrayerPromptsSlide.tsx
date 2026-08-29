@@ -22,7 +22,7 @@ const PROMPTS: Array<{ emoji: string; key: string; label: string }> = [
   { emoji: "🌱", key: "hopeful", label: "For something you're hopeful for" },
   { emoji: "⚖️", key: "justice", label: "For a justice concern" },
   { emoji: "💞", key: "friends_family", label: "For your friends or family" },
-  { emoji: "🙏", key: "self", label: "For yourself" },
+  { emoji: "🙏🏽", key: "self", label: "For yourself" },
 ];
 
 export function PrayerPromptsSlide({ onContinue }: { onContinue: () => void }) {

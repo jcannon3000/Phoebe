@@ -2585,7 +2585,7 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
           <p className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate" style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}>
             Guided Prayer
           </p>
-          <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>🙌 {title}</p>
+          <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>🙌🏽 {title}</p>
           <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>{(!done && daySwapNote(side)) || "Three Minutes to Start Your Day"}</p>
           {done ? (
             <div className="mt-[12px] flex items-stretch gap-2">
@@ -2618,7 +2618,7 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3 min-w-0">
         <div className="min-w-0">
           <p className="font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}>
-            {title} 🙌
+            {title} 🙌🏽
           </p>
           <p className="truncate" style={{ color: "#D8C2BA", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12.5 }}>
             {(!done && daySwapNote(side)) || "Three Minutes to Start Your Day"}
@@ -4889,7 +4889,7 @@ function PrayerListCarousel({
                       {/* LEFT avatar — the requester's own profile picture (mine
                           on my own request, the other person's on theirs). The
                           who-prayed-for-me face stack on the RIGHT is gone; the
-                          🙏/✓ pill there is the status indicator. */}
+                          🙏🏽/✓ pill there is the status indicator. */}
                       {req.avatarEmoji ? (
                         <div
                           className="w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0"
@@ -4930,7 +4930,7 @@ function PrayerListCarousel({
                       {/* Amen oval — same size as the daily-practice check pills.
                           Not prayed = a 🙏🏽 amen hand; prayed = a ✓. Both are
                           decorative spans — the whole card is a Link, so tapping
-                          the 🙏 opens the prayer slideshow on THIS request (and
+                          the 🙏🏽 opens the prayer slideshow on THIS request (and
                           queues the rest of your prayer list) to pray it there,
                           rather than a silent one-tap amen. Shown on your own
                           request too, so you can see whether you've prayed it. */}
@@ -6505,7 +6505,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "prayer-list", "examen", "visio", "cac", "fdd", "ssje", "vts", "ncmp", "podcasts", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "prayer-list", "examen", "visio", "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.

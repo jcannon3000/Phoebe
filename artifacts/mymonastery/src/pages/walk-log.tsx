@@ -9,7 +9,7 @@ export default function WalkLogPage() {
       practiceKey="walk"
       title="Contemplative Walk"
       subtitle="A walk as prayer."
-      emoji="🚶"
+      emoji="🚶🏽"
       whatLabel="Where did you walk?"
       whatPlaceholder="A trail, a neighborhood, a garden…"
       logCta="Log today's walk"

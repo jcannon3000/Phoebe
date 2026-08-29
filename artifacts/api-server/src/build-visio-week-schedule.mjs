@@ -45,7 +45,37 @@ import { getOfficeDay } from "./lib/liturgicalCalendar.ts";
 import { getLectionaryReadings } from "./lib/lectionary.ts";
 import { RCL_SUNDAYS } from "./data/rclSundays.ts";
 import { rankedTiers, pickFromTier, matchScore, rotationForDay, parseRef } from "../../mymonastery/src/lib/visioSelect.ts";
-import { ACT_COMMENTARY_CATALOGUE as ACT_CATALOGUE } from "../../mymonastery/src/lib/visioCommentaryCatalogue.ts";
+import { ACT_CATALOGUE as CURATED_CATALOGUE } from "../../mymonastery/src/lib/visioCatalogue.ts";
+import { ACT_COMMENTARY_CATALOGUE } from "../../mymonastery/src/lib/visioCommentaryCatalogue.ts";
+
+/**
+ * THE POOL, REOPENED. Owner: "using images that don't have commentaries …
+ * first prioritizing those artists that we curated before, but using the
+ * metadata of what passage is associated to attach them to the lectionary."
+ *
+ * So both catalogues, unioned: the curated library (314 works, 298 with
+ * passage refs) and the commentary harvest (241 / 238). They overlap by two,
+ * so this is 553 works where the commentary-only pool was 241 — and requiring
+ * a commentary was what left 30 of 52 Sundays with nothing that depicted the
+ * reading.
+ *
+ * CURATED FIRST is a real preference, not a sort order: `curated` rides on
+ * every record and breaks ties in pickFrom, so a curated work and a harvested
+ * one that match the reading equally well go to the curated one. A commentary
+ * is no longer required for anything; where one exists it rides along as
+ * `essay` and the practice offers it on the closing slide.
+ */
+const ACT_CATALOGUE = (() => {
+  const byId = new Map();
+  for (const a of CURATED_CATALOGUE) byId.set(a.id, { ...a, curated: true });
+  for (const a of ACT_COMMENTARY_CATALOGUE) {
+    const existing = byId.get(a.id);
+    // A work in both keeps its curated standing and gains the commentary.
+    if (existing) byId.set(a.id, { ...existing, essay: existing.essay || a.essay });
+    else byId.set(a.id, { ...a, curated: false });
+  }
+  return [...byId.values()];
+})();
 
 /** How many times one work may appear in a calendar year. Owner: three. */
 const CAP = 3;

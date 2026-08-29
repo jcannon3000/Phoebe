@@ -300,7 +300,7 @@ export const en = {
     suggested: "Suggested",
     is_praying_for_you: "{{name}} is praying for you 🕯️",
     prayed_for_you: "{{name}} prayed for you 🌿",
-    youre_praying: "You're praying 🙏",
+    youre_praying: "You're praying 🙏🏽",
     day_of: "Day {{day}} of {{total}}",
   },
   letters: {

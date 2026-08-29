@@ -294,7 +294,7 @@ export const RELATIONAL_PRACTICES = [
   {
     id: "gratitude",
     title: "Express gratitude",
-    emoji: "🙏",
+    emoji: "🙏🏽",
     prompt: "Did you tell someone, or send someone a message, saying what you are grateful for?",
   },
   {

@@ -118,7 +118,7 @@ export default function RoutinePrintPage() {
   // Co-Breathe is intentionally NEVER on the printout (per direction).
   if (r.listeningActive) items.push({ emoji: "🎵", label: "Audio Divina", slot: getPracticeSlot("listening") });
   if (r.readingActive) items.push({ emoji: "📚", label: "Reading", slot: getPracticeSlot("reading") });
-  if (r.walkActive) items.push({ emoji: "🚶", label: "Contemplative Walk", slot: getPracticeSlot("walk") });
+  if (r.walkActive) items.push({ emoji: "🚶🏽", label: "Contemplative Walk", slot: getPracticeSlot("walk") });
   if (r.podcastsActive) items.push({ emoji: "🎙️", label: "Podcasts", slot: "afternoon" });
   if (r.prayerListActive) items.push({ emoji: "🕊️", label: "My Prayer List", slot: "anytime" });
   for (const a of r.customAnchors) {

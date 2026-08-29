@@ -1657,7 +1657,7 @@ function HoldMeComposer() {
         className="text-[13px]"
         style={{ color: "rgba(var(--ot-fern, 168,197,160),0.85)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", maxWidth: 380 }}
       >
-        🙏 Shared — your community will hold you in prayer.
+        🙏🏽 Shared — your community will hold you in prayer.
       </p>
     );
   }

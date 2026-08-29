@@ -33,7 +33,7 @@ const BY_NAME: Record<string, AnchorPractice> = {
   "creation prayer": { key: "cobreathe", emoji: "🌍", href: "/cobreathe" },
   // A walk has no screen to sit on — it's logged when you come back, the same
   // way the standalone Contemplative Walk card works.
-  "contemplative walk": { key: "walk", emoji: "🚶", href: "" },
+  "contemplative walk": { key: "walk", emoji: "🚶🏽", href: "" },
   // Reported: "I tried to make Visio Divina my evening practice and it didn't
   // work." It was missing from this map, so choosing it as a side's anchor
   // stored a name that resolved to no practice — a bare tap-to-mark card

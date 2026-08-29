@@ -179,7 +179,7 @@ function CircleMock() {
       <p style={{ color: SAGE, fontFamily: FONT, fontSize: 9, margin: "0 0 10px" }}>Carried alongside a few others</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <MockCard rgb="96,140,180" emoji="🕊️" title="For my mother's healing" sub="On my list — private" />
-        <MockCard rgb="46,107,64" emoji="🙏" title="From Anabelle" sub="For baby Davy in the NICU" pill="Amen" />
+        <MockCard rgb="46,107,64" emoji="🙏🏽" title="From Anabelle" sub="For baby Davy in the NICU" pill="Amen" />
       </div>
       <div style={{ display: "flex", alignItems: "center", marginTop: 10, paddingLeft: 6 }}>
         {face("JC", "#1A4A2E")}{face("AH", "#2A3A5A")}{face("MW", "#3A2A4A")}

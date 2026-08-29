@@ -524,7 +524,7 @@ function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName, isPast = false 
                 className="text-[11px] underline decoration-dotted underline-offset-2 transition-opacity hover:opacity-80"
                 style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}
               >
-                🙏 Prayed by {req.amenPeopleCount} {req.amenPeopleCount === 1 ? "person" : "people"} →
+                🙏🏽 Prayed by {req.amenPeopleCount} {req.amenPeopleCount === 1 ? "person" : "people"} →
               </span>
             </Link>
           )}

@@ -627,7 +627,7 @@ function ComposerForm({ draft, setDraft, editingId, savePending, error, onSave, 
               cursor: "pointer",
             }}
           >
-            {src === "custom" ? `🙏 ${t("prayer_feed_manage.type_prayer")}` : `🌍 ${t("prayer_feed_manage.type_action")}`}
+            {src === "custom" ? `🙏🏽 ${t("prayer_feed_manage.type_prayer")}` : `🌍 ${t("prayer_feed_manage.type_action")}`}
           </button>
         ))}
       </div>

@@ -69,7 +69,7 @@ export const WOL_DEVOTIONS: WolDevotionWeek[] = [
     ],
   },
   {
-    week: 4, title: "Pray", practice: "Pray", emoji: "🙏", sectionKey: "learn_pray",
+    week: 4, title: "Pray", practice: "Pray", emoji: "🙏🏽", sectionKey: "learn_pray",
     days: [
       { day: 1, scriptureRef: "1 Samuel 3:10", scriptureText: "So (the child) Samuel went and lay down in his place. Now the Lord came and stood there, calling as before, ‘Samuel! Samuel!’ And Samuel said, ‘Speak, for your servant is listening.’", question: "Are there times and places in your week when you ‘lay down in your place’ and listen for the voice of God in scripture, in worship or in the words of others in your life who are followers of Jesus?", prayer: "Loving God, help me to set aside time each week when I can pause, breathe and listen to your loving, liberating and life-giving words found in the Bible, hymns, worship or in fellow disciples." },
       { day: 2, scriptureRef: "Psalm 25:4-5", scriptureText: "Make me to know your ways, O Lord; teach me your paths. Lead me in your truth, and teach me, for you are the God of my salvation; for you I wait all day long.", question: "In what ways do you – or could you – talk to God about who God is and what purposes and dreams God has for your life?", prayer: "Holy God, you have made us to know you and to be your heart, hands and healing in the world. Help me to find or to make time to talk to you and listen for You in prayer." },
@@ -89,7 +89,7 @@ export const WOL_DEVOTIONS: WolDevotionWeek[] = [
     ],
   },
   {
-    week: 6, title: "Bless", practice: "Bless", emoji: "🤲", sectionKey: "bless",
+    week: 6, title: "Bless", practice: "Bless", emoji: "🤲🏽", sectionKey: "bless",
     days: [
       { day: 1, scriptureRef: "Genesis 32:26", scriptureText: "Then he said, ‘Let me go, for the day is breaking.’ But Jacob said, ‘I will not let you go, unless you bless me.’", question: "Can you remember a time when you disagreed or argued with someone but you refused to give up on reconciliation? Can you think of a time when someone was committed to reconciliation with you, even if you had given up?", prayer: "Loving God, you bless the peacemakers. Help me to see that peace is possible with your love and help me to bless others by sharing your peace today." },
       { day: 2, scriptureRef: "Psalm 23", scriptureText: "Even though I walk through the darkest valley, I fear no evil; for you are with me; your rod and your staff—they comfort me.", question: "Can you remember a time when you were in a dark valley and could not find light? In what ways did you experience comfort? What did that experience teach you about how to comfort others?", prayer: "Loving God, now we see through a glass darkly. I face darkness in my days and I pray for your comfort and light. Help me to share your light into the darkness of others." },

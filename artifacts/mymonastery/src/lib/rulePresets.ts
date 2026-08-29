@@ -113,7 +113,7 @@ export const RULE_PRESETS: RulePreset[] = [
     pray: "guidedPrayer", evening: "examen", silence: false, goalMin: 0, reflections: ["fdd"],
     title: "A Gentle Start", blurb: "The everyday rhythm: three minutes to open the day, the day's word to carry, and the Examen to close it.",
     rows: [
-      { emoji: "🙌", label: "Simple Guided Prayer in the morning" },
+      { emoji: "🙌🏽", label: "Simple Guided Prayer in the morning" },
       { emoji: "📖", label: "Forward Day by Day" },
       { emoji: "🌙", label: "The Examen in the evening" },
     ] },
@@ -168,7 +168,7 @@ export const RULE_PRESETS: RulePreset[] = [
     title: "VTS Chapel & Commentary", blurb: "The seminary's day — Chapel on weekdays, Morning Prayer on Saturday, worship on Sunday, the Dean's word, ten minutes of silence, and Creation Prayer at its close.",
     rows: [
       { emoji: "⛪", label: "Chapel on weekdays — or pray Morning Prayer here" },
-      { emoji: "🙌", label: "Simple Guided Prayer in the morning" },
+      { emoji: "🙌🏽", label: "Simple Guided Prayer in the morning" },
       { emoji: "📖", label: "Morning Prayer on Saturdays" },
       { emoji: "🕊️", label: "Worship on Sundays" },
       { emoji: "🦩", label: "The VTS Dean's Commentary" },
@@ -193,7 +193,7 @@ export const RULE_PRESETS: RulePreset[] = [
     rows: [
       { emoji: "🖼️", label: "Visio Divina in the morning" },
       { emoji: "📖", label: "The CAC Daily Meditation" },
-      { emoji: "🚶", label: "A Contemplative Walk" },
+      { emoji: "🚶🏽", label: "A Contemplative Walk" },
       { emoji: "🌗", label: "The Examen in the evening" },
     ] },
   // CANTERBURY DOWNTOWN (owner) — the chaplaincy's rhythm, reshaped: "Morning

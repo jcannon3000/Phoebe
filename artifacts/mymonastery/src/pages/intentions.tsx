@@ -198,7 +198,7 @@ export default function IntentionsPage() {
                 ) : (
                   <>
                     <div className="flex items-start gap-3">
-                      <span aria-hidden className="text-base flex-shrink-0 mt-0.5">🙏</span>
+                      <span aria-hidden className="text-base flex-shrink-0 mt-0.5">🙏🏽</span>
                       <div className="flex-1 min-w-0">
                         {it.prayedToday && (
                           <p className="text-[11px] font-semibold mb-0.5" style={{ color: "rgba(110,180,130,0.9)", fontFamily: FONT }}>

@@ -77,7 +77,7 @@ function DashboardMock() {
       <div className="rounded-xl px-3 py-2.5" style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}>
         <p className="text-[10px] font-semibold mb-0.5" style={{ color: C.sage }}>{t("user_onboarding.dashboard_mock.request_author")}</p>
         <p className="text-[11px] leading-snug" style={{ color: C.text }}>{t("user_onboarding.dashboard_mock.request_body")}</p>
-        <p className="text-[9px] mt-1" style={{ color: "rgba(143,175,150,0.35)" }}>🙏 {t("user_onboarding.dashboard_mock.praying_count")}</p>
+        <p className="text-[9px] mt-1" style={{ color: "rgba(143,175,150,0.35)" }}>🙏🏽 {t("user_onboarding.dashboard_mock.praying_count")}</p>
       </div>
     </MockPhone>
   );

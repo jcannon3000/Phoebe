@@ -676,7 +676,7 @@ export function PracticeCard({
 // down for why. One entry per sentinel; title is a function since it needs
 // the caller's `t`.
 const SENTINEL_PRACTICES: Partial<Record<string, { title: (t: (k: string, o?: Record<string, unknown>) => string) => string; emoji: string }>> = {
-  walk: { title: (t) => t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶" },
+  walk: { title: (t) => t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶🏽" },
 };
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming, onRemainingCount, mountTag = "unlabeled" }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number; onRemainingCount?: (count: number) => void; /** Diagnostic only — see lib/celebrationDebugLog.ts. Identifies which of dashboard.tsx's mutually-exclusive render branches mounted this instance. */ mountTag?: string }) {
@@ -1042,7 +1042,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // The Examen is always an evening practice (no time-of-day picker).
   const examenSlot: CustomSlot = "evening";
   const walkCard = {
-    key: "walk", emoji: "🚶", rgb: "120,160,120", done: walkDone, href: "",
+    key: "walk", emoji: "🚶🏽", rgb: "120,160,120", done: walkDone, href: "",
     // Owner: should work like a custom practice — tapping opens the SAME
     // Log popup a custom anchor's card does (Done / Not today), via the
     // "walk" sentinel id below, rather than either navigating to a separate
@@ -1143,7 +1143,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * place"). Each names itself and opens its own page.
    */
   const NAMED_SIDE_PRACTICE: Record<string, { emoji: string; title: string; blurb: string; href: string }> = {
-    walk: { emoji: "🚶", title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), blurb: t("rhythm.blurb_walk", { defaultValue: "A walk kept as prayer" }), href: "" },
+    walk: { emoji: "🚶🏽", title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), blurb: t("rhythm.blurb_walk", { defaultValue: "A walk kept as prayer" }), href: "" },
     audio: { emoji: "🎵", title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }), blurb: t("rhythm.blurb_listening", { defaultValue: "Connecting with God through music" }), href: "/listening" },
     visio: { emoji: "🖼️", title: t("rhythm.card_visio", { defaultValue: "Visio Divina" }), blurb: t("rhythm.blurb_visio", { defaultValue: "Pray with the day's image" }), href: "/visio" },
   };

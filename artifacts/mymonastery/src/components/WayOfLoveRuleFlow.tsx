@@ -78,6 +78,7 @@ import {
   setDaySwapSuppressed,
   clearSideDaySwap,
   getSideContemplationKind,
+  TRACKED_REFLECTION_SOURCES,
 } from "@/lib/officePrefs";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -283,7 +284,7 @@ type ExtraGroupId = "office" | "guided" | "examen" | "contemplative" | "newslett
 /** The top level, in the anchor step's own order. */
 const EXTRA_GROUPS: Array<{ id: ExtraGroupId; emoji: string; title: string; sub: string }> = [
   { id: "office", emoji: "📖", title: "From the prayer book", sub: "The office, a devotion, the psalms or the readings." },
-  { id: "guided", emoji: "🙌", title: "Simple Guided Prayer", sub: "Praise · Confession · Thanksgiving · Supplication." },
+  { id: "guided", emoji: "🙌🏽", title: "Simple Guided Prayer", sub: "Praise · Confession · Thanksgiving · Supplication." },
   { id: "examen", emoji: "🌗", title: "The Examen", sub: "Review the day with God." },
   { id: "contemplative", emoji: "🕯️", title: "A contemplative practice", sub: "Silence, a walk, sacred listening, Visio Divina, or Creation Prayer." },
   { id: "newsletter", emoji: "📰", title: "A reflection", sub: "Forward, SSJE, CAC, VTS, Nouwen, Sojourners or Grist." },
@@ -295,7 +296,7 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   { title: (c) => `${c} Scripture Reading`, emoji: "📰", sub: "The day's appointed readings.", excludes: "readings", maps: { kind: "level", level: "readings" } , group: "office" },
   // No `side` — PACT is an evening practice too (owner). Its sub no longer
   // says "to start your day" for the same reason.
-  { title: () => "Simple Guided Prayer", emoji: "🙌", sub: "Praise · Confession · Thanksgiving · Supplication.", excludes: "guided-prayer", maps: { kind: "level", level: "guided-prayer" } , group: "guided" },
+  { title: () => "Simple Guided Prayer", emoji: "🙌🏽", sub: "Praise · Confession · Thanksgiving · Supplication.", excludes: "guided-prayer", maps: { kind: "level", level: "guided-prayer" } , group: "guided" },
   { title: () => "The Examen", emoji: "🌗", sub: "Review the day with God.", excludes: "examen", maps: { kind: "practice", key: "examen" } , group: "examen" },
   // Not excluded by any anchor level: which newsletter is chosen on the next
   // slide, so the row can't clash with the anchor until that's known (the
@@ -311,7 +312,7 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // same menu.
   { title: () => "Contemplative Practice", emoji: "🕯️", sub: "Silence, or another contemplative practice like a walk.", excludes: "reflect-sit", maps: { kind: "contemplation" } , group: "contemplative" },
   { title: () => "Audio Divina", emoji: "🎵", sub: "Connecting with God through music.", excludes: "__none__", maps: { kind: "practice", key: "audio" } , group: "contemplative" },
-  { title: () => "Contemplative Walk", emoji: "🚶", sub: "A walk as prayer.", excludes: "__none__", maps: { kind: "practice", key: "walk" } , group: "contemplative" },
+  { title: () => "Contemplative Walk", emoji: "🚶🏽", sub: "A walk as prayer.", excludes: "__none__", maps: { kind: "practice", key: "walk" } , group: "contemplative" },
   // Visio was the one contemplative practice you could take as a side's ANCHOR
   // and as a STANDING practice but never as a side's SECOND one, while all
   // three of its siblings could. anchoredAsForm already de-duplicates it.
@@ -1108,7 +1109,7 @@ export default function WayOfLoveRuleFlow({
     setRelational((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
   const [newsletters, setNewsletters] = useState<ReflectionSource[]>(() => {
-    const fromLayout = (["cac", "fdd", "ssje", "vts"] as const).filter((s) => homeCardOn(user?.homeLayout, s));
+    const fromLayout = TRACKED_REFLECTION_SOURCES.filter((s) => homeCardOn(user?.homeLayout, s));
     if (fromLayout.length > 0) return [...fromLayout];
     const r = getReflectionSource();
     return r && r !== "none" ? [r] : ["fdd"];
@@ -1289,7 +1290,7 @@ export default function WayOfLoveRuleFlow({
     // Re-seed the reflection multi-select from the layout cards too — same
     // reason: `user` was likely null at the initializer, so an existing
     // cac+fdd+ssje selection would otherwise collapse to one on re-open.
-    const fromLayout = (["cac", "fdd", "ssje", "vts"] as const).filter((s) => homeCardOn(user.homeLayout, s));
+    const fromLayout = TRACKED_REFLECTION_SOURCES.filter((s) => homeCardOn(user.homeLayout, s));
     if (fromLayout.length > 0) setNewsletters([...fromLayout]);
     // Contemplative Prayer + the Examen are add-ons now (not office anchors), so
     // seed them from the saved office LEVEL (reflect-sit / examen) — plus the
@@ -2030,7 +2031,7 @@ export default function WayOfLoveRuleFlow({
       morningTime: reminderIsOn("morning") ? shownReminderTime("morning") : null,
       eveningTime: reminderIsOn("evening") ? shownReminderTime("evening") : null,
     };
-    const others = (["cac", "fdd", "ssje", "vts"] as const).filter((n) => !newsletters.includes(n));
+    const others = TRACKED_REFLECTION_SOURCES.filter((n) => !newsletters.includes(n));
     // Creation Prayer earns a home card either through the per-side "way"
     // choice (a side's contemplation IS the breath) OR the standalone
     // "Add an additional practice" toggle (contemplative.cobreathe) — the
@@ -2331,7 +2332,7 @@ export default function WayOfLoveRuleFlow({
     // Rewrite the home to match the rule (the rule is the source of truth):
     // requests (pinned) → Return (contemplation) → Pray (the office card) → ALL
     // chosen reflections. Unselected reflections + secondary panels hidden.
-    const others = (["cac", "fdd", "ssje", "vts"] as const).filter((n) => !newsletters.includes(n));
+    const others = TRACKED_REFLECTION_SOURCES.filter((n) => !newsletters.includes(n));
     // Added optional practices are surfaced (in order, not hidden); unselected
     // ones go to the hidden tail like the other opt-in modules.
     // Examen, Audio Divina (listening), and Co-Breathe come from the
@@ -3887,8 +3888,8 @@ export default function WayOfLoveRuleFlow({
     });
     const CATALOG: Record<string, { title: string; emoji: string; sub: string; items: AddItem[] }> = {
       sgp: {
-        title: "Simple Guided Prayer", emoji: "🙌", sub: "Praise · Confession · Thanksgiving · Supplication.",
-        items: sideItems("guided-prayer", "Morning Guided Prayer", "Evening Guided Prayer", "🙌"),
+        title: "Simple Guided Prayer", emoji: "🙌🏽", sub: "Praise · Confession · Thanksgiving · Supplication.",
+        items: sideItems("guided-prayer", "Morning Guided Prayer", "Evening Guided Prayer", "🙌🏽"),
       },
       bcp: {
         title: "Book of Common Prayer", emoji: "📖", sub: "The offices, the Psalter, and the daily devotions.",
@@ -3914,7 +3915,7 @@ export default function WayOfLoveRuleFlow({
             add: () => { setEntryPhase("add-minutes"); },
           },
           practiceItem("cobreathe", "🌍", "Creation Prayer"),
-          practiceItem("walk", "🚶", "Contemplative Walk"),
+          practiceItem("walk", "🚶🏽", "Contemplative Walk"),
           practiceItem("listening", "🎵", "Audio Divina"),
           practiceItem("visio", "🖼️", "Visio Divina"),
           practiceItem("examen", "🌗", "The Examen"),
@@ -3930,7 +3931,7 @@ export default function WayOfLoveRuleFlow({
         ],
       },
       custom: {
-        title: "Custom practice", emoji: "✍️", sub: "A practice of your own — named by you, kept with a tap.",
+        title: "Custom practice", emoji: "✍🏽", sub: "A practice of your own — named by you, kept with a tap.",
         items: [],
       },
     };
@@ -4223,7 +4224,7 @@ export default function WayOfLoveRuleFlow({
           )}
           {choiceRow(
             effectiveEntryChoice === "manual",
-            `✍️ ${t("wol_rule.entry_manual", { defaultValue: "Edit your routine" })}`,
+            `✍🏽 ${t("wol_rule.entry_manual", { defaultValue: "Edit your routine" })}`,
             t("wol_rule.entry_manual_sub", { defaultValue: "Your day as it stands — reorder it, change a practice, take one off." }),
             () => setEntryChoice("manual"),
           )}
@@ -4373,7 +4374,7 @@ export default function WayOfLoveRuleFlow({
           {!anchoredAsForm("audio") && choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Connecting with God through music." }), () => toggleContemplative("audio"))}
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
           {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
-          {!anchoredAsForm("walk") && choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
+          {!anchoredAsForm("walk") && choiceRow(contemplative.walk, `🚶🏽 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
           {!anchoredAsForm("visio") && choiceRow(contemplative.visio, `🖼️ ${t("wol_rule.cp_visio", { defaultValue: "Visio Divina" })}`, t("wol_rule.cp_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }), () => toggleContemplative("visio"))}
           {/* Last, because it's the answer when none of the named ones is. */}
           {choiceRow(
@@ -4384,7 +4385,7 @@ export default function WayOfLoveRuleFlow({
             // each call site falls back to its own defaultValue. The moment it
             // were translated, two unrelated features would render the same
             // label.
-            `✍️ ${t("wol_rule.cp_own_practice", { defaultValue: "Something of your own" })}`,
+            `✍🏽 ${t("wol_rule.cp_own_practice", { defaultValue: "Something of your own" })}`,
             t("wol_rule.cp_own_practice_sub", { defaultValue: "A practice you keep that isn't listed here." }),
             () => { touchedRef.current = true; setCustomPracticeOn((v) => !v); },
           )}
@@ -4632,7 +4633,7 @@ export default function WayOfLoveRuleFlow({
             const on = prayBySide[side] === "guidedPrayer";
             return choiceRow(
               on,
-              `🙌 ${t("wol_rule.pray_guided_prayer_label", { defaultValue: "Simple Guided Prayer" })}`,
+              `🙌🏽 ${t("wol_rule.pray_guided_prayer_label", { defaultValue: "Simple Guided Prayer" })}`,
               t("wol_rule.pray_guided_prayer_sub", { defaultValue: "Praise · Confession · Thanksgiving · Supplication" }),
               () => {
                 // Tapping the selected row CLEARS it. Owner: "instead of a
@@ -5073,7 +5074,7 @@ export default function WayOfLoveRuleFlow({
     const meta = (f: ContemplativeForm): { emoji: string; label: string; sub: string } =>
       f === "prayer" ? { emoji: "🕯️", label: t("wol_rule.cf_prayer", { defaultValue: "Contemplative Prayer" }), sub: t("wol_rule.cf_prayer_sub", { defaultValue: "Time set aside for silence." }) }
       : f === "creation" ? { emoji: "🌍", label: t("wol_rule.cf_creation", { defaultValue: "Creation Prayer" }), sub: t("wol_rule.cf_creation_sub", { defaultValue: "Breathing with creation, at one shared pace." }) }
-      : f === "walk" ? { emoji: "🚶", label: t("wol_rule.cf_walk", { defaultValue: "Contemplative Walk" }), sub: t("wol_rule.cf_walk_sub", { defaultValue: "A walk kept as prayer, attentive to what's around you." }) }
+      : f === "walk" ? { emoji: "🚶🏽", label: t("wol_rule.cf_walk", { defaultValue: "Contemplative Walk" }), sub: t("wol_rule.cf_walk_sub", { defaultValue: "A walk kept as prayer, attentive to what's around you." }) }
       : f === "audio" ? { emoji: "🎵", label: t("wol_rule.cf_audio", { defaultValue: "Audio Divina" }), sub: t("wol_rule.cf_audio_sub", { defaultValue: "Connecting with God through music." }) }
       : { emoji: "🖼️", label: t("wol_rule.cf_visio", { defaultValue: "Visio Divina" }), sub: t("wol_rule.cf_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }) };
     return shell(
@@ -5825,7 +5826,7 @@ export default function WayOfLoveRuleFlow({
       <>
         {stepHeader(
           t("wol_rule.relational_eyebrow", { defaultValue: "Relational" }),
-          t("wol_rule.relational_title", { defaultValue: "Practices with other people" }),
+          t("wol_rule.relational_title", { defaultValue: "Relational Practices" }),
         )}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 20px" }}>
           {t("wol_rule.relational_body", {
@@ -5842,6 +5843,12 @@ export default function WayOfLoveRuleFlow({
             ),
           )}
         </div>
+        {/* THE WAY OUT. Owner: "for some reason there is not a continue on the
+            practice with other people." There wasn't: every other step in this
+            flow ends with this line and this one never had it, so the only
+            control on the screen was Back — you could reach the step, choose
+            on it, and have no way forward from it. */}
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );
   }

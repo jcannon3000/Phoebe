@@ -57,7 +57,7 @@ const INVITABLE: Record<string, {
   ssje: { emoji: "✍🏽", name: "Brother, Give Us a Word", by: "Society of Saint John the Evangelist", blurb: "A single word from the brothers to sit with each day.", kind: "reflection", cardKey: "ssje" },
   visio: { emoji: "🖼️", name: "Visio Divina", by: "Praying with art", blurb: "The day's artwork, matched to the lectionary — look slowly, and lift what rises.", kind: "practice", cardKey: "visio" },
   listening: { emoji: "🎵", name: "Audio Divina", by: "Praying with music", blurb: "Once a day, connect with God through a song that is meaningful to you.", kind: "practice", cardKey: "listening" },
-  walk: { emoji: "🚶", name: "Contemplative Walk", by: "Praying on foot", blurb: "A walk as prayer — unhurried, attentive, outdoors.", kind: "practice", cardKey: "walk" },
+  walk: { emoji: "🚶🏽", name: "Contemplative Walk", by: "Praying on foot", blurb: "A walk as prayer — unhurried, attentive, outdoors.", kind: "practice", cardKey: "walk" },
   examen: { emoji: "🌗", name: "The Examen", by: "In the school of Ignatius", blurb: "Review the day with God, and notice where grace was.", kind: "practice", cardKey: "examen" },
   cobreathe: { emoji: "🌍", name: "Creation Prayer", by: "Breathing with creation", blurb: "A short breathing prayer alongside God's creation.", kind: "practice", cardKey: "cobreathe" },
 };

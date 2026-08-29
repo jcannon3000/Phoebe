@@ -21,7 +21,7 @@
 import { ROUTINE_KEYS } from "@/lib/routineSync";
 import { setSideLevel, setReflectionSource, setSideReflection, getExplicitSideLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, cacheHomeLayoutLocalOnly, addHomeCard } from "@/lib/homeLayoutCache";
-import { setPracticeSlot } from "@/lib/customAnchors";
+import { setPracticeSlot, setRelationalPractices, activeRelationalPractices } from "@/lib/customAnchors";
 import { clearRoutineSyncClock } from "@/lib/routineSync";
 
 const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
@@ -42,7 +42,7 @@ const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 // a known historical seed exactly. That's the safe signal that the person never
 // touched it — anything else means they customized, and their rule is theirs.
 const SEED_VERSION_KEY = "phoebe:guest-seed-version";
-const SEED_VERSION = "4";
+const SEED_VERSION = "5";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never
 // remove: the whole point is recognizing rules we ourselves wrote.
@@ -51,6 +51,11 @@ const STALE_SEEDS: Array<[string, string]> = [
   ["guided-prayer", "examen"],   // 1640800e
   ["psalms", "examen"],          // 54fdabbe
   ["guided-prayer", "readings"], // the v2 default, replaced by the one below
+  // The v4 default itself — devices already sitting on the current pair, which
+  // is what a device seeded before Express Gratitude joined looks like. Without
+  // this row they match no stale seed and the migration below never runs for
+  // them, so the addition would only ever reach devices installing fresh.
+  ["guided-prayer", "ask"],
 ];
 
 function todayYmd(): string {
@@ -120,6 +125,12 @@ function migrateStaleSeed(): void {
       // is, and someone who set their own silence should keep it. A different
       // value, or none, is left alone.
       seedVisio();
+      // Express Gratitude joins the default for devices still on an older
+      // untouched seed too — added, never removed, so a device that turned it
+      // off in the customizer does not get it back on the next boot.
+      if (!activeRelationalPractices().includes("gratitude")) {
+        setRelationalPractices([...activeRelationalPractices(), "gratitude"]);
+      }
       if (localStorage.getItem(GUEST_GOAL_KEY) === "5") localStorage.removeItem(GUEST_GOAL_KEY);
       try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
       // Same reasoning as the seed below: a precoded default must never migrate
@@ -150,7 +161,15 @@ export function seedGuestRule(): void {
      * boot after. Gating on the version stamp keeps the cleanup pointed at the
      * old bundles it was written for.
      */
-    if (localStorage.getItem(SEED_VERSION_KEY) !== SEED_VERSION
+    /* GATED ON NEVER-STAMPED, NOT ON VERSION-MISMATCH. The cleanup below
+       decides a layout is spurious by asking whether it contains "office",
+       and the current default (Visio, no office) looks spurious by that test.
+       While this read `!== SEED_VERSION` it re-armed itself every time the
+       seed version was bumped — bumping to "5" for Express Gratitude would
+       have deleted the Visio card from every device stamped "4", which is
+       the very failure the note above describes. The old bundles this was
+       written for carry no stamp at all, so that is what to test. */
+    if (!localStorage.getItem(SEED_VERSION_KEY)
         && clearSpuriousGuestHomeLayout()) {
       try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
     }
@@ -178,6 +197,18 @@ export function seedGuestRule(): void {
     setSideLevel("evening", "ask");
     setReflectionSource("cac");
     setSideReflection("morning", "cac");
+    /**
+     * AND EXPRESS GRATITUDE (owner: "lets put Express Gratitude in the
+     * standard routine").
+     *
+     * It is a relational practice, so it arrives as an ordinary custom anchor
+     * carrying a QUESTION rather than a checkbox — "Did you tell someone, or
+     * send someone a message, saying what you are grateful for?" — and rides
+     * the "anytime" slot. Nothing about the seed is special-cased for it: it
+     * is the same row the customizer's Relational Practices step writes, so
+     * turning it off there removes it like any other.
+     */
+    setRelationalPractices(["gratitude"]);
     // Visio Divina is this rule's contemplative practice, in place of the five
     // minutes of silence it used to seed (owner). No GUEST_GOAL_KEY is written:
     // the goal key is what raises the Silence card, so its absence is how the

@@ -94,7 +94,7 @@ const CONTEMPLATIVE_CHOICES: Array<{ key: string; emoji: string; label: string; 
   // "anytime" on purpose: getPracticeSlot (lib/customAnchors) hard-returns
   // "anytime" for cobreathe / listening / examen / walk, so any other value
   // would put a time on the review that the app never actually applies.
-  { key: "walk", emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "anytime" },
+  { key: "walk", emoji: "🚶🏽", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "anytime" },
   { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Connecting with God through music.", slot: "anytime" },
 ];
 // One list, not two. A dropdown that swaps its options when you toggle
@@ -161,7 +161,7 @@ const EXTRAS: Array<{ key: string; emoji: string; label: string; sub: string; sl
   // "anytime" on purpose: getPracticeSlot (lib/customAnchors) hard-returns
   // "anytime" for cobreathe / listening / examen / walk, so any other value
   // would put a time on the review that the app never actually applies.
-  { key: "walk", emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "anytime" },
+  { key: "walk", emoji: "🚶🏽", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "anytime" },
 ];
 
 /**
