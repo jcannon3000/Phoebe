@@ -6244,9 +6244,32 @@ export default function WayOfLoveRuleFlow({
       ? [{ emoji: "🌍", label: "Creation Prayer", sub: "Available all day", step: "contemplative" as Step, editId: "slot:cobreathe", remove: () => toggleContemplative("cobreathe") }] : []),
     ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: "Available all day", step: "contemplative" as Step, editId: "slot:listening", remove: () => toggleContemplative("audio") }] : []),
     ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Available all day", step: "contemplative" as Step, editId: "slot:examen", remove: () => toggleContemplative("examen") }] : []),
-    ...(newsletters.length
-      ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step, editId: "card:reflection", remove: chooseNoReflection }]
-      : []),
+    // Visio was chosen on the contemplative slide and then MISSING here
+    // (owner: "visio not showing at the end") — every other contemplative
+    // practice had a row and this one never did, so it couldn't be seen or
+    // ordered even though the home was already showing it.
+    ...(contemplative.visio ? [{ emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image", step: "contemplative" as Step, editId: "slot:visio", remove: () => toggleContemplative("visio") }] : []),
+    // A ROW EACH (owner: "the reflections should be two different cards in the
+    // orderer"). They were one "Today's reflection" row listing both names in
+    // its subtitle — which is not what the home does (each reflection is its
+    // own card) and left them impossible to order apart, since the row carried
+    // the single id "card:reflection".
+    ...newsletters.map((n) => {
+      // NEWSLETTERS labels carry their own emoji ("🦩 VTS Dean's Commentary"),
+      // and this row renders an emoji of its own — so split the label rather
+      // than printing the glyph twice.
+      const full = NEWSLETTERS.find((x) => x.id === n)?.label ?? n;
+      const m = /^(\S+)\s+(.*)$/.exec(full);
+      const hasEmoji = !!m && !/[A-Za-z0-9]/.test(m[1]!);
+      return {
+      emoji: hasEmoji ? m![1]! : "📖",
+      label: hasEmoji ? m![2]! : full,
+      sub: "Today's reflection",
+      step: "learn" as Step,
+      editId: `card:${n}`,
+      remove: () => toggleNewsletter(n),
+      };
+    }),
     /**
      * Prayer List's home CARD. Its only edit is on/off, and the ✕ is the off —
      * there is no slide of options for it, so the row deliberately doesn't
@@ -6453,81 +6476,59 @@ export default function WayOfLoveRuleFlow({
             practice to adjust it"), with the gear and ✕ beside it — the same
             pair, the same `circle` styling, as the edit list's rows. */}
         {orderedReviewRows.map((r, i) => {
-          const circle: React.CSSProperties = {
-            width: 30, height: 30, flexShrink: 0, borderRadius: 999,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: "rgba(255,255,255,0.06)", border: `1px solid ${CARD_B}`,
-            color: SAGE, fontSize: 14, cursor: "pointer", padding: 0,
-          };
+          /**
+           * REORDERING ONLY (owner: "we can take the gears and x out that last
+           * slide, we just want it to be reordering" — and "it also can't
+           * reorder … they will not move").
+           *
+           * Those two are the same finding. The row carried a gear, an ✕, two
+           * ~20pt arrows stacked in a column, and a body that navigated — four
+           * targets in a row that is mostly thumb-width. On a phone the arrow
+           * is the one you miss, and missing it either did nothing or opened a
+           * practice. With the gear and ✕ gone the arrows get the room, and
+           * they are now proper 40pt targets and the only thing on the row
+           * that responds. The gear and ✕ are not lost: every practice is
+           * still edited from its own step in the flow, and taken off there.
+           */
+          const arrow = (dir: "up" | "down", disabled: boolean) => (
+            <button
+              type="button"
+              aria-label={`Move ${r.label} ${dir}`}
+              disabled={disabled}
+              onClick={() => moveReviewRow(i, dir === "up" ? -1 : 1)}
+              style={{
+                width: 40, height: 34, flexShrink: 0, borderRadius: 10,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: disabled ? "transparent" : "rgba(255,255,255,0.06)",
+                border: `1px solid ${disabled ? "transparent" : CARD_B}`,
+                color: disabled ? "rgba(143,175,150,0.25)" : SAGE,
+                fontSize: 13, cursor: disabled ? "default" : "pointer", padding: 0,
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              {dir === "up" ? "▲" : "▼"}
+            </button>
+          );
           return (
             <div
               key={`${r.label}-${i}`}
-              style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10 }}
+              style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}
             >
-              <span style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                <button
-                  type="button"
-                  aria-label={`Move ${r.label} up`}
-                  disabled={i === 0}
-                  onClick={() => moveReviewRow(i, -1)}
-                  style={{ background: "none", border: "none", padding: "2px 8px", lineHeight: 1, color: i === 0 ? "rgba(143,175,150,0.22)" : SAGE, fontSize: 11, cursor: i === 0 ? "default" : "pointer" }}
-                >▲</button>
-                <button
-                  type="button"
-                  aria-label={`Move ${r.label} down`}
-                  disabled={i === orderedReviewRows.length - 1}
-                  onClick={() => moveReviewRow(i, 1)}
-                  style={{ background: "none", border: "none", padding: "2px 8px", lineHeight: 1, color: i === orderedReviewRows.length - 1 ? "rgba(143,175,150,0.22)" : SAGE, fontSize: 11, cursor: i === orderedReviewRows.length - 1 ? "default" : "pointer" }}
-                >▼</button>
+              <span style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+                {arrow("up", i === 0)}
+                {arrow("down", i === orderedReviewRows.length - 1)}
               </span>
-              <button
-                type="button"
-                aria-label={`Settings for ${r.label}`}
-                // SINGLE-EDIT when the row maps to one (walk that practice,
-                // Save, return here). Bare setStep dropped into the middle of
-                // the full flow: goPrev couldn't come back ("done" isn't in
-                // orderedSteps), nothing committed until the flow's end, and
-                // the corner ✕ silently discarded the edit — the reported
-                // vanish-without-effect bug wearing the gear instead of the ✕.
-                onClick={() => {
-                  if (r.editId) { setSingleEditRow(r.editId); setReturnToReview(true); }
-                  setStep(r.step);
-                }}
-                style={circle}
-              >
-                ⚙
-              </button>
-              {r.remove && (
-                <button
-                  type="button"
-                  aria-label={`Remove ${r.label}`}
-                  onClick={() => setDeletingReviewRow({ label: r.label, remove: r.remove! })}
-                  style={circle}
-                >
-                  ✕
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  if (r.editId) { setSingleEditRow(r.editId); setReturnToReview(true); }
-                  setStep(r.step);
-                }}
-                style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
-              >
-                <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
-                  <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
-                </span>
-                <span style={{ color: "rgba(143,175,150,0.4)", fontSize: 16, flexShrink: 0 }} aria-hidden>›</span>
-              </button>
+              <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
+                <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
+              </span>
             </div>
           );
         })}
       </div>
       <p style={{ textAlign: "center", color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "16px 0 0" }}>
-        {t("wol_rule.done_edit_hint_order", { defaultValue: "Tap the gear to change a practice, the ✕ to take it off, or the arrows to order your day." })}
+        {t("wol_rule.done_order_hint", { defaultValue: "Use the arrows to order your day." })}
       </p>
       {/* Same confirm the edit list uses — nothing comes off a rule on one tap. */}
       {deletingReviewRow && (
