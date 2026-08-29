@@ -126,7 +126,8 @@ function OptionCard({
 }) {
   const { t } = useTranslation();
   const label = badge
-    ?? (pick.followsToday ? t("visio.follows_today", { defaultValue: "Today's reading" }) : "");
+    // "This week's", not "Today's" — the image turns over on a Sunday.
+    ?? (pick.followsToday ? t("visio.follows_today", { defaultValue: "This week's reading" }) : "");
   return (
     <button
       type="button"
@@ -140,14 +141,9 @@ function OptionCard({
         WebkitTapHighlightColor: "transparent",
       }}
     >
-      <img
-        src={pick.art.img}
-        alt=""
-        aria-hidden
-        loading="lazy"
-        decoding="async"
-        style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, flex: "0 0 auto", boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}
-      />
+      {/* NO THUMBNAIL — the same rule as the title slide (owner: "not even
+          showing the image"). These are the VCS's licensed artworks; the cards
+          name them and the page they open is where the licences hold. */}
       <span style={{ minWidth: 0, flex: 1 }}>
         <span style={{ display: "block", color: WARM, fontFamily: SERIF, fontSize: 15, fontStyle: "italic", lineHeight: 1.3 }}>
           {pick.art.title}
@@ -499,6 +495,19 @@ export default function VisioPage() {
    * those licences hold costs us nothing and opens the WHOLE library rather
    * than the sliver we have rights to.
    */
+  /**
+   * ONE BEAT. Owner: "we dont need the visio divina complete page."
+   *
+   * The deck was title → commentary → a closing card. That card existed to
+   * confirm the practice was kept and offer somewhere to go next, but the
+   * commentary IS the practice now: you read it on the VCS's own page and
+   * you are finished. A completion screen you meet on the way BACK from
+   * somewhere else is a room with nothing in it.
+   *
+   * So the title slide's forward action opens the commentary, marks the day
+   * kept, and returns to the rhythm. DONE is kept as a constant only because
+   * the deck's clamp arithmetic reads it; nothing renders it.
+   */
   const TITLE = 0, DONE = 1;
   const [step, setStep] = useState(TITLE);
   const TOTAL = 2;
@@ -595,7 +604,14 @@ export default function VisioPage() {
     // PASSAGE, the beat after it to the commentary. Tested in that order for
     // clarity only; the two flags can never both be true.
     if (readingOpens) { openReading(); return; }
-    if (backgroundOpens) { openBackground(); return; }
+    // Opening the commentary KEEPS the day and leaves — there is no closing
+    // card to page to any more (owner). Marked before the hand-off, because
+    // the reader may never come back through the app to be marked later.
+    if (backgroundOpens) {
+      try { markPracticeDoneToday("visio"); } catch { /* non-fatal */ }
+      openBackground();
+      return;
+    }
     if (!atEnd) { setStep((s) => s + 1); return; }
     // Kept by finishing, not by opening.
     try { markPracticeDoneToday("visio"); } catch { /* non-fatal */ }
@@ -1114,66 +1130,12 @@ export default function VisioPage() {
               {t("visio.tutorial_pill", { defaultValue: "How this works" })}
             </button>
 
-            {/**
-              * MORE OPTIONS — today's other three works, as cards.
-              *
-              * Owner: "under the visio for the day, have a button that says
-              * more options, and for each day have three others displayed as
-              * cards … if they chose it they would go through it with that
-              * image." So picking one isn't a preview: it replaces the work
-              * for the whole deck, and the practice runs from here with it.
-              *
-              * Closed by default. The day's picture is still THE picture — the
-              * practice is a parish looking at the same image, and a chooser
-              * opened on arrival would turn the first beat into a menu. This
-              * sits under it for the reader who wants a different door in.
-              */}
-            {alternates.length > 0 && (
-              // alignSelf:stretch — the title slide is a centred flex column
-              // that sizes to its content, so width:100% here resolved against
-              // the title's width and left the cards at 256px on a 375px
-              // screen. Stretch fills the slide instead.
-              <div style={{ alignSelf: "stretch", width: "100%", maxWidth: 420, marginLeft: "auto", marginRight: "auto" }}>
-                <button
-                  type="button"
-                  onClick={() => setOptionsOpen((o) => !o)}
-                  aria-expanded={optionsOpen}
-                  style={{
-                    background: "none", border: "none", padding: "6px 10px", cursor: "pointer",
-                    color: SAGE, fontFamily: FONT, fontSize: 13.5, letterSpacing: "0.01em",
-                  }}
-                >
-                  {/* The label reads "More options" even while the cards are
-                      showing (owner: "have it say more options while the
-                      cards are there") — it names the SECTION, not the
-                      toggle's next action. */}
-                  {t("visio.more_options", { defaultValue: "More options" })}
-                </button>
-
-                {optionsOpen && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, textAlign: "left" }}>
-                    {/* Back to today's own work — only once they've left it,
-                        so the way back is never further than the way out. */}
-                    {override && chosen && (
-                      <OptionCard
-                        pick={chosen}
-                        active={false}
-                        badge={t("visio.todays_picture", { defaultValue: "Today's picture" })}
-                        onPick={() => chooseAlternate(null)}
-                      />
-                    )}
-                    {alternates.map((alt) => (
-                      <OptionCard
-                        key={alt.art.id}
-                        pick={alt}
-                        active={override?.art.id === alt.art.id}
-                        onPick={() => chooseAlternate(alt)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* NO "MORE OPTIONS". Owner: "we dont want aditional options."
+                The practice is a parish looking at the SAME image for the
+                week; a chooser on the opening slide turned that into a menu,
+                and the week's picture stopped being the week's picture. The
+                alternates machinery (alternatesForDay) is still there and
+                still used by the closing cards. */}
           </div>
         )}
 
@@ -1200,10 +1162,13 @@ export default function VisioPage() {
                 {view.subjects.join(" · ")}
               </p>
             )}
-            {view.scriptureRef && (
+            {/* Same rule as the title slide — a reference only when the work
+                really is this week's reading. Missed on the first pass, which
+                is why an audit exists. */}
+            {view.scriptureRef && view.followsToday && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "3px 0 0" }}>
                 {view.scriptureRef}
-                {view.followsToday ? ` · ${t("visio.follows_today", { defaultValue: "Today's reading" })}` : ""}
+                {` · ${t("visio.follows_today", { defaultValue: "This week's reading" })}`}
               </p>
             )}
           </div>
