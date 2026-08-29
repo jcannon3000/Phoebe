@@ -31,7 +31,7 @@ import { summarizeRuleSpec, type RuleSpec } from "@/lib/ruleSummary";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePresets";
-import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, updateCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
+import { RELATIONAL_PRACTICES, activeRelationalPractices, setRelationalPractices, type RelationalPracticeId, getCustomAnchors, addCustomAnchor, removeCustomAnchor, updateCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues, flushRoutineConfig } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
 import { getRoutineOrder } from "@/lib/routineOrder";
@@ -367,6 +367,11 @@ type Step =
   | "fdd-mode"
   | "psalms-cycle"
   | "evening-way" | "evening-custom" | "evening-bcp" | "evening-contemplative" | "evening-config"
+  // RELATIONAL PRACTICES — a category of its own (owner: "a new page on the
+  // customizer that was relational … give someone a hug, express gratitude,
+  // call a friend"). One slide, three toggles, each writing an ordinary custom
+  // log so they inherit the home card and the done state.
+  | "relational"
   // The "add an additional practice" slide — the same picker as the side's
   // first slide, minus whatever is already its anchor.
   | "morning-extra" | "evening-extra"
@@ -1086,6 +1091,18 @@ export default function WayOfLoveRuleFlow({
   // home-layout cards (cac/fdd/ssje), so seed from THOSE — otherwise re-opening
   // the customizer only pre-selected one. Fall back to the single effective
   // source / FDD default for an un-set-up user (no saved layout yet).
+  /**
+   * The relational practices, by id. Seeded from what is already in the rule
+   * (matched by title, the same key addCustomAnchor dedupes on), so reopening
+   * the customizer shows them ON rather than offering to add them again.
+   */
+  const [relational, setRelational] = useState<RelationalPracticeId[]>(() => {
+    try { return [...activeRelationalPractices()]; } catch { return []; }
+  });
+  const toggleRelational = (id: RelationalPracticeId) => {
+    touchedRef.current = true;
+    setRelational((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
   const [newsletters, setNewsletters] = useState<ReflectionSource[]>(() => {
     const fromLayout = (["cac", "fdd", "ssje", "vts"] as const).filter((s) => homeCardOn(user?.homeLayout, s));
     if (fromLayout.length > 0) return [...fromLayout];
@@ -2156,6 +2173,17 @@ export default function WayOfLoveRuleFlow({
     clearSideDaySwap("evening");
     commitExtraPractices();
     /**
+     * The relational practices, added and removed to match the slide.
+     *
+     * AFTER the prescribe guard above, deliberately: like every other
+     * custom-anchor write in commit(), this one lands on the signed-in
+     * account, so it must not run while an admin is designing someone else's
+     * rule. setRelationalPractices only ever touches the three known titles,
+     * so a practice someone made themselves is never swept up by the removal
+     * half.
+     */
+    setRelationalPractices(relational);
+    /**
      * The named-your-own contemplative practice becomes a CUSTOM ANCHOR — the
      * app's existing shape for "a practice only you keep". "anytime" matches
      * the other standing contemplative practices (walk, sacred listening),
@@ -2895,6 +2923,11 @@ export default function WayOfLoveRuleFlow({
      * contemplative practice", and minutes only enter for the practice that was
      * actually asked about them.
      */
+    // RELATIONAL, then the free-form customs. It sits here because it is a
+    // CATEGORY of ready-made practices, like the contemplative and newsletter
+    // slides above it — and "create your own" belongs last, after every list
+    // we can offer has been offered.
+    "relational",
     "custom",
     // The weekly Way of Love rhythm (Commune / Go / Bless / Rest) closes the
     // flow — restored per owner (2026-07-09): a rule of life turns weekly too.
@@ -5765,6 +5798,42 @@ export default function WayOfLoveRuleFlow({
           )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
+  // ── Relational practices — a category of ready-made custom logs. ──────────
+  // Owner: "a new page on the customizer that was relational … give someone a
+  // hug, express gratitude, call a friend. Let's just start with those three."
+  //
+  // Nothing new underneath: each row writes an ordinary custom anchor, so it
+  // arrives on the home screen with the same card, the same done state and the
+  // same ordering as anything else someone made themselves. What they carry
+  // that a hand-made practice doesn't is a QUESTION for the log sheet — these
+  // are things you did with another person today or didn't, and the sheet asks
+  // rather than offering a checkbox with the practice's own name on it.
+  if (step === "relational") {
+    return shell(
+      <>
+        {stepHeader(
+          t("wol_rule.relational_eyebrow", { defaultValue: "Relational" }),
+          t("wol_rule.relational_title", { defaultValue: "Practices with other people" }),
+        )}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 20px" }}>
+          {t("wol_rule.relational_body", {
+            defaultValue: "Small things you do with someone else. Each one is a log — you'll be asked at the end of the day, and you answer yes or not today.",
+          })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {RELATIONAL_PRACTICES.map((r) =>
+            choiceRow(
+              relational.includes(r.id),
+              `${r.emoji} ${r.title}`,
+              r.prompt,
+              () => toggleRelational(r.id),
+            ),
+          )}
+        </div>
       </>,
     );
   }

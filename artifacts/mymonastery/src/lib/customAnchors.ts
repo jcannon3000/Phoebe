@@ -153,6 +153,19 @@ export type CustomAnchor = {
    * Sunday is "Worship") without changing what it does.
    */
   office?: "morning" | "evening";
+  /**
+   * A yes/no QUESTION to ask instead of a bare "Done".
+   *
+   * The relational practices are things you either did or didn't do with
+   * someone today — "Did you tell someone, or send someone a message, saying
+   * what you are grateful for?" — and asking that reads truer than a checkbox
+   * labelled "Express gratitude". Owner: "on the pop up for the log it will
+   * say, did you tell someone or send someone a message today expressing
+   * gratitude? Yes. Not today."
+   *
+   * When present the log sheet shows this and labels the affirmative "Yes".
+   */
+  prompt?: string;
 };
 
 /** Mon–Fri, the common case (a weekday practice). */
@@ -231,6 +244,7 @@ export function getCustomAnchors(): CustomAnchor[] {
         // simply never reaches the app. That is how `office` first behaved —
         // written by the preset, present in localStorage, and invisible.
         const office = (a as { office?: unknown }).office;
+        const rawPrompt = (a as { prompt?: unknown }).prompt;
         return {
           id: a.id,
           title: a.title,
@@ -239,6 +253,7 @@ export function getCustomAnchors(): CustomAnchor[] {
           ...(reading ? { reading } : {}),
           ...(days && days.length > 0 && days.length < 7 ? { days } : {}),
           ...(office === "morning" || office === "evening" ? { office } : {}),
+          ...(typeof rawPrompt === "string" && rawPrompt.trim() ? { prompt: rawPrompt } : {}),
         };
       });
   } catch {
@@ -250,6 +265,71 @@ export function getCustomAnchors(): CustomAnchor[] {
  * Add a custom practice. Title is required; emoji defaults to ✅ if blank.
  * Pass `reading` to make it a reading ritual (logged by chapter/page/time).
  */
+/**
+ * RELATIONAL PRACTICES — a category of its own in the customizer.
+ *
+ * Owner: "a new page on the customizer that was relational … it would just
+ * work like custom logs — give someone a hug, express gratitude, call a
+ * friend. Let's just start with those three."
+ *
+ * They ARE custom logs: each is an ordinary custom anchor, so they inherit the
+ * home card, the done state, the ordering and the day-scoping without a new
+ * mechanism. What they add is a `prompt` — the log sheet asks a question and
+ * answers "Yes" rather than offering a checkbox called "Express gratitude",
+ * because these are things you either did with another person today or didn't.
+ *
+ * Matched by TITLE, which is also how addCustomAnchor dedupes, so choosing one
+ * twice is a no-op and a person who typed the same name by hand keeps theirs.
+ */
+export const RELATIONAL_PRACTICES = [
+  {
+    id: "hug",
+    title: "Give someone a hug",
+    emoji: "🤗",
+    prompt: "Did you hug someone today?",
+  },
+  {
+    id: "gratitude",
+    title: "Express gratitude",
+    emoji: "🙏",
+    prompt: "Did you tell someone, or send someone a message, saying what you are grateful for?",
+  },
+  {
+    id: "call",
+    title: "Call a friend",
+    emoji: "📞",
+    prompt: "Did you call a friend today?",
+  },
+] as const;
+
+export type RelationalPracticeId = (typeof RELATIONAL_PRACTICES)[number]["id"];
+
+/** Which relational practices are currently in the rule, by id. */
+export function activeRelationalPractices(): RelationalPracticeId[] {
+  const titles = new Set(getCustomAnchors().map((a) => a.title.trim().toLowerCase()));
+  return RELATIONAL_PRACTICES.filter((r) => titles.has(r.title.toLowerCase())).map((r) => r.id);
+}
+
+/**
+ * Add or remove the relational practices to match `wanted`.
+ *
+ * Removal is BY TITLE and only ever touches the three known ones — a person's
+ * own practice with a similar name is never in RELATIONAL_PRACTICES, so it
+ * cannot be swept up here.
+ */
+export function setRelationalPractices(wanted: readonly RelationalPracticeId[]): void {
+  const want = new Set(wanted);
+  const existing = getCustomAnchors();
+  for (const r of RELATIONAL_PRACTICES) {
+    const found = existing.find((a) => a.title.trim().toLowerCase() === r.title.toLowerCase());
+    if (want.has(r.id) && !found) {
+      addCustomAnchor(r.title, r.emoji, "anytime", undefined, undefined, undefined, r.prompt);
+    } else if (!want.has(r.id) && found) {
+      removeCustomAnchor(found.id);
+    }
+  }
+}
+
 export function addCustomAnchor(
   title: string,
   emoji: string,
@@ -259,6 +339,8 @@ export function addCustomAnchor(
   days?: number[],
   /** See CustomAnchor.office — the office that can also keep this practice. */
   office?: "morning" | "evening",
+  /** See CustomAnchor.prompt — a yes/no question in place of "Done". */
+  prompt?: string,
 ): void {
   const t = title.trim();
   if (!t) return;
@@ -286,6 +368,7 @@ export function addCustomAnchor(
       ? { days: [...new Set(days.filter((d) => d >= 0 && d <= 6))].sort() }
       : {}),
     ...(office ? { office } : {}),
+    ...(prompt && prompt.trim() ? { prompt: prompt.trim() } : {}),
   });
   saveDefs(list);
 }

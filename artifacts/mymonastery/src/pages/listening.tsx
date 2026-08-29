@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { useLocation } from "wouter";
 import { Trash2 } from "lucide-react";
 import { RiseSheet } from "@/components/RiseSheet";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -88,6 +89,7 @@ type View = "deck" | "log" | "history";
 type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; felt?: string; shared?: boolean; createdAt: string };
 
 export default function ListeningPage() {
+  const [, setLocation] = useLocation();
   const [view, setView] = useState<View>("deck");
   const [deckStep, setDeckStep] = useState(0);
   /** Has this run through the deck already passed the log beat? See prev(). */
@@ -209,9 +211,17 @@ export default function ListeningPage() {
     logMutation.mutate();
     markPracticeDoneToday("listening");
     setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false);
-    // Stay on the practice — the new listen becomes the hero right here,
-    // rather than throwing you onto the full-log screen to see that it saved.
     setLogAnother(false);
+    /**
+     * …and leave. Owner: "just have audio divina go to the home when done."
+     *
+     * It used to stay on the practice so the new listen became the hero right
+     * here. That reads as nothing having happened: the form empties, the page
+     * stays, and the only evidence is a card further down. Every other log in
+     * the app closes and returns you to the rhythm, and the kept dot on the
+     * home screen is the confirmation.
+     */
+    setLocation("/dashboard");
   }
 
   // Newest first, once, for every surface on the page.

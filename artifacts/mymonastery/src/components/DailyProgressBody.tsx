@@ -1565,36 +1565,40 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const card = coloredCards.find((c) => keys.includes(c.key));
     if (!card || card.done || card.later) return null;
     /**
-     * CONTEMPLATION IS NEVER THE HERO (owner: "if contemplation is one of the
-     * notification practices, don't make it a hero — just have it at the
-     * top"). A giant hero card whose whole content is "sit in silence" reads
-     * wrong; the pin keeps the notification's promise (this is where your day
-     * starts) without the billboard.
+     * ONLY AN ANCHOR IS EVER THE HERO (owner, looking at Audio Divina filling
+     * the hero seat with a Log button: "it should only be the anchors").
+     *
+     * The notification's target still leads the day — it rides the TOP of the
+     * Next list, which is what keeps the notification's promise that this is
+     * where your day starts. It just doesn't become a billboard. A hero is the
+     * home saying "this is the practice your day is built around", and a
+     * log-only practice or a sacred-listening card is not that, however
+     * legitimately it was notified.
+     *
+     * This generalises a rule that was already here for contemplation alone
+     * ("if contemplation is one of the notification practices, don't make it a
+     * hero — just have it at the top"). The same reasoning covers every
+     * non-anchor; contemplation was simply the first one he saw.
+     *
+     * A side target — side:morning / side:evening — is handled above and DOES
+     * take the hero, because that is the anchor by definition.
      */
-    if (card.key === "silence" || card.key.startsWith("contemplation")) {
-      return { kind: "top" as const, card };
-    }
-    return { kind: "card" as const, card };
+    return { kind: "top" as const, card };
   })();
   const heroSide: "morning" | "evening" | null =
     notifyHero?.kind === "side" ? notifyHero.side
     /**
-     * A PINNED CONTEMPLATION NO LONGER COSTS THE HERO (owner: "not getting a
-     * hero", with the recording showing Contemplation pinned first and the
-     * morning practice sitting in the list beneath it).
+     * A PINNED PRACTICE NO LONGER COSTS THE HERO (owner: "not getting a hero",
+     * with the recording showing Contemplation pinned first and the morning
+     * practice sitting in the list beneath it).
      *
-     * "top" is what a notification pointed at contemplation produces: the
-     * practice rides the top of the list rather than becoming a billboard
-     * that says "sit in silence" (his earlier ask, still honoured). But
-     * suppressing the office hero as well left the whole home heroless —
+     * "top" is what a notification pointed at any non-anchor produces: the
+     * practice rides the top of the list rather than becoming a billboard.
+     * But suppressing the office hero as well left the whole home heroless —
      * which is what he was looking at. The two are not in conflict: the
-     * morning or evening practice leads, and the pinned contemplation is
-     * first in the list under it.
-     *
-     * "card" still suppresses, because that IS a hero — the notified card
-     * becomes cardHero below, and two heroes is one too many.
+     * morning or evening practice leads, and the pinned practice is first in
+     * the list under it.
      */
-    : notifyHero?.kind === "card" ? null
     // Morning leads while it's still morning — past noon a not-yet-prayed
     // morning steps aside (matching the omitted morning card and the
     // dashboard's "what's next" gate). Evening takes the hero at 4:30
@@ -1653,9 +1657,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // A "top"-kind target (contemplation) suppresses the contemplation hero
   // outright — otherwise a no-office rhythm's fallback would re-promote the
   // very card the owner said to keep small.
-  const cardHero = notifyHero?.kind === "card" ? notifyHero.card
-    : notifyHero?.kind === "top" ? undefined
-    : contemplationHero;
+  // The hero seat when no office leads: the side's own contemplation, which IS
+  // that side's anchor. A notification target never lands here any more — it
+  // pins to the top of the list instead (see notifyHero).
+  const cardHero = notifyHero?.kind === "top" ? undefined : contemplationHero;
   // Whether SOME card leads the Next list as a hero (office, target, or contemplation).
   const heroLeads = !!officeHero || !!cardHero;
   const unpinnedCards = showOfficeHero
@@ -2265,6 +2270,19 @@ function LogSheet({
             </button>
           </>
         ) : (
+          <>
+            {/* THE QUESTION, when the practice carries one. A relational
+                practice is something you either did with another person today
+                or didn't, and asking it plainly reads truer than a checkbox
+                labelled with the practice's own name. */}
+            {anchor.prompt && (
+              <p
+                className="text-[15px] text-center mb-3"
+                style={{ color: "rgba(240,237,230,0.92)", fontFamily: FONT, lineHeight: 1.5 }}
+              >
+                {anchor.prompt}
+              </p>
+            )}
           <button
             type="button"
             onClick={() => { (onLog ?? (() => markCustomDoneToday(anchor.id)))(); onClose(); }}
@@ -2275,6 +2293,7 @@ function LogSheet({
               ? t("rhythm.log_yes", { defaultValue: "Yes" })
               : t("rhythm.log_done", { defaultValue: "Done" })}
           </button>
+          </>
         )}
 
         {middle && (
