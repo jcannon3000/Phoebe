@@ -10,6 +10,8 @@
     "dev": "export NODE_ENV=development && export RUN_SCHEDULERS_IN_WEB=true && export PATH=/Applications/Postgres.app/Contents/Versions/latest/bin:/Users/jeremycannon/.local/bin:$PATH && pnpm --filter @workspace/mymonastery run build && BASE_PATH=/mail pnpm --filter @workspace/letters-app run build && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "//build:visio-schedule": "Regenerate the Visio schedule — ONE ARTWORK PER WEEK, keyed to the week's Sunday (per-year appearance cap, an appearance being a week). A .mjs (not .ts) because it imports .ts across workspaces, which api-server's rootDir forbids; bundled first; writes mymonastery/src/lib/visioSchedule.ts.",
+    "//build:icon-schedule": "Regenerate the weekly SUGGESTED icon (third door on a new week), keyed to the Sunday the week closes on. Same .mjs-across-workspaces arrangement as the visio schedule; writes mymonastery/src/lib/iconSchedule.ts.",
+    "build:icon-schedule": "esbuild src/build-icon-week-schedule.mjs --bundle --platform=node --format=esm --outfile=.icon-schedule.mjs && node .icon-schedule.mjs ../mymonastery/src/lib/iconSchedule.ts && rm -f .icon-schedule.mjs",
     "build:visio-schedule": "esbuild src/build-visio-week-schedule.mjs --bundle --platform=node --format=esm --outfile=.visio-schedule.mjs && node .visio-schedule.mjs ../mymonastery/src/lib/visioSchedule.ts && rm -f .visio-schedule.mjs",
     "build:all": "pnpm --filter @workspace/mymonastery run build && BASE_PATH=/mail pnpm --filter @workspace/letters-app run build && node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
