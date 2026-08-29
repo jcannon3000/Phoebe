@@ -23,7 +23,25 @@
 // would put a meditation someone already read back in front of them every
 // morning until the next one arrived.
 
-const READ_KEY = "phoebe:taize:read-ids";
+/**
+ * THREE SOURCES NOW, ONE SHAPE. Taizé was the first; the owner has since asked
+ * for Joan Chittister's weekly ("try to integrate the weekly here") and the
+ * National Cathedral's sermons ("doing National Cathedral Sermons as a
+ * newsletter in the imbox way").
+ *
+ * Everything below was written for Taizé and is unchanged in substance — the
+ * state is still "done THIS ONE", keyed on the item's own id, and still must
+ * never be wired into the day-scoped completion helpers. It is simply keyed by
+ * SOURCE as well, so three inboxes can't read each other's ids. The Taizé
+ * functions remain as thin wrappers so existing call sites keep working.
+ */
+export type InboxSource = "taize" | "chittister" | "cathedral";
+
+const READ_KEY_FOR: Record<InboxSource, string> = {
+  taize: "phoebe:taize:read-ids",
+  chittister: "phoebe:chittister:read-ids",
+  cathedral: "phoebe:cathedral:read-ids",
+};
 /** How many ids to remember. Only the newest is ever asked about; the rest are
  *  kept so re-reading an older one doesn't resurrect it in the list view. */
 const KEEP = 40;
@@ -34,10 +52,12 @@ export type TaizeMeditation = {
   url: string;
   published: string | null;
 };
+/** The same shape for every inbox source — a title, a link, a date. */
+export type InboxItem = TaizeMeditation;
 
-function readIds(): string[] {
+function readIds(source: InboxSource = "taize"): string[] {
   try {
-    const raw = localStorage.getItem(READ_KEY);
+    const raw = localStorage.getItem(READ_KEY_FOR[source]);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
@@ -46,36 +66,43 @@ function readIds(): string[] {
   }
 }
 
+/** Has this person read this particular item, from this source? */
+export function hasReadInbox(source: InboxSource, id: string): boolean {
+  return !!id && readIds(source).includes(id);
+}
+
 /** Has this person read this particular meditation? */
 export function hasReadTaize(id: string): boolean {
-  return !!id && readIds().includes(id);
+  return hasReadInbox("taize", id);
 }
 
 /**
  * Mark one read. Idempotent, and it never expires — that is what makes this an
  * inbox rather than a daily card.
  */
-export function markTaizeRead(id: string): void {
+export function markInboxRead(source: InboxSource, id: string): void {
   if (!id) return;
-  const kept = readIds().filter((x) => x !== id);
+  const kept = readIds(source).filter((x) => x !== id);
   try {
-    localStorage.setItem(READ_KEY, JSON.stringify([id, ...kept].slice(0, KEEP)));
-    window.dispatchEvent(new CustomEvent(TAIZE_READ_EVENT, { detail: { id } }));
+    localStorage.setItem(READ_KEY_FOR[source], JSON.stringify([id, ...kept].slice(0, KEEP)));
+    window.dispatchEvent(new CustomEvent(TAIZE_READ_EVENT, { detail: { id, source } }));
   } catch {
     /* private mode — it just won't be remembered */
   }
 }
+export function markTaizeRead(id: string): void { markInboxRead("taize", id); }
 
 /** Put it back in the inbox — the undo for a mis-tap, mirroring unlog elsewhere. */
-export function unmarkTaizeRead(id: string): void {
+export function unmarkInboxRead(source: InboxSource, id: string): void {
   if (!id) return;
   try {
-    localStorage.setItem(READ_KEY, JSON.stringify(readIds().filter((x) => x !== id).slice(0, KEEP)));
-    window.dispatchEvent(new CustomEvent(TAIZE_READ_EVENT, { detail: { id } }));
+    localStorage.setItem(READ_KEY_FOR[source], JSON.stringify(readIds(source).filter((x) => x !== id).slice(0, KEEP)));
+    window.dispatchEvent(new CustomEvent(TAIZE_READ_EVENT, { detail: { id, source } }));
   } catch {
     /* ignore */
   }
 }
+export function unmarkTaizeRead(id: string): void { unmarkInboxRead("taize", id); }
 
 export const TAIZE_READ_EVENT = "phoebe:taize-read";
 
@@ -86,9 +113,12 @@ export const TAIZE_READ_EVENT = "phoebe:taize-read";
  * already-read case, so a caller can't accidentally render a card for a
  * meditation that isn't there — the blank-card failure this app has had.
  */
-export function waitingMeditation(latest: TaizeMeditation | null | undefined): TaizeMeditation | null {
+export function waitingItem(source: InboxSource, latest: InboxItem | null | undefined): InboxItem | null {
   if (!latest?.id) return null;
-  return hasReadTaize(latest.id) ? null : latest;
+  return hasReadInbox(source, latest.id) ? null : latest;
+}
+export function waitingMeditation(latest: TaizeMeditation | null | undefined): TaizeMeditation | null {
+  return waitingItem("taize", latest);
 }
 
 /**
