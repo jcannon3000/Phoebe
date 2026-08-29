@@ -359,7 +359,19 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         /* The reading. */
         /* FULL WIDTH (owner: "get rid of the line breaks so it goes full
            width") — no measure cap, just the side gutters. */
-        '.bible,.bibletext{max-width:none;margin:0!important;padding:0 20px!important;background:transparent!important;}',
+        /* THE GUTTER IS SET ONCE, ON THE OUTER BOX.
+           Owner: "there is a little too much room on the left side of the
+           reader." Both selectors used to take `padding:0 20px`, and on oremus
+           .bibletext is nested INSIDE .bible — so every passage read inside
+           40px of gutter a side, not 20. The inner box carries none now and
+           the outer one sets the measure. */
+        '.bible{max-width:none;margin:0!important;padding:0 18px!important;background:transparent!important;}',
+        '.bibletext{max-width:none;margin:0!important;padding:0!important;background:transparent!important;}',
+        /* oremus's poetry indent — p.a1 is `margin-left:2em;text-indent:-1em`,
+           a hanging indent built on a 2em gutter. Kept as a hanging indent
+           (wrapped lines still tuck under the first) with the gutter closed
+           up, so a psalm doesn't sit further right than the prose around it. */
+        '.bibletext p.a1{margin-left:1em!important;text-indent:-1em!important;}',
         /* font-family is repeated HERE, not just on body: oremus sets Verdana
            on .bibletext itself, and an element's own rule beats an inherited
            one however important the ancestor's is. Caught in testing — the
@@ -371,9 +383,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.bible p,.bible blockquote,.bibletext p,.bibletext blockquote,.bible h2,.bible div{width:auto!important;max-width:none!important;}',
         '.bibletext p{margin:0 0 1.15em!important;}',
         'h2.passageref,.copyright,.phoebe-reader-note{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
-        'h2.passageref{max-width:none;margin:0!important;padding:14px 20px 6px!important;',
+        'h2.passageref{max-width:none;margin:0!important;padding:14px 0 6px!important;',
         'font-size:13px!important;letter-spacing:.16em;text-transform:uppercase;color:rgba(200,212,192,0.75)!important;font-weight:600!important;}',
-        'h2.plus-S,h2.sectVis{max-width:none;margin:1.5em 0 0.5em!important;padding:0 20px!important;',
+        /* No horizontal padding of its own: these sit inside .bible, which
+           owns the gutter, so 20px here stacked on top of it and set every
+           section heading further right than the verses under it. */
+        'h2.plus-S,h2.sectVis{max-width:none;margin:1.5em 0 0.5em!important;padding:0!important;',
         'font-size:15px!important;color:rgba(200,212,192,0.8)!important;font-weight:600!important;}',
         /* Verse numbers recede; they are wayfinding, not the text. */
         'sup.ww,sup.ii,span.cc,sup.vnumVis,span.vnumVis{color:rgba(143,175,150,0.72)!important;font-size:0.66em!important;font-weight:600!important;',
