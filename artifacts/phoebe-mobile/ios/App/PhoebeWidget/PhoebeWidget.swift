@@ -433,23 +433,26 @@ struct PhoebeWidgetView: View {
     // the widget card's width over the home card's, multiplies every geometry
     // value here: radius, accent bar, paddings, gaps, type sizes, pill.
     private func nextCardRow(_ c: NextCard, _ s: CGFloat) -> some View {
-        HStack(spacing: 0) {
+        // Height and type only — see cardVScale. `s` still owns every
+        // horizontal measurement, so the card is the same width it was.
+        let v = s * Self.cardVScale
+        return HStack(spacing: 0) {
             Rectangle()
                 .fill(c.accent.opacity(c.later ? 0.4 : 0.7))
                 .frame(width: 4 * s)
             HStack(spacing: 12 * s) {
                 if !c.emoji.isEmpty {
-                    Text(c.emoji).font(.system(size: 15 * s))
+                    Text(c.emoji).font(.system(size: 15 * v))
                 }
-                VStack(alignment: .leading, spacing: 2 * s) {
+                VStack(alignment: .leading, spacing: 2 * v) {
                     Text(c.title)
-                        .font(sgBold(14.5 * s))
+                        .font(sgBold(14.5 * v))
                         .foregroundColor(phoebeWarm)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     if !c.subtitle.isEmpty {
                         Text(c.subtitle)
-                            .font(sgRegular(12 * s))
+                            .font(sgRegular(12 * v))
                             .foregroundColor(phoebeSage)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
@@ -458,28 +461,28 @@ struct PhoebeWidgetView: View {
                 Spacer(minLength: 8 * s)
                 if c.later {
                     Text("Later")
-                        .font(sgRegular(12 * s))
+                        .font(sgRegular(12 * v))
                         .foregroundColor(Color(red: 182/255, green: 210/255, blue: 188/255).opacity(0.5))
                         .padding(.horizontal, 14 * s)
-                        .padding(.vertical, 6 * s)
+                        .padding(.vertical, 6 * v)
                         .frame(minWidth: 84 * s)
                         .overlay(
                             Capsule().strokeBorder(Color(red: 143/255, green: 175/255, blue: 150/255).opacity(0.22), lineWidth: 1)
                         )
                 } else if !c.cta.isEmpty {
                     Text("\(c.cta) →")
-                        .font(sgBold(12 * s))
+                        .font(sgBold(12 * v))
                         .foregroundColor(phoebeWarm)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .padding(.horizontal, 14 * s)
-                        .padding(.vertical, 6 * s)
+                        .padding(.vertical, 6 * v)
                         .frame(minWidth: 84 * s)
                         .background(Capsule().fill(c.accent.opacity(0.85)))
                 }
             }
             .padding(.horizontal, 16 * s)
-            .padding(.vertical, 14 * s)
+            .padding(.vertical, 14 * v)
         }
         // Sit INSIDE the 1pt border, the way a CSS border-box does: the web
         // card's accent bar and content begin at the border's inner edge, not
@@ -556,13 +559,45 @@ struct PhoebeWidgetView: View {
     /// One card's height at scale 1, from this file's own numbers: the title
     /// and blurb lines, their 2pt gap, 14pt of padding top and bottom, and the
     /// 1pt border on each edge. Used to keep the stack from filling the widget.
-    private static let cardHeightAt1: CGFloat = 14.5 * 1.2 + 2 + 12 * 1.2 + 28 + 2
+    /**
+     * TEN PERCENT OFF THE HEIGHT AND THE TYPE — but NOT the width.
+     *
+     * Owner: "let's make the cards proportionally ten percent smaller … but
+     * having them the same width, actually. but ten percent smaller in height
+     * and also the text."
+     *
+     * So this is deliberately NOT the single `s` factor the rest of the card
+     * uses. `s` exists to keep the widget card the home card's exact
+     * proportions (see cardScale), and multiplying it would have taken the
+     * width down with everything else. This second factor is applied only to
+     * the things that make a card TALL — the type sizes, the vertical
+     * paddings, the gap between the two lines — while every horizontal value
+     * (the gutters, the accent bar, the pill's minimum width) stays on `s`.
+     * The card keeps its full width and loses a tenth of its height.
+     */
+    private static let cardVScale: CGFloat = 0.9
+    private static let cardHeightAt1: CGFloat = (14.5 * 1.2 + 2 + 12 * 1.2 + 28) * cardVScale + 2
 
     private func homeNextCards(_ cards: [NextCard]) -> some View {
-        // No wordmark (owner reversal: "take the Phoebe title out so the
-        // pills can be more centered") — the cards ARE the widget, centered.
+        /**
+         * THE WORDMARK IS BACK, top left. Owner: "put Phoebe at the top left.
+         * the the word, the name."
+         *
+         * This REVERSES an earlier instruction ("take the Phoebe title out so
+         * the pills can be more centered"), and the reversal is affordable now
+         * for a reason: the cards lost a tenth of their height in the same
+         * pass (see cardVScale), so the room the name occupies is room the
+         * cards just gave back rather than room taken from them. It is set
+         * small and quiet — the app's name on its own widget, not a header.
+         */
         GeometryReader { geo in
-            nextCardsStack(cards, Self.cardScale(geo.size, count: max(1, min(2, cards.count))))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Phoebe")
+                    .font(sgBold(12))
+                    .foregroundColor(phoebeWarm.opacity(0.75))
+                    .padding(.horizontal, 12)
+                nextCardsStack(cards, Self.cardScale(geo.size, count: max(1, min(2, cards.count))))
+            }
         }
     }
 
