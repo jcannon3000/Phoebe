@@ -21,6 +21,8 @@ import { rowIdToCardKeys } from "@/lib/routineOrder";
 import { recordPracticeOpen, sortCardsByLearnedOrder } from "@/lib/practiceOrderLearning";
 import { reflectionSourceUrl, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
+import { markInboxRead, unmarkInboxRead } from "@/lib/taizeInbox";
+import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { markCustomDoneToday, setCustomNotToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
 import { useVisioToday } from "@/hooks/useVisioToday";
@@ -37,7 +39,7 @@ import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
-import { waitingLabel } from "@/lib/taizeInbox";
+import { waitingLabel, markTaizeRead } from "@/lib/taizeInbox";
 
 /** The card's emoji per source — the same ones the Reflections menu uses, so
  *  a reflection looks like itself wherever it appears. */
@@ -317,7 +319,7 @@ function StreakCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 export function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, alwaysShowProgress, hero, eyebrow, onClick, ctaOnly, onOpen, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate, onCheckClick,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, alwaysShowProgress, hero, eyebrow, onClick, ctaOnly, onOpen, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate, onCheckClick, secondaryCta, onSecondary,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   /** Small uppercase label ABOVE the title in the hero layout — mirrors the
@@ -346,6 +348,12 @@ export function PracticeCard({
    *  cta"): for a card whose click LOGS rather than navigates, the whole
    *  body as a tap target logs on stray taps. */
   ctaOnly?: boolean;
+  /** A SECOND action beside the main CTA — a quieter outlined pill. Added for
+   *  the National Cathedral sermon, which can be read or heard (owner: "create
+   *  a listen button"), where one CTA cannot say both. Shown only while the
+   *  card is not done and not waiting, so it never sits next to a ✓. */
+  secondaryCta?: string;
+  onSecondary?: () => void;
   /** Fired when the card is OPENED, by either path — this is what teaches the
    *  home the order someone actually prays in (lib/practiceOrderLearning). */
   onOpen?: () => void;
@@ -582,15 +590,27 @@ export function PracticeCard({
       style={{ minWidth: 84, background: "transparent", color: "rgba(182,210,188,0.5)", border: "1px solid rgba(143,175,150,0.22)" }}
     >{laterLabel}</span>
   ) : (
-    <span
-      role={ctaOnly && onClick ? "button" : undefined}
-      tabIndex={ctaOnly && onClick ? 0 : undefined}
-      onClick={ctaOnly && onClick ? (e) => { e.preventDefault(); e.stopPropagation(); onOpen?.(); onClick(); } : undefined}
-      onKeyDown={ctaOnly && onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onClick(); } } : undefined}
-      className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
-      style={{ minWidth: 84, background: `rgba(${rgb},0.85)`, color: WARM, cursor: ctaOnly && onClick ? "pointer" : undefined }}
-    >
-      {cta} <span aria-hidden>→</span>
+    <span className="flex-shrink-0 inline-flex items-center gap-1.5">
+      {secondaryCta && onSecondary ? (
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSecondary(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onSecondary(); } }}
+          className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3 py-1.5 text-center"
+          style={{ background: "transparent", color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.5)`, cursor: "pointer" }}
+        >{secondaryCta}</span>
+      ) : null}
+      <span
+        role={ctaOnly && onClick ? "button" : undefined}
+        tabIndex={ctaOnly && onClick ? 0 : undefined}
+        onClick={ctaOnly && onClick ? (e) => { e.preventDefault(); e.stopPropagation(); onOpen?.(); onClick(); } : undefined}
+        onKeyDown={ctaOnly && onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onClick(); } } : undefined}
+        className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
+        style={{ minWidth: 84, background: `rgba(${rgb},0.85)`, color: WARM, cursor: ctaOnly && onClick ? "pointer" : undefined }}
+      >
+        {cta} <span aria-hidden>→</span>
+      </span>
     </span>
   );
 
@@ -735,7 +755,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, chittisterActive, chittisterDone, chittisterWaiting, cathedralActive, cathedralDone, cathedralWaiting, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1014,14 +1034,138 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const taizeCard = {
     key: "taize", emoji: "🕯️", rgb: "120,150,175",
     done: taizeDone,
-    href: taizeWaiting?.url ?? "https://www.taize.fr/en/tag/meditations",
-    external: true,
+    href: "",
+    /**
+     * OPENS AND MARKS IT READ — the same pair the reflection cards use.
+     *
+     * Found by mapping the codebase: markTaizeRead had no caller anywhere, so
+     * the card could be shown and opened but never completed. It would have
+     * sat in Next for ever, and the inbox — whose whole point is that things
+     * leave it — could never empty. An `href` alone opens the page and tells
+     * the app nothing.
+     *
+     * Marked when the meditation is OPENED rather than on returning, because
+     * the reader may finish on Taizé's site and never come back through the
+     * app. That is the same trade every reflection card here makes.
+     */
+    onClick: () => {
+      const m = taizeWaiting;
+      if (!m) return;
+      openExternalThenMarkRead(m.url, () => { markTaizeRead(m.id); swellHaptic(); }, { reader: true });
+    },
     title: t("rhythm.card_taize", { defaultValue: "Taizé meditation" }),
     blurb: taizeWaiting
       ? [taizeWaiting.title, waitingLabel(taizeWaiting)].filter(Boolean).join(" · ")
       : t("rhythm.blurb_taize_empty", { defaultValue: "Nothing new since the last one" }),
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
   };
+  /**
+   * LISTEN — hand the Cathedral's newest episode to the global player.
+   *
+   * The episode is fetched ON DEMAND rather than with the card: the card only
+   * needs the sermon's TEXT to render, and a listener is the exception. The
+   * podcast route already resolves "today" for a show, so this is one call and
+   * no new server surface.
+   */
+  const cathedralPlayer = usePodcastPlayer();
+  const playCathedralSermon = async () => {
+    try {
+      const ep = await apiRequest("GET", "/api/podcast/national-cathedral-sermons/today") as {
+        feedTitle: string | null; title: string | null; audioUrl: string | null;
+        durationSeconds: number | null; publishedAt: string | null; imageUrl: string | null;
+      } | null;
+      if (!ep?.audioUrl) return;
+      cathedralPlayer.play({
+        showSlug: "national-cathedral-sermons",
+        episodeId: ep.audioUrl,
+        title: ep.title,
+        audioUrl: ep.audioUrl,
+        imageUrl: ep.imageUrl,
+        showTitle: ep.feedTitle ?? "National Cathedral Sermons",
+        showArtwork: ep.imageUrl,
+        durationSeconds: ep.durationSeconds,
+        publishedAt: ep.publishedAt,
+        sessionSurface: "cathedral-sermon",
+        showHref: "/podcast/national-cathedral-sermons",
+      });
+      // Hearing it IS reading it — the inbox clears either way, or someone who
+      // listens would be left with a card telling them to read what they just
+      // heard.
+      if (cathedralWaiting) markInboxRead("cathedral", cathedralWaiting.id);
+    } catch { /* offline / no episode — the Read path still works */ }
+  };
+  const chittisterLatestId = chittisterWaiting?.id ?? null;
+  const cathedralLatestId = cathedralWaiting?.id ?? null;
+
+  /**
+   * JOAN CHITTISTER'S WEEKLY — Vision & Viewpoint, in the inbox shape.
+   *
+   * Owner: "https://www.joanchittister.org/pages/newsletters try to integrate
+   * the weekly here." Her newsletters page is a subscribe form with no archive
+   * and the Shopify "Teachings" blog last published in February 2025, so the
+   * source is the Benetvision campaign archive's own feed, filtered to the
+   * Monday sends (the off-day ones are book and Monastic Way promotions —
+   * see routes/weeklyReadings.ts).
+   */
+  const chittisterCard = {
+    key: "chittister", emoji: "🌾", rgb: "150,140,110",
+    done: chittisterDone,
+    href: chittisterWaiting?.url ?? "https://www.joanchittister.org/pages/newsletters",
+    title: t("rhythm.card_chittister", { defaultValue: "Vision and Viewpoint" }),
+    blurb: chittisterWaiting
+      ? [chittisterWaiting.title, waitingLabel(chittisterWaiting)].filter(Boolean).join(" · ")
+      : t("rhythm.blurb_chittister_empty", { defaultValue: "Nothing new since the last one" }),
+    // Marked read when the browser CLOSES, not at tap — the same rule the
+    // newsletter cards learned the hard way.
+    ...(chittisterWaiting ? {
+      onClick: () => openExternalThenMarkRead(
+        chittisterWaiting.url,
+        () => { markInboxRead("chittister", chittisterWaiting.id); swellHaptic(); },
+        { reader: true },
+      ),
+    } : {}),
+    onUnlog: chittisterWaiting ? undefined : () => {
+      // Undo puts the LAST one back — there is no day-flag to clear.
+      if (chittisterLatestId) unmarkInboxRead("chittister", chittisterLatestId);
+    },
+    cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
+  };
+
+  /**
+   * THE NATIONAL CATHEDRAL'S SERMONS — read or heard.
+   *
+   * Owner: "what about doing National Cathedral Sermons as a newsletter in the
+   * imbox way", "make sure we build a reder over it", "but lets also bring the
+   * podcast feature back in that they could listen to it", "we should already
+   * have the audio". We do: podcast.ts has carried the Cathedral's Podbean
+   * feed all along, so Listen hands that episode to the same player every
+   * other listen uses rather than introducing a second audio path. The sermon
+   * PAGES have no mp3 — only a YouTube embed — so the podcast feed is the
+   * audio, and the page is the text.
+   */
+  const cathedralCard = {
+    key: "cathedral", emoji: "⛪", rgb: "120,140,170",
+    done: cathedralDone,
+    href: cathedralWaiting?.url ?? "https://cathedral.org/sermons/",
+    title: t("rhythm.card_cathedral", { defaultValue: "Cathedral sermon" }),
+    blurb: cathedralWaiting
+      ? [cathedralWaiting.title, waitingLabel(cathedralWaiting)].filter(Boolean).join(" · ")
+      : t("rhythm.blurb_cathedral_empty", { defaultValue: "Nothing new since the last one" }),
+    ...(cathedralWaiting ? {
+      onClick: () => openExternalThenMarkRead(
+        cathedralWaiting.url,
+        () => { markInboxRead("cathedral", cathedralWaiting.id); swellHaptic(); },
+        { reader: true },
+      ),
+      secondaryCta: t("rhythm.listen", { defaultValue: "Listen" }),
+      onSecondary: () => { void playCathedralSermon(); },
+    } : {}),
+    onUnlog: cathedralWaiting ? undefined : () => {
+      if (cathedralLatestId) unmarkInboxRead("cathedral", cathedralLatestId);
+    },
+    cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
+  };
+
   const listeningCard = {
     key: "listening", emoji: "🎵", rgb: "108,140,180", done: listeningDone, href: "/listening",
     onUnlog: () => unmarkPracticeDoneToday("listening"),
@@ -1446,6 +1590,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
     ...(visioActive ? [{ ...visioCard, slot: getPracticeSlot("visio") }] : []),
     ...(taizeActive ? [{ ...taizeCard, slot: getPracticeSlot("taize") }] : []),
+    ...(chittisterActive ? [{ ...chittisterCard, slot: getPracticeSlot("chittister") }] : []),
+    ...(cathedralActive ? [{ ...cathedralCard, slot: getPracticeSlot("cathedral") }] : []),
     // Prayer List is a standalone "anytime" practice — it left the
     // morning/evening sides entirely (owner, 2026-08-26: "take your prayer
     // list out of the morning and evening side"), so the card no longer moves
@@ -1901,6 +2047,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       ctaOnly={(c as { ctaOnly?: boolean }).ctaOnly}
       onOpen={() => recordPracticeOpen(c.key)}
       doneCta={(c as { doneCta?: string }).doneCta}
+      secondaryCta={(c as { secondaryCta?: string }).secondaryCta}
+      onSecondary={(c as { onSecondary?: () => void }).onSecondary}
       pulse={pulse}
       pulseOnLoad={splashCleared}
       blurDelay={blurDelay}
