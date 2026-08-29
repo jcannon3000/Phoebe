@@ -190,6 +190,16 @@ const main = async () => {
       // Who the icon depicts, when ACT says — this is what makes "teresa"
       // findable even when the title is just "St. Teresa of Avila".
       people: (a.people ?? []).map(tidy),
+      // The passages and liturgical days ACT tags an icon to.
+      //
+      // This file used to drop both, on the stated grounds that icons "carry
+      // no scripture refs". That was simply wrong, and an audit measured it:
+      // in a live sample of 40 icon hits, 29 carried `scriptures` and 31
+      // carried `liturgicalDays`. Keeping them is what lets the weekly icon
+      // offer a third choice suggested by the coming Sunday's readings.
+      refs: (a.scriptures ?? []).map(tidy),
+      days: (a.liturgicalDays ?? []).map(tidy),
+      subjects: (a.subjects ?? []).map(tidy),
       act: ACT_ARTWORK(a.id),
       licence: clean,
       attribution: attribution(a, artist, original),
@@ -211,8 +221,13 @@ const main = async () => {
  * closing slide). Records with neither were dropped.
  *
  * Searched by /icon-prayer ONLY — kept separate from visioCatalogue.ts on
- * purpose: these works carry no scripture refs, and visioSelect must never be
- * able to pick one as the day's shared image. Do not merge the two files.
+ * purpose: visioSelect must never be able to pick an icon as the day's shared
+ * image. Do not merge the two files.
+ *
+ * These records DO carry scripture refs and liturgical days. This file used to
+ * drop them, on the stated grounds that icons had none; an audit measured 29
+ * of 40 live icon hits carrying scriptures and 31 carrying liturgicalDays, so
+ * the claim was false and the fields are now kept.
  */
 
 export type IconArtwork = {
@@ -224,6 +239,11 @@ export type IconArtwork = {
   img: string;
   /** Who the icon depicts (ACT's people tags) — searched alongside the title. */
   people: string[];
+  /** Passages ACT tags this icon to — the basis of the weekly suggestion. */
+  refs: string[];
+  /** ACT's liturgical-day tags, e.g. "Year A Proper 17th Sunday". */
+  days: string[];
+  subjects: string[];
   act: string;
   licence: string;
   attribution: string;

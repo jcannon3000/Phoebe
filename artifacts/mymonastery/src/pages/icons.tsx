@@ -79,7 +79,10 @@ function iconPool(): IconArtwork[] {
   const seen = new Set(base.map((a) => a.id));
   const added: IconArtwork[] = ACT_CATALOGUE
     .filter((a) => actIconOn(a.id) && !isActHidden(a.id) && !seen.has(a.id))
-    .map((a) => ({ id: a.id, title: a.title, artist: a.artist, date: a.date, where: a.where, img: a.img, people: a.people, act: a.act, licence: a.licence, attribution: a.attribution }));
+    // refs/days/subjects carry straight through rather than being blanked:
+    // a library work toggled icon-ON is then eligible for the week's
+    // reading-suggested icon exactly like a harvested one.
+    .map((a) => ({ id: a.id, title: a.title, artist: a.artist, date: a.date, where: a.where, img: a.img, people: a.people, refs: a.refs, days: a.days, subjects: a.subjects, act: a.act, licence: a.licence, attribution: a.attribution }));
   return [...base, ...added];
 }
 
