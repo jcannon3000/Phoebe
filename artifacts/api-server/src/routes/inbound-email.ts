@@ -22,7 +22,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { timingSafeEqual } from "node:crypto";
 import { and, eq, isNotNull } from "drizzle-orm";
-import { db, groupsTable, groupMembersTable, groupReflectionsTable } from "@workspace/db";
+import { db, groupsTable, groupMembersTable, groupPostsTable } from "@workspace/db";
 import { readMessage, viewOnlineUrl, htmlToText } from "../lib/inboundEmailParse";
 
 const router: IRouter = Router();
@@ -103,7 +103,7 @@ router.post("/inbound/email", async (req: Request, res: Response): Promise<void>
   if (!hosted && !text) { res.json({ ok: false, reason: "empty_message" }); return; }
 
   const now = new Date();
-  await db.insert(groupReflectionsTable).values({
+  await db.insert(groupPostsTable).values({
     groupId: group.id,
     authorUserId: null,
     authorName: sender.name ?? null,

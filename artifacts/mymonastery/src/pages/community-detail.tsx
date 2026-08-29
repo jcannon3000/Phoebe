@@ -1697,6 +1697,9 @@ export default function CommunityDetailPage() {
                 {([
                   { emoji: "⚙️", label: t("community_detail.community_settings", { defaultValue: "Settings" }), go: () => setLocation(`/communities/${slug}/settings`) },
                   { emoji: "✉️", label: t("community_detail.invite_members", { defaultValue: "Invite members" }), go: () => setShowInvite(true) },
+                  // Where the weekly reflection is written, a link is posted,
+                  // and the group's inbound newsletter address lives.
+                  { emoji: "📝", label: t("community_detail.posts", { defaultValue: "Posts & newsletter" }), go: () => setLocation(`/communities/${slug}/posts`) },
                   // Prayer Feeds are beta-only (server-enforced) — the tile is
                   // gated on rawIsBeta so it doesn't invite a 403 for admins
                   // outside the beta program.

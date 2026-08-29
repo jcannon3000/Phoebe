@@ -4081,14 +4081,14 @@ export async function migrate() {
     //    practice_completion's local_date — client supplies its own
     //    timezone's today).
     /**
-     * Group reflections — an admin's weekly piece, delivered to that group's
-     * members as an inbox item. See lib/db/src/schema/group_reflections.ts for
+     * Group posts — a leader's weekly reflection, link or event, delivered to that group's
+     * members as an inbox item. See lib/db/src/schema/group_posts.ts for
      * why the read state is per-USER here when the other inboxes keep theirs
      * in localStorage: this one is written for a named congregation, so
      * reading it on a phone has to mean it is read on a laptop too.
      */
     await run(client, `
-      CREATE TABLE IF NOT EXISTS group_reflections (
+      CREATE TABLE IF NOT EXISTS group_posts (
         id SERIAL PRIMARY KEY,
         group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
         author_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -4100,28 +4100,50 @@ export async function migrate() {
       )
     `);
     await run(client, `
-      CREATE TABLE IF NOT EXISTS group_reflection_reads (
+      CREATE TABLE IF NOT EXISTS group_post_reads (
         id SERIAL PRIMARY KEY,
-        reflection_id INTEGER NOT NULL REFERENCES group_reflections(id) ON DELETE CASCADE,
+        post_id INTEGER NOT NULL REFERENCES group_posts(id) ON DELETE CASCADE,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         read_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
     // One row per person per reflection — a double tap must not make the
     // read count lie.
-    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS group_reflection_reads_once ON group_reflection_reads (reflection_id, user_id)`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS group_post_reads_once ON group_post_reads (post_id, user_id)`);
     // The card asks "what is the newest published reflection for my groups",
     // which is this index's exact shape.
-    await run(client, `CREATE INDEX IF NOT EXISTS group_reflections_group_published ON group_reflections (group_id, published_at DESC)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS group_posts_group_published ON group_posts (group_id, published_at DESC)`);
     // A leader can post a LINK rather than write — it opens the publisher's
     // own page and lasts a week. Added after the initial table.
-    await run(client, `ALTER TABLE group_reflections ADD COLUMN IF NOT EXISTS url TEXT`);
-    await run(client, `ALTER TABLE group_reflections ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`);
+    await run(client, `ALTER TABLE group_posts ADD COLUMN IF NOT EXISTS url TEXT`);
+    await run(client, `ALTER TABLE group_posts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`);
+    // Events and the like: open the parish's OWN platform outside the app, so
+    // iOS can hand the link to an installed app rather than a web view that
+    // makes you sign in again. Plus the button's own wording.
+    await run(client, `ALTER TABLE group_posts ADD COLUMN IF NOT EXISTS open_externally BOOLEAN NOT NULL DEFAULT FALSE`);
+    await run(client, `ALTER TABLE group_posts ADD COLUMN IF NOT EXISTS cta_label TEXT`);
     // The secret half of a group's inbound email address — see the schema.
     // Backfilled below for every existing group, the same way invite_token is.
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS inbound_token TEXT`);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS groups_inbound_token_key ON groups (inbound_token)`);
-    await run(client, `UPDATE groups SET inbound_token = encode(gen_random_bytes(9), 'hex') WHERE inbound_token IS NULL`);
+    /**
+     * gen_random_uuid(), NOT gen_random_bytes.
+     *
+     * gen_random_bytes lives in the pgcrypto EXTENSION, which this database is
+     * not guaranteed to have; gen_random_uuid has been core since Postgres 13.
+     * On a database without pgcrypto the first version of this line would have
+     * failed on boot, which is when migrations run. The share_token backfill
+     * above already reached the same conclusion — following it rather than
+     * rediscovering it.
+     *
+     * 18 hex characters is plenty for an address nobody types by hand, and
+     * WHERE … IS NULL keeps it idempotent across re-deploys.
+     */
+    await run(client, `
+      UPDATE groups
+      SET inbound_token = LEFT(REPLACE(gen_random_uuid()::text, '-', ''), 18)
+      WHERE inbound_token IS NULL
+    `);
 
     await run(client, `
       CREATE TABLE IF NOT EXISTS novenas (

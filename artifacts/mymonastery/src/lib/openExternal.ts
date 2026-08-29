@@ -57,6 +57,23 @@ type OpenOpts = {
    * otherwise: one button, top left, and nothing else.
    */
   back?: boolean;
+  /**
+   * LEAVE THE APP ENTIRELY — the system browser, not Phoebe's in-app one.
+   *
+   * Owner, on a leader linking to a parish's own platform: "we would wanna
+   * make sure it's not opening in an in-app browser, but going to the
+   * ParishFul app, or going to whatever website outside the app."
+   *
+   * The reason is deep links. An in-app web view is a browser Phoebe owns: it
+   * renders the page and nothing else. Handing the URL to the SYSTEM lets iOS
+   * decide, and iOS will open an installed app when the link belongs to one —
+   * a giving platform, a ticketing page, a calendar. Rendering that same URL
+   * in a web view means signing in again inside a browser that forgets you.
+   *
+   * So this is not a styling preference; it is the difference between landing
+   * in an app someone is already signed into and landing on its login page.
+   */
+  system?: boolean;
 };
 
 /**
@@ -112,6 +129,13 @@ export function openExternal(url: string, opts?: OpenOpts): boolean {
   if (!url) return false;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative })
     .PhoebeNative;
+  /**
+   * Straight out to the system, before the in-app browser is even considered.
+   * `window.open` on a Capacitor web view hands the URL to iOS, which opens
+   * the owning app when there is one and Safari when there isn't — which is
+   * exactly the handoff `system` exists to get.
+   */
+  if (opts?.system) return openWebTab(url);
   if (native?.openInAppBrowser) {
     void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back });
     return true;

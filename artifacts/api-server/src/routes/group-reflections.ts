@@ -21,12 +21,13 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { and, desc, eq, gt, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
 import {
   db,
-  groupReflectionsTable,
-  groupReflectionReadsTable,
+  groupPostsTable,
+  groupPostReadsTable,
   groupMembersTable,
   groupsTable,
 } from "@workspace/db";
 import { requireAdmin } from "./groups";
+import { inboundAddressFor } from "./inbound-email";
 
 const router: IRouter = Router();
 
@@ -57,23 +58,25 @@ router.get("/me/group-reflection/latest", async (req: Request, res: Response): P
 
   const [row] = await db
     .select({
-      id: groupReflectionsTable.id,
-      title: groupReflectionsTable.title,
-      body: groupReflectionsTable.body,
-      authorName: groupReflectionsTable.authorName,
-      url: groupReflectionsTable.url,
-      expiresAt: groupReflectionsTable.expiresAt,
-      publishedAt: groupReflectionsTable.publishedAt,
+      id: groupPostsTable.id,
+      title: groupPostsTable.title,
+      body: groupPostsTable.body,
+      authorName: groupPostsTable.authorName,
+      url: groupPostsTable.url,
+      openExternally: groupPostsTable.openExternally,
+      ctaLabel: groupPostsTable.ctaLabel,
+      expiresAt: groupPostsTable.expiresAt,
+      publishedAt: groupPostsTable.publishedAt,
       groupName: groupsTable.name,
       groupSlug: groupsTable.slug,
     })
-    .from(groupReflectionsTable)
-    .innerJoin(groupsTable, eq(groupsTable.id, groupReflectionsTable.groupId))
+    .from(groupPostsTable)
+    .innerJoin(groupsTable, eq(groupsTable.id, groupPostsTable.groupId))
     .where(and(
-      inArray(groupReflectionsTable.groupId, groupIds),
-      isNotNull(groupReflectionsTable.publishedAt),
+      inArray(groupPostsTable.groupId, groupIds),
+      isNotNull(groupPostsTable.publishedAt),
       // Never hand out something scheduled for later.
-      lte(groupReflectionsTable.publishedAt, new Date()),
+      lte(groupPostsTable.publishedAt, new Date()),
       /**
        * …or something that has run out. A LINK POST lasts a week (owner: "if
        * it goes longer than a week, it disappears"); a written reflection has
@@ -83,19 +86,19 @@ router.get("/me/group-reflection/latest", async (req: Request, res: Response): P
        * NEWEST row, so an expired one filtered in JS would hide the live
        * reflection sitting behind it.
        */
-      or(isNull(groupReflectionsTable.expiresAt), gt(groupReflectionsTable.expiresAt, new Date())),
+      or(isNull(groupPostsTable.expiresAt), gt(groupPostsTable.expiresAt, new Date())),
     ))
-    .orderBy(desc(groupReflectionsTable.publishedAt))
+    .orderBy(desc(groupPostsTable.publishedAt))
     .limit(1);
 
   if (!row) { res.status(204).end(); return; }
 
   const [read] = await db
-    .select({ id: groupReflectionReadsTable.id })
-    .from(groupReflectionReadsTable)
+    .select({ id: groupPostReadsTable.id })
+    .from(groupPostReadsTable)
     .where(and(
-      eq(groupReflectionReadsTable.reflectionId, row.id),
-      eq(groupReflectionReadsTable.userId, user.id),
+      eq(groupPostReadsTable.postId, row.id),
+      eq(groupPostReadsTable.userId, user.id),
     ))
     .limit(1);
 
@@ -112,6 +115,8 @@ router.get("/me/group-reflection/latest", async (req: Request, res: Response): P
     // A url means "open their page", and the client must not put the reader
     // view over it — see the schema's note on why.
     url: row.url ?? null,
+    openExternally: !!row.openExternally,
+    ctaLabel: row.ctaLabel ?? null,
     read: !!read,
   });
 });
@@ -134,16 +139,34 @@ router.post("/me/group-reflection/:id/read", async (req: Request, res: Response)
   const groupIds = await myGroupIds(user.id);
   if (groupIds.length === 0) { res.status(403).json({ error: "not_a_member" }); return; }
   const [row] = await db
-    .select({ id: groupReflectionsTable.id })
-    .from(groupReflectionsTable)
-    .where(and(eq(groupReflectionsTable.id, id), inArray(groupReflectionsTable.groupId, groupIds)))
+    .select({ id: groupPostsTable.id })
+    .from(groupPostsTable)
+    .where(and(eq(groupPostsTable.id, id), inArray(groupPostsTable.groupId, groupIds)))
     .limit(1);
   if (!row) { res.status(404).json({ error: "not_found" }); return; }
 
-  await db.insert(groupReflectionReadsTable)
-    .values({ reflectionId: id, userId: user.id })
+  await db.insert(groupPostReadsTable)
+    .values({ postId: id, userId: user.id })
     .onConflictDoNothing();
   res.json({ ok: true });
+});
+
+/**
+ * GET /groups/:slug/inbound-address — the address a parish adds to its list.
+ *
+ * Admin only: it is a write endpoint's key, and it should not be sitting in a
+ * follower's browser. Returns null when the column has not been backfilled,
+ * which the admin screen renders as simply not offering the feature.
+ */
+router.get("/groups/:slug/inbound-address", async (req: Request, res: Response): Promise<void> => {
+  const user = req.user as SessionUser;
+  if (!user) { res.status(401).json({ error: "not_authenticated" }); return; }
+  const slug = String(req.params.slug ?? "");
+  const result = await requireAdmin(slug, user.id);
+  if (!result) { res.status(403).json({ error: "not_an_admin" }); return; }
+  const [row] = await db.select({ token: groupsTable.inboundToken, name: groupsTable.name })
+    .from(groupsTable).where(eq(groupsTable.id, result.group.id)).limit(1);
+  res.json({ name: row?.name ?? result.group.name, inboundAddress: inboundAddressFor(slug, row?.token ?? null) });
 });
 
 /** GET /groups/:slug/reflections — the group's own list, admin only. */
@@ -154,9 +177,9 @@ router.get("/groups/:slug/reflections", async (req: Request, res: Response): Pro
   if (!result) { res.status(403).json({ error: "not_an_admin" }); return; }
   const rows = await db
     .select()
-    .from(groupReflectionsTable)
-    .where(eq(groupReflectionsTable.groupId, result.group.id))
-    .orderBy(desc(groupReflectionsTable.createdAt))
+    .from(groupPostsTable)
+    .where(eq(groupPostsTable.groupId, result.group.id))
+    .orderBy(desc(groupPostsTable.createdAt))
     .limit(50);
   res.json(rows);
 });
@@ -198,14 +221,20 @@ router.post("/groups/:slug/reflections", async (req: Request, res: Response): Pr
   if (title.length > 140) { res.status(400).json({ error: "title_too_long" }); return; }
   if (body.length > 20000) { res.status(400).json({ error: "body_too_long" }); return; }
   const publish = req.body?.publish !== false;
+  // Only meaningful for a link — there is nothing to leave the app for on
+  // something the leader wrote here.
+  const openExternally = !!url && req.body?.openExternally === true;
+  const ctaLabel = String(req.body?.ctaLabel ?? "").trim().slice(0, 24) || null;
 
-  const [row] = await db.insert(groupReflectionsTable).values({
+  const [row] = await db.insert(groupPostsTable).values({
     groupId: result.group.id,
     authorUserId: user.id,
     authorName: result.member.name ?? user.name ?? null,
     title,
     body,
     url,
+    openExternally,
+    ctaLabel,
     // ONE WEEK for a link, none for a reflection (owner). Measured from
     // publication rather than creation, so a draft published later gets its
     // full week rather than a week that started while nobody could see it.
@@ -224,8 +253,8 @@ router.delete("/groups/:slug/reflections/:id", async (req: Request, res: Respons
   if (!result) { res.status(403).json({ error: "not_an_admin" }); return; }
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "bad_id" }); return; }
-  await db.delete(groupReflectionsTable)
-    .where(and(eq(groupReflectionsTable.id, id), eq(groupReflectionsTable.groupId, result.group.id)));
+  await db.delete(groupPostsTable)
+    .where(and(eq(groupPostsTable.id, id), eq(groupPostsTable.groupId, result.group.id)));
   res.json({ ok: true });
 });
 

@@ -406,6 +406,7 @@ const SignPage = lazy(() => import("./pages/sign"));
 const SeasonPage = lazy(() => import("./pages/season"));
 const SharePrayerPage = lazy(() => import("./pages/share-prayer"));
 const CommunitySettingsPage = lazy(() => import("./pages/community-settings"));
+const CommunityPostsPage = lazy(() => import("./pages/community-posts"));
 const CommunityJoinPage = lazy(() => import("./pages/community-join"));
 const BetaAdminPage = lazy(() => import("./pages/beta-admin"));
 const BetaClaimPage = lazy(() => import("./pages/beta-claim"));
@@ -1138,6 +1139,9 @@ function Router() {
           redirecting any residual link to /welcome straight to the dashboard. */}
       <Route path="/welcome">{() => <RedirectTo to="/dashboard" />}</Route>
       <Route path="/communities/:slug/requests" component={CommunityRequestsPage} />
+      {/* Where a leader writes the weekly reflection, posts a link, and finds
+          the group's inbound newsletter address. */}
+      <Route path="/communities/:slug/posts" component={CommunityPostsPage} />
       {/* Leaders set the community's shared RULE OF LIFE (adoptable in one tap). */}
       <Route path="/communities/:slug/rule-of-life/set" component={CommunityRuleSetPage} />
       {/* NOT YET PUBLIC (WEEKLY_PLAN_ENABLED) — both pages redirect away while

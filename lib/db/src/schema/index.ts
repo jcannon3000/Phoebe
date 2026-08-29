@@ -92,4 +92,4 @@ export * from "./parish_rule_adoptions";
 export * from "./parish_prayer_list";
 export * from "./parish_prayer_list_prayers";
 export * from "./novenas";
-export * from "./group_reflections";
+export * from "./group_posts";

@@ -1201,13 +1201,22 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         openExternalThenMarkRead(url, () => {
           void apiRequest("POST", `/api/me/group-reflection/${reflectionId}/read`).catch(() => { /* best effort */ });
           swellHaptic();
-        }, { reader: false });
+        }, {
+          reader: false,
+          // An event or a giving page belongs to the parish's own platform;
+          // handing it to the SYSTEM lets iOS open that app instead of a web
+          // view that makes them sign in again. See OpenOpts.system.
+          system: groupReflection.openExternally,
+        });
       },
     } : {}),
     title: groupReflection.title,
     blurb: [groupReflection.groupName, groupReflection.authorName].filter(Boolean).join(" · ")
       || t("rhythm.blurb_group_reflection", { defaultValue: "A reflection for your group" }),
-    cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
+    // The leader's own wording when they gave one — they know whether this is
+    // something to read, an event to RSVP to, or a page to learn more on.
+    cta: groupReflection.ctaLabel || t("rhythm.read", { defaultValue: "Read" }),
+    later: false,
   } : null;
   const listeningCard = {
     key: "listening", emoji: "🎵", rgb: "108,140,180", done: listeningDone, href: "/listening",
