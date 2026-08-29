@@ -5,6 +5,7 @@ import {
   CAC_TODAY_URL, FDD_TODAY_URL, SSJE_TODAY_URL, VTS_TODAY_URL,
   NOUWEN_TODAY_URL, GRIST_TODAY_URL, sojournersTodayUrl,
   markCacRead, markFddRead, markSsjeRead, markVtsRead,
+  markNouwenRead, markSojoRead, markGristRead,
 } from "@/lib/cacReadState";
 
 // Daily reflections from across the church. Each source opens via openExternal
@@ -43,9 +44,12 @@ export default function MenuReflectionsPage() {
    * the home card settles whichever way you arrive.
    */
   const openVts = () => { markVtsRead(); setLocation("/vts-reading"); };
-  const openNouwen = () => openExternal(NOUWEN_TODAY_URL, { reader: true });
-  const openSojo = () => openExternal(sojournersTodayUrl(), { reader: true });
-  const openGrist = () => openExternal(GRIST_TODAY_URL, { reader: true });
+  // These three now MARK READ like the rest. They are trackable sources as of
+  // the customizer work — a reflection someone can put in their rhythm has to
+  // record having been read, or the card they chose never settles.
+  const openNouwen = () => { markNouwenRead(); openExternal(NOUWEN_TODAY_URL, { reader: true }); };
+  const openSojo = () => { markSojoRead(); openExternal(sojournersTodayUrl(), { reader: true }); };
+  const openGrist = () => { markGristRead(); openExternal(GRIST_TODAY_URL, { reader: true }); };
 
   return (
     <MenuHub
@@ -66,6 +70,7 @@ export default function MenuReflectionsPage() {
             { emoji: "🕊️", label: "Sojourner's Voice and Verse", sub: "Verse, voice and prayer of the day · Sojourners", onClick: openSojo },
             { emoji: "✍🏽", label: "SSJE Reflections", sub: "Today's Brother, Give Us a Word", onClick: openSsje },
             { emoji: "😊", label: "Daily Henri Nouwen Quotes", sub: "From the Henri Nouwen Society", onClick: openNouwen },
+            { emoji: "🌎", label: "Grist Climate News", sub: "The day's climate reporting", onClick: openGrist },
             { emoji: "🦩", label: "VTS Dean's Commentary", sub: "Virginia Theological Seminary", onClick: openVts },
           ],
         },

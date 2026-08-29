@@ -72,7 +72,7 @@ const KEY_DEFAULT_OFFICE_ENTRY = "phoebe:office:default-entry";
 export type ReflectionSource = "cac" | "fdd" | "ssje" | "vts" | "nouwen" | "sojo" | "grist" | "none";
 const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "none"];
 /** The sources that count toward the Reflect anchor when opened. */
-export const TRACKED_REFLECTION_SOURCES = ["cac", "fdd", "ssje", "vts"] as const;
+export const TRACKED_REFLECTION_SOURCES = ["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist"] as const;
 export function isTrackedReflectionSource(s: ReflectionSource): boolean {
   return (TRACKED_REFLECTION_SOURCES as readonly string[]).includes(s);
 }

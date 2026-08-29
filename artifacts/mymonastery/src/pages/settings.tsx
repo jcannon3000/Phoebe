@@ -943,6 +943,9 @@ function OfficeCloseExtrasSettings() {
     { value: "cac", label: "CAC Daily Reflection", sub: "From the Center for Action & Contemplation.", emoji: "🌅" },
     { value: "fdd", label: "Forward Day by Day", sub: "From Forward Movement.", emoji: "📖" },
     { value: "ssje", label: "SSJE Reflections", sub: "From the Society of Saint John the Evangelist.", emoji: "✍🏽" },
+    { value: "sojo", label: "Sojourner's Voice and Verse", sub: "Verse, voice and prayer of the day.", emoji: "🕊️" },
+    { value: "nouwen", label: "Daily Henri Nouwen Quotes", sub: "From the Henri Nouwen Society.", emoji: "😊" },
+    { value: "grist", label: "Grist Climate News", sub: "The day's climate reporting.", emoji: "🌎" },
     { value: "none", label: "No reflection", sub: "No pill at the close.", emoji: "—" },
   ];
   return (

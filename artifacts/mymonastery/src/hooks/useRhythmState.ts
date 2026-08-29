@@ -10,8 +10,13 @@ import {
   hasPrayedReflectionToday, CAC_PRAYED_EVENT, SSJE_PRAYED_EVENT, VTS_PRAYED_EVENT,
   hasPrayedReadingsToday, READINGS_PRAYED_EVENT,
   hasPrayedCustomToday, CUSTOM_PRAYER_READ_EVENT,
+  hasReadNouwenToday,
+  hasReadSojoToday,
+  hasReadGristToday,
+  type TrackedReflection,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
+import { waitingMeditation } from "@/lib/taizeInbox";
 import { practiceOnDay } from "@/lib/practiceDays";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay, hasAnchorOfficeIntentToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday, isOfficeLoggedToday } from "@/lib/officeManualLog";
@@ -131,9 +136,9 @@ function officeModeToSurface(mode: string): string | null {
 /** Which reflection source is THIS side's anchor, when its level says a
  *  reflection is. Defaults to fdd — the historical behaviour, and the level
  *  sentinel's own name — when no explicit per-side pick has synced yet. */
-function anchorReflectionSource(side: "morning" | "evening"): "cac" | "fdd" | "ssje" | "vts" {
+function anchorReflectionSource(side: "morning" | "evening"): TrackedReflection {
   const explicit = getSideReflectionExplicit(side);
-  return explicit === "cac" || explicit === "ssje" || explicit === "vts" ? explicit : "fdd";
+  return explicit && explicit !== "none" && explicit !== "fdd" ? explicit : "fdd";
 }
 
 function officeLocalDone(sides: string[]): boolean {
@@ -193,7 +198,7 @@ export type RhythmState = {
   reflectActive: boolean;
   /** Each reflection newsletter the user follows (cac/fdd/ssje/vts) — one per
    *  chosen source, each its OWN card + dot + done-state. Empty when none chosen. */
-  reflections: Array<{ source: "cac" | "fdd" | "ssje" | "vts"; done: boolean }>;
+  reflections: Array<{ source: TrackedReflection; done: boolean }>;
   /** Optional practices the user added from the Customize flow (visible on the
    *  home layout) — each adds a checkmark to Daily progress. */
   examenActive: boolean;
@@ -203,6 +208,16 @@ export type RhythmState = {
   walkActive: boolean;
   /** Visio Divina — praying with an artwork. */
   visioActive: boolean;
+  /**
+   * THE INBOX. Taizé's meditations don't arrive daily, so this pair does not
+   * behave like the others: `taizeDone` is true when nothing is WAITING —
+   * either because the newest was read (whenever that was) or because none has
+   * been posted — and it is never reset by the day turning over.
+   */
+  taizeActive: boolean;
+  taizeDone: boolean;
+  /** The meditation waiting to be read, or null when the inbox is empty. */
+  taizeWaiting: { id: string; title: string; url: string; published: string | null } | null;
   /** Compline (the night office) as an opt-in add-on card — only ever true
    *  from 7pm local on, since it's the office for the end of the day. */
   complineActive: boolean;
@@ -695,6 +710,7 @@ export function useRhythmState(): RhythmState {
   // Visio Divina — praying with an artwork. Same shape as the other standing
   // practices: on when its home card is, kept by finishing the deck.
   const visioActive = homeCardActive(hl, "visio");
+  const taizeActive = homeCardActive(hl, "taize");
   // Compline — the night office, offered as a contemplative add-on card.
   // complineActive means "the user has this in their rhythm" (mirrors every
   // other *Active flag — never time-gated, so the card is reliably present
@@ -900,14 +916,36 @@ export function useRhythmState(): RhythmState {
   // Server-backed reflection reads (CAC + FDD + SSJE + VTS) for today — so the
   // Reflect anchor is correct on a device that didn't do the reading (e.g. web,
   // after reading on mobile). OR'd with the instant local flag below.
-  const { data: reflRead } = useQuery<{ cac: boolean; fdd: boolean; ssje: boolean; vts: boolean }>({
+  const { data: reflRead } = useQuery<Partial<Record<TrackedReflection, boolean>>>({
     queryKey: ["/api/me/reflections-read", day],
     queryFn: () => apiRequest("GET", `/api/me/reflections-read?ymd=${day}`),
     staleTime: 60_000,
     enabled: !guest,
   });
 
-  const reflectDone = reflectLocal || !!reflRead?.cac || !!reflRead?.fdd || !!reflRead?.ssje || !!reflRead?.vts;
+  /**
+   * The newest Taizé meditation, for the inbox card.
+   *
+   * NOT keyed on the day, unlike almost every query in this hook — the
+   * meditations arrive irregularly (measured: 27 Aug, 13 Aug, 6 Aug, 30 Jul),
+   * so a per-day key would refetch daily to learn nothing. Half an hour is
+   * plenty for something published weekly-ish, and the server caches it again
+   * behind that so one fetch serves every device.
+   *
+   * Fetched only when the card is actually in the rhythm; an empty response
+   * (204 when nothing parsed) simply leaves the inbox empty.
+   */
+  const { data: taizeLatest } = useQuery<{ id: string; title: string; url: string; published: string | null } | null>({
+    queryKey: ["/api/taize/latest"],
+    queryFn: () => apiRequest("GET", "/api/taize/latest"),
+    staleTime: 30 * 60_000,
+    enabled: taizeActive,
+  });
+
+  // ANY tracked source counts as "reflected today" — spelled out per source
+  // it would quietly stop counting the next one added (this line already had
+  // that shape and was missing Nouwen, Sojourners and Grist).
+  const reflectDone = reflectLocal || Object.values(reflRead ?? {}).some(Boolean);
 
   // What the user prays for the office — global default (office-prefs) OR a
   // per-side override. Mirrors the home prayer card's resolution, so the
@@ -1094,6 +1132,21 @@ export function useRhythmState(): RhythmState {
   const podcastsDone = podcastsActive && (practiceLocal.podcasts || serverDone("podcasts"));
   const walkDone = walkActive && (practiceLocal.walk || serverDone("walk"));
   const visioDone = visioActive && (practiceLocal.visio || serverDone("visio"));
+  /**
+   * THE INBOX'S DONE, which is deliberately not any of the machinery above.
+   *
+   * practiceLocal and serverDone are both keyed on the DAY. Reading either
+   * here would put a meditation someone already read back in front of them
+   * every morning until Taizé posted again — the exact behaviour an inbox
+   * exists to avoid. `waitingMeditation` answers the only question that
+   * matters: is anything unread right now.
+   *
+   * Empty inbox counts as DONE, not as absent. A card that is active but can
+   * never be completed holds allHabitsDone false all day, so the day would
+   * never read as finished in the week between meditations.
+   */
+  const taizeWaiting = taizeActive ? waitingMeditation(taizeLatest) : null;
+  const taizeDone = taizeActive && taizeWaiting == null;
   // Compline is an OFFICE, so its done-state comes from the office flags (the
   // office viewer's local stamp) — not the practice_completion table the
   // logging-first practices use.
@@ -1280,12 +1333,18 @@ export function useRhythmState(): RhythmState {
   // Each reflection newsletter the user follows is its OWN anchor (card + dot).
   // The selected set is the reflection home-modules that are on; an un-set-up
   // user with no saved layout falls back to the single effective source.
-  const REFLECT_SOURCES = ["fdd", "cac", "ssje", "vts"] as const;
-  const reflectDoneFor = (s: "fdd" | "cac" | "ssje" | "vts"): boolean =>
-    s === "cac" ? (hasReadCacToday() || !!reflRead?.cac)
-      : s === "fdd" ? (hasReadFddToday() || !!reflRead?.fdd)
-        : s === "ssje" ? (hasReadSsjeToday() || !!reflRead?.ssje)
-          : (hasReadVtsToday() || !!reflRead?.vts);
+  // ALL SEVEN. Owner: "make sure all reflections are availble in the
+  // customizer and they save when a user implements them" — a source missing
+  // from this list can be turned on in a layout and still never appear, since
+  // this is what turns a saved module into a card with a dot.
+  const REFLECT_SOURCES = ["fdd", "cac", "ssje", "vts", "nouwen", "sojo", "grist"] as const;
+  const reflectLocalDone: Record<TrackedReflection, boolean> = {
+    fdd: hasReadFddToday(), cac: hasReadCacToday(), ssje: hasReadSsjeToday(),
+    vts: hasReadVtsToday(), nouwen: hasReadNouwenToday(), sojo: hasReadSojoToday(),
+    grist: hasReadGristToday(),
+  };
+  const reflectDoneFor = (s: TrackedReflection): boolean =>
+    reflectLocalDone[s] || !!reflRead?.[s];
   const fromLayout = REFLECT_SOURCES.filter((s) => homeCardActive(hl, s));
   // New-user default rule includes a reflection (Forward Day by Day). When the
   // user has NO saved home layout (un-set-up), fall back to the single effective
@@ -1293,11 +1352,11 @@ export function useRhythmState(): RhythmState {
   // off. A user who HAS customized their layout keeps exactly the reflection
   // cards they chose there (no auto-add). (Guests: same rule against the local
   // cached layout — the seeded guest rule reaches FDD via this fallback.)
-  const reflectFallback: Array<"cac" | "fdd" | "ssje" | "vts"> =
-    (!hl && (reflectionSource === "cac" || reflectionSource === "fdd" || reflectionSource === "ssje" || reflectionSource === "vts"))
-      ? [reflectionSource]
+  const reflectFallback: TrackedReflection[] =
+    (!hl && reflectionSource !== "none" && (REFLECT_SOURCES as readonly string[]).includes(reflectionSource))
+      ? [reflectionSource as TrackedReflection]
       : [];
-  const chosenReflections: Array<"cac" | "fdd" | "ssje" | "vts"> =
+  const chosenReflections: TrackedReflection[] =
     fromLayout.length > 0 ? [...fromLayout] : reflectFallback;
   // Drop VTS from the selected set when it shouldn't count today, so it
   // neither shows a card nor sits in the rhythm as a permanently-undone
@@ -1498,6 +1557,9 @@ export function useRhythmState(): RhythmState {
     podcastsActive,
     walkActive,
     visioActive,
+    taizeActive,
+    taizeDone,
+    taizeWaiting,
     complineActive,
     cobreatheActive,
     prayerListActive,

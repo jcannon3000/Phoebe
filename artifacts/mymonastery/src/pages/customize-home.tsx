@@ -32,7 +32,7 @@ const HOME_MODULES = [
   // missing here, so saving from this page silently stripped it and the server
   // re-appended it at the end — quietly moving the user's feeds card. Keep in sync.
   "office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio",
-  "cac", "fdd", "ssje", "vts", "ncmp", "podcasts", "requests",
+  "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests",
 ] as const;
 type HomeModule = typeof HOME_MODULES[number];
 
@@ -118,7 +118,7 @@ const HOME_LAYOUT_VERSION = 2;
 // requests (pinned) → community prayers (office) →
 // Forward Day by Day. Everything else is hidden but addable.
 const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "fdd", "contemplation", "listening", "examen", "cac", "ssje", "vts", "ncmp", "podcasts"];
-const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "cac", "ssje", "vts", "ncmp", "podcasts"];
+const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts"];
 
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
   const { t } = useTranslation();
@@ -136,6 +136,12 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     fdd:          { label: "Forward Day by Day",                 emoji: "📖", sub: "Today's meditation from Forward Movement" },
     ssje:         { label: "SSJE Reflections",                   emoji: "✍🏽", sub: "Today's Brother, Give Us a Word" },
     vts:          { label: "VTS Dean's Commentary",              emoji: "🦩", sub: "Weekday commentary from Virginia Theological Seminary" },
+    // Owner: "make sure all reflections are availble in the customizer."
+    // These three were readable from the Reflections menu but could not be
+    // chosen, so the menu offered six and the rhythm accepted four.
+    nouwen:       { label: "Daily Henri Nouwen Quotes",          emoji: "😊", sub: "From the Henri Nouwen Society" },
+    sojo:         { label: "Sojourner's Voice and Verse",        emoji: "🕊️", sub: "Verse, voice and prayer of the day" },
+    grist:        { label: "Grist Climate News",                 emoji: "🌎", sub: "The day's climate reporting" },
     ncmp:         { label: "National Cathedral Morning Prayer",  emoji: "📺", sub: "Weekday live broadcast · 7 AM ET" },
     podcasts:     { label: t("customize_home.module_podcasts", { defaultValue: "Podcasts" }), emoji: "🎧", sub: t("customize_home.module_podcasts_sub", { defaultValue: "Shows you've added · pick up where you left off" }) },
     requests:     { label: t("customize_home.module_requests"),  emoji: "🙏🏽", sub: t("customize_home.module_requests_sub") },

@@ -52,6 +52,9 @@ const REFLECTION_CHOICES: { value: ReflectionSource; label: string; sub: string 
   { value: "fdd", label: "Forward Day by Day", sub: "The classic daily meditation" },
   { value: "cac", label: "Richard Rohr — Daily Meditation", sub: "Center for Action and Contemplation" },
   { value: "ssje", label: "Brother, Give Us a Word", sub: "A daily word from the SSJE monks" },
+  { value: "sojo", label: "Sojourner's Voice and Verse", sub: "Verse, voice and prayer of the day" },
+  { value: "nouwen", label: "Daily Henri Nouwen Quotes", sub: "From the Henri Nouwen Society" },
+  { value: "grist", label: "Grist Climate News", sub: "The day's climate reporting" },
   { value: "none", label: "No reflection", sub: "Leave reflection out of the rhythm" },
 ];
 

@@ -2625,7 +2625,10 @@ router.put("/me/feed-first-home", async (req, res): Promise<void> => {
 // doesn't do anything." (Earlier this list was 4 keys and gratitude /
 // examen rows on /customize-home couldn't be turned on at all because
 // the server kept stripping them out on the way to the DB.)
-const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "cac", "fdd", "ssje", "vts", "ncmp", "podcasts", "requests"] as const;
+// Keep in sync with HOME_MODULES in mymonastery/pages/customize-home.tsx —
+// anything missing here is SILENTLY STRIPPED from a saved layout, which is how
+// a reflection can be chosen in the customizer and be gone on the next load.
+const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests"] as const;
 router.put("/me/home-layout", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }

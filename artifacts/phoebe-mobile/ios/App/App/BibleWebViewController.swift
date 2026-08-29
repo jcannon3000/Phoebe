@@ -632,8 +632,19 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         /* Verse / Voice / Prayer of the day — the three headings, as header
            text and nothing else. */
         'article.node-versevoice h2{font-size:13px!important;letter-spacing:.16em;',
-        'text-transform:uppercase;font-weight:600!important;margin:1.9em 0 .6em!important;',
+        'text-transform:uppercase;font-weight:600!important;margin:1.5em 0 .5em!important;',
         'color:rgba(143,175,150,0.95)!important;}',
+        /* THE 96px, which is where the space actually was. Owner: "there is
+           still too much space between elements for sojourners and nouwne."
+           Measured on the live page rather than guessed: each of the three
+           blocks — verse, voice, prayer — is a `.versevoice-section` with
+           `margin-top:96px`, and that sat UNDER the heading margin above, so
+           the two stacked. Sojourners sets it for a wide page with a lot of
+           air; at phone measure it reads as three separate screens.
+           The heading's own margin now carries the whole rhythm. */
+        'article.node-versevoice .versevoice-section{margin-top:0!important;',
+        'padding-top:0!important;padding-bottom:0!important;}',
+        'article.node-versevoice .versevoice-header{padding-bottom:0!important;}',
         /* White on green, every element, in the reader's face — a Drupal page
            colours its own text and would otherwise keep its greys. */
         'article.node-versevoice,article.node-versevoice *{',
@@ -674,6 +685,21 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            unscoped `img{display:none}` blanked all three. */
         '.blog-item-inner-wrapper img,.blog-item-inner-wrapper figure,',
         '.blog-item-inner-wrapper .sqs-block-image{display:none!important;}',
+        /* AND THE GAP THE HIDDEN ONES LEAVE BEHIND. Squarespace wraps every
+           block — heading, paragraph, image alike — in a `.sqs-block` padded
+           17px top AND bottom. Measured on the live page: eleven of them, so
+           34px between each block on top of the paragraph margins, and a
+           hidden image still holds its wrapper's 34px because the padding is
+           on the PARENT, not on the img we hide. That is the "too much space
+           between elements", and no amount of margin tuning on p/h3 could
+           have reached it. The horizontal padding stays — the 20px gutter is
+           laid on the wrapper, not here. */
+        '.blog-item-inner-wrapper .sqs-block{padding-top:0!important;',
+        'padding-bottom:0!important;}',
+        /* Spacer blocks exist only to make room on the desktop layout. */
+        '.blog-item-inner-wrapper .sqs-block-spacer,',
+        '.blog-item-inner-wrapper .sqs-spacer,',
+        '.blog-item-inner-wrapper .sqs-block-horizontalrule{display:none!important;}',
       ]).concat([
         '.phoebe-reader-note{max-width:none;margin:0!important;padding:10px 20px 40px!important;',
         'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.45)!important;}',
@@ -1042,8 +1068,25 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     // etc.), regardless of which feature opened it. Host-based rather than a
     // per-call-site flag so a NEW forwardmovement.org link (e.g. a future
     // reading page) gets this automatically without another wiring change.
+    /**
+     * GRIST IS HERE FOR A DIFFERENT REASON, and it is worth writing down.
+     *
+     * Owner: "make the grist backround and header match the dark brwon of the
+     * page … unless we can get a light version that isnt dark brown."
+     *
+     * We can. The dark brown is not Grist's design — it is Grist's DARK-MODE
+     * design. The Daily is an HTML email, and its template carries a `.darkmode`
+     * class whose rules paint rgb(60, 56, 48) under `@media (prefers-color-
+     * scheme: dark)`. This view forces .dark on itself so most sites match the
+     * app, which is what asked Grist for the brown in the first place. Stop the
+     * dark cascade at the web view and the same URL renders the light
+     * newsletter — measured on the live page, both ways, before changing this.
+     *
+     * So the answer to "unless" is yes, and the brown never needed matching.
+     */
     static func forcesLightMode(_ url: URL) -> Bool {
         guard let host = url.host?.lowercased() else { return false }
+        if host == "grist.org" || host.hasSuffix(".grist.org") { return true }
         return host == "forwardmovement.org" || host.hasSuffix(".forwardmovement.org")
     }
 
@@ -2049,7 +2092,36 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private func syncChromeToPage() {
         let probe = """
         (function () {
+          /* THE PAINTED GROUND, NOT MERELY THE BODY'S OWN BACKGROUND.
+             An HTML email — Grist's Daily is one — leaves <body> and <html>
+             transparent and paints the ground on a wrapper table instead. The
+             body probe then returned rgba(0,0,0,0), which tells us nothing,
+             and the chrome resolved to black behind a page that was not. So
+             walk body -> html -> the largest thing actually painting, and only
+             then give up. */
+          function opaque(c) {
+            var m = c && c.match(/[0-9.]+/g);
+            return !!(m && m.length >= 3 && (m.length < 4 || parseFloat(m[3]) > 0.95));
+          }
           var body = getComputedStyle(document.body).backgroundColor;
+          if (!opaque(body)) {
+            var html = getComputedStyle(document.documentElement).backgroundColor;
+            if (opaque(html)) { body = html; }
+            else {
+              var best = null, bestArea = 0;
+              var all = document.body.querySelectorAll("*");
+              for (var i = 0; i < all.length && i < 4000; i++) {
+                var el2 = all[i], r2 = el2.getBoundingClientRect();
+                var a2 = r2.width * r2.height;
+                if (a2 < 40000 || a2 <= bestArea) continue;
+                var bg2 = getComputedStyle(el2).backgroundColor;
+                if (opaque(bg2)) { best = bg2; bestArea = a2; }
+              }
+              /* White is the honest default for a page that paints nothing:
+                 that is what the reader is looking at. */
+              body = best || "rgb(255, 255, 255)";
+            }
+          }
           var top = null;
           var el = document.elementFromPoint(window.innerWidth / 2, 3);
           while (el && el !== document.documentElement) {
@@ -2192,6 +2264,26 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // The item itself, not a slot: it lives in rightBarButtonItems now,
         // and reading the slot back would rename whatever else is there.
         standardItem?.title = readerViewOn ? "Standard" : "Reader"
+        /**
+         * AND RE-DRESS THE CHROME, because WHICH VIEW WE ARE IN is half of
+         * what decides the bar's colour.
+         *
+         * applyChrome resolves the bar from `readerOwnsGround`, which reads
+         * `readerViewOn` — but nothing here ever asked it to look again. So
+         * tapping Standard on Forward Day by Day left the deck's green bar
+         * sitting over the publisher's white page (seen in the simulator,
+         * which is the only way this was ever going to show up), and tapping
+         * Reader back from a white page left a white bar over the green.
+         *
+         * Twice: once now, so the bar changes with the tap rather than a
+         * moment later, and once after the page's own styles have settled,
+         * for the Standard direction where the colour we want belongs to a
+         * page that is only just getting its background back.
+         */
+        syncChromeToPage()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+            self?.syncChromeToPage()
+        }
     }
 
     @objc private func officeNavNext() {

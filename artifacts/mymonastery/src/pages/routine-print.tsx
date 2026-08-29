@@ -22,11 +22,16 @@ const SLOT_LABEL: Record<CustomSlot, string> = {
   afternoon: "Afternoon",
   evening: "Evening",
 };
-const REFLECTION_NAME: Record<"cac" | "fdd" | "ssje" | "vts", string> = {
+import type { TrackedReflection } from "@/lib/cacReadState";
+
+const REFLECTION_NAME: Record<TrackedReflection, string> = {
   cac: "CAC Daily Meditation",
   fdd: "Forward Day by Day",
   ssje: "Brother, Give Us a Word",
   vts: "VTS Dean's Commentary",
+  nouwen: "Daily Henri Nouwen Quotes",
+  sojo: "Sojourner's Voice and Verse",
+  grist: "Grist Climate News",
 };
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 

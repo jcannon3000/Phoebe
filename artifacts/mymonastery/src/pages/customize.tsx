@@ -572,6 +572,9 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             { value: "fdd", label: "Forward Day by Day" },
             { value: "ssje", label: "SSJE — Brother, Give Us a Word" },
             { value: "cac", label: "CAC Daily Meditation" },
+            { value: "sojo", label: "Sojourner's Voice and Verse" },
+            { value: "nouwen", label: "Daily Henri Nouwen Quotes" },
+            { value: "grist", label: "Grist Climate News" },
             ...(entitlements.vts || newsletter === "vts"
               ? [{ value: "vts", label: "VTS Dean's Commentary" }]
               : []),

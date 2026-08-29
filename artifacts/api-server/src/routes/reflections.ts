@@ -24,7 +24,11 @@ function isValidYmd(s: string): boolean {
   const d = new Date(`${s}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
-const SOURCES = new Set(["fdd", "ssje", "vts"]);
+// Every source that reflection_reads accepts. Nouwen, Sojourners and Grist
+// joined when they became choosable in the customizer — without them here the
+// POST 400s and the read is never recorded anywhere but this one device, which
+// is precisely "it didn't save".
+const SOURCES = new Set(["fdd", "ssje", "vts", "nouwen", "sojo", "grist"]);
 
 function uid(req: Request): number | null {
   const u = req.user as { id?: number } | undefined;
@@ -84,12 +88,11 @@ router.get("/me/reflections-read", async (req: Request, res: Response): Promise<
     const cacRows = await db.execute<{ one: number }>(
       sql`SELECT 1 AS one FROM cac_reads WHERE user_id = ${userId} AND ymd = ${ymd} LIMIT 1`,
     );
-    res.json({
-      cac: cacRows.rows.length > 0,
-      fdd: present.has("fdd"),
-      ssje: present.has("ssje"),
-      vts: present.has("vts"),
-    });
+    // Built from SOURCES rather than spelled out, so a source added above
+    // cannot be recorded by the POST and then read back as never-read here.
+    const out: Record<string, boolean> = { cac: cacRows.rows.length > 0 };
+    for (const src of SOURCES) out[src] = present.has(src);
+    res.json(out);
   } catch (err) {
     console.error("[/me/reflections-read GET] failed:", err);
     res.status(500).json({ error: "internal_error" });

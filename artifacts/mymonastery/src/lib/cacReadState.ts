@@ -216,6 +216,51 @@ const vtsTracker = makeDailyReadTracker(
   (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "vts", ymd }).catch(() => { /* best effort */ }); },
   "reflect-vts",
 );
+/**
+ * NOUWEN, SOJOURNERS AND GRIST TRACK LIKE THE REST.
+ *
+ * Owner: "make sure all reflections are availble in the customizer and they
+ * save when a user implements them." These three arrived as LINKS ONLY — a
+ * page to open from the Reflections menu, with no tracker and no day-flag —
+ * which is exactly why they could not be chosen: a rhythm is made of things
+ * that can be kept, and nothing here could record having been read. So they
+ * get the same day tracker every other source has, and everything downstream
+ * (the home card, the dot, the streak, the office's closing pill) follows
+ * from that one fact rather than from a special case per surface.
+ */
+const nouwenTracker = makeDailyReadTracker(
+  "phoebe:nouwen:last-read-day", "phoebe:nouwen-read",
+  (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "nouwen", ymd }).catch(() => { /* best effort */ }); },
+  "reflect-nouwen",
+);
+const sojoTracker = makeDailyReadTracker(
+  "phoebe:sojo:last-read-day", "phoebe:sojo-read",
+  (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "sojo", ymd }).catch(() => { /* best effort */ }); },
+  "reflect-sojo",
+);
+const gristTracker = makeDailyReadTracker(
+  "phoebe:grist:last-read-day", "phoebe:grist-read",
+  (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "grist", ymd }).catch(() => { /* best effort */ }); },
+  "reflect-grist",
+);
+
+/**
+ * EVERY TRACKED SOURCE, IN ONE PLACE.
+ *
+ * What used to stand here was a ternary chain per question — read tracker,
+ * unlog tracker, anchor credit, per-side flag — each ending in a bare `:
+ * fddTracker` fallback. A chain like that does not fail when a source is
+ * added to the type: it silently answers "fdd" for the new one, so a Nouwen
+ * read would have flipped Forward Day by Day's dot. A map cannot do that —
+ * TypeScript requires the record to be complete, so adding an eighth source
+ * is a compile error at every site that must learn about it, which is what
+ * you want from a list this widely consulted.
+ */
+export type TrackedReflection = "cac" | "fdd" | "ssje" | "vts" | "nouwen" | "sojo" | "grist";
+const DAY_TRACKERS: Record<TrackedReflection, ReturnType<typeof makeDailyReadTracker>> = {
+  cac: cacTracker, fdd: fddTracker, ssje: ssjeTracker, vts: vtsTracker,
+  nouwen: nouwenTracker, sojo: sojoTracker, grist: gristTracker,
+};
 
 /**
  * FULLY unlog today's reflection read — the ✓ on a reflection card (owner:
@@ -230,9 +275,9 @@ const vtsTracker = makeDailyReadTracker(
  *      card in Done after both writes landed (the same stale-cache class the
  *      iOS unlog report exposed on practice-completion).
  */
-export function unlogReflectionToday(source: "cac" | "fdd" | "ssje" | "vts"): void {
+export function unlogReflectionToday(source: TrackedReflection): void {
   const ymd = todayLocalISO();
-  const tracker = source === "cac" ? cacTracker : source === "fdd" ? fddTracker : source === "ssje" ? ssjeTracker : vtsTracker;
+  const tracker = DAY_TRACKERS[source];
   tracker.unmarkRead();
   try { localStorage.removeItem(`phoebe:${source}:last-read-day:synced`); } catch { /* non-fatal */ }
   const del = source === "cac"
@@ -494,6 +539,31 @@ export function hasPrayedVtsToday(side: "morning" | "evening" = "morning"): bool
 export function markVtsPrayed(side: "morning" | "evening" = "morning"): void { vtsTrackerFor(side).markRead(); creditSideAnchor(side, "fdd"); }
 
 /**
+ * THE PER-SIDE FLAG for the three sources that just gained one.
+ *
+ * A reflection can be a side's ANCHOR — the thing that side's prayer IS —
+ * and then the side needs its own kept-today flag, separate from the global
+ * "read it somewhere today". Same shape as VTS above, including the session
+ * post, which is what makes a newsletter-as-prayer show up in the week's
+ * kept days rather than only on the card.
+ */
+const nouwenTrackerMorning = makeDailyReadTracker("phoebe:nouwen:morning:last-read-day", "phoebe:nouwen-prayed", () => syncVtsSession("morning"), "morning");
+const nouwenTrackerEvening = makeDailyReadTracker("phoebe:nouwen:evening:last-read-day", "phoebe:nouwen-prayed", () => syncVtsSession("evening"), "evening");
+const sojoTrackerMorning = makeDailyReadTracker("phoebe:sojo:morning:last-read-day", "phoebe:sojo-prayed", () => syncVtsSession("morning"), "morning");
+const sojoTrackerEvening = makeDailyReadTracker("phoebe:sojo:evening:last-read-day", "phoebe:sojo-prayed", () => syncVtsSession("evening"), "evening");
+const gristTrackerMorning = makeDailyReadTracker("phoebe:grist:morning:last-read-day", "phoebe:grist-prayed", () => syncVtsSession("morning"), "morning");
+const gristTrackerEvening = makeDailyReadTracker("phoebe:grist:evening:last-read-day", "phoebe:grist-prayed", () => syncVtsSession("evening"), "evening");
+
+/** Per-side kept flag for every tracked source — see DAY_TRACKERS' note on
+ *  why this is a map and not another ternary chain. */
+const SIDE_TRACKERS: Record<TrackedReflection, (side: "morning" | "evening") => ReturnType<typeof makeDailyReadTracker>> = {
+  cac: cacTrackerFor, fdd: fddTrackerFor, ssje: ssjeTrackerFor, vts: vtsTrackerFor,
+  nouwen: (side) => (side === "evening" ? nouwenTrackerEvening : nouwenTrackerMorning),
+  sojo: (side) => (side === "evening" ? sojoTrackerEvening : sojoTrackerMorning),
+  grist: (side) => (side === "evening" ? gristTrackerEvening : gristTrackerMorning),
+};
+
+/**
  * Reading a newsletter ONCE should satisfy it once, wherever it appears.
  *
  * A source can be BOTH a side's anchor (level "fdd", named after the source by
@@ -509,7 +579,7 @@ export function markVtsPrayed(side: "morning" | "evening" = "morning"): void { v
  * (cards, dots, weekly rows, the widget, the bell) consistent without anyone
  * having to know about the pairing.
  */
-function sidesAnchoredTo(source: "cac" | "fdd" | "ssje" | "vts"): Array<"morning" | "evening"> {
+function sidesAnchoredTo(source: TrackedReflection): Array<"morning" | "evening"> {
   const out: Array<"morning" | "evening"> = [];
   for (const side of ["morning", "evening"] as const) {
     try {
@@ -521,8 +591,8 @@ function sidesAnchoredTo(source: "cac" | "fdd" | "ssje" | "vts"): Array<"morning
 }
 
 /** The global "read it today" tracker for a source — the reflection CARD's flag. */
-function readTrackerFor(source: "cac" | "fdd" | "ssje" | "vts") {
-  return source === "cac" ? cacTracker : source === "ssje" ? ssjeTracker : source === "vts" ? vtsTracker : fddTracker;
+function readTrackerFor(source: TrackedReflection) {
+  return DAY_TRACKERS[source];
 }
 
 /**
@@ -530,32 +600,27 @@ function readTrackerFor(source: "cac" | "fdd" | "ssje" | "vts") {
  * Called from every mark*Read below rather than from the cards, so a read
  * from anywhere counts everywhere.
  */
-function creditAnchorsFor(source: "cac" | "fdd" | "ssje" | "vts"): void {
+function creditAnchorsFor(source: TrackedReflection): void {
   for (const side of sidesAnchoredTo(source)) {
-    if (source === "cac") markCacPrayed(side);
-    else if (source === "ssje") markSsjePrayed(side);
-    else if (source === "vts") markVtsPrayed(side);
-    else markFddPrayed(side);
+    SIDE_TRACKERS[source](side).markRead();
+    // Every reflection anchor stores level "fdd" — the sentinel for "a
+    // newsletter is this side's prayer" — whichever source it actually is.
+    creditSideAnchor(side, "fdd");
   }
 }
 
 /** Which per-side tracker owns a given reflection source's anchor credit. */
-export function hasPrayedReflectionToday(source: "cac" | "fdd" | "ssje" | "vts", side: "morning" | "evening" = "morning"): boolean {
-  if (source === "cac") return hasPrayedCacToday(side);
-  if (source === "ssje") return hasPrayedSsjeToday(side);
-  if (source === "vts") return hasPrayedVtsToday(side);
-  return hasPrayedFddToday(side);
+export function hasPrayedReflectionToday(source: TrackedReflection, side: "morning" | "evening" = "morning"): boolean {
+  return SIDE_TRACKERS[source](side).hasReadToday();
 }
-export function markReflectionPrayed(source: "cac" | "fdd" | "ssje" | "vts", side: "morning" | "evening" = "morning"): void {
+export function markReflectionPrayed(source: TrackedReflection, side: "morning" | "evening" = "morning"): void {
   // …and the card's own flag, so the anchor and the reflection card can't
   // disagree about a newsletter that was read once. Writing the tracker
   // directly (not mark*Read) keeps this one hop — mark*Read credits anchors,
   // which is the direction we're already coming from.
   try { readTrackerFor(source).markRead(); } catch { /* non-fatal */ }
-  if (source === "cac") { markCacPrayed(side); return; }
-  if (source === "ssje") { markSsjePrayed(side); return; }
-  if (source === "vts") { markVtsPrayed(side); return; }
-  markFddPrayed(side);
+  SIDE_TRACKERS[source](side).markRead();
+  creditSideAnchor(side, "fdd");
 }
 
 // Daily Scripture Readings (Forward Movement's daily-readings page) USED AS
@@ -712,10 +777,14 @@ export function recordFddOpened(opts?: { flagReturn?: boolean; side?: "morning" 
 // it server-side returns zero post links). /api/nouwen/today reads their RSS
 // and 302s to the newest — the same shape as /api/vts/today.
 export const NOUWEN_TODAY_URL = "https://withphoebe.app/api/nouwen/today";
+export function hasReadNouwenToday(): boolean { return nouwenTracker.hasReadToday(); }
+export function markNouwenRead(): void { nouwenTracker.markRead(); creditAnchorsFor("nouwen"); }
 
 // GRIST publishes its daily newsletter at a stable preview URL that always
 // renders the current issue, so no resolution is needed.
 export const GRIST_TODAY_URL = "https://go.grist.org/newsletter/preview/the-daily";
+export function hasReadGristToday(): boolean { return gristTracker.hasReadToday(); }
+export function markGristRead(): void { gristTracker.markRead(); creditAnchorsFor("grist"); }
 
 /**
  * SOJOURNERS' Verse and Voice — the URL is DERIVED from the date:
@@ -736,6 +805,9 @@ export function sojournersTodayUrl(now: Date = new Date()): string {
   const yy = String(d.getFullYear() % 100).padStart(2, "0");
   return `https://sojo.net/daily-wisdom/verse-and-voice-${mm}${dd}${yy}`;
 }
+
+export function hasReadSojoToday(): boolean { return sojoTracker.hasReadToday(); }
+export function markSojoRead(): void { sojoTracker.markRead(); creditAnchorsFor("sojo"); }
 
 export const SSJE_TODAY_URL = "https://www.ssje.org/word/";
 
