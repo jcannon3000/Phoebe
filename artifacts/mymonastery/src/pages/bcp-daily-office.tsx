@@ -736,6 +736,24 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
+  /**
+   * Has the FINAL lesson's passage already been opened?
+   *
+   * Only matters on a deck that ends on a lesson (Daily Scripture Reading ends
+   * on the Gospel). There the last slide's Next opens the reading rather than
+   * finishing — and returning from it lands back on that same last slide, so
+   * without this the button would offer the same passage again for ever and
+   * the practice could never be completed. Once it has been opened, the slide
+   * goes back to being the end: "Done".
+   *
+   * UP HERE WITH THE OTHER HOOKS, not beside `atEnd` where it is used. This
+   * component has several early returns — the Venite hand-off, the loading
+   * gate, the physical-book guide — and a useState below them is called on
+   * some renders and not others, which is a hook-count change and a hard
+   * crash. It took down Evening Prayer, which reaches one of those returns on
+   * every open.
+   */
+  const [finalLessonRead, setFinalLessonRead] = useState(false);
   // Display prefs (text size + backdrop) — device-local, changed live from the
   // ⚙ sheet; re-read on its event so the deck updates without a remount.
   const display = useOfficeDisplay();
@@ -1925,17 +1943,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       : currentSlide.content;
   const atStart = slideIdx === 0;
   const atEnd = slideIdx === slides.length - 1;
-  /**
-   * Has the FINAL lesson's passage already been opened?
-   *
-   * Only matters on a deck that ends on a lesson (Daily Scripture Reading ends
-   * on the Gospel). There the last slide's Next opens the reading rather than
-   * finishing — and returning from it lands back on that same last slide, so
-   * without this the button would offer the same passage again for ever and
-   * the practice could never be completed. Once it has been opened, the slide
-   * goes back to being the end: "Done".
-   */
-  const [finalLessonRead, setFinalLessonRead] = useState(false);
   const sectionLabel = SECTION_LABEL[currentSlide.type] ?? currentSlide.type.toUpperCase();
 
   /** The "choose a different …" pill under a canticle / invitatory title. */
