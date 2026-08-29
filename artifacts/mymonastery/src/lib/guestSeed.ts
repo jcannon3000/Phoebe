@@ -20,7 +20,8 @@
 
 import { ROUTINE_KEYS } from "@/lib/routineSync";
 import { setSideLevel, setReflectionSource, setSideReflection, getExplicitSideLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
-import { clearSpuriousGuestHomeLayout } from "@/lib/homeLayoutCache";
+import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, cacheHomeLayoutLocalOnly, addHomeCard } from "@/lib/homeLayoutCache";
+import { setPracticeSlot } from "@/lib/customAnchors";
 import { clearRoutineSyncClock } from "@/lib/routineSync";
 
 const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
@@ -41,7 +42,7 @@ const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 // a known historical seed exactly. That's the safe signal that the person never
 // touched it — anything else means they customized, and their rule is theirs.
 const SEED_VERSION_KEY = "phoebe:guest-seed-version";
-const SEED_VERSION = "3";
+const SEED_VERSION = "4";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never
 // remove: the whole point is recognizing rules we ourselves wrote.
@@ -75,6 +76,23 @@ export function clearGuestSeed(): void {
   } catch { /* private mode */ }
 }
 
+/**
+ * Visio Divina, as the default rule's contemplative practice.
+ *
+ * Owner: "the default preset [should] also include Visio Divina … have Visio
+ * Divina be the contemplative practice and take out the silence. So it'd be
+ * simple guided, CAC, and Visio Divina."
+ *
+ * Two writes, because they answer different questions and the card needs both:
+ * the home LAYOUT decides the practice is on, and phoebe:slot:visio only says
+ * when it rides. A slot with no layout entry is a practice nothing renders.
+ */
+function seedVisio(): void {
+  setPracticeSlot("visio", "anytime");
+  const { layout, changed } = addHomeCard(readCachedHomeLayout(), "visio");
+  if (changed) cacheHomeLayoutLocalOnly(layout);
+}
+
 /** Move a device still sitting on an OLD untouched seed onto today's default.
  *  No-op once stamped, and no-op the moment the levels don't match a seed we
  *  wrote — a customized rule is never overwritten. */
@@ -95,6 +113,14 @@ function migrateStaleSeed(): void {
       // untouched pair of levels and still have chosen its own daily word;
       // moving the levels is what this migration is for, and rewriting a
       // reading someone picked would be a different, unasked-for act.
+      //
+      // Visio joins the default, and the silence leaves it — but the silence
+      // only goes if it is still EXACTLY the five minutes the old seed wrote.
+      // Matching levels means the rule is untouched; it does not mean the goal
+      // is, and someone who set their own silence should keep it. A different
+      // value, or none, is left alone.
+      seedVisio();
+      if (localStorage.getItem(GUEST_GOAL_KEY) === "5") localStorage.removeItem(GUEST_GOAL_KEY);
       try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
       // Same reasoning as the seed below: a precoded default must never migrate
       // up to an account on sign-in, so zero the clock the setters just bumped.
@@ -110,13 +136,27 @@ function migrateStaleSeed(): void {
  *  explicit rule or has seeded before). Safe to call on every guest boot. */
 export function seedGuestRule(): void {
   try {
-    // Undo a stale home layout a short-lived bug wrote for the Creation Prayer
-    // pick, which was hiding the newsletter card (see clearSpuriousGuestHomeLayout).
-    if (clearSpuriousGuestHomeLayout()) { try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ } }
+    /**
+     * Undo a stale home layout a short-lived bug wrote for the Creation Prayer
+     * pick, which was hiding the newsletter card (see
+     * clearSpuriousGuestHomeLayout).
+     *
+     * ONLY FOR DEVICES THIS BUNDLE HASN'T SEEDED. That cleanup decides a layout
+     * is spurious by asking whether it contains "office" — a fine proxy while
+     * the only legitimate guest layout came from the full customizer, and wrong
+     * the moment the seed itself started writing one. The default now includes
+     * Visio Divina, whose layout has no "office" in it, so running this
+     * unconditionally would delete the Visio card on the next boot and every
+     * boot after. Gating on the version stamp keeps the cleanup pointed at the
+     * old bundles it was written for.
+     */
+    if (localStorage.getItem(SEED_VERSION_KEY) !== SEED_VERSION
+        && clearSpuriousGuestHomeLayout()) {
+      try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
+    }
     if (localStorage.getItem(SEED_KEY)) {
-      // Backfill for devices seeded by an earlier bundle that didn't write the
-      // goal key yet — without it the home shows no Silence card at all.
-      if (localStorage.getItem(GUEST_GOAL_KEY) == null) localStorage.setItem(GUEST_GOAL_KEY, "5");
+      // (The old backfill that wrote a 5-minute goal here is gone with the
+      // silence itself — it would have put the Silence card back on every boot.)
       migrateStaleSeed();
       return; // already seeded
     }
@@ -124,19 +164,25 @@ export function seedGuestRule(): void {
     if (getExplicitSideLevel("morning") || getExplicitSideLevel("evening")) return;
     /**
      * THE DEFAULT ROUTINE (owner): Simple Guided Prayer in the morning, the
-     * CAC's Daily Meditation as the day's reading, five minutes of silence —
-     * and NO EVENING. The evening is written as "ask", which is a side's off
-     * state, so a new person gets three cards rather than a fourth they never
-     * asked for.
+     * CAC's Daily Meditation as the day's reading, and Visio Divina as the
+     * contemplative practice — and NO EVENING. The evening is written as
+     * "ask", which is a side's off state, so a new person gets three cards
+     * rather than a fourth they never asked for.
+     *
+     * It seeded five minutes of silence until the owner replaced it with Visio
+     * ("take out the silence … so it'd be simple guided, CAC, and Visio
+     * Divina"). Three practices either way; the third is now something you
+     * look at rather than a timer.
      */
     setSideLevel("morning", "guided-prayer");
     setSideLevel("evening", "ask");
     setReflectionSource("cac");
     setSideReflection("morning", "cac");
-    // The 5-minute silence DAILY GOAL (single goal card w/ progress bar) is a
-    // guest-local pref — the goal card reads it via the guest goal key below
-    // (server contemplationGoalMinutes needs an account).
-    localStorage.setItem(GUEST_GOAL_KEY, "5");
+    // Visio Divina is this rule's contemplative practice, in place of the five
+    // minutes of silence it used to seed (owner). No GUEST_GOAL_KEY is written:
+    // the goal key is what raises the Silence card, so its absence is how the
+    // silence is "taken out" rather than shown at zero.
+    seedVisio();
     localStorage.setItem(SEED_KEY, todayYmd());
     // Freshly seeded devices are already current — stamp so migrateStaleSeed
     // never has anything to do for them.
