@@ -19,7 +19,7 @@ import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCust
 import { daySwapNote } from "@/components/PracticeSwitcher";
 import { rowIdToCardKeys } from "@/lib/routineOrder";
 import { recordPracticeOpen, sortCardsByLearnedOrder } from "@/lib/practiceOrderLearning";
-import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday } from "@/lib/cacReadState";
+import { reflectionSourceUrl, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
@@ -43,6 +43,9 @@ const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   ssje: "Brother, Give Us a Word",
   cac: "CAC Daily Meditation",
   vts: "VTS Dean's Commentary",
+  nouwen: "Daily Henri Nouwen Quotes",
+  sojo: "Voice and Verse",
+  grist: "Grist",
 };
 
 const WARM = "#F0EDE6";
@@ -1262,7 +1265,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // One card per reflection newsletter the user follows — each its own card +
     // dot, opening that source's reading directly (and marking it read).
     ...reflections.map((r) => {
-      const url = r.source === "cac" ? CAC_TODAY_URL : r.source === "fdd" ? FDD_TODAY_URL : r.source === "ssje" ? SSJE_TODAY_URL : VTS_TODAY_URL;
+      const url = reflectionSourceUrl(r.source);
       const mark = r.source === "cac" ? markCacRead : r.source === "fdd" ? markFddRead : r.source === "ssje" ? markSsjeRead : markVtsRead;
       const scrapedTitle = r.source === "cac" ? cacTitle : r.source === "vts" ? vtsTitle : "";
       // VTS opens the in-app paragraph slideshow (vts-reading.tsx) — VTS

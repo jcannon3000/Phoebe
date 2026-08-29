@@ -9,7 +9,7 @@ import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { getOfficeBackdrop, officeVeilBg } from "@/lib/officeDisplay";
 import {
   getReadingsTodayUrl, recordReadingsOpened,
-  FDD_TODAY_URL, CAC_TODAY_URL, SSJE_TODAY_URL,
+  FDD_TODAY_URL, CAC_TODAY_URL, SSJE_TODAY_URL, reflectionSourceUrl,
   recordFddOpened, recordCacOpened, recordSsjeOpened,
   markCacPrayed, markSsjePrayed,
 } from "@/lib/cacReadState";
@@ -237,7 +237,7 @@ export default function BeginPrayerPage() {
        * treatment for "a reflection is my morning prayer", whichever
        * publisher it comes from.
        */
-      const url = source === "cac" ? CAC_TODAY_URL : source === "ssje" ? SSJE_TODAY_URL : FDD_TODAY_URL;
+      const url = reflectionSourceUrl(source);
       openExternalThenMarkRead(
         url,
         () => {

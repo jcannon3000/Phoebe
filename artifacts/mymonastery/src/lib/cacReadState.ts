@@ -702,7 +702,64 @@ export function recordFddOpened(opts?: { flagReturn?: boolean; side?: "morning" 
 // monastery. The page itself loads today's word client-side, so the
 // same URL every day resolves to "today" — matching FDD's pattern.
 // No server-side route on our end.
+// ── The reading sources that are LINKS ONLY ──────────────────────────────
+// Owner asked for each of these as a reflection people can open. They have
+// no tracker and no day-flag: they are a page to read, opened in Phoebe's
+// reader view, and nothing about them counts toward an office.
+//
+// NOUWEN goes through our own server because his permalinks are opaque
+// Squarespace slugs and the meditations index renders client-side (fetching
+// it server-side returns zero post links). /api/nouwen/today reads their RSS
+// and 302s to the newest — the same shape as /api/vts/today.
+export const NOUWEN_TODAY_URL = "https://withphoebe.app/api/nouwen/today";
+
+// GRIST publishes its daily newsletter at a stable preview URL that always
+// renders the current issue, so no resolution is needed.
+export const GRIST_TODAY_URL = "https://go.grist.org/newsletter/preview/the-daily";
+
+/**
+ * SOJOURNERS' Verse and Voice — the URL is DERIVED from the date:
+ * /daily-wisdom/verse-and-voice-MMDDYY. No feed, no server hop.
+ *
+ * WEEKDAYS ONLY, verified against the live site: Mon 24, Tue 25, Thu 27 and
+ * Fri 28 August all 200; Sat 22, Sun 23 and Sat 29 all 404. So a weekend
+ * walks back to Friday rather than opening a 404 — the same fallback shape
+ * VTS uses, done arithmetically because the pattern makes it possible.
+ */
+export function sojournersTodayUrl(now: Date = new Date()): string {
+  const d = new Date(now.getTime());
+  const day = d.getDay();
+  if (day === 0) d.setDate(d.getDate() - 2);       // Sunday → Friday
+  else if (day === 6) d.setDate(d.getDate() - 1);  // Saturday → Friday
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yy = String(d.getFullYear() % 100).padStart(2, "0");
+  return `https://sojo.net/daily-wisdom/verse-and-voice-${mm}${dd}${yy}`;
+}
+
 export const SSJE_TODAY_URL = "https://www.ssje.org/word/";
+
+/**
+ * A reflection source → the page to open. ONE place, because the two callers
+ * that resolved this inline were ternary chains ending in a bare fallback:
+ * DailyProgressBody fell through to VTS and begin-prayer to FDD, so a rule set
+ * to any source they did not name opened somebody else's writing with no error
+ * anywhere. Adding three sources to the union is exactly the change that would
+ * have shipped that.
+ */
+export function reflectionSourceUrl(source: string): string {
+  switch (source) {
+    case "cac": return CAC_TODAY_URL;
+    case "fdd": return FDD_TODAY_URL;
+    case "ssje": return SSJE_TODAY_URL;
+    case "vts": return VTS_TODAY_URL;
+    case "nouwen": return NOUWEN_TODAY_URL;
+    case "sojo": return sojournersTodayUrl();
+    case "grist": return GRIST_TODAY_URL;
+    default: return FDD_TODAY_URL;
+  }
+}
+
 export const SSJE_READ_EVENT = ssjeTracker.eventName;
 export function getSsjeReadDay(): string | null { return ssjeTracker.getLastReadDay(); }
 export function hasReadSsjeToday(): boolean { return ssjeTracker.hasReadToday(); }

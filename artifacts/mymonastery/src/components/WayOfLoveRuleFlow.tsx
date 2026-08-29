@@ -286,7 +286,7 @@ const EXTRA_GROUPS: Array<{ id: ExtraGroupId; emoji: string; title: string; sub:
   { id: "guided", emoji: "🙌", title: "Simple Guided Prayer", sub: "Praise · Confession · Thanksgiving · Supplication." },
   { id: "examen", emoji: "🌗", title: "The Examen", sub: "Review the day with God." },
   { id: "contemplative", emoji: "🕯️", title: "A contemplative practice", sub: "Silence, a walk, sacred listening, Visio Divina, or Creation Prayer." },
-  { id: "newsletter", emoji: "📰", title: "A reflection", sub: "Forward, SSJE, CAC, or VTS." },
+  { id: "newsletter", emoji: "📰", title: "A reflection", sub: "Forward, SSJE, CAC, VTS, Nouwen, Sojourners or Grist." },
 ];
 const EXTRA_PRACTICES: ExtraPractice[] = [
   { title: (c) => `${c} Office`, emoji: "📖", sub: "The full Daily Office.", excludes: "office", maps: { kind: "level", level: "office" } , group: "office" },
@@ -300,7 +300,7 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // Not excluded by any anchor level: which newsletter is chosen on the next
   // slide, so the row can't clash with the anchor until that's known (the
   // sub-picker drops Forward when Forward IS the anchor).
-  { title: () => "Reflection Newsletter", emoji: "📖", sub: "Forward, SSJE, CAC, or VTS.", excludes: "__none__", maps: { kind: "newsletter" } , group: "newsletter" },
+  { title: () => "Reflection Newsletter", emoji: "📖", sub: "Forward, SSJE, CAC, VTS, Nouwen, Sojourners or Grist.", excludes: "__none__", maps: { kind: "newsletter" } , group: "newsletter" },
   { title: () => "Compline", emoji: "🌙", sub: "The night office.", excludes: "compline", side: "evening", maps: { kind: "practice", key: "compline" } , group: "office" },
   // Owner: "the contemplative one should have a description that reflects
   // that it could be a practice like Contemplative Walk and not just
@@ -675,7 +675,12 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "fdd", label: "📖 Forward Day by Day", sub: "Forward Movement" },
   { id: "ssje", label: "✍🏽 SSJE — Brother, Give Us a Word", sub: "Society of St. John the Evangelist" },
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
-  { id: "vts", label: "🦩 VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
+  { id: "vts", label: "🏛️ VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
+  // Read-only sources (see ReflectionSource): they sit in the rule and open in
+  // the reader like the others, but opening one is not scored.
+  { id: "nouwen", label: "🕊️ Daily Henri Nouwen Quotes", sub: "Henri Nouwen Society" },
+  { id: "sojo", label: "📣 Voice and Verse", sub: "Sojourners · verse, voice and prayer of the day" },
+  { id: "grist", label: "🌍 Grist", sub: "The day's climate journalism · weekdays" },
 ];
 
 // A captured routine, identical to what commit() would write — used by the

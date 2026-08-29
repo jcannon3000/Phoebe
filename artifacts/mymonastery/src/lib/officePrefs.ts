@@ -58,8 +58,24 @@ const KEY_CONTEMPLATION_MINUTES = "phoebe:office:contemplation-minutes";
 // text (no listen/watch equivalents).
 const KEY_DEFAULT_OFFICE_ENTRY = "phoebe:office:default-entry";
 
-export type ReflectionSource = "cac" | "fdd" | "ssje" | "vts" | "none";
-const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "vts", "none"];
+/**
+ * The reflection sources a rule can carry.
+ *
+ * The first four are TRACKED — a day-flag, a server read-log, and they satisfy
+ * the Reflect anchor. The last three ("nouwen", "sojo", "grist") were added on
+ * the owner's ask and are READ-ONLY sources: choosing one puts it in the rule
+ * and on the home card, and opening it shows the page in Phoebe's reader view,
+ * but nothing about it is scored. Keep that distinction when adding a source —
+ * a scored one needs its tracker wired in cacReadState AND creditAnchorsFor,
+ * or the card goes green while the anchor stays open.
+ */
+export type ReflectionSource = "cac" | "fdd" | "ssje" | "vts" | "nouwen" | "sojo" | "grist" | "none";
+const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "none"];
+/** The sources that count toward the Reflect anchor when opened. */
+export const TRACKED_REFLECTION_SOURCES = ["cac", "fdd", "ssje", "vts"] as const;
+export function isTrackedReflectionSource(s: ReflectionSource): boolean {
+  return (TRACKED_REFLECTION_SOURCES as readonly string[]).includes(s);
+}
 
 export type OfficeAudioSource = "forward-movement" | "church-of-england" | "gregory";
 const OFFICE_AUDIO_SOURCES: OfficeAudioSource[] = ["forward-movement", "church-of-england", "gregory"];
