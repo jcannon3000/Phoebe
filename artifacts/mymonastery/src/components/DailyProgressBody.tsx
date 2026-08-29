@@ -983,7 +983,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: visioDone
       ? kept
       : (visioToday.chosen
-        ? [visioToday.chosen.art.title, visioToday.chosen.ref].filter(Boolean).join(" · ")
+        // The reference rides along ONLY when the work really depicts a reading
+        // appointed this week (owner: "If it is not actually the passage from
+        // this week, dont have it say the verse"). Otherwise the card names the
+        // work alone — a same-book stand-in shouldn't look like the lectionary
+        // sent you to it.
+        ? [visioToday.chosen.art.title, visioToday.chosen.followsToday ? visioToday.chosen.ref : ""].filter(Boolean).join(" · ")
         : t("rhythm.blurb_visio", { defaultValue: "Pray with today's image" })),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };

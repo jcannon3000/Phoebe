@@ -1067,10 +1067,24 @@ export default function VisioPage() {
               {view.artist && (
                 <p style={{ color: "rgba(200,212,192,0.75)", fontFamily: FONT, fontSize: 15, margin: 0, lineHeight: 1.5 }}>{tidyArtist(view.artist)}</p>
               )}
-              {view.scriptureRef && (
+              {/**
+                * THE VERSE ONLY WHEN IT IS ACTUALLY THIS WEEK'S.
+                *
+                * Owner: "If it is not actually the passage from this week,
+                * dont have it say the verse."
+                *
+                * followsToday is true only when the work depicts a reading
+                * appointed for the Sunday this week closes on. When it is
+                * false the work is a same-book match or a stand-in, and
+                * printing its reference invites the reader to believe the
+                * lectionary sent them there. Better to name the work and say
+                * nothing about the passage than to name a passage nobody is
+                * reading.
+                */}
+              {view.scriptureRef && view.followsToday && (
                 <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13.5, margin: "5px 0 0", lineHeight: 1.5 }}>
                   {view.scriptureRef}
-                  {view.followsToday ? ` · ${t("visio.follows_today", { defaultValue: "Today's reading" })}` : ""}
+                  {` · ${t("visio.follows_today", { defaultValue: "This week's reading" })}`}
                 </p>
               )}
 
