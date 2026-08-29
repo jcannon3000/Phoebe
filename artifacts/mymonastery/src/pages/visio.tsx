@@ -168,15 +168,16 @@ export default function VisioPage() {
     try { return new Date().toLocaleDateString("en-CA"); } catch { return "1970-01-01"; }
   }, []);
   /**
-   * The Sunday that names this week — the key a chosen work is remembered
-   * under. Mirrors sundayOf() in build-visio-week-schedule.mjs, which is what
-   * decides the week's picture in the first place, so the two can't disagree
-   * about where a week begins.
+   * The Sunday this week is walking TOWARD — the key a chosen work is
+   * remembered under. Mirrors sundayEnding() in build-visio-week-schedule.mjs,
+   * which is what decides the week's picture in the first place, so the two
+   * can't disagree about where a week ends. Monday to Sunday (owner), so a
+   * Sunday belongs to the week it closes and maps to itself.
    */
   const weekSunday = useMemo(() => {
     try {
       const d = new Date(`${today}T12:00:00`);
-      d.setDate(d.getDate() - d.getDay());
+      d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
       return d.toLocaleDateString("en-CA");
     } catch { return today; }
   }, [today]);

@@ -114,16 +114,34 @@ function refsForDay(d) {
 }
 
 /**
- * The Sunday on or before a date — the day whose readings name the week.
+ * The Sunday on or AFTER a date — the Sunday the week is walking toward.
+ *
+ * MONDAY TO SUNDAY, not Sunday to Saturday. Owner: "we want the same image
+ * from Monday to Sunday", and from the first description of this practice,
+ * an image "most related to the lectionary for that Sunday LEADING UP TO
+ * IT."
+ *
+ * So the week is preparatory, not retrospective. You meet the picture on
+ * Monday, sit with it for six days, and on Sunday you hear the passage read
+ * that it has been quietly working on you about all week. The alternative —
+ * the Sunday that OPENS the week — puts the picture after the reading and
+ * lets it trail off while the next Sunday arrives unprepared. It shipped that
+ * way for one build; this is the correction.
+ *
+ * NOTE for anyone tempted to "fix" this back: a LITURGICAL week is named for
+ * the Sunday that begins it, and that rule still holds everywhere else in the
+ * app (see liturgicalCalendar). This function is not naming liturgical weeks.
+ * It decides when the picture turns over, and it deliberately straddles them.
  *
  * LOCAL day parts, deliberately, because the dates fed to it are local noon
  * (see the loop). Reading UTC parts off a local-noon date is how this produced
  * the wrong day: a mixed pair silently lands a day out for anyone west of
  * Greenwich.
  */
-function sundayOf(d) {
+function sundayEnding(d) {
   const s = new Date(d.getTime());
-  s.setDate(s.getDate() - s.getDay());
+  // A Sunday belongs to the week it CLOSES, so it maps to itself.
+  s.setDate(s.getDate() + ((7 - s.getDay()) % 7));
   return s;
 }
 
@@ -182,7 +200,7 @@ function build() {
      * downstream has to learn about weeks; every day of a week simply
      * resolves to the same id.
      */
-    const sunday = sundayOf(d);
+    const sunday = sundayEnding(d);
     const weekKey = ymdOf(sunday);
     if (weekPick.has(weekKey)) {
       rows.push([ymd, weekPick.get(weekKey)]);
