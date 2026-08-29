@@ -169,6 +169,20 @@ export type CustomAnchor = {
    * When present the log sheet shows this and labels the affirmative "Yes".
    */
   prompt?: string;
+  /**
+   * WEEKLY, rather than daily.
+   *
+   * Owner: "weekly practices that we set every Monday that are in next until
+   * you do them, and then they're done, and they stay in done until the next
+   * week." So a weekly practice is not a different KIND of practice — it is
+   * the same card with a different clock. It sits in Next until it is kept,
+   * moves to Done, and returns to Next on Monday.
+   *
+   * The week runs Monday→Sunday and is keyed by the Sunday it CLOSES on — the
+   * same convention Visio and the weekly icon use, so all three turn over
+   * together and a person doesn't meet three different ideas of "this week".
+   */
+  cadence?: "weekly";
 };
 
 /** Mon–Fri, the common case (a weekday practice). */
@@ -257,6 +271,7 @@ export function getCustomAnchors(): CustomAnchor[] {
           ...(days && days.length > 0 && days.length < 7 ? { days } : {}),
           ...(office === "morning" || office === "evening" ? { office } : {}),
           ...(typeof rawPrompt === "string" && rawPrompt.trim() ? { prompt: rawPrompt } : {}),
+          ...((a as { cadence?: unknown }).cadence === "weekly" ? { cadence: "weekly" as const } : {}),
         };
       });
   } catch {
@@ -344,6 +359,8 @@ export function addCustomAnchor(
   office?: "morning" | "evening",
   /** See CustomAnchor.prompt — a yes/no question in place of "Done". */
   prompt?: string,
+  /** See CustomAnchor.cadence — "weekly" keeps it until Monday. */
+  cadence?: "weekly",
 ): void {
   const t = title.trim();
   if (!t) return;
@@ -372,6 +389,7 @@ export function addCustomAnchor(
       : {}),
     ...(office ? { office } : {}),
     ...(prompt && prompt.trim() ? { prompt: prompt.trim() } : {}),
+    ...(cadence === "weekly" ? { cadence: "weekly" } : {}),
   });
   saveDefs(list);
 }
@@ -442,7 +460,7 @@ export async function clearCustomAnchors(): Promise<void> {
  */
 export function updateCustomAnchor(
   id: string,
-  patch: { title?: string; emoji?: string; slot?: CustomSlot; days?: number[] | null },
+  patch: { title?: string; emoji?: string; slot?: CustomSlot; days?: number[] | null; cadence?: "weekly" | undefined },
 ): void {
   const list = getCustomAnchors();
   const i = list.findIndex((a) => a.id === id);
@@ -465,6 +483,19 @@ export function updateCustomAnchor(
     ...(days && days.length > 0 && days.length < 7 ? { days } : {}),
   };
   if (!(days && days.length > 0 && days.length < 7)) delete (list[i] as { days?: number[] }).days;
+  /**
+   * CADENCE IS SET BY ABSENCE, like `days`. "weekly" is the only value the
+   * whitelist carries, so turning it off means removing the field — writing
+   * `false` would be dropped on the next read and the practice would silently
+   * stay weekly.
+   *
+   * Only touched when the patch MENTIONS it, so an edit that changes a title
+   * can't quietly make a weekly practice daily.
+   */
+  if ("cadence" in patch) {
+    if (patch.cadence === "weekly") (list[i] as { cadence?: "weekly" }).cadence = "weekly";
+    else delete (list[i] as { cadence?: "weekly" }).cadence;
+  }
   saveDefs(list); // schedules the server push, as add/remove do
 }
 
@@ -502,10 +533,41 @@ function saveDefs(list: CustomAnchor[]): void {
   }
 }
 
-/** True if this custom practice has been checked off today (local day). */
+/**
+ * The Sunday a week CLOSES on, as YYYY-MM-DD — the key a weekly practice's
+ * completion is stored under.
+ *
+ * Monday→Sunday, and a Sunday maps to itself, so the practice returns to Next
+ * on Monday morning. Local noon in and local day parts out: mixing UTC parts
+ * with a local-parts reader is what once put a whole schedule a day out for
+ * everyone west of Greenwich.
+ */
+function weekKeyOf(now: Date = new Date()): string {
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const d = new Date(`${iso(now)}T12:00:00`);
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+  return iso(d);
+}
+
+/** The period a practice's completion is measured in — a day, or its week. */
+function periodKeyFor(id: string): string {
+  const anchor = getCustomAnchors().find((a) => a.id === id);
+  return anchor?.cadence === "weekly" ? weekKeyOf() : todayISO();
+}
+
+/**
+ * True if this custom practice has been kept in its CURRENT PERIOD — today for
+ * a daily practice, this week for a weekly one.
+ *
+ * The stored value is a date string either way, so nothing about the storage
+ * changed when weekly arrived; only what it is compared against. A weekly
+ * practice kept on Tuesday still reads as kept on Saturday, and stops on
+ * Monday when the key it was stored under is no longer this week's.
+ */
 export function isCustomDoneToday(id: string): boolean {
   try {
-    return localStorage.getItem(DONE_PREFIX + id) === todayISO();
+    return localStorage.getItem(DONE_PREFIX + id) === periodKeyFor(id);
   } catch {
     return false;
   }
@@ -683,8 +745,12 @@ export function getCustomDoneDays(id: string): Set<string> {
 export function markCustomDoneToday(id: string): void {
   const wasAlreadyDone = isCustomDoneToday(id);
   try {
-    localStorage.setItem(DONE_PREFIX + id, todayISO());
+    // Stamped with the PERIOD it counts for — this week for a weekly practice.
+    localStorage.setItem(DONE_PREFIX + id, periodKeyFor(id));
     localStorage.removeItem(SKIP_PREFIX + id);
+    // …but the DOT records the actual day it was kept, weekly or not. The dot
+    // is a record of what happened, and a weekly practice kept on Tuesday
+    // happened on Tuesday.
     addDoneDay(id, todayISO());
     window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
     if (!wasAlreadyDone) markRecentCompletion(`custom-${id}`);
@@ -695,7 +761,15 @@ export function markCustomDoneToday(id: string): void {
   if (!wasAlreadyDone) swellHaptic();
 }
 
-/** Log this practice as "not today" — hides it + drops its dot for the day. */
+/**
+ * Log this practice as "not today" — hides it + drops its dot for the day.
+ *
+ * DAY-SCOPED EVEN FOR A WEEKLY PRACTICE, deliberately. "Not today" means not
+ * today; a weekly practice waved off on Tuesday is still owed this week and
+ * should be back on Wednesday. Scoping this to the week would turn one tap
+ * into "not this week", which is a different sentence and not the one on the
+ * button.
+ */
 export function setCustomNotToday(id: string): void {
   try {
     // A reading skipped today drops today's logged amount — and that amount must

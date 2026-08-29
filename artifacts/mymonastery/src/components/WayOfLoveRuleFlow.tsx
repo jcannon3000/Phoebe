@@ -1578,9 +1578,16 @@ export default function WayOfLoveRuleFlow({
     setCustomEmoji(a.emoji);
     setCustomSlot(a.slot);
     setCustomDays(a.days && a.days.length > 0 && a.days.length < 7 ? [...a.days] : null);
+    setCustomWeekly(a.cadence === "weekly");
   }, [editingCustomId]);
   /** null = every day; otherwise the chosen weekday numbers. */
   const [customDays, setCustomDays] = useState<number[] | null>(null);
+  /**
+   * Weekly rather than daily — see CustomAnchor.cadence. Owner: "weekly
+   * practices that we set every Monday that are in next until you do them, and
+   * then they're done, and they stay in done until the next week."
+   */
+  const [customWeekly, setCustomWeekly] = useState(false);
   const saveCustomEdit = () => {
     if (!editingCustomId) return;
     touchedRef.current = true;
@@ -1589,6 +1596,9 @@ export default function WayOfLoveRuleFlow({
       emoji: customEmoji,
       slot: customSlot,
       days: customDays,
+      // undefined, not false — the whitelist only carries "weekly", and an
+      // explicit false would be dropped on the next read anyway.
+      cadence: customWeekly ? "weekly" : undefined,
     });
     setCustomList(getCustomAnchors());
     // Re-derive the list rows, or the row keeps its OLD sub-label ("Morning ·
@@ -5860,6 +5870,35 @@ export default function WayOfLoveRuleFlow({
     const editingAnchor = editingCustomId ? customList.find((a) => a.id === editingCustomId) ?? null : null;
     if (editingAnchor) {
       const dayOn = (d: number) => customDays === null || customDays.includes(d);
+      /**
+       * ONCE A WEEK — the row that turns a daily practice into a weekly one.
+       *
+       * Sits above the weekday chips because it changes what they MEAN: a
+       * weekly practice is owed once between Monday and Sunday, so scoping it
+       * to particular weekdays as well would be two answers to the same
+       * question. The chips are hidden while it is on.
+       */
+      const weeklyRow = (
+        <button
+          type="button"
+          onClick={() => { touchedRef.current = true; setCustomWeekly((w) => !w); }}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            width: "100%", textAlign: "left", borderRadius: 14, padding: "13px 16px",
+            background: customWeekly ? "rgba(46,107,64,0.28)" : "rgba(240,237,230,0.06)",
+            border: `1px solid ${customWeekly ? "rgba(168,197,160,0.5)" : "rgba(200,212,192,0.18)"}`,
+            color: CREAM, fontFamily: FONT, fontSize: 15, fontWeight: 600, cursor: "pointer",
+          }}
+        >
+          <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <span>{t("wol_rule.custom_weekly", { defaultValue: "Once a week" })}</span>
+            <span style={{ color: SAGE, fontSize: 12.5, fontWeight: 500, lineHeight: 1.45 }}>
+              {t("wol_rule.custom_weekly_sub", { defaultValue: "Stays in Next until you keep it, then rests until Monday." })}
+            </span>
+          </span>
+          <span aria-hidden style={{ fontSize: 18 }}>{customWeekly ? "\u2713" : ""}</span>
+        </button>
+      );
       const toggleDay = (d: number) => {
         touchedRef.current = true;
         setCustomDays((prev) => {
@@ -5910,8 +5949,19 @@ export default function WayOfLoveRuleFlow({
             })}
           </div>
 
+          {/* HOW OFTEN — daily, or once a week. Above the weekday chips
+              because it changes what they mean; see weeklyRow. */}
+          <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
+            {t("wol_rule.custom_cadence", { defaultValue: "How often?" })}
+          </p>
+          {weeklyRow}
+
           {/* WHICH DAYS — Chapel is a weekday thing, and until now the only
-              way to change that was to delete the practice and make it again. */}
+              way to change that was to delete the practice and make it again.
+              Hidden for a weekly practice: it is owed once between Monday and
+              Sunday, so naming weekdays as well would be two answers to one
+              question. */}
+          {!customWeekly && (<>
           <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
             {t("wol_rule.custom_days", { defaultValue: "Which days?" })}
           </p>
@@ -5936,6 +5986,7 @@ export default function WayOfLoveRuleFlow({
               ? t("wol_rule.custom_days_all", { defaultValue: "Every day" })
               : describeDays(customDays)}
           </p>
+          </>)}
 
           {ctaButton(t("common.save", { defaultValue: "Save" }), saveCustomEdit)}
         </>,
