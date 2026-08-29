@@ -38,6 +38,11 @@ const MODE_ENDPOINT: Record<LiturgyMode, string> = {
   "early-evening-devotion": "/api/devotion/early-evening",
   "creation-morning": "/api/devotion/creation-morning",
   "creation-evening": "/api/devotion/creation-evening",
+  // The scripture reading assembles like an office and is prefetched like one.
+  // THIS MAP IS THE THIRD MIRROR of "which decks exist" — MODE_CONFIG and
+  // MODE_START_PAGE in bcp-daily-office are the other two — and adding the
+  // mode without it is what broke the client typecheck.
+  "scripture": "/api/office/scripture",
 };
 
 function todayYmd(): string {
