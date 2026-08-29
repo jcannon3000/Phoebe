@@ -1563,9 +1563,23 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   })();
   const heroSide: "morning" | "evening" | null =
     notifyHero?.kind === "side" ? notifyHero.side
-    // "top" suppresses the time-led office hero exactly as "card" does — a big
-    // office hero over a pinned contemplation would contradict the pin.
-    : notifyHero?.kind === "card" || notifyHero?.kind === "top" ? null
+    /**
+     * A PINNED CONTEMPLATION NO LONGER COSTS THE HERO (owner: "not getting a
+     * hero", with the recording showing Contemplation pinned first and the
+     * morning practice sitting in the list beneath it).
+     *
+     * "top" is what a notification pointed at contemplation produces: the
+     * practice rides the top of the list rather than becoming a billboard
+     * that says "sit in silence" (his earlier ask, still honoured). But
+     * suppressing the office hero as well left the whole home heroless —
+     * which is what he was looking at. The two are not in conflict: the
+     * morning or evening practice leads, and the pinned contemplation is
+     * first in the list under it.
+     *
+     * "card" still suppresses, because that IS a hero — the notified card
+     * becomes cardHero below, and two heroes is one too many.
+     */
+    : notifyHero?.kind === "card" ? null
     // Morning leads while it's still morning — past noon a not-yet-prayed
     // morning steps aside (matching the omitted morning card and the
     // dashboard's "what's next" gate). Evening takes the hero from 4 PM
