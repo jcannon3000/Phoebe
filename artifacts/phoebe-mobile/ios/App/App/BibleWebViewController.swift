@@ -670,10 +670,22 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            just reads as further apart. SCOPED to Sojourners: the shared
            `p,li` rule further down still sets 18px for everyone else. */
         'article.node-versevoice{padding-left:13px!important;padding-right:13px!important;}',
+        /* THE BODY IS A SERIF, and only the body. Owner: "can it not be all
+           space grotesk?" — Space Grotesk is the app's voice, right for the
+           three small caps headings that label the day, and wrong for three
+           passages you are meant to read slowly. Georgia is the face this app
+           already uses for prayer text, so the verse, the voice and the prayer
+           are set in it and the labels above them stay Grotesk. That contrast
+           is also what makes the sections legible as sections. */
         'article.node-versevoice p,article.node-versevoice li,',
-        'article.node-versevoice blockquote{font-size:20.5px!important;',
-        'line-height:1.58!important;margin:0 0 0.62em!important;}',
-        'article.node-versevoice h2{margin:1.05em 0 .34em!important;}',
+        'article.node-versevoice blockquote{font-family:Georgia,"Times New Roman",serif!important;',
+        'font-size:20px!important;line-height:1.6!important;margin:0 0 0.6em!important;}',
+        /* MORE AIR BETWEEN THE THREE (owner: "do a little more space between
+           sections"). Sojourners' own 96px was three separate screens on a
+           phone and zero ran them together; the heading's top margin is what
+           carries the whole rhythm now, so it is the one number to turn. */
+        'article.node-versevoice h2{margin:2.1em 0 .5em!important;}',
+        'article.node-versevoice h2:first-of-type{margin-top:.6em!important;}',
         /* (An attribution rule lived here and is deliberately gone. It quieted
            `.versevoice-section p:last-of-type`, meaning to dim the credit line
            under each passage — but Sojourners nests the quotation so that the

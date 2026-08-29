@@ -92,7 +92,6 @@ export default function MenuReflectionsPage() {
     <MenuHub
       title="Reflections"
       emoji="🌅"
-      subtitle="Today's reflections from across the church."
       backLabel="Menu"
       backHref="/menu"
       groups={[

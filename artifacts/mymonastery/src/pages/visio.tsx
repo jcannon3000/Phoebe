@@ -620,13 +620,19 @@ export default function VisioPage() {
     // coming back lands on the second look, which is the point of the shape.
     if (readingOpens) { openReading(); return; }
     /**
-     * The commentary is offered ON the closing slide, so opening it must NOT
-     * end the practice — the reader is already there, and the day is marked
-     * the moment the closing slide is reached (below). Marking again here
-     * would be harmless but the LEAVING wouldn't: it would throw them out of
-     * the completion screen they had just arrived at.
+     * THE LAST SCREEN FINISHES. It does not open the commentary.
+     *
+     * Owner: "it shouldn't inherently go to the reflection … from the last
+     * screen, if they close it … that should just be an option, and it should
+     * just be finished as, like, CTA on the last screen."
+     *
+     * The primary button used to become "Read reflection" whenever today's
+     * work had one, so the one obvious way off the closing slide was OUT of
+     * the app and into somebody else's reading of the picture. The commentary
+     * is still right there — it is a pill on today's card, a few lines below
+     * — but it is now a thing you may choose rather than the thing the deck
+     * does to you. The button says Finished and finishes.
      */
-    if (backgroundOpens) { openBackground(); return; }
     if (!atEnd) { setStep((s) => s + 1); return; }
     // Kept by finishing, not by opening.
     try { markPracticeDoneToday("visio"); } catch { /* non-fatal */ }
@@ -712,14 +718,12 @@ export default function VisioPage() {
    * Which is why this beat's FORWARD action opens the reading rather than
    * paging — the same thing the office's lesson slide does. Coming back
    * through the browser's Next lands you on the beat after, which sends you
-   * to the image again; Back lands you on the first, which offers the
-   * reflection again (see the readBackground reset below).
+   * to the image again.
    *
-   * Second tap advances instead of re-opening, and a day with no essay shows
-   * the picture here instead: a beat you can't leave is the trap this deck
-   * already had once.
+   * Second tap advances instead of re-opening, and a day with no passage
+   * shows a plain reading beat instead: a beat you can't leave is the trap
+   * this deck already had once.
    */
-  const [readBackground, setReadBackground] = useState(false);
   const [readPassage, setReadPassage] = useState(false);
   /**
    * The first-run tutorial (owner: "the first time someone does [Visio] ... a
@@ -760,16 +764,9 @@ export default function VisioPage() {
     window.addEventListener("phoebe:browserfinished", onFinished);
     return () => window.removeEventListener("phoebe:browserfinished", onFinished);
   }, []);
-  /**
-   * Standing before the hand-off again means it's on offer again.
-   *
-   * readBackground exists to stop a second tap re-opening the reading instead
-   * of advancing. Once you've gone BACK past that beat, though, the next
-   * forward tap should hand you off exactly as the first one did — otherwise
-   * going back one slide silently deletes the reflection from the practice.
-   */
-  // Reopening the deck offers the commentary again; finishing is what completes.
-  useEffect(() => { if (step < DONE) setReadBackground(false); }, [step, DONE]);
+  /* (The reset for the commentary's one-shot flag lived here. It went with
+     the auto-open: the closing slide no longer hands anyone off, so there is
+     no "already opened" state to clear on the way back.) */
   useEffect(() => { if (step < READING) setReadPassage(false); }, [step, READING]);
   /**
    * The hand-off flag belongs to ONE beat.
@@ -812,32 +809,12 @@ export default function VisioPage() {
     };
   }, []);
   /** True when this beat's forward action should open the reading, not page. */
-  /**
-   * The commentary is offered on the CLOSING slide, and only when the work has
-   * one — the pool is no longer restricted to works that do. Owner: "if there
-   * happens to be one, have that last slide … have it on that last page."
-   */
-  const backgroundOpens = step === DONE && hasEssay && !readBackground;
+  /* (`backgroundOpens` and `openBackground` lived here and are gone with the
+     auto-open — see next(). The commentary is still offered on the closing
+     slide, as a pill on today's card, which opens it directly; nothing about
+     the deck's forward button touches it any more.) */
   /** The middle beat: the Sunday's own reading, between the two looks. */
   const readingOpens = step === READING && hasReading && !readPassage;
-  const openBackground = () => {
-    if (!view?.essayUrl) return;
-    setReadBackground(true);
-    handedOff.current = true;
-    const opened = openOfficeReading(view.essayUrl, {
-      officeTitle: t("visio.title", { defaultValue: "Visio Divina" }),
-      slideLabel: `${step + 1} of ${TOTAL}`,
-      // Deliberately NOT the artwork's title — some run to eighty characters
-      // and overflow the web viewer's bottom bar.
-      sectionLabel: "",
-    });
-    // Nothing opened (a blocked popup on web) — don't strand them on a beat
-    // whose whole action just failed silently. With no closing card left to
-    // step to, the honest fallback is to leave for the rhythm; the day is
-    // already marked kept above.
-    if (!opened) goHome();
-  };
-
   /**
    * The passage itself, in the reader — the same hand-off as the reflection.
    *
@@ -1134,6 +1111,26 @@ export default function VisioPage() {
               )}
 
             </div>
+            {/**
+              * THE PROMPT TO NOTICE, before anything is looked at.
+              *
+              * Owner: "it's supposed to first show the prompt to notice
+              * something, then show the image." The opening slide named the
+              * work and its painter and then said Begin, which tells you what
+              * you are about to see but not what to DO with it — and this is a
+              * practice whose whole content is an instruction about attention.
+              *
+              * It sits under the work's identity rather than above it because
+              * the title is what the slide IS; this is what the slide asks.
+              */}
+            <p
+              className="prompt-rise"
+              style={{ color: "rgba(200,212,192,0.86)", fontFamily: FONT, fontSize: 16.5, lineHeight: 1.6, margin: "4px 0 0", maxWidth: 430 }}
+            >
+              {t("visio.notice_prompt", {
+                defaultValue: "In a moment you will see this work. Let your eyes rest where they are drawn, and notice what you notice — there is nothing to solve here.",
+              })}
+            </p>
 
             {/**
               * TUTORIAL — owner: "and then have that tutorial available on the
@@ -1203,29 +1200,84 @@ export default function VisioPage() {
           </div>
         )}
 
-        {/* (No text slide here any more. It said "The work, and a little about
-            it. Stay as long as you like — you'll come back here." directly
-            after the prompt that had just said "first you'll see the picture,
-            with a background behind the work" — owner: "this is repetitive of
-            the slide before it." The beat shows the PICTURE now, with the
-            reading offered under it, which is what the prompt promised and
-            what the eyebrow already called it.) */}
+        {/**
+          * THE READING BEAT — which rendered NOTHING until now.
+          *
+          * Owner, walking the practice: "then for some reason, there's a
+          * blank page, and then it's supposed to show the script you're
+          * reading in the flow." Reproduced in the simulator: slide 3 of 5
+          * was an empty stage with only the "Read the passage" button at the
+          * bottom.
+          *
+          * The cause was structural rather than a race — the stage had
+          * branches for TITLE, for the two looking beats (`showsImage`) and
+          * for DONE, and none at all for READING, so this beat had nothing to
+          * draw by construction. It is the third of five and the hinge of the
+          * whole shape (look, read, look again), so an empty screen there
+          * reads as the practice having broken exactly where it asks the most
+          * of you.
+          *
+          * What it says is deliberately short: the passage's name, and what
+          * the next tap does. The reading itself belongs to the reader we
+          * hand off to, not to a paraphrase here.
+          */}
+        {step === READING && (
+          <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14, maxWidth: 460 }}>
+            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
+              {t("visio.reading_eyebrow", { defaultValue: "The reading" })}
+            </p>
+            {hasReading && view?.scriptureRef ? (
+              <h2
+                className="prompt-rise"
+                style={{ fontFamily: FONT, fontSize: "clamp(26px, 6.5vw, 34px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: 0, lineHeight: 1.12 }}
+              >
+                {view.scriptureRef}
+              </h2>
+            ) : null}
+            <p style={{ color: "rgba(200,212,192,0.82)", fontFamily: FONT, fontSize: 16.5, lineHeight: 1.6, margin: 0 }}>
+              {hasReading
+                ? t("visio.reading_body", { defaultValue: "Read it slowly, then come back and look again. You will see the picture differently once you know what the passage says." })
+                : t("visio.reading_none", { defaultValue: "No passage is appointed for this work today. Stay with it a little longer, then look again." })}
+            </p>
+          </div>
+        )}
 
         
 
-        {/* Sit with it, then pray it. Owner's own words, near enough verbatim:
-            "take a moment in contemplation in what God may be putting on your
-            heart through the image, and lift what arises in prayer." Set like
-            the two prompts — same serif, same italic, same measure — because
-            it is the same kind of thing: an instruction for the reader's
-            attention, not a caption.
-
-            Owner: the illuminated rise, upright, Space Grotesk — .prompt-rise,
-            a 6px rise as it fades in and then nothing. It used the office's
-            .title-glow-breathe, whose glow keeps pulsing for as long as the
-            beat is on screen; owner: "Visio Divina is still having draw
-            animations." A practice about holding your attention on one picture
-            can't have the words beside it moving the whole time. */}
+        {/**
+          * THE PROMPT, UNDER THE PICTURE, on the way back.
+          *
+          * Owner: "then it's gonna go back to the image with the prompt
+          * underneath." This is the third look and the longest one — the
+          * picture is on screen above these words, which is the whole reason
+          * they sit UNDER it rather than on a slide of their own: the beat
+          * asks what God may be putting on your heart through the image, and
+          * with no image on the screen it was asking about something that
+          * wasn't there.
+          *
+          * Owner's own words, near enough verbatim: "take a moment in
+          * contemplation in what God may be putting on your heart through the
+          * image, and lift what arises in prayer."
+          *
+          * .prompt-rise, a 6px rise as it fades in and then nothing — NOT the
+          * office's .title-glow-breathe, whose glow keeps pulsing for as long
+          * as the beat is on screen (owner: "Visio Divina is still having
+          * draw animations"). A practice about holding your attention on one
+          * picture cannot have the words beside it moving the whole time.
+          */}
+        {step === LOOK_AGAIN && view && (
+          <p
+            className="prompt-rise"
+            style={{
+              color: WARM, fontFamily: FONT, fontSize: 17, lineHeight: 1.62,
+              margin: "16px 0 0", maxWidth: 460, textAlign: "center",
+            }}
+          >
+            {t("visio.contemplation_prompt", {
+              defaultValue: "Take a moment with what God may be putting on your heart through this image, and lift what arises in prayer.",
+            })}
+          </p>
+        )}
         
 
         {/* The completion slide. Frosted cards (owner) — thumbnail and name —
@@ -1418,15 +1470,16 @@ export default function VisioPage() {
               // one phrase, wherever it appears.
               : readingOpens
                 ? `${t("visio.read_passage", { defaultValue: "Read the passage" })} \u2192`
-              : backgroundOpens
-                ? `${t("visio.read_reflection", { defaultValue: "Read reflection" })} \u2192`
               : step === TITLE
                 ? t("common.begin", { defaultValue: "Begin" })
                 // Audit: the closing slide's button doesn't continue anything —
                 // it marks the practice kept and leaves. Saying "Continue"
                 // there described the one tap in this deck that isn't one.
+                // The closing slide's button doesn't continue anything — it
+                // marks the practice kept and leaves. Owner: "it should just
+                // be finished as, like, CTA on the last screen."
                 : step === DONE
-                  ? t("common.done", { defaultValue: "Done" })
+                  ? t("visio.finished", { defaultValue: "Finished" })
                   : t("common.continue", { defaultValue: "Continue" })}
           </span>
         </button>
