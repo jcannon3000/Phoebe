@@ -695,28 +695,47 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       document.addEventListener('DOMContentLoaded', addStyle);
 
       /** Collapse the stray gaps: comment-only <p>, <br> half-lines, nbsp indents. */
+      /**
+       * REVERSIBLE NOW. This used to DESTROY: it removed the empty paragraphs,
+       * replaced every <br> with a text node, and rewrote the nbsp indents in
+       * place. All three are one-way, so Standard showed oremus's page with
+       * its poetry line breaks and indents permanently gone — not the page as
+       * oremus renders it, which is what Standard is for (owner: "the standard
+       * option for all readers need to show the actual page un edited").
+       *
+       * Same result on screen, achieved without losing anything: an empty
+       * paragraph and a <br> both stop taking up space when they are display:
+       * none, and hideForReader already records and restores exactly that. The
+       * nbsp runs are recorded before being rewritten.
+       */
+      var nbspByReader = [];
       function tidy() {
         var bt = document.querySelector('.bibletext');
         if (!bt || bt.getAttribute('data-phoebe-tidied')) return;
         var ps = bt.querySelectorAll('p');
         for (var i = 0; i < ps.length; i++) {
           if (ps[i].textContent.replace(/\\u00a0|\\s/g, '') === '' && !ps[i].querySelector('img')) {
-            ps[i].parentNode.removeChild(ps[i]);
+            hideForReader(ps[i]);
           }
         }
         var brs = bt.querySelectorAll('br');
-        for (var j = 0; j < brs.length; j++) {
-          brs[j].parentNode.replaceChild(document.createTextNode(' '), brs[j]);
-        }
+        for (var j = 0; j < brs.length; j++) hideForReader(brs[j]);
         // The poetry indents, now that the breaks they followed are gone.
         var walker = document.createTreeWalker(bt, NodeFilter.SHOW_TEXT, null);
         var n;
         while ((n = walker.nextNode())) {
           if (n.nodeValue.indexOf('\\u00a0') !== -1) {
+            nbspByReader.push({ node: n, was: n.nodeValue });
             n.nodeValue = n.nodeValue.replace(/\\u00a0+/g, ' ');
           }
         }
         bt.setAttribute('data-phoebe-tidied', '1');
+      }
+      function setNbspForReader(on) {
+        for (var i = 0; i < nbspByReader.length; i++) {
+          var rec = nbspByReader[i];
+          rec.node.nodeValue = on ? rec.was.replace(/\\u00a0+/g, ' ') : rec.was;
+        }
       }
 
       /** Whose reading this is — named, not implied. */
@@ -764,15 +783,21 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
        * blocks were empty).
        */
       window.__phoebeReaderSet = function (on) {
+        readerOn = !!on;
         var st = document.getElementById('phoebe-reader');
         if (st) st.media = on ? '' : 'not all';
         // The DOM edits, too — see hiddenByReader. Without this, Standard was
         // a stripped page with the styling switched off.
         setHiddenForReader(on);
-        // Phoebe's own masthead is Phoebe's, not the site's: it has no place
-        // on the page as the publisher renders it.
-        var m = document.querySelector('.phoebe-reader-masthead');
-        if (m) m.style.display = on ? '' : 'none';
+        setClearedForReader(on);
+        setNbspForReader(on);
+        /**
+         * EVERYTHING PHOEBE PUT ON THE PAGE COMES OFF. The masthead and the
+         * credit note are ours, not the publisher's, and Standard means the
+         * page as they render it — not their page with our furniture on it.
+         */
+        var mine = document.querySelectorAll('.phoebe-reader-masthead, .phoebe-reader-note');
+        for (var i = 0; i < mine.length; i++) mine[i].style.display = on ? '' : 'none';
       };
 
       /**
@@ -801,8 +826,50 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
        * was still stripped AND no longer styled — white, system-font, most of
        * it missing. Which is the worst of both, and not what "Standard" means.
        */
+      /**
+       * IS THE READER ON. The settle interval re-runs the whole pass for
+       * seconds after load (isolate, tidy, the trims), and every one of those
+       * passes edits the DOM. Tap Standard inside that window and the next
+       * tick simply re-hid everything — the page came back stripped, with the
+       * button reading "Reader". Every re-entrant edit checks this now.
+       */
+      var readerOn = true;
       var hiddenByReader = [];
+      /**
+       * The OTHER inline edits — the site's own backgrounds, cleared up the
+       * ancestor spine so the reader's ground shows through. These are not
+       * hides, so setHiddenForReader never touched them, and they survived
+       * into Standard: the publisher's page with its panels and shadows
+       * stripped out. Owner: "the standard option for all readers need to
+       * show the actual page un edited." Recorded, and put back.
+       */
+      var clearedByReader = [];
+      function clearForReader(el) {
+        if (!readerOn) return;
+        if (!el || el.getAttribute('data-phoebe-cleared')) return;
+        el.setAttribute('data-phoebe-cleared', '1');
+        clearedByReader.push({
+          el: el,
+          bg: el.style.background || '',
+          shadow: el.style.boxShadow || '',
+        });
+        el.style.setProperty('background', 'transparent', 'important');
+        el.style.setProperty('box-shadow', 'none', 'important');
+      }
+      function setClearedForReader(on) {
+        for (var i = 0; i < clearedByReader.length; i++) {
+          var rec = clearedByReader[i];
+          if (on) {
+            rec.el.style.setProperty('background', 'transparent', 'important');
+            rec.el.style.setProperty('box-shadow', 'none', 'important');
+          } else {
+            rec.el.style.background = rec.bg;
+            rec.el.style.boxShadow = rec.shadow;
+          }
+        }
+      }
       function hideForReader(el) {
+        if (!readerOn) return;
         if (!el || el.getAttribute('data-phoebe-hid')) return;
         el.setAttribute('data-phoebe-hid', el.style.display || '');
         el.style.setProperty('display', 'none', 'important');
@@ -834,8 +901,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          */
         var node = post;
         while (node && node !== document.documentElement) {
-          node.style.setProperty('background', 'transparent', 'important');
-          node.style.setProperty('box-shadow', 'none', 'important');
+          clearForReader(node);
           var parent = node.parentElement;
           if (parent && parent !== document.documentElement) {
             var kids = parent.children;
@@ -884,6 +950,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
       function run() {
         addStyle();
+        // Re-applying the stylesheet must not re-enable it — addStyle only
+        // creates the node once, but a late re-render can, and the media
+        // attribute is what Standard turns off.
+        if (!readerOn) {
+          var st0 = document.getElementById('phoebe-reader');
+          if (st0) st0.media = 'not all';
+          return;
+        }
         if (isOremus) { tidy(); credit(); }
         else { isolate(); if (isFdd) fddTrim(); }
         masthead();
