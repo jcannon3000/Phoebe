@@ -22,6 +22,9 @@
 
 import UIKit
 import WebKit
+// CTFontManagerRegisterFontsForURL — the reader's typeface is registered with
+// the process rather than fetched; see readerFontsRegistered.
+import CoreText
 
 // Phoebe palette — mirrors the web app's dark-green theme so the chrome
 // reads as the same product.
@@ -322,8 +325,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
       var ASSETS = 'https://withphoebe.app/reader/';
       var css = [
-        '@font-face{font-family:"Space Grotesk";font-style:normal;font-weight:300 700;font-display:swap;',
-        'src:url("' + ASSETS + 'space-grotesk.woff2") format("woff2-variations");}',
+        /* NO @font-face. The face is registered with the process (see
+           readerFontsRegistered in the controller), so the web view resolves
+           "Space Grotesk" as an installed font. Declaring an @font-face for
+           the same family would put an unreachable URL in front of it — the
+           page's own CSP refuses cross-origin fonts — and every rule naming
+           the family would fall back to system sans, which is exactly the bug
+           this replaced. */
         'html{-webkit-text-size-adjust:100%;}',
         /* The leaf, held under a heavy wash so scripture stays legible — the
            same treatment the practice decks use. Fixed so it doesn't scroll. */
@@ -640,6 +648,8 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         let content = WKUserContentController()
         content.addUserScript(cookieHideScript)
         // Phoebe's reader view — self-gates on the oremus hostname (see readerJS).
+        // Register before the first reader paint — see readerFontsRegistered.
+        _ = Self.readerFontsRegistered
         content.addUserScript(readerScript)
         config.userContentController = content
         return config
@@ -1500,6 +1510,46 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      *  __phoebeReaderSet. State lives here so the button can rename itself. */
     private var readerViewOn = true
     private weak var standardItem: UIBarButtonItem?
+    /**
+     * THE READER'S FONT, REGISTERED WITH THE PROCESS — NOT FETCHED.
+     *
+     * Owner: "The reader view is not space grotesk." It never could be. The
+     * stylesheet asked for the face over the network:
+     *   @font-face { src: url("https://withphoebe.app/reader/space-grotesk.woff2") }
+     * and oremus serves
+     *   Content-Security-Policy: default-src 'self'
+     * with no font-src of its own, so font-src falls back to 'self' and a font
+     * from any other origin is refused before it is fetched. The file was fine
+     * (200, correct MIME, CORS open) and the CSS was fine; the page simply
+     * would not allow it, so every rule naming "Space Grotesk" fell through to
+     * the system sans. No amount of stylesheet work could have fixed that.
+     *
+     * Registering the face with CoreText sidesteps the question entirely: the
+     * family becomes available to this PROCESS, so the web view resolves
+     * font-family:"Space Grotesk" as an installed font with no request to
+     * make and nothing for a CSP to block. It also fixes the same problem for
+     * any other host we ever point the reader at.
+     *
+     * The .ttf files ride in via the web bundle (public/reader), which is a
+     * folder reference — so they ship without touching the Xcode project, and
+     * cap:sync keeps them current. The widget already carried the same two.
+     */
+    private static let readerFontsRegistered: Bool = {
+        var ok = false
+        for name in ["SpaceGrotesk-Regular", "SpaceGrotesk-Bold"] {
+            guard let url = Bundle.main.url(forResource: name, withExtension: "ttf", subdirectory: "public/reader") else { continue }
+            var err: Unmanaged<CFError>?
+            if CTFontManagerRegisterFontsForURL(url as CFURL, .process, &err) {
+                ok = true
+            } else if let e = err?.takeRetainedValue() {
+                // Already registered is a success for our purposes, not a fault.
+                let code = CFErrorGetCode(e)
+                if code == CTFontManagerError.alreadyRegistered.rawValue { ok = true }
+            }
+        }
+        return ok
+    }()
+
     @objc private func toggleReaderView() {
         readerViewOn.toggle()
         webView?.evaluateJavaScript("window.__phoebeReaderSet && window.__phoebeReaderSet(\(readerViewOn))", completionHandler: nil)
