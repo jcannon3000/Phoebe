@@ -13,6 +13,27 @@ export const groupsTable = pgTable("groups", {
   // Admin-rotatable. Nullable so legacy rows keep compiling; the startup
   // migration backfills every existing group with a fresh token.
   inviteToken: text("invite_token").unique(),
+  /**
+   * The secret half of this group's INBOUND EMAIL address.
+   *
+   * Owner: a parish sends its newsletter through Constant Contact and never
+   * posts it online — "is there any way we can bring that into Phoebe?" This
+   * is that way: the group gets an address like
+   * `<slug>-<inboundToken>@in.withphoebe.app`, the parish adds it to their
+   * mailing list as an ordinary subscriber, and whatever reaches the
+   * congregation reaches Phoebe too.
+   *
+   * PROVIDER-AGNOSTIC ON PURPOSE. Constant Contact has an API, but so does
+   * every other list vendor, and a parish that switches from Constant Contact
+   * to Flocknote would break an integration built against one of them. An
+   * address on a list works for all of them, and for a rector using plain
+   * Gmail — and asks the parish for nothing beyond adding a subscriber.
+   *
+   * The token is the secret: an inbound address is a public write endpoint, so
+   * knowing the slug alone must not be enough to post to a congregation. The
+   * sender is checked as well — see routes/inbound-email.ts.
+   */
+  inboundToken: text("inbound_token").unique(),
   // ── Prayer Circles (beta) ─────────────────────────────────────────────
   // A prayer circle is a group with an added dimension of shared prayer.
   // The circle holds one-or-more intentions (see `circleIntentionsTable`

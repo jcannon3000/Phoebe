@@ -4117,6 +4117,11 @@ export async function migrate() {
     // own page and lasts a week. Added after the initial table.
     await run(client, `ALTER TABLE group_reflections ADD COLUMN IF NOT EXISTS url TEXT`);
     await run(client, `ALTER TABLE group_reflections ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`);
+    // The secret half of a group's inbound email address — see the schema.
+    // Backfilled below for every existing group, the same way invite_token is.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS inbound_token TEXT`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS groups_inbound_token_key ON groups (inbound_token)`);
+    await run(client, `UPDATE groups SET inbound_token = encode(gen_random_bytes(9), 'hex') WHERE inbound_token IS NULL`);
 
     await run(client, `
       CREATE TABLE IF NOT EXISTS novenas (
