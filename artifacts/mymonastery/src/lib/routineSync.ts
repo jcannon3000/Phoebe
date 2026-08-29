@@ -42,8 +42,6 @@ export const ROUTINE_KEYS: string[] = [
   "phoebe:office:level-days:morning", "phoebe:office:level-days:evening",
   // Which weekdays each non-office practice card is kept on (practiceDays.ts).
   "phoebe:practice-days",
-  // Which rows the weekly card draws, when the reader has chosen (weeklyRows.ts).
-  "phoebe:weekly-rows",
   // A SECOND practice on the side, alongside its anchor (getSideExtra).
   "phoebe:office:extra:morning", "phoebe:office:extra:evening",
   // Prayer List + BCP merge (community intercessions prayed within the office).
@@ -102,10 +100,6 @@ export const ROUTINE_KEYS: string[] = [
   // The optional rest WINDOW ("an event to rest" — day lives in users.restDays,
   // the time window here). Rides rules so a community's rule can carry it.
   "phoebe:rest-window",
-  // Weekly-card visibility (the retired Turn/Learn/Pray card) — was plain
-  // per-device localStorage, so toggling it on phone never showed up on
-  // web. Owner: "showing up on my phone but not on web."
-  "phoebe:hide-turn-learn-pray",
   // Which COURSES the reader has taken off their home screen, and which medium
   // Audio Divina defaults to. Both are exactly the shape of the key above them
   // — a home-display choice and a practice preference — and both were written

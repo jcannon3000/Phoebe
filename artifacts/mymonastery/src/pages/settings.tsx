@@ -1126,13 +1126,6 @@ function OfficesOnlyExtras() {
 // key and re-checks on the "phoebe:prefs-changed" event we fire below, so the
 // pill appears/disappears immediately without a reload.
 const HIDE_DP_PILL_KEY = "phoebe:hide-daily-progress-pill";
-// The weekly dot card's own visibility key. The card, its Settings toggle and
-// now the whole Turn/Learn/Pray page are gone (owner: "we got rid of the
-// weekly progress" … "Retired — remove it too"), so nothing in the web app
-// reads or writes this. It stays exported only because widgetSync still
-// consults it for payloads from older installed builds; when that legacy path
-// goes, this goes with it.
-export const HIDE_TLP_KEY = "phoebe:hide-turn-learn-pray";
 // Row-labeling mode for that same weekly grid: Morning/Contemplative/
 // Evening Practice (default), or the Way of Love's Turn/Learn/Pray framing
 // of the SAME three rows — same dots, same history, different lens on what

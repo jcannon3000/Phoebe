@@ -601,10 +601,10 @@ const PERSISTED_QUERY_KEYS = [
   "/api/prayer-streak",
   "/api/me/garden-week",
   "/api/cac/today-meta",
-  // Weekly practice grid + the app-open splash's "prayed for you this month"
-  // — persisted so the splash + Daily-progress week render INSTANTLY from the
-  // last session (cached, no lag/flash) and refresh in the background.
-  "/api/me/practice-week",
+  // The app-open splash's "prayed for you this month" — persisted so the splash
+  // renders INSTANTLY from the last session (cached, no lag/flash) and
+  // refreshes in the background. (/api/me/practice-week was persisted beside it
+  // for the weekly grid; that grid is retired and nothing fetches the route.)
   "/api/prayer-streak/prayed-for-me-month",
   // Home content — so the WHOLE home (not just the rhythm) paints from cache
   // on a slow/cold launch: prayer requests, community intercessions, your
