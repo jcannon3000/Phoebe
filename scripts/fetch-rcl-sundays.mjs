@@ -117,6 +117,11 @@ function readingsFrom(html) {
     const l = lines[i];
     // The lessons block ends where the collect or the download link begins.
     if (/^(the collect|download this page|old testament|the response|the epistle|the gospel)\b/i.test(l)) break;
+    // "Track 1" and "Track 2" look exactly like a citation to the pattern
+    // above — a capitalised word followed by a number — and were being filed
+    // as Old Testament readings. Harmless while only gospel and epistle were
+    // read; wrong the moment the OT list is used to fill a gap.
+    if (/^track\s+\d/i.test(l)) continue;
     const m = cite.exec(l);
     if (m) found.push(m[1].replace(/\s+/g, " ").trim());
     // "Track 1", "or", "Track 2" and stray headings are simply skipped rather
