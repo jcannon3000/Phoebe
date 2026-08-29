@@ -498,17 +498,25 @@ struct PhoebeWidgetView: View {
             // idea rendered by the system — so the ground is the material
             // first, then the green over it.
             //
-            // The tint also carries more weight here than on the web (0.27
-            // there) because on the web the blur is doing half the work of
-            // making the card read as solid.
+            // THE TINT HAS TO STAY THIN, or there is no frost to see. The
+            // first attempt laid the green on at 0.62 to answer "too
+            // transparent" — which buried the material under it, and a
+            // material you cannot see through is just flat colour (owner:
+            // "the widget card background is just flat instead of being
+            // frosted"). Transparent and flat are the two ways to get this
+            // wrong, and they are fixed by different halves: the MATERIAL
+            // stops it being transparent, the THIN tint keeps it frosted.
+            // So the green sits near the web's own weight (0.27) and the
+            // material — a step up from ultraThin, since it is carrying the
+            // solidity on its own now — does the rest.
             ZStack {
                 RoundedRectangle(cornerRadius: 24 * s)
-                    .fill(.ultraThinMaterial)
+                    .fill(.thinMaterial)
                 RoundedRectangle(cornerRadius: 24 * s)
                     .fill(Color(red: (26 - 16 * c.tint) / 255.0,
                                 green: (52 - 24 * c.tint) / 255.0,
                                 blue: (36 - 18 * c.tint) / 255.0)
-                        .opacity(0.62 + 0.08 * c.tint))
+                        .opacity(0.32 + 0.09 * c.tint))
             }
         )
         .overlay(
