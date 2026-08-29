@@ -115,7 +115,10 @@ export type LiturgyMode =
   | "morning-devotion"
   | "early-evening-devotion"
   | "creation-morning"
-  | "creation-evening";
+  | "creation-evening"
+  // The Daily Scripture Reading deck — psalms in full, then the three lessons.
+  // Not an office; it rides this renderer because it is the same slide shape.
+  | "scripture";
 
 // ── Per-day localStorage progress ───────────────────────────────────────────
 // Mirrors prayer-mode's resume-where-you-left-off pattern. The home-screen
@@ -551,6 +554,7 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
   "early-evening-devotion": { endpoint: "/api/devotion/early-evening", title: "Early Evening Devotion" },
   "creation-morning": { endpoint: "/api/devotion/creation-morning", title: "Creation Prayer · Morning" },
   "creation-evening": { endpoint: "/api/devotion/creation-evening", title: "Creation Prayer · Evening" },
+  scripture: { endpoint: "/api/office/scripture", title: "Daily Scripture Reading" },
 };
 
 export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker, initialBook, initialSlide }: OfficeViewerProps) {
@@ -4712,6 +4716,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
 
 // Where each liturgy begins in the 1979 BCP — the headline page badge.
 const MODE_START_PAGE: Record<LiturgyMode, string> = {
+  // The scripture reading has no page in the BCP — it is the lectionary's
+  // readings, not a liturgy — so its badge names the psalter, which is the one
+  // part of it a paper book actually carries.
+  scripture: "p. 585",
   morning: "p. 75",
   evening: "p. 115",
   compline: "p. 127",
@@ -5810,6 +5818,10 @@ export default function BcpDailyOfficePage() {
       }
       return;
     }
+    // The scripture reading opens straight into its deck: it has no "way to
+    // pray" to honour (no listen/venite variants) and no beta gate, so none of
+    // the branching below applies to it.
+    if (mode === "scripture") { setShowMode("scripture"); return; }
     if (
       mode === "morning" ||
       mode === "evening" ||

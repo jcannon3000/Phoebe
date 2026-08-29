@@ -34,7 +34,11 @@ export default function MenuPracticesPage() {
           // Scripture Reading means the daily-readings page). A plain external
           // open, no read-tracking (that's the side-anchor Daily Scripture
           // Readings card's job, not this quick link's).
-          { emoji: "📰", label: "Daily Scripture Reading", sub: "Today's appointed psalm & lessons", onClick: () => openExternal(getReadingsTodayUrl(), { reader: true }) },
+          // Owner: a slideshow rather than a link out — the psalms said in
+          // full first, then the three lessons, each opening in the reader.
+          // (It was a plain external open of Forward Movement's readings page;
+          // that page is still what the lessons themselves open into.)
+          { emoji: "📰", label: "Daily Scripture Reading", sub: "Today's appointed psalm & lessons", onClick: () => go("/bcp/daily-office?mode=scripture") },
         ],
       }, {
         items: [

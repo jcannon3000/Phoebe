@@ -24,6 +24,7 @@ import { isUserBeta } from "../lib/parishGate";
 import { resolveLocale } from "../lib/officeI18n";
 import { seedBcpTexts } from "../seeds/bcpTexts";
 import { PSALTER } from "../seeds/bcpPsalter";
+import { assembleScriptureReading } from "../lib/assembleScriptureReading";
 
 const router = Router();
 
@@ -449,6 +450,33 @@ router.get("/devotion/:kind", async (req, res) => {
  * invitatory mid-office. Static catalogues (no DB), so the sheet can render
  * instantly when the reader taps the pill.
  */
+/**
+ * The Daily Scripture Reading deck (owner) — the day's psalms in full, then
+ * the Old Testament, the Epistle and the Gospel as title cards that open the
+ * passage in the reader view.
+ *
+ * Served in the same {slides, officeDay} shape as the offices so the existing
+ * deck renderer can play it with no new client surface: one MODE_CONFIG entry
+ * points at this endpoint and everything downstream — progress, resume, the
+ * chime, read-aloud — works because it is the same deck.
+ */
+router.get("/office/scripture", async (req, res) => {
+  const date = parseOfficeDate(req.query.date);
+  try {
+    const { slides, dayInfo } = await assembleScriptureReading(date);
+    return res.json({
+      slides,
+      officeDay: { ...(dayInfo as Record<string, unknown>), totalSlides: slides.length },
+      cacheDate: date.toISOString().slice(0, 10),
+    });
+  } catch (err) {
+    console.error("Scripture reading assembly failed:", err);
+    // Never a 500 into a practice. An empty deck is honest and the client
+    // already handles "nothing to show" better than an error page.
+    return res.json({ slides: [], officeDay: { totalSlides: 0 }, cacheDate: date.toISOString().slice(0, 10) });
+  }
+});
+
 router.get("/office/swap-options", (req, res) => {
   // Rite-scoped: Rite I offers canticles 1-7, Rite II offers 8-21. Mixing the
   // two series inside one office is a category error — the BCP prints each
