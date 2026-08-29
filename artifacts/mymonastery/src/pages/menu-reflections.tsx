@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 import { MenuHub } from "@/components/MenuHub";
 import { openExternal } from "@/lib/openExternal";
 import {
@@ -27,10 +28,21 @@ import {
 // and a slot in the customizer, and inventing day-flags for three sources at
 // once is how a practice ends up counted twice. They read; they don't score.
 export default function MenuReflectionsPage() {
+  const [, setLocation] = useLocation();
   const openFdd = () => { markFddRead(); openExternal(FDD_TODAY_URL, { reader: true }); };
   const openSsje = () => { markSsjeRead(); openExternal(SSJE_TODAY_URL, { reader: true }); };
   const openCac = () => { markCacRead(); openExternal(CAC_TODAY_URL, { reader: true }); };
-  const openVts = () => { markVtsRead(); openExternal(VTS_TODAY_URL, { reader: true }); };
+  /**
+   * THE DEAN'S COMMENTARY OPENS ITS OWN SLIDESHOW (owner: "from the reflection
+   * page it should be opening the deans comentary slideshow").
+   *
+   * /vts-reading has existed all along — an in-app reader, one paragraph per
+   * slide, built to match the office deck — and this row was sending people to
+   * the web page instead, so the one reflection we DO present ourselves was
+   * the one you never saw presented. The read is still marked from here, so
+   * the home card settles whichever way you arrive.
+   */
+  const openVts = () => { markVtsRead(); setLocation("/vts-reading"); };
   const openNouwen = () => openExternal(NOUWEN_TODAY_URL, { reader: true });
   const openSojo = () => openExternal(sojournersTodayUrl(), { reader: true });
   const openGrist = () => openExternal(GRIST_TODAY_URL, { reader: true });
