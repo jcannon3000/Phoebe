@@ -33,6 +33,8 @@ import { useTranslation } from "react-i18next";
 import { ICON_CATALOGUE, type IconArtwork } from "@/lib/iconCatalogue";
 import { ACT_CATALOGUE } from "@/lib/visioCatalogue";
 import { isActHidden, actIconOn, actIconOff, ACT_OVERRIDES_EVENT } from "@/lib/actOverrides";
+import { weekIconId, lastWeekIconId, setWeekIcon, suggestedForWeek, suggestionReason } from "@/lib/iconWeek";
+import { IconHowToIntro, iconHowtoSeen, markIconHowtoSeen } from "@/components/IconHowToIntro";
 import { getIconHistory, recordIconPrayed, getPhysicalIconLogs, recordPhysicalIcon } from "@/lib/iconHistory";
 import { FROST_BLUR } from "@/lib/frost";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -86,12 +88,68 @@ function iconPool(): IconArtwork[] {
   return [...base, ...added];
 }
 
-type Phase = "search" | "timer" | "pray" | "done" | "log" | "log-done";
+/**
+ * "week" is the first screen of a NEW week — the three doors. Every other
+ * phase is unchanged; once an icon is chosen for the week the practice opens
+ * straight into it, which is the whole point of choosing one.
+ */
+/** One of the week's doors — the icon, its name, and why it is being offered. */
+function WeekDoor({ art, label, note, onClick }: {
+  art: IconArtwork; label: string; note: string | null; onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        userSelect: "none", WebkitTapHighlightColor: "transparent",
+        display: "flex", alignItems: "center", gap: 14, textAlign: "left",
+        borderRadius: 16, padding: 12,
+        background: "rgba(240,237,230,0.06)",
+        backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+        border: "1px solid rgba(200,212,192,0.18)",
+      }}
+    >
+      <img
+        src={art.img}
+        alt=""
+        aria-hidden
+        decoding="async"
+        style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 10, flexShrink: 0 }}
+      />
+      <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+        <span style={{ color: "rgba(143,175,150,0.9)", fontFamily: FONT, fontSize: 10.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+          {label}
+        </span>
+        <span style={{ color: WARM, fontFamily: FONT, fontSize: 15.5, fontWeight: 600, lineHeight: 1.3 }}>
+          {art.title}
+        </span>
+        {note && (
+          <span style={{ color: "rgba(200,212,192,0.7)", fontFamily: FONT, fontSize: 12, lineHeight: 1.45 }}>
+            {note}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+type Phase = "week" | "search" | "timer" | "pray" | "done" | "log" | "log-done";
 
 export default function IconsPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
-  const [phase, setPhase] = useState<Phase>("search");
+  /**
+   * OPENS ON THE WEEK'S ICON once there is one (owner: "once they choose it,
+   * that's the one that comes up"). Only a week with no choice yet shows the
+   * three doors, and only then does the catalogue search appear at all.
+   */
+  const [phase, setPhase] = useState<Phase>(() => {
+    try { return weekIconId() == null ? "week" : "timer"; } catch { return "search"; }
+  });
+  const [showHowto, setShowHowto] = useState<boolean>(() => {
+    try { return !iconHowtoSeen(); } catch { return false; }
+  });
   const [query, setQuery] = useState("");
   const [chosen, setChosen] = useState<IconArtwork | null>(null);
   /** Minutes, 1–5 — or null for "no timer". */
@@ -119,6 +177,45 @@ export default function IconsPage() {
   }, []);
   const catalogue = useMemo(iconPool, [ovVersion]);
   const byId = useMemo(() => new Map(catalogue.map((a) => [a.id, a])), [catalogue]);
+  /**
+   * The week's icon, restored.
+   *
+   * `byId` is the pool AFTER the admin tool's deletions and icon-toggles, so
+   * an icon deleted mid-week simply isn't found and the week falls back to
+   * choosing again — rather than a work the owner removed reappearing every
+   * day until Sunday, which is the tombstone bug class this app has had
+   * before.
+   */
+  useEffect(() => {
+    if (chosen) return;
+    const id = weekIconId();
+    if (id == null) return;
+    const art = byId.get(id);
+    if (art) setChosen(art);
+    else setPhase("week");
+  }, [byId, chosen]);
+  /** The three doors — resolved against the same pool, for the same reason. */
+  const weekDoors = useMemo(() => {
+    const last = lastWeekIconId();
+    const suggestion = suggestedForWeek();
+    const lastArt = last != null ? byId.get(last) ?? null : null;
+    const sugArt = suggestion ? byId.get(suggestion.id) ?? null : null;
+    return {
+      last: lastArt,
+      // Collapse to two doors when the suggestion IS last week's icon —
+      // the same work under two labels reads as a bug, not a choice.
+      suggested: sugArt && sugArt.id !== lastArt?.id ? sugArt : null,
+      reason: suggestionReason(suggestion),
+    };
+  }, [byId]);
+  /** Choosing sets the week's icon and goes straight to the sit. */
+  const chooseForWeek = (art: IconArtwork) => {
+    setChosen(art);
+    setLoadedSrc(null);
+    setImageFailed(false);
+    try { setWeekIcon(art.id); } catch { /* non-fatal */ }
+    setPhase("timer");
+  };
   /** The PHYSICAL icons this person has logged — the "choose from previous
    *  logs" list on the log screen (owner, after the Audio Divina pattern). */
   const [physicalLogs, setPhysicalLogs] = useState(() => getPhysicalIconLogs());
@@ -229,6 +326,11 @@ export default function IconsPage() {
     setMinutes(null);
     setLoadedSrc(null);
     setImageFailed(false);
+    // Picking from the catalogue IS picking for the week — the search is one
+    // of the three doors, not a way round them. Without this, "choose a new
+    // one" would sit you with an icon today and offer the doors again
+    // tomorrow, which is the opposite of what the week is for.
+    try { setWeekIcon(a.id); } catch { /* non-fatal */ }
     setPhase("timer");
   };
 
@@ -299,11 +401,16 @@ export default function IconsPage() {
 
   /** Header Back steps phases; ✕ leaves for the Practices menu it came from. */
   const back = () => {
-    if (phase === "timer") { setPhase("search"); return; }
-    if (phase === "log") { setPhase("search"); return; }
-    if (phase === "log-done") { setPhase("search"); return; }
+    // Back from the sit goes to the DOORS when the week already has an icon —
+    // the search is only a step on the way to choosing one, so returning
+    // there would offer a catalogue nobody asked for.
+    const toStart: Phase = weekIconId() == null ? "week" : "week";
+    if (phase === "search") { setPhase(toStart); setQuery(""); return; }
+    if (phase === "timer") { setPhase(toStart); return; }
+    if (phase === "log") { setPhase(toStart); return; }
+    if (phase === "log-done") { setPhase(toStart); return; }
     if (phase === "pray") { setPhase("timer"); return; }
-    if (phase === "done") { setPhase("search"); setQuery(""); return; }
+    if (phase === "done") { setPhase(toStart); setQuery(""); return; }
     setLocation("/menu/practices");
   };
   const close = () => setLocation("/menu/practices");
@@ -313,6 +420,21 @@ export default function IconsPage() {
     backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
     border: `1px solid ${BORDER}`,
   };
+
+  /**
+   * The tutorial, in FRONT of the practice on a first visit — the same shape
+   * Visio uses. Rendered before the screen rather than over it, so nothing
+   * behind it is running while it is being read.
+   */
+  if (showHowto) {
+    return (
+      <IconHowToIntro
+        photos={LEAF_PHOTOS}
+        onDone={() => { markIconHowtoSeen(); setShowHowto(false); }}
+      />
+    );
+  }
+
 
   return (
     <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -359,6 +481,64 @@ export default function IconsPage() {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}
           style={{ maxWidth: 520, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}
         >
+          {/* THE WEEK'S THREE DOORS. Owner: "the first time they go to it each
+              week, let's have the one they did last week — choose new one,
+              continue, or a third one that's suggested based on the readings
+              for Sunday." Shown only when this week has no icon yet; after
+              that the practice opens straight into the one they chose. */}
+          {phase === "week" && (
+            <>
+              <p style={{ color: WARM, fontFamily: FONT, fontSize: 20, fontWeight: 600, textAlign: "center", margin: "10px 0 0", lineHeight: 1.4 }}>
+                {t("icons.week_heading", { defaultValue: "Your icon for this week" })}
+              </p>
+              <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, textAlign: "center", margin: 0, lineHeight: 1.55 }}>
+                {t("icons.week_sub", { defaultValue: "One icon, every day until Sunday." })}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 6 }}>
+                {weekDoors.last && (
+                  <WeekDoor
+                    art={weekDoors.last}
+                    label={t("icons.week_continue", { defaultValue: "Stay with last week's" })}
+                    note={null}
+                    onClick={() => chooseForWeek(weekDoors.last!)}
+                  />
+                )}
+                {weekDoors.suggested && (
+                  <WeekDoor
+                    art={weekDoors.suggested}
+                    label={t("icons.week_suggested", { defaultValue: "Suggested" })}
+                    /* Only when the reason is real — see suggestionReason. A
+                       same-book match is not a reason worth stating. */
+                    note={weekDoors.reason}
+                    onClick={() => chooseForWeek(weekDoors.suggested!)}
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPhase("search")}
+                  style={{
+                    userSelect: "none", WebkitTapHighlightColor: "transparent",
+                    borderRadius: 16, padding: "16px 18px", fontSize: 15, fontWeight: 600,
+                    color: WARM, fontFamily: FONT, textAlign: "left", ...frosted,
+                  }}
+                >
+                  {t("icons.week_new", { defaultValue: "Choose a new one →" })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowHowto(true)}
+                  style={{
+                    userSelect: "none", WebkitTapHighlightColor: "transparent", background: "transparent",
+                    border: "none", color: SAGE, fontFamily: FONT, fontSize: 12.5, fontWeight: 600,
+                    padding: "6px 8px", marginTop: 2,
+                  }}
+                >
+                  {t("icons.tutorial_pill", { defaultValue: "How this works" })}
+                </button>
+              </div>
+            </>
+          )}
+
           {phase === "search" && (
             <>
               <p style={{ color: WARM, fontFamily: FONT, fontSize: 20, fontWeight: 600, textAlign: "center", margin: "10px 0 0", lineHeight: 1.4 }}>
