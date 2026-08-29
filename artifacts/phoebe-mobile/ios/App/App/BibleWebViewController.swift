@@ -558,7 +558,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
           // parent hid the player and left the credit stranded.
           var box = players[j].parentElement;
           for (var up = 0; up < 3 && box; up++) {
-            var len = box.textContent.replace(/\s/g, '').length;
+            var len = box.textContent.replace(/\\s/g, '').length;
             if (len > 60) break;
             box.style.setProperty('display', 'none', 'important');
             box = box.parentElement;
