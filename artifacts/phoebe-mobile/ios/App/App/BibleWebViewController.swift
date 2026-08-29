@@ -556,7 +556,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         /* The word, as the title it is. */
         'h2.fl-post-feed-title{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
         'font-size:30px!important;line-height:1.15!important;font-weight:700!important;',
-        'margin:0 0 16px!important;padding:0 20px!important;color:#F0EDE6!important;}',
+        /* Down off the masthead, and in the same 20px gutter as the text
+           (owner: "bring the title down and with left padding"). */
+        'margin:18px 0 16px!important;padding:0 20px!important;color:#F0EDE6!important;}',
         'h2.fl-post-feed-title a{color:#F0EDE6!important;text-decoration:none!important;}',
         /* The reflection. */
         '.fl-post-feed-content{padding:0 20px!important;}',
@@ -641,7 +643,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'color:rgba(200,212,192,0.75)!important;}',
         /* Nouwen's meditation title. */
         'h3{font-size:27px!important;line-height:1.18!important;font-weight:700!important;',
-        'margin:0 0 16px!important;color:#F0EDE6!important;}',
+        'margin:6px 0 16px!important;color:#F0EDE6!important;}',
         'p,li{font-size:18px!important;line-height:1.72!important;color:#F0EDE6!important;',
         'margin:0 0 1.15em!important;}',
         /* FDD's scripture sits above the reflection — set apart, the way the
@@ -664,7 +666,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.phoebe-reader-note a{color:rgba(168,197,160,0.75)!important;text-decoration:underline;}',
         /* The site's name at the very top (owner: "keep the oremus title at
            the top and such so we know it's the webpage"). */
-        '.phoebe-reader-masthead{padding:10px 20px 0!important;font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        '.phoebe-reader-masthead{padding:18px 20px 2px!important;font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
         'font-size:11px!important;letter-spacing:.18em;text-transform:uppercase;color:rgba(143,175,150,0.6)!important;}',
       ]).join('');
 

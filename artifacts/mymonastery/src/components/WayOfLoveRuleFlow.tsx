@@ -2875,6 +2875,7 @@ export default function WayOfLoveRuleFlow({
         "learn",
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
+        "relational",
         "custom",
       ]
     : pilot
@@ -2889,6 +2890,7 @@ export default function WayOfLoveRuleFlow({
         "learn",
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
+        "relational",
         "custom",
       ]
     : [
