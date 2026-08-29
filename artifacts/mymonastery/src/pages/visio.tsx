@@ -44,7 +44,8 @@ import { openExternal, openOfficeReading, preloadExternal } from "@/lib/openExte
 import { FROST_BLUR } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
-import { chooseArtwork, artworkById, alternatesForDay, type Chosen } from "@/lib/visioSelect";
+import { chooseArtwork, artworkById, alternatesForDay, readingUrl, type Chosen } from "@/lib/visioSelect";
+import { VisioHowToIntro, visioHowtoSeen, markVisioHowtoSeen } from "@/components/VisioHowToIntro";
 import { getVisioHistory, recordVisioSeen } from "@/lib/visioHistory";
 import { useVisioLessons } from "@/hooks/useVisioToday";
 import { apiRequest } from "@/lib/queryClient";
@@ -389,9 +390,22 @@ export default function VisioPage() {
    * depicts is still NAMED — it's the eyebrow over the title on the picture
    * beat — but its text isn't printed here. The office is where you read.
    */
-  const TITLE = 0, PROMPT_1 = 1, FIRST_LOOK = 2, CONTEMPLATE = 3, DONE = 4;
+  /**
+   * THE READING BEAT. Owner: "can we also include the reading ... whatever the
+   * passage is that the commentary is referring to."
+   *
+   * It sits straight after the reflection, because the two belong together —
+   * you have looked, you have read what someone wrote about the looking, and
+   * now the passage itself. Like the reflection beat, its FORWARD action is a
+   * hand-off rather than a page turn: openOfficeReading gives oremus's own
+   * page the office's chrome, and Phoebe's reader view restyles it. Which is
+   * the ONLY way scripture appears here. The rule from the top of this file
+   * stands — no scripture slide, no NRSV text reproduced in the deck; the
+   * cut slide printed the passage, this beat opens the Bible.
+   */
+  const TITLE = 0, PROMPT_1 = 1, FIRST_LOOK = 2, READING = 3, CONTEMPLATE = 4, DONE = 5;
   const [step, setStep] = useState(TITLE);
-  const TOTAL = 5;
+  const TOTAL = 6;
   /**
    * Which beats hold the picture.
    *
@@ -409,11 +423,24 @@ export default function VisioPage() {
    * essay is known. Never the reverse.
    */
   const hasEssay = !!view?.essayUrl;
+  /**
+   * The passage this work — and the reflection written about it — is about.
+   *
+   * `view.scriptureRef` is the reference the pick was made ON, so it is by construction
+   * the passage the commentary is discussing. readingUrl turns ACT's spelling
+   * of it into an address oremus answers (it writes some books back-to-front,
+   * "Kings I, 19:1-18"). Null when there is no parseable reference, and then
+   * the beat is simply another held look — the same way a work with no essay
+   * makes the first-look beat a plain picture beat rather than changing the
+   * beat count.
+   */
+  const passageUrl = useMemo(() => (view?.scriptureRef ? readingUrl(view.scriptureRef) : null), [view?.scriptureRef]);
+  const hasReading = !!passageUrl;
   /** FIRST_LOOK is the picture — with or without a reflection to open. It used
    *  to be a text slide when there WAS one, which put two slides of
    *  instructions back to back and made the reader tap twice before seeing
    *  anything. The reading is offered under the work instead. */
-  const showsImage = step === FIRST_LOOK || step === CONTEMPLATE;
+  const showsImage = step === FIRST_LOOK || step === READING || step === CONTEMPLATE;
 
   /**
    * SIT WITH IT — a 12-second hold before each beat will let you move on.
@@ -432,7 +459,14 @@ export default function VisioPage() {
    * title, the prompts and the close all move when you do.
    */
   const HOLD_MS = 12_000;
-  const holdsThisBeat = showsImage;
+  /**
+   * NOT on the reading beat. The two hand-off beats sit back to back, and a
+   * second twelve-second lock between them would be twenty-four seconds of
+   * waiting to reach a passage the reader has already decided to read — a
+   * locked door, which is the exact thing the comment above rules out. The
+   * hold belongs to the beats that ask you to LOOK.
+   */
+  const holdsThisBeat = showsImage && step !== READING;
   const [holdReady, setHoldReady] = useState(false);
   useEffect(() => {
     if (!holdsThisBeat) { setHoldReady(true); return; }
@@ -462,6 +496,8 @@ export default function VisioPage() {
   const next = () => {
     // The Background beat's forward action IS the hand-off — see openBackground.
     if (backgroundOpens) { openBackground(); return; }
+    // …and the Reading beat's is the passage. Same shape, same reason.
+    if (readingOpens) { openReading(); return; }
     if (!atEnd) { setStep((s) => s + 1); return; }
     // Kept by finishing, not by opening.
     try { markPracticeDoneToday("visio"); } catch { /* non-fatal */ }
@@ -551,6 +587,17 @@ export default function VisioPage() {
    * already had once.
    */
   const [readBackground, setReadBackground] = useState(false);
+  const [readPassage, setReadPassage] = useState(false);
+  /**
+   * The first-run tutorial (owner: "the first time someone does [Visio] ... a
+   * slide tutorial in a similar UI to the creation prayer tutorial"), and the
+   * pill on this deck's own front slide that reopens it ("and then have that
+   * tutorial available on the front page") — the same pair Co-Breathe has.
+   *
+   * Read ONCE, into state, rather than checked at render: marking it seen must
+   * not re-run the gate mid-practice.
+   */
+  const [showHowto, setShowHowto] = useState<boolean>(() => !visioHowtoSeen());
   /** True only while OUR hand-off is the thing on screen — see the listener below. */
   const handedOff = useRef(false);
   /**
@@ -589,6 +636,7 @@ export default function VisioPage() {
    * going back one slide silently deletes the reflection from the practice.
    */
   useEffect(() => { if (step < FIRST_LOOK) setReadBackground(false); }, [step, FIRST_LOOK]);
+  useEffect(() => { if (step < READING) setReadPassage(false); }, [step, READING]);
   /**
    * The hand-off flag belongs to ONE beat.
    *
@@ -606,6 +654,7 @@ export default function VisioPage() {
    */
   useEffect(() => { handedOff.current = false; }, [step]);
   useEffect(() => { if (view?.essayUrl) preloadExternal(view.essayUrl); }, [view?.essayUrl]);
+  useEffect(() => { if (passageUrl) preloadExternal(passageUrl); }, [passageUrl]);
   useEffect(() => {
     const onNext = () => { handedOff.current = false; setStep((n) => Math.min(TOTAL - 1, n + 1)); };
     const onPrev = () => { handedOff.current = false; setStep((n) => Math.max(0, n - 1)); };
@@ -618,6 +667,8 @@ export default function VisioPage() {
   }, []);
   /** True when this beat's forward action should open the reading, not page. */
   const backgroundOpens = step === FIRST_LOOK && hasEssay && !readBackground;
+  /** True when this beat's forward action should open the passage, not page. */
+  const readingOpens = step === READING && hasReading && !readPassage;
   const openBackground = () => {
     if (!view?.essayUrl) return;
     setReadBackground(true);
@@ -637,6 +688,30 @@ export default function VisioPage() {
     if (!opened) setStep((n) => Math.min(TOTAL - 1, n + 1));
   };
 
+  /**
+   * The passage itself, in the reader — the same hand-off as the reflection.
+   *
+   * openOfficeReading, NOT openExternal: this is a reading inside a practice,
+   * and it should behave like one — the office's top bar, the floating
+   * Back/Next pill that steps the deck underneath, and Phoebe's reader view
+   * over oremus's own page. Coming back through Next lands on the
+   * contemplation beat, which is where the looking resumes.
+   */
+  const openReading = () => {
+    if (!passageUrl) return;
+    setReadPassage(true);
+    handedOff.current = true;
+    const opened = openOfficeReading(passageUrl, {
+      officeTitle: t("visio.title", { defaultValue: "Visio Divina" }),
+      slideLabel: `${step + 1} of ${TOTAL}`,
+      sectionLabel: "",
+    });
+    // Nothing opened (a blocked popup on web) — step DIRECTLY rather than
+    // through next(), for the same reason openBackground does: readingOpens is
+    // render-scoped, so next() would re-enter this function and recurse.
+    if (!opened) setStep((n) => Math.min(TOTAL - 1, n + 1));
+  };
+
   /** Jump back into a picture from the completion cards. */
   const reopen = (id: number) => {
     const art = artworkById(id);
@@ -651,6 +726,23 @@ export default function VisioPage() {
     // hand-off.)
     setStep(CONTEMPLATE);
   };
+
+  /**
+   * The tutorial sits IN FRONT of the deck, not inside it — the deck's beat
+   * count, its holds and its hand-offs all stay exactly as they are, and
+   * dismissing this returns to a practice that hasn't started yet. Rendered
+   * before the deck rather than over it so the twelve-second hold on the first
+   * looking beat isn't quietly running behind a tutorial nobody has finished
+   * reading.
+   */
+  if (showHowto) {
+    return (
+      <VisioHowToIntro
+        photos={LEAF_PHOTOS}
+        onDone={() => { markVisioHowtoSeen(); setShowHowto(false); }}
+      />
+    );
+  }
 
   return (
     <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -899,6 +991,30 @@ export default function VisioPage() {
               )}
 
             </div>
+
+            {/**
+              * TUTORIAL — owner: "and then have that tutorial available on the
+              * front page." This slide is the practice's front page, and the
+              * pill is where Co-Breathe puts its own ("Tutorial" on the sync
+              * screen), so someone who wants the explanation back knows where
+              * to look without it being in the way of someone who doesn't.
+              *
+              * Quiet on purpose: a frosted outline, not a filled button. The
+              * one thing this slide should be asking for is Begin.
+              */}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setShowHowto(true); }}
+              className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+              style={{
+                padding: "7px 16px", background: "rgba(9,26,16,0.42)",
+                backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+                border: "1px solid rgba(168,197,160,0.34)", color: FAINT,
+                fontFamily: FONT, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              {t("visio.tutorial_pill", { defaultValue: "How this works" })}
+            </button>
 
             {/**
               * MORE OPTIONS — today's other three works, as cards.
@@ -1221,6 +1337,10 @@ export default function VisioPage() {
               // inconsistency"). One phrase, one key.
               : backgroundOpens
                 ? `${t("visio.read_reflection", { defaultValue: "Read reflection" })} \u2192`
+              // Same rule as the reflection's button: one destination, one
+              // phrase, wherever it appears.
+              : readingOpens
+                ? `${t("visio.read_passage", { defaultValue: "Read the passage" })} \u2192`
               : step === TITLE
                 ? t("common.begin", { defaultValue: "Begin" })
                 // Audit: the closing slide's button doesn't continue anything —

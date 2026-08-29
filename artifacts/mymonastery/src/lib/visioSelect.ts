@@ -78,6 +78,61 @@ export type RefParts = { book: string; spans: Span[] };
  * ACT writes some references back-to-front ("Samuel I, 7:7-11"), so the
  * leading-numeral forms are normalised both ways round before comparing.
  */
+/**
+ * An ACT reference, written the way a Bible browser expects it.
+ *
+ * ACT writes some books back-to-front with a comma — "Kings I, 19:1-18",
+ * "Samuel II, 5:1-5, 9-10" — which `parseRef` already normalises for MATCHING,
+ * but only into its own parts. Handing that string to oremus asks it for a
+ * book called "Kings I" and gets nothing back, so the passage a commentary is
+ * about has to be turned round before it can be opened.
+ *
+ * Only the leading-numeral form is touched. Everything else ("Luke 2:(1-7),
+ * 8-20", "John 18:1-19:42") is already what oremus reads, and bibleUrl strips
+ * the lectionary parentheticals on its way out.
+ *
+ * Returns the reference unchanged when there is nothing to turn round, and ""
+ * for an empty ref so callers can test one thing.
+ */
+export function canonicalRef(ref: string): string {
+  const trimmed = (ref ?? "").trim();
+  if (!trimmed) return "";
+  // "Samuel I, 17:..." → "1 Samuel 17:..."  ·  "Kings II, 5:1-14" → "2 Kings 5:1-14"
+  const m = /^([A-Za-z][A-Za-z\s]*?)\s+(i{1,3})\s*,?\s*/i.exec(trimmed);
+  if (!m) return trimmed;
+  return `${m[2]!.length} ${m[1]!.trim()} ${trimmed.slice(m[0].length)}`.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * The passage a commentary is about, as an oremus URL.
+ *
+ * Owner: "can we also include the reading ... whatever the passage is that the
+ * commentary is referring to." Not printed into the deck — that scripture
+ * slide has been cut twice and the rule stands: Phoebe never reproduces the
+ * NRSV, it opens oremus's own page and restyles it (see the reader view in
+ * BibleWebViewController). This just builds the address.
+ *
+ * NOT `bibleUrl`, which BLANKS lectionary parentheticals. That is right for an
+ * appointed lesson, where the brackets mark verses a reader may leave out.
+ * Here the brackets are part of the passage the commentary discusses, so they
+ * are UNWRAPPED instead: "1 Samuel 17:(1a, 4-11, 19-23), 32-49" asked as
+ * "17:1a, 4-11, 19-23, 32-49" comes back whole (4828 characters against 2854,
+ * measured), and under a heading that reads like a reference rather than
+ * "1 Samuel 17: , 32-49".
+ */
+export function readingUrl(ref: string): string | null {
+  const passage = canonicalRef(ref)
+    .replace(/[()]/g, "")
+    .replace(/--/g, "-")
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\s+/g, " ")
+    // The comma the unwrapped bracket leaves behind: "17:, 32-49" → "17:32-49".
+    .replace(/:\s*,\s*/g, ":")
+    .trim();
+  if (!passage || !/\d/.test(passage)) return null;
+  return `https://bible.oremus.org/?passage=${encodeURIComponent(passage)}`;
+}
+
 export function parseRef(ref: string): RefParts | null {
   if (!ref) return null;
   const cleaned = ref.trim().replace(/\s+/g, " ").replace(/\./g, "");
