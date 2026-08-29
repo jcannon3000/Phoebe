@@ -18,7 +18,7 @@
     "start:worker": "node --enable-source-maps ./dist/worker.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "//test": "Node's built-in runner over esbuild-bundled tests. Bundled because the repo's imports are extensionless (bundler resolution), which Node's own resolver can't follow.",
-    "test": "esbuild \"src/**/*.test.ts\" --bundle --platform=node --format=esm --outdir=.test-build --out-extension:.js=.mjs --log-level=error && node --test \".test-build/**/*.mjs\""
+    "test": "rm -rf .test-build && esbuild \"src/**/*.test.ts\" --bundle --platform=node --format=esm --outdir=.test-build --out-extension:.js=.mjs --log-level=error && node --test \".test-build/**/*.mjs\""
   },
   "dependencies": {
     "@sentry/node": "^8.55.2",
