@@ -311,7 +311,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private static let readerJS = """
     (function () {
       var h = (location.hostname || '').toLowerCase();
-      if (h !== 'bible.oremus.org' && h.slice(-11) !== '.oremus.org') return;
+      var isOremus = (h === 'bible.oremus.org' || h.slice(-11) === '.oremus.org');
+      /* The Visual Commentary on Scripture — the reflection a Visio Divina
+         image links to. Owner: "if possible, put it in the new reader view
+         that we're doing with the [oremus] bible viewer." Same treatment,
+         different page: VCS is a Tailwind site whose commentary lives in
+         .prose blocks inside article.js-exhibition-container. */
+      var isVcs = (h === 'thevcs.org' || h.slice(-11) === '.thevcs.org');
+      if (!isOremus && !isVcs) return;
 
       var ASSETS = 'https://withphoebe.app/reader/';
       var css = [
@@ -338,6 +345,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            the leaf entirely (owner's screenshot: a flat dark green). */
         'body::after{content:"";position:fixed;inset:0;z-index:-1;',
         'background:linear-gradient(180deg,rgba(10,26,16,0.62) 0%,rgba(10,26,16,0.80) 55%,rgba(10,26,16,0.90) 100%);}',
+      ].concat(isOremus ? [
         /* oremus's own furniture. .copyright is deliberately NOT here. */
         '#dcheck,#h1screen,#overDiv,.quicklink,hr.quicklink,.visbuttons,.another,.credits,.adj,form{display:none!important;}',
         /* The reading. */
@@ -370,6 +378,77 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.copyright{max-width:none;margin:2em 0 0!important;padding:16px 20px!important;',
         'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.62)!important;',
         'border-top:1px solid rgba(200,212,192,0.16);background:transparent!important;}',
+      ] : [
+        /* ---- The Visual Commentary on Scripture ---------------------
+           Measured on two live exhibitions at a 375px viewport, not guessed.
+           A VCS page is an EXHIBITION: one shared scripture reference, then a
+           commentary article per artwork.
+
+           TEXT ONLY (owner: "we dont need the images or the buttons, just the
+           text from the comentary"). Which is right for where this opens
+           from: Visio Divina has just spent three beats on the picture, at
+           full bleed, with its own caption — repeating it here, letterboxed
+           inside a zoom viewer, adds nothing and pushes the writing down a
+           screen. So the pictures, the captions, the pills (Bible Passage,
+           Cite & Share, the series links) and the read-aloud player all go,
+           and what is left is the reference, the work's title, who wrote the
+           commentary, and the commentary. */
+        /* THE REASON THE DEEP LINK NEVER LANDED. VCS sets
+           `html{scroll-behavior:smooth}`, so every scrollTo ANIMATES — and
+           the native ladder (scrollToDeepLinkedWork) re-issues its scroll
+           every 0.35-0.7s while the page settles, restarting that animation
+           from wherever it had got to. Measured on the live page: eight
+           attempts, final pageYOffset 0, with the target at 2946. The JS side
+           asks for behavior:'instant' now; this is the belt to that brace. */
+        'html{scroll-behavior:auto!important;background:#0A1A10!important;}',
+        '.cky-consent-container,header,nav,footer,.js-site-footer,.js-main-nav,',
+        '.artworks,.js-artworks{display:none!important;}',
+        /* The picture and everything wrapped around it. */
+        'article.js-exhibition-container figure,article.js-exhibition-container figcaption,',
+        'article.js-exhibition-container audio,article.js-exhibition-container .js-audio-file,',
+        /* The pills. Every one of them — Bible Passage, Cite & Share, the
+           series links — is drawn with `border-2 rounded-sm`, and no link
+           inside a .prose block carries a class at all, so this reaches the
+           buttons and nothing that is part of the writing. */
+        'article.js-exhibition-container [class*="rounded-sm"],',
+        'article.js-exhibition-container .use-ajax,',
+        'article.js-exhibition-container .js-scripture-button{display:none!important;}',
+        /* Every nesting level between body and the prose carries its own
+           container width and gutter. Zero them all, then put ONE gutter back
+           on the text itself so the measure is set in a single place. */
+        '.dialog-off-canvas-main-canvas,.layout-container,.layout-content,main,',
+        'article.js-exhibition-container,article.container,.container,.col-span-full,',
+        '.py-100,.overflow-hidden,.prose{width:auto!important;max-width:none!important;',
+        'margin:0!important;padding-left:0!important;padding-right:0!important;background:transparent!important;}',
+        '.js-sticky-header{position:static!important;background:transparent!important;padding:0!important;}',
+        /* VCS's mobile layout leaves each work's column `display:inline` with
+           a sticky child; flattening the work's article to a plain block
+           column is what keeps its heading and its prose in one flow. */
+        /* div.inline, NOT .inline: each work's <figure> carries Tailwind's
+           `inline` class too, so a bare .inline rule here came LAST and
+           un-hid every picture the rule above had just hidden. Both are
+           !important and equally specific, so the later one simply won —
+           caught on a live page with the artwork still sitting there. */
+        'article.js-exhibition-container > article,article.js-exhibition-container div.inline{',
+        'display:block!important;position:static!important;}',
+        /* VCS bands its columns in greys that read as panels over the leaf. */
+        'article.js-exhibition-container,article.js-exhibition-container *{background-color:transparent!important;}',
+        /* ONE gutter, on the text. */
+        'article.js-exhibition-container p,article.js-exhibition-container h2,',
+        'article.js-exhibition-container h3,article.js-exhibition-container ul,',
+        'article.js-exhibition-container ol,article.js-exhibition-container blockquote,',
+        '.col--central{padding-left:20px!important;padding-right:20px!important;}',
+        '.prose,.prose *,h1,h2{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
+        '.prose p{font-size:18px!important;line-height:1.72!important;margin:0 0 1.15em!important;color:#F0EDE6!important;}',
+        'h1{font-size:22px!important;line-height:1.3!important;padding:14px 20px 4px!important;margin:0!important;color:#F0EDE6!important;}',
+        'h2{font-size:15px!important;letter-spacing:.02em;margin:1.6em 0 .5em!important;color:rgba(200,212,192,0.9)!important;}',
+        /* The shared scripture reference at the head of the exhibition, set
+           like oremus's passageref so the two readings feel like one view. */
+        '.col--central p.font-serif{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'font-size:13px!important;letter-spacing:.16em;text-transform:uppercase;line-height:1.5!important;',
+        'color:rgba(200,212,192,0.75)!important;}',
+        'a,a:visited{color:#A8C5A0!important;}',
+      ]).concat([
         '.phoebe-reader-note{max-width:none;margin:0!important;padding:10px 20px 40px!important;',
         'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.45)!important;}',
         '.phoebe-reader-note a{color:rgba(168,197,160,0.75)!important;text-decoration:underline;}',
@@ -377,7 +456,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            the top and such so we know it's the webpage"). */
         '.phoebe-reader-masthead{padding:10px 20px 0!important;font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
         'font-size:11px!important;letter-spacing:.18em;text-transform:uppercase;color:rgba(143,175,150,0.6)!important;}',
-      ].join('');
+      ]).join('');
 
       function addStyle() {
         if (document.getElementById('phoebe-reader')) return;
@@ -432,7 +511,8 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         if (document.querySelector('.phoebe-reader-masthead') || !document.body) return;
         var m = document.createElement('div');
         m.className = 'phoebe-reader-masthead';
-        m.textContent = 'the oremus Bible Browser';
+        m.textContent = isOremus ? 'the oremus Bible Browser'
+                                 : 'The Visual Commentary on Scripture';
         document.body.insertBefore(m, document.body.firstChild);
       }
 
@@ -448,13 +528,66 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         if (st) st.media = on ? '' : 'not all';
       };
 
-      function run() { addStyle(); tidy(); credit(); masthead(); }
+      /**
+       * VCS's furniture that CSS can't reach.
+       *
+       * The full-screen zoom viewer is a <figure class="... w-screen ...">
+       * inside its own <article>; there is no stable class or id on that
+       * article to hide from the stylesheet, and :has() can't be relied on at
+       * the deploy target (Safari 15.4). Walking up from the figure is exact
+       * and works on every iOS we ship to.
+       *
+       * The read-aloud player is hidden by the stylesheet, but the line that
+       * introduces it ("Read by ...") is a plain paragraph beside it, and on
+       * its own it reads as a stray credit for something that isn't there.
+       * It goes with the player.
+       */
+      function vcsStrip() {
+        var figs = document.querySelectorAll('figure');
+        for (var i = 0; i < figs.length; i++) {
+          if (/w-screen/.test(figs[i].className || '')) {
+            var art = figs[i].closest && figs[i].closest('article');
+            if (art) art.style.setProperty('display', 'none', 'important');
+          }
+        }
+        var players = document.querySelectorAll('audio');
+        for (var j = 0; j < players.length; j++) {
+          // Walk up while the block is still only the player and its one-line
+          // credit: on VCS the <audio> sits in a bare wrapper and "Read by
+          // ..." is its sibling a level higher, so stopping at the immediate
+          // parent hid the player and left the credit stranded.
+          var box = players[j].parentElement;
+          for (var up = 0; up < 3 && box; up++) {
+            var len = box.textContent.replace(/\s/g, '').length;
+            if (len > 60) break;
+            box.style.setProperty('display', 'none', 'important');
+            box = box.parentElement;
+          }
+        }
+      }
+
+      function run() {
+        addStyle();
+        if (isOremus) { tidy(); credit(); }
+        else { vcsStrip(); }
+        masthead();
+      }
       if (document.readyState !== 'loading') run();
       document.addEventListener('DOMContentLoaded', run);
       // oremus paints in one pass, but a late stylesheet or a re-render
-      // shouldn't undo the tidy — cheap re-checks, then stop.
+      // shouldn't undo the tidy — cheap re-checks, then stop. VCS lazy-loads
+      // its images and viewers, so it needs the longer tail: the zoom viewer
+      // it hides is built after first paint.
       var tries = 0;
-      var iv = setInterval(function () { run(); if (++tries > 6) clearInterval(iv); }, 350);
+      var limit = isVcs ? 20 : 6;
+      var iv = setInterval(function () { run(); if (++tries > limit) clearInterval(iv); }, 350);
+      // Landing the page on the right commentary is the NATIVE side's job
+      // (scrollToDeepLinkedWork) — it already owns the retry ladder and the
+      // "never move a page the reader has taken hold of" guard. Two scrollers
+      // would fight each other.
+      window.addEventListener('load', function () {
+        if (isVcs) setTimeout(vcsStrip, 400);
+      });
     })();
     """
 
@@ -663,14 +796,23 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             navigationItem.rightBarButtonItem = nextItem
             // The title pill: same text the office's own header pill shows.
             title = officeTitleText
-            // Top-left: "Standard" flips the oremus reading back to the page
-            // as oremus styles it; "Reader" brings Phoebe's view back (owner:
-            // "in the left top corner have some button that says standard").
-            // oremus pages only — the reader view exists nowhere else.
-            if (url.host ?? "").lowercased().hasSuffix("oremus.org") {
+            // "Standard" flips the reading back to the page as the site
+            // styles it; "Reader" brings Phoebe's view back. It began in the
+            // top LEFT ("in the left top corner have some button that says
+            // standard") and moved here on the owner's later word — "we need
+            // the standard button in the top right". Right-hand items render
+            // right-to-left, so Next keeps the corner it was moved to and
+            // Standard sits just inside it.
+            //
+            // oremus and VCS — the two pages the reader view knows how to
+            // restyle (see readerJS's hostname gate). Everywhere else the
+            // button would toggle nothing.
+            let readerHost = (url.host ?? "").lowercased()
+            if readerHost.hasSuffix("oremus.org") || readerHost.hasSuffix("thevcs.org") {
                 let standardItem = UIBarButtonItem(title: "Standard", style: .plain, target: self, action: #selector(toggleReaderView))
                 standardItem.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
-                navigationItem.leftBarButtonItem = standardItem
+                self.standardItem = standardItem
+                navigationItem.rightBarButtonItems = [nextItem, standardItem]
             }
         } else if isArticle {
             // No Options, no Reader button — owner reverted both. Every
@@ -1182,8 +1324,18 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             scrollToOremusPassage()
             return
         }
+        // THE FRAGMENT FIRST. VCS answers /<exhibition>/<work> with a redirect
+        // to /<exhibition>#<work>, and this runs at didFinish — on the URL
+        // AFTER the redirect. Reading the last path segment there yields the
+        // exhibition slug, which is no element's id, so the lookup returned
+        // false, the ladder ran out, and the reading opened at the top of the
+        // exhibition — a different work's picture and a different work's
+        // commentary. Measured on the live page: the fragment is the article
+        // id, every time. The path segment stays as the fallback for a link
+        // that arrives without a fragment.
         guard host == "thevcs.org" || host.hasSuffix(".thevcs.org"),
-              let slug = url.path.split(separator: "/").last.map(String.init),
+              let slug = (url.fragment?.isEmpty == false ? url.fragment
+                          : url.path.split(separator: "/").last.map(String.init)),
               !slug.isEmpty,
               let slugLiteral = String(data: (try? JSONSerialization.data(withJSONObject: [slug], options: [])) ?? Data(), encoding: .utf8)
         else { return }
@@ -1200,21 +1352,30 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // anchor, exactly as before.
         let js = """
         (function () {
+          /* Never animated. VCS sets html{scroll-behavior:smooth}, which
+             turns a plain scrollTo into an animation this ladder then
+             restarts on its next attempt — the page ends up where it
+             started. Older WebKit ignores the options form, so fall back. */
+          function phoebeScrollTo(y) {
+            try { window.scrollTo({ top: y, behavior: 'instant' }); }
+            catch (e) { window.scrollTo(0, y); }
+            if (Math.abs(window.pageYOffset - y) > 2 && document.scrollingElement) {
+              document.scrollingElement.scrollTop = y;
+            }
+          }
           var el = document.getElementById(\(quoted));
           if (!el) return false;
+          /* The work's own article, top-aligned.
+             Owner asked for this twice, at different times: "start at the
+             picture not under [it]", then "make sure it scrolls to the top of
+             the commentary for the image we are using that day". Both are the
+             article's top — and now that the reader shows the commentary as
+             text only, the article begins with the work's title and its
+             writing, which is exactly what should be under the reader's
+             thumb. No hunting for a nearby image: the pictures are hidden,
+             and the nearest visible one would belong to another work. */
           var anchorTop = el.getBoundingClientRect().top + window.pageYOffset;
-          var target = anchorTop;
-          var best = null;
-          var imgs = document.images;
-          for (var i = 0; i < imgs.length; i++) {
-            var im = imgs[i];
-            var r = im.getBoundingClientRect();
-            if (r.width < 150 && (im.naturalWidth || 0) < 150) continue;
-            var top = r.top + window.pageYOffset;
-            if (top <= anchorTop + 8 && anchorTop - top < 2000 && (best === null || top > best)) best = top;
-          }
-          if (best !== null) target = best;
-          window.scrollTo(0, Math.max(0, target));
+          phoebeScrollTo(Math.max(0, anchorTop - 8));
           return true;
         })()
         """
@@ -1233,7 +1394,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 }
             }
         }
-        attempt(3, delay: 0.35)
+        // Longer than it looks: VCS lazy-loads its images and OpenSeadragon
+        // viewers, and the reader stylesheet reflows the whole page after
+        // that, so the section's offset keeps moving for a second or more.
+        // Cheap to retry, and readerMovedPage stops it the moment they scroll.
+        attempt(8, delay: 0.35)
     }
 
     /**
@@ -1334,10 +1499,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     /** Reader view on/off for the oremus reading — see the JS side's
      *  __phoebeReaderSet. State lives here so the button can rename itself. */
     private var readerViewOn = true
+    private weak var standardItem: UIBarButtonItem?
     @objc private func toggleReaderView() {
         readerViewOn.toggle()
         webView?.evaluateJavaScript("window.__phoebeReaderSet && window.__phoebeReaderSet(\(readerViewOn))", completionHandler: nil)
-        navigationItem.leftBarButtonItem?.title = readerViewOn ? "Standard" : "Reader"
+        // The item itself, not a slot: it lives in rightBarButtonItems now,
+        // and reading the slot back would rename whatever else is there.
+        standardItem?.title = readerViewOn ? "Standard" : "Reader"
     }
 
     @objc private func officeNavNext() {

@@ -2209,34 +2209,6 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Swanson, John August. Ecclesiastes, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Estate of John August Swanson, https://www.johnaugustswanson.com/."
  },
  {
-  "id": 56543,
-  "title": "Elijah",
-  "artist": "Swanson, John August",
-  "date": "2008",
-  "where": "Los Angeles, United States",
-  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Swanson-elijah.jpg",
-  "refs": [
-   "Kings II, 2:1-18"
-  ],
-  "days": [
-   "Year C Proper 8th Sunday",
-   "",
-   "Year B Transfiguration Sunday"
-  ],
-  "people": [
-   "Elijah (Biblical figure)"
-  ],
-  "subjects": [
-   "Heaven",
-   "Culture: Hispanic and/or Latino",
-   "Whirlwind"
-  ],
-  "essay": "",
-  "act": "https://act.library.vanderbilt.edu/artworks/56543",
-  "licence": "Used by permission of the artist (non-commercial, with attribution)",
-  "attribution": "Swanson, John August. Elijah, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Estate of John August Swanson, https://www.johnaugustswanson.com/."
- },
- {
   "id": 56544,
   "title": "Entry into the City",
   "artist": "Swanson, John August",
@@ -6271,34 +6243,6 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Wesley, Frank, 1923-2002. Eve and the Serpent, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Estate of Frank Wesley, http://www.frankwesleyart.com/main_page.htm."
  },
  {
-  "id": 59210,
-  "title": "Every Pot Shall be Holy Unto the Lord",
-  "artist": "Wesley, Frank, 1923-2002",
-  "date": null,
-  "where": null,
-  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Every Pot Shall be Holy unto the Lord-Frank Wesley.jpg",
-  "refs": [
-   "Joshua 24:1-2a, 14-18"
-  ],
-  "days": [
-   "Year B Proper 16th Sunday",
-   ""
-  ],
-  "people": [
-   "Jesus Christ (Biblical figure)"
-  ],
-  "subjects": [
-   "Blessing",
-   "Family",
-   "Culture: Indian",
-   "House"
-  ],
-  "essay": "",
-  "act": "https://act.library.vanderbilt.edu/artworks/59210",
-  "licence": "Used by permission of the artist (non-commercial, with attribution)",
-  "attribution": "Wesley, Frank, 1923-2002. Every Pot Shall be Holy Unto the Lord, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Estate of Frank Wesley, http://www.frankwesleyart.com/main_page.htm."
- },
- {
   "id": 59212,
   "title": "Elisha Raising the Widow's Son",
   "artist": "Wesley, Frank, 1923-2002",
@@ -7168,32 +7112,6 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/59243",
   "licence": "Used by permission of the artist (non-commercial, with attribution)",
   "attribution": "Wesley, Frank, 1923-2002. Jesus in Benares, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Estate of Frank Wesley, http://www.frankwesleyart.com/main_page.htm."
- },
- {
-  "id": 59244,
-  "title": "I Am the Potter, Ye the Clay",
-  "artist": "Wesley, Frank, 1923-2002",
-  "date": null,
-  "where": null,
-  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/I Am the Potter, Ye the Clay-Frank Wesley.jpg",
-  "refs": [
-   "Isaiah 65:1-9"
-  ],
-  "days": [
-   "Year C Proper 7th Sunday",
-   ""
-  ],
-  "people": [],
-  "subjects": [
-   "Human figures",
-   "Hands",
-   "Culture: Indian",
-   "Potter"
-  ],
-  "essay": "",
-  "act": "https://act.library.vanderbilt.edu/artworks/59244",
-  "licence": "Used by permission of the artist (non-commercial, with attribution)",
-  "attribution": "Wesley, Frank, 1923-2002. I Am the Potter, Ye the Clay, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Estate of Frank Wesley, http://www.frankwesleyart.com/main_page.htm."
  },
  {
   "id": 59245,

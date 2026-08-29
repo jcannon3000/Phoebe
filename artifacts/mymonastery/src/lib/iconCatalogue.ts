@@ -240,20 +240,6 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "attribution": "Anglo-Catalan Psalter or The Great Canterbury Psalter, folio 1 recto: Genesis, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
-  "id": 55261,
-  "title": "Old Testament stories",
-  "artist": "Bassa, Ferrer, active 14th century",
-  "date": "ca. 1330-1340",
-  "where": "Bibliothèque nationale de France, Paris, France",
-  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Saltiri_anglocatalà_f93r (1).jpg",
-  "people": [
-   "Balaam (Biblical figure)"
-  ],
-  "act": "https://act.library.vanderbilt.edu/artworks/55261",
-  "licence": "Public domain",
-  "attribution": "Bassa, Ferrer, active 14th century. Old Testament stories, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
- },
- {
   "id": 55282,
   "title": "Interrogation of Christ",
   "artist": "Anonymous",
@@ -437,20 +423,6 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/56542",
   "licence": "Used by permission of the artist (non-commercial, with attribution)",
   "attribution": "Swanson, John August. Ecclesiastes, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Estate of John August Swanson, https://www.johnaugustswanson.com/."
- },
- {
-  "id": 56543,
-  "title": "Elijah",
-  "artist": "Swanson, John August",
-  "date": "2008",
-  "where": "Los Angeles, United States",
-  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Swanson-elijah.jpg",
-  "people": [
-   "Elijah (Biblical figure)"
-  ],
-  "act": "https://act.library.vanderbilt.edu/artworks/56543",
-  "licence": "Used by permission of the artist (non-commercial, with attribution)",
-  "attribution": "Swanson, John August. Elijah, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Estate of John August Swanson, https://www.johnaugustswanson.com/."
  },
  {
   "id": 56544,

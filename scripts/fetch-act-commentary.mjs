@@ -1,5 +1,5 @@
 // Catalogue Vanderbilt's Art in the Christian Tradition (ACT) into
-// artifacts/mymonastery/src/lib/visioCatalogue.ts — the artwork LIBRARY that
+// artifacts/mymonastery/src/lib/visioCommentaryCatalogue.ts — the artwork LIBRARY that
 // Visio Divina prays with and the admin art-library tool curates.
 //
 // Usage:
@@ -49,7 +49,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..");
-const OUT_PATH = resolve(REPO_ROOT, "artifacts/mymonastery/src/lib/visioCatalogue.ts");
+const OUT_PATH = resolve(REPO_ROOT, "artifacts/mymonastery/src/lib/visioCommentaryCatalogue.ts");
 
 const UA = "Phoebe/1.0 (prayer app; +https://withphoebe.app; jcannon3000@gmail.com)";
 const ACT_SEARCH = "https://act.library.vanderbilt.edu/api/search";
@@ -130,6 +130,21 @@ async function harvestFilter(filter) {
   return out;
 }
 
+/** Every record matching a free-text QUERY, paged (the filter twin above
+ *  searches by field; this searches the record, which is how a commentary
+ *  link in `notes` is found). */
+async function harvestQuery(q) {
+  const out = [];
+  let pages = 1;
+  for (let page = 1; page <= pages && page <= 20; page++) {
+    const d = await actSearch({ q, page, hitsPerPage: 100 });
+    pages = d.totalPages ?? 1;
+    out.push(...(d.hits ?? []));
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return out;
+}
+
 /** The thevcs.org essay URL ACT records in the notes field. */
 function essayUrl(notes) {
   const m = /https?:\/\/thevcs\.org\/[^\s"'<>)]+/.exec(notes || "");
@@ -177,17 +192,24 @@ function place(a) {
 }
 
 const main = async () => {
+  /**
+   * THE POOL IS THE COMMENTARY, not the artist list.
+   *
+   * Owner: "only use images that have a commentary, but also feel free to
+   * open it up to images that weren't from the artist that we narrowed it
+   * down to" — and "we want ones [with] visual commentaries too".
+   *
+   * The curated-artist harvest next door yields 314 works of which exactly
+   * TWO carry a commentary: the allowlist and the commentary are nearly
+   * disjoint, so the two asks only work together. ACT records a commentary
+   * as a thevcs.org link in the record's notes, and searching for that link
+   * across the whole collection finds ~254 works — enough for a work a week
+   * with years to spare, and every one of them arrives with something to
+   * read beside it.
+   */
   const byId = new Map();
-  for (const artist of ARTISTS) {
-    const hits = await harvestFilter(`artists = ${JSON.stringify(artist)}`);
-    for (const h of hits) byId.set(h.id, h);
-    console.log(`${artist}: ${hits.length} records (pool ${byId.size})`);
-  }
-  for (const b of BUILDINGS) {
-    const hits = await harvestFilter(`building = ${JSON.stringify(b)}`);
-    for (const h of hits) byId.set(h.id, h);
-    console.log(`${b} (building): ${hits.length} records (pool ${byId.size})`);
-  }
+  for (const hit of await harvestQuery("thevcs.org")) byId.set(hit.id, hit);
+  console.log(`commentary pool: ${byId.size} records`);
 
   const candidates = [...byId.values()];
   const titles = [...new Set(candidates.map((a) => commonsTitle(a.copyright_source)).filter(Boolean))];
@@ -195,9 +217,11 @@ const main = async () => {
   const lic = await resolveLicences(titles);
 
   const kept = [];
-  const dropped = { noImage: 0, noRights: 0, unresolved: 0, notFree: 0, excludedWork: 0, nudity: 0, sampleRecord: 0 };
+  const dropped = { noCommentary: 0, noImage: 0, noRights: 0, unresolved: 0, notFree: 0, excludedWork: 0, nudity: 0, sampleRecord: 0 };
   for (const a of candidates) {
     if (a.image_is_public !== 1 || !a.image_filename) { dropped.noImage++; continue; }
+    // The whole point of this pool: no commentary, no place here.
+    if (!essayUrl(a.notes)) { dropped.noCommentary++; continue; }
     // ACT keeps placeholder rows ("Sample record for Frank Wesley artwork").
     if (/^sample record\b/i.test(a.title ?? "")) { dropped.sampleRecord++; continue; }
     if (EXCLUDED_IDS.has(a.id)) { dropped.excludedWork++; continue; }
@@ -289,7 +313,7 @@ export type CatalogueArtwork = {
   attribution: string;
 };
 
-export const ACT_CATALOGUE: CatalogueArtwork[] = `;
+export const ACT_COMMENTARY_CATALOGUE: CatalogueArtwork[] = `;
 
   writeFileSync(OUT_PATH, header + JSON.stringify(kept, null, 1) + ";\n");
   console.log(`\nWrote ${OUT_PATH}`);

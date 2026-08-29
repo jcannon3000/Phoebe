@@ -106,7 +106,20 @@ const EXCLUDED_ARTISTS = ["blake, william", "herrel, edie mae"];
 /** Single works the owner has asked out of the library, by ACT record id —
  *  the artist stays. 59230 = Frank Wesley, "Before Abraham Was I Am"
  *  (owner: "no, I just didn't want that image"). */
-const EXCLUDED_IDS = new Set([59230]);
+/**
+ * Works whose IMAGE the host no longer serves (403 even with correct
+ * percent-encoding, verified by HEAD against every URL in this catalogue).
+ * They are still listed in ACT, so a re-harvest would pull them back in and
+ * the library would carry entries that can only ever render an empty frame.
+ *   55261 Old Testament stories (Bassa)      — accented filename, 403
+ *   56543 Elijah (Swanson)                   — 403
+ *   59210 Every Pot Shall be Holy (Wesley)   — 403
+ *   59244 I Am the Potter, Ye the Clay (W.)  — 403
+ * Re-check before removing any of these from the list; a host outage would
+ * look identical to a withdrawal, and these were confirmed over separate runs.
+ */
+const DEAD_IMAGE_IDS = [55261, 56543, 59210, 59244];
+const EXCLUDED_IDS = new Set([59230, ...DEAD_IMAGE_IDS]);
 
 function attribution(a, artist, original) {
   const who = artist ? `${artist}. ` : "";

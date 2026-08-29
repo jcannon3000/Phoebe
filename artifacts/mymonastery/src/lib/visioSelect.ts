@@ -20,11 +20,17 @@
  *     empty screen — see the blank-screen rule this repo keeps.
  */
 import { ACT_CATALOGUE, type CatalogueArtwork } from "./visioCatalogue";
+import { ACT_COMMENTARY_CATALOGUE } from "./visioCommentaryCatalogue";
 
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
 import { isActHidden } from "@/lib/actOverrides";
 
-const BY_ID = new Map(ACT_CATALOGUE.map((a) => [a.id, a]));
+/**
+ * EVERY work we might have to NAME, both catalogues — so a picture someone
+ * prayed with last month still opens from their history even though the pool
+ * it was drawn from is no longer the one we choose from.
+ */
+const BY_ID = new Map([...ACT_CATALOGUE, ...ACT_COMMENTARY_CATALOGUE].map((a) => [a.id, a]));
 
 /**
  * The library minus the owner's runtime DELETIONS (the admin art-library
@@ -35,12 +41,23 @@ const BY_ID = new Map(ACT_CATALOGUE.map((a) => [a.id, a]));
  * chooseArtwork falls through to live matching).
  */
 function pool(): CatalogueArtwork[] {
-  const p = ACT_CATALOGUE.filter((a) => !isActHidden(a.id));
+  /**
+   * ONLY WORKS WITH A COMMENTARY (owner: "let's only use images that have a
+   * commentary, but also feel free to open it up to images that weren't from
+   * the artist that we narrowed it down to").
+   *
+   * Those two halves depend on each other: of the 314 works by the curated
+   * artists, exactly TWO carry a commentary. Searching ACT for the commentary
+   * itself finds 241 keepable works by 140 artists — so opening the artist
+   * list is not a loosening, it is what makes "always a commentary" possible
+   * at all.
+   */
+  const p = ACT_COMMENTARY_CATALOGUE.filter((a) => !isActHidden(a.id));
   // Everything hidden (or a corrupted overrides snapshot marking it so) must
   // not crash the practice — rotationForDay indexes this array. A hidden work
   // showing again is the recoverable failure; a blank Visio is not (the
   // blank-screen rule this repo keeps).
-  return p.length > 0 ? p : ACT_CATALOGUE;
+  return p.length > 0 ? p : ACT_COMMENTARY_CATALOGUE;
 }
 
 /** One specific artwork, for re-opening something from the history gallery. */
