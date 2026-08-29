@@ -508,9 +508,25 @@ export default function VisioPage() {
    * kept, and returns to the rhythm. DONE is kept as a constant only because
    * the deck's clamp arithmetic reads it; nothing renders it.
    */
-  const TITLE = 0, DONE = 1;
+  /**
+   * BACK TO A SLIDESHOW, one image for the whole week.
+   *
+   * Owner: "a slideshow where first you see the image, then you read the text
+   * for Sunday, then you see the image again. And then if there is a
+   * commentary, if there happens to be one, have that last slide do a
+   * completion slide … one image for the whole week and no options on the
+   * front screen."
+   *
+   * So: LOOK, then the Sunday's reading, then LOOK again — the second look is
+   * the point of the shape, because you see differently once you know what the
+   * passage says. Then the closing slide, which carries the commentary link
+   * when the work has one. It no longer REQUIRES one: the pool was reopened to
+   * works without commentaries, which is what took Sunday coverage from a
+   * commentary-only 241 works to 553.
+   */
+  const TITLE = 0, LOOK = 1, READING = 2, LOOK_AGAIN = 3, DONE = 4;
   const [step, setStep] = useState(TITLE);
-  const TOTAL = 2;
+  const TOTAL = 5;
   /**
    * Which beats hold the picture.
    *
@@ -546,7 +562,7 @@ export default function VisioPage() {
    *  instructions back to back and made the reader tap twice before seeing
    *  anything. The reading is offered under the work instead. */
   // The image is never shown in-app now — see the note on the two beats.
-  const showsImage = false;
+  const showsImage = step === LOOK || step === LOOK_AGAIN;
 
   /**
    * SIT WITH IT — a 12-second hold before each beat will let you move on.
@@ -600,18 +616,17 @@ export default function VisioPage() {
   const atEnd = step >= TOTAL - 1;
   const goHome = () => setLocation("/dashboard");
   const next = () => {
-    // Both picture beats hand off rather than page — the first look to the
-    // PASSAGE, the beat after it to the commentary. Tested in that order for
-    // clarity only; the two flags can never both be true.
+    // The middle beat hands off to the Sunday's reading rather than paging;
+    // coming back lands on the second look, which is the point of the shape.
     if (readingOpens) { openReading(); return; }
-    // Opening the commentary KEEPS the day and leaves — there is no closing
-    // card to page to any more (owner). Marked before the hand-off, because
-    // the reader may never come back through the app to be marked later.
-    if (backgroundOpens) {
-      try { markPracticeDoneToday("visio"); } catch { /* non-fatal */ }
-      openBackground();
-      return;
-    }
+    /**
+     * The commentary is offered ON the closing slide, so opening it must NOT
+     * end the practice — the reader is already there, and the day is marked
+     * the moment the closing slide is reached (below). Marking again here
+     * would be harmless but the LEAVING wouldn't: it would throw them out of
+     * the completion screen they had just arrived at.
+     */
+    if (backgroundOpens) { openBackground(); return; }
     if (!atEnd) { setStep((s) => s + 1); return; }
     // Kept by finishing, not by opening.
     try { markPracticeDoneToday("visio"); } catch { /* non-fatal */ }
@@ -754,8 +769,8 @@ export default function VisioPage() {
    * going back one slide silently deletes the reflection from the practice.
    */
   // Reopening the deck offers the commentary again; finishing is what completes.
-  useEffect(() => { if (step === TITLE) setReadBackground(false); }, [step, TITLE]);
-  useEffect(() => { if (step === TITLE) setReadPassage(false); }, [step, TITLE]);
+  useEffect(() => { if (step < DONE) setReadBackground(false); }, [step, DONE]);
+  useEffect(() => { if (step < READING) setReadPassage(false); }, [step, READING]);
   /**
    * The hand-off flag belongs to ONE beat.
    *
@@ -772,6 +787,18 @@ export default function VisioPage() {
    * costs one line to stop being one native tweak away from true.
    */
   useEffect(() => { handedOff.current = false; }, [step]);
+  /**
+   * KEPT ON REACHING THE CLOSING SLIDE, not on leaving it.
+   *
+   * The closing slide now carries the commentary link, so a reader can arrive,
+   * tap through to the VCS and never come back to the app — and a practice
+   * marked only by the Done button would go unrecorded for exactly the people
+   * who read the most.
+   */
+  useEffect(() => {
+    if (step !== DONE) return;
+    try { markPracticeDoneToday("visio"); } catch { /* non-fatal */ }
+  }, [step, DONE]);
   useEffect(() => { if (view?.essayUrl) preloadExternal(view.essayUrl); }, [view?.essayUrl]);
   useEffect(() => { if (passageUrl) preloadExternal(passageUrl); }, [passageUrl]);
   useEffect(() => {
@@ -785,11 +812,14 @@ export default function VisioPage() {
     };
   }, []);
   /** True when this beat's forward action should open the reading, not page. */
-  // The title beat hands off to the commentary — the practice's one handoff.
-  const backgroundOpens = step === TITLE && hasEssay && !readBackground;
-  /** True when this beat's forward action should open the passage, not page. */
-  // The passage no longer has a beat of its own; the commentary page carries it.
-  const readingOpens = false;
+  /**
+   * The commentary is offered on the CLOSING slide, and only when the work has
+   * one — the pool is no longer restricted to works that do. Owner: "if there
+   * happens to be one, have that last slide … have it on that last page."
+   */
+  const backgroundOpens = step === DONE && hasEssay && !readBackground;
+  /** The middle beat: the Sunday's own reading, between the two looks. */
+  const readingOpens = step === READING && hasReading && !readPassage;
   const openBackground = () => {
     if (!view?.essayUrl) return;
     setReadBackground(true);

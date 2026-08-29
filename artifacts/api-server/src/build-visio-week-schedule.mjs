@@ -193,7 +193,7 @@ function build() {
   const rows = [];
   /** weekStartYmd → the artwork id that whole week shows. */
   const weekPick = new Map();
-  const stats = { days: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, middle: 0, psalm: 0, book: 0, rotation: 0 };
+  const stats = { days: 0, curated: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, middle: 0, psalm: 0, book: 0, rotation: 0 };
 
   for (let i = 0; i < DAYS; i++) {
     /**
@@ -270,8 +270,26 @@ function build() {
 
     /** Walk a tie set from the runtime's own offset, so an uncapped day
      *  resolves to EXACTLY what chooseArtwork would have picked. */
-    const pickFrom = (best, respectCap, essayRunnerUp = []) =>
-      pickFromTier(ymd, best, (cand) => !respectCap || countFor(year, cand.id) < CAP, essayRunnerUp);
+    /**
+     * CURATED FIRST. Owner: "first prioritizing those artists that we curated
+     * before." Where the curated library and the commentary harvest both
+     * answer a reading equally well, the curated work wins — so the pool got
+     * wider without the library the owner actually chose being diluted by it.
+     *
+     * A PREFERENCE, not a filter: if no curated work matches, the harvested
+     * ones are offered exactly as before. Applied by trying the curated subset
+     * first and only falling back, rather than by sorting, so the cap and the
+     * rotation still see the full candidate list on the second pass.
+     */
+    const pickFrom = (best, respectCap, essayRunnerUp = []) => {
+      const allow = (cand) => !respectCap || countFor(year, cand.id) < CAP;
+      const curated = best.filter((a) => a.curated);
+      if (curated.length) {
+        const pick = pickFromTier(ymd, curated, allow, essayRunnerUp.filter((a) => a.curated));
+        if (pick) { stats.curated++; return pick; }
+      }
+      return pickFromTier(ymd, best, allow, essayRunnerUp);
+    };
 
     // PASS 1 — the cap respected. Tiers in order; within a tier, an equally
     // good painting of the SAME reading is tried before dropping a tier,
