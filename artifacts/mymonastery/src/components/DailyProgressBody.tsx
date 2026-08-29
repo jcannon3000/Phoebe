@@ -19,7 +19,7 @@ import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCust
 import { daySwapNote } from "@/components/PracticeSwitcher";
 import { rowIdToCardKeys } from "@/lib/routineOrder";
 import { recordPracticeOpen, sortCardsByLearnedOrder } from "@/lib/practiceOrderLearning";
-import { reflectionSourceUrl, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday } from "@/lib/cacReadState";
+import { reflectionSourceUrl, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
@@ -37,6 +37,13 @@ import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { waitingLabel } from "@/lib/taizeInbox";
+
+/** The card's emoji per source — the same ones the Reflections menu uses, so
+ *  a reflection looks like itself wherever it appears. */
+const REFLECTION_EMOJI: Record<TrackedReflection, string> = {
+  cac: "🌵", fdd: "📔", ssje: "✍🏽", vts: "🦩", nouwen: "😊", sojo: "🕊️", grist: "🌎",
+};
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -728,7 +735,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -991,6 +998,29 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         ? [visioToday.chosen.art.title, visioToday.chosen.followsToday ? visioToday.chosen.ref : ""].filter(Boolean).join(" · ")
         : t("rhythm.blurb_visio", { defaultValue: "Pray with today's image" })),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+  };
+  /**
+   * The inbox card — Taizé's meditation.
+   *
+   * Its blurb is the meditation's own title, because that is what is actually
+   * waiting; a generic line would make an inbox with one specific thing in it
+   * look like a recurring chore. When nothing is waiting it says so plainly
+   * rather than reading as kept-today, since it was very likely read days ago.
+   *
+   * NO onUnlog. Everything else here unlogs by clearing a day-flag, and this
+   * has none — undoing means putting a particular meditation back, which the
+   * practice page owns.
+   */
+  const taizeCard = {
+    key: "taize", emoji: "🕯️", rgb: "120,150,175",
+    done: taizeDone,
+    href: taizeWaiting?.url ?? "https://www.taize.fr/en/tag/meditations",
+    external: true,
+    title: t("rhythm.card_taize", { defaultValue: "Taizé meditation" }),
+    blurb: taizeWaiting
+      ? [taizeWaiting.title, waitingLabel(taizeWaiting)].filter(Boolean).join(" · ")
+      : t("rhythm.blurb_taize_empty", { defaultValue: "Nothing new since the last one" }),
+    cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
   };
   const listeningCard = {
     key: "listening", emoji: "🎵", rgb: "108,140,180", done: listeningDone, href: "/listening",
@@ -1271,7 +1301,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // dot, opening that source's reading directly (and marking it read).
     ...reflections.map((r) => {
       const url = reflectionSourceUrl(r.source);
-      const mark = r.source === "cac" ? markCacRead : r.source === "fdd" ? markFddRead : r.source === "ssje" ? markSsjeRead : markVtsRead;
+      // A map, not a chain: a chain's final `: markVtsRead` would have marked
+      // the Dean's Commentary read when someone opened Sojourners.
+      const MARK_READ: Record<TrackedReflection, () => void> = {
+        cac: markCacRead, fdd: markFddRead, ssje: markSsjeRead, vts: markVtsRead,
+        nouwen: markNouwenRead, sojo: markSojoRead, grist: markGristRead,
+      };
+      const mark = MARK_READ[r.source];
       const scrapedTitle = r.source === "cac" ? cacTitle : r.source === "vts" ? vtsTitle : "";
       // VTS opens the in-app paragraph slideshow (vts-reading.tsx) — VTS
       // gave permission to bring the text into Phoebe rather than just
@@ -1279,7 +1315,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       const isVts = r.source === "vts";
       const waitingForUpdate = isVts && vtsWaitingForUpdate;
       return {
-        key: `reflect-${r.source}`, slot: "morning" as CustomSlot, emoji: isVts ? "🦩" : "📖", rgb: "96,141,209", done: r.done, href: isVts ? "/vts-reading" : "",
+        key: `reflect-${r.source}`, slot: "morning" as CustomSlot, emoji: REFLECTION_EMOJI[r.source], rgb: "96,141,209", done: r.done, href: isVts ? "/vts-reading" : "",
         onUnlog: () => unlogReflectionToday(r.source),
         title: PUBLICATION_NAME[r.source],
         blurb: waitingForUpdate
@@ -1409,6 +1445,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
     ...(visioActive ? [{ ...visioCard, slot: getPracticeSlot("visio") }] : []),
+    ...(taizeActive ? [{ ...taizeCard, slot: getPracticeSlot("taize") }] : []),
     // Prayer List is a standalone "anytime" practice — it left the
     // morning/evening sides entirely (owner, 2026-08-26: "take your prayer
     // list out of the morning and evening side"), so the card no longer moves

@@ -257,7 +257,7 @@ const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
  */
 type ExtraMapping =
   | { kind: "level"; level: "office" | "devotion" | "psalms" | "readings" | "guided-prayer" }
-  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" }
+  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" | "taize" }
   | { kind: "contemplation" }
   | { kind: "newsletter" };
 type ExtraPractice = {
@@ -316,6 +316,10 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // and as a STANDING practice but never as a side's SECOND one, while all
   // three of its siblings could. anchoredAsForm already de-duplicates it.
   { title: () => "Visio Divina", emoji: "🖼️", sub: "Pray with an image — the day's artwork.", excludes: "__none__", maps: { kind: "practice", key: "visio" } , group: "contemplative" },
+  // An INBOX, not a daily: it waits until it is read, and goes quiet until
+  // Taizé posts the next one. Offered here because it is a reflection you sit
+  // with, not because it behaves like the others in this list.
+  { title: () => "Taizé meditation", emoji: "🕯️", sub: "A meditation from Taizé — it waits until you read it.", excludes: "__none__", maps: { kind: "practice", key: "taize" } , group: "contemplative" },
   { title: () => "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__", maps: { kind: "practice", key: "cobreathe" } , group: "contemplative" },
 ];
 
@@ -1298,6 +1302,7 @@ export default function WayOfLoveRuleFlow({
       examen: examenSeed,
       walk: homeCardOn(user.homeLayout, "walk"),
       visio: homeCardOn(user.homeLayout, "visio"),
+      taize: homeCardOn(user.homeLayout, "taize"),
       compline: homeCardOn(user.homeLayout, "compline"),
     });
     // Per-side Contemplative Prayer — re-seed once the home layout lands.
@@ -1319,7 +1324,7 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; compline: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; taize: boolean; compline: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: !creationHeldBySide() && homeCardOn(user?.homeLayout, "cobreathe"),
     audio: homeCardOn(user?.homeLayout, "listening"),
@@ -1327,9 +1332,10 @@ export default function WayOfLoveRuleFlow({
     walk: homeCardOn(user?.homeLayout, "walk"),
     // Visio Divina — praying with an artwork. Same shape as its siblings.
     visio: homeCardOn(user?.homeLayout, "visio"),
+    taize: homeCardOn(user?.homeLayout, "taize"),
     compline: homeCardOn(user?.homeLayout, "compline"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "compline") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "taize" | "compline") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -2515,7 +2521,7 @@ export default function WayOfLoveRuleFlow({
     // wants Visio Divina and a Contemplative Walk gets exactly those, and
     // nothing survives from the rule being replaced.
     setContemplative({
-      cobreathe: false, audio: false, examen: false, walk: false, visio: false, compline: false,
+      cobreathe: false, audio: false, examen: false, walk: false, visio: false, taize: false, compline: false,
       ...(preset.practices ?? {}),
     });
     /**
