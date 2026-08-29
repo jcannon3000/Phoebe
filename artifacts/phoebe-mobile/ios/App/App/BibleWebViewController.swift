@@ -35,6 +35,10 @@ private enum PhoebeBrowserColor {
     // a frame. Resolved at runtime from the page's own background (see
     // syncChromeToPage); this is the starting value before the page paints.
     static var bar = UIColor.black
+    /// The practice decks' ground — #0A1A10. In READER mode the page is
+    /// transparent and we supply the background ourselves, so the chrome must
+    /// come from here rather than from a page that no longer has one.
+    static let deck = UIColor(red: 10/255, green: 26/255, blue: 16/255, alpha: 1)
     static let text = UIColor(red: 0.941, green: 0.929, blue: 0.902, alpha: 1)  // #F0EDE6
     static let tint = UIColor(red: 0.659, green: 0.773, blue: 0.627, alpha: 1)  // #A8C5A0
 }
@@ -340,10 +344,16 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       var isFdd = (h === 'forwardmovement.org' || h.slice(-20) === '.forwardmovement.org');
       /* Sojourners' Verse and Voice — verse, voice and prayer of the day. */
       var isSojo = (h === 'sojo.net' || h.slice(-9) === '.sojo.net');
-      /* Grist's daily newsletter — an EMAIL, served as a preview page: ten
-         nested tables pinned to 600px, an ad block, and the usual footer. */
-      var isGrist = (h === 'grist.org' || h.slice(-10) === '.grist.org');
-      if (!isOremus && !isVcs && !isSsje && !isNouwen && !isFdd && !isSojo && !isGrist) return;
+      /* GRIST IS DELIBERATELY NOT HERE. Owner: "Grist i dont want a reader
+         just make sure its light mode and the header is light", and "take out
+         the top grist the daily text too" — the masthead line goes with it.
+         It is journalism, not a devotional page: its own design (the
+         masthead, the lead photograph, the serif headline) IS the thing worth
+         reading, and a green wash over it made it look like something it is
+         not. It opens with the ordinary light newsletter chrome instead,
+         which is what openExternal's `reader: true` -> lightChrome already
+         asks for. */
+      if (!isOremus && !isVcs && !isSsje && !isNouwen && !isFdd && !isSojo) return;
 
       /**
        * KEEP ONE BLOCK, HIDE ITS SIBLINGS — the technique three of these five
@@ -579,15 +589,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.blog-item-inner-wrapper *,article.fdd *,article.node-versevoice *{background-color:transparent!important;}',
         '.blog-item-inner-wrapper,article.fdd,article.node-versevoice{background:transparent!important;',
         'max-width:none!important;width:auto!important;margin:0!important;padding:0 20px!important;}',
-        /* GRIST is an email. Its tables are pinned to 600px (and 300/320 for
-           the ad slots), which is the same fixed-measure trap oremus set with
-           `body{width:600px}` — everything inherits it and every line wraps
-           early with a dead gutter to the right. Unpin them all. */
-        'table,td,tr,tbody{width:auto!important;max-width:100%!important;}',
-        'table[width],table[style*="600px"],table[style*="320px"]{width:auto!important;}',
-        /* The ad slot, and images kept fluid. Grist marks its own ads. */
-        '.ad,table.ad{display:none!important;}',
-        'img{max-width:100%!important;height:auto!important;}',
         /* SOJOURNERS keeps a newsletter signup INSIDE the block worth keeping,
            so the isolate can't reach it — measured: the kept article opens
            with a first-name field, an e-mail field and a fifty-state dropdown
@@ -602,11 +603,30 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'color:#F0EDE6!important;margin:0 0 1.15em!important;}',
         'form,select,input,textarea,button[type="submit"],',
         '[class*="signup"],[class*="newsletter"],[class*="mailchimp"]{display:none!important;}',
-        /* Verse / Voice / Prayer of the day — the three headings that give
-           this page its shape, quiet above their own text. */
-        'article.node-versevoice h2{font-size:12px!important;letter-spacing:.16em;',
-        'text-transform:uppercase;font-weight:600!important;margin:1.8em 0 .5em!important;',
-        'color:rgba(143,175,150,0.9)!important;}',
+        /* SOJOURNERS, stripped to what the owner asked for: "all we want is the
+           three headers — verse of the day, voice of the day and prayer of the
+           day — just as header text, get rid of the lines, and the body
+           content text in Space Grotesk. White on green."
+           So: no hero image, no icons, no rules, no borders. */
+        'article.node-versevoice img,article.node-versevoice svg,',
+        'article.node-versevoice picture,article.node-versevoice figure,',
+        'article.node-versevoice hr,article.node-versevoice .field-name-field-image,',
+        'article.node-versevoice [class*="icon"],article.node-versevoice [class*="social"],',
+        'article.node-versevoice [class*="share"]{display:none!important;}',
+        /* The lines: Drupal draws these as borders on the section wrappers. */
+        'article.node-versevoice *{border:0!important;box-shadow:none!important;}',
+        /* Verse / Voice / Prayer of the day — the three headings, as header
+           text and nothing else. */
+        'article.node-versevoice h2{font-size:13px!important;letter-spacing:.16em;',
+        'text-transform:uppercase;font-weight:600!important;margin:1.9em 0 .6em!important;',
+        'color:rgba(143,175,150,0.95)!important;}',
+        /* White on green, every element, in the reader's face — a Drupal page
+           colours its own text and would otherwise keep its greys. */
+        'article.node-versevoice,article.node-versevoice *{',
+        'font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'color:#F0EDE6!important;}',
+        'article.node-versevoice h2{color:rgba(143,175,150,0.95)!important;}',
+        'article.node-versevoice a,article.node-versevoice a *{color:#A8C5A0!important;}',
         'h1,h2,h3,h4,p,li,article,div{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
         /* The date, and on FDD the feast under it. */
         /* SCOPED. This is the DATE treatment — small, uppercase, letterspaced
@@ -619,9 +639,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'letter-spacing:.14em;text-transform:uppercase;',
         'line-height:1.45!important;font-weight:600!important;margin:0 0 18px!important;',
         'color:rgba(200,212,192,0.75)!important;}',
-        /* Grist: a headline, set like one. */
-        'h1{font-size:26px!important;line-height:1.2!important;font-weight:700!important;',
-        'margin:0 0 14px!important;color:#F0EDE6!important;letter-spacing:-0.01em;}',
         /* Nouwen's meditation title. */
         'h3{font-size:27px!important;line-height:1.18!important;font-weight:700!important;',
         'margin:0 0 16px!important;color:#F0EDE6!important;}',
@@ -713,7 +730,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                        // Verse". His wording wins on a label his readers see.
                        : isNouwen ? 'Daily Henri Nouwen Quotes'
                        : isSojo   ? 'Voice and Verse \\u00b7 Sojourners'
-                       : isGrist  ? 'Grist \\u00b7 The Daily'
                                   : 'Forward Day by Day';
         document.body.insertBefore(m, document.body.firstChild);
       }
@@ -728,6 +744,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       window.__phoebeReaderSet = function (on) {
         var st = document.getElementById('phoebe-reader');
         if (st) st.media = on ? '' : 'not all';
+        // The DOM edits, too — see hiddenByReader. Without this, Standard was
+        // a stripped page with the styling switched off.
+        setHiddenForReader(on);
+        // Phoebe's own masthead is Phoebe's, not the site's: it has no place
+        // on the page as the publisher renders it.
+        var m = document.querySelector('.phoebe-reader-masthead');
+        if (m) m.style.display = on ? '' : 'none';
       };
 
       /**
@@ -749,7 +772,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         for (var i = 0; i < figs.length; i++) {
           if (/w-screen/.test(figs[i].className || '')) {
             var art = figs[i].closest && figs[i].closest('article');
-            if (art) art.style.setProperty('display', 'none', 'important');
+            if (art) hideForReader(art);
           }
         }
         var players = document.querySelectorAll('audio');
@@ -762,7 +785,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
           for (var up = 0; up < 3 && box; up++) {
             var len = box.textContent.replace(/\\s/g, '').length;
             if (len > 60) break;
-            box.style.setProperty('display', 'none', 'important');
+            hideForReader(box);
             box = box.parentElement;
           }
         }
@@ -785,6 +808,30 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
        * paints white on a wrapper, and clearing only the body left cream text
        * on a white slab (measured).
        */
+      /**
+       * Everything the reader has hidden, so STANDARD can put it back.
+       *
+       * The stylesheet toggles by itself (media="not all"), but the isolate
+       * hides real content with INLINE styles, and inline styles do not care
+       * what the stylesheet is doing. Standard therefore showed a page that
+       * was still stripped AND no longer styled — white, system-font, most of
+       * it missing. Which is the worst of both, and not what "Standard" means.
+       */
+      var hiddenByReader = [];
+      function hideForReader(el) {
+        if (!el || el.getAttribute('data-phoebe-hid')) return;
+        el.setAttribute('data-phoebe-hid', el.style.display || '');
+        el.style.setProperty('display', 'none', 'important');
+        hiddenByReader.push(el);
+      }
+      function setHiddenForReader(on) {
+        for (var i = 0; i < hiddenByReader.length; i++) {
+          var el = hiddenByReader[i];
+          if (on) el.style.setProperty('display', 'none', 'important');
+          else el.style.setProperty('display', el.getAttribute('data-phoebe-hid') || '');
+        }
+      }
+
       function isolate() {
         if (!ISOLATE_TARGET) return;
         var post = document.querySelector(ISOLATE_TARGET);
@@ -797,7 +844,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
           if (parent && parent !== document.documentElement) {
             var kids = parent.children;
             for (var i = 0; i < kids.length; i++) {
-              if (kids[i] !== node) kids[i].style.setProperty('display', 'none', 'important');
+              if (kids[i] !== node) hideForReader(kids[i]);
             }
           }
           node = parent;
@@ -834,46 +881,17 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         for (var i = 0; i < heads.length; i++) {
           if (/More from Forward Movement/i.test(heads[i].textContent || '')) {
             var box = heads[i].closest ? (heads[i].closest('section, ion-card, article, div')) : null;
-            if (box && box !== post) box.style.setProperty('display', 'none', 'important');
+            if (box && box !== post) hideForReader(box);
           }
         }
         post.setAttribute('data-phoebe-trimmed', '1');
-      }
-
-      /**
-       * An email's footer furniture — Grist.
-       *
-       * "View this email in your browser", a DONATE button, the postal
-       * address, "manage your newsletter subscriptions or unsubscribe here".
-       * None of it belongs in a reading, and none of it has a class to aim at.
-       *
-       * THE SIZE GUARD IS THE WHOLE TRICK: hide the nearest enclosing row or
-       * table ONLY while it is small. Every one of these strings also lives
-       * inside the outermost table, which is the entire newsletter — walking
-       * up without a limit would hide the lot.
-       */
-      function gristTrim() {
-        if (document.body.getAttribute('data-phoebe-trimmed')) return;
-        var junk = /unsubscribe|View this email|PO Box|manage your newsletter/i;
-        var all = document.querySelectorAll('td, tr, table, div, p, a');
-        for (var i = 0; i < all.length; i++) {
-          var t = all[i].textContent || '';
-          if (t.length > 400 || !junk.test(t)) continue;
-          var box = all[i].closest ? all[i].closest('tr, table') : null;
-          if (box && (box.textContent || '').length <= 400) {
-            box.style.setProperty('display', 'none', 'important');
-          } else {
-            all[i].style.setProperty('display', 'none', 'important');
-          }
-        }
-        document.body.setAttribute('data-phoebe-trimmed', '1');
       }
 
       function run() {
         addStyle();
         if (isOremus) { tidy(); credit(); }
         else if (isVcs) { vcsStrip(); }
-        else { isolate(); if (isFdd) fddTrim(); if (isGrist) gristTrim(); }
+        else { isolate(); if (isFdd) fddTrim(); }
         masthead();
       }
       if (document.readyState !== 'loading') run();
@@ -1096,13 +1114,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          *  readerJS's hostname gate; add to both or the button appears over a
          *  page it can't change (or, worse, doesn't appear over one it can). */
         let readerHost = (url.host ?? "").lowercased()
-        let isReaderHost = readerHost.hasSuffix("oremus.org")
-            || readerHost.hasSuffix("thevcs.org")
-            || readerHost.hasSuffix("ssje.org")
-            || readerHost.hasSuffix("henrinouwen.org")
-            || readerHost.hasSuffix("forwardmovement.org")
-            || readerHost.hasSuffix("sojo.net")
-            || readerHost.hasSuffix("grist.org")
+        let isReaderHost = Self.isReaderHostName(readerHost)
         if officeChrome {
             // Owner: "take the settings and the X button out of the top
             // right and move the Next button ... to the top right." Gear
@@ -1384,6 +1396,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             // is why a preloaded page (Visio Divina preloads its essay) opened
             // with the caller's starting chrome, white, over a dark article.
             syncChromeToPage()
+            refreshReaderChrome()
             scrollToDeepLinkedWork()
         }
         // The ceiling. A page that never reports finishing must not hold the
@@ -1629,11 +1642,30 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         optionsItem?.tintColor = tint
         closeXItem?.tintColor = tint
         applyOfficePillChrome(bar: bar, tint: tint, text: text)
-        view.backgroundColor = bar
-        navigationController?.view.backgroundColor = bar
+        /**
+         * IN READER MODE WE SUPPLY THE GROUND, so the page is not asked for it.
+         *
+         * Owner, of the screen recording: "the readers didnt have green
+         * backrounds." This is where it went. The reader stylesheet makes the
+         * page transparent so the leaf behind it can show — which leaves this
+         * probe reading a page with no background of its own, resolving the
+         * chrome to black or white, and then setting the web view's background
+         * OPAQUE. That last line painted straight over the leaf and its wash,
+         * so the practice's ground disappeared the moment a page finished
+         * loading.
+         *
+         * The probe is still right for Standard view, where the site's own
+         * design should own the frame.
+         */
+        let readerOwnsGround = readerViewOn
+            && Self.isReaderHostName(webView?.url?.host ?? url.host ?? "")
+        let ground = readerOwnsGround ? PhoebeBrowserColor.deck : bar
+        view.backgroundColor = ground
+        navigationController?.view.backgroundColor = ground
         // The page's own body, behind the web view — not the bar's band, or a
         // cream masthead would tint the whole of a dark article's backdrop.
-        webView?.backgroundColor = isLight ? .white : .black
+        // Clear in reader mode, or it hides the leaf painted behind it.
+        webView?.backgroundColor = readerOwnsGround ? .clear : (isLight ? .white : .black)
     }
 
     /** Colour the floating bottom pill to match — see buildOfficeNavPill. */
@@ -1842,6 +1874,65 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         attempt(3, delay: 0.35)
     }
 
+    /**
+     * The reader's chrome, decided from the page we ACTUALLY landed on.
+     *
+     * THE BUG THIS FIXES: chrome is set up from the URL we were handed, and
+     * two of these sources are our own redirect routes —
+     * withphoebe.app/api/nouwen/today and /api/vts/today. At setup time the
+     * host is `withphoebe.app`, which is not a reader host, so the Standard
+     * button was never added and the light "newsletter" chrome stayed. The
+     * page then redirected to henrinouwen.org and rendered in the reader view
+     * underneath a white bar with no way back to the standard page.
+     *
+     * `reader: true` on openExternal is ALSO not what it sounds like: it maps
+     * to lightChrome, an option older than this reader view, which is what
+     * asked for the white bar in the first place.
+     *
+     * So: re-read the host after every navigation, and if the reader view is
+     * going to restyle this page, give it dark chrome and the toggle. Safe to
+     * call repeatedly — it adds the button once and applies a colour that is
+     * already right.
+     */
+    private func refreshReaderChrome() {
+        let host = (webView.url?.host ?? url.host ?? "").lowercased()
+        let isReader = host.hasSuffix("oremus.org")
+            || host.hasSuffix("thevcs.org")
+            || host.hasSuffix("ssje.org")
+            || host.hasSuffix("henrinouwen.org")
+            || host.hasSuffix("forwardmovement.org")
+            || host.hasSuffix("sojo.net")
+        guard isReader else { return }
+        // Dark, because the reader view paints the page dark green. The
+        // page-sampling sync agrees once it runs; this stops the white flash
+        // in between, and holds when the caller asked for light chrome.
+        applyChrome(isLight: false)
+        if standardItem == nil {
+            let item = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
+            item.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
+            standardItem = item
+            // TOP RIGHT (owner, twice). Anything already there — the office's
+            // Next — keeps the corner, with Standard just inside it.
+            if let existing = navigationItem.rightBarButtonItem, existing !== item {
+                navigationItem.rightBarButtonItems = [existing, item]
+            } else {
+                navigationItem.rightBarButtonItem = item
+            }
+        }
+    }
+
+    /**
+     * The hosts the reader view can restyle. ONE list — the chrome, the
+     * Standard button and the stylesheet all have to agree about this, and a
+     * host in one but not another shows a button over a page it can't change.
+     */
+    static func isReaderHostName(_ host: String) -> Bool {
+        let h = host.lowercased()
+        return h.hasSuffix("oremus.org") || h.hasSuffix("thevcs.org") || h.hasSuffix("ssje.org")
+            || h.hasSuffix("henrinouwen.org") || h.hasSuffix("forwardmovement.org")
+            || h.hasSuffix("sojo.net") || h.hasSuffix("grist.org")
+    }
+
     private func syncChromeToPage() {
         let probe = """
         (function () {
@@ -2021,12 +2112,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         updateNavButtons()
         // The page has painted — take its background and match the chrome to it.
         syncChromeToPage()
+        refreshReaderChrome()
         // …and again shortly after. Plenty of sites paint a plain body first and
         // drop their masthead in a beat later (a web font, a lazy stylesheet),
         // and the first sample would then have read the page before it had the
         // band we are trying to match.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
             self?.syncChromeToPage()
+            self?.refreshReaderChrome()
         }
         scrollToDeepLinkedWork()
         hideVeil()

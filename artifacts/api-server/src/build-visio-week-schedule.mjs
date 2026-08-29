@@ -43,6 +43,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getOfficeDay } from "./lib/liturgicalCalendar.ts";
 import { getLectionaryReadings } from "./lib/lectionary.ts";
+import { RCL_SUNDAYS } from "./data/rclSundays.ts";
 import { rankedTiers, pickFromTier, matchScore, rotationForDay, parseRef } from "../../mymonastery/src/lib/visioSelect.ts";
 import { ACT_COMMENTARY_CATALOGUE as ACT_CATALOGUE } from "../../mymonastery/src/lib/visioCommentaryCatalogue.ts";
 
@@ -207,7 +208,30 @@ function build() {
       continue;
     }
     let refs;
-    try { refs = refsForDay(sunday); } catch { continue; }
+    /**
+     * THE SUNDAY EUCHARIST READINGS, not the Daily Office's.
+     *
+     * Owner, looking at the week's image: "none of those were the readings."
+     * He was right and the reason was here. This chose from the DAILY OFFICE
+     * lectionary for the Sunday — semi-continuous, and largely unpainted — so
+     * the week ending 30 August was pinned to Ephesians 5:8-14 while the
+     * congregation heard Matthew 16:21-28 and Romans 12:9-21. Nobody looking
+     * at the app and the pew leaflet would recognise them as the same day.
+     *
+     * The RCL table (data/rclSundays.ts) is what the parish actually reads,
+     * and it is the reason coverage roughly doubled when it was measured. Its
+     * gospel and epistle are already New Testament, so the NT filter below is
+     * inert for them and stays only for the Daily Office fallback.
+     *
+     * Outside the seeded years the Daily Office remains the floor — a week
+     * with a less apt image beats a week with none.
+     */
+    const rcl = RCL_SUNDAYS[weekKey];
+    if (rcl) {
+      refs = [rcl.gospel, ...(rcl.nt ?? [])].filter(Boolean).map(norm);
+    } else {
+      try { refs = refsForDay(sunday); } catch { continue; }
+    }
     stats.days++;
 
     const tiers = rankedTiers(refs);

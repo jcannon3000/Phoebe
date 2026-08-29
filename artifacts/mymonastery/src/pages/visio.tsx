@@ -479,9 +479,29 @@ export default function VisioPage() {
    * appears in this practice. The rule at the top of this file stands; the
    * slide that was cut twice PRINTED the passage, these beats open it.
    */
-  const TITLE = 0, PROMPT_1 = 1, FIRST_LOOK = 2, REFLECTION = 3, CONTEMPLATE = 4, DONE = 5;
+  /**
+   * TWO BEATS: the title, then done.
+   *
+   * Owner: "that UX is not the recent one asked for. It is just supposed to be
+   * the title page, not even showing the image, then opening the visual
+   * commentary. Then just like this is a newsletter, we're just curating what
+   * we're showing and then going home and completing."
+   *
+   * So Phoebe curates and hands over. The title names the work and the passage,
+   * the CTA opens the Visual Commentary in the reader, and coming back
+   * completes the practice. The looking beats are gone with the image itself.
+   *
+   * WHY NO IMAGE, which is the part that reads as a loss and isn't: the
+   * artworks are licensed to the VCS by Alamy, Art Resource, bpk and DeA — 32
+   * of 52 sampled captions carry an agency line, and their own terms grant
+   * reproduction "for this project". Showing them here would be republishing
+   * someone else's licensed material. Sending the reader to the page where
+   * those licences hold costs us nothing and opens the WHOLE library rather
+   * than the sliver we have rights to.
+   */
+  const TITLE = 0, DONE = 1;
   const [step, setStep] = useState(TITLE);
-  const TOTAL = 6;
+  const TOTAL = 2;
   /**
    * Which beats hold the picture.
    *
@@ -516,7 +536,8 @@ export default function VisioPage() {
    *  used to be a text slide when there WAS one, which put two slides of
    *  instructions back to back and made the reader tap twice before seeing
    *  anything. The reading is offered under the work instead. */
-  const showsImage = step === FIRST_LOOK || step === REFLECTION || step === CONTEMPLATE;
+  // The image is never shown in-app now — see the note on the two beats.
+  const showsImage = false;
 
   /**
    * SIT WITH IT — a 12-second hold before each beat will let you move on.
@@ -542,7 +563,7 @@ export default function VisioPage() {
    * door, which is the exact thing the comment above rules out. The hold
    * belongs to the beats that ask you to LOOK.
    */
-  const holdsThisBeat = showsImage && step !== REFLECTION;
+  const holdsThisBeat = false;
   const [holdReady, setHoldReady] = useState(false);
   useEffect(() => {
     if (!holdsThisBeat) { setHoldReady(true); return; }
@@ -565,7 +586,7 @@ export default function VisioPage() {
   /** The beat that is ONLY the picture — where its label belongs. (The
    *  contemplation beat shows the picture too, but carries a prompt under it,
    *  so the title and artist would crowd the words being read.) */
-  const isLookingBeat = step === FIRST_LOOK;
+  const isLookingBeat = false;
 
   const atEnd = step >= TOTAL - 1;
   const goHome = () => setLocation("/dashboard");
@@ -716,8 +737,9 @@ export default function VisioPage() {
    * forward tap should hand you off exactly as the first one did — otherwise
    * going back one slide silently deletes the reflection from the practice.
    */
-  useEffect(() => { if (step < REFLECTION) setReadBackground(false); }, [step, REFLECTION]);
-  useEffect(() => { if (step < FIRST_LOOK) setReadPassage(false); }, [step, FIRST_LOOK]);
+  // Reopening the deck offers the commentary again; finishing is what completes.
+  useEffect(() => { if (step === TITLE) setReadBackground(false); }, [step, TITLE]);
+  useEffect(() => { if (step === TITLE) setReadPassage(false); }, [step, TITLE]);
   /**
    * The hand-off flag belongs to ONE beat.
    *
@@ -747,9 +769,11 @@ export default function VisioPage() {
     };
   }, []);
   /** True when this beat's forward action should open the reading, not page. */
-  const backgroundOpens = step === REFLECTION && hasEssay && !readBackground;
+  // The title beat hands off to the commentary — the practice's one handoff.
+  const backgroundOpens = step === TITLE && hasEssay && !readBackground;
   /** True when this beat's forward action should open the passage, not page. */
-  const readingOpens = step === FIRST_LOOK && hasReading && !readPassage;
+  // The passage no longer has a beat of its own; the commentary page carries it.
+  const readingOpens = false;
   const openBackground = () => {
     if (!view?.essayUrl) return;
     setReadBackground(true);
@@ -805,7 +829,7 @@ export default function VisioPage() {
     // out to its commentary. (It was the middle picture beat until that beat
     // was removed; this is the one that still shows the work without the
     // hand-off.)
-    setStep(CONTEMPLATE);
+    setStep(TITLE);
   };
 
   /**
@@ -969,7 +993,7 @@ export default function VisioPage() {
               // Smaller on the contemplation beat so the prompt sits under it
             // rather than below the fold — the picture is what you're praying
             // with there, not the whole screen.
-            maxHeight: step === CONTEMPLATE ? "38vh" : "62vh",
+            maxHeight: "62vh",
               objectFit: "contain", borderRadius: 10,
               boxShadow: "0 26px 74px rgba(0,0,0,0.66), 0 4px 14px rgba(0,0,0,0.45)",
               // Fades in rather than snapping: these load over the network,
@@ -1029,31 +1053,10 @@ export default function VisioPage() {
 
         {step === TITLE && view && (
           <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-            {/**
-              * A THUMBNAIL over the title (owner: "why don't we show a
-              * thumbnail of the image on the title page above the title").
-              *
-              * Small on purpose. The looking beats are where the picture is
-              * given its whole screen; here it's the size of a plate in a
-              * book — enough to know which painting you're about to sit with,
-              * not enough to have already looked at it.
-              *
-              * It also warms the fetch: by the time the next beat gives it
-              * 62vh, the browser has it, so the practice doesn't open on an
-              * empty frame.
-              */}
-            <img
-              src={view.img}
-              alt=""
-              aria-hidden
-              decoding="async"
-              className="prompt-rise"
-              style={{
-                width: 132, height: 132, objectFit: "cover", borderRadius: 10,
-                boxShadow: "0 18px 48px rgba(0,0,0,0.55), 0 3px 10px rgba(0,0,0,0.4)",
-                marginBottom: 4,
-              }}
-            />
+            {/* NO THUMBNAIL. Owner: "not even showing the image." The
+                artworks are the VCS's licensed material, not ours to
+                reproduce — the practice names the work and hands over to the
+                page where those licences hold. */}
             <h1
               className="prompt-rise"
               style={{ fontFamily: FONT, fontSize: "clamp(30px, 7vw, 40px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: 0, lineHeight: 1.08 }}
@@ -1200,14 +1203,7 @@ export default function VisioPage() {
             reading offered under it, which is what the prompt promised and
             what the eyebrow already called it.) */}
 
-        {step === PROMPT_1 && (
-          <p
-            className="prompt-rise"
-            style={{ color: WARM, fontFamily: FONT, fontSize: 21, fontWeight: 500, lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
-          >
-            {t("visio.prompt_notice", { defaultValue: NOTICE })}
-          </p>
-        )}
+        
 
         {/* Sit with it, then pray it. Owner's own words, near enough verbatim:
             "take a moment in contemplation in what God may be putting on your
@@ -1222,14 +1218,7 @@ export default function VisioPage() {
             beat is on screen; owner: "Visio Divina is still having draw
             animations." A practice about holding your attention on one picture
             can't have the words beside it moving the whole time. */}
-        {step === CONTEMPLATE && (
-          <p
-            className="prompt-rise"
-            style={{ color: WARM, fontFamily: FONT, fontSize: 21, fontWeight: 500, lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
-          >
-            {t("visio.prompt_contemplate", { defaultValue: "Take a moment in contemplation on what God may be putting on your heart through the image, and lift what arises in prayer." })}
-          </p>
-        )}
+        
 
         {/* The completion slide. Frosted cards (owner) — thumbnail and name —
             for what's been looked at lately, tappable to go back in. The
