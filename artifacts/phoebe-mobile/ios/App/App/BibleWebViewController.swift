@@ -609,7 +609,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'color:#F0EDE6!important;margin:0 0 1.15em!important;}',
         /* The feast is a LINK inside the date heading; underlined and green it
            read as something to tap rather than as the day's title. */
-        'article.fdd h1 a{color:inherit!important;text-decoration:none!important;}',
+        /* The feast onto its own line (owner: "make sure the date and the
+           feast are two different lines"). Forward Movement puts the feast in
+           an ANCHOR inside the date's h1, so inline it ran straight on from
+           "SATURDAY, AUGUST 29" with only a wide space between them. */
+        'article.fdd h1 a{color:inherit!important;text-decoration:none!important;',
+        'display:block!important;margin-top:2px!important;}',
         'form,select,input,textarea,button[type="submit"],',
         '[class*="signup"],[class*="newsletter"],[class*="mailchimp"]{display:none!important;}',
         /* SOJOURNERS, stripped to what the owner asked for: "all we want is the
@@ -729,6 +734,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
       /** The site named at the top of the page — it stays in BOTH views. */
       function masthead() {
+        /* NO MASTHEAD. Owner: "the header doesnt need a title." The reader
+           already announces itself by looking like Phoebe, and the page's own
+           title follows immediately underneath — a strapline above it just
+           spent the first line of every reading saying where you already knew
+           you were. Kept as a no-op rather than deleted so the toggle, which
+           shows and hides `.phoebe-reader-masthead`, has nothing to chase. */
+        if (true) return;
         if (document.querySelector('.phoebe-reader-masthead') || !document.body) return;
         var m = document.createElement('div');
         m.className = 'phoebe-reader-masthead';
@@ -1144,7 +1156,15 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 let standardItem = UIBarButtonItem(title: "Standard", style: .plain, target: self, action: #selector(toggleReaderView))
                 standardItem.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
                 self.standardItem = standardItem
-                navigationItem.rightBarButtonItem = standardItem
+                // LEFT (owner: "put standard to the left side of the screen").
+                // It sits next to Done — the two chrome controls together, and
+                // the right side left clear of the text.
+                if let done = navigationItem.leftBarButtonItem, done !== standardItem {
+                    navigationItem.leftBarButtonItems = [done, standardItem]
+                } else {
+                    navigationItem.leftBarButtonItem = standardItem
+                }
+                navigationItem.rightBarButtonItem = nil
             } else {
                 navigationItem.rightBarButtonItem = nil
             }
@@ -1916,12 +1936,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             let item = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
             item.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
             standardItem = item
-            // TOP RIGHT (owner, twice). Anything already there — the office's
-            // Next — keeps the corner, with Standard just inside it.
-            if let existing = navigationItem.rightBarButtonItem, existing !== item {
-                navigationItem.rightBarButtonItems = [existing, item]
+            // LEFT, beside Done (owner: "put standard to the left side of the
+            // screen"). Anything already on the left keeps the corner, with
+            // Standard just inside it.
+            if let existing = navigationItem.leftBarButtonItem, existing !== item {
+                navigationItem.leftBarButtonItems = [existing, item]
             } else {
-                navigationItem.rightBarButtonItem = item
+                navigationItem.leftBarButtonItem = item
             }
         }
     }

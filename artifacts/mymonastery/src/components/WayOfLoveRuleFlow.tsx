@@ -683,7 +683,7 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "vts", label: "🦩 VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
   // Read-only sources (see ReflectionSource): they sit in the rule and open in
   // the reader like the others, but opening one is not scored.
-  { id: "nouwen", label: "🪔 Daily Henri Nouwen Quotes", sub: "Henri Nouwen Society" },
+  { id: "nouwen", label: "😊 Daily Henri Nouwen Quotes", sub: "Henri Nouwen Society" },
   { id: "sojo", label: "🕊️ Sojourner's Voice and Verse", sub: "Verse, voice and prayer of the day" },
   { id: "grist", label: "🌍 Grist Climate News", sub: "The day's climate journalism · weekdays" },
 ];
