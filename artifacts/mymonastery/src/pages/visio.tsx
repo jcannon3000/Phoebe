@@ -391,19 +391,30 @@ export default function VisioPage() {
    * beat — but its text isn't printed here. The office is where you read.
    */
   /**
-   * THE READING BEAT. Owner: "can we also include the reading ... whatever the
-   * passage is that the commentary is referring to."
+   * THE TWO HAND-OFFS, AND THEIR ORDER: look → passage → commentary.
    *
-   * It sits straight after the reflection, because the two belong together —
-   * you have looked, you have read what someone wrote about the looking, and
-   * now the passage itself. Like the reflection beat, its FORWARD action is a
-   * hand-off rather than a page turn: openOfficeReading gives oremus's own
-   * page the office's chrome, and Phoebe's reader view restyles it. Which is
-   * the ONLY way scripture appears here. The rule from the top of this file
-   * stands — no scripture slide, no NRSV text reproduced in the deck; the
-   * cut slide printed the passage, this beat opens the Bible.
+   * Owner: "can we also include the reading ... whatever the passage is that
+   * the commentary is referring to", then, on the order, "do look → passage →
+   * commentary → contemplate."
+   *
+   * It shipped the other way round for one commit, and that was wrong:
+   * scripture reached the reader AFTER a scholar's reading of it, so someone
+   * met an argument about Psalm 137 before they met Psalm 137. Interpretation
+   * has to follow the text it interprets.
+   *
+   * The looking still comes first. The whole deck rests on it — the twelve
+   * second hold exists to stop the picture being skimmed, and the reference
+   * is already named on the title slide, so you arrive knowing WHAT this is
+   * about without having been told what to find in it. Reading the passage
+   * first would turn the first look into checking the picture against a text.
+   *
+   * Neither beat prints anything. Both hand off: openOfficeReading gives the
+   * page the office's chrome and Phoebe's reader view restyles it — oremus
+   * for the passage, VCS for the commentary. That is the ONLY way scripture
+   * appears in this practice. The rule at the top of this file stands; the
+   * slide that was cut twice PRINTED the passage, these beats open it.
    */
-  const TITLE = 0, PROMPT_1 = 1, FIRST_LOOK = 2, READING = 3, CONTEMPLATE = 4, DONE = 5;
+  const TITLE = 0, PROMPT_1 = 1, FIRST_LOOK = 2, REFLECTION = 3, CONTEMPLATE = 4, DONE = 5;
   const [step, setStep] = useState(TITLE);
   const TOTAL = 6;
   /**
@@ -436,11 +447,11 @@ export default function VisioPage() {
    */
   const passageUrl = useMemo(() => (view?.scriptureRef ? readingUrl(view.scriptureRef) : null), [view?.scriptureRef]);
   const hasReading = !!passageUrl;
-  /** FIRST_LOOK is the picture — with or without a reflection to open. It used
-   *  to be a text slide when there WAS one, which put two slides of
+  /** FIRST_LOOK is the picture — with or without a passage to open off it. It
+   *  used to be a text slide when there WAS one, which put two slides of
    *  instructions back to back and made the reader tap twice before seeing
    *  anything. The reading is offered under the work instead. */
-  const showsImage = step === FIRST_LOOK || step === READING || step === CONTEMPLATE;
+  const showsImage = step === FIRST_LOOK || step === REFLECTION || step === CONTEMPLATE;
 
   /**
    * SIT WITH IT — a 12-second hold before each beat will let you move on.
@@ -460,13 +471,13 @@ export default function VisioPage() {
    */
   const HOLD_MS = 12_000;
   /**
-   * NOT on the reading beat. The two hand-off beats sit back to back, and a
+   * NOT on the reflection beat. The two hand-off beats sit back to back, and a
    * second twelve-second lock between them would be twenty-four seconds of
-   * waiting to reach a passage the reader has already decided to read — a
-   * locked door, which is the exact thing the comment above rules out. The
-   * hold belongs to the beats that ask you to LOOK.
+   * waiting to reach a page the reader has already decided to read — a locked
+   * door, which is the exact thing the comment above rules out. The hold
+   * belongs to the beats that ask you to LOOK.
    */
-  const holdsThisBeat = showsImage && step !== READING;
+  const holdsThisBeat = showsImage && step !== REFLECTION;
   const [holdReady, setHoldReady] = useState(false);
   useEffect(() => {
     if (!holdsThisBeat) { setHoldReady(true); return; }
@@ -494,10 +505,11 @@ export default function VisioPage() {
   const atEnd = step >= TOTAL - 1;
   const goHome = () => setLocation("/dashboard");
   const next = () => {
-    // The Background beat's forward action IS the hand-off — see openBackground.
-    if (backgroundOpens) { openBackground(); return; }
-    // …and the Reading beat's is the passage. Same shape, same reason.
+    // Both picture beats hand off rather than page — the first look to the
+    // PASSAGE, the beat after it to the commentary. Tested in that order for
+    // clarity only; the two flags can never both be true.
     if (readingOpens) { openReading(); return; }
+    if (backgroundOpens) { openBackground(); return; }
     if (!atEnd) { setStep((s) => s + 1); return; }
     // Kept by finishing, not by opening.
     try { markPracticeDoneToday("visio"); } catch { /* non-fatal */ }
@@ -559,7 +571,11 @@ export default function VisioPage() {
   };
 
   /**
-   * FIRST_LOOK → the reflection, the way the office opens a lesson.
+   * The commentary, the way the office opens a lesson.
+   *
+   * It hangs off the REFLECTION beat now, not the first look — the passage
+   * goes between them (see the beat constants). The mechanism is unchanged;
+   * only which beat calls it.
    *
    * Owner: "include the reflection of the visio as a slide with navigation
    * like in the office", then "a first prompt after the title slide that says
@@ -578,7 +594,7 @@ export default function VisioPage() {
    *
    * Which is why this beat's FORWARD action opens the reading rather than
    * paging — the same thing the office's lesson slide does. Coming back
-   * through the browser's Next lands you on the second prompt, which sends you
+   * through the browser's Next lands you on the beat after, which sends you
    * to the image again; Back lands you on the first, which offers the
    * reflection again (see the readBackground reset below).
    *
@@ -635,8 +651,8 @@ export default function VisioPage() {
    * forward tap should hand you off exactly as the first one did — otherwise
    * going back one slide silently deletes the reflection from the practice.
    */
-  useEffect(() => { if (step < FIRST_LOOK) setReadBackground(false); }, [step, FIRST_LOOK]);
-  useEffect(() => { if (step < READING) setReadPassage(false); }, [step, READING]);
+  useEffect(() => { if (step < REFLECTION) setReadBackground(false); }, [step, REFLECTION]);
+  useEffect(() => { if (step < FIRST_LOOK) setReadPassage(false); }, [step, FIRST_LOOK]);
   /**
    * The hand-off flag belongs to ONE beat.
    *
@@ -666,9 +682,9 @@ export default function VisioPage() {
     };
   }, []);
   /** True when this beat's forward action should open the reading, not page. */
-  const backgroundOpens = step === FIRST_LOOK && hasEssay && !readBackground;
+  const backgroundOpens = step === REFLECTION && hasEssay && !readBackground;
   /** True when this beat's forward action should open the passage, not page. */
-  const readingOpens = step === READING && hasReading && !readPassage;
+  const readingOpens = step === FIRST_LOOK && hasReading && !readPassage;
   const openBackground = () => {
     if (!view?.essayUrl) return;
     setReadBackground(true);
@@ -1335,12 +1351,13 @@ export default function VisioPage() {
               // is how a reader ends up unsure whether they're two different
               // things (owner, comparing the two: "why is there
               // inconsistency"). One phrase, one key.
-              : backgroundOpens
-                ? `${t("visio.read_reflection", { defaultValue: "Read reflection" })} \u2192`
-              // Same rule as the reflection's button: one destination, one
-              // phrase, wherever it appears.
+              // In deck order: the passage off the first look, the reflection
+              // off the beat after it. Same rule for both — one destination,
+              // one phrase, wherever it appears.
               : readingOpens
                 ? `${t("visio.read_passage", { defaultValue: "Read the passage" })} \u2192`
+              : backgroundOpens
+                ? `${t("visio.read_reflection", { defaultValue: "Read reflection" })} \u2192`
               : step === TITLE
                 ? t("common.begin", { defaultValue: "Begin" })
                 // Audit: the closing slide's button doesn't continue anything —

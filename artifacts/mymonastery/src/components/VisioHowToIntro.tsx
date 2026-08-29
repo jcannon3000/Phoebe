@@ -54,7 +54,7 @@ const SLIDES: Slide[] = [
   {
     // Last slide — the invitation, centred, no eyebrow and no headline. Same
     // shape as the Creation Prayer tutorial's third slide.
-    body: "After the first look you can read the reflection written about the work, and the passage it belongs to. Come as often as you like. Let the week soak in.",
+    body: "After the first look comes the passage itself, and then a reflection written about the work. Come as often as you like. Let the week soak in.",
     art: null,
   },
 ];
