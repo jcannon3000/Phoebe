@@ -42,6 +42,11 @@ private enum PhoebeBrowserColor {
 final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private let url: URL
     private var webView: WKWebView!
+    // The leaf and its wash, painted behind a transparent web view — the page's
+    // own CSP forbids loading them from inside it. See the setup in loadView.
+    private var readerBackdrop: UIImageView?
+    private var readerWash: UIView?
+    private var readerWashLayer: CAGradientLayer?
     private let progressView = UIProgressView(progressViewStyle: .bar)
     private var progressObservation: NSKeyValueObservation?
     private var titleObservation: NSKeyValueObservation?
@@ -345,14 +350,17 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            `width`, and the container was never the thing holding the measure.
            This is the override the reader always needed. */
         'body{width:auto!important;max-width:none!important;',
-        'margin:0!important;padding:0!important;background:#0A1A10!important;',
+        /* TRANSPARENT, so the leaf can show through from BEHIND.
+           The leaf is painted natively now (see readerBackdrop) rather than by
+           this stylesheet. It has to be: the hosts we read serve
+           `Content-Security-Policy: default-src 'self'`, which covers img-src,
+           so a background-image from withphoebe.app — or from a data: URI —
+           is refused before it is fetched. That is why the page kept coming
+           back flat green however the wash was weighted. Painting it under a
+           transparent web view puts it out of the page's reach entirely, the
+           same move that fixed the font. */
+        'margin:0!important;padding:0!important;background:transparent!important;',
         'color:#F0EDE6!important;font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
-        'body::before{content:"";position:fixed;inset:0;z-index:-2;background-image:url("' + ASSETS + 'leaf.jpg");',
-        'background-size:cover;background-position:center;opacity:0.22;}',
-        /* The practice decks' own wash weights — the earlier 0.88–0.97 buried
-           the leaf entirely (owner's screenshot: a flat dark green). */
-        'body::after{content:"";position:fixed;inset:0;z-index:-1;',
-        'background:linear-gradient(180deg,rgba(10,26,16,0.62) 0%,rgba(10,26,16,0.80) 55%,rgba(10,26,16,0.90) 100%);}',
       ].concat(isOremus ? [
         /* oremus's own furniture. .copyright is deliberately NOT here. */
         '#dcheck,#h1screen,#overDiv,.quicklink,hr.quicklink,.visbuttons,.another,.credits,.adj,form{display:none!important;}',
@@ -423,7 +431,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            from wherever it had got to. Measured on the live page: eight
            attempts, final pageYOffset 0, with the target at 2946. The JS side
            asks for behavior:'instant' now; this is the belt to that brace. */
-        'html{scroll-behavior:auto!important;background:#0A1A10!important;}',
+        'html{scroll-behavior:auto!important;background:transparent!important;}',
         '.cky-consent-container,header,nav,footer,.js-site-footer,.js-main-nav,',
         '.artworks,.js-artworks{display:none!important;}',
         /* The picture and everything wrapped around it. */
@@ -834,7 +842,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             // button would toggle nothing.
             let readerHost = (url.host ?? "").lowercased()
             if readerHost.hasSuffix("oremus.org") || readerHost.hasSuffix("thevcs.org") {
-                let standardItem = UIBarButtonItem(title: "Standard", style: .plain, target: self, action: #selector(toggleReaderView))
+                // Titled from the remembered state, not hardcoded — the button
+                // names what tapping it will DO, and it can start either way.
+                let standardItem = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
                 standardItem.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
                 self.standardItem = standardItem
                 navigationItem.rightBarButtonItems = [nextItem, standardItem]
@@ -871,7 +881,73 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         if BibleWebViewController.forcesLightMode(url) {
             webView.overrideUserInterfaceStyle = .light
         }
+        /**
+         * THE LEAF, PAINTED NATIVELY (owner: "can we put leaps at the back …
+         * as the background, please? I've been asking for that for a while").
+         *
+         * It could never work from inside the page. oremus and the VCS both
+         * serve `Content-Security-Policy: default-src 'self'`, which covers
+         * img-src, so a background-image pointing at withphoebe.app is refused
+         * before it is fetched — and a data: URI is refused too, since 'self'
+         * does not include data:. Every attempt to weight the wash differently
+         * was adjusting a gradient over a photograph that had never loaded,
+         * which is why it kept coming back flat green.
+         *
+         * So the photograph goes UNDER the web view instead of inside it: an
+         * image view and the deck's own wash sit behind, the page renders on a
+         * transparent background (see the stylesheet), and nothing about it is
+         * the page's business. Same move as the font — stop asking the host's
+         * policy for permission to show our own asset.
+         *
+         * Only in reader mode: Standard view keeps the plain background, since
+         * a site's own design should sit on its own ground.
+         */
+        let backdrop = UIImageView()
+        backdrop.translatesAutoresizingMaskIntoConstraints = false
+        backdrop.contentMode = .scaleAspectFill
+        backdrop.clipsToBounds = true
+        backdrop.alpha = 0.22
+        if let leaf = Bundle.main.url(forResource: "leaf", withExtension: "jpg", subdirectory: "public/reader"),
+           let img = UIImage(contentsOfFile: leaf.path) {
+            backdrop.image = img
+        }
+        let wash = UIView()
+        wash.translatesAutoresizingMaskIntoConstraints = false
+        wash.isUserInteractionEnabled = false
+        let washLayer = CAGradientLayer()
+        // The practice decks' own weights — light enough at the top that the
+        // leaf reads, heavy enough at the bottom that the text stays legible.
+        washLayer.colors = [
+            UIColor(red: 10/255, green: 26/255, blue: 16/255, alpha: 0.62).cgColor,
+            UIColor(red: 10/255, green: 26/255, blue: 16/255, alpha: 0.80).cgColor,
+            UIColor(red: 10/255, green: 26/255, blue: 16/255, alpha: 0.90).cgColor,
+        ]
+        washLayer.locations = [0, 0.55, 1]
+        wash.layer.addSublayer(washLayer)
+        readerBackdrop = backdrop
+        readerWash = wash
+        readerWashLayer = washLayer
+        view.addSubview(backdrop)
+        view.addSubview(wash)
+
         view.addSubview(webView)
+        // Transparent so the leaf behind it shows through. The page's own
+        // stylesheet clears its background to match; a site rendering its own
+        // opaque background simply covers this, which is correct for Standard.
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+        NSLayoutConstraint.activate([
+            backdrop.topAnchor.constraint(equalTo: view.topAnchor),
+            backdrop.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            backdrop.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            backdrop.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            wash.topAnchor.constraint(equalTo: view.topAnchor),
+            wash.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            wash.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            wash.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+        ])
+        syncReaderBackdrop()
 
         progressView.translatesAutoresizingMaskIntoConstraints = false
         progressView.tintColor = PhoebeBrowserColor.tint
@@ -1523,7 +1599,22 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     }
     /** Reader view on/off for the oremus reading — see the JS side's
      *  __phoebeReaderSet. State lives here so the button can rename itself. */
-    private var readerViewOn = true
+    /**
+     * REMEMBERED BETWEEN VISITS (owner: "have it … remember which it's at. So
+     * if they toggled it off, it'll be off next time they open. If they toggle
+     * it on, it'll be on").
+     *
+     * Defaults to on for someone who has never touched it — the reader is the
+     * point of opening a passage in Phoebe rather than Safari — and after that
+     * the stored answer wins. UserDefaults rather than the web view's own
+     * storage: the preference belongs to the app, not to any one host, so it
+     * holds across oremus, the VCS and anywhere else the reader is offered.
+     */
+    private static let readerPrefKey = "phoebe.reader.on"
+    private var readerViewOn: Bool = {
+        let d = UserDefaults.standard
+        return d.object(forKey: BibleWebViewController.readerPrefKey) as? Bool ?? true
+    }()
     private weak var standardItem: UIBarButtonItem?
     /**
      * THE READER'S FONT, REGISTERED WITH THE PROCESS — NOT FETCHED.
@@ -1565,9 +1656,39 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         return ok
     }()
 
+    /**
+     * Push the REMEMBERED state into a freshly loaded page.
+     *
+     * The injected stylesheet starts enabled at document-start (that is what
+     * makes the reader paint without a flash of the site's own design), so a
+     * stored "off" has to be applied once the document exists — otherwise the
+     * preference is written, read, and then silently ignored on every load,
+     * and the toggle only appears to work until you leave the page.
+     */
+    private func applyReaderState() {
+        webView?.evaluateJavaScript("window.__phoebeReaderSet && window.__phoebeReaderSet(\(readerViewOn))", completionHandler: nil)
+        standardItem?.title = readerViewOn ? "Standard" : "Reader"
+        syncReaderBackdrop()
+    }
+
+    /** The backdrop belongs to reader mode only — Standard shows the site's
+     *  own ground, which is what "standard" means. */
+    private func syncReaderBackdrop() {
+        readerBackdrop?.isHidden = !readerViewOn
+        readerWash?.isHidden = !readerViewOn
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // CAGradientLayer doesn't autolayout; without this it keeps its
+        // zero frame and the wash never appears.
+        readerWashLayer?.frame = readerWash?.bounds ?? .zero
+    }
+
     @objc private func toggleReaderView() {
         readerViewOn.toggle()
-        webView?.evaluateJavaScript("window.__phoebeReaderSet && window.__phoebeReaderSet(\(readerViewOn))", completionHandler: nil)
+        UserDefaults.standard.set(readerViewOn, forKey: Self.readerPrefKey)
+        applyReaderState()
         // The item itself, not a slot: it lives in rightBarButtonItems now,
         // and reading the slot back would rename whatever else is there.
         standardItem?.title = readerViewOn ? "Standard" : "Reader"
@@ -1593,6 +1714,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // A later load succeeded — take the failure panel down.
         loadFailureView?.removeFromSuperview()
         loadFailureView = nil
+        // The new document starts with the reader stylesheet live; if they
+        // turned it off, turn it off again here.
+        applyReaderState()
         UIView.animate(withDuration: 0.25, animations: { [weak self] in
             self?.progressView.alpha = 0
         }) { [weak self] _ in
