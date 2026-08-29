@@ -320,7 +320,17 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'html{-webkit-text-size-adjust:100%;}',
         /* The leaf, held under a heavy wash so scripture stays legible — the
            same treatment the practice decks use. Fixed so it doesn't scroll. */
-        'body{margin:0!important;padding:0!important;background:#0A1A10!important;',
+        /* THE LINE BREAKS, FINALLY: oremus's bible.css sets `body{width:600px}`
+           and, inside `@media only screen and (max-device-width:480px)`,
+           `body{width:300px}` — a fixed 2003-era phone measure. EVERYTHING
+           inherits it, so every line wrapped at 300px with a wide empty
+           gutter, however many max-widths were cleared on .bible/.bibletext
+           (measured on the live page at a 375px viewport: body 300px; with
+           width:auto, 359px). Clearing max-width was never going to touch a
+           `width`, and the container was never the thing holding the measure.
+           This is the override the reader always needed. */
+        'body{width:auto!important;max-width:none!important;',
+        'margin:0!important;padding:0!important;background:#0A1A10!important;',
         'color:#F0EDE6!important;font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
         'body::before{content:"";position:fixed;inset:0;z-index:-2;background-image:url("' + ASSETS + 'leaf.jpg");',
         'background-size:cover;background-position:center;opacity:0.22;}',
@@ -340,6 +350,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            background and the tidy both landed while the type stayed Verdana. */
         '.bible,.bibletext,.bibletext *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
         '.bibletext{font-size:19px!important;line-height:1.72!important;color:#F0EDE6!important;}',
+        /* Belt and braces on the descendants — the real constraint is on
+           BODY (see the width:auto there). */
+        '.bible p,.bible blockquote,.bibletext p,.bibletext blockquote,.bible h2,.bible div{width:auto!important;max-width:none!important;}',
         '.bibletext p{margin:0 0 1.15em!important;}',
         'h2.passageref,.copyright,.phoebe-reader-note{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
         'h2.passageref{max-width:none;margin:0!important;padding:14px 20px 6px!important;',
