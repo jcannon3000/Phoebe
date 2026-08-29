@@ -1700,6 +1700,9 @@ export default function CommunityDetailPage() {
                   // Where the weekly reflection is written, a link is posted,
                   // and the group's inbound newsletter address lives.
                   { emoji: "📝", label: t("community_detail.posts", { defaultValue: "Posts & newsletter" }), go: () => setLocation(`/communities/${slug}/posts`) },
+                  // The prayer list is a MEMBER surface too, but a leader
+                  // reaches its queue from here — the page shows both.
+                  { emoji: "🙏", label: t("community_detail.prayer_list", { defaultValue: "Prayer list" }), go: () => setLocation(`/communities/${slug}/prayer-list`) },
                   // Prayer Feeds are beta-only (server-enforced) — the tile is
                   // gated on rawIsBeta so it doesn't invite a 403 for admins
                   // outside the beta program.

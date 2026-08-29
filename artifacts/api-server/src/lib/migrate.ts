@@ -4122,6 +4122,28 @@ export async function migrate() {
     // makes you sign in again. Plus the button's own wording.
     await run(client, `ALTER TABLE group_posts ADD COLUMN IF NOT EXISTS open_externally BOOLEAN NOT NULL DEFAULT FALSE`);
     await run(client, `ALTER TABLE group_posts ADD COLUMN IF NOT EXISTS cta_label TEXT`);
+
+    /**
+     * The parish prayer list, with a leader between the form and the
+     * congregation. See lib/db/src/schema/group_prayer_requests.ts for why the
+     * body is editable by the admin rather than only approvable.
+     */
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_prayer_requests (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        submitted_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        submitter_name TEXT,
+        body TEXT NOT NULL,
+        original_body TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        reviewed_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        reviewed_at TIMESTAMPTZ,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_group_prayer_requests_group_status ON group_prayer_requests (group_id, status)`);
     // The secret half of a group's inbound email address — see the schema.
     // Backfilled below for every existing group, the same way invite_token is.
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS inbound_token TEXT`);
