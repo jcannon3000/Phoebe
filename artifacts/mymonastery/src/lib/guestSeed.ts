@@ -41,14 +41,15 @@ const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 // a known historical seed exactly. That's the safe signal that the person never
 // touched it — anything else means they customized, and their rule is theirs.
 const SEED_VERSION_KEY = "phoebe:guest-seed-version";
-const SEED_VERSION = "2";
+const SEED_VERSION = "3";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never
 // remove: the whole point is recognizing rules we ourselves wrote.
 const STALE_SEEDS: Array<[string, string]> = [
-  ["psalms", "psalms"],        // 484e3f5e
-  ["guided-prayer", "examen"], // 1640800e
-  ["psalms", "examen"],        // 54fdabbe
+  ["psalms", "psalms"],          // 484e3f5e
+  ["guided-prayer", "examen"],   // 1640800e
+  ["psalms", "examen"],          // 54fdabbe
+  ["guided-prayer", "readings"], // the v2 default, replaced by the one below
 ];
 
 function todayYmd(): string {
@@ -85,7 +86,15 @@ function migrateStaleSeed(): void {
     const untouched = STALE_SEEDS.some(([m, e]) => m === morning && e === evening);
     if (untouched) {
       setSideLevel("morning", "guided-prayer");
-      setSideLevel("evening", "readings");
+      // NO EVENING in the default (owner). "ask" is a side's off state — the
+      // one thing isActiveLevel and the customizer both read as "not part of
+      // the rhythm" — so this turns the evening off rather than leaving a
+      // practice on it.
+      setSideLevel("evening", "ask");
+      // The REFLECTION is deliberately not migrated. A device can sit on an
+      // untouched pair of levels and still have chosen its own daily word;
+      // moving the levels is what this migration is for, and rewriting a
+      // reading someone picked would be a different, unasked-for act.
       try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
       // Same reasoning as the seed below: a precoded default must never migrate
       // up to an account on sign-in, so zero the clock the setters just bumped.
@@ -113,11 +122,17 @@ export function seedGuestRule(): void {
     }
     // Respect an existing rule (e.g. a device that used the app signed-in).
     if (getExplicitSideLevel("morning") || getExplicitSideLevel("evening")) return;
+    /**
+     * THE DEFAULT ROUTINE (owner): Simple Guided Prayer in the morning, the
+     * CAC's Daily Meditation as the day's reading, five minutes of silence —
+     * and NO EVENING. The evening is written as "ask", which is a side's off
+     * state, so a new person gets three cards rather than a fourth they never
+     * asked for.
+     */
     setSideLevel("morning", "guided-prayer");
-    setSideLevel("evening", "readings");
-    setReflectionSource("fdd");
-    setSideReflection("morning", "fdd");
-    setSideReflection("evening", "fdd");
+    setSideLevel("evening", "ask");
+    setReflectionSource("cac");
+    setSideReflection("morning", "cac");
     // The 5-minute silence DAILY GOAL (single goal card w/ progress bar) is a
     // guest-local pref — the goal card reads it via the guest goal key below
     // (server contemplationGoalMinutes needs an account).
