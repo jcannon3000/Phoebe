@@ -694,7 +694,25 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    * that was prayed is the extra's, not the anchor's — see DailyProgressBody's
    * extraCard, whose key this must match exactly.
    */
+  /**
+   * IS THIS DECK AN OFFICE AT ALL?
+   *
+   * Daily Scripture Reading rides this renderer (it is registered as a
+   * LiturgyMode so progress, resume, the chime and read-aloud all work), but
+   * it is a READING, not an office — no confession, no canticles, no collect.
+   * Everything below that credits a side, stamps an office as prayed, or plays
+   * a card's completion moment has to know the difference.
+   *
+   * Owner, watching it finish: "see how even though this is an extra practice
+   * through the menu it animated my morning prayer that was already done."
+   * That is exactly what happened — the completion fell through to "morning"
+   * because every branch above it names an evening mode.
+   */
+  const isReadingDeck = resolvedMode === "scripture";
+
   const completedCardKey = (() => {
+    // A reading has no office card to animate.
+    if (isReadingDeck) return "scripture";
     const extra = getSideExtra(officeSide);
     if (!extra) return officeSide;
     return extraOfficeMode(officeSide, extra) === resolvedMode ? `extra-${officeSide}` : officeSide;
@@ -1096,7 +1114,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // practices on the same side, and a side can now carry both — passing
         // only the side ticked whichever one the anchor happens to be, and
         // animated the anchor's card either way.
-        markOfficeBookComplete(officeSide, resolvedMode, completedCardKey);
+        // A READING credits no office. markOfficeBookComplete flips the side's
+        // anchor, clears its reminder push and counts it in Daily progress —
+        // all correct for an office and all wrong for the lectionary's
+        // readings, which are a practice of their own.
+        if (!isReadingDeck) markOfficeBookComplete(officeSide, resolvedMode, completedCardKey);
         // Home, not Daily progress. Owner: "Venite goes back to the daily
         // progress page instead of the home screen" — and earlier, of this same
         // return: "it should go back to the home screen, where the office is
@@ -1827,7 +1849,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     try {
       if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode), "1"); // Stamp the home card this office completes, so returning home plays its
                   // completion moment (the side anchor card is keyed "morning"/"evening").
-                  markRecentCompletion(resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
+                  //
+                  // A READING ANIMATES ITS OWN CARD, or none. This ternary
+                  // names every evening mode and lets everything else fall to
+                  // "morning", so finishing the scripture deck played the
+                  // completion moment on Morning Prayer — a card the reader
+                  // had already kept hours earlier, and had not just touched.
+                  markRecentCompletion(isReadingDeck ? "scripture"
+                    : resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
       localStorage.removeItem(officeProgressKey(resolvedMode));
     } catch { /* non-fatal */ }
     if (!isSecondPracticeRun) clearOfficeReminderNotifications();
@@ -1896,6 +1925,17 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       : currentSlide.content;
   const atStart = slideIdx === 0;
   const atEnd = slideIdx === slides.length - 1;
+  /**
+   * Has the FINAL lesson's passage already been opened?
+   *
+   * Only matters on a deck that ends on a lesson (Daily Scripture Reading ends
+   * on the Gospel). There the last slide's Next opens the reading rather than
+   * finishing — and returning from it lands back on that same last slide, so
+   * without this the button would offer the same passage again for ever and
+   * the practice could never be completed. Once it has been opened, the slide
+   * goes back to being the end: "Done".
+   */
+  const [finalLessonRead, setFinalLessonRead] = useState(false);
   const sectionLabel = SECTION_LABEL[currentSlide.type] ?? currentSlide.type.toUpperCase();
 
   /** The "choose a different …" pill under a canticle / invitatory title. */
@@ -2076,6 +2116,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // the moment the reader actually asks for it, exactly mirroring what
     // tapping Next on this slide would otherwise have done.
     if (lessonReadUrl) {
+      // On a deck that ENDS here, remember it — see finalLessonRead.
+      if (atEnd) setFinalLessonRead(true);
       const opened = openOfficeReading(lessonReadUrl, {
         officeTitle,
         slideLabel: `${slideIdx + 1} of ${slides.length}`,
@@ -2319,7 +2361,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     try {
       if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode), "1"); // Stamp the home card this office completes, so returning home plays its
                   // completion moment (the side anchor card is keyed "morning"/"evening").
-                  markRecentCompletion(resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
+                  //
+                  // A READING ANIMATES ITS OWN CARD, or none. This ternary
+                  // names every evening mode and lets everything else fall to
+                  // "morning", so finishing the scripture deck played the
+                  // completion moment on Morning Prayer — a card the reader
+                  // had already kept hours earlier, and had not just touched.
+                  markRecentCompletion(isReadingDeck ? "scripture"
+                    : resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
       localStorage.removeItem(officeProgressKey(resolvedMode));
     } catch { /* non-fatal */ }
     // The public /pray page handles its own close (a sign-up invite)
@@ -2621,7 +2670,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             type="button"
             // resolvedMode, not just the side — this slide belongs to whichever
             // office is open, and a side can carry two.
-            onClick={(e) => { e.stopPropagation(); markOfficeBookComplete(officeSide, resolvedMode, completedCardKey); setViewerLocation("/dashboard"); }}
+            onClick={(e) => { e.stopPropagation(); if (!isReadingDeck) markOfficeBookComplete(officeSide, resolvedMode, completedCardKey); setViewerLocation("/dashboard"); }}
             style={{
               width: "100%",
               background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
@@ -4670,9 +4719,28 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             // should say Amen even when it's the very last slide. The
             // tap still exits the office (handleEnd, hoisted above next()/
             // prev() — see its own comment).
-            const label = isAmenSlide ? "Amen" : (atEnd ? "Done" : "Next");
+            /**
+             * A LESSON'S NEXT OPENS THE PASSAGE — even when it is the last
+             * slide.
+             *
+             * The Read-online pill was removed on purpose: a lesson_title's
+             * Next IS the passage (see lessonReadUrl and its use in next()).
+             * But `atEnd` was tested first, so on a deck that ENDS on a lesson
+             * the button became "Done" and the hijack never ran. Daily
+             * Scripture Reading ends on the Gospel, so its last slide showed
+             * "John 8:12-20" and then finished the practice without ever
+             * offering to read it — the owner's report: "the gospel is
+             * missing". It was on screen; there was just no way in.
+             *
+             * Returning from the reading lands on the deck's own next action,
+             * which at the end is handleEnd — so the practice still completes,
+             * after the reading rather than instead of it.
+             */
+            const lessonEndsDeck = atEnd && !!lessonReadUrl && !finalLessonRead;
+            const label = isAmenSlide ? "Amen" : (atEnd && !lessonEndsDeck ? "Done" : "Next");
             const handler = isIntercessionSlide
               ? amen
+              : lessonEndsDeck ? next
               : atEnd ? handleEnd : next;
             return (
               <button
@@ -5551,7 +5619,7 @@ function PhysicalBookGuide(props: {
               cursor: "pointer",
             }}
           >
-            {bcpGuideText("🙏 I prayed this office")}
+            {bcpGuideText("🙏🏽 I prayed this office")}
           </button>
           <p style={{ margin: "2px 0 0", fontSize: 12, color: FAINT_GREEN, textAlign: "center" }}>
             {alreadyDoneToday
