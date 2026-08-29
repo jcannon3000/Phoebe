@@ -919,9 +919,6 @@ export default function WayOfLoveRuleFlow({
   }, [entryPhase, orderIds]);
   /** The review screen's ✕ confirm — carries the row's own remove(), since
    *  review rows are built from local state rather than server row ids. */
-  const [deletingReviewRow, setDeletingReviewRow] = useState<{ label: string; remove: () => void } | null>(null);
-  /** Bumped when the review screen reorders, so it re-reads the saved order. */
-  const [orderTick, setOrderTick] = useState(0);
   // Whether this person has any past routine to go back to — read synchronously
   // from the flag the snapshot save leaves behind (see the effect below).
   const [hasRoutineHistory] = useState(() => {
@@ -2400,7 +2397,15 @@ export default function WayOfLoveRuleFlow({
     // devices — every setSide*/setPracticeSlot write is in localStorage by now.
     // (Signed-in only: a guest has no server rule_config to sync to.)
     if (user) pushRoutineConfig();
-    setStep("done");
+    /**
+     * SAVED — straight to the home (owner: "get rid of that slide … once they
+     * add any more custom ones they click done, just have it go back to the
+     * home screen, they can see their routine there").
+     *
+     * commit used to land on a review of the rule just written. The home is
+     * that review, and it is the real one — the cards they will actually tap.
+     */
+    onDone();
   };
   /**
    * THE RULES YOUR GROUPS KEEP — offered above the app's own presets.
@@ -6006,7 +6011,9 @@ export default function WayOfLoveRuleFlow({
         ) : (
           <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <button onClick={isLastStep ? commit : goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-              {isLastStep ? t("wol_rule.finish", { defaultValue: "Save my daily rhythm" }) : t("ruleOfLife.continue", { defaultValue: "Continue" })}
+              {/* "Save", not "Save my daily rhythm" (owner) — it is the last
+                  tap of the flow and it goes straight to the home. */}
+              {isLastStep ? t("wol_rule.finish_save", { defaultValue: "Save" }) : t("ruleOfLife.continue", { defaultValue: "Continue" })}
             </button>
             <button onClick={goPrev} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
               <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
@@ -6301,44 +6308,6 @@ export default function WayOfLoveRuleFlow({
     // the home; the review just doesn't offer to edit what this flow can't.
   ].filter((r) => orderedSteps.includes(r.step));
 
-  /**
-   * THE LAST SCREEN ORDERS THE DAY TOO (owner: "have the last screen where it
-   * used to just show the routine also be able to reorder it").
-   *
-   * It listed the practices in whatever order the flow happened to build them
-   * and offered no way to move one, so a day could only be ordered from the
-   * flat list — a different screen entirely. These rows already carry the ids
-   * the saved order speaks in (`editId`), so they can be sorted by it and
-   * written back to it. A row with no id has nothing orderable behind it and
-   * keeps its build position; the sort is stable, so it stays where it is.
-   */
-  const orderedReviewRows = (() => {
-    void orderTick; // re-read the saved order after a move
-    const saved = getRoutineOrder();
-    const rank = (r: { editId?: string }) => {
-      const k = r.editId ? saved.indexOf(r.editId) : -1;
-      return k < 0 ? Number.MAX_SAFE_INTEGER : k;
-    };
-    return [...reviewRowsRaw].sort((a, b) => rank(a) - rank(b));
-  })();
-  /** Move a row, and persist it to the SAME store the home list and the widget
-   *  read (lib/routineOrder) — so the order set here is the order everywhere. */
-  const moveReviewRow = (index: number, delta: -1 | 1) => {
-    const to = index + delta;
-    if (to < 0 || to >= orderedReviewRows.length) return;
-    const next = [...orderedReviewRows];
-    [next[index], next[to]] = [next[to]!, next[index]!];
-    touchedRef.current = true;
-    const shown = next.map((r) => r.editId).filter((x) => !!x) as string[];
-    // KEEP WHAT THIS SCREEN CANNOT SEE. The review lists only rows whose step
-    // is in the current flow, so writing just these ids would drop every other
-    // practice out of the saved order — and anything missing from that order
-    // sorts to the END of the home list. Moving one row would quietly re-rank
-    // the rest. Carry the unseen ids along, after the ones shown.
-    const unseen = getRoutineOrder().filter((id) => !shown.includes(id));
-    setRoutineOrder([...shown, ...unseen]);
-    setOrderTick((n) => n + 1);
-  };
 
   // ── Starter — a first author receives a named rule (adopt whole, tune later),
   // or chooses to build their own. Adopting commits the preset, then beholds it.
@@ -6456,139 +6425,16 @@ export default function WayOfLoveRuleFlow({
       </>,
     );
   }
+  /**
+   * The flow's last screen is "Create your own"; its Save commits and hands
+   * off to the home, so nothing normally renders here. This stays as the
+   * component's required fallback — quiet, and never a half-built rule.
+   */
   return shell(
-    <>
-      <div style={{ textAlign: "center", marginTop: 8 }}>
-        <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.4px", fontFamily: FONT, margin: "0 0 6px" }}>
-          {t("wol_rule.done_eyebrow", { defaultValue: "Your rule of life" })}
-        </p>
-        <h1 style={{ color: CREAM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: 0 }}>
-          {t("wol_rule.done_title", { defaultValue: "This is the shape of your days" })}
-        </h1>
-        <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, lineHeight: 1.55, margin: "10px auto 0", maxWidth: 332 }}>
-          {t("wol_rule.done_behold", { defaultValue: "The practices you're choosing to return to, morning through evening." })}
-        </p>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
-        {/* The row is a DIV, not a button: it now holds two controls of its
-            own, and a button inside a button is invalid markup that swallows
-            the inner taps. The body stays tappable (it's still "tap any
-            practice to adjust it"), with the gear and ✕ beside it — the same
-            pair, the same `circle` styling, as the edit list's rows. */}
-        {orderedReviewRows.map((r, i) => {
-          /**
-           * REORDERING ONLY (owner: "we can take the gears and x out that last
-           * slide, we just want it to be reordering" — and "it also can't
-           * reorder … they will not move").
-           *
-           * Those two are the same finding. The row carried a gear, an ✕, two
-           * ~20pt arrows stacked in a column, and a body that navigated — four
-           * targets in a row that is mostly thumb-width. On a phone the arrow
-           * is the one you miss, and missing it either did nothing or opened a
-           * practice. With the gear and ✕ gone the arrows get the room, and
-           * they are now proper 40pt targets and the only thing on the row
-           * that responds. The gear and ✕ are not lost: every practice is
-           * still edited from its own step in the flow, and taken off there.
-           */
-          const arrow = (dir: "up" | "down", disabled: boolean) => (
-            <button
-              type="button"
-              aria-label={`Move ${r.label} ${dir}`}
-              disabled={disabled}
-              onClick={() => moveReviewRow(i, dir === "up" ? -1 : 1)}
-              style={{
-                width: 40, height: 34, flexShrink: 0, borderRadius: 10,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: disabled ? "transparent" : "rgba(255,255,255,0.06)",
-                border: `1px solid ${disabled ? "transparent" : CARD_B}`,
-                color: disabled ? "rgba(143,175,150,0.25)" : SAGE,
-                fontSize: 13, cursor: disabled ? "default" : "pointer", padding: 0,
-                WebkitTapHighlightColor: "transparent",
-              }}
-            >
-              {dir === "up" ? "▲" : "▼"}
-            </button>
-          );
-          return (
-            <div
-              key={`${r.label}-${i}`}
-              style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}
-            >
-              <span style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                {arrow("up", i === 0)}
-                {arrow("down", i === orderedReviewRows.length - 1)}
-              </span>
-              <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
-                <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      <p style={{ textAlign: "center", color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "16px 0 0" }}>
-        {t("wol_rule.done_order_hint", { defaultValue: "Use the arrows to order your day." })}
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15 }}>
+        {t("wol_rule.saving", { defaultValue: "Saving your rhythm…" })}
       </p>
-      {/* Same confirm the edit list uses — nothing comes off a rule on one tap. */}
-      {deletingReviewRow && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setDeletingReviewRow(null)}
-          style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(4,12,7,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-        >
-          <div onClick={(e) => e.stopPropagation()} style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 18, padding: 18, maxWidth: 380, width: "100%", boxSizing: "border-box" }}>
-            <p style={{ color: CREAM, fontFamily: FONT, fontSize: 17, fontWeight: 700, margin: 0 }}>
-              Remove {deletingReviewRow.label}?
-            </p>
-            <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14, lineHeight: 1.55, margin: "8px 0 0" }}>
-              It comes off your rhythm now. You can add it back any time.
-            </p>
-            <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-              <button type="button" onClick={() => { deletingReviewRow.remove(); setDeletingReviewRow(null); setReviewEditTick((n) => n + 1); }} style={{ flex: 1, background: CTA, color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
-                Remove
-              </button>
-              <button type="button" onClick={() => setDeletingReviewRow(null)} style={{ flex: 1, background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.25)", borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-                Keep it
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* One plain closing CTA — no 30-day offer, no "do it together" invite
-          stage (owner, 2026-07-03): they chose the rhythm, it's set, done. */}
-      {/**
-        * saveAndClose, NOT onDone — this screen can now CHANGE the rhythm.
-        *
-        * Reported: "when it's shown me the routine and I deleted things, they
-        * didn't actually go into effect." commit() ends on setStep("done"), so
-        * this review renders AFTER the rule has already been written. The ✕
-        * added to these rows edits the customizer's own state, which made the
-        * row disappear — convincingly — while nothing wrote it down, and the
-        * next open read the rule from before the deletions.
-        *
-        * Committing again on the way out writes whatever the reader changed
-        * here. It's idempotent when they changed nothing: commit() rebuilds
-        * every value from current state rather than applying a diff, and the
-        * custom-anchor add it performs already guards on the title existing.
-        */}
-      <button onClick={saveAndClose} style={{ marginTop: 14, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
-        {t("wol_rule.done_cta", { defaultValue: "Keep this rhythm" })}
-      </button>
-      {/* WEB save = an account (owner, 2026-07-03): on the web, browser storage
-          is ephemeral — an account is what makes the rule durable. Offered to
-          guests (no user, or the anonymous device user) on web only; the rhythm
-          is already committed locally, and routineSync migrates it up to the
-          account after sign-in. Signing up now upgrades the anonymous device
-          user in place (auth/register), so the streak + practice history carry
-          over too — the CTA can honestly promise "keep everything". The iOS app
-          stays fully login-free. */}
-      {guest && !isNativeShell() && (!user || user.isAnonymous) && (
-        <button onClick={() => setLocation("/signin?from=customize")} style={{ marginTop: 12, background: "none", border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer", textAlign: "center", width: "100%" }}>
-          {t("wol_rule.web_save_cta", { defaultValue: "Create an account to keep your rhythm and progress" })}
-        </button>
-      )}
-    </>,
+    </div>,
   );
 }
