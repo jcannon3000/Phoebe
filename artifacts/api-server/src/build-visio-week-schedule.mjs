@@ -43,7 +43,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getOfficeDay } from "./lib/liturgicalCalendar.ts";
 import { getLectionaryReadings } from "./lib/lectionary.ts";
-import { rankedTiers, pickFromTier, matchScore, rotationForDay } from "../../mymonastery/src/lib/visioSelect.ts";
+import { rankedTiers, pickFromTier, matchScore, rotationForDay, parseRef } from "../../mymonastery/src/lib/visioSelect.ts";
 import { ACT_COMMENTARY_CATALOGUE as ACT_CATALOGUE } from "../../mymonastery/src/lib/visioCommentaryCatalogue.ts";
 
 /** How many times one work may appear in a calendar year. Owner: three. */
@@ -58,6 +58,27 @@ const norm = (r) =>
   r.replace(/[[\]]/g, "").replace(/\(([^)]*)\)/g, ", $1")
     .replace(/\s+,/g, ",").replace(/\s+/g, " ").trim();
 
+/**
+ * NEW TESTAMENT ONLY (owner: "Lets not use OT passages", after "we dont want
+ * anything that … is from the psalm").
+ *
+ * So a week is chosen by its GOSPEL or its EPISTLE and nothing else. The book
+ * names come from parseRef, which lowercases, strips points and normalises the
+ * numbered books ("1 Cor." and "Corinthians I" both become "1 cor"), so a
+ * prefix test covers the lectionary's abbreviations and ACT's back-to-front
+ * spellings together. Philippians and Philemon share a prefix; both are
+ * epistles, so nothing turns on telling them apart here.
+ */
+const NT_NON_GOSPEL = /^(acts|rom|([123] )?cor|gal|eph|phil|col|([123] )?thess|([123] )?tim|titus|philem|heb|jas|james|([123] )?pet|[123] john|jude|rev)/;
+const isNewTestament = (ref) => {
+  const p = parseRef(ref);
+  if (!p) return false;
+  // The gospels' own test, mirrored from visioSelect: a leading digit keeps
+  // the Johannine epistles out ("1 john" is not the gospel).
+  if (/^(matt|mark|luke|john)/.test(p.book)) return true;
+  return NT_NON_GOSPEL.test(p.book);
+};
+
 function refsForDay(d) {
   const day = getOfficeDay(d);
   const out = [];
@@ -65,7 +86,13 @@ function refsForDay(d) {
     const lect = getLectionaryReadings(day, side);
     for (const key of ["lesson1", "lesson2", "lesson3"]) {
       const raw = lect[key];
-      if (typeof raw === "string" && raw.trim() && !/^-+$/.test(raw.trim())) out.push(norm(raw));
+      if (typeof raw !== "string" || !raw.trim() || /^-+$/.test(raw.trim())) continue;
+      const ref = norm(raw);
+      // OT lessons are dropped HERE rather than after a winner is chosen —
+      // filtering the winner would leave the week empty and fall through to
+      // the rotation, which is a work related to nothing at all.
+      if (!isNewTestament(ref)) continue;
+      out.push(ref);
     }
     /**
      * NO PSALMS (owner: "we dont want anything that doesnt have a
