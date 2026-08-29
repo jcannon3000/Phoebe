@@ -5,9 +5,17 @@
  * click on a picture I can either delete it or toggle if it is an icon.
  * Also show me the metadata that is used for searching."
  *
- * One grid over BOTH pools (the Visio library and the icon catalogue,
- * deduped by ACT id), searchable over the same metadata the practices
- * search. Clicking a work opens it large with every searchable field laid
+ * One grid over ALL THREE pools (the commentary pool Visio now draws from,
+ * the older curated library, and the icon catalogue), deduped by ACT id and
+ * searchable over the same metadata the practices search.
+ *
+ * The commentary pool is the one that matters most here and was missing until
+ * an audit found it: when Visio moved to one-image-per-week it also moved to
+ * works that HAVE a written commentary, and that pool overlaps the curated
+ * library by two works out of 241. So every work Visio could actually show —
+ * all 58 in the schedule — was absent from this grid. Overrides still applied
+ * at render time, but there was no way to CREATE one for anything on screen,
+ * which is the whole point of this page. Clicking a work opens it large with every searchable field laid
  * out, and the two verbs: Delete (hidden — gone from every surface, greyed
  * here so it can be Restored) and the icon toggle (forces a work into or
  * out of Praying with Icons; "default" is wherever the harvest put it).
@@ -18,6 +26,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ACT_CATALOGUE } from "@/lib/visioCatalogue";
+import { ACT_COMMENTARY_CATALOGUE } from "@/lib/visioCommentaryCatalogue";
 import { ICON_CATALOGUE } from "@/lib/iconCatalogue";
 import {
   ACT_OVERRIDES_EVENT, actOverrideFor, isActHidden, setActOverride, refreshActOverrides,
@@ -52,6 +61,8 @@ type Work = {
   /** Which harvest(s) the work came from. */
   inLibrary: boolean;
   harvestIcon: boolean;
+  /** In the pool Visio picks from — i.e. this work can actually appear. */
+  inCommentary: boolean;
 };
 
 const WORKS: Work[] = (() => {
@@ -61,7 +72,19 @@ const WORKS: Work[] = (() => {
       id: a.id, title: a.title, artist: a.artist, date: a.date, where: a.where,
       img: a.img, act: a.act, licence: a.licence, attribution: a.attribution,
       refs: a.refs, days: a.days, people: a.people, subjects: a.subjects,
-      essay: a.essay, inLibrary: true, harvestIcon: false,
+      essay: a.essay, inLibrary: true, harvestIcon: false, inCommentary: false,
+    });
+  }
+  // The live Visio pool. Merged SECOND so a work in both keeps the curated
+  // record and simply gains the flag.
+  for (const a of ACT_COMMENTARY_CATALOGUE) {
+    const existing = map.get(a.id);
+    if (existing) { existing.inCommentary = true; continue; }
+    map.set(a.id, {
+      id: a.id, title: a.title, artist: a.artist, date: a.date, where: a.where,
+      img: a.img, act: a.act, licence: a.licence, attribution: a.attribution,
+      refs: a.refs, days: a.days, people: a.people, subjects: a.subjects,
+      essay: a.essay, inLibrary: false, harvestIcon: false, inCommentary: true,
     });
   }
   for (const a of ICON_CATALOGUE) {
@@ -71,7 +94,7 @@ const WORKS: Work[] = (() => {
       id: a.id, title: a.title, artist: a.artist, date: a.date, where: a.where,
       img: a.img, act: a.act, licence: a.licence, attribution: a.attribution,
       refs: [], days: [], people: a.people, subjects: [],
-      essay: "", inLibrary: false, harvestIcon: true,
+      essay: "", inLibrary: false, harvestIcon: true, inCommentary: false,
     });
   }
   return [...map.values()].sort((x, y) => (x.artist ?? "").localeCompare(y.artist ?? "") || x.id - y.id);
@@ -212,6 +235,7 @@ export default function AdminArtLibraryPage() {
                 <span style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                   {hidden && <span style={{ color: "#d8a0a0", fontFamily: FONT, fontSize: 9.5, letterSpacing: "0.12em", border: "1px solid rgba(216,160,160,0.4)", borderRadius: 999, padding: "2px 7px" }}>DELETED</span>}
                   {icon && <span style={{ color: SAGE, fontFamily: FONT, fontSize: 9.5, letterSpacing: "0.12em", border: `1px solid ${BORDER}`, borderRadius: 999, padding: "2px 7px" }}>ICON</span>}
+                  {w.inCommentary && <span style={{ color: SAGE, fontFamily: FONT, fontSize: 9.5, letterSpacing: "0.12em", border: `1px solid ${BORDER}`, borderRadius: 999, padding: "2px 7px" }}>VISIO</span>}
                   {w.inLibrary && <span style={{ color: FAINT, fontFamily: FONT, fontSize: 9.5, letterSpacing: "0.12em", border: `1px solid ${BORDER}`, borderRadius: 999, padding: "2px 7px" }}>LIBRARY</span>}
                 </span>
               </button>
@@ -252,7 +276,7 @@ export default function AdminArtLibraryPage() {
               {meta("Where", open.where ?? "")}
               {meta("Licence", open.licence)}
               {meta("Attribution", open.attribution)}
-              {meta("Pools", [open.inLibrary ? "Visio library" : "", open.harvestIcon ? "icon harvest" : ""].filter(Boolean).join(" · ") || "—")}
+              {meta("Pools", [open.inCommentary ? "Visio (live)" : "", open.inLibrary ? "curated library" : "", open.harvestIcon ? "icon harvest" : ""].filter(Boolean).join(" · ") || "—")}
 
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
                 <button type="button" onClick={() => openExternal(open.act, { reader: false })}

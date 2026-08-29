@@ -45,6 +45,7 @@ import { FROST_BLUR } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
 import { chooseArtwork, artworkById, alternatesForDay, readingUrl, type Chosen } from "@/lib/visioSelect";
+import { isActHidden } from "@/lib/actOverrides";
 import { VisioHowToIntro, visioHowtoSeen, markVisioHowtoSeen } from "@/components/VisioHowToIntro";
 import { getVisioHistory, recordVisioSeen } from "@/lib/visioHistory";
 import { useVisioLessons } from "@/hooks/useVisioToday";
@@ -97,6 +98,12 @@ function tidyDate(d: string): string {
 function tidyArtist(a: string): string {
   return tidyDate(a.replace(/(^|[,\s])-\s*(\d{3,4})/g, "$1d. $2"));
 }
+
+/**
+ * A work swapped in through More options, remembered for the rest of its week.
+ * `{ sunday: "YYYY-MM-DD", id }` — the Sunday both scopes and expires it.
+ */
+const WEEK_PICK_KEY = "phoebe:visio-week-pick";
 
 /** How long we'll wait on today's readings before praying without them. */
 const READINGS_CAP_MS = 1500;
@@ -160,6 +167,19 @@ export default function VisioPage() {
   const today = useMemo(() => {
     try { return new Date().toLocaleDateString("en-CA"); } catch { return "1970-01-01"; }
   }, []);
+  /**
+   * The Sunday that names this week — the key a chosen work is remembered
+   * under. Mirrors sundayOf() in build-visio-week-schedule.mjs, which is what
+   * decides the week's picture in the first place, so the two can't disagree
+   * about where a week begins.
+   */
+  const weekSunday = useMemo(() => {
+    try {
+      const d = new Date(`${today}T12:00:00`);
+      d.setDate(d.getDate() - d.getDay());
+      return d.toLocaleDateString("en-CA");
+    } catch { return today; }
+  }, [today]);
   // FIXED, not the clock — see useVisioToday. Picking by the hour gave two
   // people on the same day different paintings, and let the home card name a
   // different image from the one this page then opened.
@@ -192,6 +212,31 @@ export default function VisioPage() {
    * today's reading.
    */
   const [override, setOverride] = useState<Chosen | null>(null);
+  /**
+   * Restore this week's swap, if there is one.
+   *
+   * Runs once, and only accepts a record stamped with THIS week's Sunday — a
+   * stale one is dropped rather than migrated, because a work chosen against
+   * last week's readings has nothing to do with this week's. `artworkById`
+   * unions both catalogues, so a work chosen before the pool changed still
+   * resolves; one that no longer exists (a harvest dropped it, or it was
+   * deleted in the admin tool) simply falls through to the week's own picture.
+   */
+  useEffect(() => {
+    let raw: string | null = null;
+    try { raw = localStorage.getItem(WEEK_PICK_KEY); } catch { return; }
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw) as { sunday?: string; id?: number };
+      if (saved?.sunday !== weekSunday || typeof saved?.id !== "number") {
+        try { localStorage.removeItem(WEEK_PICK_KEY); } catch { /* ignore */ }
+        return;
+      }
+      const art = artworkById(saved.id);
+      if (!art || isActHidden(art.id)) return;
+      setOverride({ art, ref: art.refs[0] ?? "", followsToday: false });
+    } catch { /* malformed — ignore, the week's own picture stands */ }
+  }, [weekSunday]);
 
   /**
    * The choice is made ONCE and then frozen. Re-picking when the readings
@@ -242,9 +287,23 @@ export default function VisioPage() {
    * ORDER (today's work still leads the slide); a tap can still fold them.
    */
   const [optionsOpen, setOptionsOpen] = useState(true);
-  /** Pick one of today's other works and pray the whole deck with it. */
+  /**
+   * Pick one of today's other works and pray the whole deck with it.
+   *
+   * REMEMBERED FOR THE WEEK. The picture is chosen per week now, and the
+   * tutorial says so in as many words — "the same picture waits for you every
+   * day until Sunday". A swap that lived only in component state broke that
+   * promise for exactly the people who had made a choice: they came back the
+   * next day to the work they'd swapped away from. So the choice is stored
+   * against the week's Sunday, and expires with it — a new week is a new
+   * picture, and picking a work in July doesn't follow you into August.
+   */
   const chooseAlternate = (pick: Chosen | null) => {
-    // null = back to today's own picture.
+    // null = back to today's own picture, and forget the swap.
+    try {
+      if (pick) localStorage.setItem(WEEK_PICK_KEY, JSON.stringify({ sunday: weekSunday, id: pick.art.id }));
+      else localStorage.removeItem(WEEK_PICK_KEY);
+    } catch { /* private mode — the swap just won't outlive the visit */ }
     setOverride(pick);
     setLoadedSrc(null);
     setImageFailed(false);
