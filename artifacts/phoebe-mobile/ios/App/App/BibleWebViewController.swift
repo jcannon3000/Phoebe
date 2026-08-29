@@ -326,7 +326,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          different page: VCS is a Tailwind site whose commentary lives in
          .prose blocks inside article.js-exhibition-container. */
       var isVcs = (h === 'thevcs.org' || h.slice(-11) === '.thevcs.org');
-      if (!isOremus && !isVcs) return;
+      /* SSJE's "Brother, Give Us A Word" — a daily word, a short reflection
+         and the brother who wrote it, sitting inside a full WordPress page
+         with a hero image, a subscribe form and a site footer. Owner: "a
+         reader view for SSJE that just shows the word as a title and the
+         reflection, and the monks name, but not the rest of the page." */
+      var isSsje = (h === 'ssje.org' || h.slice(-9) === '.ssje.org');
+      if (!isOremus && !isVcs && !isSsje) return;
 
       var ASSETS = 'https://withphoebe.app/reader/';
       var css = [
@@ -409,7 +415,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.copyright{max-width:none;margin:2em 0 0!important;padding:16px 20px!important;',
         'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.62)!important;',
         'border-top:1px solid rgba(200,212,192,0.16);background:transparent!important;}',
-      ] : [
+      ] : isVcs ? [
         /* ---- The Visual Commentary on Scripture ---------------------
            Measured on two live exhibitions at a 375px viewport, not guessed.
            A VCS page is an EXHIBITION: one shared scripture reference, then a
@@ -479,6 +485,43 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'font-size:13px!important;letter-spacing:.16em;text-transform:uppercase;line-height:1.5!important;',
         'color:rgba(200,212,192,0.75)!important;}',
         'a,a:visited{color:#A8C5A0!important;}',
+      ] : [
+        /* ---- SSJE, Brother Give Us A Word -------------------------------
+           Measured on the live page, not guessed. Everything the owner asked
+           to keep — the word, the reflection, the brother's name, and the
+           link back to the full post — is inside ONE `.fl-post-feed-post`
+           block. So the stylesheet doesn't enumerate what to hide (a Beaver
+           Builder theme's classes are generated and would drift); the script
+           keeps that block and hides its siblings all the way up. See
+           ssjeIsolate. */
+        /* The ground goes on HTML as well as BODY: SSJE's own stylesheet
+           wins on body, and a transparent body would let the host's white
+           show straight through — measured as cream text on a white slab. */
+        'html{background:#0A1A10!important;}',
+        'body{background:#0A1A10!important;margin:0!important;padding:0!important;',
+        'padding-top:calc(env(safe-area-inset-top) + 8px)!important;color:#F0EDE6!important;}',
+        '.fl-page,.fl-page-content,.fl-row,.fl-row-content-wrap,.fl-row-content,',
+        '.fl-col-group,.fl-col,.fl-col-content,.fl-module,.fl-module-content,',
+        '.fl-post-feed,.fl-post-feed-post{background:transparent!important;border:none!important;',
+        'box-shadow:none!important;margin:0!important;padding-left:0!important;padding-right:0!important;',
+        'max-width:none!important;width:auto!important;}',
+        '.fl-post-feed-post,.fl-post-feed-post *{background-color:transparent!important;}',
+        /* The word, as the title it is. */
+        'h2.fl-post-feed-title{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'font-size:30px!important;line-height:1.15!important;font-weight:700!important;',
+        'margin:0 0 16px!important;padding:0 20px!important;color:#F0EDE6!important;}',
+        'h2.fl-post-feed-title a{color:#F0EDE6!important;text-decoration:none!important;}',
+        /* The reflection. */
+        '.fl-post-feed-content{padding:0 20px!important;}',
+        '.fl-post-feed-content,.fl-post-feed-content *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
+        '.fl-post-feed-content p{font-size:18px!important;line-height:1.72!important;',
+        'color:#F0EDE6!important;margin:0 0 1.15em!important;}',
+        /* The brother who wrote it, and the way back to the full post — the
+           last paragraph of the block, set quieter and to the right, the way
+           the page itself sets them. */
+        '.fl-post-feed-content p:last-of-type{text-align:right!important;font-size:14px!important;',
+        'line-height:1.6!important;color:rgba(200,212,192,0.72)!important;}',
+        'a,a:visited{color:#A8C5A0!important;}',
       ]).concat([
         '.phoebe-reader-note{max-width:none;margin:0!important;padding:10px 20px 40px!important;',
         'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.45)!important;}',
@@ -543,7 +586,8 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         var m = document.createElement('div');
         m.className = 'phoebe-reader-masthead';
         m.textContent = isOremus ? 'the oremus Bible Browser'
-                                 : 'The Visual Commentary on Scripture';
+                       : isVcs   ? 'The Visual Commentary on Scripture'
+                                 : 'Brother, Give Us A Word \\u00b7 SSJE';
         document.body.insertBefore(m, document.body.firstChild);
       }
 
@@ -597,10 +641,46 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         }
       }
 
+      /**
+       * SSJE: keep the day's post, hide the rest of the page.
+       *
+       * The word, the reflection, the brother's name and the link back all
+       * live in one `.fl-post-feed-post`. Everything else on the page — a
+       * hero image, the site nav, "A daily monastic practice to nourish your
+       * spirit", a subscribe form, the footer — is a sibling of that block at
+       * some level above it. So rather than name what to hide in CSS (Beaver
+       * Builder's node classes are generated per-module and would drift on
+       * their next edit), walk up from the block hiding every sibling on the
+       * way. What survives is exactly the ancestors of the thing we keep.
+       *
+       * The backgrounds have to be cleared on that surviving spine too: SSJE
+       * paints white on a wrapper, and clearing only the body left cream text
+       * on a white slab (measured).
+       */
+      function ssjeIsolate() {
+        var post = document.querySelector('.fl-post-feed-post');
+        if (!post || post.getAttribute('data-phoebe-isolated')) return;
+        var node = post;
+        while (node && node !== document.documentElement) {
+          node.style.setProperty('background', 'transparent', 'important');
+          node.style.setProperty('box-shadow', 'none', 'important');
+          var parent = node.parentElement;
+          if (parent && parent !== document.documentElement) {
+            var kids = parent.children;
+            for (var i = 0; i < kids.length; i++) {
+              if (kids[i] !== node) kids[i].style.setProperty('display', 'none', 'important');
+            }
+          }
+          node = parent;
+        }
+        post.setAttribute('data-phoebe-isolated', '1');
+      }
+
       function run() {
         addStyle();
         if (isOremus) { tidy(); credit(); }
-        else { vcsStrip(); }
+        else if (isVcs) { vcsStrip(); }
+        else { ssjeIsolate(); }
         masthead();
       }
       if (document.readyState !== 'loading') run();
@@ -610,7 +690,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       // its images and viewers, so it needs the longer tail: the zoom viewer
       // it hides is built after first paint.
       var tries = 0;
-      var limit = isVcs ? 20 : 6;
+      var limit = (isVcs || isSsje) ? 20 : 6;
       var iv = setInterval(function () { run(); if (++tries > limit) clearInterval(iv); }, 350);
       // Landing the page on the right commentary is the NATIVE side's job
       // (scrollToDeepLinkedWork) — it already owns the retry ladder and the
@@ -818,6 +898,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         )
         optionsItem.accessibilityLabel = "Options"
         self.optionsItem = optionsItem
+        /** The pages Phoebe's reader view knows how to restyle — the only
+         *  ones where a Standard/Reader toggle would do anything. Kept beside
+         *  readerJS's hostname gate; add to both or the button appears over a
+         *  page it can't change (or, worse, doesn't appear over one it can). */
+        let readerHost = (url.host ?? "").lowercased()
+        let isReaderHost = readerHost.hasSuffix("oremus.org")
+            || readerHost.hasSuffix("thevcs.org")
+            || readerHost.hasSuffix("ssje.org")
         if officeChrome {
             // Owner: "take the settings and the X button out of the top
             // right and move the Next button ... to the top right." Gear
@@ -840,8 +928,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             // oremus and VCS — the two pages the reader view knows how to
             // restyle (see readerJS's hostname gate). Everywhere else the
             // button would toggle nothing.
-            let readerHost = (url.host ?? "").lowercased()
-            if readerHost.hasSuffix("oremus.org") || readerHost.hasSuffix("thevcs.org") {
+            if isReaderHost {
                 // Titled from the remembered state, not hardcoded — the button
                 // names what tapping it will DO, and it can start either way.
                 let standardItem = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
@@ -857,7 +944,19 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             // meditation). onOpenReaderView / openReaderMode / presentReaderView
             // are left wired below (harmless, unreachable from here) rather
             // than torn back out, in case Reader comes back later.
-            navigationItem.rightBarButtonItem = nil
+            // …EXCEPT on a page the reader view restyles. SSJE's "Brother,
+            // Give Us A Word" opens with this chrome, and the owner asked for
+            // the toggle here too — "put standard in the top right" — so a
+            // reader who wants the rest of the page (the fuller post, the
+            // subscribe form) can have it back in one tap.
+            if isReaderHost {
+                let standardItem = UIBarButtonItem(title: "Standard", style: .plain, target: self, action: #selector(toggleReaderView))
+                standardItem.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
+                self.standardItem = standardItem
+                navigationItem.rightBarButtonItem = standardItem
+            } else {
+                navigationItem.rightBarButtonItem = nil
+            }
             title = nil
         } else {
             // A plain office/Venite open. Every Options item genuinely
