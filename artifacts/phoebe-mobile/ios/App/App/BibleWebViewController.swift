@@ -571,10 +571,39 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            width rule reaches — so name them. The 20px gutter below is then
            the ONLY inset, rather than stacking on ion-content's 16px. */
         'ion-content{--padding-start:0!important;--padding-end:0!important;}',
-        'ion-content,ion-router-outlet,ion-split-pane,app-fdd,app-ldf-wrapper,',
-        'main,.pray-container,article.fdd,article.fdd > *{width:auto!important;',
+        /* DISPLAY, not just width — this is what the narrow column was.
+           Ionic's custom elements (ion-app, app-root, ion-split-pane …) have
+           no default styling of their own, so with Ionic's stylesheet absent
+           they compute as display:inline. An inline box SHRINK-WRAPS whatever
+           its width says, so `width:auto` on them did nothing at all and the
+           article kept collapsing to about 45% of the screen with a wide empty
+           gutter — the owner's first screenshot. Measured on the live page:
+           ION-APP, ION-SPLIT-PANE, APP-MENU and APP-ROOT all compute inline.
+           The outermost of them were also missing from this list, so even a
+           correct rule would not have reached the ones that mattered. */
+        'ion-app,app-root,app-menu,ion-split-pane,.split-pane-main,.ion-page,.ion-padding,',
+        'ion-content,ion-router-outlet,app-fdd,app-ldf-wrapper,',
+        'main,.pray-container,article.fdd,article.fdd > *{display:block!important;',
+        'width:auto!important;',
         'max-width:none!important;min-width:0!important;float:none!important;',
         'columns:auto!important;column-count:auto!important;}',
+        /* Ionic hides a page until it routes; in a plain web view that class
+           can sit there forever, leaving the reader blank. */
+        '.ion-page-invisible{opacity:1!important;visibility:visible!important;}',
+        /* AND UNDO IONIC'S SIZING MODEL, which is the rest of the narrow
+           column. `.ion-page` is `position:absolute` with `contain:layout size
+           style`; `contain:size` means the box is sized WITHOUT reference to
+           its contents, and ion-split-pane reserves a side column when it
+           believes the viewport is wide. Together they left the article laid
+           out in a fraction of the screen with the reader's own green showing
+           through beside it — which reads as a broken column rather than as a
+           menu. None of this is reachable by width rules alone, which is why
+           the previous two attempts moved nothing. */
+        'ion-app,ion-split-pane,.split-pane-main,.ion-page,ion-router-outlet,ion-content{',
+        'position:static!important;contain:none!important;inset:auto!important;',
+        'width:100%!important;max-width:100%!important;height:auto!important;',
+        'min-height:0!important;transform:none!important;}',
+        'html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;}',
         'article.fdd{padding:0 20px!important;}',
         'article.fdd p,article.fdd li{font-size:18px!important;line-height:1.72!important;',
         'color:#F0EDE6!important;margin:0 0 1.15em!important;}',
