@@ -19,7 +19,8 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { getSideLevel, getSideCustomName, getSideReflectionExplicit, extraPracticeTitle } from "@/lib/officePrefs";
 import { getPracticeSlot, SLOT_RANK, isSlotPast, type CustomSlot } from "@/lib/customAnchors";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
-import { sortCardsByUserOrder, getRoutineOrder } from "@/lib/routineOrder";
+import { getRoutineOrder } from "@/lib/routineOrder";
+import { sortCardsByLearnedOrder } from "@/lib/practiceOrderLearning";
 import { rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { useRhythmState } from "@/hooks/useRhythmState";
 
@@ -332,7 +333,12 @@ export function useWidgetSync(): void {
      * position they happened to be built at, which could put the darker green
      * above the lighter one — the same shuffle the home showed.
      */
-    const ordered = sortCardsByUserOrder(slotOrdered)
+    // Built-in order here too — see the note in DailyProgressBody. The widget
+    // must lead with whatever the home leads with, so it follows the same
+    // rule rather than a saved order the home no longer reads.
+    // The widget follows the SAME learned order the home does — it must lead
+    // with whatever the home leads with, morning anchor pinned first.
+    const ordered = sortCardsByLearnedOrder(slotOrdered)
       .map((it, i, arr) => ({ ...it, rgb: rhythmGradientRgb(i, arr.length) }));
     // "Next" = the first not-done practice whose slot HASN'T already passed
     // today (a passed slot is "tomorrow", not next). Falls back to summary.

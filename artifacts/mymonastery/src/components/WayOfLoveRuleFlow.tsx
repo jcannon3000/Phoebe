@@ -34,8 +34,7 @@ import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePreset
 import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, updateCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues, flushRoutineConfig } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
-import { Reorder, useDragControls } from "framer-motion";
-import { getRoutineOrder, setRoutineOrder } from "@/lib/routineOrder";
+import { getRoutineOrder } from "@/lib/routineOrder";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw } from "@/lib/guestSeed";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import {
@@ -110,71 +109,41 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
  * card an up arrow and a down arrow, just like a triangle — click it and it
  * moves. But also if you hold, you can drag — but the whole card doesn't
  * drag, just when you're touching the left UI"), and the drag half needs
- * useDragControls, which is a hook and can't live inside the parent's map.
  *
  * dragListener={false} + the ⠿ handle's onPointerDown is what confines the
  * drag to the left UI — the card body, the gear and the ✕ no longer start
  * one, so scrolling a long routine with a thumb on a card just scrolls. The
  * arrows move one step per tap and disable at their end of the list.
  */
-function FlatRoutineRow({ id, emoji, label, sub, circle, onGear, onRemove, onMoveUp, onMoveDown }: {
+function FlatRoutineRow({ id, emoji, label, sub, circle, onGear, onRemove }: {
   id: string;
   emoji: string;
   label: string;
   sub: string;
   circle: React.CSSProperties;
   onGear: (() => void) | null;
-  // Null hides the X — the Prayer List row is orderable but not removable
-  // (its presence follows prayer requests and groups, not the routine).
+  // Null hides the X — the Prayer List row is not removable (its presence
+  // follows prayer requests and groups, not the routine).
   onRemove: (() => void) | null;
-  onMoveUp: (() => void) | null;
-  onMoveDown: (() => void) | null;
 }) {
-  const controls = useDragControls();
-  const arrow = (dir: "up" | "down", fn: (() => void) | null) => (
-    <button
-      type="button"
-      aria-label={`Move ${label} ${dir}`}
-      disabled={!fn}
-      onClick={fn ?? undefined}
-      style={{
-        background: "none", border: "none", padding: "3px 10px", lineHeight: 1,
-        color: fn ? SAGE : "rgba(143,175,150,0.22)", fontSize: 11,
-        cursor: fn ? "pointer" : "default", WebkitTapHighlightColor: "transparent",
-      }}
-    >
-      {dir === "up" ? "▲" : "▼"}
-    </button>
-  );
+  // NO DRAG HANDLE, NO ARROWS. The day is ordered by the order it is actually
+  // prayed in (lib/practiceOrderLearning), so a control here would move a row
+  // and change nothing a person ever sees — which is precisely what the manual
+  // order did for a year before it was retired.
   return (
-    <Reorder.Item key={id} value={id} dragListener={false} dragControls={controls} style={{ listStyle: "none" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 16, padding: "9px 14px 9px 4px" }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-          {arrow("up", onMoveUp)}
-          <span
-            aria-hidden
-            // The hold-to-drag handle — arrows above and below stay plain
-            // taps; only a hold that starts HERE picks the card up.
-            onPointerDown={(e) => { e.preventDefault(); controls.start(e); }}
-            style={{ color: SAGE_DIM, fontSize: 14, letterSpacing: 1, lineHeight: 1, padding: "5px 10px", touchAction: "none", cursor: "grab", userSelect: "none", WebkitUserSelect: "none" }}
-          >
-            ⠿
-          </span>
-          {arrow("down", onMoveDown)}
-        </div>
-        <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{emoji}</span>
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: "block", color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT }}>{label}</span>
-          <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{sub}</span>
-        </span>
-        {onGear && (
-          <button type="button" aria-label={`Settings for ${label}`} onClick={onGear} style={circle}>⚙</button>
-        )}
-        {onRemove && (
-          <button type="button" aria-label={`Remove ${label}`} onClick={onRemove} style={circle}>✕</button>
-        )}
-      </div>
-    </Reorder.Item>
+    <div key={id} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 16, padding: "12px 14px" }}>
+      <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{emoji}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT }}>{label}</span>
+        <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{sub}</span>
+      </span>
+      {onGear && (
+        <button type="button" aria-label={`Settings for ${label}`} onClick={onGear} style={circle}>⚙</button>
+      )}
+      {onRemove && (
+        <button type="button" aria-label={`Remove ${label}`} onClick={onRemove} style={circle}>✕</button>
+      )}
+    </div>
   );
 }
 
@@ -3154,9 +3123,14 @@ export default function WayOfLoveRuleFlow({
       return;
     }
     // "Build your own" enters at morning-way, SKIPPING the intro (owner) — so
-    // Back from that first real slide returns to the three-door entry, rather
-    // than stepping onto the intro slide the owner asked to skip.
-    if (canEditParts && manualMode === "scratch" && step === "morning-way") { setManualMode("edit"); return; }
+    // Back from the flow's FIRST slide returns to the three-door entry.
+    // It used to drop into the flat list (manualMode "edit"), which is no
+    // longer the editor — the walk is. Landing there from Back was the one
+    // way left to reach it.
+    if (canEditParts && manualMode === "scratch" && (step === "sides" || step === "morning-way")) {
+      setEntryChoiceMade(false);
+      return;
+    }
     const i = orderedSteps.indexOf(step);
     if (i > 0) { setStep(orderedSteps[i - 1]); return; }
     // Reported: "the back goes to the home screen and not the previous thing in
@@ -3167,7 +3141,6 @@ export default function WayOfLoveRuleFlow({
     // undo one tap, not drop you two slides back at the fork.
     if (canEditParts && manualMode === "preset" && groupPending) { setGroupPending(null); return; }
     if (canEditParts && manualMode === "preset" && presetPending) { setPresetPending(null); return; }
-    if (canEditParts && manualMode !== "edit") { setManualMode("edit"); return; }
     if (entryChoiceMade && showEntryChoice) { setEntryChoiceMade(false); return; }
     onBack();
   };
@@ -4119,42 +4092,31 @@ export default function WayOfLoveRuleFlow({
           t("wol_rule.manual_edit_title", { defaultValue: "Your rhythm" }),
         )}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 18px" }}>
-          {t("wol_rule.flat_body", { defaultValue: "Drag to order your day. The gear changes a practice; the ✕ takes it off." })}
+          {/* No longer "drag to order your day" — the day orders itself from
+              the order you actually open things (lib/practiceOrderLearning),
+              so a drag here would move rows that nothing reads. Owner: "I have
+              never seen this working on my account." */}
+          {t("wol_rule.flat_body_no_order", { defaultValue: "The gear changes a practice; the ✕ takes it off." })}
         </p>
         {orderIds.length === 0 && (
           <p style={{ color: SAGE_DIM, fontSize: 14, fontFamily: FONT, lineHeight: 1.6, margin: "4px 0 10px" }}>
             {t("wol_rule.flat_empty", { defaultValue: "Nothing here yet — add your first practice below, or start from a preset." })}
           </p>
         )}
-        <Reorder.Group
-          axis="y" values={orderIds}
-          onReorder={(ids: string[]) => { touchedRef.current = true; setOrderIds(ids); setRoutineOrder(ids); }}
-          style={{ display: "flex", flexDirection: "column", gap: 10, listStyle: "none", padding: 0, margin: 0 }}
-        >
+        {/* A plain list — the drag went with the manual order it wrote. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, listStyle: "none", padding: 0, margin: 0 }}>
           {orderIds.map((id, idx) => {
             const r = rowById(id);
             if (!r) return null;
-            /** One step per arrow tap — same write path as a drag. */
-            const moveRow = (delta: -1 | 1) => {
-              const j = idx + delta;
-              if (j < 0 || j >= orderIds.length) return;
-              const next = [...orderIds];
-              [next[idx], next[j]] = [next[j]!, next[idx]!];
-              touchedRef.current = true;
-              setOrderIds(next);
-              setRoutineOrder(next);
-            };
             return (
               <FlatRoutineRow
                 key={id} id={id} emoji={r.emoji} label={r.label} sub={r.sub} circle={circle}
                 onGear={r.id !== "slot:prayer-list" && stepForRow(r.id) ? () => { const st = stepForRow(r.id); if (st) { setSingleEditRow(r.id); setManualMode("scratch"); setStep(st); } } : null}
                 onRemove={r.id === "slot:prayer-list" ? null : () => setDeletingEditRow({ id: r.id, label: r.label })}
-                onMoveUp={idx > 0 ? () => moveRow(-1) : null}
-                onMoveDown={idx < orderIds.length - 1 ? () => moveRow(1) : null}
               />
             );
           })}
-        </Reorder.Group>
+        </div>
         <button
           type="button"
           onClick={() => { touchedRef.current = true; setEntryPhase("add-cat"); }}

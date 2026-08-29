@@ -509,15 +509,24 @@ struct PhoebeWidgetView: View {
             // So the green sits near the web's own weight (0.27) and the
             // material — a step up from ultraThin, since it is carrying the
             // solidity on its own now — does the rest.
-            ZStack {
-                RoundedRectangle(cornerRadius: 24 * s)
-                    .fill(.thinMaterial)
-                RoundedRectangle(cornerRadius: 24 * s)
-                    .fill(Color(red: (26 - 16 * c.tint) / 255.0,
-                                green: (52 - 24 * c.tint) / 255.0,
-                                blue: (36 - 18 * c.tint) / 255.0)
-                        .opacity(0.32 + 0.09 * c.tint))
-            }
+            // NO MATERIAL. A Material in a widget follows the SYSTEM
+            // environment, not our design — against a light wallpaper it
+            // renders pale, which is why the cards came out light grey-green
+            // while the app's are dark (owner's two screenshots, side by
+            // side). It cannot be talked into being dark.
+            //
+            // So it's the app's own colour, at the weight the leaf needs
+            // without a blur behind it. The web card gets away with 0.27
+            // because backdrop-filter softens the leaf underneath; here the
+            // leaf stays sharp, so the same alpha reads as see-through (the
+            // first complaint) — while a Material under it read as flat (the
+            // second). This is the one knob that can be neither: dark enough
+            // to be a panel, thin enough that the leaf still moves through it.
+            RoundedRectangle(cornerRadius: 24 * s)
+                .fill(Color(red: (26 - 16 * c.tint) / 255.0,
+                            green: (52 - 24 * c.tint) / 255.0,
+                            blue: (36 - 18 * c.tint) / 255.0)
+                    .opacity(0.34 + 0.09 * c.tint))
         )
         .overlay(
             // strokeBorder, NOT stroke. SwiftUI centres a stroke ON the path,
@@ -858,8 +867,14 @@ private var widgetPhotoBackground: some View {
             .scaledToFill()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
+        // AS CLOSE AS POSSIBLE TO THE APP (owner). The app's page is nearly
+        // black with the leaf a whisper behind it; this wash was light enough
+        // that the leaf read as the subject, so a card dark enough to match
+        // the app's looked wrong on it and a card light enough to sit on it
+        // looked nothing like the app's. Half of why the card never matched
+        // was the ground it sat on.
         LinearGradient(
-            colors: [phoebeGreen.opacity(0.35), phoebeGreen.opacity(0.72)],
+            colors: [phoebeGreen.opacity(0.70), phoebeGreen.opacity(0.88)],
             startPoint: .top, endPoint: .bottom
         )
     }

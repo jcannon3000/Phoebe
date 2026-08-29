@@ -274,6 +274,16 @@ export const usersTable = pgTable("users", {
   // here so a person's rituals are their DATA and sync across devices (phone /
   // web), with localStorage as the offline cache. NULL = none synced yet.
   customAnchors: jsonb("custom_anchors").$type<{ defs: unknown[]; log: Record<string, unknown>; updatedAt?: number; tombstones?: Record<string, number> }>(),
+  /**
+   * The ORDER someone actually prays in — recent days' opening sequences,
+   * `[{ ymd, keys }]` (lib/practiceOrderLearning). The home orders itself from
+   * this rather than from a manual drag order, and it is fed up here so the
+   * shape of a day can be read ACROSS people, not just within one.
+   *
+   * Practice KEYS and dates only — no content, nothing prayed, nothing
+   * written. NULL until a device has watched at least one day.
+   */
+  practiceOpenLog: jsonb("practice_open_log").$type<Array<{ ymd: string; keys: string[] }>>(),
   // Phone-sabbath: weekday numbers (0=Sun … 6=Sat) the user rests from their
   // phone. On those days fellows see a calm "on a sabbath" state instead of
   // "fell behind", so a quiet weekend doesn't read as concerning. [] = none.

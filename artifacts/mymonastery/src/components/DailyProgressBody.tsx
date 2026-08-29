@@ -17,7 +17,8 @@ import { getQueryClient, apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, sideOfficeTitle, extraPracticeTitle, extraOfficeMode, type OfficeLevel, type ReflectionSource } from "@/lib/officePrefs";
 import { daySwapNote } from "@/components/PracticeSwitcher";
-import { sortCardsByUserOrder, rowIdToCardKeys } from "@/lib/routineOrder";
+import { rowIdToCardKeys } from "@/lib/routineOrder";
+import { recordPracticeOpen, sortCardsByLearnedOrder } from "@/lib/practiceOrderLearning";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
@@ -306,7 +307,7 @@ function StreakCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 export function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, alwaysShowProgress, hero, eyebrow, onClick, ctaOnly, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate, onCheckClick,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, alwaysShowProgress, hero, eyebrow, onClick, ctaOnly, onOpen, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate, onCheckClick,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   /** Small uppercase label ABOVE the title in the hero layout — mirrors the
@@ -335,6 +336,9 @@ export function PracticeCard({
    *  cta"): for a card whose click LOGS rather than navigates, the whole
    *  body as a tap target logs on stray taps. */
   ctaOnly?: boolean;
+  /** Fired when the card is OPENED, by either path — this is what teaches the
+   *  home the order someone actually prays in (lib/practiceOrderLearning). */
+  onOpen?: () => void;
   /** When set (and not done), the subtitle cross-fades between these values
    *  instead of showing the static blurb. */
   blurbCycle?: string[];
@@ -447,7 +451,7 @@ export function PracticeCard({
       <div
         role={ctaOnly && onClick ? "button" : undefined}
         tabIndex={ctaOnly && onClick ? 0 : undefined}
-        onClick={ctaOnly && onClick ? (e) => { e.preventDefault(); e.stopPropagation(); onClick(); } : undefined}
+        onClick={ctaOnly && onClick ? (e) => { e.preventDefault(); e.stopPropagation(); onOpen?.(); onClick(); } : undefined}
         onKeyDown={ctaOnly && onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onClick(); } } : undefined}
         className="mt-4 w-full text-center rounded-full text-[15px] font-semibold py-3" style={{ background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT, cursor: ctaOnly && onClick ? "pointer" : undefined }}>
         {cta} <span aria-hidden className="ml-1">→</span>
@@ -571,7 +575,7 @@ export function PracticeCard({
     <span
       role={ctaOnly && onClick ? "button" : undefined}
       tabIndex={ctaOnly && onClick ? 0 : undefined}
-      onClick={ctaOnly && onClick ? (e) => { e.preventDefault(); e.stopPropagation(); onClick(); } : undefined}
+      onClick={ctaOnly && onClick ? (e) => { e.preventDefault(); e.stopPropagation(); onOpen?.(); onClick(); } : undefined}
       onKeyDown={ctaOnly && onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onClick(); } } : undefined}
       className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
       style={{ minWidth: 84, background: `rgba(${rgb},0.85)`, color: WARM, cursor: ctaOnly && onClick ? "pointer" : undefined }}
@@ -650,11 +654,11 @@ export function PracticeCard({
   // Plain div (not a native <button>) so the flex middle can shrink and the
   // pill stays put; role/tabIndex/keydown keep it accessible.
   if (onClick) return (
-    <div role="button" tabIndex={0} onClick={onClick}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+    <div role="button" tabIndex={0} onClick={() => { onOpen?.(); onClick(); }}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen?.(); onClick(); } }}
       className="block w-full cursor-pointer">{row}</div>
   );
-  return <Link href={href} className="block">{row}</Link>;
+  return <Link href={href} className="block" onClick={() => onOpen?.()}>{row}</Link>;
 }
 
 // Built-in OptionalPractices whose card reuses LogSheet via a sentinel
@@ -1504,7 +1508,19 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * now does re-shade the cards it moves past, which is the correct behaviour
    * — the gradient belongs to the column, not to the practice.
    */
-  const coloredCards = sortCardsByUserOrder(cards)
+  /**
+   * BUILT-IN ORDER, not the person's drag order (owner: "let's turn back the
+   * ordering of cards based on what order the user uses — I have never seen
+   * this working on my account", and "morning anchor first always").
+   *
+   * The saved order kept ranking a practice above the morning anchor, and the
+   * ordering it was meant to express never once behaved for him. The built-in
+   * order is the day's own shape — morning first, then the anytime practices,
+   * then the evening — which is what "morning anchor first" asks for and what
+   * the slot ranks already encode. The saved order is still WRITTEN (the flat
+   * list's drag), it is simply no longer what the surfaces read.
+   */
+  const coloredCards = sortCardsByLearnedOrder(cards)
     .map((c, i, arr) => ({ ...c, rgb: rhythmGradientRgb(i, arr.length) }));
   /**
    * THE NOTIFICATION'S PRACTICE IS THE HERO (owner: "the ones they set as
@@ -1797,6 +1813,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurbCycle={(c as { blurbCycle?: string[] }).blurbCycle}
       onClick={"onClick" in c ? (c.onClick as (() => void) | undefined) : undefined}
       ctaOnly={(c as { ctaOnly?: boolean }).ctaOnly}
+      onOpen={() => recordPracticeOpen(c.key)}
       doneCta={(c as { doneCta?: string }).doneCta}
       pulse={pulse}
       pulseOnLoad={splashCleared}
@@ -1837,6 +1854,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       doneCta={(cardHero as { doneCta?: string }).doneCta}
       onClick={"onClick" in cardHero ? (cardHero as { onClick?: () => void }).onClick : undefined}
       ctaOnly={(cardHero as { ctaOnly?: boolean }).ctaOnly}
+      onOpen={() => recordPracticeOpen(cardHero.key)}
       pulseOnLoad={splashCleared}
     />
   ) : null);

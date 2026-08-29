@@ -2224,6 +2224,9 @@ export async function migrate() {
     // Custom rituals (user-defined daily anchors) + per-day state, synced across
     // devices — an opaque blob owned by the client (lib/customAnchors).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_anchors JSONB`);
+    // The order someone actually opens their practices in — see the column's
+    // note in the users schema. Keys and dates only.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_open_log JSONB`);
     // Routine settings (office levels, slots, etc.) synced across devices as one
     // blob (lib/routineSync) so a person's rhythm matches phone ↔ web.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS rule_config JSONB`);

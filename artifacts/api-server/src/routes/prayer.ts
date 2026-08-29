@@ -4,6 +4,7 @@ import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, pra
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
+import { isSuperAdminUser } from "../lib/superAdmin";
 import { getGardenUserIds, getFellowUserIds, getGroupMemberUserIds, getUserGroupIds } from "../lib/garden";
 import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush, sendLifeEventUpdatePush } from "../lib/pushSender";
 import { logger } from "../lib/logger";
@@ -2759,6 +2760,91 @@ router.put("/me/custom-anchors", async (req, res): Promise<void> => {
     res.json({ ok: true, customAnchors: merged });
   } catch (err) {
     console.error("[/me/custom-anchors PUT] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+/**
+ * THE ORDER PEOPLE PRAY IN — one person's recent opening sequences up, and
+ * the shape across everyone back down (owner: "ordering based on tracking in
+ * what order the user is opening the cards", and "use this data to see
+ * patterns across users through feeding it into the api").
+ *
+ * What travels is practice KEYS and dates. Not a word of anything prayed,
+ * read or written — the sequence of cards someone tapped, which is what an
+ * order can be learned from and is the least that can answer the question.
+ */
+router.put("/me/practice-open-log", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "not_authenticated" }); return; }
+  const body = req.body as { days?: unknown };
+  if (!Array.isArray(body?.days)) { res.status(400).json({ error: "days must be an array" }); return; }
+  // Validate rather than trust: dated rows of string keys, bounded on every
+  // axis so a malformed or hostile client can't grow the column without limit.
+  const days = body.days
+    .filter((d): d is { ymd: string; keys: string[] } =>
+      !!d && typeof (d as { ymd?: unknown }).ymd === "string"
+      && /^\d{4}-\d{2}-\d{2}$/.test((d as { ymd: string }).ymd)
+      && Array.isArray((d as { keys?: unknown }).keys))
+    .map((d) => ({
+      ymd: d.ymd,
+      keys: d.keys.filter((k): k is string => typeof k === "string" && k.length <= 64).slice(0, 32),
+    }))
+    .slice(-31);
+  try {
+    await db.update(usersTable).set({ practiceOpenLog: days }).where(eq(usersTable.id, sessionUserId));
+    res.json({ ok: true, days: days.length });
+  } catch (err) {
+    console.error("[/me/practice-open-log PUT] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+/**
+ * The pattern ACROSS people — super-admin only, and aggregate by construction:
+ * it answers "where in the day does this practice tend to sit, and how often
+ * does it get opened at all", never "what did this person do". Rows are counted
+ * across accounts and the per-account sequences never leave the server.
+ */
+router.get("/admin/practice-order-patterns", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "not_authenticated" }); return; }
+  if (!(await isSuperAdminUser(sessionUserId))) { res.status(403).json({ error: "forbidden" }); return; }
+  try {
+    const rows = await db
+      .select({ log: usersTable.practiceOpenLog })
+      .from(usersTable)
+      .where(sql`${usersTable.practiceOpenLog} IS NOT NULL`);
+    const agg = new Map<string, { opens: number; posSum: number; people: Set<number> }>();
+    let people = 0;
+    rows.forEach((r, idx) => {
+      const log = (r.log ?? []) as Array<{ ymd: string; keys: string[] }>;
+      if (log.length === 0) return;
+      people += 1;
+      for (const d of log) {
+        d.keys.forEach((k, i) => {
+          const cur = agg.get(k) ?? { opens: 0, posSum: 0, people: new Set<number>() };
+          cur.opens += 1;
+          cur.posSum += i;
+          cur.people.add(idx);
+          agg.set(k, cur);
+        });
+      }
+    });
+    const practices = [...agg.entries()]
+      .map(([key, v]) => ({
+        key,
+        opens: v.opens,
+        people: v.people.size,
+        meanPosition: Number((v.posSum / v.opens).toFixed(2)),
+      }))
+      // A practice only one or two people open says nothing about a pattern,
+      // and naming it starts to describe individuals rather than a shape.
+      .filter((p) => p.people >= 3)
+      .sort((a, b) => a.meanPosition - b.meanPosition);
+    res.json({ people, practices });
+  } catch (err) {
+    console.error("[/admin/practice-order-patterns] failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });
