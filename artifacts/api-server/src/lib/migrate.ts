@@ -4080,6 +4080,40 @@ export async function migrate() {
     //    prayed today's day" resets each morning (same convention as
     //    practice_completion's local_date — client supplies its own
     //    timezone's today).
+    /**
+     * Group reflections — an admin's weekly piece, delivered to that group's
+     * members as an inbox item. See lib/db/src/schema/group_reflections.ts for
+     * why the read state is per-USER here when the other inboxes keep theirs
+     * in localStorage: this one is written for a named congregation, so
+     * reading it on a phone has to mean it is read on a laptop too.
+     */
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_reflections (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        author_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        author_name TEXT,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        published_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_reflection_reads (
+        id SERIAL PRIMARY KEY,
+        reflection_id INTEGER NOT NULL REFERENCES group_reflections(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        read_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    // One row per person per reflection — a double tap must not make the
+    // read count lie.
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS group_reflection_reads_once ON group_reflection_reads (reflection_id, user_id)`);
+    // The card asks "what is the newest published reflection for my groups",
+    // which is this index's exact shape.
+    await run(client, `CREATE INDEX IF NOT EXISTS group_reflections_group_published ON group_reflections (group_id, published_at DESC)`);
+
     await run(client, `
       CREATE TABLE IF NOT EXISTS novenas (
         id SERIAL PRIMARY KEY,
