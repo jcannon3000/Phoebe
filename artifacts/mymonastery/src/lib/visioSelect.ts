@@ -460,99 +460,73 @@ export function pickFromTier(
 }
 
 /**
- * THREE OTHER WORKS FOR THE SAME DAY.
+ * OTHER WORKS FOR THE SAME PASSAGE.
  *
- * Owner: "under the visio for the day, have a button that says more options,
- * and for each day have three others displayed as cards … if they chose it
- * they would go through it with that image."
+ * Owner: "why would there be suggestions from different passages other then
+ * whats for this sunday", and "we dont want anything that doesnt have a
+ * comendtary or is from the psalm".
  *
- * PURE, like everything else here — the date and the appointed lessons, and
- * nothing about the reader. Everyone who opens More options on a given day is
- * offered the same three, which is the point of the practice: a parish looking
- * at the same picture, and now at the same alternatives to it.
+ * It used to match on the DAY's lessons and, when those ran dry, fell to
+ * same-book matches and then to a plain rotation — so beside a Psalm 137 image
+ * it offered John 12, John 18 and John 19: three Holy Week paintings in
+ * August, related to nothing anyone was reading. Fallbacks that always fill
+ * three cards are the wrong trade here. An option is a suggestion, and a
+ * suggestion that isn't about this week is noise.
  *
- * Candidates are gathered in falling order of relevance:
+ * So the basis is the PASSAGE THE WEEK'S OWN IMAGE ANSWERS, not the day's
+ * readings — which is also what makes it agree with the weekly model: every
+ * day of a week shows one image, and its alternates are other treatments of
+ * that same passage. Chapter level or better, nothing looser. Fewer than three
+ * is a fine answer, and none is a fine answer; the button simply doesn't show.
  *
- *   1. Tier by tier at CHAPTER level or better, in the owner's order (gospel,
- *      then Epistle or OT, then psalm), taking each tier's candidates in the
- *      order pickFromTier would — reflection-bearing works first, then the
- *      runner-up that carries one, then the bare matches, each group rotated
- *      by the same day counter. These genuinely depict what is appointed.
- *   2. Tier by tier at BOOK level. Not "today's reading", and labelled as not,
- *      but the same book is a real thread and it beats an unrelated painting.
- *      This step is why the list isn't usually random: on 27 August the whole
- *      gospel tier (John 7) reaches book level and no further, so without it
- *      all three cards fell through to the rotation floor.
- *   3. The plain rotation, so three cards can always be filled.
+ * Psalms are excluded here as they are in the schedule, and the pool is the
+ * commentary catalogue, so an option always has something written about it.
  *
- * THEN A VARIETY PASS. The catalogue is lopsided — one tier can be 62 works
- * from a single series, and the rotation pool is grouped by artist, so simply
- * taking the first three gave three paintings by the same hand (three
- * Swansons, three JESUS MAFA). So the first pass takes only works by artists
- * not already offered, and a second pass fills any shortfall in relevance
- * order. Variety breaks ties; it never outranks a work that actually depicts
- * today's reading — three Nativities on Christmas is the right answer.
+ * Still pure: the date and the passage, nothing about the reader, so everyone
+ * praying this week is offered the same alternatives.
  */
 export function alternatesForDay(
   ymd: string,
-  lessons: string[],
+  ref: string,
   excludeId: number | null,
   count = 3,
 ): Chosen[] {
-  const ranked: Chosen[] = [];
-  const seen = new Set<number>(excludeId == null ? [] : [excludeId]);
-  const push = (art: CatalogueArtwork, ref: string, followsToday: boolean) => {
-    if (seen.has(art.id)) return;
-    seen.add(art.id);
-    ranked.push({ art, ref, followsToday });
-  };
-  /** A group's candidates from today's place in it, as pickFromTier walks. */
-  const rotated = (group: CatalogueArtwork[]): CatalogueArtwork[] => {
-    if (!group.length) return [];
-    const start = rotationIndex(ymd, group.map((a) => a.id));
-    return group.map((_, k) => group[(start + k) % group.length]!);
-  };
+  const passage = (ref ?? "").trim();
+  if (!passage || /^psalm/i.test(passage)) return [];
 
-  const tiers = rankedTiers(lessons);
-  // 1. Chapter level or better — the works that nearly won today.
-  for (const { refs, best, top, essayRunnerUp } of tiers) {
-    if (top < 2 || !best.length) continue;
-    for (const group of [best.filter(hasUsableEssay), essayRunnerUp, best.filter((a) => !hasUsableEssay(a))]) {
-      for (const art of rotated(group)) {
-        push(art, art.refs.find((r) => matchScore([r], refs) >= 2) ?? art.refs[0] ?? "", true);
-      }
-    }
-  }
-  // 2. Book level — same book, a different passage. Never called today's.
-  for (const { refs, best, top } of tiers) {
-    if (top !== 1 || !best.length) continue;
-    for (const art of rotated(best)) {
-      push(art, art.refs.find((r) => matchScore([r], refs) >= 1) ?? art.refs[0] ?? "", false);
-    }
-  }
-  // 3. The floor: walk on from today's place in the pool.
-  const p = pool();
-  for (let k = 0; k < p.length; k++) {
-    push(p[(((dayOrdinal(ymd) + 1 + k) % p.length) + p.length) % p.length]!, "", false);
-  }
+  const matches = pool()
+    .filter((art) => art.id !== excludeId)
+    // Chapter level or better against the week's own passage. matchScore >= 2
+    // is the same bar chooseArtwork uses to claim a work depicts a reading.
+    .filter((art) => matchScore(art.refs, [passage]) >= 2);
+  if (!matches.length) return [];
 
-  // Variety first, then fill.
+  // Deterministic among equals, and rotated by the same day counter the rest
+  // of the file uses, so the order is stable for everyone on a given date.
+  const start = rotationIndex(ymd, matches.map((a) => a.id));
+  const ordered = matches.map((_, k) => matches[(start + k) % matches.length]!);
+
+  // Variety of hands, as elsewhere: prefer artists not already offered, then
+  // fill. The catalogue is lopsided enough that three works about one passage
+  // are often three by the same painter.
   const out: Chosen[] = [];
   const hands = new Set<string>();
-  const handOf = (c: Chosen) => (c.art.artist ?? "").trim().toLowerCase();
-  for (const c of ranked) {
+  const take = (art: CatalogueArtwork) => {
+    const own = art.refs.find((r) => matchScore([r], [passage]) >= 2) ?? art.refs[0] ?? passage;
+    out.push({ art, ref: own, followsToday: true });
+  };
+  for (const art of ordered) {
     if (out.length >= count) break;
-    const hand = handOf(c);
+    const hand = (art.artist ?? "").trim().toLowerCase();
     if (hand && hands.has(hand)) continue;
     if (hand) hands.add(hand);
-    out.push(c);
+    take(art);
   }
-  for (const c of ranked) {
+  for (const art of ordered) {
     if (out.length >= count) break;
-    if (!out.includes(c)) out.push(c);
+    if (!out.some((c) => c.art.id === art.id)) take(art);
   }
-  // A floor work carries no reference of its own to show; give it its first.
-  return out.map((c) => (c.ref ? c : { ...c, ref: c.art.refs[0] ?? "" }));
+  return out;
 }
 
 export function chooseArtwork(ymd: string, lessons: string[]): Chosen {

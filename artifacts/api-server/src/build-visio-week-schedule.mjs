@@ -67,22 +67,42 @@ function refsForDay(d) {
       const raw = lect[key];
       if (typeof raw === "string" && raw.trim() && !/^-+$/.test(raw.trim())) out.push(norm(raw));
     }
-    // psalms is a string ARRAY of numbers (["95", "100"]) — see
-    // LectionaryReadings. Read as a string it would have silently contributed
-    // nothing, and the psalm tier would have looked permanently empty.
-    for (const p of lect.psalms ?? []) {
-      if (typeof p === "string" && p.trim()) out.push(norm(`Psalm ${p.trim()}`));
-    }
+    /**
+     * NO PSALMS (owner: "we dont want anything that doesnt have a
+     * comendtary or is from the psalm").
+     *
+     * The psalms were contributed here so the third tier had something to
+     * match on. Leaving them out empties that tier by construction, which is
+     * the point: a week is now chosen by its gospel, epistle or Old Testament
+     * reading, and never by an illuminated psalter initial standing in for a
+     * passage nobody is reading that week.
+     *
+     * Done at the SOURCE rather than by filtering the winner. Dropping a psalm
+     * pick later would leave the week with nothing and fall through to the
+     * rotation — a work related to none of the readings, which is worse than
+     * the psalm it replaced.
+     */
   }
   return [...new Set(out)];
 }
 
-/** The Sunday on or before a date — the day whose readings name the week. */
+/**
+ * The Sunday on or before a date — the day whose readings name the week.
+ *
+ * LOCAL day parts, deliberately, because the dates fed to it are local noon
+ * (see the loop). Reading UTC parts off a local-noon date is how this produced
+ * the wrong day: a mixed pair silently lands a day out for anyone west of
+ * Greenwich.
+ */
 function sundayOf(d) {
   const s = new Date(d.getTime());
-  s.setUTCDate(s.getUTCDate() - s.getUTCDay());
+  s.setDate(s.getDate() - s.getDay());
   return s;
 }
+
+/** A date as YYYY-MM-DD in LOCAL terms — the same day the calendar will read. */
+const ymdOf = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 function build() {
   /** appearances[year][artId] — the count the cap is measured against. */
@@ -100,9 +120,28 @@ function build() {
   const stats = { days: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, middle: 0, psalm: 0, book: 0, rotation: 0 };
 
   for (let i = 0; i < DAYS; i++) {
-    const d = new Date(START.getTime() + i * 86400000);
-    const ymd = d.toISOString().slice(0, 10);
-    const year = d.getUTCFullYear();
+    /**
+     * NOON, LOCAL — not UTC midnight.
+     *
+     * Owner: "it did psalm 137 as the main but thats not the psalm for this
+     * sunday", and "this obviously is off". It was, for every week of the
+     * year. These dates were built at UTC midnight and handed to
+     * getOfficeDay, which reads LOCAL day parts: 2026-08-23T00:00:00Z is
+     * Saturday 22 August in America/New_York. So each week was chosen from the
+     * SATURDAY's lectionary and then labelled as the Sunday's — Psalm 137 is
+     * Saturday's psalm that week; Sunday's are 146 and 147. Sampled across the
+     * year, 7 Sundays in 8 were pinned to a passage not appointed that day,
+     * and each carried followsToday:true, so the deck asserted a reading it
+     * wasn't showing.
+     *
+     * Noon is the standard trick and the rest of this codebase already uses it
+     * (`new Date(\`${dateStr}T12:00:00\`)` in the office routes): no timezone
+     * within ±12h of UTC can push midday across a date boundary.
+     */
+    const stepped = new Date(START.getTime() + i * 86400000);
+    const ymd = stepped.toISOString().slice(0, 10);
+    const d = new Date(`${ymd}T12:00:00`);
+    const year = d.getFullYear();
     /**
      * ONE IMAGE A WEEK, CHOSEN BY THE SUNDAY (owner: "one week, one image
      * that's most related to the lectionary for that Sunday leading up to
@@ -117,7 +156,7 @@ function build() {
      * resolves to the same id.
      */
     const sunday = sundayOf(d);
-    const weekKey = sunday.toISOString().slice(0, 10);
+    const weekKey = ymdOf(sunday);
     if (weekPick.has(weekKey)) {
       rows.push([ymd, weekPick.get(weekKey)]);
       continue;

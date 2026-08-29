@@ -276,9 +276,14 @@ export default function VisioPage() {
    * the day's own picture. Computed against TODAY's work, never the active
    * one, so switching doesn't reshuffle the sheet underneath the reader.
    */
+  // Keyed on the PASSAGE this week's image answers, not the day's lessons —
+  // otherwise the options wander off to whatever else the day happens to
+  // appoint, which is what put three Holy Week paintings beside a Psalm 137
+  // image in August. `chosen.ref` is the week's passage, so the alternates are
+  // other treatments of the same thing.
   const alternates = useMemo(
-    () => (chosen ? alternatesForDay(today, dayLessons, chosen.art.id) : []),
-    [today, dayLessons, chosen],
+    () => (chosen ? alternatesForDay(today, chosen.ref, chosen.art.id) : []),
+    [today, chosen],
   );
   /**
    * OPEN by default (owner, with the expanded slide: "have it just be like
