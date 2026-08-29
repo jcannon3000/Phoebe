@@ -675,12 +675,12 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "fdd", label: "📖 Forward Day by Day", sub: "Forward Movement" },
   { id: "ssje", label: "✍🏽 SSJE — Brother, Give Us a Word", sub: "Society of St. John the Evangelist" },
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
-  { id: "vts", label: "🏛️ VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
+  { id: "vts", label: "🦩 VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
   // Read-only sources (see ReflectionSource): they sit in the rule and open in
   // the reader like the others, but opening one is not scored.
-  { id: "nouwen", label: "🕊️ Daily Henri Nouwen Quotes", sub: "Henri Nouwen Society" },
-  { id: "sojo", label: "📣 Voice and Verse", sub: "Sojourners · verse, voice and prayer of the day" },
-  { id: "grist", label: "🌍 Grist", sub: "The day's climate journalism · weekdays" },
+  { id: "nouwen", label: "🪔 Daily Henri Nouwen Quotes", sub: "Henri Nouwen Society" },
+  { id: "sojo", label: "🕊️ Sojourner's Voice and Verse", sub: "Verse, voice and prayer of the day" },
+  { id: "grist", label: "🌍 Grist Climate News", sub: "The day's climate journalism · weekdays" },
 ];
 
 // A captured routine, identical to what commit() would write — used by the

@@ -45,17 +45,17 @@ export default function MenuReflectionsPage() {
       groups={[
         {
           items: [
+            { emoji: "🌵", label: "CAC Daily Reflection", sub: "Center for Action & Contemplation", onClick: openCac },
             { emoji: "📔", label: "Forward Day by Day", sub: "Today's meditation from Forward Movement", onClick: openFdd },
             { emoji: "✍🏽", label: "SSJE Reflections", sub: "Today's Brother, Give Us a Word", onClick: openSsje },
-            { emoji: "🌵", label: "CAC Daily Reflection", sub: "Center for Action & Contemplation", onClick: openCac },
-            { emoji: "🏛️", label: "Dean's Commentary", sub: "Virginia Theological Seminary", onClick: openVts },
           ],
         },
         {
           items: [
-            { emoji: "🕊️", label: "Daily Henri Nouwen Quotes", sub: "From the Henri Nouwen Society", onClick: openNouwen },
-            { emoji: "📣", label: "Voice and Verse", sub: "Verse, voice and prayer of the day · Sojourners", onClick: openSojo },
-            { emoji: "🌍", label: "Grist", sub: "The day's climate journalism", onClick: openGrist },
+            { emoji: "🪔", label: "Daily Henri Nouwen Quotes", sub: "From the Henri Nouwen Society", onClick: openNouwen },
+            { emoji: "🕊️", label: "Sojourner's Voice and Verse", sub: "Verse, voice and prayer of the day · Sojourners", onClick: openSojo },
+            { emoji: "🌍", label: "Grist Climate News", sub: "The day's climate journalism", onClick: openGrist },
+            { emoji: "🦩", label: "VTS Dean's Commentary", sub: "Virginia Theological Seminary", onClick: openVts },
           ],
         },
       ]}

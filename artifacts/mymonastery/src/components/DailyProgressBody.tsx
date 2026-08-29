@@ -44,8 +44,8 @@ const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   cac: "CAC Daily Meditation",
   vts: "VTS Dean's Commentary",
   nouwen: "Daily Henri Nouwen Quotes",
-  sojo: "Voice and Verse",
-  grist: "Grist",
+  sojo: "Sojourner's Voice and Verse",
+  grist: "Grist Climate News",
 };
 
 const WARM = "#F0EDE6";
@@ -2179,7 +2179,7 @@ function LogSheet({
   onSkip,
   middle,
 }: {
-  anchor: { id: string; title: string; emoji: string; reading?: ReadingConfig };
+  anchor: { id: string; title: string; emoji: string; reading?: ReadingConfig; prompt?: string };
   onClose: () => void;
   t: (k: string, o?: Record<string, unknown>) => string;
   onLog?: () => void;
@@ -2271,7 +2271,9 @@ function LogSheet({
             className="w-full rounded-2xl py-3.5 text-[15px] font-semibold active:scale-[0.99]"
             style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
           >
-            ✓ {t("rhythm.log_done", { defaultValue: "Done" })}
+            ✓ {anchor.prompt
+              ? t("rhythm.log_yes", { defaultValue: "Yes" })
+              : t("rhythm.log_done", { defaultValue: "Done" })}
           </button>
         )}
 
