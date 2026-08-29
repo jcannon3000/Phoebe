@@ -332,7 +332,41 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          reader view for SSJE that just shows the word as a title and the
          reflection, and the monks name, but not the rest of the page." */
       var isSsje = (h === 'ssje.org' || h.slice(-9) === '.ssje.org');
-      if (!isOremus && !isVcs && !isSsje) return;
+      /* Henri Nouwen's daily meditation (Squarespace) and Forward Day by Day
+         (an Ionic SPA). Owner asked for both "just like SSJE" — the date, the
+         feast, the scripture, the reflection, Moving Forward and the diocese
+         on FDD; the date, title and meditation on Nouwen. */
+      var isNouwen = (h === 'henrinouwen.org' || h.slice(-16) === '.henrinouwen.org');
+      var isFdd = (h === 'forwardmovement.org' || h.slice(-20) === '.forwardmovement.org');
+      /* Sojourners' Verse and Voice — verse, voice and prayer of the day. */
+      var isSojo = (h === 'sojo.net' || h.slice(-9) === '.sojo.net');
+      if (!isOremus && !isVcs && !isSsje && !isNouwen && !isFdd && !isSojo) return;
+
+      /**
+       * KEEP ONE BLOCK, HIDE ITS SIBLINGS — the technique three of these five
+       * sites share, so it lives in one place with a selector each.
+       *
+       * All three are CMS pages (Beaver Builder, Squarespace, Ionic) whose
+       * class names are generated per module and drift on the site's next
+       * edit. Naming what to HIDE would rot; naming the single block worth
+       * keeping does not, because that block is what the page is for.
+       */
+      /**
+       * NOT Forward Day by Day. It is an Ionic SPA, and hiding siblings there
+       * breaks it: ion-page / ion-router-outlet / ion-split-pane size
+       * themselves through their own sibling structure, and the isolate
+       * collapsed the entire app to zero height with half of it flipped to
+       * visibility:hidden (measured). FDD is trimmed by stylesheet instead —
+       * see the CSS arm. The failure modes decide it: a CSS selector that
+       * misses leaves a strip of chrome on screen, while the isolate leaves a
+       * blank page, and this is the one page here I cannot verify — its
+       * `.ion-page-invisible` never clears in the automation pane, so it
+       * measures 0x0 with the reader stylesheet REMOVED as well as applied.
+       */
+      var ISOLATE_TARGET = isSsje ? '.fl-post-feed-post'
+                         : isNouwen ? '.blog-item-inner-wrapper'
+                         : isSojo ? 'article.node-versevoice'
+                         : null;
 
       var ASSETS = 'https://withphoebe.app/reader/';
       var css = [
@@ -485,7 +519,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'font-size:13px!important;letter-spacing:.16em;text-transform:uppercase;line-height:1.5!important;',
         'color:rgba(200,212,192,0.75)!important;}',
         'a,a:visited{color:#A8C5A0!important;}',
-      ] : [
+      ] : isSsje ? [
         /* ---- SSJE, Brother Give Us A Word -------------------------------
            Measured on the live page, not guessed. Everything the owner asked
            to keep — the word, the reflection, the brother's name, and the
@@ -493,7 +527,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            block. So the stylesheet doesn't enumerate what to hide (a Beaver
            Builder theme's classes are generated and would drift); the script
            keeps that block and hides its siblings all the way up. See
-           ssjeIsolate. */
+           isolate(). */
         /* The ground goes on HTML as well as BODY: SSJE's own stylesheet
            wins on body, and a transparent body would let the host's white
            show straight through — measured as cream text on a white slab. */
@@ -522,6 +556,64 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.fl-post-feed-content p:last-of-type{text-align:right!important;font-size:14px!important;',
         'line-height:1.6!important;color:rgba(200,212,192,0.72)!important;}',
         'a,a:visited{color:#A8C5A0!important;}',
+      ] : [
+        /* ---- Henri Nouwen · Forward Day by Day ---------------------------
+           Both are isolated to one block (see ISOLATE_TARGET), so there is
+           almost nothing to hide here — only the ground to lay and the type
+           to set. Measured on both live pages.
+
+           NOUWEN keeps the date (h1), the title (h3) and the meditation.
+           FDD keeps, in the page's own order, the date and feast (h1), the
+           scripture, the reflection ending in MOVING FORWARD, and the diocese
+           — the owner's list exactly, "and then just leave everything else
+           off". The day's office citations trail after the diocese and are
+           dropped by the script. */
+        'html{background:#0A1A10!important;}',
+        'body{background:#0A1A10!important;margin:0!important;padding:0!important;',
+        'padding-top:calc(env(safe-area-inset-top) + 8px)!important;color:#F0EDE6!important;}',
+        /* Squarespace and Ionic both paint their own grounds several layers
+           deep; the isolate clears the surviving spine, this clears the rest. */
+        '.blog-item-inner-wrapper *,article.fdd *,article.node-versevoice *{background-color:transparent!important;}',
+        '.blog-item-inner-wrapper,article.fdd,article.node-versevoice{background:transparent!important;',
+        'max-width:none!important;width:auto!important;margin:0!important;padding:0 20px!important;}',
+        /* SOJOURNERS keeps a newsletter signup INSIDE the block worth keeping,
+           so the isolate can't reach it — measured: the kept article opens
+           with a first-name field, an e-mail field and a fifty-state dropdown
+           before a word of the verse. It goes here instead. */
+        /* FDD has no isolate (see ISOLATE_TARGET), so its chrome is named
+           here. Ionic's own furniture, and nothing that carries the day. */
+        'ion-menu,ion-header,ion-footer,ion-toolbar,ion-tab-bar,ion-buttons,',
+        'ion-title,ion-searchbar,ion-fab{display:none!important;}',
+        'ion-content{--background:#0A1A10!important;}',
+        'article.fdd{padding:0 20px!important;}',
+        'article.fdd p,article.fdd li{font-size:18px!important;line-height:1.72!important;',
+        'color:#F0EDE6!important;margin:0 0 1.15em!important;}',
+        'form,select,input,textarea,button[type="submit"],',
+        '[class*="signup"],[class*="newsletter"],[class*="mailchimp"]{display:none!important;}',
+        /* Verse / Voice / Prayer of the day — the three headings that give
+           this page its shape, quiet above their own text. */
+        'article.node-versevoice h2{font-size:12px!important;letter-spacing:.16em;',
+        'text-transform:uppercase;font-weight:600!important;margin:1.8em 0 .5em!important;',
+        'color:rgba(143,175,150,0.9)!important;}',
+        'h1,h2,h3,h4,p,li,article,div{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
+        /* The date, and on FDD the feast under it. */
+        'h1{font-size:15px!important;letter-spacing:.14em;text-transform:uppercase;',
+        'line-height:1.45!important;font-weight:600!important;margin:0 0 18px!important;',
+        'color:rgba(200,212,192,0.75)!important;}',
+        /* Nouwen's meditation title. */
+        'h3{font-size:27px!important;line-height:1.18!important;font-weight:700!important;',
+        'margin:0 0 16px!important;color:#F0EDE6!important;}',
+        'p,li{font-size:18px!important;line-height:1.72!important;color:#F0EDE6!important;',
+        'margin:0 0 1.15em!important;}',
+        /* FDD's scripture sits above the reflection — set apart, the way the
+           office sets a lesson's reference. */
+        'article.fdd > p:first-of-type{font-style:italic!important;',
+        'color:rgba(240,237,230,0.88)!important;}',
+        /* MOVING FORWARD and PRAY FOR read as small caps in the source. */
+        'article.fdd > p:last-of-type{font-size:14px!important;',
+        'color:rgba(200,212,192,0.72)!important;}',
+        'a,a:visited{color:#A8C5A0!important;}',
+        'img,figure,.sqs-block-image{display:none!important;}',
       ]).concat([
         '.phoebe-reader-note{max-width:none;margin:0!important;padding:10px 20px 40px!important;',
         'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.45)!important;}',
@@ -586,8 +678,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         var m = document.createElement('div');
         m.className = 'phoebe-reader-masthead';
         m.textContent = isOremus ? 'the oremus Bible Browser'
-                       : isVcs   ? 'The Visual Commentary on Scripture'
-                                 : 'Brother, Give Us A Word \\u00b7 SSJE';
+                       : isVcs    ? 'The Visual Commentary on Scripture'
+                       : isSsje   ? 'Brother, Give Us A Word \\u00b7 SSJE'
+                       : isNouwen ? 'Henri Nouwen Society'
+                       : isSojo   ? 'Verse and Voice \\u00b7 Sojourners'
+                                  : 'Forward Day by Day';
         document.body.insertBefore(m, document.body.firstChild);
       }
 
@@ -642,23 +737,25 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       }
 
       /**
-       * SSJE: keep the day's post, hide the rest of the page.
+       * Keep the one block that is what the page is FOR, hide everything else.
        *
-       * The word, the reflection, the brother's name and the link back all
-       * live in one `.fl-post-feed-post`. Everything else on the page — a
-       * hero image, the site nav, "A daily monastic practice to nourish your
-       * spirit", a subscribe form, the footer — is a sibling of that block at
-       * some level above it. So rather than name what to hide in CSS (Beaver
-       * Builder's node classes are generated per-module and would drift on
-       * their next edit), walk up from the block hiding every sibling on the
-       * way. What survives is exactly the ancestors of the thing we keep.
+       * Shared by SSJE, Nouwen and Forward Day by Day (ISOLATE_TARGET picks
+       * the selector). Everything else on those pages — hero images, site
+       * nav, straplines, subscribe forms, share buttons, next/previous, the
+       * footer — is a sibling of that block at some level above it. So rather
+       * than name what to HIDE in CSS, walk up from the block hiding every
+       * sibling on the way; what survives is exactly the ancestors of the
+       * thing we keep. Their class names are CMS-generated per module
+       * (`fl-node-595680d9ad6fc`, `yui_3_17_2_1_…`) and would drift on the
+       * next edit; the block itself won't.
        *
        * The backgrounds have to be cleared on that surviving spine too: SSJE
        * paints white on a wrapper, and clearing only the body left cream text
        * on a white slab (measured).
        */
-      function ssjeIsolate() {
-        var post = document.querySelector('.fl-post-feed-post');
+      function isolate() {
+        if (!ISOLATE_TARGET) return;
+        var post = document.querySelector(ISOLATE_TARGET);
         if (!post || post.getAttribute('data-phoebe-isolated')) return;
         var node = post;
         while (node && node !== document.documentElement) {
@@ -676,11 +773,46 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         post.setAttribute('data-phoebe-isolated', '1');
       }
 
+      /**
+       * Forward Day by Day, trimmed WITHOUT an isolate.
+       *
+       * Owner's list: "the date, the feast if there is one, the scripture,
+       * the reflection, the moving forward, and the pray for the diocese of
+       * blank, and then just leave everything else off." All of those are
+       * children of `article.fdd`, in that order, so the only DOM edits here
+       * are inside that article plus one sibling section — nothing that
+       * Ionic's layout depends on.
+       *
+       * A paragraph of the day's office citations ("Ps 20, 21:1-7 … | Job 9:1
+       * … | Acts 11:1-18") trails after the diocese line. Anchored on the
+       * PRAY line rather than on position, because a day without a feast
+       * shifts everything up by one.
+       */
+      function fddTrim() {
+        var post = document.querySelector('article.fdd');
+        if (!post || post.getAttribute('data-phoebe-trimmed')) return;
+        var kids = post.children;
+        var seenPray = false;
+        for (var k = 0; k < kids.length; k++) {
+          if (seenPray) kids[k].style.setProperty('display', 'none', 'important');
+          else if (/^\\s*PRAY\\b/i.test(kids[k].textContent || '')) seenPray = true;
+        }
+        // "More from Forward Movement" — a promo block after the day's entry.
+        var heads = document.querySelectorAll('h1, h2');
+        for (var i = 0; i < heads.length; i++) {
+          if (/More from Forward Movement/i.test(heads[i].textContent || '')) {
+            var box = heads[i].closest ? (heads[i].closest('section, ion-card, article, div')) : null;
+            if (box && box !== post) box.style.setProperty('display', 'none', 'important');
+          }
+        }
+        post.setAttribute('data-phoebe-trimmed', '1');
+      }
+
       function run() {
         addStyle();
         if (isOremus) { tidy(); credit(); }
         else if (isVcs) { vcsStrip(); }
-        else { ssjeIsolate(); }
+        else { isolate(); if (isFdd) fddTrim(); }
         masthead();
       }
       if (document.readyState !== 'loading') run();
@@ -690,7 +822,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       // its images and viewers, so it needs the longer tail: the zoom viewer
       // it hides is built after first paint.
       var tries = 0;
-      var limit = (isVcs || isSsje) ? 20 : 6;
+      var limit = isOremus ? 6 : 20;
       var iv = setInterval(function () { run(); if (++tries > limit) clearInterval(iv); }, 350);
       // Landing the page on the right commentary is the NATIVE side's job
       // (scrollToDeepLinkedWork) — it already owns the retry ladder and the
@@ -906,6 +1038,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         let isReaderHost = readerHost.hasSuffix("oremus.org")
             || readerHost.hasSuffix("thevcs.org")
             || readerHost.hasSuffix("ssje.org")
+            || readerHost.hasSuffix("henrinouwen.org")
+            || readerHost.hasSuffix("forwardmovement.org")
+            || readerHost.hasSuffix("sojo.net")
         if officeChrome {
             // Owner: "take the settings and the X button out of the top
             // right and move the Next button ... to the top right." Gear
