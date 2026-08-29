@@ -1178,9 +1178,32 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * link out to and nothing of anyone else's to reproduce.
    */
   const groupReflectionCard = groupReflection ? {
-    key: "group-reflection", emoji: "✉️", rgb: "168,150,120",
+    key: "group-reflection", emoji: groupReflection.url ? "🔗" : "✉️", rgb: "168,150,120",
     done: false,
+    /**
+     * A LINK POST opens the publisher's own page in the in-app browser — the
+     * CAC newsletter's shape — and deliberately WITHOUT the reader view
+     * (owner: "not a reader view inherently"). The reader restyles pages whose
+     * shape we know; a leader can post anything, and stripping an unknown page
+     * to a text column loses the thing that was worth sharing.
+     *
+     * Marked read on OPEN here, unlike a written reflection: the reader leaves
+     * for someone else's site and may never come back through the app.
+     */
+    // Written by default; the link branch below OVERRIDES href, so it has to
+    // come after it — a spread before `href` would be silently discarded.
     href: `/group-reflection/${groupReflection.reflectionId}`,
+    ...(groupReflection.url ? {
+      href: "",
+      onClick: () => {
+        const { url, reflectionId } = groupReflection;
+        if (!url) return;
+        openExternalThenMarkRead(url, () => {
+          void apiRequest("POST", `/api/me/group-reflection/${reflectionId}/read`).catch(() => { /* best effort */ });
+          swellHaptic();
+        }, { reader: false });
+      },
+    } : {}),
     title: groupReflection.title,
     blurb: [groupReflection.groupName, groupReflection.authorName].filter(Boolean).join(" · ")
       || t("rhythm.blurb_group_reflection", { defaultValue: "A reflection for your group" }),

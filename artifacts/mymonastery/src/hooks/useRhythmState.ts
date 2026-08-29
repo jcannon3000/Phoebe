@@ -236,6 +236,8 @@ export type RhythmState = {
   groupReflection: {
     id: string; reflectionId: number; title: string; body: string;
     authorName: string | null; groupName: string | null; published: string | null;
+    /** Set when a leader posted a LINK rather than writing — opens their page. */
+    url: string | null;
   } | null;
   /** Compline (the night office) as an opt-in add-on card — only ever true
    *  from 7pm local on, since it's the office for the end of the day. */
@@ -965,7 +967,8 @@ export function useRhythmState(): RhythmState {
    */
   const { data: groupReflectionRaw } = useQuery<{
     id: string; reflectionId: number; title: string; body: string;
-    authorName: string | null; groupName: string | null; published: string | null; read: boolean;
+    authorName: string | null; groupName: string | null; published: string | null;
+    url: string | null; read: boolean;
   } | null>({
     queryKey: ["/api/me/group-reflection/latest"],
     queryFn: () => apiRequest("GET", "/api/me/group-reflection/latest"),
@@ -1227,6 +1230,7 @@ export function useRhythmState(): RhythmState {
         authorName: groupReflectionRaw.authorName,
         groupName: groupReflectionRaw.groupName,
         published: groupReflectionRaw.published,
+        url: groupReflectionRaw.url ?? null,
       }
     : null;
   // Same rule for the other two: an empty inbox is DONE, not absent, or the

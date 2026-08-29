@@ -31,7 +31,34 @@ export const groupReflectionsTable = pgTable("group_reflections", {
     .references(() => usersTable.id, { onDelete: "set null" }),
   authorName: text("author_name"),
   title: text("title").notNull(),
+  /**
+   * The reflection itself. Empty for a LINK POST — see `url`.
+   */
   body: text("body").notNull(),
+  /**
+   * A LINK a leader posted, rather than something they wrote.
+   *
+   * Owner: "a leader could post a link to a material … we'd want it to show up
+   * in the CAC kind of format where it's loading the page, but not a reader
+   * view inherently."
+   *
+   * So a row with a url is not read in the app: it opens the publisher's own
+   * page in the in-app browser, exactly as the CAC newsletter card does, and
+   * deliberately WITHOUT Phoebe's reader view. The reader restyles pages we
+   * know the shape of; a leader can post anything, and stripping an unknown
+   * page to a text column is how you lose the thing that was worth sharing.
+   */
+  url: text("url"),
+  /**
+   * When it stops being shown. Owner, of link posts: "only have it last one
+   * week — if it goes longer than a week, it disappears."
+   *
+   * Nullable, and null means no expiry: a written reflection stays until the
+   * next one is posted, which is the inbox's own rule. Only link posts get a
+   * clock, because a link to something timely is stale in a way a reflection
+   * isn't.
+   */
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
   /**
    * When it goes out. Nullable so a reflection can be drafted and published
    * later; the feed only ever returns rows with this set and in the past.

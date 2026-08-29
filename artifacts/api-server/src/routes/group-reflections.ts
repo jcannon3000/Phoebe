@@ -18,7 +18,7 @@
 //     read it on your phone and it must be read on your laptop.
 
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, desc, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
 import {
   db,
   groupReflectionsTable,
@@ -61,6 +61,8 @@ router.get("/me/group-reflection/latest", async (req: Request, res: Response): P
       title: groupReflectionsTable.title,
       body: groupReflectionsTable.body,
       authorName: groupReflectionsTable.authorName,
+      url: groupReflectionsTable.url,
+      expiresAt: groupReflectionsTable.expiresAt,
       publishedAt: groupReflectionsTable.publishedAt,
       groupName: groupsTable.name,
       groupSlug: groupsTable.slug,
@@ -72,6 +74,16 @@ router.get("/me/group-reflection/latest", async (req: Request, res: Response): P
       isNotNull(groupReflectionsTable.publishedAt),
       // Never hand out something scheduled for later.
       lte(groupReflectionsTable.publishedAt, new Date()),
+      /**
+       * …or something that has run out. A LINK POST lasts a week (owner: "if
+       * it goes longer than a week, it disappears"); a written reflection has
+       * no expiry and passes this by having expires_at null.
+       *
+       * Filtered in SQL rather than after the fact: this query takes the
+       * NEWEST row, so an expired one filtered in JS would hide the live
+       * reflection sitting behind it.
+       */
+      or(isNull(groupReflectionsTable.expiresAt), gt(groupReflectionsTable.expiresAt, new Date())),
     ))
     .orderBy(desc(groupReflectionsTable.publishedAt))
     .limit(1);
@@ -97,6 +109,9 @@ router.get("/me/group-reflection/latest", async (req: Request, res: Response): P
     groupName: row.groupName,
     groupSlug: row.groupSlug,
     published: row.publishedAt ? row.publishedAt.toISOString().slice(0, 10) : null,
+    // A url means "open their page", and the client must not put the reader
+    // view over it — see the schema's note on why.
+    url: row.url ?? null,
     read: !!read,
   });
 });
@@ -162,7 +177,24 @@ router.post("/groups/:slug/reflections", async (req: Request, res: Response): Pr
 
   const title = String((req.body?.title ?? "")).trim();
   const body = String((req.body?.body ?? "")).trim();
-  if (!title || !body) { res.status(400).json({ error: "title_and_body_required" }); return; }
+  const rawUrl = String((req.body?.url ?? "")).trim();
+  /**
+   * A post is EITHER something written or a link to something. http(s) only —
+   * an admin pasting a javascript: or data: URL would be handing the whole
+   * group a link the app then opens.
+   */
+  let url: string | null = null;
+  if (rawUrl) {
+    try {
+      const parsed = new URL(rawUrl);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        res.status(400).json({ error: "url_must_be_http" }); return;
+      }
+      url = parsed.toString();
+    } catch { res.status(400).json({ error: "bad_url" }); return; }
+  }
+  if (!title) { res.status(400).json({ error: "title_required" }); return; }
+  if (!url && !body) { res.status(400).json({ error: "body_or_url_required" }); return; }
   if (title.length > 140) { res.status(400).json({ error: "title_too_long" }); return; }
   if (body.length > 20000) { res.status(400).json({ error: "body_too_long" }); return; }
   const publish = req.body?.publish !== false;
@@ -173,6 +205,11 @@ router.post("/groups/:slug/reflections", async (req: Request, res: Response): Pr
     authorName: result.member.name ?? user.name ?? null,
     title,
     body,
+    url,
+    // ONE WEEK for a link, none for a reflection (owner). Measured from
+    // publication rather than creation, so a draft published later gets its
+    // full week rather than a week that started while nobody could see it.
+    expiresAt: url && publish ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : null,
     publishedAt: publish ? new Date() : null,
   }).returning();
 

@@ -4113,6 +4113,10 @@ export async function migrate() {
     // The card asks "what is the newest published reflection for my groups",
     // which is this index's exact shape.
     await run(client, `CREATE INDEX IF NOT EXISTS group_reflections_group_published ON group_reflections (group_id, published_at DESC)`);
+    // A leader can post a LINK rather than write — it opens the publisher's
+    // own page and lasts a week. Added after the initial table.
+    await run(client, `ALTER TABLE group_reflections ADD COLUMN IF NOT EXISTS url TEXT`);
+    await run(client, `ALTER TABLE group_reflections ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`);
 
     await run(client, `
       CREATE TABLE IF NOT EXISTS novenas (
