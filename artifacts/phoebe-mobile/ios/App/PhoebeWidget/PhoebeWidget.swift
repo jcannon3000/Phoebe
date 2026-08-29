@@ -486,13 +486,30 @@ struct PhoebeWidgetView: View {
         // underneath it.
         .padding(1)
         .background(
-            // cardTintBg(tint): rgba(26−16t, 52−24t, 36−18t, 0.27+0.09t) —
-            // the home's per-position card ground, over the widget's leaf.
-            RoundedRectangle(cornerRadius: 24 * s)
-                .fill(Color(red: (26 - 16 * c.tint) / 255.0,
-                            green: (52 - 24 * c.tint) / 255.0,
-                            blue: (36 - 18 * c.tint) / 255.0)
-                    .opacity(0.27 + 0.09 * c.tint))
+            // FROSTED, like the home card (owner: "the cards need to be
+            // frosted" / "the background is too transparent").
+            //
+            // The home card is cardTintBg over a BACKDROP BLUR — CSS
+            // backdrop-filter: blur(11.34px). Transcribing only the colour
+            // brought the tint across and left the blur behind, so the card
+            // was a thin wash over the leaf with the leaf legible through it:
+            // an outline rather than a panel. A widget can't blur what's
+            // behind it, but it can lay down a Material, which is the same
+            // idea rendered by the system — so the ground is the material
+            // first, then the green over it.
+            //
+            // The tint also carries more weight here than on the web (0.27
+            // there) because on the web the blur is doing half the work of
+            // making the card read as solid.
+            ZStack {
+                RoundedRectangle(cornerRadius: 24 * s)
+                    .fill(.ultraThinMaterial)
+                RoundedRectangle(cornerRadius: 24 * s)
+                    .fill(Color(red: (26 - 16 * c.tint) / 255.0,
+                                green: (52 - 24 * c.tint) / 255.0,
+                                blue: (36 - 18 * c.tint) / 255.0)
+                        .opacity(0.62 + 0.08 * c.tint))
+            }
         )
         .overlay(
             // strokeBorder, NOT stroke. SwiftUI centres a stroke ON the path,

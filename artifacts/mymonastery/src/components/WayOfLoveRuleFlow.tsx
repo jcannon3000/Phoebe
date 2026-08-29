@@ -941,15 +941,18 @@ export default function WayOfLoveRuleFlow({
   // existing rule (or the trimmed pilot flow) opens straight into the manual
   // shaping flow. "Or build my own →" drops into it too.
   //
-  // That entry point is "morning-way" now, not the removed "when" step — a
-  // default of "when" would open the flow on a step no longer in orderedSteps,
-  // so indexOf would be -1 and Continue would do nothing.
+  // That entry point is "sides" now — the flow's restored opening question.
+  // It must be a step the CURRENT list contains: goNext looks the step up by
+  // index, so opening on a step that isn't in orderedSteps gives -1 and a
+  // Continue that does nothing. That is exactly what happened when "when" was
+  // removed, and again when "intro" left the full list; "intro" survives only
+  // in the guest/pilot lists, which still carry it.
   const [step, setStep] = useState<Step>(() => {
     // Guests always open the manual flow: their rule is already running (the
     // first-open seed), so the preset picker would re-adopt over it.
     if (pilot || guest) return "intro";
     const hasRule = !!getExplicitSideLevel("morning") || !!getExplicitSideLevel("evening");
-    return hasRule ? "intro" : "starter";
+    return hasRule ? "sides" : "starter";
   });
   // Show the "technology of holding" prelude ONCE, before the very first author
   // reaches the preset picker — it names why a daily practice matters and where
@@ -6303,7 +6306,14 @@ export default function WayOfLoveRuleFlow({
     const next = [...orderedReviewRows];
     [next[index], next[to]] = [next[to]!, next[index]!];
     touchedRef.current = true;
-    setRoutineOrder(next.map((r) => r.editId).filter((x) => !!x) as string[]);
+    const shown = next.map((r) => r.editId).filter((x) => !!x) as string[];
+    // KEEP WHAT THIS SCREEN CANNOT SEE. The review lists only rows whose step
+    // is in the current flow, so writing just these ids would drop every other
+    // practice out of the saved order — and anything missing from that order
+    // sorts to the END of the home list. Moving one row would quietly re-rank
+    // the rest. Carry the unseen ids along, after the ones shown.
+    const unseen = getRoutineOrder().filter((id) => !shown.includes(id));
+    setRoutineOrder([...shown, ...unseen]);
     setOrderTick((n) => n + 1);
   };
 
@@ -6376,7 +6386,7 @@ export default function WayOfLoveRuleFlow({
           <button onClick={() => setLocation("/find-your-rhythm")} style={{ background: "none", border: "none", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
             {t("wol_rule.starter_help_choose", { defaultValue: "Not sure? Help me choose →" })}
           </button>
-          <button onClick={() => { touchedRef.current = true; setStep("intro"); }} style={{ background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer" }}>
+          <button onClick={() => { touchedRef.current = true; setStep(pilot || guest ? "intro" : "sides"); }} style={{ background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer" }}>
             {t("wol_rule.starter_build_own", { defaultValue: "Or build my own →" })}
           </button>
         </div>
@@ -6417,7 +6427,7 @@ export default function WayOfLoveRuleFlow({
         <button onClick={onDone} style={{ marginTop: 22, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "16px 20px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
           {t("wol_rule.tend_done", { defaultValue: "That’s all for now" })}
         </button>
-        <button onClick={() => { touchedRef.current = true; setStep("intro"); }} style={{ marginTop: 12, background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 13, fontFamily: FONT, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
+        <button onClick={() => { touchedRef.current = true; setStep(pilot || guest ? "intro" : "sides"); }} style={{ marginTop: 12, background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 13, fontFamily: FONT, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
           {t("wol_rule.tend_reshape", { defaultValue: "Reshape from scratch" })}
         </button>
       </>,
