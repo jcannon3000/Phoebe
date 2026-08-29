@@ -751,6 +751,18 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // and past noon an un-prayed morning office parks under "Tomorrow".
   const guest = isDeviceLocalGuest(user);
   const hour = new Date().getHours();
+  /**
+   * Minutes since midnight — the evening HERO needs a half hour, and `hour`
+   * can't express one. Owner: "the evening anchor should not have a hero
+   * until 4:30pm."
+   *
+   * Deliberately NOT a change to EVENING_OPEN_HOUR, which is a whole-hour
+   * constant governing when the evening SLOT opens (and is read by
+   * contemplationSideDone and the slot helpers besides). Moving that would
+   * push every evening surface half an hour later to fix the one that leads.
+   */
+  const minutesNow = (() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); })();
+  const EVENING_HERO_AFTER = EVENING_OPEN_HOUR * 60 + 30;
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
   // Tapping the ✓ on an already-Done card opens this instead of navigating —
@@ -1582,10 +1594,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     : notifyHero?.kind === "card" ? null
     // Morning leads while it's still morning — past noon a not-yet-prayed
     // morning steps aside (matching the omitted morning card and the
-    // dashboard's "what's next" gate). Evening takes the hero from 4 PM
-    // (EVENING_OPEN_HOUR — owner: "evening shows hero at 4pm").
+    // dashboard's "what's next" gate). Evening takes the hero at 4:30
+    // (owner: "evening shows hero at 4pm", then "the evening anchor should
+    // not have a hero until 4:30pm"). The evening slot still OPENS at 4 —
+    // the card is there and prayable; it just doesn't lead the screen yet.
     : (morningActive && !morningDone && hour < 12) ? "morning"
-    : (eveningActive && hour >= EVENING_OPEN_HOUR && !eveningDone) ? "evening"
+    : (eveningActive && minutesNow >= EVENING_HERO_AFTER && !eveningDone) ? "evening"
     /**
      * …AND IF NOTHING ELSE LEADS, an unprayed side practice does — whatever
      * the hour (owner: "restore hero cards for morning and evening practice",
