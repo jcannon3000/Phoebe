@@ -287,6 +287,7 @@ const RitualDetail = lazy(() => import("./pages/ritual-detail"));
 const PsalmsPage = lazy(() => import("./pages/psalms"));
 const WeeklyRoutinesPage = lazy(() => import("./pages/weekly"));
 const VisioPage = lazy(() => import("./pages/visio"));
+const GroupReflectionPage = lazy(() => import("./pages/group-reflection"));
 // Praying with Icons — choose a work by name and sit with it (the person-chosen
 // inversion of Visio's day-chosen image).
 const IconsPage = lazy(() => import("./pages/icons"));
@@ -1000,6 +1001,9 @@ function Router() {
       <Route path="/this-week" component={WayOfLoveWeekPage} />
       <Route path="/way-of-love" component={WayOfLoveJourneyPage} />
       <Route path="/visio" component={VisioPage} />
+      {/* An admin's weekly reflection, read in the app — see the page's own note
+          on why this one does not link out like the other inbox sources. */}
+      <Route path="/group-reflection/:id" component={GroupReflectionPage} />
       {/* /icon-prayer, NOT /icons: dist/public/icons/ is the PWA icon
           directory, and the static server 301s /icons → /icons/ before the
           router ever sees it. */}

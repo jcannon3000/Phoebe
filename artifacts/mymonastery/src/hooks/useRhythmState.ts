@@ -16,7 +16,7 @@ import {
   type TrackedReflection,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
-import { waitingMeditation } from "@/lib/taizeInbox";
+import { waitingMeditation, waitingItem, type InboxItem } from "@/lib/taizeInbox";
 import { practiceOnDay } from "@/lib/practiceDays";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay, hasAnchorOfficeIntentToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday, isOfficeLoggedToday } from "@/lib/officeManualLog";
@@ -215,9 +215,28 @@ export type RhythmState = {
    * been posted — and it is never reset by the day turning over.
    */
   taizeActive: boolean;
+  chittisterActive: boolean;
+  chittisterDone: boolean;
+  chittisterWaiting: InboxItem | null;
+  cathedralActive: boolean;
+  cathedralDone: boolean;
+  cathedralWaiting: InboxItem | null;
   taizeDone: boolean;
   /** The meditation waiting to be read, or null when the inbox is empty. */
   taizeWaiting: { id: string; title: string; url: string; published: string | null } | null;
+  /**
+   * A group admin's weekly reflection, waiting to be read.
+   *
+   * NO `active` FLAG, deliberately — unlike every other optional practice this
+   * one is not chosen in the customizer. The owner's words were "it would go
+   * into the inbox of all the people in the group": the group puts it there,
+   * the person doesn't opt in. So it appears when there is one and is absent
+   * when there isn't, and there is no card to turn on or off.
+   */
+  groupReflection: {
+    id: string; reflectionId: number; title: string; body: string;
+    authorName: string | null; groupName: string | null; published: string | null;
+  } | null;
   /** Compline (the night office) as an opt-in add-on card — only ever true
    *  from 7pm local on, since it's the office for the end of the day. */
   complineActive: boolean;
@@ -711,6 +730,8 @@ export function useRhythmState(): RhythmState {
   // practices: on when its home card is, kept by finishing the deck.
   const visioActive = homeCardActive(hl, "visio");
   const taizeActive = homeCardActive(hl, "taize");
+  const chittisterActive = homeCardActive(hl, "chittister");
+  const cathedralActive = homeCardActive(hl, "cathedral");
   // Compline — the night office, offered as a contemplative add-on card.
   // complineActive means "the user has this in their rhythm" (mirrors every
   // other *Active flag — never time-gated, so the card is reliably present
@@ -935,11 +956,52 @@ export function useRhythmState(): RhythmState {
    * Fetched only when the card is actually in the rhythm; an empty response
    * (204 when nothing parsed) simply leaves the inbox empty.
    */
-  const { data: taizeLatest } = useQuery<{ id: string; title: string; url: string; published: string | null } | null>({
+  /**
+   * The newest reflection from any group this person belongs to.
+   *
+   * Signed-in only — it is scoped to membership, and a guest belongs to no
+   * group. The route answers 204 when there is nothing, which arrives here as
+   * an empty body; `?? null` keeps that out of the card.
+   */
+  const { data: groupReflectionRaw } = useQuery<{
+    id: string; reflectionId: number; title: string; body: string;
+    authorName: string | null; groupName: string | null; published: string | null; read: boolean;
+  } | null>({
+    queryKey: ["/api/me/group-reflection/latest"],
+    queryFn: () => apiRequest("GET", "/api/me/group-reflection/latest"),
+    staleTime: 10 * 60_000,
+    enabled: !guest,
+  });
+
+  const { data: taizeLatest } = useQuery<InboxItem | null>({
     queryKey: ["/api/taize/latest"],
-    queryFn: () => apiRequest("GET", "/api/taize/latest"),
+    // `?? null` because these routes answer 204 when nothing is published, and
+    // apiRequest turns an empty body into undefined — which react-query treats
+    // as a programming error ("Query data cannot be undefined") and throws,
+    // instead of simply meaning "the inbox is empty". Seen in the console the
+    // first time these three cards were exercised.
+    queryFn: async () => (await apiRequest("GET", "/api/taize/latest")) ?? null,
     staleTime: 30 * 60_000,
     enabled: taizeActive,
+  });
+  /**
+   * THE OTHER TWO INBOXES, on exactly the same terms — Joan Chittister's
+   * weekly and the National Cathedral's sermons (owner: "try to integrate the
+   * weekly here", "doing National Cathedral Sermons as a newsletter in the
+   * imbox way"). Both publish real RSS, both are resolved server-side, and
+   * both are fetched only when their card is actually in the rhythm.
+   */
+  const { data: chittisterLatest } = useQuery<InboxItem | null>({
+    queryKey: ["/api/chittister/latest"],
+    queryFn: async () => (await apiRequest("GET", "/api/chittister/latest")) ?? null,
+    staleTime: 30 * 60_000,
+    enabled: chittisterActive,
+  });
+  const { data: cathedralLatest } = useQuery<InboxItem | null>({
+    queryKey: ["/api/cathedral-sermons/latest"],
+    queryFn: async () => (await apiRequest("GET", "/api/cathedral-sermons/latest")) ?? null,
+    staleTime: 30 * 60_000,
+    enabled: cathedralActive,
   });
 
   // ANY tracked source counts as "reflected today" — spelled out per source
@@ -1147,6 +1209,32 @@ export function useRhythmState(): RhythmState {
    */
   const taizeWaiting = taizeActive ? waitingMeditation(taizeLatest) : null;
   const taizeDone = taizeActive && taizeWaiting == null;
+  /**
+   * Waiting only while UNREAD. The server tells us whether this person has
+   * read it (per-user, not per-device — see the route), so a reflection read
+   * on another device simply never becomes a card here.
+   *
+   * Deliberately NOT folded into allHabitsDone: a reflection someone else
+   * wrote this week is an offer, not a duty, and letting it hold the day open
+   * would make another person's writing decide whether your day is complete.
+   */
+  const groupReflection = groupReflectionRaw && !groupReflectionRaw.read
+    ? {
+        id: groupReflectionRaw.id,
+        reflectionId: groupReflectionRaw.reflectionId,
+        title: groupReflectionRaw.title,
+        body: groupReflectionRaw.body,
+        authorName: groupReflectionRaw.authorName,
+        groupName: groupReflectionRaw.groupName,
+        published: groupReflectionRaw.published,
+      }
+    : null;
+  // Same rule for the other two: an empty inbox is DONE, not absent, or the
+  // day could never read as finished in the week between publications.
+  const chittisterWaiting = chittisterActive ? waitingItem("chittister", chittisterLatest) : null;
+  const chittisterDone = chittisterActive && chittisterWaiting == null;
+  const cathedralWaiting = cathedralActive ? waitingItem("cathedral", cathedralLatest) : null;
+  const cathedralDone = cathedralActive && cathedralWaiting == null;
   // Compline is an OFFICE, so its done-state comes from the office flags (the
   // office viewer's local stamp) — not the practice_completion table the
   // logging-first practices use.
@@ -1560,6 +1648,13 @@ export function useRhythmState(): RhythmState {
     taizeActive,
     taizeDone,
     taizeWaiting,
+    groupReflection,
+    chittisterActive,
+    chittisterDone,
+    chittisterWaiting,
+    cathedralActive,
+    cathedralDone,
+    cathedralWaiting,
     complineActive,
     cobreatheActive,
     prayerListActive,

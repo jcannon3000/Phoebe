@@ -755,7 +755,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, chittisterActive, chittisterDone, chittisterWaiting, cathedralActive, cathedralDone, cathedralWaiting, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, groupReflection, chittisterActive, chittisterDone, chittisterWaiting, cathedralActive, cathedralDone, cathedralWaiting, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1166,6 +1166,26 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
   };
 
+  /**
+   * A group admin's weekly reflection — the inbox card the group fills.
+   *
+   * Not in the customizer and not in the home layout: it appears because
+   * someone in your parish wrote something, and it leaves when you have read
+   * it. There is nothing to switch on.
+   *
+   * It opens IN THE APP rather than externally — the text lives in our own
+   * database, written by a named person for this group, so there is nothing to
+   * link out to and nothing of anyone else's to reproduce.
+   */
+  const groupReflectionCard = groupReflection ? {
+    key: "group-reflection", emoji: "✉️", rgb: "168,150,120",
+    done: false,
+    href: `/group-reflection/${groupReflection.reflectionId}`,
+    title: groupReflection.title,
+    blurb: [groupReflection.groupName, groupReflection.authorName].filter(Boolean).join(" · ")
+      || t("rhythm.blurb_group_reflection", { defaultValue: "A reflection for your group" }),
+    cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
+  } : null;
   const listeningCard = {
     key: "listening", emoji: "🎵", rgb: "108,140,180", done: listeningDone, href: "/listening",
     onUnlog: () => unmarkPracticeDoneToday("listening"),
@@ -1590,6 +1610,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
     ...(visioActive ? [{ ...visioCard, slot: getPracticeSlot("visio") }] : []),
     ...(taizeActive ? [{ ...taizeCard, slot: getPracticeSlot("taize") }] : []),
+    // No slot lookup: it isn't a scheduled practice, it's post that arrived.
+    ...(groupReflectionCard ? [{ ...groupReflectionCard, slot: "anytime" as CustomSlot }] : []),
     ...(chittisterActive ? [{ ...chittisterCard, slot: getPracticeSlot("chittister") }] : []),
     ...(cathedralActive ? [{ ...cathedralCard, slot: getPracticeSlot("cathedral") }] : []),
     // Prayer List is a standalone "anytime" practice — it left the
