@@ -765,9 +765,9 @@ function DailyProgressPill() {
      * Visio Divina was MISSING from this list entirely — a kept Visio card on
      * the home with no dot in the pill. Owner, with a screenshot: "it only has
      * three filled in yet there are four." Third recurrence of the same
-     * hand-copied-mirror hole (weeklyGrid and turn-learn-pray each grew their
-     * visio entry the same way); this pill is the third mirror of "which
-     * practices exist", and it drifted the same direction.
+     * hand-copied-mirror hole (the retired weekly grid and Turn/Learn/Pray
+     * each grew their visio entry the same way); this pill is another mirror
+     * of "which practices exist", and it drifted the same direction.
      */
     ...(visioActive ? [{ key: "visio", done: visioDone }] : []),
     ...(readingActive ? [{ key: "reading", done: readingDone }] : []),

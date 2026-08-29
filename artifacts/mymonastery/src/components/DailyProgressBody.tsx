@@ -1400,8 +1400,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // — fixed to "evening" since there's no earlier time it could ever show.
     ...(complineActive ? [{ ...complineCard, slot: "evening" as CustomSlot }] : []),
     // `anchorOnDay` — a custom practice can be scoped to weekdays (a community
-    // meal, say). On an off day it simply isn't part of the rhythm: no card, and
-    // no unfillable dot in the weekly grid either (see weeklyGrid.ts).
+    // meal, say). On an off day it simply isn't part of the rhythm — no card,
+    // and nothing downstream counting a dot it can never fill.
     ...customAnchors.filter((a) => !a.skipped && anchorOnDay(a)).map((a) => ({ ...customCard(a), slot: a.slot })),
     ...(readingActive ? [{
       key: "reading", slot: getPracticeSlot("reading"), emoji: "📚", rgb: "108,140,180", done: readingDone, href: "/reading-log",
