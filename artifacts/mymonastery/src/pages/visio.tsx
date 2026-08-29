@@ -802,11 +802,10 @@ export default function VisioPage() {
       sectionLabel: "",
     });
     // Nothing opened (a blocked popup on web) — don't strand them on a beat
-    // whose whole action just failed silently. Step DIRECTLY, never next():
-    // backgroundOpens is a render-scoped const that setReadBackground can't
-    // change until a re-render, so next() re-enters this function and the
-    // pair recurse to stack overflow — window.open on every frame of it.
-    if (!opened) setStep((n) => Math.min(TOTAL - 1, n + 1));
+    // whose whole action just failed silently. With no closing card left to
+    // step to, the honest fallback is to leave for the rhythm; the day is
+    // already marked kept above.
+    if (!opened) goHome();
   };
 
   /**

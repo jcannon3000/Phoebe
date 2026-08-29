@@ -324,12 +324,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     (function () {
       var h = (location.hostname || '').toLowerCase();
       var isOremus = (h === 'bible.oremus.org' || h.slice(-11) === '.oremus.org');
-      /* The Visual Commentary on Scripture — the reflection a Visio Divina
-         image links to. Owner: "if possible, put it in the new reader view
-         that we're doing with the [oremus] bible viewer." Same treatment,
-         different page: VCS is a Tailwind site whose commentary lives in
-         .prose blocks inside article.js-exhibition-container. */
-      var isVcs = (h === 'thevcs.org' || h.slice(-11) === '.thevcs.org');
+      /* THE VCS IS DELIBERATELY NOT HERE — owner: "we dont want
+         reader on the visio divina … on the VCS comentary". Its exhibition
+         layout puts the commentary beside the artwork it is about, and
+         stripping that to text took away the thing the practice sends you
+         there for. Same call as Grist, for the same reason. */
       /* SSJE's "Brother, Give Us A Word" — a daily word, a short reflection
          and the brother who wrote it, sitting inside a full WordPress page
          with a hero image, a subscribe form and a site footer. Owner: "a
@@ -353,7 +352,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          not. It opens with the ordinary light newsletter chrome instead,
          which is what openExternal's `reader: true` -> lightChrome already
          asks for. */
-      if (!isOremus && !isVcs && !isSsje && !isNouwen && !isFdd && !isSojo) return;
+      if (!isOremus && !isSsje && !isNouwen && !isFdd && !isSojo) return;
 
       /**
        * KEEP ONE BLOCK, HIDE ITS SIBLINGS — the technique three of these five
@@ -462,76 +461,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.copyright{max-width:none;margin:2em 0 0!important;padding:16px 20px!important;',
         'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.62)!important;',
         'border-top:1px solid rgba(200,212,192,0.16);background:transparent!important;}',
-      ] : isVcs ? [
-        /* ---- The Visual Commentary on Scripture ---------------------
-           Measured on two live exhibitions at a 375px viewport, not guessed.
-           A VCS page is an EXHIBITION: one shared scripture reference, then a
-           commentary article per artwork.
-
-           TEXT ONLY (owner: "we dont need the images or the buttons, just the
-           text from the comentary"). Which is right for where this opens
-           from: Visio Divina has just spent three beats on the picture, at
-           full bleed, with its own caption — repeating it here, letterboxed
-           inside a zoom viewer, adds nothing and pushes the writing down a
-           screen. So the pictures, the captions, the pills (Bible Passage,
-           Cite & Share, the series links) and the read-aloud player all go,
-           and what is left is the reference, the work's title, who wrote the
-           commentary, and the commentary. */
-        /* THE REASON THE DEEP LINK NEVER LANDED. VCS sets
-           `html{scroll-behavior:smooth}`, so every scrollTo ANIMATES — and
-           the native ladder (scrollToDeepLinkedWork) re-issues its scroll
-           every 0.35-0.7s while the page settles, restarting that animation
-           from wherever it had got to. Measured on the live page: eight
-           attempts, final pageYOffset 0, with the target at 2946. The JS side
-           asks for behavior:'instant' now; this is the belt to that brace. */
-        'html{scroll-behavior:auto!important;background:transparent!important;}',
-        '.cky-consent-container,header,nav,footer,.js-site-footer,.js-main-nav,',
-        '.artworks,.js-artworks{display:none!important;}',
-        /* The picture and everything wrapped around it. */
-        'article.js-exhibition-container figure,article.js-exhibition-container figcaption,',
-        'article.js-exhibition-container audio,article.js-exhibition-container .js-audio-file,',
-        /* The pills. Every one of them — Bible Passage, Cite & Share, the
-           series links — is drawn with `border-2 rounded-sm`, and no link
-           inside a .prose block carries a class at all, so this reaches the
-           buttons and nothing that is part of the writing. */
-        'article.js-exhibition-container [class*="rounded-sm"],',
-        'article.js-exhibition-container .use-ajax,',
-        'article.js-exhibition-container .js-scripture-button{display:none!important;}',
-        /* Every nesting level between body and the prose carries its own
-           container width and gutter. Zero them all, then put ONE gutter back
-           on the text itself so the measure is set in a single place. */
-        '.dialog-off-canvas-main-canvas,.layout-container,.layout-content,main,',
-        'article.js-exhibition-container,article.container,.container,.col-span-full,',
-        '.py-100,.overflow-hidden,.prose{width:auto!important;max-width:none!important;',
-        'margin:0!important;padding-left:0!important;padding-right:0!important;background:transparent!important;}',
-        '.js-sticky-header{position:static!important;background:transparent!important;padding:0!important;}',
-        /* VCS's mobile layout leaves each work's column `display:inline` with
-           a sticky child; flattening the work's article to a plain block
-           column is what keeps its heading and its prose in one flow. */
-        /* div.inline, NOT .inline: each work's <figure> carries Tailwind's
-           `inline` class too, so a bare .inline rule here came LAST and
-           un-hid every picture the rule above had just hidden. Both are
-           !important and equally specific, so the later one simply won —
-           caught on a live page with the artwork still sitting there. */
-        'article.js-exhibition-container > article,article.js-exhibition-container div.inline{',
-        'display:block!important;position:static!important;}',
-        /* VCS bands its columns in greys that read as panels over the leaf. */
-        'article.js-exhibition-container,article.js-exhibition-container *{background-color:transparent!important;}',
-        /* ONE gutter, on the text. */
-        'article.js-exhibition-container p,article.js-exhibition-container h2,',
-        'article.js-exhibition-container h3,article.js-exhibition-container ul,',
-        'article.js-exhibition-container ol,article.js-exhibition-container blockquote,',
-        '.col--central{padding-left:20px!important;padding-right:20px!important;}',
-        '.prose,.prose *,h1,h2{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
-        '.prose p{font-size:18px!important;line-height:1.72!important;margin:0 0 1.15em!important;color:#F0EDE6!important;}',
-        'h1{font-size:22px!important;line-height:1.3!important;padding:14px 20px 4px!important;margin:0!important;color:#F0EDE6!important;}',
-        'h2{font-size:15px!important;letter-spacing:.02em;margin:1.6em 0 .5em!important;color:rgba(200,212,192,0.9)!important;}',
-        /* The shared scripture reference at the head of the exhibition, set
-           like oremus's passageref so the two readings feel like one view. */
-        '.col--central p.font-serif{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
-        'font-size:13px!important;letter-spacing:.16em;text-transform:uppercase;line-height:1.5!important;',
-        'color:rgba(200,212,192,0.75)!important;}',
-        'a,a:visited{color:#A8C5A0!important;}',
       ] : isSsje ? [
         /* ---- SSJE, Brother Give Us A Word -------------------------------
            Measured on the live page, not guessed. Everything the owner asked
@@ -747,7 +676,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         var m = document.createElement('div');
         m.className = 'phoebe-reader-masthead';
         m.textContent = isOremus ? 'the oremus Bible Browser'
-                       : isVcs    ? 'The Visual Commentary on Scripture'
                        : isSsje   ? 'Brother, Give Us A Word \\u00b7 SSJE'
                        // The owner's names for these two, not the
                        // publishers' — Sojourners' own masthead reads "Verse
@@ -777,44 +705,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         var m = document.querySelector('.phoebe-reader-masthead');
         if (m) m.style.display = on ? '' : 'none';
       };
-
-      /**
-       * VCS's furniture that CSS can't reach.
-       *
-       * The full-screen zoom viewer is a <figure class="... w-screen ...">
-       * inside its own <article>; there is no stable class or id on that
-       * article to hide from the stylesheet, and :has() can't be relied on at
-       * the deploy target (Safari 15.4). Walking up from the figure is exact
-       * and works on every iOS we ship to.
-       *
-       * The read-aloud player is hidden by the stylesheet, but the line that
-       * introduces it ("Read by ...") is a plain paragraph beside it, and on
-       * its own it reads as a stray credit for something that isn't there.
-       * It goes with the player.
-       */
-      function vcsStrip() {
-        var figs = document.querySelectorAll('figure');
-        for (var i = 0; i < figs.length; i++) {
-          if (/w-screen/.test(figs[i].className || '')) {
-            var art = figs[i].closest && figs[i].closest('article');
-            if (art) hideForReader(art);
-          }
-        }
-        var players = document.querySelectorAll('audio');
-        for (var j = 0; j < players.length; j++) {
-          // Walk up while the block is still only the player and its one-line
-          // credit: on VCS the <audio> sits in a bare wrapper and "Read by
-          // ..." is its sibling a level higher, so stopping at the immediate
-          // parent hid the player and left the credit stranded.
-          var box = players[j].parentElement;
-          for (var up = 0; up < 3 && box; up++) {
-            var len = box.textContent.replace(/\\s/g, '').length;
-            if (len > 60) break;
-            hideForReader(box);
-            box = box.parentElement;
-          }
-        }
-      }
 
       /**
        * Keep the one block that is what the page is FOR, hide everything else.
@@ -915,7 +805,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       function run() {
         addStyle();
         if (isOremus) { tidy(); credit(); }
-        else if (isVcs) { vcsStrip(); }
         else { isolate(); if (isFdd) fddTrim(); }
         masthead();
       }
@@ -933,7 +822,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       // "never move a page the reader has taken hold of" guard. Two scrollers
       // would fight each other.
       window.addEventListener('load', function () {
-        if (isVcs) setTimeout(vcsStrip, 400);
+        setTimeout(function () { isolate(); if (isFdd) fddTrim(); }, 400);
       });
     })();
     """
@@ -1811,6 +1700,16 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
              restarts on its next attempt — the page ends up where it
              started. Older WebKit ignores the options form, so fall back. */
           function phoebeScrollTo(y) {
+            /* Kill smooth scrolling AT THE ROOT before moving.
+               This used to be handled by the reader stylesheet
+               (`html{scroll-behavior:auto}`), and the VCS has since left the
+               reader — so the site's own `scroll-behavior:smooth` came back
+               and with it the bug it caused: every attempt in the retry
+               ladder restarts an animation instead of finishing one, and the
+               page ends up where it started. Measured then: eight attempts,
+               final offset 0, target 2946. Set here, it holds whether or not
+               a stylesheet is being injected. */
+            try { document.documentElement.style.scrollBehavior = 'auto'; } catch (e) {}
             try { window.scrollTo({ top: y, behavior: 'instant' }); }
             catch (e) { window.scrollTo(0, y); }
             if (Math.abs(window.pageYOffset - y) > 2 && document.scrollingElement) {
@@ -1951,11 +1850,24 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      * Standard button and the stylesheet all have to agree about this, and a
      * host in one but not another shows a button over a page it can't change.
      */
+    /**
+     * The pages Phoebe's reader view restyles. MUST agree with readerJS's own
+     * hostname gate — the chrome, the Standard button and the stylesheet all
+     * read this, and a host in one list and not the other either shows a
+     * toggle that changes nothing or hides one that would.
+     *
+     * NOT thevcs.org, and not grist.org. Both are places whose own design is
+     * the thing worth seeing — the VCS lays a commentary out beside the work
+     * it discusses, Grist leads with a masthead and a photograph — and the
+     * owner asked for each of them plain ("we dont want reader on the visio
+     * divina", "Grist i dont want a reader"). They still open in the in-app
+     * browser; they simply arrive as their publishers built them.
+     */
     static func isReaderHostName(_ host: String) -> Bool {
         let h = host.lowercased()
-        return h.hasSuffix("oremus.org") || h.hasSuffix("thevcs.org") || h.hasSuffix("ssje.org")
+        return h.hasSuffix("oremus.org") || h.hasSuffix("ssje.org")
             || h.hasSuffix("henrinouwen.org") || h.hasSuffix("forwardmovement.org")
-            || h.hasSuffix("sojo.net") || h.hasSuffix("grist.org")
+            || h.hasSuffix("sojo.net")
     }
 
     private func syncChromeToPage() {
