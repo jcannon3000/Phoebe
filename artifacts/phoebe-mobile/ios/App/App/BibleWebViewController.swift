@@ -541,11 +541,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            Builder theme's classes are generated and would drift); the script
            keeps that block and hides its siblings all the way up. See
            isolate(). */
-        /* The ground goes on HTML as well as BODY: SSJE's own stylesheet
-           wins on body, and a transparent body would let the host's white
-           show straight through — measured as cream text on a white slab. */
-        'html{background:#0A1A10!important;}',
-        'body{background:#0A1A10!important;margin:0!important;padding:0!important;',
+        /* NO solid ground here. The reader's backdrop — the leaf and its wash
+           — is painted NATIVELY behind a transparent web view (see
+           readerOwnsGround), so a page that fills its own body in green paints
+           straight over it. What has to be cleared is the SITE's ground:
+           SSJE's theme puts white on a wrapper, and clearing only the body
+           left cream text on a white slab. So: wrappers transparent, body
+           left to the shared head, and the leaf shows through. */
+        'html,body{background:transparent!important;margin:0!important;padding:0!important;',
         'padding-top:calc(env(safe-area-inset-top) + 8px)!important;color:#F0EDE6!important;}',
         '.fl-page,.fl-page-content,.fl-row,.fl-row-content-wrap,.fl-row-content,',
         '.fl-col-group,.fl-col,.fl-col-content,.fl-module,.fl-module-content,',
@@ -583,8 +586,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            — the owner's list exactly, "and then just leave everything else
            off". The day's office citations trail after the diocese and are
            dropped by the script. */
-        'html{background:#0A1A10!important;}',
-        'body{background:#0A1A10!important;margin:0!important;padding:0!important;',
+        /* Transparent, not green — the leaf is painted natively behind the web
+           view and a solid body hides it. See the SSJE arm for the full note. */
+        'html,body{background:transparent!important;margin:0!important;padding:0!important;',
         'padding-top:calc(env(safe-area-inset-top) + 8px)!important;color:#F0EDE6!important;}',
         /* Squarespace and Ionic both paint their own grounds several layers
            deep; the isolate clears the surviving spine, this clears the rest. */
@@ -632,11 +636,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'h1,h2,h3,h4,p,li,article,div{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
         /* The date, and on FDD the feast under it. */
         /* SCOPED. This is the DATE treatment — small, uppercase, letterspaced
-           — and it belongs to Nouwen and FDD, whose h1 IS the date. Grist's h1
-           is the lead story's headline, and it was being set in 15px uppercase
-           until the shipped stylesheet was read back and checked against the
-           page (the hand-written test CSS had a headline rule and the real one
-           did not — the drift is the bug). */
+           — and it belongs to Nouwen and FDD, whose h1 IS the date. It is
+           SCOPED rather than bare because this arm is shared, and a bare h1
+           rule here once set Grist's article headline in the small
+           letterspaced date style. Grist has since left the reader entirely,
+           but the scoping stays: the next site to join this arm will have an
+           h1 of its own, and the lesson (the shipped stylesheet had drifted
+           from the one I had hand-tested) is the reason to keep it. */
         '.blog-item-inner-wrapper h1,article.fdd h1{font-size:15px!important;',
         'letter-spacing:.14em;text-transform:uppercase;',
         'line-height:1.45!important;font-weight:600!important;margin:0 0 18px!important;',
@@ -1989,21 +1995,22 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     /** Reader view on/off for the oremus reading — see the JS side's
      *  __phoebeReaderSet. State lives here so the button can rename itself. */
     /**
-     * REMEMBERED BETWEEN VISITS (owner: "have it … remember which it's at. So
-     * if they toggled it off, it'll be off next time they open. If they toggle
-     * it on, it'll be on").
+     * ALWAYS STARTS IN THE READER. Owner: "it should default to the reader."
      *
-     * Defaults to on for someone who has never touched it — the reader is the
-     * point of opening a passage in Phoebe rather than Safari — and after that
-     * the stored answer wins. UserDefaults rather than the web view's own
-     * storage: the preference belongs to the app, not to any one host, so it
-     * holds across oremus, the VCS and anywhere else the reader is offered.
+     * THIS REVERSES AN EARLIER INSTRUCTION and the reversal is deliberate:
+     * the view used to be remembered between visits ("if they toggled it off,
+     * it'll be off next time they open"), and it was that memory which
+     * produced the report — one tap on Standard weeks ago, and every reading
+     * since had opened as the publisher's own page.
+     *
+     * The toggle still works and still renames itself; it simply belongs to
+     * the reading in front of you rather than to the app for ever. A person
+     * who taps Standard to check one page against its source gets the reader
+     * back on the next one, which is the point of opening a passage in Phoebe
+     * rather than Safari. The stored preference is no longer read OR written,
+     * so a stale `false` from before this change cannot keep anyone out.
      */
-    private static let readerPrefKey = "phoebe.reader.on"
-    private var readerViewOn: Bool = {
-        let d = UserDefaults.standard
-        return d.object(forKey: BibleWebViewController.readerPrefKey) as? Bool ?? true
-    }()
+    private var readerViewOn: Bool = true
     private weak var standardItem: UIBarButtonItem?
     /**
      * THE READER'S FONT, REGISTERED WITH THE PROCESS — NOT FETCHED.
@@ -2076,7 +2083,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
     @objc private func toggleReaderView() {
         readerViewOn.toggle()
-        UserDefaults.standard.set(readerViewOn, forKey: Self.readerPrefKey)
         applyReaderState()
         // The item itself, not a slot: it lives in rightBarButtonItems now,
         // and reading the slot back would rename whatever else is there.
