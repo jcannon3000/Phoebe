@@ -71,3 +71,6 @@ keystore.properties
 
 # Bundled test output (artifacts/api-server: pnpm run test)
 .test-build/
+
+# graphify knowledge-graph output — generated, and 1MB per run
+graphify-out/
