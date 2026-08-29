@@ -1550,12 +1550,26 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // "top" suppresses the time-led office hero exactly as "card" does — a big
     // office hero over a pinned contemplation would contradict the pin.
     : notifyHero?.kind === "card" || notifyHero?.kind === "top" ? null
-    // Morning only leads as the hero while it's still morning — past noon a
-    // not-yet-prayed morning steps aside (matches the omitted morning card +
-    // the dashboard "what's next" gate), so the afternoon never shows a morning
-    // hero. Evening takes the hero from 5 PM.
+    // Morning leads while it's still morning — past noon a not-yet-prayed
+    // morning steps aside (matching the omitted morning card and the
+    // dashboard's "what's next" gate). Evening takes the hero from 4 PM
+    // (EVENING_OPEN_HOUR — owner: "evening shows hero at 4pm").
     : (morningActive && !morningDone && hour < 12) ? "morning"
     : (eveningActive && hour >= EVENING_OPEN_HOUR && !eveningDone) ? "evening"
+    /**
+     * …AND IF NOTHING ELSE LEADS, an unprayed side practice does — whatever
+     * the hour (owner: "restore hero cards for morning and evening practice",
+     * "unless there is no hero").
+     *
+     * The two windows above leave a hole in the middle of the day: past noon
+     * with the morning still unprayed, or any time before 4 PM once the
+     * morning is kept, the home led with nothing at all. Stepping the morning
+     * aside at noon is right while something else can take the lead; it is
+     * not right when the alternative is no hero. Evening first — by the time
+     * this applies the morning is usually behind you.
+     */
+    : (eveningActive && !eveningDone) ? "evening"
+    : (morningActive && !morningDone) ? "morning"
     : null;
   const showOfficeHero = !!renderOfficeHero && heroSide !== null;
   const officeHero = showOfficeHero ? renderOfficeHero!(heroSide!) : null;
