@@ -44,6 +44,7 @@ import { sendWeeklyDigestEmail } from "./email";
 import { withSchedulerLog } from "./schedulerHeartbeat";
 import { getCurrentTimeInTz, todayDateInTz, todayInZone } from "./tz";
 import { isAtOrJustAfterMinute, addHoursToHHMM } from "./reminderTiming";
+import { sideHasPractice } from "./reminderEligibility";
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getLectionaryReadings } from "./lectionary";
 import { buildOfficeOrdoDay } from "./officeOrdo";
@@ -784,7 +785,8 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       // same way the SQL filter above does (`NULL != 'none'` is NULL, not true).
       // Without the null check this fired a reminder for a side the user never
       // turned on, whenever the OTHER side qualified the row.
-      if (r.morningPref && r.morningPref !== "none" && r.morningSentDate !== today) {
+      if (r.morningPref && r.morningPref !== "none" && r.morningSentDate !== today
+          && sideHasPractice(r.ruleConfig, "morning")) {
         const targetTime = r.morningTime || DEFAULT_MORNING_TIME;
         if (opts.forceNow || isAtOrJustAfterMinute(tz, targetTime, tickNow)) {
           const morningSessions = await db
@@ -833,7 +835,10 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       }
 
       // Evening side
-      if (r.eveningPref && r.eveningPref !== "none" && r.eveningSentDate !== today) {
+      // The rule gets a vote alongside the pref — a stale non-"none" pref on a
+      // side the person no longer keeps is exactly the reported nuisance.
+      if (r.eveningPref && r.eveningPref !== "none" && r.eveningSentDate !== today
+          && sideHasPractice(r.ruleConfig, "evening")) {
         const eveningTarget = r.eveningTime || FIXED_EVENING_TIME;
         const eveningInWindow = opts.forceNow || isAtOrJustAfterMinute(tz, eveningTarget, tickNow);
         // Diagnostic: on the tick where the evening window matches, record the
