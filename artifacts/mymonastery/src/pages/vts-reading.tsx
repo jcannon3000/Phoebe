@@ -98,42 +98,25 @@ export default function VtsReadingPage() {
       const v = new URLSearchParams(window.location.search).get("side");
       if (v === "morning" || v === "evening") markReflectionPrayed("vts", v);
     } catch { /* ignore */ }
-    /**
-     * …and re-ask the server for the count, once its write has landed.
-     *
-     * Reported: the flamingo stats weren't "actually counting anything". The
-     * streak was fetched ON MOUNT and cached, while today's read is recorded
-     * DURING the reading (markVtsRead POSTs /reflections/read) — so the
-     * closing slide reported the streak as it stood BEFORE you read, every
-     * time. Reading it never moved the number.
-     *
-     * The POST is fire-and-forget, so this waits a beat rather than chaining
-     * on it, and refetches again on the closing slide (see the effect below)
-     * in case that beat wasn't enough.
-     */
-    window.setTimeout(() => { void refetchStreak(); }, 1200);
+    // (The streak refetch that used to live here went with the closing slide —
+    // nothing in this reader displays a count any more. The read itself is
+    // still POSTed by markVtsRead above, so /me/reflection-streak keeps its
+    // record for anything else that asks.)
   };
 
-  /**
-   * The streak slide's numbers. Counted in PUBLISHING DAYS, not calendar days —
-   * the Dean's Commentary comes out on weekdays, so a reader who never misses
-   * would otherwise watch their streak reset every Saturday.
-   */
-  const localToday = (() => { try { return new Date().toLocaleDateString("en-CA"); } catch { return ""; } })();
-  const { data: streak, isFetched: streakReady, refetch: refetchStreak } = useQuery<{ current: number; totalDays: number }>({
-    queryKey: ["/api/me/reflection-streak", "vts", localToday],
-    queryFn: () => apiRequest("GET", `/api/me/reflection-streak?source=vts&today=${encodeURIComponent(localToday)}`),
-    enabled: !!localToday,
-    // No staleTime: today's read is recorded DURING this reading, so a cached
-    // answer from a minute ago is a pre-read answer. See markReadOnce.
-    staleTime: 0,
-  });
-
   const paragraphs = data?.paragraphs ?? [];
-  // The reading, then one closing slide that says how long they've kept it.
-  const total = paragraphs.length + (paragraphs.length > 0 ? 1 : 0);
+  /**
+   * NO CLOSING STREAK SLIDE. Owner: "take out the streak from the end of the
+   * Deans comentary."
+   *
+   * The reading now ends on its last paragraph and the Done button closes it.
+   * The read is still recorded — markReadOnce fires on the first Next, which
+   * is what the home card and the streak endpoint both read — so nothing about
+   * the counting changed; the reading simply doesn't finish by turning to a
+   * number about itself.
+   */
+  const total = paragraphs.length;
   const isTitle = step === 0;
-  const isStreak = paragraphs.length > 0 && step === total;
   const paraIndex = step - 1;
 
   // Same condition as isTitle, by definition (there's only one slide before
@@ -147,13 +130,6 @@ export default function VtsReadingPage() {
     if (!atEnd) setStep((s) => s + 1);
     else close();
   };
-  // Landing on the closing slide asks once more — the read POST may still
-  // have been in flight when markReadOnce's own refetch fired.
-  useEffect(() => {
-    if (isStreak) void refetchStreak();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStreak]);
-
   // Matches the office nav pill's Back button — disabled at the first
   // slide rather than closing (the X already owns "leave the reader").
   const prev = () => { if (!atStart) setStep((s) => s - 1); };
@@ -265,7 +241,7 @@ export default function VtsReadingPage() {
           // should be centered in the middle of the page"). It's a big number
           // and one line under it, not body text — top-aligned it sat in the
           // upper third with two-thirds of the screen empty beneath.
-          justifyContent: isTitle || isStreak ? "center" : "flex-start",
+          justifyContent: isTitle ? "center" : "flex-start",
           overflowY: "auto",
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
@@ -321,40 +297,6 @@ export default function VtsReadingPage() {
                 {data.date}
               </p>
             )}
-          </div>
-        ) : isStreak ? (
-          <div
-            style={{
-              display: "flex", flexDirection: "column", alignItems: "center",
-              justifyContent: "center", textAlign: "center", gap: 14, maxWidth: 460, margin: "0 auto",
-            }}
-          >
-            <p style={{ color: FAINT_GREEN, fontSize: 11, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
-              🦩 Kept
-            </p>
-            <p
-              className="title-glow-breathe"
-              style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(52px, 12vw, 92px)", lineHeight: 1, letterSpacing: "-0.03em", margin: 0 }}
-            >
-              {/* A dash, not a 0, until the number is real — an unanswered
-                  query rendering "0" is how a reader who has kept this for a
-                  fortnight is told they have kept it for no days at all. */}
-              {streakReady ? (streak?.current ?? 0) : "—"}
-            </p>
-            <p style={{ color: WARM_TEXT, fontSize: 17, fontFamily: SPACE_GROTESK, margin: 0 }}>
-              {!streakReady
-                ? "of the Dean’s Commentary"
-                : (streak?.current ?? 0) === 1
-                  ? "day of the Dean’s Commentary"
-                  : "days of the Dean’s Commentary, in a row"}
-            </p>
-            {/* Weekends are stepped over, not counted as misses — say so, or a
-                reader who reads every weekday will think the number is wrong. */}
-            <p style={{ color: FAINT_GREEN, fontSize: 13, lineHeight: 1.6, fontFamily: SPACE_GROTESK, margin: "2px 0 0" }}>
-              {streakReady && (streak?.totalDays ?? 0) > 0
-                ? `${streak?.totalDays} day${(streak?.totalDays ?? 0) === 1 ? "" : "s"} read in all. It comes out on weekdays, so weekends don’t break the streak.`
-                : "It comes out on weekdays, so weekends don’t break the streak."}
-            </p>
           </div>
         ) : (
           <p style={{ color: WARM_TEXT, fontSize: 19, lineHeight: 1.75, fontFamily: SPACE_GROTESK, whiteSpace: "pre-line", margin: 0, textAlign: "left" }}>

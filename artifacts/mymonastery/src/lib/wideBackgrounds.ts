@@ -4,7 +4,7 @@
 // (mymonastery/public/wide/wide-01.jpg …). They are deliberately NOT bundled
 // into the iOS app — the compose-www step drops www/wide, so on native these
 // URLs 404. ALWAYS gate their use on !isNativeShell(); on iOS the pages keep
-// their own bundled imagery.
+// their own bundled imagery (the Creation Prayer library).
 //
 // Used as the full-bleed background on Co-Breathe, Contemplation, and Podcasts
 // (web).
@@ -16,6 +16,7 @@ const WIDE_COUNT = 39;
 export const WIDE_PHOTOS: string[] = Array.from({ length: WIDE_COUNT }, (_, i) =>
   `/wide/wide-${String(i + 1).padStart(2, "0")}.jpg`,
 );
+
 
 /**
  * A random wide backdrop for the web; `null` on native (so callers fall back to

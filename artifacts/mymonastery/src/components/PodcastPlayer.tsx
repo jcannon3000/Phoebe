@@ -159,14 +159,38 @@ const OFFICE_BG_ALL = import.meta.glob("@/assets/cobreathe/*.{jpg,jpeg,png,avif,
 // landscapes (National Library of Norway / UW Libraries) — those were dropped
 // per request: the office uses only full-color scenes now. Matched by filename
 // stem; add a stem here to include one (color landscapes only).
+// PREFERRED FIRST, NOT A GATE — see OFFICE_BG_PHOTOS. Measured 2026-08-29:
+// only `weichao-deng` matches a file actually in assets/cobreathe, so as a
+// gate this list resolved to one photo.
 const OFFICE_BG_ALLOW = [
-  "jean-carlo-emer",   // Iceland black-sand beach + sea stacks
-  "weichao-deng",      // bamboo forest
-  "takahiro-taguchi",  // green hills at dawn
+  "jean-carlo-emer",   // Iceland black-sand beach + sea stacks — NOT bundled
+  "weichao-deng",      // bamboo forest — the one that exists
+  "takahiro-taguchi",  // green hills at dawn — NOT bundled
 ];
-const OFFICE_BG_PHOTOS = Object.entries(OFFICE_BG_ALL)
-  .filter(([path]) => OFFICE_BG_ALLOW.some((stem) => path.includes(stem)))
-  .map(([, url]) => url);
+/**
+ * THE POOL. Owner: "doesnt it have the library for ceration prayer?" — it
+ * does, all 137 photos of it, already in the bundle, and that is what the
+ * player draws on now.
+ *
+ * The three-stem allow-list below used to be the whole pool, and TWO OF ITS
+ * THREE STEMS MATCH NO BUNDLED FILE (measured 2026-08-29) — so the player had
+ * exactly one photo and showed it every single time, which is what the owner
+ * reported. The stated reason for the narrow list was that the Co-Breathe
+ * library is mostly portrait and "crops badly here"; that was true of a wide
+ * layout, but this player is full-screen on a PHONE, which is portrait itself,
+ * so a 960×1280 photo fits it exactly rather than cropping. Measured: 136 of
+ * the 137 are portrait, so the old rule excluded almost the entire library for
+ * a reason that does not apply on the surface it is used on.
+ *
+ * The allow-list is kept as an ORDERING preference — those three first when
+ * they exist — rather than as a gate.
+ */
+const OFFICE_BG_PHOTOS = (() => {
+  const all = Object.entries(OFFICE_BG_ALL);
+  const preferred = all.filter(([p]) => OFFICE_BG_ALLOW.some((stem) => p.includes(stem)));
+  const rest = all.filter(([p]) => !OFFICE_BG_ALLOW.some((stem) => p.includes(stem)));
+  return [...preferred, ...rest].map(([, url]) => url);
+})();
 
 // Dedicated, hand-picked office backgrounds. Drop a file into src/assets/office/
 // whose name contains the side — e.g. fm-morning.jpg / morning.jpg for Morning
@@ -1149,9 +1173,33 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     // Wide photo (not bundled into iOS), ROTATING to a fresh one each time a new
     // episode/office opens (the memo recomputes on `current` change); on native
     // fall back to a dedicated office photo, else the bundled Cobreathe library.
-    const seed = current?.episodeId || current?.showSlug || "audio";
+    /**
+     * THE SEED CARRIES THE DAY, and the pool exists on both platforms.
+     *
+     * Owner: "audit the audio player, its always using the same backround
+     * image." Two independent reasons it was, and both are here:
+     *
+     * 1. THE POOL HAD ONE MEMBER ON NATIVE. OFFICE_BG_ALLOW names three
+     *    Cobreathe stems and only `weichao-deng` matches a bundled file —
+     *    the other two name photos that are not in the library. Widening it
+     *    within Cobreathe is not possible either: measured with sips, 136 of
+     *    its 137 photos are PORTRAIT, and this is a full-bleed landscape
+     *    backdrop. So the wide library (proper landscape photographs, made
+     *    for exactly this) now ships a bundled subset — see wideBackgrounds.
+     *
+     * 2. THE SEED NEVER CHANGED. The daily office's slug is the same string
+     *    every day, so `hash(slug) % n` returned the same index for ever.
+     *    Including the local date rotates it daily while keeping it STABLE
+     *    within a day — which is what the hash was for: no flicker between
+     *    re-renders, a different picture tomorrow.
+     */
+    const today = new Date();
+    const ymd = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+    const seed = `${current?.episodeId || current?.showSlug || "audio"}:${ymd}`;
+    // The web keeps its own wide landscape set (not bundled into iOS); native
+    // uses the Creation Prayer library above.
     if (!isNativeShell() && WIDE_PHOTOS.length > 0) {
-      return WIDE_PHOTOS[Math.floor(Math.random() * WIDE_PHOTOS.length)]!;
+      return WIDE_PHOTOS[hashStr(seed) % WIDE_PHOTOS.length]!;
     }
     if (officeSide) {
       const dedicated = dedicatedOfficeBg(officeSide);

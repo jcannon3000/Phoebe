@@ -31,7 +31,7 @@ const HOME_MODULES = [
   // Must match HOME_MODULE_KEYS in api-server/src/routes/prayer.ts. "feeds" was
   // missing here, so saving from this page silently stripped it and the server
   // re-appended it at the end — quietly moving the user's feeds card. Keep in sync.
-  "office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio",
+  "office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize",
   "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests",
 ] as const;
 type HomeModule = typeof HOME_MODULES[number];
@@ -118,7 +118,7 @@ const HOME_LAYOUT_VERSION = 2;
 // requests (pinned) → community prayers (office) →
 // Forward Day by Day. Everything else is hidden but addable.
 const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "fdd", "contemplation", "listening", "examen", "cac", "ssje", "vts", "ncmp", "podcasts"];
-const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts"];
+const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts"];
 
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
   const { t } = useTranslation();
@@ -131,6 +131,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     walk:         { label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶🏽", sub: t("customize_home.module_walk_sub", { defaultValue: "A prayerful walk, counted as you go" }) },
     visio:        { label: t("rhythm.row_visio", { defaultValue: "Visio Divina" }), emoji: "🖼️", sub: t("customize_home.module_visio_sub", { defaultValue: "Pray with the day's image, slowly" }) },
     compline:     { label: t("rhythm.card_compline", { defaultValue: "Compline" }), emoji: "🌙", sub: t("customize_home.module_compline_sub", { defaultValue: "The night office · available from 7pm" }) },
+    taize:        { label: t("rhythm.card_taize", { defaultValue: "Taizé meditation" }), emoji: "🕯️", sub: t("customize_home.module_taize_sub", { defaultValue: "The newest meditation from Taizé · waits until you've read it" }) },
     examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },
     cac:          { label: "CAC Daily Reflection",               emoji: "🌅", sub: "Today's reflection from the Center for Action & Contemplation" },
     fdd:          { label: "Forward Day by Day",                 emoji: "📖", sub: "Today's meditation from Forward Movement" },

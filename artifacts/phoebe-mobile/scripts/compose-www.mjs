@@ -54,8 +54,10 @@ async function main() {
   await cp(WEB_DIST, WWW, { recursive: true });
 
   // Web-only assets: the /wide landscape backdrops are served on the web but
-  // deliberately NOT bundled into the iOS app (keeps the binary slim — the app
-  // uses its own bundled Cobreathe photos). Drop them from www/ after the copy.
+  // deliberately NOT bundled into the iOS app — the app has 137 bundled photos
+  // of its own in the Creation Prayer library, which is what the audio player
+  // now draws on (owner: "doesnt it have the library for ceration prayer?").
+  // Shipping a second landscape set alongside it was 4 MB for no new pictures.
   await rm(path.join(WWW, "wide"), { recursive: true, force: true });
 
   // 2. Copy the native shell JS + source map.

@@ -2628,7 +2628,7 @@ router.put("/me/feed-first-home", async (req, res): Promise<void> => {
 // Keep in sync with HOME_MODULES in mymonastery/pages/customize-home.tsx —
 // anything missing here is SILENTLY STRIPPED from a saved layout, which is how
 // a reflection can be chosen in the customizer and be gone on the next load.
-const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests"] as const;
+const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests"] as const;
 router.put("/me/home-layout", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -2646,8 +2646,24 @@ router.put("/me/home-layout", async (req, res): Promise<void> => {
   // stored order is always a full permutation of the module set.
   const seen = new Set<string>();
   const cleanOrder = order.filter((k) => allowed.has(k) && !seen.has(k) && (seen.add(k), true));
-  for (const k of HOME_MODULE_KEYS) if (!seen.has(k)) cleanOrder.push(k);
-  let cleanHidden = [...new Set(hidden.filter((k) => allowed.has(k)))];
+  /**
+   * A MODULE THIS LAYOUT HAS NEVER HEARD OF ARRIVES HIDDEN.
+   *
+   * Backfilling keeps `order` a full permutation of the module set, which is
+   * what the client's reconciliation expects. But a card is VISIBLE when it
+   * is in `order` and absent from `hidden` — so backfilling alone turns every
+   * newly-added module on for every existing user the next time they save
+   * anything. That is how Taizé would have appeared unbidden on the home
+   * screen of everyone who has ever customized their layout.
+   *
+   * Being absent from the incoming `order` already means "not visible" — a
+   * client cannot ask for a visible card without ordering it — so recording
+   * that as hidden says exactly what the layout meant, and every module added
+   * after this one defaults off rather than on.
+   */
+  const backfilled: string[] = [];
+  for (const k of HOME_MODULE_KEYS) if (!seen.has(k)) { cleanOrder.push(k); backfilled.push(k); }
+  let cleanHidden = [...new Set([...hidden.filter((k) => allowed.has(k)), ...backfilled])];
   // Never hide every module — that would leave the home's anchor area
   // blank. If a request would hide all of them, drop the first module in
   // order from the hidden set so at least one card always leads. (The
