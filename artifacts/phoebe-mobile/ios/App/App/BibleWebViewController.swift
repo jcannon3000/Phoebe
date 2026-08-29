@@ -485,6 +485,17 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'box-shadow:none!important;margin:0!important;padding-left:0!important;padding-right:0!important;',
         'max-width:none!important;width:auto!important;}',
         '.fl-post-feed-post,.fl-post-feed-post *{background-color:transparent!important;}',
+        /* THE GREY SLAB. Beaver Builder draws a row's background overlay as a
+           PSEUDO-ELEMENT — `.fl-row-content-wrap:after`, position:absolute,
+           inset 0, background rgba(255,255,255,0.7) — for any row with
+           `fl-row-bg-overlay`. SSJE's word sits in one. Measured on the live
+           page: 375x341px of 70% white lying over the reader's ground, which
+           is exactly the grey block the owner kept seeing behind the word.
+           Nothing else could have cleared it: a pseudo-element is out of reach
+           of the isolate's inline styles, and the arm's background rules name
+           the element, not its ::after. */
+        '.fl-row-content-wrap:after,.fl-row-content-wrap:before{',
+        'background:none!important;content:none!important;display:none!important;}',
         /* The word, as the title it is. */
         'h2.fl-post-feed-title{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
         'font-size:30px!important;line-height:1.15!important;font-weight:700!important;',
@@ -750,7 +761,19 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       function isolate() {
         if (!ISOLATE_TARGET) return;
         var post = document.querySelector(ISOLATE_TARGET);
-        if (!post || post.getAttribute('data-phoebe-isolated')) return;
+        if (!post) return;
+        /**
+         * NOT ONE-SHOT. This used to mark the post `data-phoebe-isolated` on
+         * its first successful walk and bail on every later call — which meant
+         * any sibling that arrived AFTER that first pass was never hidden.
+         * SSJE streams the rest of its page in behind the post feed, so
+         * "About Brother, Give Us A Word" appeared or didn't depending on
+         * which side of the first run it landed — it survived one build and
+         * vanished in the next with no code change between them. That is the
+         * worst kind of bug to chase and the easiest to prevent: the walk is
+         * idempotent (hideForReader no-ops on an element it has already
+         * hidden), so it simply runs again on each pass of the interval.
+         */
         var node = post;
         while (node && node !== document.documentElement) {
           node.style.setProperty('background', 'transparent', 'important');
@@ -764,7 +787,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
           }
           node = parent;
         }
-        post.setAttribute('data-phoebe-isolated', '1');
       }
 
       /**
@@ -1514,7 +1536,22 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          * colour decides its content colour, and the body only decides the web
          * view's backdrop.
          */
-        let bar: UIColor = statusStrip ?? (isLight ? .white : .black)
+        /**
+         * IN READER MODE THE BAR IS THE DECK'S GREEN, not the page's.
+         *
+         * Owner: "why are the headers not matching the color of the page?"
+         * Because I only fixed half of it. The page background and the web
+         * view were switched to the deck's ground for reader mode further
+         * down, but the BAR is resolved here, from a probe of a page the
+         * reader has just made transparent — so it came back white while the
+         * page behind it was green. The bar extends up behind the status bar,
+         * so that mismatch is the first thing on screen.
+         */
+        let readerOwnsGround = readerViewOn
+            && Self.isReaderHostName(webView?.url?.host ?? url.host ?? "")
+        let bar: UIColor = readerOwnsGround
+            ? PhoebeBrowserColor.deck
+            : (statusStrip ?? (isLight ? .white : .black))
         let barIsLight = Self.isLightColor(bar)
         let text: UIColor = barIsLight ? .black : PhoebeBrowserColor.text
         // The bar tint colours the bar-button items. On a light bar iOS renders
@@ -1571,8 +1608,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          * The probe is still right for Standard view, where the site's own
          * design should own the frame.
          */
-        let readerOwnsGround = readerViewOn
-            && Self.isReaderHostName(webView?.url?.host ?? url.host ?? "")
         let ground = readerOwnsGround ? PhoebeBrowserColor.deck : bar
         view.backgroundColor = ground
         navigationController?.view.backgroundColor = ground
