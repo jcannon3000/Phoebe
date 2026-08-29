@@ -1147,7 +1147,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     key: "cathedral", emoji: "⛪", rgb: "120,140,170",
     done: cathedralDone,
     href: cathedralWaiting?.url ?? "https://cathedral.org/sermons/",
-    title: t("rhythm.card_cathedral", { defaultValue: "Cathedral sermon" }),
+    title: t("rhythm.card_cathedral", { defaultValue: "National Cathedral sermon" }),
     blurb: cathedralWaiting
       ? [cathedralWaiting.title, waitingLabel(cathedralWaiting)].filter(Boolean).join(" · ")
       : t("rhythm.blurb_cathedral_empty", { defaultValue: "Nothing new since the last one" }),

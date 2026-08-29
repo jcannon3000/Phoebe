@@ -659,6 +659,29 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'article.node-versevoice .versevoice-section{margin-top:0!important;',
         'padding-top:0!important;padding-bottom:0!important;}',
         'article.node-versevoice .versevoice-header{padding-bottom:0!important;}',
+        /* BIGGER, AND CLOSER TOGETHER (owner: "increase the size of the
+           soujoruners text and descrease the margins").
+           A day's Verse and Voice is three short passages, not an article —
+           at 18px in a 20px gutter it sat as a narrow column with a lot of
+           air around it. 20.5px with a tighter measure gives the quotations
+           the weight they are meant to have, and the gutter comes in to 13px
+           so the lines are not squeezed by the larger type. The heading
+           margins come down with them, or bigger text under the same gaps
+           just reads as further apart. SCOPED to Sojourners: the shared
+           `p,li` rule further down still sets 18px for everyone else. */
+        'article.node-versevoice{padding-left:13px!important;padding-right:13px!important;}',
+        'article.node-versevoice p,article.node-versevoice li,',
+        'article.node-versevoice blockquote{font-size:20.5px!important;',
+        'line-height:1.58!important;margin:0 0 0.62em!important;}',
+        'article.node-versevoice h2{margin:1.05em 0 .34em!important;}',
+        /* (An attribution rule lived here and is deliberately gone. It quieted
+           `.versevoice-section p:last-of-type`, meaning to dim the credit line
+           under each passage — but Sojourners nests the quotation so that the
+           QUOTATION is the last paragraph of its own wrapper, so on the Voice
+           of the Day it dimmed Mahalia Jackson's words and left the credit
+           bright. Seen in the simulator. The owner asked for bigger text and
+           smaller margins; nobody asked for a quieter credit, and one uniform
+           colour is right here anyway.) */
         /* White on green, every element, in the reader's face — a Drupal page
            colours its own text and would otherwise keep its greys. */
         'article.node-versevoice,article.node-versevoice *{',
@@ -938,7 +961,28 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       }
       function hideForReader(el) {
         if (!readerOn) return;
-        if (!el || el.getAttribute('data-phoebe-hid')) return;
+        /**
+         * hasAttribute, NOT the attribute's VALUE — and this one line is why
+         * Standard on SSJE was still the reader's page in different colours
+         * (owner: "Thats not the SSJE actual page, thats just the reader in a
+         * different color").
+         *
+         * What we record is the element's ORIGINAL inline display so Standard
+         * can put it back. For almost every element that original is the
+         * EMPTY STRING — nothing inline, styled by the site's stylesheet. The
+         * guard tested the attribute's value, and '' is falsy, so an element
+         * hidden on one pass was treated as un-hidden on the next. The
+         * isolate is deliberately not one-shot (it re-runs on each tick of the
+         * settle interval, ~20 times over 7 seconds, so late-arriving siblings
+         * are caught), and on the second pass it re-recorded the element's
+         * display as it stood THEN — which was 'none', the value we had just
+         * written. So every isolated sibling ended up with 'none' as its
+         * "original", and restoring restored it to hidden. Forever.
+         *
+         * That is also why this looked fine on Forward Day by Day: FDD has no
+         * ISOLATE_TARGET, so nothing on it goes through this path.
+         */
+        if (!el || el.hasAttribute('data-phoebe-hid')) return;
         el.setAttribute('data-phoebe-hid', el.style.display || '');
         el.style.setProperty('display', 'none', 'important');
         hiddenByReader.push(el);

@@ -1,6 +1,9 @@
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { MenuHub } from "@/components/MenuHub";
-import { openExternal } from "@/lib/openExternal";
+import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
+import { apiRequest } from "@/lib/queryClient";
+import { markInboxRead, type InboxItem } from "@/lib/taizeInbox";
 import {
   CAC_TODAY_URL, FDD_TODAY_URL, SSJE_TODAY_URL, VTS_TODAY_URL,
   NOUWEN_TODAY_URL, GRIST_TODAY_URL, sojournersTodayUrl,
@@ -51,6 +54,40 @@ export default function MenuReflectionsPage() {
   const openSojo = () => { markSojoRead(); openExternal(sojournersTodayUrl(), { reader: true }); };
   const openGrist = () => { markGristRead(); openExternal(GRIST_TODAY_URL, { reader: true }); };
 
+  /**
+   * THE THREE WEEKLIES ARE HERE TOO, not only in the customizer.
+   *
+   * Owner, looking for one of them: "WHERE IS TAIZE" — and then "make what is
+   * build visable". They were built as INBOX PRACTICES, which you turn on in
+   * the customizer and then meet on the home screen; that is still what they
+   * are, and this does not change anyone's rhythm. But a thing you can only
+   * reach by first deciding to adopt it is a thing most people never see. So
+   * each also gets a row here, where every other reading already lives, and
+   * opening one from here marks it read exactly as the card would — the two
+   * surfaces cannot disagree about whether this week's has been read.
+   *
+   * The latest item is fetched only when this page is open. If the fetch fails
+   * or nothing is published, the row still opens the publication's own index
+   * rather than dead-ending.
+   */
+  const weekly = (path: string) => useQuery<InboxItem | null>({
+    queryKey: [path],
+    queryFn: async () => (await apiRequest("GET", path)) ?? null,
+    staleTime: 30 * 60_000,
+  });
+  const taize = weekly("/api/taize/latest");
+  const chittister = weekly("/api/chittister/latest");
+  const cathedral = weekly("/api/cathedral-sermons/latest");
+
+  const openWeekly = (
+    source: "taize" | "chittister" | "cathedral",
+    item: InboxItem | null | undefined,
+    fallbackUrl: string,
+  ) => () => {
+    if (!item?.url) { openExternal(fallbackUrl, { reader: true }); return; }
+    openExternalThenMarkRead(item.url, () => markInboxRead(source, item.id), { reader: true });
+  };
+
   return (
     <MenuHub
       title="Reflections"
@@ -71,6 +108,24 @@ export default function MenuReflectionsPage() {
             { emoji: "✍🏽", label: "SSJE Reflections", sub: "Today's Brother, Give Us a Word", onClick: openSsje },
             { emoji: "😊", label: "Daily Henri Nouwen Quotes", sub: "From the Henri Nouwen Society", onClick: openNouwen },
             { emoji: "🌎", label: "Grist Climate News", sub: "The day's climate reporting", onClick: openGrist },
+            // The weeklies. Their subtitle names THIS week's piece when we
+            // know it, which is the honest label — "waits until you've read
+            // it" is the card's job, not a menu row's.
+            {
+              emoji: "🕯️", label: "Taizé meditation",
+              sub: taize.data?.title ?? "The newest meditation from Taizé",
+              onClick: openWeekly("taize", taize.data, "https://www.taize.fr/en/tag/meditations"),
+            },
+            {
+              emoji: "🌾", label: "Vision and Viewpoint",
+              sub: chittister.data?.title ?? "Joan Chittister's weekly",
+              onClick: openWeekly("chittister", chittister.data, "https://www.joanchittister.org/pages/newsletters"),
+            },
+            {
+              emoji: "⛪", label: "National Cathedral sermon",
+              sub: cathedral.data?.title ?? "Washington National Cathedral",
+              onClick: openWeekly("cathedral", cathedral.data, "https://cathedral.org/sermons/"),
+            },
             { emoji: "🦩", label: "VTS Dean's Commentary", sub: "Virginia Theological Seminary", onClick: openVts },
           ],
         },

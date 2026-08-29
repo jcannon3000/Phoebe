@@ -133,7 +133,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     compline:     { label: t("rhythm.card_compline", { defaultValue: "Compline" }), emoji: "🌙", sub: t("customize_home.module_compline_sub", { defaultValue: "The night office · available from 7pm" }) },
     taize:        { label: t("rhythm.card_taize", { defaultValue: "Taizé meditation" }), emoji: "🕯️", sub: t("customize_home.module_taize_sub", { defaultValue: "The newest meditation from Taizé · waits until you've read it" }) },
     chittister:   { label: t("rhythm.card_chittister", { defaultValue: "Vision and Viewpoint" }), emoji: "🌾", sub: t("customize_home.module_chittister_sub", { defaultValue: "Joan Chittister's weekly · waits until you've read it" }) },
-    cathedral:    { label: t("rhythm.card_cathedral", { defaultValue: "Cathedral sermon" }), emoji: "⛪", sub: t("customize_home.module_cathedral_sub", { defaultValue: "Washington National Cathedral · read or listen" }) },
+    cathedral:    { label: t("rhythm.card_cathedral", { defaultValue: "National Cathedral sermon" }), emoji: "⛪", sub: t("customize_home.module_cathedral_sub", { defaultValue: "Washington National Cathedral · read or listen" }) },
     examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },
     cac:          { label: "CAC Daily Reflection",               emoji: "🌅", sub: "Today's reflection from the Center for Action & Contemplation" },
     fdd:          { label: "Forward Day by Day",                 emoji: "📖", sub: "Today's meditation from Forward Movement" },
