@@ -604,9 +604,26 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'ion-menu,ion-header,ion-footer,ion-toolbar,ion-tab-bar,ion-buttons,',
         'ion-title,ion-searchbar,ion-fab{display:none!important;}',
         'ion-content{--background:#0A1A10!important;}',
+        /* JUSTIFIED, which is what tore the text into rivers on a phone —
+           measured on the live page: `article.fdd` and its paragraphs both
+           compute text-align:justify. At this measure justification opens
+           word gaps wide enough to read as a layout fault, which is what the
+           owner's screenshot showed. */
+        'article.fdd,article.fdd *{text-align:left!important;}',
+        /* Ionic sizes through its own custom elements, none of which a plain
+           width rule reaches — so name them. The 20px gutter below is then
+           the ONLY inset, rather than stacking on ion-content's 16px. */
+        'ion-content{--padding-start:0!important;--padding-end:0!important;}',
+        'ion-content,ion-router-outlet,ion-split-pane,app-fdd,app-ldf-wrapper,',
+        'main,.pray-container,article.fdd,article.fdd > *{width:auto!important;',
+        'max-width:none!important;min-width:0!important;float:none!important;',
+        'columns:auto!important;column-count:auto!important;}',
         'article.fdd{padding:0 20px!important;}',
         'article.fdd p,article.fdd li{font-size:18px!important;line-height:1.72!important;',
         'color:#F0EDE6!important;margin:0 0 1.15em!important;}',
+        /* The feast is a LINK inside the date heading; underlined and green it
+           read as something to tap rather than as the day's title. */
+        'article.fdd h1 a{color:inherit!important;text-decoration:none!important;}',
         'form,select,input,textarea,button[type="submit"],',
         '[class*="signup"],[class*="newsletter"],[class*="mailchimp"]{display:none!important;}',
         /* SOJOURNERS, stripped to what the owner asked for: "all we want is the
