@@ -340,7 +340,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       var isFdd = (h === 'forwardmovement.org' || h.slice(-20) === '.forwardmovement.org');
       /* Sojourners' Verse and Voice — verse, voice and prayer of the day. */
       var isSojo = (h === 'sojo.net' || h.slice(-9) === '.sojo.net');
-      if (!isOremus && !isVcs && !isSsje && !isNouwen && !isFdd && !isSojo) return;
+      /* Grist's daily newsletter — an EMAIL, served as a preview page: ten
+         nested tables pinned to 600px, an ad block, and the usual footer. */
+      var isGrist = (h === 'grist.org' || h.slice(-10) === '.grist.org');
+      if (!isOremus && !isVcs && !isSsje && !isNouwen && !isFdd && !isSojo && !isGrist) return;
 
       /**
        * KEEP ONE BLOCK, HIDE ITS SIBLINGS — the technique three of these five
@@ -576,6 +579,15 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.blog-item-inner-wrapper *,article.fdd *,article.node-versevoice *{background-color:transparent!important;}',
         '.blog-item-inner-wrapper,article.fdd,article.node-versevoice{background:transparent!important;',
         'max-width:none!important;width:auto!important;margin:0!important;padding:0 20px!important;}',
+        /* GRIST is an email. Its tables are pinned to 600px (and 300/320 for
+           the ad slots), which is the same fixed-measure trap oremus set with
+           `body{width:600px}` — everything inherits it and every line wraps
+           early with a dead gutter to the right. Unpin them all. */
+        'table,td,tr,tbody{width:auto!important;max-width:100%!important;}',
+        'table[width],table[style*="600px"],table[style*="320px"]{width:auto!important;}',
+        /* The ad slot, and images kept fluid. Grist marks its own ads. */
+        '.ad,table.ad{display:none!important;}',
+        'img{max-width:100%!important;height:auto!important;}',
         /* SOJOURNERS keeps a newsletter signup INSIDE the block worth keeping,
            so the isolate can't reach it — measured: the kept article opens
            with a first-name field, an e-mail field and a fifty-state dropdown
@@ -680,8 +692,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         m.textContent = isOremus ? 'the oremus Bible Browser'
                        : isVcs    ? 'The Visual Commentary on Scripture'
                        : isSsje   ? 'Brother, Give Us A Word \\u00b7 SSJE'
-                       : isNouwen ? 'Henri Nouwen Society'
-                       : isSojo   ? 'Verse and Voice \\u00b7 Sojourners'
+                       // The owner's names for these two, not the
+                       // publishers' — Sojourners' own masthead reads "Verse
+                       // and Voice", and the owner asked for "Voice and
+                       // Verse". His wording wins on a label his readers see.
+                       : isNouwen ? 'Daily Henri Nouwen Quotes'
+                       : isSojo   ? 'Voice and Verse \\u00b7 Sojourners'
+                       : isGrist  ? 'Grist \\u00b7 The Daily'
                                   : 'Forward Day by Day';
         document.body.insertBefore(m, document.body.firstChild);
       }
@@ -808,11 +825,40 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         post.setAttribute('data-phoebe-trimmed', '1');
       }
 
+      /**
+       * An email's footer furniture — Grist.
+       *
+       * "View this email in your browser", a DONATE button, the postal
+       * address, "manage your newsletter subscriptions or unsubscribe here".
+       * None of it belongs in a reading, and none of it has a class to aim at.
+       *
+       * THE SIZE GUARD IS THE WHOLE TRICK: hide the nearest enclosing row or
+       * table ONLY while it is small. Every one of these strings also lives
+       * inside the outermost table, which is the entire newsletter — walking
+       * up without a limit would hide the lot.
+       */
+      function gristTrim() {
+        if (document.body.getAttribute('data-phoebe-trimmed')) return;
+        var junk = /unsubscribe|View this email|PO Box|manage your newsletter/i;
+        var all = document.querySelectorAll('td, tr, table, div, p, a');
+        for (var i = 0; i < all.length; i++) {
+          var t = all[i].textContent || '';
+          if (t.length > 400 || !junk.test(t)) continue;
+          var box = all[i].closest ? all[i].closest('tr, table') : null;
+          if (box && (box.textContent || '').length <= 400) {
+            box.style.setProperty('display', 'none', 'important');
+          } else {
+            all[i].style.setProperty('display', 'none', 'important');
+          }
+        }
+        document.body.setAttribute('data-phoebe-trimmed', '1');
+      }
+
       function run() {
         addStyle();
         if (isOremus) { tidy(); credit(); }
         else if (isVcs) { vcsStrip(); }
-        else { isolate(); if (isFdd) fddTrim(); }
+        else { isolate(); if (isFdd) fddTrim(); if (isGrist) gristTrim(); }
         masthead();
       }
       if (document.readyState !== 'loading') run();
@@ -1041,6 +1087,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             || readerHost.hasSuffix("henrinouwen.org")
             || readerHost.hasSuffix("forwardmovement.org")
             || readerHost.hasSuffix("sojo.net")
+            || readerHost.hasSuffix("grist.org")
         if officeChrome {
             // Owner: "take the settings and the X button out of the top
             // right and move the Next button ... to the top right." Gear
