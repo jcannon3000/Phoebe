@@ -254,6 +254,8 @@ export type RhythmState = {
   podcastsDone: boolean;
   walkDone: boolean;
   visioDone: boolean;
+  iconsActive: boolean;
+  iconsDone: boolean;
   complineDone: boolean;
   cobreatheDone: boolean;
   prayerListDone: boolean;
@@ -508,6 +510,7 @@ export function useRhythmState(): RhythmState {
     walk: hasPracticeDoneToday("walk"),
     walkSkipped: hasPracticeSkippedToday("walk"),
     visio: hasPracticeDoneToday("visio"),
+    icons: hasPracticeDoneToday("icons"),
     prayerList: hasPracticeDoneToday("prayer-list"),
   }));
   useEffect(() => {
@@ -519,6 +522,7 @@ export function useRhythmState(): RhythmState {
       walk: hasPracticeDoneToday("walk"),
       walkSkipped: hasPracticeSkippedToday("walk"),
       visio: hasPracticeDoneToday("visio"),
+    icons: hasPracticeDoneToday("icons"),
       prayerList: hasPracticeDoneToday("prayer-list"),
     });
     window.addEventListener(PRACTICE_DONE_EVENT, recheck);
@@ -747,6 +751,10 @@ export function useRhythmState(): RhythmState {
   // Visio Divina — praying with an artwork. Same shape as the other standing
   // practices: on when its home card is, kept by finishing the deck.
   const visioActive = homeCardActive(hl, "visio");
+  // Praying with Icons — one icon chosen for the week, sat with daily. The
+  // WEEK is the icon's; the sitting is the day's, so completion is
+  // day-scoped like every other practice card.
+  const iconsActive = homeCardActive(hl, "icons");
   const taizeActive = homeCardActive(hl, "taize");
   const chittisterActive = homeCardActive(hl, "chittister");
   // Compline — the night office, offered as a contemplative add-on card.
@@ -1206,6 +1214,7 @@ export function useRhythmState(): RhythmState {
   const podcastsDone = podcastsActive && (practiceLocal.podcasts || serverDone("podcasts"));
   const walkDone = walkActive && (practiceLocal.walk || serverDone("walk"));
   const visioDone = visioActive && (practiceLocal.visio || serverDone("visio"));
+  const iconsDone = iconsActive && (practiceLocal.icons || serverDone("icons"));
   /**
    * THE INBOX'S DONE, which is deliberately not any of the machinery above.
    *
@@ -1580,6 +1589,7 @@ export function useRhythmState(): RhythmState {
     ...(podcastsActive ? [podcastsDone] : []),
     ...(walkActive ? [walkDone] : []),
     ...(visioActive ? [visioDone] : []),
+    ...(iconsActive ? [iconsDone] : []),
     ...(complineActive ? [complineDone] : []),
     // Only an anchor when there IS a list. The layout check alone counted it
     // for everyone — including guests, whose intentions query never runs — so
@@ -1705,6 +1715,8 @@ export function useRhythmState(): RhythmState {
     podcastsDone,
     walkDone,
     visioDone,
+    iconsActive,
+    iconsDone,
     complineDone,
     cobreatheDone,
     prayerListDone,

@@ -57,6 +57,28 @@ export const prayerSurfaces = [
   // toward the "time praying" rollup like the other contemplative
   // surfaces. Entries live in journal_entries (see routes/journal.ts).
   "journal",
+  /**
+   * THE THREE THE CLIENT HAS BEEN POSTING ALL ALONG.
+   *
+   * `POST /api/prayer-sessions` rejects an unknown surface with a 400, and
+   * `sessionOutbox` treats a 4xx as permanent and drops it — so these three
+   * were never recorded, silently. The office flipped its local flag, the
+   * person saw it kept, and no row was ever written: nothing on another
+   * device, nothing in office history, nothing in the weekly grid.
+   *
+   * The READ side already expected them — routes/users.ts and routes/groups.ts
+   * all include 'compline' in their completed-office gates — and this file's
+   * own comment said the column is text "so the enum can grow (e.g. adding
+   * 'compline' later)". It never did.
+   *
+   *   compline   — the night office (bcp-daily-office.tsx, officeManualLog)
+   *   examen     — the Examen (pages/examen.tsx); not beta-gated, so this
+   *                has been losing its "time praying" credit for everyone
+   *   scripture  — Daily Scripture Reading, the reading deck
+   */
+  "compline",
+  "examen",
+  "scripture",
 ] as const;
 export type PrayerSurface = (typeof prayerSurfaces)[number];
 

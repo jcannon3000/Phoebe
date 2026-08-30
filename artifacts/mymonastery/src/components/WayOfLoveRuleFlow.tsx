@@ -258,7 +258,7 @@ const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
  */
 type ExtraMapping =
   | { kind: "level"; level: "office" | "devotion" | "psalms" | "readings" | "guided-prayer" }
-  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" | "taize" | "chittister" }
+  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" | "icons" | "taize" | "chittister" }
   | { kind: "contemplation" }
   | { kind: "newsletter" };
 type ExtraPractice = {
@@ -317,6 +317,11 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // and as a STANDING practice but never as a side's SECOND one, while all
   // three of its siblings could. anchoredAsForm already de-duplicates it.
   { title: () => "Visio Divina", emoji: "🖼️", sub: "Pray with an image — the day's artwork.", excludes: "__none__", maps: { kind: "practice", key: "visio" } , group: "contemplative" },
+  // Owner: "Icon is not available in the customizer." It wasn't — the
+  // practice had no home-layout key at all, so there was nothing for this
+  // list to switch on. One icon for the Monday-to-Sunday week, sat with
+  // daily; the sibling of Visio Divina, which is why it sits beside it.
+  { title: () => "Praying with Icons", emoji: "🪟", sub: "One icon for the week — return to it daily.", excludes: "__none__", maps: { kind: "practice", key: "icons" } , group: "contemplative" },
   // An INBOX, not a daily: it waits until it is read, and goes quiet until
   // Taizé posts the next one. Offered here because it is a reflection you sit
   // with, not because it behaves like the others in this list.
@@ -1309,6 +1314,7 @@ export default function WayOfLoveRuleFlow({
       examen: examenSeed,
       walk: homeCardOn(user.homeLayout, "walk"),
       visio: homeCardOn(user.homeLayout, "visio"),
+      icons: homeCardOn(user.homeLayout, "icons"),
       taize: homeCardOn(user.homeLayout, "taize"),
       chittister: homeCardOn(user.homeLayout, "chittister"),
       compline: homeCardOn(user.homeLayout, "compline"),
@@ -1332,7 +1338,7 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; taize: boolean; chittister: boolean; compline: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; chittister: boolean; compline: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: !creationHeldBySide() && homeCardOn(user?.homeLayout, "cobreathe"),
     audio: homeCardOn(user?.homeLayout, "listening"),
@@ -1340,12 +1346,13 @@ export default function WayOfLoveRuleFlow({
     walk: homeCardOn(user?.homeLayout, "walk"),
     // Visio Divina — praying with an artwork. Same shape as its siblings.
     visio: homeCardOn(user?.homeLayout, "visio"),
+    icons: homeCardOn(user?.homeLayout, "icons"),
     taize: homeCardOn(user?.homeLayout, "taize"),
     // Seeded the same way as every sibling — the layout key IS the switch.
     chittister: homeCardOn(user?.homeLayout, "chittister"),
     compline: homeCardOn(user?.homeLayout, "compline"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "taize" | "chittister" | "compline") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "chittister" | "compline") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -2087,6 +2094,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
       ...(contemplative.visio ? ["visio"] : []),
+      ...(contemplative.icons ? ["icons"] : []),
       /**
        * THE THREE INBOXES. None of them was here — not even Taizé, which has
        * had a row in this flow since it shipped — so their toggles wrote
@@ -2109,6 +2117,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
       ...(contemplative.visio ? [] : ["visio"]),
+      ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
       ...(contemplative.chittister ? [] : ["chittister"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
@@ -2566,7 +2575,7 @@ export default function WayOfLoveRuleFlow({
     // wants Visio Divina and a Contemplative Walk gets exactly those, and
     // nothing survives from the rule being replaced.
     setContemplative({
-      cobreathe: false, audio: false, examen: false, walk: false, visio: false, taize: false, chittister: false, compline: false,
+      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, chittister: false, compline: false,
       ...(preset.practices ?? {}),
     });
     /**
@@ -6447,7 +6456,39 @@ export default function WayOfLoveRuleFlow({
     // The user's own custom practices — each tappable back into "Create your own".
     // A weekday-scoped practice says so: "Midday" alone described Community
     // Meal as an every-day practice, which is not what the rule set up.
-    ...customList.map((a) => ({
+    ...customList.map((a) => {
+      /**
+       * A RELATIONAL PRACTICE IS NOT ONE YOU MADE.
+       *
+       * Relational practices are stored as custom anchors — that is the app's
+       * shape for "a practice only you keep" and it is the right storage —
+       * but the owner picked "Express gratitude" off a curated list, and it
+       * came back listed among the practices he had written himself, editable
+       * as one, described only by its slot. It had flattened into a custom
+       * practice.
+       *
+       * Matched by title against the catalogue, the same way customize.tsx
+       * decides which anchors a preset may not sweep away. So the row keeps
+       * its own name, says what it actually is, and taps back to the
+       * RELATIONAL step rather than to "Create your own" — where its title
+       * and emoji are not the reader's to edit.
+       */
+      const relationalDef = RELATIONAL_PRACTICES.find(
+        (r) => r.title.trim().toLowerCase() === a.title.trim().toLowerCase(),
+      );
+      if (relationalDef) return {
+        emoji: a.emoji || relationalDef.emoji,
+        label: a.title,
+        sub: "Relational · asked at the end of the day",
+        step: "relational" as Step,
+        remove: () => {
+          touchedRef.current = true;
+          setRelational((cur) => cur.filter((id) => id !== relationalDef.id));
+          removeCustomAnchor(a.id);
+          setCustomList(getCustomAnchors());
+        },
+      };
+      return {
       emoji: a.emoji || "🌿",
       label: a.title,
       sub: a.days && a.days.length > 0 && a.days.length < 7
@@ -6458,7 +6499,8 @@ export default function WayOfLoveRuleFlow({
       // A real anchor with server state — removeCustomAnchor tombstones it, so
       // dropping the row alone would let the next sync bring it straight back.
       remove: () => { touchedRef.current = true; removeCustomAnchor(a.id); setCustomList(getCustomAnchors()); },
-    })),
+      };
+    }),
     // Drop any row whose edit target is no longer in the flow (e.g. an existing
     // user's contemplative/extras cards under the limited customizer) — tapping
     // it would jump to an unreachable step and strand them. Their cards stay on

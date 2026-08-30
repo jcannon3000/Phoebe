@@ -85,10 +85,13 @@ export function slotOpensLabel(slot: CustomSlot): string | null {
 // Built-in practices that the customizer places at a chosen time of day
 // (Co-Breathe, Audio Divina, the Examen) — each carries a per-device slot.
 // Sensible defaults if the user never picks one.
-export type SlottedPractice = "cobreathe" | "listening" | "examen" | "walk" | "reading" | "visio" | "taize" | "chittister";
+export type SlottedPractice = "cobreathe" | "listening" | "examen" | "walk" | "reading" | "visio" | "icons" | "taize" | "chittister";
 const PRACTICE_SLOT_DEFAULT: Record<SlottedPractice, CustomSlot> = {
   // Visio Divina is looked at whenever there's light and quiet — not pinned.
   visio: "anytime",
+  // Praying with Icons, the same: the icon is the week's, and the sitting
+  // belongs wherever the quiet is.
+  icons: "anytime",
   // The Taizé meditation is an inbox: it waits, so it is never pinned to a
   // part of the day. The same is true of the other two inbox sources —
   // Joan Chittister's weekly and the National Cathedral's sermon.

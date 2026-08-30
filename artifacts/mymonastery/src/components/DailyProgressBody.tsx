@@ -764,7 +764,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, groupReflection, chittisterActive, chittisterDone, chittisterWaiting, chittisterLatest, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, groupReflection, chittisterActive, chittisterDone, chittisterWaiting, chittisterLatest, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1030,6 +1030,23 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * Visio Divina — praying with an artwork. A walked deck like the office, so
    * completion is finishing it, not a tap; the page marks it on the last slide.
    */
+  /**
+   * PRAYING WITH ICONS — one icon for the Monday-to-Sunday week, sat with
+   * daily. The owner asked for it in the customizer; it had no home-layout
+   * key at all and lived only as a page in the Practices menu, so there was
+   * nothing for the customizer to offer.
+   *
+   * /icon-prayer, NOT /icons — dist/public/icons is the PWA icon directory
+   * and the static server 301s /icons before the SPA route is reached.
+   */
+  const iconsCard = {
+    key: "icons", emoji: "🪟", rgb: "170,140,110", done: iconsDone, href: "/icon-prayer",
+    onUnlog: () => unmarkPracticeDoneToday("icons"),
+    title: t("rhythm.card_icons", { defaultValue: "Praying with Icons" }),
+    blurb: iconsDone ? kept : t("rhythm.blurb_icons", { defaultValue: "Sit with this week's icon" }),
+    cta: t("common.begin", { defaultValue: "Begin" }),
+  };
+
   const visioCard = {
     key: "visio", emoji: "🖼️", rgb: "150,130,170", done: visioDone, href: "/visio",
     onUnlog: () => unmarkPracticeDoneToday("visio"),
@@ -1611,6 +1628,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
     ...(visioActive ? [{ ...visioCard, slot: getPracticeSlot("visio") }] : []),
+    ...(iconsActive ? [{ ...iconsCard, slot: getPracticeSlot("icons") }] : []),
     ...(taizeActive ? [{ ...taizeCard, slot: getPracticeSlot("taize") }] : []),
     // No slot lookup: it isn't a scheduled practice, it's post that arrived.
     ...(groupReflectionCard ? [{ ...groupReflectionCard, slot: "anytime" as CustomSlot }] : []),

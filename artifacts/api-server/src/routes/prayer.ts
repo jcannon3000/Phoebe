@@ -11,6 +11,7 @@ import { logger } from "../lib/logger";
 import { isParishOnlyUser } from "../lib/parishGate";
 import { rateLimit } from "../lib/rate-limit";
 import { scanForCrisisLanguage, stripLinks } from "../lib/contentSafety";
+import { HOME_MODULE_KEYS } from "../lib/homeModules";
 
 // Per-user rate-limit key — throttles by account, not IP, so users
 // behind a shared NAT aren't penalized for each other. Returns null
@@ -2628,7 +2629,6 @@ router.put("/me/feed-first-home", async (req, res): Promise<void> => {
 // Keep in sync with HOME_MODULES in mymonastery/pages/customize-home.tsx —
 // anything missing here is SILENTLY STRIPPED from a saved layout, which is how
 // a reflection can be chosen in the customizer and be gone on the next load.
-const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "chittister", "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests"] as const;
 router.put("/me/home-layout", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }

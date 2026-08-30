@@ -745,6 +745,73 @@ export async function sendAccountExistsNotice(opts: {
 // page. Per-user daily dedup is enforced at the call site (users.
 // last_prayer_invite_email_date) so a member in multiple groups only
 // gets one of these per day even if every admin fires the same day.
+/**
+ * "You're already part of this — here's your link."
+ *
+ * Sent when someone re-joins a practice with an address that already has a
+ * token. The join route cannot verify that the caller owns the address, and
+ * the token is a bearer credential for that practice's private feed — so the
+ * link goes to the address rather than back in the HTTP response. Delivering
+ * it by email IS the ownership check.
+ */
+export async function sendMomentLinkEmail(
+  to: string,
+  name: string,
+  practiceName: string,
+  personalLink: string,
+): Promise<boolean> {
+  const gmail = await getGmailClient();
+  if (!gmail) {
+    console.warn("Gmail client unavailable — skipping moment link email");
+    return false;
+  }
+  const safeName = (name ?? "").trim() || "there";
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f9f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7f4;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e8e2d9;padding:40px 36px;">
+        <tr><td>
+          <div style="margin-bottom:28px;"><span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">\u{1F331} Phoebe</span></div>
+          <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">You're already part of this</h1>
+          <p style="margin:0 0 20px;font-size:15px;color:#6b6460;line-height:1.6;">
+            Hi ${escapeHtml(safeName)}, you're already keeping <strong>${escapeHtml(practiceName)}</strong>. Here's your link back in.
+          </p>
+          <a href="${personalLink}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">Open the practice \u{2192}</a>
+          <p style="margin:24px 0 0;font-size:13px;color:#9b938d;line-height:1.6;">
+            This link is yours alone \u{2014} it opens the practice as you, so please don't forward it.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text = [
+    `Hi ${safeName},`,
+    "",
+    `You're already keeping ${practiceName}. Here's your link back in:`,
+    personalLink,
+    "",
+    "This link is yours alone — it opens the practice as you, so please don't forward it.",
+    "",
+    "— Phoebe",
+  ].join("\n");
+
+  try {
+    const raw = encodeMimeMessage({ to, subject: `Your link to ${practiceName}`, html, text });
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+    return true;
+  } catch (err) {
+    const parsed = parseGmailError(err);
+    console.error("[email] sendMomentLinkEmail FAILED", { to, ...parsed });
+    return false;
+  }
+}
+
 export async function sendPrayerInviteEmail(opts: {
   to: string;
   recipientName: string;

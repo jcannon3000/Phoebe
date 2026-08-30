@@ -416,6 +416,7 @@ const BetaAdminPage = lazy(() => import("./pages/beta-admin"));
 const BetaClaimPage = lazy(() => import("./pages/beta-claim"));
 const AdminToolsPage = lazy(() => import("./pages/admin-tools"));
 const AdminArtLibraryPage = lazy(() => import("./pages/admin-art-library"));
+const AdminVisioCalendarPage = lazy(() => import("./pages/admin-visio-calendar"));
 const PilotHomePage = lazy(() => import("./pages/pilot-home"));
 const PilotBuildPage = lazy(() => import("./pages/pilot-build"));
 const CustomizePage = lazy(() => import("./pages/customize"));
@@ -1038,6 +1039,8 @@ function Router() {
       <Route path="/admin/reports" component={ReportsAdminPage} />
       <Route path="/admin/tools" component={AdminToolsPage} />
       <Route path="/admin/art-library" component={AdminArtLibraryPage} />
+      {/* The Visio year, one row per week — super-admin only, gated in the page. */}
+      <Route path="/admin/visio-calendar" component={AdminVisioCalendarPage} />
       <Route path="/admin/ministries" component={AdminMinistriesPage} />
       <Route path="/admin/breath-places" component={AdminBreathPlacesPage} />
       <Route path="/admin/users" component={AdminUserMetricsPage} />

@@ -19,7 +19,7 @@ import { assembleCompline } from "../lib/assembleCompline";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { getLectionaryReadings } from "../lib/lectionary";
 import { buildOfficeOrdoDay, getOrdoCommonTexts } from "../lib/officeOrdo";
-import { parsePsalmRef, sliceVersesByRange } from "../lib/psalmRange";
+import { parsePsalmRef, sliceVersesByRange, displayPsalmRef, displayLessonRef } from "../lib/psalmRange";
 import { isUserBeta } from "../lib/parishGate";
 import { resolveLocale } from "../lib/officeI18n";
 import { seedBcpTexts } from "../seeds/bcpTexts";
@@ -551,14 +551,17 @@ router.get("/office/readings", (req, res) => {
       const lect = getLectionaryReadings(getOfficeDay(date), side);
       const raw = (side === "morning" ? lect.lesson2 : lect.lesson3) ?? "";
       const ok = raw.trim().length > 0 && !/^-+$/.test(raw.trim());
-      return res.json({ date: stamp, side, psalms: lect.psalms ?? [], lessons: ok ? [raw.trim()] : [] });
+      // Psalms formatted for a READER — the raw lectionary strings carry the
+      // printed book's notation ("95* & 32", "[58]", a literal tab) and this
+      // response feeds the home card's readings line verbatim.
+      return res.json({ date: stamp, side, psalms: (lect.psalms ?? []).map(displayPsalmRef).filter(Boolean), lessons: ok ? [displayLessonRef(raw)] : [] });
     }
 
     // Full office — reuse the ordo builder (pure/synchronous, and the same
     // selectors the assemblers use, including the "Eve of …" evening fallback).
     const day = buildOfficeOrdoDay(date);
     const o = side === "evening" ? day.evening : day.morning;
-    return res.json({ date: day.date, side, psalms: o.psalms ?? [], lessons: o.lessons.map((l) => l.ref) });
+    return res.json({ date: day.date, side, psalms: (o.psalms ?? []).map(displayPsalmRef).filter(Boolean), lessons: o.lessons.map((l) => displayLessonRef(l.ref)) });
   } catch (err) {
     console.error("office readings lookup failed:", err);
     // Never 500 — the card just omits the line.
@@ -578,8 +581,12 @@ router.get("/office/collect", async (req, res) => {
     const day = getOfficeDay(date);
     res.setHeader("Cache-Control", "public, max-age=3600");
     const [row] = await db.select().from(bcpTextsTable).where(eq(bcpTextsTable.textKey, day.collectKey)).limit(1);
+    // No seeded row: the Sunday label is the only title available, and it is
+    // right on a Sunday. When there IS a row, its own title wins below — the
+    // collect names its own day (Ash Wednesday, Good Friday), which is not
+    // the same thing as the week it falls in.
     if (!row) return res.json({ title: day.sundayLabel ?? null, text: null, bcpReference: null });
-    return res.json({ title: day.sundayLabel ?? row.title, text: row.content, bcpReference: row.bcpReference ?? "BCP p. 211" });
+    return res.json({ title: row.title ?? day.sundayLabel, text: row.content, bcpReference: row.bcpReference ?? "BCP p. 211" });
   } catch (err) {
     console.error("office collect lookup failed:", err);
     // Never 500 — the caller just omits the slide.

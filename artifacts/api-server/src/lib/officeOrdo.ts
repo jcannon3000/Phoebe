@@ -142,6 +142,17 @@ export function buildOfficeOrdoDay(date: Date): OrdoDay {
       { label: "After the New Testament", name: canticleName(mc.afterNT), number: canticleNumber(mc.afterNT) },
     ],
     suffrages,
+    /**
+     * KNOWN LIMITATION, deliberately left: this names the WEEK, where the
+     * offices themselves now name the collect's own day (see
+     * assembleMorningPrayer's note — Ash Wednesday's collect was appearing
+     * under "The First Sunday in Lent").
+     *
+     * Fixing it here needs the seeded bcp_texts row, and this builder is
+     * synchronous with no database access. The printable ordo grid is a
+     * lower-stakes surface than the office, so it keeps the week's label
+     * until someone threads a collect-title map through from the route.
+     */
     collect: ld.sundayLabel,
     prayerForMission,
   };
@@ -151,6 +162,17 @@ export function buildOfficeOrdoDay(date: Date): OrdoDay {
     lessons: eveningLessons,
     canticles: [{ label: "After the Gospel", name: canticleName(ec.afterNT), number: canticleNumber(ec.afterNT) }],
     suffrages,
+    /**
+     * KNOWN LIMITATION, deliberately left: this names the WEEK, where the
+     * offices themselves now name the collect's own day (see
+     * assembleMorningPrayer's note — Ash Wednesday's collect was appearing
+     * under "The First Sunday in Lent").
+     *
+     * Fixing it here needs the seeded bcp_texts row, and this builder is
+     * synchronous with no database access. The printable ordo grid is a
+     * lower-stakes surface than the office, so it keeps the week's label
+     * until someone threads a collect-title map through from the route.
+     */
     collect: ld.sundayLabel,
     prayerForMission,
   };

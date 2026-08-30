@@ -1536,7 +1536,7 @@ export const lectionary: Record<string, LectionaryEntry> = {
   },
   holyweek_friday: {
     psalms_mp: ["95* & 22"],
-    psalms_ep: ["40:1:1-14(15-19)", "54"],
+    psalms_ep: ["40:1-14(15-19)", "54"],
     lesson1_y1: "Wisdom 1:16--2:1, 12-22",
     lesson2_y1: "1 Peter 1:10-20",
     lesson3_y1: "John 13:36-38**",
@@ -3185,7 +3185,7 @@ export const lectionary: Record<string, LectionaryEntry> = {
     lesson3_y2: "John 7:37-52",
   },
   proper_16_saturday: {
-    psalms_mp: ["20 21:1-7(8-14)"],
+    psalms_mp: ["20", "21:1-7(8-14)"],
     psalms_ep: ["110:1-5(6-7)", "116", "117"],
     lesson1_y1: "1 Kings 7:51--8:21",
     lesson2_y1: "Acts 28:17-31",

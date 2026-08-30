@@ -1064,7 +1064,20 @@ export async function assembleMorningPrayer(
   const collectData = texts[liturgicalDay.collectKey];
   slides.push(
     slide(id(), "collect", "📅", pick(locale, EYEBROWS.the_collect_of_the_day), localized(liturgicalDay.collectKey), {
-      title: liturgicalDay.sundayLabel,
+      /**
+       * THE COLLECT'S OWN TITLE, not the Sunday's.
+       *
+       * `collectData.title` is the day the collect belongs to — the seed
+       * records "Ash Wednesday", "Good Friday", "Ascension Day". This used
+       * `sundayLabel`, the label of the WEEK, so on Ash Wednesday the slide
+       * read "The First Sunday in Lent" above the Ash Wednesday collect, and
+       * on Good Friday it read "Palm Sunday". The right string was already
+       * on the line above and was being discarded.
+       *
+       * Falls back to the Sunday label, which is correct on a Sunday and the
+       * closest thing to right on an ordinary weekday.
+       */
+      title: collectData?.title ?? liturgicalDay.sundayLabel,
       bcpReference: collectData?.bcpReference ?? "BCP p. 211",
     }),
   );

@@ -20,6 +20,7 @@ import { sendNewGroupMomentPushToMany, sendIntercessionGoalReachedPush } from ".
 import { perUserRateLimit, rateLimit } from "../lib/rate-limit";
 import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
+import { sendMomentLinkEmail } from "../lib/email";
 
 // The Google-Calendar Daily Bell's attendee filtering (bell-enabled users
 // got a single bell event instead of a per-practice invite) was removed
@@ -3846,14 +3847,34 @@ router.post("/moments/:momentToken/join", rateLimit({
       ));
 
     let tokenRow;
-    if (existing.length > 0) {
+    /**
+     * REJOINING IS NOT PROOF OF IDENTITY.
+     *
+     * This route is unauthenticated and takes an email in the body. When a row
+     * already existed for that email it was reused AND ITS userToken RETURNED
+     * — so anyone who could name a member's address got that member's bearer
+     * credential. `userToken` is the whole authentication for
+     * `GET /moment/:momentToken/:userToken` and its `/post` sibling, so the
+     * caller could then read the practice's private feed and write posts AS
+     * that person. The addresses are not secret either: /api/contacts/search
+     * and /api/connections hand a member the emails of everyone they share a
+     * practice with.
+     *
+     * This is the same hole the roster fix closed (see the note above the
+     * member list, which removed tokens from that payload for exactly this
+     * reason) — reopened one email at a time through a different door.
+     *
+     * So an existing row is acknowledged but NOT handed back. The person gets
+     * their link by email, at the address they claim to own, which is the
+     * proof this route cannot otherwise obtain.
+     */
+    const rejoining = existing.length > 0;
+    if (rejoining) {
       tokenRow = existing[0];
-      if (personalTime) {
-        await db.update(momentUserTokensTable)
-          .set({ personalTime, personalTimezone: personalTimezone ?? null, name })
-          .where(eq(momentUserTokensTable.id, tokenRow.id));
-        tokenRow = { ...tokenRow, personalTime, personalTimezone: personalTimezone ?? null };
-      }
+      // `personalTime` is NOT applied on a rejoin. Unauthenticated, it let a
+      // stranger rewrite a real member's display name and reminder schedule
+      // by naming their address. A member changes their own reminder from
+      // inside the practice, where they are identified.
     } else {
       const userToken = generateToken();
       const [inserted] = await db.insert(momentUserTokensTable).values({
@@ -3930,6 +3951,31 @@ router.post("/moments/:momentToken/join", rateLimit({
     }
 
     const baseUrl = `${getInviteBaseUrl()}/moment`;
+
+    /**
+     * A NEW row's token goes back in the response — the person just created
+     * it in this request and there is nobody else it could belong to.
+     *
+     * An EXISTING row's token does not. It belongs to whoever first joined
+     * with that address, and this route has no way to know the caller is
+     * them. Sending their link to the address instead is the only step that
+     * establishes it, and it is what an "already a member" flow should do
+     * anyway.
+     */
+    if (rejoining) {
+      try {
+        await sendMomentLinkEmail(email, tokenRow.name ?? name, moment.name, `${baseUrl}/${momentToken}/${tokenRow.userToken}`);
+      } catch (e) {
+        console.warn("[moments:join] rejoin link email failed:", e);
+      }
+      res.status(200).json({
+        alreadyJoined: true,
+        momentName: moment.name,
+        // Deliberately no userToken and no personalLink.
+        message: "You're already part of this. We've emailed your link.",
+      });
+      return;
+    }
 
     res.status(201).json({
       userToken: tokenRow.userToken,

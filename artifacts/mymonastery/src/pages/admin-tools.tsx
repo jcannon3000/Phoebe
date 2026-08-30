@@ -227,6 +227,12 @@ export default function AdminToolsPage() {
                   onClick={() => setLocation("/admin/art-library")}
                 />
                 <LinkRow
+                  emoji="🗓️"
+                  label="Visio Calendar"
+                  description="The year by week — which work each week gets, and whether it's on the reading"
+                  onClick={() => setLocation("/admin/visio-calendar")}
+                />
+                <LinkRow
                   emoji="📨"
                   label="Newsletter"
                   description="Email Phoebe users"

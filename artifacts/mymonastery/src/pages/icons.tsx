@@ -134,7 +134,20 @@ function WeekDoor({ art, label, note, onClick }: {
   );
 }
 
-type Phase = "week" | "search" | "timer" | "pray" | "done" | "log" | "log-done";
+/**
+ * "open" — THE OPENING SLIDE, between choosing an icon and sitting with it.
+ *
+ * Owner: "after you have chosen the icon for the week you dont get the
+ * opening slide." There wasn't one: choosing went straight to "how long will
+ * you sit with it?", so the first thing after a considered choice was a
+ * duration picker. The icon you are about to pray with was never actually
+ * presented — no title, no writer, no invitation, the way Visio Divina opens
+ * on the work before asking anything of you.
+ *
+ * It is also where a settled week now LANDS, so returning mid-week meets the
+ * icon again rather than a form.
+ */
+type Phase = "week" | "open" | "search" | "timer" | "pray" | "done" | "log" | "log-done";
 
 export default function IconsPage() {
   const { t } = useTranslation();
@@ -145,7 +158,21 @@ export default function IconsPage() {
    * three doors, and only then does the catalogue search appear at all.
    */
   const [phase, setPhase] = useState<Phase>(() => {
-    try { return weekIconId() == null ? "week" : "timer"; } catch { return "search"; }
+    /**
+     * OPEN ON THE LAST ONE. Owner: "have the one they used yesterday be the
+     * one by default on the opening page and then have an option that says
+     * choose another icon."
+     *
+     * Not a weekly lock — that was the previous design and the owner asked
+     * for it out ("lets not set it for the week"): nothing is pinned, and
+     * choosing another is one tap from the opening slide. The default is just
+     * the obvious one, because returning to the same icon is what this
+     * practice is for.
+     *
+     * With no history at all — a first visit — there is nothing to default
+     * to, so the chooser leads instead.
+     */
+    try { return getIconHistory().length > 0 ? "open" : "week"; } catch { return "week"; }
   });
   const [showHowto, setShowHowto] = useState<boolean>(() => {
     try { return !iconHowtoSeen(); } catch { return false; }
@@ -177,6 +204,25 @@ export default function IconsPage() {
   }, []);
   const catalogue = useMemo(iconPool, [ovVersion]);
   const byId = useMemo(() => new Map(catalogue.map((a) => [a.id, a])), [catalogue]);
+
+  /**
+   * The opening slide's default: the last icon this person actually prayed
+   * with. Seeded here rather than in useState's initialiser because it needs
+   * `byId`, which is declared above this line and not before it.
+   *
+   * Runs once and only while nothing is chosen, so it can't overwrite a
+   * choice made in this visit. A history entry whose work has since been
+   * hidden leaves `chosen` null, and the opening slide's own guard sends the
+   * person to the chooser instead.
+   */
+  useEffect(() => {
+    if (chosen) return;
+    try {
+      const last = getIconHistory()[0];
+      if (last) setChosen(byId.get(last.id) ?? null);
+    } catch { /* no history — the chooser leads */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [byId]);
   /**
    * The week's icon, restored.
    *
@@ -208,13 +254,13 @@ export default function IconsPage() {
       reason: suggestionReason(suggestion),
     };
   }, [byId]);
-  /** Choosing sets the week's icon and goes straight to the sit. */
+  /** Choosing sets the week's icon and opens ON it — see Phase's note. */
   const chooseForWeek = (art: IconArtwork) => {
     setChosen(art);
     setLoadedSrc(null);
     setImageFailed(false);
     try { setWeekIcon(art.id); } catch { /* non-fatal */ }
-    setPhase("timer");
+    setPhase("open");
   };
   /** The PHYSICAL icons this person has logged — the "choose from previous
    *  logs" list on the log screen (owner, after the Audio Divina pattern). */
@@ -416,15 +462,18 @@ export default function IconsPage() {
      * way Back from any settled practice does. Before it does, Back returns
      * to the doors, which is exactly where the choice is still open.
      */
-    const settled = (() => { try { return weekIconId() != null; } catch { return false; } })();
+    // Back always returns to the choice — it is open every visit now, so
+    // there is no settled week to strand anyone in.
     const leave = () => setLocation("/menu/practices");
-    const toStart = () => { if (settled) leave(); else setPhase("week"); };
-    if (phase === "search") { if (settled) leave(); else { setPhase("week"); setQuery(""); } return; }
-    if (phase === "timer") { toStart(); return; }
+    const toStart = () => setPhase("week");
+    if (phase === "search") { setPhase("week"); setQuery(""); return; }
+    if (phase === "open") { toStart(); return; }
+    // Back from the timer returns to the opening slide — one step, not out.
+    if (phase === "timer") { setPhase("open"); return; }
     if (phase === "log") { toStart(); return; }
     if (phase === "log-done") { toStart(); return; }
     if (phase === "pray") { setPhase("timer"); return; }
-    if (phase === "done") { if (settled) leave(); else { setPhase("week"); setQuery(""); } return; }
+    if (phase === "done") { setPhase("week"); setQuery(""); return; }
     leave();
   };
   const close = () => setLocation("/menu/practices");
@@ -495,24 +544,24 @@ export default function IconsPage() {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}
           style={{ maxWidth: 520, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}
         >
-          {/* THE WEEK'S THREE DOORS. Owner: "the first time they go to it each
-              week, let's have the one they did last week — choose new one,
-              continue, or a third one that's suggested based on the readings
-              for Sunday." Shown only when this week has no icon yet; after
-              that the practice opens straight into the one they chose. */}
+          {/* THE THREE DOORS — the one you sat with last, one suggested from
+              Sunday's readings, and the whole catalogue. Shown EVERY time the
+              practice opens: the owner asked that the icon not be set for the
+              week ("lets not set it for the week"), so this is a choice, not
+              a one-off commitment you then live with until Sunday. */}
           {phase === "week" && (
             <>
               <p style={{ color: WARM, fontFamily: FONT, fontSize: 20, fontWeight: 600, textAlign: "center", margin: "10px 0 0", lineHeight: 1.4 }}>
-                {t("icons.week_heading", { defaultValue: "Your icon for this week" })}
+                {t("icons.week_heading", { defaultValue: "Choose an icon to sit with" })}
               </p>
               <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, textAlign: "center", margin: 0, lineHeight: 1.55 }}>
-                {t("icons.week_sub", { defaultValue: "One icon, every day until Sunday." })}
+                {t("icons.week_sub", { defaultValue: "Stay with one for a while, or begin somewhere new." })}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 6 }}>
                 {weekDoors.last && (
                   <WeekDoor
                     art={weekDoors.last}
-                    label={t("icons.week_continue", { defaultValue: "Stay with last week's" })}
+                    label={t("icons.week_continue", { defaultValue: "The one you sat with last" })}
                     note={null}
                     onClick={() => chooseForWeek(weekDoors.last!)}
                   />
@@ -641,6 +690,60 @@ export default function IconsPage() {
                   {t("icons.search_more", { defaultValue: "Keep typing to narrow the search." })}
                 </p>
               )}
+            </>
+          )}
+
+          {/**
+            * THE OPENING SLIDE — the icon, named, before anything is asked.
+            *
+            * Deliberately quiet: the work, its title, who wrote it, and the
+            * one line that says what this week is for. No controls except
+            * the way on. The duration question keeps its own screen, where
+            * it belongs — after you have actually looked at the thing.
+            */}
+          {phase === "open" && chosen && (
+            <>
+              <img
+                src={chosen.img} alt="" decoding="async"
+                style={{ width: 208, height: 208, objectFit: "cover", borderRadius: 14, marginTop: 8, boxShadow: "0 22px 60px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.45)" }}
+              />
+              <div style={{ textAlign: "center", maxWidth: 420 }}>
+                <p style={{ color: WARM, fontFamily: SERIF, fontSize: 22, fontStyle: "italic", margin: 0, lineHeight: 1.3 }}>{chosen.title}</p>
+                {chosen.artist && (
+                  <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13.5, margin: "8px 0 0" }}>{tidyArtist(chosen.artist)}</p>
+                )}
+                <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14.5, margin: "18px 0 0", lineHeight: 1.6 }}>
+                  {t("icons.open_body", { defaultValue: "Stay here a moment before you begin. You can come back to this one as often as you like — what you notice the third time will not be what you noticed the first." })}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPhase("timer")}
+                style={{
+                  userSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420,
+                  marginTop: 10, background: "rgba(46,107,64,0.55)", ...FROST_BLUR,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", border: `1px solid ${BORDER}`,
+                  color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600,
+                  fontFamily: FONT, cursor: "pointer",
+                }}
+              >
+                {t("icons.open_sit", { defaultValue: "Sit with it" })}
+              </button>
+              {/* The way to something else. Owner: "have an option that says
+                  choose another icon." Quiet, under the primary action — the
+                  default is the point, and this is the door beside it. */}
+              <button
+                type="button"
+                onClick={() => setPhase("week")}
+                style={{
+                  userSelect: "none", WebkitTapHighlightColor: "transparent",
+                  background: "transparent", border: "none", color: "rgba(200,212,192,0.72)",
+                  fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: "pointer",
+                  padding: "10px 8px 0",
+                }}
+              >
+                {t("icons.open_choose_other", { defaultValue: "Choose another icon" })}
+              </button>
             </>
           )}
 
