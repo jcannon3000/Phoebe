@@ -343,11 +343,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       var isFdd = (h === 'forwardmovement.org' || h.slice(-20) === '.forwardmovement.org');
       /* Sojourners' Verse and Voice — verse, voice and prayer of the day. */
       var isSojo = (h === 'sojo.net' || h.slice(-9) === '.sojo.net');
-      /* Washington National Cathedral's sermons — the INBOX practice's text
-         half (owner: "make sure we build a reder over it"). The audio half is
-         the Podbean feed the app already carries, so the Listen button on the
-         card plays the episode and this only has to make the sermon readable. */
-      var isCathedral = (h === 'cathedral.org' || h.slice(-14) === '.cathedral.org');
       /* Joan Chittister's weekly. It is a Mailchimp campaign page, which is an
          HTML EMAIL — see the arm below for why that needs its own handling
          rather than the usual restyle. */
@@ -361,7 +356,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          not. It opens with the ordinary light newsletter chrome instead,
          which is what openExternal's `reader: true` -> lightChrome already
          asks for. */
-      if (!isOremus && !isSsje && !isNouwen && !isFdd && !isSojo && !isCathedral && !isChittister) return;
+      if (!isOremus && !isSsje && !isNouwen && !isFdd && !isSojo && !isChittister) return;
 
       /**
        * KEEP ONE BLOCK, HIDE ITS SIBLINGS — the technique three of these five
@@ -384,18 +379,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
        * `.ion-page-invisible` never clears in the automation pane, so it
        * measures 0x0 with the reader stylesheet REMOVED as well as applied.
        */
-      /* CATHEDRAL: `main.page` rather than the sermon body alone. Measured on
-         a live sermon, main.page has exactly three children — a header
-         carrying the title, the date and the service, an EMPTY
-         article.news_entry, and .page_content with the sermon in a
-         div.typography. The sermon text alone (div.typography) would have
-         dropped the title, because the h1 lives in the header and not in the
-         body; keeping main.page keeps them together, and the few pieces of
-         furniture inside it are named in the CSS below. */
       var ISOLATE_TARGET = isSsje ? '.fl-post-feed-post'
                          : isNouwen ? '.blog-item-inner-wrapper'
                          : isSojo ? 'article.node-versevoice'
-                         : isCathedral ? 'main.page'
                          /* The email's own body table. Mailchimp wraps the
                             campaign in #templateBody inside #backgroundTable;
                             isolating it drops the archive bar and the tracking
@@ -783,34 +769,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            stock photography that adds nothing to a reading; Grist's lead photo
            is part of the story and Sojourners' images are its own. An
            unscoped `img{display:none}` blanked all three. */
-        /* ---- Washington National Cathedral · sermons -------------------
-           Measured on a live sermon page. The isolate keeps main.page; this
-           strips the furniture inside it and sets the type.
-
-           THE BREADCRUMB GOES ("You are here: / Home / SERMONS / Great is Your
-           Faith") — it repeats the title immediately above the title. So does
-           the VIDEO: the sermon's own page embeds a YouTube player, and the
-           card's Listen button already hands the Cathedral's podcast episode
-           to the app's player, so an embed here is a second, worse way to hear
-           the same thing inside a surface meant for reading. */
-        'main.page .page_breadcrumb,main.page iframe,main.page .news_entry{display:none!important;}',
-        'main.page,main.page .page_header,main.page .page_content,main.page .fs-row,',
-        'main.page .fs-cell,main.page .typography{background:transparent!important;',
-        'max-width:none!important;width:auto!important;margin:0!important;padding:0!important;}',
-        'main.page .page_header{padding:0 20px 6px!important;}',
-        'main.page .typography{padding:0 20px!important;}',
-        /* The title, then the date and the service beneath it — the page's own
-           order, set the way the other readers set a date line. */
-        'main.page h1.page_title{font-size:27px!important;line-height:1.18!important;',
-        'font-weight:700!important;margin:0 0 8px!important;color:#F0EDE6!important;}',
-        'main.page .page_bit_label{font-size:13px!important;letter-spacing:.10em;',
-        'text-transform:uppercase;color:rgba(200,212,192,0.75)!important;',
-        'display:inline-block;margin:0 10px 14px 0!important;text-decoration:none!important;}',
-        'main.page .typography p,main.page .typography li{font-size:18px!important;',
-        'line-height:1.72!important;color:#F0EDE6!important;margin:0 0 1.15em!important;}',
-        'main.page .typography h2,main.page .typography h3{font-size:20px!important;',
-        'font-weight:700!important;color:#F0EDE6!important;margin:1.4em 0 .5em!important;}',
-        'main.page,main.page *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
         /* ---- Joan Chittister · Vision and Viewpoint ----------------------
            A MAILCHIMP CAMPAIGN IS AN HTML EMAIL, and that is the whole
            problem. Measured on the live page: the campaign sits in
@@ -967,7 +925,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 : isNouwen ? 'the Henri Nouwen Society'
                 : isSojo   ? 'Sojourners'
                 : isFdd    ? 'Forward Movement'
-                           : 'Washington National Cathedral';
+                           : 'Benetvision';
         var note = document.createElement('div');
         note.className = 'phoebe-reader-note';
         note.innerHTML = 'Shown in Phoebe\\u2019s reader view. Written and published by ' +
@@ -2357,8 +2315,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         func matches(_ domain: String) -> Bool { h == domain || h.hasSuffix("." + domain) }
         return matches("oremus.org") || matches("ssje.org")
             || matches("henrinouwen.org") || matches("forwardmovement.org")
-            || matches("sojo.net") || matches("cathedral.org")
-            || matches("mailchi.mp")
+            || matches("sojo.net") || matches("mailchi.mp")
     }
 
     private func syncChromeToPage() {

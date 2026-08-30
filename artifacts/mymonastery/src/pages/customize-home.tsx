@@ -31,7 +31,7 @@ const HOME_MODULES = [
   // Must match HOME_MODULE_KEYS in api-server/src/routes/prayer.ts. "feeds" was
   // missing here, so saving from this page silently stripped it and the server
   // re-appended it at the end — quietly moving the user's feeds card. Keep in sync.
-  "office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "chittister", "cathedral",
+  "office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "chittister",
   "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests",
 ] as const;
 type HomeModule = typeof HOME_MODULES[number];
@@ -118,7 +118,7 @@ const HOME_LAYOUT_VERSION = 2;
 // requests (pinned) → community prayers (office) →
 // Forward Day by Day. Everything else is hidden but addable.
 const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "fdd", "contemplation", "listening", "examen", "cac", "ssje", "vts", "ncmp", "podcasts"];
-const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "chittister", "cathedral", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts"];
+const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "chittister", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts"];
 
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
   const { t } = useTranslation();
@@ -133,7 +133,6 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     compline:     { label: t("rhythm.card_compline", { defaultValue: "Compline" }), emoji: "🌙", sub: t("customize_home.module_compline_sub", { defaultValue: "The night office · available from 7pm" }) },
     taize:        { label: t("rhythm.card_taize", { defaultValue: "Taizé meditation" }), emoji: "🕯️", sub: t("customize_home.module_taize_sub", { defaultValue: "The newest meditation from Taizé · waits until you've read it" }) },
     chittister:   { label: t("rhythm.card_chittister", { defaultValue: "Vision and Viewpoint" }), emoji: "🌾", sub: t("customize_home.module_chittister_sub", { defaultValue: "Joan Chittister's weekly · waits until you've read it" }) },
-    cathedral:    { label: t("rhythm.card_cathedral", { defaultValue: "National Cathedral sermon" }), emoji: "⛪", sub: t("customize_home.module_cathedral_sub", { defaultValue: "Washington National Cathedral · read or listen" }) },
     examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },
     cac:          { label: "CAC Daily Reflection",               emoji: "🌅", sub: "Today's reflection from the Center for Action & Contemplation" },
     fdd:          { label: "Forward Day by Day",                 emoji: "📖", sub: "Today's meditation from Forward Movement" },

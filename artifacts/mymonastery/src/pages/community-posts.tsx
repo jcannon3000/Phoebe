@@ -55,12 +55,16 @@ export default function CommunityPostsPage() {
   });
 
   const post = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/groups/${slug}/reflections`, {
+    mutationFn: (opts?: { publish?: boolean }) => apiRequest("POST", `/api/groups/${slug}/reflections`, {
       title: title.trim(),
       body: body.trim(),
       url: url.trim(),
       openExternally,
       ctaLabel: ctaLabel.trim(),
+      // Defaults to true server-side; sent explicitly so "Save as draft" has
+      // something to say. Without this the draft state was unreachable from
+      // the app at all — and so, therefore, was the Publish button below it.
+      publish: opts?.publish !== false,
     }),
     onSuccess: () => {
       setTitle(""); setBody(""); setUrl(""); setCtaLabel(""); setOpenExternally(false); setError(null);
@@ -70,6 +74,41 @@ export default function CommunityPostsPage() {
       void getQueryClient()?.invalidateQueries({ queryKey: ["/api/me/group-reflection/latest"] });
     },
     onError: (e: unknown) => setError((e as { message?: string })?.message ?? "Could not post"),
+  });
+
+  /**
+   * Publish a draft.
+   *
+   * A post saved unpublished had no way back: the feed selects on
+   * publishedAt being non-null and the API had only create and delete, so
+   * "Draft" in the list below was a permanent state. The route sets the
+   * one-week expiry at publication for a link post, which is what makes a
+   * draft worth having — the week starts when people can see it.
+   */
+  const publish = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/groups/${slug}/reflections/${id}/publish`),
+    onSuccess: () => {
+      void refetch();
+      void getQueryClient()?.invalidateQueries({ queryKey: ["/api/me/group-reflection/latest"] });
+    },
+    onError: (e: unknown) => setError((e as { message?: string })?.message ?? "Could not publish"),
+  });
+
+  /**
+   * Mint a new inbound address.
+   *
+   * An inbound address is a public write endpoint — whoever holds it can post
+   * to the whole congregation — and it travels by email, so it leaks the way
+   * email leaks: forwarded, quoted in a newsletter footer, screenshotted. The
+   * invite token has had a rotate button since it existed; this is the same
+   * thing for the address that matters more.
+   */
+  const rotateInbound = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/groups/${slug}/rotate-inbound`),
+    onSuccess: () => {
+      void getQueryClient()?.invalidateQueries({ queryKey: [`/api/groups/${slug}/inbound-address`] });
+    },
+    onError: (e: unknown) => setError((e as { message?: string })?.message ?? "Could not change the address"),
   });
 
   const remove = useMutation({
@@ -152,7 +191,7 @@ export default function CommunityPostsPage() {
         )}
         {error && <p style={{ color: "#E8A0A0", fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
         <button
-          type="button" disabled={!canPost || post.isPending} onClick={() => post.mutate()}
+          type="button" disabled={!canPost || post.isPending} onClick={() => post.mutate({ publish: true })}
           style={{
             width: "100%", borderRadius: 999, padding: "14px 20px", marginBottom: 30,
             background: canPost ? "rgba(46,107,64,0.9)" : "rgba(240,237,230,0.06)",
@@ -162,6 +201,25 @@ export default function CommunityPostsPage() {
           }}
         >
           {post.isPending ? "Posting…" : "Post to the group"}
+        </button>
+        {/**
+          * Write it now, send it when you mean to.
+          *
+          * A leader drafting Sunday's reflection on a Thursday shouldn't have
+          * to keep it in a notes app. It matters most for a LINK post, whose
+          * one-week life starts at publication rather than at writing — so a
+          * draft costs none of the week it will be seen in.
+          */}
+        <button
+          type="button" disabled={!canPost || post.isPending} onClick={() => post.mutate({ publish: false })}
+          style={{
+            width: "100%", borderRadius: 999, padding: "12px 20px", marginTop: -18, marginBottom: 30,
+            background: "transparent", color: canPost ? "rgba(200,212,192,0.8)" : "rgba(240,237,230,0.35)",
+            border: "none", fontFamily: FONT, fontSize: 14, fontWeight: 600,
+            cursor: canPost ? "pointer" : "default",
+          }}
+        >
+          Save as a draft
         </button>
 
         {group?.inboundAddress && (
@@ -180,9 +238,23 @@ export default function CommunityPostsPage() {
               {group.inboundAddress}
             </code>
             <p style={{ color: FAINT, fontSize: 12, lineHeight: 1.5, margin: "10px 0 0" }}>
-              Only mail from a group admin's own address is accepted, so this can be
-              on a public list safely.
+              Only mail from a group admin's own address is accepted, and the sending
+              domain has to check out, so this can be on a public list safely.
             </p>
+            {/* The way back if it ever gets somewhere it shouldn't. Confirmed
+                first: the old address stops working the moment this runs, and
+                whoever mails the newsletter has to be told the new one. */}
+            <button
+              type="button"
+              disabled={rotateInbound.isPending}
+              onClick={() => {
+                if (!window.confirm("Change this address? The current one stops working straight away, and you'll need to give the new address to whoever sends your newsletter.")) return;
+                rotateInbound.mutate();
+              }}
+              style={{ background: "transparent", border: "none", color: "rgba(200,212,192,0.7)", fontFamily: FONT, fontSize: 12.5, fontWeight: 600, cursor: "pointer", padding: "10px 0 0" }}
+            >
+              {rotateInbound.isPending ? "Changing…" : "Change this address"}
+            </button>
           </div>
         )}
 
@@ -199,12 +271,23 @@ export default function CommunityPostsPage() {
                   {[p.url ? "Link" : "Written", p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : "Draft"].join(" · ")}
                 </p>
               </div>
-              <button
-                type="button" onClick={() => remove.mutate(p.id)}
-                style={{ background: "transparent", border: "none", color: "rgba(232,160,160,0.85)", fontFamily: FONT, fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
-              >
-                Remove
-              </button>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexShrink: 0 }}>
+                {/* Only on a draft — a published post has nothing to publish. */}
+                {!p.publishedAt && (
+                  <button
+                    type="button" onClick={() => publish.mutate(p.id)} disabled={publish.isPending}
+                    style={{ background: "transparent", border: "none", color: "rgba(143,175,150,0.95)", fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Publish
+                  </button>
+                )}
+                <button
+                  type="button" onClick={() => remove.mutate(p.id)}
+                  style={{ background: "transparent", border: "none", color: "rgba(232,160,160,0.85)", fontFamily: FONT, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           </div>
         ))}

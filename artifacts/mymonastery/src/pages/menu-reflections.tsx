@@ -87,10 +87,9 @@ export default function MenuReflectionsPage() {
   });
   const taize = useQuery<InboxItem | null>(weeklyOpts("/api/taize/latest"));
   const chittister = useQuery<InboxItem | null>(weeklyOpts("/api/chittister/latest"));
-  const cathedral = useQuery<InboxItem | null>(weeklyOpts("/api/cathedral-sermons/latest"));
 
   const openWeekly = (
-    source: "taize" | "chittister" | "cathedral",
+    source: "taize" | "chittister",
     item: InboxItem | null | undefined,
     fallbackUrl: string,
   ) => () => {
@@ -129,11 +128,6 @@ export default function MenuReflectionsPage() {
               emoji: "🌾", label: "Vision and Viewpoint",
               sub: chittister.data?.title ?? "Joan Chittister's weekly",
               onClick: openWeekly("chittister", chittister.data, "https://www.joanchittister.org/pages/newsletters"),
-            },
-            {
-              emoji: "⛪", label: "National Cathedral sermon",
-              sub: cathedral.data?.title ?? "Washington National Cathedral",
-              onClick: openWeekly("cathedral", cathedral.data, "https://cathedral.org/sermons/"),
             },
             { emoji: "🦩", label: "VTS Dean's Commentary", sub: "Virginia Theological Seminary", onClick: openVts },
           ],

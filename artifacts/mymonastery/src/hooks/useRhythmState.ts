@@ -221,10 +221,6 @@ export type RhythmState = {
   /** The newest item REGARDLESS of whether it has been read — the undo needs
    *  it, and `waiting` is null in exactly the case undo applies to. */
   chittisterLatest: InboxItem | null;
-  cathedralActive: boolean;
-  cathedralDone: boolean;
-  cathedralWaiting: InboxItem | null;
-  cathedralLatest: InboxItem | null;
   taizeDone: boolean;
   /** The meditation waiting to be read, or null when the inbox is empty. */
   taizeWaiting: { id: string; title: string; url: string; published: string | null } | null;
@@ -753,7 +749,6 @@ export function useRhythmState(): RhythmState {
   const visioActive = homeCardActive(hl, "visio");
   const taizeActive = homeCardActive(hl, "taize");
   const chittisterActive = homeCardActive(hl, "chittister");
-  const cathedralActive = homeCardActive(hl, "cathedral");
   // Compline — the night office, offered as a contemplative add-on card.
   // complineActive means "the user has this in their rhythm" (mirrors every
   // other *Active flag — never time-gated, so the card is reliably present
@@ -1020,12 +1015,6 @@ export function useRhythmState(): RhythmState {
     staleTime: 30 * 60_000,
     enabled: chittisterActive,
   });
-  const { data: cathedralLatest } = useQuery<InboxItem | null>({
-    queryKey: ["/api/cathedral-sermons/latest"],
-    queryFn: async () => (await apiRequest("GET", "/api/cathedral-sermons/latest")) ?? null,
-    staleTime: 30 * 60_000,
-    enabled: cathedralActive,
-  });
 
   // ANY tracked source counts as "reflected today" — spelled out per source
   // it would quietly stop counting the next one added (this line already had
@@ -1259,8 +1248,6 @@ export function useRhythmState(): RhythmState {
   // day could never read as finished in the week between publications.
   const chittisterWaiting = chittisterActive ? waitingItem("chittister", chittisterLatest) : null;
   const chittisterDone = chittisterActive && chittisterWaiting == null;
-  const cathedralWaiting = cathedralActive ? waitingItem("cathedral", cathedralLatest) : null;
-  const cathedralDone = cathedralActive && cathedralWaiting == null;
   // Compline is an OFFICE, so its done-state comes from the office flags (the
   // office viewer's local stamp) — not the practice_completion table the
   // logging-first practices use.
@@ -1620,7 +1607,6 @@ export function useRhythmState(): RhythmState {
      */
     ...(taizeActive ? [taizeDone] : []),
     ...(chittisterActive ? [chittisterDone] : []),
-    ...(cathedralActive ? [cathedralDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted. Same for a
     // custom scoped to weekdays on a day it isn't kept (anchorOnDay): it draws
     // NO card on that day, so counting it here would add a dot that can never
@@ -1664,8 +1650,7 @@ export function useRhythmState(): RhythmState {
      * timeout, so a dead upstream costs one wait rather than a blank home.
      */
     (!taizeActive || taizeLatest !== undefined || offline) &&
-    (!chittisterActive || chittisterLatest !== undefined || offline) &&
-    (!cathedralActive || cathedralLatest !== undefined || offline));
+    (!chittisterActive || chittisterLatest !== undefined || offline));
 
   /**
    * The side's SECOND practice — active when one is stored AND it can be told
@@ -1711,10 +1696,6 @@ export function useRhythmState(): RhythmState {
     chittisterDone,
     chittisterWaiting,
     chittisterLatest: chittisterLatest ?? null,
-    cathedralActive,
-    cathedralDone,
-    cathedralWaiting,
-    cathedralLatest: cathedralLatest ?? null,
     complineActive,
     cobreatheActive,
     prayerListActive,

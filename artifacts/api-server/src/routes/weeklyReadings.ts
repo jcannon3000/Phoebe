@@ -1,11 +1,7 @@
-// The other two INBOX sources — Joan Chittister's weekly, and the National
-// Cathedral's sermons.
+// Joan Chittister's weekly, as an INBOX source.
 //
-// Owner, of Chittister: "https://www.joanchittister.org/pages/newsletters try
-// to integrate the weekly here". Of the Cathedral: "what about doing National
-// Cathedral Sermons as a newsletter in the imbox way", "make sure we build a
-// reder over it", "but lets also bring the podcast feature back in that they
-// could listen to it", "we should already have the audio".
+// Owner: "https://www.joanchittister.org/pages/newsletters try to integrate the
+// weekly here."
 //
 // THE INBOX SHAPE IS TAIZÉ'S, deliberately (see routes/taize.ts and
 // lib/taizeInbox.ts). A weekly piece of writing is not day-scoped: missing
@@ -13,16 +9,18 @@
 // So the server only ever says what the newest one IS, and the client tracks
 // whether this person has read THAT id.
 //
-// BOTH ARE REAL FEEDS, which is the difference from Taizé — that one has no
-// feed at all and its index has to be parsed. These two publish RSS, so this
-// reads the feed and nothing here scrapes a page.
+// This one is a REAL FEED, which is the difference from Taizé — that has no
+// feed at all and its index has to be parsed. Chittister's weekly comes from
+// the Benetvision Mailchimp archive feed: her newsletters page is a SUBSCRIBE
+// form with no archive, and the "Teachings" Shopify blog last published in
+// February 2025, so neither is the weekly. The public campaign archive is, and
+// it carries every send.
 //
-//   Chittister → the Benetvision Mailchimp archive feed. The newsletters page
-//     itself is a SUBSCRIBE form with no archive, and the "Teachings" Shopify
-//     blog last published in February 2025 — neither is the weekly. The public
-//     campaign archive is, and it carries every send.
-//
-//   Cathedral → cathedral.org/sermons/feed/, one sermon each Sunday.
+// (The National Cathedral's sermons were a second source here and were removed
+// at the owner's word — "let take out the catheral sermon actually" — after
+// the reader over them was working. The RSS reader below is still written for
+// more than one feed because that cost nothing and the next source will want
+// it.)
 
 import { Router, type IRouter, type Request, type Response } from "express";
 
@@ -156,20 +154,9 @@ export async function chittisterWeekly(): Promise<WeeklyReading[]> {
   });
 }
 
-// ── Washington National Cathedral · sermons ──────────────────────────────────
-//
-// One sermon a Sunday. Some are titled ("Great is Your Faith") and some are
-// not ("Sermon: The Rev. Melissa K. Hollerith") — both are left exactly as the
-// Cathedral titles them, since a preacher's name IS the useful label when
-// there is no title.
-const CATHEDRAL_FEED = "https://cathedral.org/sermons/feed/";
-
-export async function cathedralSermons(): Promise<WeeklyReading[]> {
-  return cached("cathedral", async () => {
-    const items = await fetchFeed(CATHEDRAL_FEED);
-    return items.map(({ pubDate: _p, ...rest }) => rest);
-  });
-}
+// (The National Cathedral's sermons lived here — feed, parser and routes.
+// The owner removed the practice altogether: "let take out the catheral
+// sermon actually". Joan Chittister's weekly above is unchanged.)
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 // Public, no auth, mirroring /taize/latest: the server says what the newest one
@@ -188,15 +175,6 @@ router.get("/chittister/latest", async (_req: Request, res: Response): Promise<v
 router.get("/chittister/weekly", async (_req: Request, res: Response): Promise<void> => {
   res.setHeader("Cache-Control", "public, max-age=900");
   res.json(await chittisterWeekly());
-});
-
-router.get("/cathedral-sermons/latest", async (_req: Request, res: Response): Promise<void> => {
-  serveLatest(await cathedralSermons(), res);
-});
-
-router.get("/cathedral-sermons/all", async (_req: Request, res: Response): Promise<void> => {
-  res.setHeader("Cache-Control", "public, max-age=900");
-  res.json(await cathedralSermons());
 });
 
 export default router;

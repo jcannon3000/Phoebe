@@ -35,12 +35,11 @@
  * SOURCE as well, so three inboxes can't read each other's ids. The Taizé
  * functions remain as thin wrappers so existing call sites keep working.
  */
-export type InboxSource = "taize" | "chittister" | "cathedral";
+export type InboxSource = "taize" | "chittister";
 
 const READ_KEY_FOR: Record<InboxSource, string> = {
   taize: "phoebe:taize:read-ids",
   chittister: "phoebe:chittister:read-ids",
-  cathedral: "phoebe:cathedral:read-ids",
 };
 /** How many ids to remember. Only the newest is ever asked about; the rest are
  *  kept so re-reading an older one doesn't resurrect it in the list view. */

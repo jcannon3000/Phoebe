@@ -22,7 +22,6 @@ import { recordPracticeOpen, sortCardsByLearnedOrder } from "@/lib/practiceOrder
 import { reflectionSourceUrl, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markInboxRead, unmarkInboxRead } from "@/lib/taizeInbox";
-import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { markCustomDoneToday, setCustomNotToday, unmarkCustomDoneToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
 import { useVisioToday } from "@/hooks/useVisioToday";
@@ -765,7 +764,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, groupReflection, chittisterActive, chittisterDone, chittisterWaiting, chittisterLatest, cathedralActive, cathedralDone, cathedralWaiting, cathedralLatest, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, groupReflection, chittisterActive, chittisterDone, chittisterWaiting, chittisterLatest, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1092,53 +1091,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       : t("rhythm.blurb_taize_empty", { defaultValue: "Nothing new since the last one" }),
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
   };
-  /**
-   * LISTEN — hand the Cathedral's newest episode to the global player.
-   *
-   * The episode is fetched ON DEMAND rather than with the card: the card only
-   * needs the sermon's TEXT to render, and a listener is the exception. The
-   * podcast route already resolves "today" for a show, so this is one call and
-   * no new server surface.
-   */
-  const cathedralPlayer = usePodcastPlayer();
-  const playCathedralSermon = async () => {
-    try {
-      const ep = await apiRequest("GET", "/api/podcast/national-cathedral-sermons/today") as {
-        feedTitle: string | null; title: string | null; audioUrl: string | null;
-        durationSeconds: number | null; publishedAt: string | null; imageUrl: string | null;
-      } | null;
-      if (!ep?.audioUrl) return;
-      cathedralPlayer.play({
-        showSlug: "national-cathedral-sermons",
-        episodeId: ep.audioUrl,
-        title: ep.title,
-        audioUrl: ep.audioUrl,
-        imageUrl: ep.imageUrl,
-        showTitle: ep.feedTitle ?? "National Cathedral Sermons",
-        showArtwork: ep.imageUrl,
-        durationSeconds: ep.durationSeconds,
-        publishedAt: ep.publishedAt,
-        sessionSurface: "cathedral-sermon",
-        showHref: "/podcast/national-cathedral-sermons",
-      });
-      // Hearing it IS reading it — the inbox clears either way, or someone who
-      // listens would be left with a card telling them to read what they just
-      // heard.
-      if (cathedralWaiting) markInboxRead("cathedral", cathedralWaiting.id);
-    } catch { /* offline / no episode — the Read path still works */ }
-  };
-  /**
-   * The id the UNDO puts back — from `latest`, not `waiting`.
-   *
-   * These read `waiting?.id`, and `onUnlog` is offered only when `waiting` is
-   * null: the guard inside it (`if (id)`) was therefore false every single
-   * time it ran. Someone who mis-tapped the Cathedral card watched it go to
-   * Done, tapped ✓ → Unlog, and nothing happened — the sermon was
-   * unrecoverable. `latest` is the item whether or not it has been read,
-   * which is what an undo needs by definition.
-   */
   const chittisterLatestId = chittisterLatest?.id ?? null;
-  const cathedralLatestId = cathedralLatest?.id ?? null;
 
   /**
    * JOAN CHITTISTER'S WEEKLY — Vision & Viewpoint, in the inbox shape.
@@ -1179,52 +1132,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
   };
 
-  /**
-   * THE NATIONAL CATHEDRAL'S SERMONS — read or heard.
-   *
-   * Owner: "what about doing National Cathedral Sermons as a newsletter in the
-   * imbox way", "make sure we build a reder over it", "but lets also bring the
-   * podcast feature back in that they could listen to it", "we should already
-   * have the audio". We do: podcast.ts has carried the Cathedral's Podbean
-   * feed all along, so Listen hands that episode to the same player every
-   * other listen uses rather than introducing a second audio path. The sermon
-   * PAGES have no mp3 — only a YouTube embed — so the podcast feed is the
-   * audio, and the page is the text.
-   */
-  const cathedralCard = {
-    key: "cathedral", emoji: "⛪", rgb: "120,140,170",
-    done: cathedralDone,
-    ...(cathedralWaiting ? { href: cathedralWaiting.url } : {}),
-    title: t("rhythm.card_cathedral", { defaultValue: "National Cathedral sermon" }),
-    blurb: cathedralWaiting
-      ? [cathedralWaiting.title, waitingLabel(cathedralWaiting)].filter(Boolean).join(" · ")
-      : t("rhythm.blurb_cathedral_empty", { defaultValue: "Nothing new since the last one" }),
-    ...(cathedralWaiting ? {
-      onClick: () => openExternalThenMarkRead(
-        cathedralWaiting.url,
-        () => { markInboxRead("cathedral", cathedralWaiting.id); swellHaptic(); },
-        { reader: true },
-      ),
-      secondaryCta: t("rhythm.listen", { defaultValue: "Listen" }),
-      onSecondary: () => { void playCathedralSermon(); },
-    } : {}),
-    onUnlog: cathedralWaiting ? undefined : () => {
-      if (cathedralLatestId) unmarkInboxRead("cathedral", cathedralLatestId);
-    },
-    cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
-  };
-
-  /**
-   * A group admin's weekly reflection — the inbox card the group fills.
-   *
-   * Not in the customizer and not in the home layout: it appears because
-   * someone in your parish wrote something, and it leaves when you have read
-   * it. There is nothing to switch on.
-   *
-   * It opens IN THE APP rather than externally — the text lives in our own
-   * database, written by a named person for this group, so there is nothing to
-   * link out to and nothing of anyone else's to reproduce.
-   */
   const groupReflectionCard = groupReflection ? {
     key: "group-reflection", emoji: groupReflection.url ? "🔗" : "✉️", rgb: "168,150,120",
     done: false,
@@ -1708,7 +1615,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // No slot lookup: it isn't a scheduled practice, it's post that arrived.
     ...(groupReflectionCard ? [{ ...groupReflectionCard, slot: "anytime" as CustomSlot }] : []),
     ...(chittisterActive ? [{ ...chittisterCard, slot: getPracticeSlot("chittister") }] : []),
-    ...(cathedralActive ? [{ ...cathedralCard, slot: getPracticeSlot("cathedral") }] : []),
     // Prayer List is a standalone "anytime" practice — it left the
     // morning/evening sides entirely (owner, 2026-08-26: "take your prayer
     // list out of the morning and evening side"), so the card no longer moves

@@ -15,7 +15,7 @@ import {
   setSideContemplationKind, setSideDayRules, setDaySwapSuppressed, clearSideDaySwap,
   TRACKED_REFLECTION_SOURCES,
 } from "@/lib/officePrefs";
-import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
+import { getGuestSilenceGoalMin, setGuestSilenceGoalMin, predatesSeedStamp } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset, type OfficeSideKey } from "@/lib/rulePresets";
 import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot, RELATIONAL_PRACTICES } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
@@ -103,10 +103,24 @@ export default function CustomizePage() {
   const [entered, setEntered] = useState(false);
   useEffect(() => { const t = requestAnimationFrame(() => setEntered(true)); return () => cancelAnimationFrame(t); }, []);
 
-  // Self-heal a stale home layout a short-lived Creation Prayer bug wrote, which
-  // hid the newsletter card. Guests only (they never have a legit home layout).
+  /**
+   * Self-heal a stale home layout a short-lived Creation Prayer bug wrote,
+   * which hid the newsletter card. Guests only.
+   *
+   * GATED ON A DEVICE THAT PREDATES THE SEED STAMP — the same gate guestSeed
+   * puts on the same call, and the reason is written out there: the cleanup
+   * decides a layout is spurious by asking whether it contains "office", and
+   * the default rule (Visio Divina, no office) fails that test. Ungated, this
+   * ran on every visit to this page: a new user opened the app, saw Visio,
+   * tapped "Shape your rhythm", and came back to a home with no Visio card —
+   * permanently, because seedGuestRule early-returns once SEED_KEY is set and
+   * never re-seeds. The slot key survived, so the edit list and the widget
+   * went on believing the practice was in the rhythm.
+   */
   useEffect(() => {
-    if (guest && clearSpuriousGuestHomeLayout()) window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+    if (guest && predatesSeedStamp() && clearSpuriousGuestHomeLayout()) {
+      window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+    }
   }, [guest]);
 
   // A signed-in "light" account (real, but not device-local) has its silence
@@ -384,6 +398,24 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
         if (!order.includes(key)) order.push(key);
         if (on) hidden.delete(key); else hidden.add(key);
       }
+      /**
+       * THE STRUCTURAL KEYS, which this page had never written.
+       *
+       * The full customizer's order begins "requests, office, contemplation,
+       * …, feeds"; this one built its order out of newsletters and practices
+       * alone, so nothing it wrote ever contained "office". That is the exact
+       * test `clearSpuriousGuestHomeLayout` uses to decide a layout is
+       * garbage — so every preset adopted here was deleted on the next visit
+       * to this page. Adopt "Contemplative Art", get Visio and a Walk, come
+       * back to change the newsletter, and both are gone.
+       *
+       * They are appended rather than prepended so an existing order keeps
+       * the arrangement the person has; cleanHomeLayout backfills anything
+       * still missing.
+       */
+      for (const key of ["requests", "office", "contemplation", "feeds"]) {
+        if (!order.includes(key)) order.push(key);
+      }
       const layout: HomeLayout = { order, hidden: [...hidden], v: HOME_LAYOUT_VERSION };
       if (guest) cacheHomeLayoutLocalOnly(layout);
       else void saveHomeLayout(layout).catch(() => { /* best-effort */ });
@@ -427,7 +459,21 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
     const otherNewsletters = TRACKED_REFLECTION_SOURCES.filter((n) => n !== newsletter);
     const baseOrder = existing?.order ?? ["requests", "office", "contemplation", newsletter, "feeds", "ncmp", "podcasts", ...otherNewsletters];
     const baseHidden = existing?.hidden ?? ["ncmp", "podcasts", "reading", "cobreathe", "prayer-list", ...otherNewsletters];
+    /**
+     * The practice keys are stripped so exactly one can be re-added below —
+     * but the STRUCTURAL keys have to survive that.
+     *
+     * On a freshly seeded guest `existing.order` is `["visio"]`: every element
+     * is a practice key, so this filtered the order to `[]`. Choosing "None"
+     * to mean "no extra practice" wrote an empty layout, which is not the same
+     * statement — with a layout present but empty, the newsletter fallback is
+     * suppressed too, so the CAC card went with it. The person meant "no
+     * extras" and got "nothing".
+     */
     const order = baseOrder.filter((k) => !PRACTICE_KEYS.includes(k as AddPractice));
+    for (const key of ["requests", "office", "contemplation", "feeds"]) {
+      if (!order.includes(key)) order.push(key);
+    }
     const hidden = new Set(baseHidden.filter((k) => !PRACTICE_KEYS.includes(k as AddPractice)));
     if (choice !== "none") {
       const feedsIdx = order.indexOf("feeds");

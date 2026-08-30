@@ -315,6 +315,44 @@ app.get("/.well-known/apple-app-site-association", (_req, res) => {
               // ── Unsigned-in welcome (so a fresh tap still routes
               //    through the app once installed) ─────────────────
               { "/": "/pray" },
+              /**
+               * ── THE HOME-SCREEN WIDGET'S OWN DESTINATIONS ────────
+               *
+               * Every one of these was missing, which meant every tap
+               * on the widget bounced to Safari — where the person is
+               * usually not signed in. The owner's ask was explicit:
+               * "if we click the cta on a card we want it to not just
+               * open the app but open the practice."
+               *
+               * These must stay in step with widgetSync.ts's
+               * STATIC_HREF / contemplationHref / cardHref. If you add
+               * a practice the widget can link to, add its prefix
+               * here in the same commit or the link is dead on
+               * arrival — silently, because it still opens something.
+               */
+              { "/": "/cobreathe" },
+              { "/": "/cobreathe*" },
+              { "/": "/listening" },
+              { "/": "/visio" },
+              { "/": "/examen" },
+              { "/": "/novena" },
+              { "/": "/vts-reading" },
+              { "/": "/contemplation" },
+              { "/": "/contemplation*" },
+              { "/": "/begin-prayer" },
+              { "/": "/begin-prayer*" },
+              /**
+               * THE BARE ROOT, LAST — the widget's hero and the
+               * fallback for any card with no specific destination
+               * both point at "https://withphoebe.app/", and a bare
+               * "/" matched no component at all, so the biggest tap
+               * target on the widget was the one most certain to miss.
+               *
+               * Last because Apple matches longest-prefix-first and
+               * this is the least specific thing here; everything
+               * above still wins on its own path.
+               */
+              { "/": "/" },
             ],
           },
         ],

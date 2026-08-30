@@ -41,7 +41,22 @@ const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 // So: version the seed and migrate, but ONLY a device whose levels still match
 // a known historical seed exactly. That's the safe signal that the person never
 // touched it — anything else means they customized, and their rule is theirs.
-const SEED_VERSION_KEY = "phoebe:guest-seed-version";
+/**
+ * Exported because the SAME cleanup runs in a second place.
+ *
+ * `clearSpuriousGuestHomeLayout` decides a layout is spurious by asking
+ * whether `order` contains "office" — and the current default (Visio, no
+ * office) looks spurious by that test. The gate below is what stops it
+ * eating the default, and a copy of the call in customize.tsx had no gate at
+ * all. Anyone calling that cleanup must ask this question first.
+ */
+export const SEED_VERSION_KEY = "phoebe:guest-seed-version";
+
+/** True when this device predates the seed version stamp — the only devices
+ *  the spurious-layout cleanup was ever written for. */
+export function predatesSeedStamp(): boolean {
+  try { return !localStorage.getItem(SEED_VERSION_KEY); } catch { return false; }
+}
 const SEED_VERSION = "5";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never

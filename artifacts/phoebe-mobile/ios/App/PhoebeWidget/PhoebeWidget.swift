@@ -636,13 +636,13 @@ struct PhoebeWidgetView: View {
          */
         GeometryReader { geo in
             let s = Self.cardScale(geo.size, count: max(1, min(2, cards.count)))
-            // The header sits tight to the cards (owner: "bring the two cards
-            // up a notch on the widget") — the wordmark row and the stack were
-            // two points apart, with the stack's own centring spacers pushing
-            // the cards further down from there. Negative spacing pulls the
-            // stack back up into the room the shorter cards freed, without
-            // touching the cards' own geometry.
-            VStack(alignment: .leading, spacing: -4) {
+            // The gap between the header and the cards, and only that gap.
+            // It went negative to bring the cards up a notch; then the header
+            // itself moved up into the tile's margin (below) and took the
+            // cards with it — so this opens back up to give them a little room
+            // under the name (owner: "move the cards down a little") while the
+            // name and the pill stay where they were put.
+            VStack(alignment: .leading, spacing: 3) {
                 /**
                  * ALIGNED WITH THE CARD'S OWN CONTENT, not with the card's
                  * outer edge. Owner: "move the phoebe text over to the right

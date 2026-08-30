@@ -258,7 +258,7 @@ const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
  */
 type ExtraMapping =
   | { kind: "level"; level: "office" | "devotion" | "psalms" | "readings" | "guided-prayer" }
-  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" | "taize" | "chittister" | "cathedral" }
+  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" | "taize" | "chittister" }
   | { kind: "contemplation" }
   | { kind: "newsletter" };
 type ExtraPractice = {
@@ -327,7 +327,6 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // owner asked for Chittister's weekly by name ("try to integrate the weekly
   // here") and could not have found it.
   { title: () => "Vision and Viewpoint", emoji: "🌾", sub: "Joan Chittister's weekly — it waits until you read it.", excludes: "__none__", maps: { kind: "practice", key: "chittister" } , group: "contemplative" },
-  { title: () => "Cathedral Sermons", emoji: "⛪", sub: "Washington National Cathedral — it waits until you read it.", excludes: "__none__", maps: { kind: "practice", key: "cathedral" } , group: "contemplative" },
   { title: () => "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__", maps: { kind: "practice", key: "cobreathe" } , group: "contemplative" },
 ];
 
@@ -1312,7 +1311,6 @@ export default function WayOfLoveRuleFlow({
       visio: homeCardOn(user.homeLayout, "visio"),
       taize: homeCardOn(user.homeLayout, "taize"),
       chittister: homeCardOn(user.homeLayout, "chittister"),
-      cathedral: homeCardOn(user.homeLayout, "cathedral"),
       compline: homeCardOn(user.homeLayout, "compline"),
     });
     // Per-side Contemplative Prayer — re-seed once the home layout lands.
@@ -1334,7 +1332,7 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; taize: boolean; chittister: boolean; cathedral: boolean; compline: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; taize: boolean; chittister: boolean; compline: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: !creationHeldBySide() && homeCardOn(user?.homeLayout, "cobreathe"),
     audio: homeCardOn(user?.homeLayout, "listening"),
@@ -1345,10 +1343,9 @@ export default function WayOfLoveRuleFlow({
     taize: homeCardOn(user?.homeLayout, "taize"),
     // Seeded the same way as every sibling — the layout key IS the switch.
     chittister: homeCardOn(user?.homeLayout, "chittister"),
-    cathedral: homeCardOn(user?.homeLayout, "cathedral"),
     compline: homeCardOn(user?.homeLayout, "compline"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "taize" | "chittister" | "cathedral" | "compline") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "taize" | "chittister" | "compline") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -2101,7 +2098,6 @@ export default function WayOfLoveRuleFlow({
        */
       ...(contemplative.taize ? ["taize"] : []),
       ...(contemplative.chittister ? ["chittister"] : []),
-      ...(contemplative.cathedral ? ["cathedral"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
     const offKeys = [
@@ -2115,7 +2111,6 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.visio ? [] : ["visio"]),
       ...(contemplative.taize ? [] : ["taize"]),
       ...(contemplative.chittister ? [] : ["chittister"]),
-      ...(contemplative.cathedral ? [] : ["cathedral"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
     // No hardcoded "podcasts" here — extras.podcasts already routes it through
@@ -2571,7 +2566,7 @@ export default function WayOfLoveRuleFlow({
     // wants Visio Divina and a Contemplative Walk gets exactly those, and
     // nothing survives from the rule being replaced.
     setContemplative({
-      cobreathe: false, audio: false, examen: false, walk: false, visio: false, taize: false, chittister: false, cathedral: false, compline: false,
+      cobreathe: false, audio: false, examen: false, walk: false, visio: false, taize: false, chittister: false, compline: false,
       ...(preset.practices ?? {}),
     });
     /**
