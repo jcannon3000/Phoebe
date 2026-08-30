@@ -394,6 +394,23 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                          : isCathedral ? 'main.page'
                          : null;
 
+      /**
+       * The block the shared arm's TYPE rules may touch.
+       *
+       * That arm serves five hosts (SSJE, Nouwen, Sojourners, FDD, the
+       * Cathedral) and several of its rules were written for one of them and
+       * left bare — a `h3` sized for Nouwen's meditation title, a `p,li` set
+       * for its body. Bare, they apply to all five, and the only reason the
+       * Cathedral survived was a more specific selector winning by accident.
+       * The h1 rule two hundred lines down is already scoped, with a comment
+       * explaining that a bare one had set Grist's headline in Nouwen's date
+       * style; this is the same lesson applied to the rules that were missed.
+       *
+       * FDD has no isolate target (fddTrim does its trimming instead), so its
+       * own article stands in as the root.
+       */
+      var SCOPE = ISOLATE_TARGET || 'article.fdd';
+
       var ASSETS = 'https://withphoebe.app/reader/';
       var css = [
         /**
@@ -629,8 +646,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            "SATURDAY, AUGUST 29" with only a wide space between them. */
         'article.fdd h1 a{color:inherit!important;text-decoration:none!important;',
         'display:block!important;margin-top:2px!important;}',
-        'form,select,input,textarea,button[type="submit"],',
-        '[class*="signup"],[class*="newsletter"],[class*="mailchimp"]{display:none!important;}',
+        /* SCOPED to the block. `[class*="newsletter"]` is an unanchored
+           substring match on any class attribute — the same hazard as the
+           `.inline` collision that once un-hid every VCS picture — and it was
+           being applied to four hosts it was never tested on. */
+        SCOPE + ' form,' + SCOPE + ' select,' + SCOPE + ' input,' + SCOPE + ' textarea,',
+        SCOPE + ' button[type="submit"],',
+        SCOPE + ' [class*="signup"],' + SCOPE + ' [class*="newsletter"],' + SCOPE + ' [class*="mailchimp"]{display:none!important;}',
         /* SOJOURNERS, stripped to what the owner asked for: "all we want is the
            three headers — verse of the day, voice of the day and prayer of the
            day — just as header text, get rid of the lines, and the body
@@ -677,9 +699,23 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            already uses for prayer text, so the verse, the voice and the prayer
            are set in it and the labels above them stay Grotesk. That contrast
            is also what makes the sections legible as sections. */
+        /* THE FIELD ITEM, not just the paragraph — this is what made the
+           three passages uneven (owner: "The cell journey has uneven text").
+           Measured on the live page: Sojourners renders each passage as a bare
+           `div.field-item`, and only the Voice of the Day has a `<p>` inside
+           it. So a rule written for p/li/blockquote styled ONE of the three
+           and left the verse and the prayer at the site's inherited size —
+           which is exactly the mismatch on screen. Naming the field item
+           itself catches all three however Drupal wrapped them. */
+        'article.node-versevoice .field-item,',
+        'article.node-versevoice .field-item p,',
         'article.node-versevoice p,article.node-versevoice li,',
         'article.node-versevoice blockquote{font-family:Georgia,"Times New Roman",serif!important;',
-        'font-size:20px!important;line-height:1.6!important;margin:0 0 0.6em!important;}',
+        'font-size:20px!important;line-height:1.6!important;}',
+        /* The margin only on the things that stack, so the field item doesn't
+           add a second gap under a paragraph it already contains. */
+        'article.node-versevoice .field-item p,article.node-versevoice p,',
+        'article.node-versevoice li{margin:0 0 0.6em!important;}',
         /* MORE AIR BETWEEN THE THREE (owner: "do a little more space between
            sections"). Sojourners' own 96px was three separate screens on a
            phone and zero ran them together; the heading's top margin is what
@@ -715,10 +751,16 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'letter-spacing:.14em;text-transform:uppercase;',
         'line-height:1.45!important;font-weight:600!important;margin:0 0 18px!important;',
         'color:rgba(200,212,192,0.75)!important;}',
-        /* Nouwen's meditation title. */
-        'h3{font-size:27px!important;line-height:1.18!important;font-weight:700!important;',
+        /* Nouwen's meditation title — SCOPED, not bare. Bare, it also set
+           every h3 on the other four hosts at 27px; the Cathedral escaped
+           only because `main.page .typography h3` happened to outrank it. */
+        SCOPE + ' h3{font-size:27px!important;line-height:1.18!important;font-weight:700!important;',
         'margin:6px 0 16px!important;color:#F0EDE6!important;}',
-        'p,li{font-size:18px!important;line-height:1.72!important;color:#F0EDE6!important;',
+        /* Body type, likewise scoped to the block being read. Bare `p,li`
+           also painted cream on any part of the page isolate() had not
+           reached — including, on a day a publisher hasn't posted, an error
+           page with a white ground. */
+        SCOPE + ' p,' + SCOPE + ' li{font-size:18px!important;line-height:1.72!important;color:#F0EDE6!important;',
         'margin:0 0 1.15em!important;}',
         /* FDD's scripture sits above the reflection — set apart, the way the
            office sets a lesson's reference. */
@@ -852,6 +894,42 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         note.innerHTML = 'Shown in Phoebe\\u2019s reader view. The text is served by ' + a +
           ', which renders the NRSV under the licence above; Phoebe only changes how it looks on this screen.';
         cp.parentNode.insertBefore(note, cp.nextSibling);
+      }
+
+      /**
+       * The same credit, for the five hosts that aren't oremus.
+       *
+       * `credit()` above needs oremus's `.copyright` element, so on SSJE,
+       * Nouwen, FDD, Sojourners and the Cathedral a heavily restyled page
+       * carried NOTHING saying it was a reader view or whose writing it was
+       * — and the masthead that would have said so is deliberately off (the
+       * owner: "the header doesnt need a title", which is about a strapline
+       * over the title, not about attribution).
+       *
+       * That matters beyond manners. The rights posture this whole file rests
+       * on is that we never reproduce anyone's text: the reader is CSS over
+       * the page the reader's own browser fetched. Saying so, at the foot of
+       * the piece, is the part of that posture the reader can actually see.
+       *
+       * A FOOTER, not a header — appended inside the isolated block, after
+       * the writing, where a source line belongs.
+       */
+      function sourceNote() {
+        if (isOremus || !ISOLATE_TARGET) return;
+        if (document.querySelector('.phoebe-reader-note')) return;
+        var post = document.querySelector(ISOLATE_TARGET);
+        if (!post) return;
+        var who = isSsje   ? 'the Society of St. John the Evangelist'
+                : isNouwen ? 'the Henri Nouwen Society'
+                : isSojo   ? 'Sojourners'
+                : isFdd    ? 'Forward Movement'
+                           : 'Washington National Cathedral';
+        var note = document.createElement('div');
+        note.className = 'phoebe-reader-note';
+        note.innerHTML = 'Shown in Phoebe\\u2019s reader view. Written and published by ' +
+          '<a href="' + location.href + '">' + who + '</a>' +
+          ' \\u2014 Phoebe only changes how it looks on this screen. Tap Standard for their page.';
+        post.appendChild(note);
       }
 
       /** The site named at the top of the page — it stays in BOTH views. */
@@ -1095,8 +1173,32 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
           if (st0) st0.media = 'not all';
           return;
         }
+        /**
+         * NOTHING TO ISOLATE MEANS NOTHING TO RESTYLE.
+         *
+         * Every non-oremus arm keeps exactly one block (ISOLATE_TARGET) and
+         * clears the backgrounds along its spine. The stylesheet, though, was
+         * injected unconditionally and its shared head forces cream text on
+         * `body` and on every `p`/`li` — so when the target was ABSENT the
+         * page kept the publisher's white ground and got Phoebe's cream type
+         * on top of it. Invisible text, not a theory: Sojourners' URL is
+         * date-derived, and on a day they don't publish, the 404 page has no
+         * `article.node-versevoice`.
+         *
+         * So the sheet stays off until the block it was written for is
+         * actually on the page. The settle interval re-runs this, so a block
+         * that streams in late still gets the reader a moment later — and a
+         * page that never has one simply reads as the publisher built it,
+         * which is the correct answer for an error page.
+         */
+        var sheet = document.getElementById('phoebe-reader');
+        if (!isOremus && ISOLATE_TARGET && !document.querySelector(ISOLATE_TARGET)) {
+          if (sheet) sheet.media = 'not all';
+          return;
+        }
+        if (sheet) sheet.media = '';
         if (isOremus) { tidy(); credit(); }
-        else { isolate(); if (isFdd) fddTrim(); }
+        else { isolate(); if (isFdd) fddTrim(); sourceNote(); }
         masthead();
       }
       if (document.readyState !== 'loading') run();

@@ -636,7 +636,13 @@ struct PhoebeWidgetView: View {
          */
         GeometryReader { geo in
             let s = Self.cardScale(geo.size, count: max(1, min(2, cards.count)))
-            VStack(alignment: .leading, spacing: 2) {
+            // The header sits tight to the cards (owner: "bring the two cards
+            // up a notch on the widget") — the wordmark row and the stack were
+            // two points apart, with the stack's own centring spacers pushing
+            // the cards further down from there. Negative spacing pulls the
+            // stack back up into the room the shorter cards freed, without
+            // touching the cards' own geometry.
+            VStack(alignment: .leading, spacing: -4) {
                 /**
                  * ALIGNED WITH THE CARD'S OWN CONTENT, not with the card's
                  * outer edge. Owner: "move the phoebe text over to the right
@@ -736,7 +742,8 @@ struct PhoebeWidgetView: View {
         // — which is why the cards read as pinned rather than centred, and why
         // spacers alone could not have fixed it. 2pt keeps them off the
         // margin without eating the room the centring needs.
-        .padding(.vertical, 2)
+        .padding(.top, 0)
+        .padding(.bottom, 4)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
