@@ -1092,18 +1092,28 @@ function OpeningSplash() {
             // that must be tappable — without re-enabling it here, the escape
             // hatch would render and do nothing.
             pointerEvents: "auto",
-            minWidth: 180,
-            padding: "15px 34px",
-            borderRadius: 999,
-            background: "rgba(9,26,16,0.55)",
-            backdropFilter: "blur(11.34px)",
-            WebkitBackdropFilter: "blur(11.34px)",
-            border: "1px solid rgba(168,197,160,0.45)",
+            /* JUST THE WORD, GLOWING. Owner: "get rid of the pill around enter
+               on the splash screen and just have enter as text", "glwoing
+               text". The splash is one icon on a photograph; a frosted capsule
+               with a border was the most designed thing on it, and it made an
+               escape hatch look like the point of the screen. The word alone,
+               lit, is enough to be found by someone waiting — which is the only
+               reason it exists (it appears 1.6s in, when a launch has run long).
+               The tap target is kept honest with generous padding even though
+               nothing is drawn around it. */
+            padding: "14px 30px",
+            background: "none",
+            border: "none",
             color: "#F0EDE6",
             fontFamily: "'Space Grotesk', system-ui, sans-serif",
-            fontSize: 16,
+            fontSize: 17,
             fontWeight: 600,
-            letterSpacing: "0.02em",
+            letterSpacing: "0.06em",
+            /* The glow itself — the same warm halo the office's titles carry,
+               written here rather than borrowed from .title-glow-breathe so it
+               holds steady instead of pulsing at someone who is already
+               waiting. */
+            textShadow: "0 0 18px rgba(240,237,230,0.55), 0 0 42px rgba(168,197,160,0.35)",
             cursor: "pointer",
           }}
         >

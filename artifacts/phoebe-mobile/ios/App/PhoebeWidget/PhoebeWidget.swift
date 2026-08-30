@@ -594,14 +594,26 @@ struct PhoebeWidgetView: View {
      */
     private func progressPill(_ stats: PhoebeStats) -> some View {
         let total = max(0, min(8, stats.totalAnchors))
-        return HStack(spacing: 4) {
-            ForEach(0..<total, id: \.self) { i in
-                Circle()
-                    .fill(i < stats.doneCount ? phoebeSage : phoebeSage.opacity(0.28))
-                    .frame(width: 5, height: 5)
+        return HStack(spacing: 6) {
+            // THE WHOLE PILL, label and all (owner: "Have it be the full daily
+            // progress pill with daily progress to the left"). The app's header
+            // carries exactly this — the words, then the dots — and a widget
+            // showing only the dots was a different, quieter thing wearing the
+            // same shape. Naming what the dots count is also what makes them
+            // legible to someone who has not opened the app today.
+            Text("Daily Progress")
+                .font(sgRegular(9.5))
+                .foregroundColor(phoebeSage)
+                .lineLimit(1)
+            HStack(spacing: 4) {
+                ForEach(0..<total, id: \.self) { i in
+                    Circle()
+                        .fill(i < stats.doneCount ? phoebeSage : phoebeSage.opacity(0.28))
+                        .frame(width: 5, height: 5)
+                }
             }
         }
-        .padding(.horizontal, 9)
+        .padding(.horizontal, 10)
         .padding(.vertical, 5)
         .background(
             Capsule().fill(Color(red: 9/255, green: 26/255, blue: 16/255).opacity(0.45))
@@ -648,7 +660,10 @@ struct PhoebeWidgetView: View {
                     // a dark green ground read as the name being dimmed rather
                     // than as restraint.
                     Text("Phoebe")
-                        .font(sgBold(12))
+                        // A little bigger (owner) — it is the app's name on its
+                        // own widget, and at 12 it read as a caption over the
+                        // cards rather than as the thing they belong to.
+                        .font(sgBold(14))
                         .foregroundColor(.white)
                     Spacer(minLength: 8)
                     progressPill(stats)
