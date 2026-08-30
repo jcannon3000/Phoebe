@@ -152,8 +152,13 @@ struct PhoebeStats {
     // read), show a proper-looking hero for the time of day rather than a bare
     // "Time to pray" — so the widget always reads as a real Phoebe card.
     static func timeBasedFallback() -> PhoebeStats {
-        let hour = Calendar.current.component(.hour, from: Date())
-        let morning = hour < 14
+        // 4:30pm, the same boundary the home and widgetSync keep — the owner
+        // asked twice that the evening office not lead before it. This said
+        // 14:00, so a fresh install showed Evening Prayer from 2pm. Only
+        // reached before the app has ever pushed, but it is the first thing a
+        // new user sees on their lock screen.
+        let now = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        let morning = (now.hour ?? 0) * 60 + (now.minute ?? 0) < 16 * 60 + 30
         return PhoebeStats(
             kind: "office",
             eyebrow: "Book of Common Prayer",
@@ -399,9 +404,9 @@ struct PhoebeWidgetView: View {
             // than to homeWeeklyGrid (which is now unreachable; it stays
             // defined until someone with Xcode open can compile its removal).
             if let cards = stats.nextCards, !cards.isEmpty {
-                homeNextCards(cards)
+                homeNextCards(cards, stats)
             } else {
-                homeNextCards(PhoebeStats.timeBasedFallback().nextCards ?? [])
+                homeNextCards(PhoebeStats.timeBasedFallback().nextCards ?? [], stats)
             }
         default:
             // .systemSmall is no longer OFFERED (see supportedFamilies), but
@@ -578,7 +583,34 @@ struct PhoebeWidgetView: View {
     private static let cardVScale: CGFloat = 0.9
     private static let cardHeightAt1: CGFloat = (14.5 * 1.2 + 2 + 12 * 1.2 + 28) * cardVScale + 2
 
-    private func homeNextCards(_ cards: [NextCard]) -> some View {
+    /**
+     * The day's progress, as the app's own header shows it — a quiet capsule
+     * of dots, one per anchor, filled for what has been kept.
+     *
+     * Owner: "put the daily progress pill on the right side." It reads as a
+     * pill rather than a fraction for the same reason the home screen does:
+     * four dots with two filled says how the day is going at a glance, and
+     * "2/4" invites you to do arithmetic about your own prayer.
+     */
+    private func progressPill(_ stats: PhoebeStats) -> some View {
+        let total = max(0, min(8, stats.totalAnchors))
+        return HStack(spacing: 4) {
+            ForEach(0..<total, id: \.self) { i in
+                Circle()
+                    .fill(i < stats.doneCount ? phoebeSage : phoebeSage.opacity(0.28))
+                    .frame(width: 5, height: 5)
+            }
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(
+            Capsule().fill(Color(red: 9/255, green: 26/255, blue: 16/255).opacity(0.45))
+        )
+        .overlay(Capsule().strokeBorder(phoebeSage.opacity(0.22), lineWidth: 1))
+        .opacity(total > 0 ? 1 : 0)
+    }
+
+    private func homeNextCards(_ cards: [NextCard], _ stats: PhoebeStats) -> some View {
         /**
          * THE WORDMARK IS BACK, top left. Owner: "put Phoebe at the top left.
          * the the word, the name."
@@ -608,9 +640,19 @@ struct PhoebeWidgetView: View {
                  * with the scale rather than being a number that happens to
                  * look right on one widget size.
                  */
-                Text("Phoebe")
-                    .font(sgBold(12))
-                    .foregroundColor(phoebeWarm.opacity(0.75))
+                HStack(alignment: .center, spacing: 8) {
+                    // FULL WHITE, no veil over it (owner: "make sure Phoebe on
+                    // the Phoebe widget is full white and not having an overlay
+                    // above"). It was phoebeWarm at 75% — the app's warm cream
+                    // held back so it wouldn't compete with the cards, which on
+                    // a dark green ground read as the name being dimmed rather
+                    // than as restraint.
+                    Text("Phoebe")
+                        .font(sgBold(12))
+                        .foregroundColor(.white)
+                    Spacer(minLength: 8)
+                    progressPill(stats)
+                }
                     .padding(.leading, 12 + 1 + (4 + 16) * s)
                     .padding(.trailing, 12)
                 nextCardsStack(cards, s)

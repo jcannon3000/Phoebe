@@ -213,15 +213,19 @@ export default function ListeningPage() {
     setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false);
     setLogAnother(false);
     /**
-     * …and leave. Owner: "just have audio divina go to the home when done."
+     * IT DOES NOT LEAVE. This is the middle of the practice, not the end.
      *
-     * It used to stay on the practice so the new listen became the hero right
-     * here. That reads as nothing having happened: the form empties, the page
-     * stays, and the only evidence is a card further down. Every other log in
-     * the app closes and returns you to the rhythm, and the kept dot on the
-     * home screen is the confirmation.
+     * `setLocation("/dashboard")` used to be the last line here, and it was
+     * right when this function belonged to the old single-page form (owner,
+     * then: "just have audio divina go to the home when done"). The deck was
+     * built around it and nobody took it out — so logging your song at beat 4
+     * of 6 navigated straight home and the two beats AFTER it, the lifting of
+     * what the music stirred and the closing "Recent listening" slide, were
+     * never reached by anyone who actually logged. The practice ended on data
+     * entry, which is the exact thing the deck was written to stop.
+     *
+     * Leaving is now the closing slide's job, and only the closing slide's.
      */
-    setLocation("/dashboard");
   }
 
   // Newest first, once, for every surface on the page.
@@ -293,7 +297,18 @@ export default function ListeningPage() {
   const DECK_TOTAL = 6;
   const LAST = DONE;
 
-  if (view === "deck") {
+  /**
+   * THE OLD SINGLE-PAGE FORM IS GONE (owner: "i asked that page it goes to
+   * after to be taken out").
+   *
+   * It was only ever reachable from INSIDE the deck — its ✕, its closing
+   * button, and the View-all sheet's back link all pointed at it — so nothing
+   * outside this file could route to it, and every one of those three now
+   * either leaves the practice or returns to the deck. Deleting it took the
+   * hero, the week strip and the log shelf with it; the deck's own closing
+   * slide already carries the recent listening and its View all.
+   */
+  if (view !== "history") {
     const atLog = deckStep === LOG;
     /**
      * THE LOG IS REQUIRED (owner: "it shouldn't go forward until they've
@@ -403,7 +418,11 @@ export default function ListeningPage() {
           </span>
           <button
             type="button"
-            onClick={() => setView("log")}
+            // CLOSE MEANS CLOSE. It used to drop you onto the old
+            // single-page form — the page the owner asked to be taken out —
+            // so the one control that says "I am done here" was the one that
+            // handed you a second, older version of the same practice.
+            onClick={() => setLocation("/dashboard")}
             aria-label="Close"
             style={{ userSelect: "none", WebkitTapHighlightColor: "transparent", width: 32, height: 32, borderRadius: 999, background: "rgba(9,26,16,0.5)", border: `1px solid ${DECK_BORDER}`, color: WARM, cursor: "pointer", padding: 0 }}
           >
@@ -712,7 +731,9 @@ export default function ListeningPage() {
                 next();
                 return;
               }
-              if (deckStep === LAST) { loggedHere.current = false; setDeckStep(INTRO); setView("log"); return; }
+              // The closing slide finishes the practice and returns to the
+              // rhythm. (It used to reset to the intro and show the old form.)
+              if (deckStep === LAST) { loggedHere.current = false; setDeckStep(INTRO); setLocation("/dashboard"); return; }
               next();
             }}
             disabled={atLog && !logSatisfied}
@@ -748,12 +769,13 @@ export default function ListeningPage() {
   }
 
   // ——— History (the full log) ———
-  if (view === "history") {
+  // view === "history" — the only other thing this page is.
+  {
     return (
       <RiseSheet bgPhoto={null}>
         {() => (
           <motion.div className="w-full" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}>
-            <button onClick={() => setView("log")} className="text-[14px] mb-5 inline-flex items-center gap-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+            <button onClick={() => { setView("deck"); setDeckStep(LAST); }} className="text-[14px] mb-5 inline-flex items-center gap-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
               ← <span>Audio Divina</span>
             </button>
             <h1 className="text-xl font-bold leading-tight mb-1" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Listening log</h1>
@@ -775,372 +797,13 @@ export default function ListeningPage() {
     );
   }
 
-  // ——— Audio Divina — the practice, led by the music you chose ———
-  return (
-    <RiseSheet>
-      {() => (
-        <div className="w-full" style={{ position: "relative" }}>
-          {/* Ambient backdrop: the hero's own cover art, blurred, so the page
-              takes its colour from whatever you put on.
-              
-              TWO things this has to get right:
-              
-              1. HEIGHT. RiseSheet's own element is the SCROLL container, so an
-                 `inset: 0` layer there is only viewport-tall and scrolls away
-                 with the content — which left a hard horizontal seam partway
-                 down the page, raw sheet colour below it. This layer is
-                 anchored to a wrapper that's as tall as the CONTENT instead
-                 (see the relative div below), with generous bleed past both
-                 ends, so there's no edge to see at any scroll position.
-              2. FULL BLEED. The content column is padded and max-width 576px;
-                 the backdrop shouldn't be. 100vw + a centring translate takes
-                 it edge to edge without a horizontal scrollbar.
-              
-              Still absolute, never position:fixed — that flashes on iOS. */}
-          {heroEntry?.artworkUrl && (
-            <>
-              <motion.div
-                aria-hidden
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.62 }}
-                transition={{ duration: 1.1, ease: "easeOut" }}
-                style={{
-                  position: "absolute", top: -220, bottom: -260, left: "50%",
-                  width: "100vw", transform: "translateX(-50%) scale(1.18)",
-                  zIndex: -1,
-                  backgroundImage: `url(${heroEntry.artworkUrl})`,
-                  backgroundSize: "cover", backgroundPosition: "center top",
-                  filter: "blur(64px) saturate(1.5)",
-                  // The colour BLOOMS behind the hero and falls away before the
-                  // log — a flat wall of blurred artwork the whole way down
-                  // read as grey mud rather than as the record's own colour.
-                  // PIXEL stops, not percentages: this layer is as tall as the
-                  // CONTENT now, so a percentage would stretch the bloom on a
-                  // long log and squash it on a short one. The bloom belongs a
-                  // fixed distance behind the hero either way.
-                  maskImage: BLOOM_MASK,
-                  WebkitMaskImage: BLOOM_MASK,
-                }}
-              />
-              {/* Wash: light enough at the top to let the bloom through,
-                  settling to the sheet's own green so the log sits on a clean
-                  ground rather than on tinted haze. */}
-              <div
-                aria-hidden
-                style={{
-                  position: "absolute", top: -220, bottom: -260, left: "50%",
-                  width: "100vw", transform: "translateX(-50%)", zIndex: -1,
-                  // Same reasoning as the mask — px stops, settling to solid
-                  // sheet green well before the log so the covers sit on a
-                  // clean ground however long the page runs.
-                  background: WASH,
-                }}
-              />
-            </>
-          )}
-
-          <div className="mb-6">
-            <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Audio Divina</h1>
-            <p className="text-[13px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Sacred listening.</p>
-          </div>
-
-          {/* The practice leads with what you actually listened to — the cover
-              art is the best thing on this page, so it gets the room. Before
-              the first entry there's nothing to show, so the guide leads
-              instead. */}
-          {heroEntry ? (
-            <NowHero entry={heroEntry} keptToday={keptToday} />
-          ) : (
-            <div className="mb-7 rounded-2xl px-4 py-4" style={glassRow}>
-              <p className="text-[13.5px] leading-relaxed" style={{ color: "rgba(240,237,230,0.88)", fontFamily: SERIF, fontStyle: "italic" }}>
-                Take time once a day to connect with God through music. Sit with a piece that means something to you, and meditate on what it opens in you.
-              </p>
-              <p className="text-[12.5px] leading-relaxed mt-2.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                Keep a log of what you've listened to — on streaming or on a record.
-              </p>
-            </div>
-          )}
-
-          <WeekStrip />
-
-          {/* Kept today already → the form steps back behind one button, so the
-              page reads as the practice rather than a form you must refill. */}
-          {keptToday && !logAnother ? (
-            <button
-              onClick={() => setLogAnother(true)}
-              className="w-full py-3.5 rounded-2xl text-[14.5px] font-semibold active:scale-[0.98] transition-transform"
-              style={{ ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK }}
-            >
-              Log another
-            </button>
-          ) : (
-            <>
-              <p className="text-[10.5px] uppercase tracking-[0.18em] mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                What did you listen to?
-              </p>
-              <input
-                value={query}
-                onChange={(e) => { setQuery(e.target.value); setPicked(false); setWhat(e.target.value); setArtworkUrl(""); }}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
-                placeholder="Search a song, album, or artist…"
-                className="w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
-                style={glassField}
-              />
-              {/* Recents — your own recent listens, shown the moment the field is
-                  focused and before you've typed a search. One tap refills everything. */}
-              {searchFocused && !picked && query.trim().length < 2 && recents.length > 0 && (
-                <div className="mt-2 flex flex-col gap-1.5 max-h-[44vh] overflow-y-auto">
-                  <p className="text-[10px] uppercase tracking-[0.18em] px-1 pt-1 pb-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Recent</p>
-                  {recents.map((r, i) => (
-                    <button
-                      key={`recent-${i}`}
-                      type="button"
-                      onClick={() => chooseRecent(r)}
-                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left active:scale-[0.99]"
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-                    >
-                      {r.artworkUrl ? (
-                        <img src={r.artworkUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                      ) : (
-                        <span className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-[18px]" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{MEDIUM_EMOJI[r.medium] ?? "🎧"}</span>
-                      )}
-                      <span className="flex-1 min-w-0">
-                        <span className="block text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.what}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {/* Apple Music suggestions — artists, songs, albums. Tap one to select
-                  it; only a tapped result becomes your logged entry (no free typing). */}
-              {!picked && (searching || results.length > 0) && (
-                <div className="mt-2 flex flex-col gap-1.5 max-h-[44vh] overflow-y-auto">
-                  {searching && results.length === 0 && (
-                    <p className="text-[12px] italic px-1 py-1.5" style={{ color: SAGE, fontFamily: SERIF }}>Searching…</p>
-                  )}
-                  {results.map((r, i) => (
-                    <button
-                      key={`${r.service}-${r.appleId ?? r.url}-${i}`}
-                      type="button"
-                      onClick={() => chooseResult(r)}
-                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left active:scale-[0.99]"
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-                    >
-                      {r.artworkUrl ? (
-                        <img src={r.artworkUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                      ) : (
-                        <span className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-[18px]" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{KIND_EMOJI[r.kind]}</span>
-                      )}
-                      <span className="flex-1 min-w-0">
-                        <span className="block text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.title}</span>
-                        <span className="block text-[11.5px] truncate" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{r.subtitle ? `${r.subtitle} · ` : ""}{r.kind}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {/* Selection-only: if they've typed a search that found nothing (and
-                  haven't picked), nudge them to pick a result — a free-typed line
-                  can't be logged. */}
-              {!picked && !searching && query.trim().length >= 2 && results.length === 0 && (
-                <p className="mt-2 text-[12px] px-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                  Pick a result from the search to log it.
-                </p>
-              )}
-
-              {/* How you listened — a segmented row, not an OS dropdown. Four
-                  options never needed a <select>, and this is a detail of the
-                  entry rather than a second question of equal weight. */}
-              <div className="mt-5 mb-6">
-                <p className="text-[10.5px] uppercase tracking-[0.18em] mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                  How did you listen?
-                </p>
-                <div className="flex gap-1.5">
-                  {MEDIA.map((x) => {
-                    const on = medium === x.id;
-                    return (
-                      <button
-                        key={x.id}
-                        type="button"
-                        onClick={() => chooseMedium(x.id)}
-                        className="flex-1 rounded-xl py-2.5 text-[12.5px] font-semibold active:scale-[0.98] transition-transform"
-                        style={{
-                          background: on ? "rgba(46,107,64,0.55)" : "rgba(9,26,16,0.297)",
-                          border: `1px solid ${on ? "rgba(168,197,160,0.6)" : "rgba(200,212,192,0.18)"}`,
-                          color: on ? WARM : SAGE,
-                          fontFamily: SPACE_GROTESK,
-                        }}
-                      >
-                        <span aria-hidden>{MEDIUM_EMOJI[x.id]}</span> {x.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* The primary action reads as primary once there's something to
-                  log — it used to sit there as a faint outline whether or not
-                  it could be pressed. */}
-              <button
-                onClick={logToday}
-                disabled={!what.trim()}
-                className="w-full py-4 rounded-2xl text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:active:scale-100"
-                style={what.trim()
-                  ? { background: "rgba(46,107,64,0.92)", border: "1px solid rgba(168,197,160,0.55)", color: WARM, fontFamily: SPACE_GROTESK }
-                  : { ...FROST_CTA, color: "rgba(240,237,230,0.42)", fontFamily: SPACE_GROTESK }}
-              >
-                Log today's listening
-              </button>
-              <p className="text-[11px] text-center mt-3" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>Synced to your account</p>
-            </>
-          )}
-
-          {/* The guide is a welcome on day one and noise on day forty — once
-              there's a log, it folds away behind a line you can open. */}
-          {heroEntry && (
-            <details className="mt-7 rounded-2xl px-4 py-3" style={glassRow}>
-              <summary className="text-[12.5px] cursor-pointer list-none" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                About this practice
-              </summary>
-              <p className="text-[13.5px] leading-relaxed mt-3" style={{ color: "rgba(240,237,230,0.88)", fontFamily: SERIF, fontStyle: "italic" }}>
-                Take time once a day to connect with God through music. Sit with a piece that means something to you, and meditate on what it opens in you.
-              </p>
-              <p className="text-[12.5px] leading-relaxed mt-2.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                Keep a log of what you've listened to — on streaming or on a record.
-              </p>
-            </details>
-          )}
-
-          <LogShelf entries={sortedEntries} onViewAll={() => setView("history")} />
-        </div>
-      )}
-    </RiseSheet>
-  );
 }
 
-// ——— Today's listen (or the last one), given the room the artwork deserves ———
-function NowHero({ entry, keptToday }: { entry: ServerEntry; keptToday: boolean }) {
-  const label = entry.what?.trim() || (entry.medium === "streaming" ? "Streaming" : entry.medium.toUpperCase());
-  // "Song — Artist" is how chooseResult composes a title; split it so the two
-  // can be set apart the way a player would.
-  const [title, ...rest] = label.split(" — ");
-  const artist = rest.join(" — ");
-  return (
-    <motion.div
-      className="flex flex-col items-center text-center mb-7"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {entry.artworkUrl ? (
-        <img
-          src={entry.artworkUrl}
-          alt=""
-          className="w-[148px] h-[148px] rounded-2xl object-cover"
-          style={{ boxShadow: "0 18px 44px rgba(0,0,0,0.55)", background: "rgba(46,107,64,0.3)" }}
-        />
-      ) : (
-        <span
-          className="w-[148px] h-[148px] rounded-2xl flex items-center justify-center text-[52px]"
-          style={{ background: "rgba(46,107,64,0.3)", boxShadow: "0 18px 44px rgba(0,0,0,0.55)" }}
-          aria-hidden
-        >
-          {MEDIUM_EMOJI[entry.medium] ?? "🎧"}
-        </span>
-      )}
-      <p
-        className="text-[10px] uppercase tracking-[0.2em] mt-5"
-        style={{ color: keptToday ? "rgba(168,197,160,0.95)" : "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}
-      >
-        {keptToday ? "Kept today ✓" : "Last listen"}
-      </p>
-      <p className="text-[19px] font-bold leading-tight mt-1.5 px-2" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{title}</p>
-      {artist && <p className="text-[13.5px] mt-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{artist}</p>}
-      <p className="text-[11.5px] mt-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
-        <span aria-hidden>{MEDIUM_EMOJI[entry.medium] ?? "🎧"}</span> {relDay(entry.day)}
-      </p>
-    </motion.div>
-  );
-}
+/* (NowHero, WeekStrip and LogShelf lived here. They were the old
+   single-page form's hero, its week strip and its shelf of recent listens,
+   and nothing else ever rendered them — the deck's closing slide carries the
+   recent listening now, with its own View all.) */
 
-// ——— Seven days of the practice, the same dot strip the rhythm uses ———
-function WeekStrip() {
-  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
-  const { data } = useQuery<{ days: Array<{ ymd: string; listening: boolean }> }>({
-    queryKey: ["/api/me/practice-week", tz],
-    queryFn: () => apiRequest("GET", "/api/me/practice-week"),
-    staleTime: 60_000,
-  });
-  const days = data?.days ?? [];
-  if (days.length === 0) return null;
-  return (
-    <div className="flex items-center justify-center gap-2.5 mb-7">
-      {days.map((d) => {
-        const wd = new Date(`${d.ymd}T12:00:00`).getDay();
-        const letter = Number.isNaN(wd) ? "" : ["S", "M", "T", "W", "T", "F", "S"][wd];
-        return (
-          <div key={d.ymd} className="flex flex-col items-center gap-1.5">
-            <span className="text-[9.5px] font-semibold" style={{ color: "rgba(143,175,150,0.45)", fontFamily: SPACE_GROTESK }}>{letter}</span>
-            <span
-              title={d.ymd}
-              style={{
-                width: 9, height: 9, borderRadius: 999,
-                background: d.listening ? "rgba(110,180,130,0.85)" : "transparent",
-                border: d.listening ? "none" : "1px solid rgba(143,175,150,0.28)",
-              }}
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ——— The log as a shelf of covers, not a table of rows ———
-function LogShelf({ entries, onViewAll }: { entries: ServerEntry[]; onViewAll: () => void }) {
-  const shelf = entries.slice(0, 9);
-  if (shelf.length === 0) return null;
-  return (
-    <div className="mt-9">
-      <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-[15px] font-bold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Listening log</h2>
-        <button onClick={onViewAll} className="text-[12.5px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>View all ›</button>
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        {shelf.map((e) => {
-          const label = e.what?.trim() || (e.medium === "streaming" ? "Streaming" : e.medium.toUpperCase());
-          const [title] = label.split(" — ");
-          return (
-            <div key={e.id} className="min-w-0">
-              {e.artworkUrl ? (
-                <img
-                  src={e.artworkUrl}
-                  alt=""
-                  className="w-full aspect-square rounded-xl object-cover"
-                  style={{ background: "rgba(46,107,64,0.3)", boxShadow: "0 6px 18px rgba(0,0,0,0.4)" }}
-                />
-              ) : (
-                <span
-                  className="w-full aspect-square rounded-xl flex items-center justify-center text-[26px]"
-                  style={{ background: "rgba(46,107,64,0.3)", boxShadow: "0 6px 18px rgba(0,0,0,0.4)" }}
-                  aria-hidden
-                >
-                  {MEDIUM_EMOJI[e.medium] ?? "🎧"}
-                </span>
-              )}
-              <p className="text-[11.5px] font-medium truncate mt-1.5" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{title}</p>
-              <p className="text-[10.5px] truncate" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>{relDay(e.day)}</p>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ——— A log row — what you put on, how, and when. The full-log view only; the
-// main screen shows the shelf above. ———
 function EntryRow({ e, onDelete, deleting }: { e: ServerEntry; onDelete: (id: number) => void; deleting: boolean }) {
   const label = e.what?.trim() || (e.medium === "streaming" ? "Streaming" : e.medium.toUpperCase());
   return (
