@@ -676,6 +676,16 @@ struct PhoebeWidgetView: View {
                 }
                     .padding(.leading, 12 + 1 + (4 + 16) * s)
                     .padding(.trailing, 12)
+                    /* PULLED UP INTO THE WIDGET'S OWN MARGIN (owner: "move the
+                       phoebe text and the daily progress up").
+                       iOS insets widget content by its default margins before
+                       any of our layout runs, so the header row started well
+                       below the widget's actual top edge and the whole thing
+                       sat low in the tile. A negative top padding is the only
+                       way back into that inset — the margin belongs to the
+                       system, not to this view — and 8pt is as far as it goes
+                       while keeping the name clear of the rounded corner. */
+                    .padding(.top, -8)
                 nextCardsStack(cards, s)
             }
         }
