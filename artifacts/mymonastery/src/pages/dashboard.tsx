@@ -4825,7 +4825,7 @@ function PrayerListCarousel({
             const rgb = rhythmGradientRgb(i, (requests.length - 1) * 5 + 1);
             const displayName = req.isAnonymous
               ? t("prayer_list_carousel.anonymous")
-              : (req.isOwnRequest ? (viewerName ?? t("gratitude.you")) : (req.ownerName ?? t("find_friends.someone")));
+              : (req.isOwnRequest ? (viewerName ?? t("gratitude.you")) : (req.ownerName ?? t("common.someone", { defaultValue: "Someone" })));
             const displayAvatar = req.isAnonymous
               ? null
               : (req.isOwnRequest ? viewerAvatarUrl : (req.ownerAvatarUrl ?? null));

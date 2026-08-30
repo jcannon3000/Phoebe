@@ -40,24 +40,47 @@ const BY_ID = new Map([...ACT_CATALOGUE, ...ACT_COMMENTARY_CATALOGUE].map((a) =>
  * including a stale pre-built schedule entry (artworkById refuses it, and
  * chooseArtwork falls through to live matching).
  */
+/**
+ * THE WHOLE POOL — the curated library and the commentary harvest, unioned.
+ *
+ * The history matters, because this was narrowed and then reopened and the
+ * reopening only half landed. First the owner asked for commentaries only
+ * ("let's only use images that have a commentary"), which forced the artist
+ * list open, since of the 314 works by the curated artists exactly TWO carry
+ * one. Then he reopened the pool itself: a commentary is no longer required,
+ * and where one exists it rides along as `essay` and the practice offers it
+ * on the closing slide.
+ *
+ * The build unioned its own copy and left THIS function on the commentary
+ * half, so every tiered search — which is to say the gospel-first rule the
+ * whole schedule is built on — ran against 241 works instead of 553. Measured
+ * before the fix: on 61 of 157 weeks the union held a strictly better gospel
+ * match than the pool actually searched, 45 of them reaching verse level. The
+ * week of Advent 2 read 2 Peter because the Mark 1 work was outside the pool.
+ *
+ * `curated` rides on every record so pickFrom can prefer the owner's own
+ * artists on a tie — a preference that was also inert while this returned the
+ * harvest alone, since those records never carried the flag.
+ */
+const UNIONED_CATALOGUE: CatalogueArtwork[] = (() => {
+  const byId = new Map<number, CatalogueArtwork>();
+  for (const a of ACT_CATALOGUE) byId.set(a.id, { ...a, curated: true });
+  for (const a of ACT_COMMENTARY_CATALOGUE) {
+    const existing = byId.get(a.id);
+    // In both: keeps its curated standing and gains the commentary.
+    if (existing) byId.set(a.id, { ...existing, essay: existing.essay || a.essay });
+    else byId.set(a.id, { ...a, curated: false });
+  }
+  return [...byId.values()];
+})();
+
 function pool(): CatalogueArtwork[] {
-  /**
-   * ONLY WORKS WITH A COMMENTARY (owner: "let's only use images that have a
-   * commentary, but also feel free to open it up to images that weren't from
-   * the artist that we narrowed it down to").
-   *
-   * Those two halves depend on each other: of the 314 works by the curated
-   * artists, exactly TWO carry a commentary. Searching ACT for the commentary
-   * itself finds 241 keepable works by 140 artists — so opening the artist
-   * list is not a loosening, it is what makes "always a commentary" possible
-   * at all.
-   */
-  const p = ACT_COMMENTARY_CATALOGUE.filter((a) => !isActHidden(a.id));
+  const p = UNIONED_CATALOGUE.filter((a) => !isActHidden(a.id));
   // Everything hidden (or a corrupted overrides snapshot marking it so) must
   // not crash the practice — rotationForDay indexes this array. A hidden work
   // showing again is the recoverable failure; a blank Visio is not (the
   // blank-screen rule this repo keeps).
-  return p.length > 0 ? p : ACT_COMMENTARY_CATALOGUE;
+  return p.length > 0 ? p : UNIONED_CATALOGUE;
 }
 
 /** One specific artwork, for re-opening something from the history gallery. */

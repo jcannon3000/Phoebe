@@ -66,6 +66,44 @@ export async function runRetentionCleanupSender(opts: { forceNow?: boolean } = {
             AND i.week_start < (CURRENT_DATE - INTERVAL '8 weeks')
         )
       `)],
+    /**
+     * PRAYER REQUESTS THAT WERE NEVER PUBLISHED.
+     *
+     * The pending queue is the sensitive half of the moderated prayer list:
+     * unreviewed, unconsented detail — often about a third party's health —
+     * sitting in a table. `group_prayer_requests`'s own header promised it
+     * would live under the same retention rules as everything else and
+     * nothing implemented that, so declined and forgotten-pending bodies
+     * accrued for ever.
+     *
+     * Declined at 60 days: long enough that the same request arriving three
+     * times isn't re-reviewed from scratch, short enough that a leader's "no"
+     * isn't kept indefinitely. Pending at 90: a request nobody has looked at
+     * in three months is not going to be published, and it is the one state
+     * whose contents were never seen by anyone but its author.
+     *
+     * APPROVED AND ARCHIVED ARE UNTOUCHED — those the congregation has been
+     * praying, and deleting them out from under a leader's list is not
+     * retention, it is data loss. Archiving is the leader's own verb.
+     */
+    ["group_prayer_requests declined>60d", () =>
+      db.execute(sql`
+        DELETE FROM group_prayer_requests
+        WHERE status = 'declined' AND created_at < now() - interval '60 days'
+      `)],
+    ["group_prayer_requests pending>90d", () =>
+      db.execute(sql`
+        DELETE FROM group_prayer_requests
+        WHERE status = 'pending' AND created_at < now() - interval '90 days'
+      `)],
+    // Expired link posts, a week after they stopped being shown. The post is
+    // already invisible (the feed filters on expires_at in SQL); this is the
+    // row itself, and its read receipts go with it via ON DELETE CASCADE.
+    ["group_posts expired>7d", () =>
+      db.execute(sql`
+        DELETE FROM group_posts
+        WHERE expires_at IS NOT NULL AND expires_at < now() - interval '7 days'
+      `)],
     ["bell_notifications>90d", () =>
       db.delete(bellNotificationsTable).where(lt(bellNotificationsTable.createdAt, D90))],
     ["app_opens>90d", () =>

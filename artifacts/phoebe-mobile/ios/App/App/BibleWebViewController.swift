@@ -1053,12 +1053,25 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
        * shifts everything up by one.
        */
       function fddTrim() {
+        /* THE READER'S OWN OFF SWITCH APPLIES HERE TOO.
+           Every other mutation site opens with this check; fddTrim did not,
+           and the load-timer path below reaches it without passing through
+           run(). Tap Standard while an Ionic page is still settling and the
+           trim landed 400ms later, on a page the reader had just left. */
+        if (!readerOn) return;
         var post = document.querySelector('article.fdd');
         if (!post || post.getAttribute('data-phoebe-trimmed')) return;
         var kids = post.children;
         var seenPray = false;
         for (var k = 0; k < kids.length; k++) {
-          if (seenPray) kids[k].style.setProperty('display', 'none', 'important');
+          /* RECORDED, so Standard can put it back. This wrote the inline
+             display directly and nothing went into hiddenByReader — so
+             Standard handed back Forward Movement's page with the day's
+             office citations permanently deleted from it, and toggling again
+             never restored them (data-phoebe-trimmed makes the pass
+             one-shot). The promo-block hide eleven lines down was always
+             recorded; this loop was the inconsistency. */
+          if (seenPray) hideForReader(kids[k]);
           else if (/^\\s*PRAY\\b/i.test(kids[k].textContent || '')) seenPray = true;
         }
         // "More from Forward Movement" — a promo block after the day's entry.
@@ -1100,7 +1113,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       // "never move a page the reader has taken hold of" guard. Two scrollers
       // would fight each other.
       window.addEventListener('load', function () {
-        setTimeout(function () { isolate(); if (isFdd) fddTrim(); }, 400);
+        /* run(), not the two calls by hand — run() is where the readerOn
+           check lives, and hand-copying its body is what let this timer
+           re-trim a page the reader had been switched off on. */
+        setTimeout(function () { run(); }, 400);
       });
     })();
     """
@@ -1368,18 +1384,17 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             // reader who wants the rest of the page (the fuller post, the
             // subscribe form) can have it back in one tap.
             if isReaderHost {
-                let standardItem = UIBarButtonItem(title: "Standard", style: .plain, target: self, action: #selector(toggleReaderView))
+                // Titled from the state, not hardcoded: the reader can be off
+                // when this chrome is built, and a button labelled "Standard"
+                // over an already-standard page names the wrong action.
+                let standardItem = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
                 standardItem.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
                 self.standardItem = standardItem
-                // LEFT (owner: "put standard to the left side of the screen").
-                // It sits next to Done — the two chrome controls together, and
-                // the right side left clear of the text.
-                if let done = navigationItem.leftBarButtonItem, done !== standardItem {
-                    navigationItem.leftBarButtonItems = [done, standardItem]
-                } else {
-                    navigationItem.leftBarButtonItem = standardItem
-                }
-                navigationItem.rightBarButtonItem = nil
+                // TOP RIGHT, per the owner's later and final word — the same
+                // corner as on the office chrome, so the control doesn't move
+                // between one reader and another. (An earlier "left side of
+                // the screen" is superseded; it read oddly beside Done.)
+                navigationItem.rightBarButtonItem = standardItem
             } else {
                 navigationItem.rightBarButtonItem = nil
             }
@@ -2136,29 +2151,32 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      */
     private func refreshReaderChrome() {
         let host = (webView.url?.host ?? url.host ?? "").lowercased()
-        let isReader = host.hasSuffix("oremus.org")
-            || host.hasSuffix("thevcs.org")
-            || host.hasSuffix("ssje.org")
-            || host.hasSuffix("henrinouwen.org")
-            || host.hasSuffix("forwardmovement.org")
-            || host.hasSuffix("sojo.net")
-            || host.hasSuffix("cathedral.org")
-        guard isReader else { return }
-        // Dark, because the reader view paints the page dark green. The
-        // page-sampling sync agrees once it runs; this stops the white flash
-        // in between, and holds when the caller asked for light chrome.
-        applyChrome(isLight: false)
+        // THE ONE LIST. This used to carry its own hand-copied hosts, and it
+        // drifted the moment VCS left the reader: readerJS returned early on
+        // thevcs.org while this still forced dark chrome over the VCS's light
+        // exhibition page and hung a Standard button on it that toggled
+        // nothing — window.__phoebeReaderSet was never defined there. Every
+        // Visio commentary is a VCS link, so that was most of the practice.
+        // Never re-inline these hosts; ask isReaderHostName.
+        guard Self.isReaderHostName(host) else { return }
+        // Dark, because the reader view paints the page dark green — but ONLY
+        // while the reader is actually on. In Standard the page is the
+        // publisher's own, usually white, and a dark bar over it is the
+        // mismatch toggleReaderView was patched to fix, re-entering through
+        // the other door on the next didFinish.
+        if readerViewOn { applyChrome(isLight: false) }
         if standardItem == nil {
             let item = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
             item.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
             standardItem = item
-            // LEFT, beside Done (owner: "put standard to the left side of the
-            // screen"). Anything already on the left keeps the corner, with
-            // Standard just inside it.
-            if let existing = navigationItem.leftBarButtonItem, existing !== item {
-                navigationItem.leftBarButtonItems = [existing, item]
+            // TOP RIGHT — the owner's word for every reader ("we need the
+            // standard button in the top right"). Right-hand items render
+            // right-to-left, so anything already there keeps the corner and
+            // Standard sits just inside it.
+            if let existing = navigationItem.rightBarButtonItem, existing !== item {
+                navigationItem.rightBarButtonItems = [existing, item]
             } else {
-                navigationItem.leftBarButtonItem = item
+                navigationItem.rightBarButtonItem = item
             }
         }
     }
@@ -2183,9 +2201,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      */
     static func isReaderHostName(_ host: String) -> Bool {
         let h = host.lowercased()
-        return h.hasSuffix("oremus.org") || h.hasSuffix("ssje.org")
-            || h.hasSuffix("henrinouwen.org") || h.hasSuffix("forwardmovement.org")
-            || h.hasSuffix("sojo.net") || h.hasSuffix("cathedral.org")
+        // EXACT OR A SUBDOMAIN — the shape readerJS's own gate uses. Plain
+        // hasSuffix has no dot boundary, so "notsojo.net" matched "sojo.net"
+        // and "nationalcathedral.org" matched "cathedral.org" here while the
+        // JS declined them: a Standard button over a page nothing restyles.
+        func matches(_ domain: String) -> Bool { h == domain || h.hasSuffix("." + domain) }
+        return matches("oremus.org") || matches("ssje.org")
+            || matches("henrinouwen.org") || matches("forwardmovement.org")
+            || matches("sojo.net") || matches("cathedral.org")
     }
 
     private func syncChromeToPage() {

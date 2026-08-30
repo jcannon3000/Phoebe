@@ -604,8 +604,38 @@ export function clearAnchorOfficeIntent(id: string): void {
 export function toggleCustomDoneToday(id: string): void {
   try {
     const key = DONE_PREFIX + id;
-    if (localStorage.getItem(key) === todayISO()) { localStorage.removeItem(key); removeDoneDay(id, todayISO()); }
-    else { localStorage.setItem(key, todayISO()); addDoneDay(id, todayISO()); }
+    // PERIOD to match, day to record — the same split markCustomDoneToday
+    // keeps. Both branches compared and wrote todayISO(), which for a weekly
+    // practice is a stamp isCustomDoneToday can never match: a permanently
+    // un-tickable card. No caller today, which is the only reason it hasn't
+    // shipped as a bug.
+    const period = periodKeyFor(id);
+    if (localStorage.getItem(key) === period) { localStorage.removeItem(key); removeDoneDay(id, todayISO()); }
+    else { localStorage.setItem(key, period); addDoneDay(id, todayISO()); }
+    window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
+  } catch {
+    /* private mode / quota — non-fatal */
+  }
+}
+
+/**
+ * UNLOG — put a kept practice back in Next, and nothing more.
+ *
+ * This did not exist, so the ✓ → "Unlog" sheet on a custom card fell through
+ * to setCustomNotToday, which ALSO sets today's skip — and a skipped practice
+ * is hidden everywhere, not returned to Next. The sheet's own header promises
+ * "puts it back in Next"; every other card on the home does exactly that via
+ * unmarkPracticeDoneToday. The custom card instead vanished for the day.
+ *
+ * For a WEEKLY practice the stamp being removed is the whole week's keeping,
+ * which is right — un-keeping is un-keeping — but it is worth knowing that
+ * this is the undo for "I mis-tapped", not for "not today".
+ */
+export function unmarkCustomDoneToday(id: string): void {
+  try {
+    localStorage.removeItem(DONE_PREFIX + id);
+    // The DOT goes too: it records what was kept, and this says it wasn't.
+    removeDoneDay(id, todayISO());
     window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
   } catch {
     /* private mode / quota — non-fatal */
@@ -736,11 +766,24 @@ export async function syncCustomDoneFromServer(): Promise<void> {
   } catch { /* best effort */ }
 }
 
-/** The set of recent local days this custom practice was kept — including today
- *  if it's currently marked done. Powers the weekly progress grid's custom rows. */
+/**
+ * The set of recent local days this custom practice was kept.
+ *
+ * Today counts only when today's own stamp says so. It used to add today
+ * whenever `isCustomDoneToday` was true — which for a WEEKLY practice is true
+ * on all seven days, so opening the app on Friday marked Friday as kept for
+ * something done on Monday. A past day's dot reports what was kept THAT day;
+ * that is what the dots are for, and the history written by
+ * markCustomDoneToday already records the real day.
+ *
+ * The daily case is unchanged: a daily practice kept today has today in its
+ * history the moment it is kept, and the extra add was belt-and-braces.
+ */
 export function getCustomDoneDays(id: string): Set<string> {
   const set = new Set(readDoneHist(id));
-  if (isCustomDoneToday(id)) set.add(todayISO());
+  try {
+    if (localStorage.getItem(DONE_PREFIX + id) === todayISO()) set.add(todayISO());
+  } catch { /* private mode */ }
   return set;
 }
 
@@ -833,7 +876,12 @@ export function logReadingToday(id: string, amount: number): void {
     const nextTotal = Math.max(0, total - prevToday + amt);
     if (amt > 0) {
       localStorage.setItem(READ_TODAY_PREFIX + id, `${todayISO()}|${amt}`);
-      localStorage.setItem(DONE_PREFIX + id, todayISO());
+      // The PERIOD, not the day — the same stamp markCustomDoneToday writes.
+      // isCustomDoneToday compares against periodKeyFor, which for a weekly
+      // practice is the week's closing Sunday, so a day stamp matched only on
+      // a Sunday: a weekly reading ritual logged its chapters, climbed its
+      // running total, wrote its dot, and stayed in Next for ever.
+      localStorage.setItem(DONE_PREFIX + id, periodKeyFor(id));
       localStorage.removeItem(SKIP_PREFIX + id);
       // …and into the weekly HISTORY. Without this a reading ritual read as
       // kept today (getCustomDoneDays adds today from DONE_PREFIX) and then

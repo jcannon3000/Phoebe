@@ -23,7 +23,8 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { timingSafeEqual } from "node:crypto";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { db, groupsTable, groupMembersTable, groupPostsTable } from "@workspace/db";
-import { readMessage, viewOnlineUrl, htmlToText } from "../lib/inboundEmailParse";
+import { readMessage, viewOnlineUrl, htmlToText, senderPassedAuth } from "../lib/inboundEmailParse";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -96,6 +97,31 @@ router.post("/inbound/email", async (req: Request, res: Response): Promise<void>
   const sender = admins.find((m) =>
     m.email.toLowerCase() === msg.from && (m.role === "admin" || m.role === "hidden_admin"));
   if (!sender) { res.json({ ok: false, reason: "sender_not_an_admin" }); return; }
+
+  /**
+   * …AND THE FROM: HEADER MUST HAVE BEEN VERIFIED BY THE PROVIDER.
+   *
+   * The check above compares a header the sender chose. `From:` is not
+   * authenticated by SMTP — anyone can write the rector's address in it — so
+   * on its own it establishes only that someone CLAIMS to be an admin. That
+   * left a congregation-wide phishing primitive: one email with a forged
+   * From, and a link post goes to every member's inbox with the rector's name
+   * on the card, opened in a browser by a tap.
+   *
+   * So we require the provider's own SPF/DKIM/DMARC verdict to say the domain
+   * really sent it. Postmark, SendGrid and Mailgun all supply this; the shape
+   * differs, `senderPassedAuth` normalises it.
+   *
+   * STRICT BY DEFAULT: a payload carrying no verdict at all is refused rather
+   * than trusted, because "no verdict" is what an attacker posting straight to
+   * the webhook produces. A provider that genuinely can't supply one needs
+   * INBOUND_ALLOW_UNVERIFIED=1 set deliberately, with the risk understood.
+   */
+  const authed = senderPassedAuth(req.body as Record<string, unknown>, msg.from);
+  if (authed === false || (authed === null && process.env["INBOUND_ALLOW_UNVERIFIED"] !== "1")) {
+    logger.warn({ groupId: group.id, from: msg.from, authed }, "inbound email refused: sender not cryptographically verified");
+    res.json({ ok: false, reason: "sender_not_verified" }); return;
+  }
 
   const title = (msg.subject || "A note from your group").slice(0, 140);
   const hosted = viewOnlineUrl(msg.html);

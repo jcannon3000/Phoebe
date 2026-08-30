@@ -4,7 +4,6 @@ import {
   db,
   groupsTable,
   groupMembersTable,
-  groupReflectionSourcesTable,
   groupAnnouncementsTable,
   groupAdminNotificationsAckTable,
   groupServiceSchedulesTable,
@@ -382,6 +381,46 @@ export async function requireAdmin(groupSlug: string, userId: number) {
   return result;
 }
 
+/**
+ * A JOINED CONGREGANT — member or admin, but NOT a follower.
+ *
+ * `requireMember` admits any tier with `joinedAt` set, and the default tier
+ * every join grants is `follower`: anyone holding a community's invite link
+ * is one. That is right for a feed, which is what a follower signed up for,
+ * and wrong for anything a congregation says about itself in confidence.
+ *
+ * Use this wherever the content is the parish talking to its own people —
+ * the prayer list above all, where the bodies name real people's illnesses.
+ */
+export async function requireCongregant(groupSlug: string, userId: number) {
+  const result = await requireMember(groupSlug, userId);
+  if (!result || result.member.role === "follower") return null;
+  return result;
+}
+
+/**
+ * The secrets that live on a group row, and must never reach a non-admin.
+ *
+ * A DENYLIST, deliberately, because the alternative already failed: the
+ * group-detail route redacted `inviteToken` by name, so when `inboundToken`
+ * was added today it was serialised to every follower — and an inbound
+ * address is a public write endpoint, so that token plus the slug is enough
+ * to post to a whole congregation. Enumerating one secret protects one
+ * secret. Add a column here the day you add it to the table.
+ */
+const GROUP_SECRET_FIELDS = ["inviteToken", "inboundToken"] as const;
+
+/**
+ * Strip a group row for a viewer. Admins keep everything — they are the ones
+ * sharing the invite link and configuring the inbound address.
+ */
+export function redactGroup<T extends Record<string, any>>(group: T, isAdmin: boolean): T {
+  if (isAdmin) return group;
+  const out = { ...group };
+  for (const f of GROUP_SECRET_FIELDS) (out as Record<string, any>)[f] = undefined;
+  return out;
+}
+
 // A group is a followed feed, not a social room (see project notes) — most
 // joins default to role "follower". Cap how many a person can follow at
 // once so a growing public directory doesn't turn into an unbounded list of
@@ -534,11 +573,18 @@ router.get("/groups", async (req, res): Promise<void> => {
       .groupBy(groupMembersTable.groupId);
     const countByGroup = new Map(countRows.map(r => [r.groupId, Number(r.cnt)]));
 
-    const enriched = groups.map((g) => ({
-      ...g,
-      memberCount: countByGroup.get(g.id) ?? 0,
-      myRole: joined.find(m => m.groupId === g.id)?.role ?? "follower",
-    }));
+    const enriched = groups.map((g) => {
+      const myRole = joined.find(m => m.groupId === g.id)?.role ?? "follower";
+      // Redacted PER GROUP by the viewer's role in THAT group — someone can
+      // lead one parish and merely follow another, and this route returns
+      // both in one array. A single is-this-person-an-admin flag would hand
+      // them the second parish's tokens.
+      return {
+        ...redactGroup(g, isAdminRole(myRole)),
+        memberCount: countByGroup.get(g.id) ?? 0,
+        myRole,
+      };
+    });
 
     res.json({ groups: enriched });
   } catch {
@@ -665,10 +711,7 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
   const memberCount = members.filter(m => m.joinedAt !== null && m.role !== "hidden_admin").length;
 
   res.json({
-    group: {
-      ...result.group,
-      ...(isAdminView ? {} : { inviteToken: undefined }),
-    },
+    group: redactGroup(result.group, isAdminView),
     myRole: result.member.role,
     memberCount,
     members: visibleMembers.map(m => ({

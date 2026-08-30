@@ -17,7 +17,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { getSideLevel, getSideCustomName, getSideReflectionExplicit, extraPracticeTitle } from "@/lib/officePrefs";
-import { getPracticeSlot, SLOT_RANK, isSlotPast, type CustomSlot } from "@/lib/customAnchors";
+import { getPracticeSlot, SLOT_RANK, isSlotPast, anchorOnDay, EVENING_OPEN_HOUR, type CustomSlot } from "@/lib/customAnchors";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { getRoutineOrder } from "@/lib/routineOrder";
 import { sortCardsByLearnedOrder } from "@/lib/practiceOrderLearning";
@@ -304,7 +304,13 @@ export function useWidgetSync(): void {
       { active: r.eveningActive && !r.novenaReplacesEvening, done: r.eveningDone, slot: "evening", key: "evening", emoji: officeEmoji("evening"), title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: getSideLevel("evening") === "custom" ? "Log" : "Begin", kind: "office", isPrimary: true },
       { active: !!r.eveningExtraLevel, done: r.eveningExtraDone, slot: "evening", key: "extra-evening", emoji: (r.eveningExtraLevel && EXTRA_EMOJI[r.eveningExtraLevel]) || "🌿", title: r.eveningExtraLevel ? extraPracticeTitle("Evening", r.eveningExtraLevel, tPass) : "", eyebrow: "Also this evening", subtitle: "Alongside your main practice", cta: "Begin", kind: "office" },
       { active: !!(r.novenaReplacesEvening && r.novenaActive), done: r.novenaDone, slot: "evening", key: "novena", emoji: "🕊️", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office", isPrimary: true },
-      ...r.customAnchors.filter((a) => !a.skipped).map((a) => ({
+      // `anchorOnDay` as well as `!skipped` — the filter both other consumers
+      // use (DailyProgressBody and useRhythmState). Without it the widget
+      // counted day-scoped practices on the days they don't apply: a VTS
+      // rhythm on a Saturday showed 5 dots to the home's 3, two of them
+      // unfillable, so the lock screen could never reach "the day is kept"
+      // and offered "Community Meal" as next up on a day with no such card.
+      ...r.customAnchors.filter((a) => !a.skipped && anchorOnDay(a)).map((a) => ({
         active: true, done: !!a.done, slot: a.slot,
         key: `custom-${a.id}`, emoji: a.emoji || "🌿",
         title: a.title, eyebrow: "Your practice", subtitle: "Tap to mark done", cta: "Log", kind: "office" as const,
@@ -343,7 +349,26 @@ export function useWidgetSync(): void {
     // "Next" = the first not-done practice whose slot HASN'T already passed
     // today (a passed slot is "tomorrow", not next). Falls back to summary.
     const upNext = ordered.filter((i) => !i.done && !isSlotPast(i.slot, now));
-    const next = upNext[0] ?? null;
+    /**
+     * THE WIDGET KEEPS 4:30 TOO.
+     *
+     * The owner asked twice that the evening practice not lead before 4:30pm,
+     * and both fixes landed in the home's renderer. This is a SECOND renderer
+     * with its own copy of the rule — and it had no rule: `isSlotPast`
+     * returns false for "evening" (its close hour is null), so once the
+     * morning anchor and any anytime practices were kept, Evening Prayer
+     * became the lock-screen hero at whatever hour that happened. 9am
+     * included.
+     *
+     * Same boundary as DailyProgressBody's EVENING_HERO_AFTER — the two must
+     * agree, or the home and the lock screen lead with different practices.
+     * The evening card stays in the LIST; it just doesn't lead.
+     */
+    const eveningLeads = now.getHours() * 60 + now.getMinutes() >= EVENING_OPEN_HOUR * 60 + 30;
+    // No `?? upNext[0]` fallback: with only the evening left before 4:30 the
+    // answer is "nothing yet" — which `next: null` already renders as the
+    // summary face. Falling back would hand the gate straight back.
+    const next = (eveningLeads ? upNext : upNext.filter((i) => i.slot !== "evening"))[0] ?? null;
     /**
      * The wide widget's card list — the next TWO, wearing the home card's
      * exact face: emoji, title, blurb, CTA, accent colour by ramp position,

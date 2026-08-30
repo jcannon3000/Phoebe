@@ -125,8 +125,28 @@ function openWebTab(url: string): boolean {
   return true;
 }
 
+/**
+ * http/https ONLY, checked at the point of opening.
+ *
+ * Every current writer validates the scheme — the group-post route rejects
+ * anything else, and the inbound-email parser requires `https?://` — but this
+ * is the read side, and it opened whatever string it was handed. A
+ * `javascript:` or `data:` URL that reached the database by any other route
+ * (a future writer, an import, a hand-edited row) would be opened for every
+ * member who tapped the card. Validating where the action happens costs one
+ * parse and doesn't depend on remembering the rule at each new write site.
+ */
+function isSafeExternalUrl(url: string): boolean {
+  try {
+    const p = new URL(url, window.location.href).protocol;
+    return p === "http:" || p === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function openExternal(url: string, opts?: OpenOpts): boolean {
-  if (!url) return false;
+  if (!url || !isSafeExternalUrl(url)) return false;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative })
     .PhoebeNative;
   /**

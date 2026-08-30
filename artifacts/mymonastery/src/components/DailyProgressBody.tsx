@@ -23,7 +23,7 @@ import { reflectionSourceUrl, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFdd
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markInboxRead, unmarkInboxRead } from "@/lib/taizeInbox";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
-import { markCustomDoneToday, setCustomNotToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
+import { markCustomDoneToday, setCustomNotToday, unmarkCustomDoneToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
 import { useVisioToday } from "@/hooks/useVisioToday";
 import { undoOfficeToday } from "@/lib/officeManualLog";
@@ -321,7 +321,13 @@ function StreakCard() {
 export function PracticeCard({
   href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, alwaysShowProgress, hero, eyebrow, onClick, ctaOnly, onOpen, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate, onCheckClick, secondaryCta, onSecondary,
 }: {
-  href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
+  /**
+   * OPTIONAL. A card with neither `href` nor `onClick` is inert by design —
+   * an inbox card with nothing waiting has nowhere to go, and giving it a
+   * publisher's URL as a placeholder made wouter pushState a cross-origin
+   * value and throw. Rendered as a plain div in that case.
+   */
+  href?: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   /** Small uppercase label ABOVE the title in the hero layout — mirrors the
    *  office hero's "Book of Common Prayer" eyebrow. Hero-only; ignored on the
    *  compact row. */
@@ -527,7 +533,8 @@ export function PracticeCard({
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
         className="block w-full cursor-pointer">{heroRow}</div>
     );
-    return <Link href={href} className="block">{heroRow}</Link>;
+    if (href) return <Link href={href} className="block">{heroRow}</Link>;
+    return <div className="block w-full">{heroRow}</div>;
   }
 
   // Just-completed compact card: the action pill fades DOWN and out, then the
@@ -688,7 +695,10 @@ export function PracticeCard({
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen?.(); onClick(); } }}
       className="block w-full cursor-pointer">{row}</div>
   );
-  return <Link href={href} className="block" onClick={() => onOpen?.()}>{row}</Link>;
+  if (href) return <Link href={href} className="block" onClick={() => onOpen?.()}>{row}</Link>;
+  // Nothing to open. The row still renders — its ✓ / undo affordances are
+  // wired independently — it simply isn't a link.
+  return <div className="block w-full">{row}</div>;
 }
 
 // Built-in OptionalPractices whose card reuses LogSheet via a sentinel
@@ -755,7 +765,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, groupReflection, chittisterActive, chittisterDone, chittisterWaiting, cathedralActive, cathedralDone, cathedralWaiting, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, groupReflection, chittisterActive, chittisterDone, chittisterWaiting, chittisterLatest, cathedralActive, cathedralDone, cathedralWaiting, cathedralLatest, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -975,7 +985,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       onClick: () => setLogAnchorId(a.id),
       // Tapping the ✓ on an already-done card opens the Unlog confirm
       // instead — puts it back in Next rather than re-opening the Log sheet.
-      onUnlog: () => setCustomNotToday(a.id),
+      // UNLOG, not skip. This called setCustomNotToday, which sets today's
+      // skip — so the sheet that says "puts it back in Next" made the card
+      // disappear for the rest of the day instead, and on a weekly practice
+      // threw the week away with no way back. Skipping is a separate verb and
+      // has its own button in the log sheet.
+      onUnlog: () => unmarkCustomDoneToday(a.id),
       title: a.title,
       blurb,
       cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
@@ -1094,8 +1109,18 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       if (cathedralWaiting) markInboxRead("cathedral", cathedralWaiting.id);
     } catch { /* offline / no episode — the Read path still works */ }
   };
-  const chittisterLatestId = chittisterWaiting?.id ?? null;
-  const cathedralLatestId = cathedralWaiting?.id ?? null;
+  /**
+   * The id the UNDO puts back — from `latest`, not `waiting`.
+   *
+   * These read `waiting?.id`, and `onUnlog` is offered only when `waiting` is
+   * null: the guard inside it (`if (id)`) was therefore false every single
+   * time it ran. Someone who mis-tapped the Cathedral card watched it go to
+   * Done, tapped ✓ → Unlog, and nothing happened — the sermon was
+   * unrecoverable. `latest` is the item whether or not it has been read,
+   * which is what an undo needs by definition.
+   */
+  const chittisterLatestId = chittisterLatest?.id ?? null;
+  const cathedralLatestId = cathedralLatest?.id ?? null;
 
   /**
    * JOAN CHITTISTER'S WEEKLY — Vision & Viewpoint, in the inbox shape.
@@ -1110,7 +1135,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const chittisterCard = {
     key: "chittister", emoji: "🌾", rgb: "150,140,110",
     done: chittisterDone,
-    href: chittisterWaiting?.url ?? "https://www.joanchittister.org/pages/newsletters",
+    // NO `href` when nothing is waiting. PracticeCard falls through to
+    // wouter's <Link> when there is no onClick, and wouter pushStates the
+    // value — a cross-origin pushState throws SecurityError, so tapping the
+    // empty card did nothing except raise an uncaught DOMException. An empty
+    // inbox card is not a link anywhere; it is a card saying nothing is here.
+    ...(chittisterWaiting ? { href: chittisterWaiting.url } : {}),
     title: t("rhythm.card_chittister", { defaultValue: "Vision and Viewpoint" }),
     blurb: chittisterWaiting
       ? [chittisterWaiting.title, waitingLabel(chittisterWaiting)].filter(Boolean).join(" · ")
@@ -1146,7 +1176,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const cathedralCard = {
     key: "cathedral", emoji: "⛪", rgb: "120,140,170",
     done: cathedralDone,
-    href: cathedralWaiting?.url ?? "https://cathedral.org/sermons/",
+    ...(cathedralWaiting ? { href: cathedralWaiting.url } : {}),
     title: t("rhythm.card_cathedral", { defaultValue: "National Cathedral sermon" }),
     blurb: cathedralWaiting
       ? [cathedralWaiting.title, waitingLabel(cathedralWaiting)].filter(Boolean).join(" · ")
@@ -1828,7 +1858,25 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     return { kind: "top" as const, card };
   })();
   const heroSide: "morning" | "evening" | null =
-    notifyHero?.kind === "side" ? notifyHero.side
+    /**
+     * THE NOTIFY TARGET IS NOT AN EXEMPTION FROM 4:30.
+     *
+     * The owner has asked for this twice — "the evening anchor should not have
+     * a hero until 4:30pm", then "didn't I ask you not to have the hero until
+     * 4:30pm?" — and both fixes gated the two arms below while leaving this
+     * one, which is reached FIRST, with no clock check at all.
+     *
+     * It is not a perverse configuration either: an evening-only rhythm has
+     * no `side:morning` or `extra:morning` row for the notify picker to seed
+     * from, so the auto-seed falls to the first row in the person's order,
+     * which is `side:evening` — stored under the MORNING key. Their 9am home
+     * then led with Evening Prayer.
+     *
+     * A morning nudge pointing at an evening practice still works: it simply
+     * doesn't get to make it the hero before the evening starts.
+     */
+    notifyHero?.kind === "side" && (notifyHero.side !== "evening" || minutesNow >= EVENING_HERO_AFTER)
+      ? notifyHero.side
     /**
      * A PINNED PRACTICE NO LONGER COSTS THE HERO (owner: "not getting a hero",
      * with the recording showing Contemplation pinned first and the morning

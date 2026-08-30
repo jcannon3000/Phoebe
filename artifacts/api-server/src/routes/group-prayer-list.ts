@@ -13,10 +13,44 @@
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import { db, groupPrayerRequestsTable, groupMembersTable, usersTable } from "@workspace/db";
-import { requireAdmin, requireMember } from "./groups";
+import { db, groupPrayerRequestsTable } from "@workspace/db";
+import { requireAdmin, requireCongregant } from "./groups";
+import { perUserRateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
+
+/**
+ * WHO GETS A PRAYER LIST AT ALL — the owner's rule, not a new one.
+ *
+ * Two conditions, both already enforced on the older shared prayer requests
+ * (routes/prayer.ts and the PATCH /groups/:slug route), and this list is the
+ * same kind of thing:
+ *
+ *   • `prayerRequestsEnabled` — owner: "don't have list in community directly
+ *     turned on inherently." A new community has no prayer list until an
+ *     admin asks for one.
+ *   • NOT `isPublic` — owner: "no publicly listed group can have shared
+ *     prayer requests." A browseable group is one anyone can walk into, and
+ *     these bodies name real people's illnesses.
+ *
+ * Checked here rather than trusted from the older paths, because a stale-true
+ * flag on a group that went public afterwards is exactly the case prayer.ts
+ * documents.
+ */
+function listIsOpen(group: { prayerRequestsEnabled: boolean; isPublic: boolean }): boolean {
+  return group.prayerRequestsEnabled && !group.isPublic;
+}
+
+/**
+ * A joined congregant of a group whose list is open — the gate for both member
+ * routes. `requireCongregant` rather than `requireMember`: a follower is what
+ * anyone holding the invite link becomes, and a follower is not the parish.
+ */
+async function requireOpenList(slug: string, userId: number) {
+  const membership = await requireCongregant(slug, userId);
+  if (!membership) return null;
+  return listIsOpen(membership.group) ? membership : null;
+}
 type SessionUser = { id: number; name?: string | null } | undefined;
 
 const STATUSES = ["pending", "approved", "declined", "archived"] as const;
@@ -32,8 +66,8 @@ type Status = (typeof STATUSES)[number];
 router.get("/groups/:slug/prayer-list", async (req: Request, res: Response): Promise<void> => {
   const user = req.user as SessionUser;
   if (!user) { res.status(401).json({ error: "not_authenticated" }); return; }
-  const membership = await requireMember(String(req.params.slug ?? ""), user.id);
-  if (!membership) { res.status(403).json({ error: "not_a_member" }); return; }
+  const membership = await requireOpenList(String(req.params.slug ?? ""), user.id);
+  if (!membership) { res.status(403).json({ error: "no_prayer_list" }); return; }
 
   const rows = await db
     .select({
@@ -59,11 +93,17 @@ router.get("/groups/:slug/prayer-list", async (req: Request, res: Response): Pro
  * has read it. An admin submitting through this route still goes through the
  * queue — they can approve their own in one tap, and it keeps a single path.
  */
-router.post("/groups/:slug/prayer-list", async (req: Request, res: Response): Promise<void> => {
+router.post(
+  "/groups/:slug/prayer-list",
+  // A moderation queue is a place someone else has to READ. Twenty a minute is
+  // far above any honest use and far below burying a leader's queue under the
+  // 200 rows the admin listing returns.
+  perUserRateLimit("group_prayer_submit", { max: 20, windowMs: 60_000 }),
+  async (req: Request, res: Response): Promise<void> => {
   const user = req.user as SessionUser;
   if (!user) { res.status(401).json({ error: "not_authenticated" }); return; }
-  const membership = await requireMember(String(req.params.slug ?? ""), user.id);
-  if (!membership) { res.status(403).json({ error: "not_a_member" }); return; }
+  const membership = await requireOpenList(String(req.params.slug ?? ""), user.id);
+  if (!membership) { res.status(403).json({ error: "no_prayer_list" }); return; }
 
   const body = String(req.body?.body ?? "").trim();
   if (!body) { res.status(400).json({ error: "body_required" }); return; }
@@ -79,7 +119,8 @@ router.post("/groups/:slug/prayer-list", async (req: Request, res: Response): Pr
     status: "pending",
   }).returning();
   res.status(201).json({ id: row?.id, status: "pending" });
-});
+  },
+);
 
 /** GET /groups/:slug/prayer-list/all?status=pending — the leader's queue. */
 router.get("/groups/:slug/prayer-list/all", async (req: Request, res: Response): Promise<void> => {
@@ -119,7 +160,7 @@ router.patch("/groups/:slug/prayer-list/:id", async (req: Request, res: Response
   const result = await requireAdmin(String(req.params.slug ?? ""), user.id);
   if (!result) { res.status(403).json({ error: "not_an_admin" }); return; }
   const id = Number(req.params.id);
-  if (!Number.isInteger(id)) { res.status(400).json({ error: "bad_id" }); return; }
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "bad_id" }); return; }
 
   const patch: Record<string, unknown> = {};
   if (typeof req.body?.body === "string") {
@@ -165,7 +206,7 @@ router.delete("/groups/:slug/prayer-list/:id", async (req: Request, res: Respons
   const result = await requireAdmin(String(req.params.slug ?? ""), user.id);
   if (!result) { res.status(403).json({ error: "not_an_admin" }); return; }
   const id = Number(req.params.id);
-  if (!Number.isInteger(id)) { res.status(400).json({ error: "bad_id" }); return; }
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "bad_id" }); return; }
   await db.delete(groupPrayerRequestsTable).where(and(
     eq(groupPrayerRequestsTable.id, id),
     eq(groupPrayerRequestsTable.groupId, result.group.id),

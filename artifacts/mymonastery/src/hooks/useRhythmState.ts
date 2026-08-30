@@ -218,9 +218,13 @@ export type RhythmState = {
   chittisterActive: boolean;
   chittisterDone: boolean;
   chittisterWaiting: InboxItem | null;
+  /** The newest item REGARDLESS of whether it has been read — the undo needs
+   *  it, and `waiting` is null in exactly the case undo applies to. */
+  chittisterLatest: InboxItem | null;
   cathedralActive: boolean;
   cathedralDone: boolean;
   cathedralWaiting: InboxItem | null;
+  cathedralLatest: InboxItem | null;
   taizeDone: boolean;
   /** The meditation waiting to be read, or null when the inbox is empty. */
   taizeWaiting: { id: string; title: string; url: string; published: string | null } | null;
@@ -1588,6 +1592,23 @@ export function useRhythmState(): RhythmState {
     // home shows. Guests, whose intentions query never runs, stay excluded.
     ...(intentionsTotalCount > 0 ? [prayerListDone] : []),
     ...(examenActive ? [examenDone] : []),
+    /**
+     * THE THREE INBOXES COUNT — they draw a card, so they get a dot.
+     *
+     * They were left out of both flag lists, so the home could report "the
+     * day is kept" and play the whole-routine swell with an unread Taizé
+     * meditation still sitting in Next, and the widget's dot count disagreed
+     * with the home's. Card, dot, pill and widget read one computation; that
+     * is the rule these three were quietly outside of.
+     *
+     * Their `done` is already the right shape: `waiting == null` means either
+     * nothing new was published or this one has been read, and neither is a
+     * thing the person still owes today. That is what makes an inbox an
+     * inbox — an empty one is kept, not skipped.
+     */
+    ...(taizeActive ? [taizeDone] : []),
+    ...(chittisterActive ? [chittisterDone] : []),
+    ...(cathedralActive ? [cathedralDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted. Same for a
     // custom scoped to weekdays on a day it isn't kept (anchorOnDay): it draws
     // NO card on that day, so counting it here would add a dot that can never
@@ -1617,7 +1638,22 @@ export function useRhythmState(): RhythmState {
     contStats !== undefined &&
     reflRead !== undefined &&
     officePrefs !== undefined &&
-    (!anyExtraActive || completions !== undefined || offline));
+    (!anyExtraActive || completions !== undefined || offline) &&
+    /**
+     * The three inboxes settle before the first paint too.
+     *
+     * `waitingItem(source, undefined)` returns null, and null reads as done —
+     * so an unsettled query painted the card in DONE ("Nothing new since the
+     * last one") and then visibly threw it back into Next when the fetch
+     * landed. That is the reshuffle `ready` exists to prevent, and now that
+     * these count toward the day it would flip "the day is kept" too.
+     *
+     * `offline` still short-circuits, and the routes answer 204 with a 9s
+     * timeout, so a dead upstream costs one wait rather than a blank home.
+     */
+    (!taizeActive || taizeLatest !== undefined || offline) &&
+    (!chittisterActive || chittisterLatest !== undefined || offline) &&
+    (!cathedralActive || cathedralLatest !== undefined || offline));
 
   /**
    * The side's SECOND practice — active when one is stored AND it can be told
@@ -1662,9 +1698,11 @@ export function useRhythmState(): RhythmState {
     chittisterActive,
     chittisterDone,
     chittisterWaiting,
+    chittisterLatest: chittisterLatest ?? null,
     cathedralActive,
     cathedralDone,
     cathedralWaiting,
+    cathedralLatest: cathedralLatest ?? null,
     complineActive,
     cobreatheActive,
     prayerListActive,

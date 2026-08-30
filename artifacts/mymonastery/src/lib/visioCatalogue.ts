@@ -40,6 +40,14 @@ export type CatalogueArtwork = {
   /** The verified licence (or the artist's recorded grant), named on the closing slide. */
   licence: string;
   attribution: string;
+  /**
+   * From the owner's own curated library rather than the commentary harvest.
+   * A TIE-BREAK, not a filter: where a curated work and a harvested one answer
+   * the week's reading equally well, the curated one wins — so reopening the
+   * pool widened it without diluting the library the owner actually chose.
+   * Set when the two catalogues are unioned; absent on a bare record.
+   */
+  curated?: boolean;
 };
 
 export const ACT_CATALOGUE: CatalogueArtwork[] = [

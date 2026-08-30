@@ -17,7 +17,7 @@ import {
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset, type OfficeSideKey } from "@/lib/rulePresets";
-import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot } from "@/lib/customAnchors";
+import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot, RELATIONAL_PRACTICES } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 
@@ -293,8 +293,21 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
     // two adopt paths must not disagree about what a preset replaces.
     {
       const named = new Set((preset.customAnchors ?? []).map((c) => c.title.trim().toLowerCase()));
+      /**
+       * RELATIONAL PRACTICES SURVIVE A PRESET. They are not part of any rule
+       * — no preset carries one, and RulePreset has no field that could — so
+       * "the preset doesn't name it" is not evidence the person is finished
+       * with it. Without this line, adopting ANY starter rule silently and
+       * permanently deleted the seeded Express Gratitude every new user
+       * starts with: removeCustomAnchor tombstones and pushes, and nothing
+       * ever re-seeds. The full customizer never had the bug, because its
+       * sweep is followed by setRelationalPractices re-adding them — the two
+       * adopt paths disagreeing is the exact failure this block warns about.
+       */
+      const relational = new Set(RELATIONAL_PRACTICES.map((r) => r.title.trim().toLowerCase()));
       for (const a of getCustomAnchors()) {
-        if (!named.has(a.title.trim().toLowerCase())) removeCustomAnchor(a.id);
+        const title = a.title.trim().toLowerCase();
+        if (!named.has(title) && !relational.has(title)) removeCustomAnchor(a.id);
       }
     }
     // The rule's own standing practices, idempotent by title.

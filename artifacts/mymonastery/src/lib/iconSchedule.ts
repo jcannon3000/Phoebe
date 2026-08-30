@@ -62,6 +62,8 @@ export const ICON_WEEK_SCHEDULE: Record<string, IconWeekPick> = {
   "2026-12-06": { id: 59682, how: "gospel", ref: "Mark 1:4-11" },
   "2026-12-13": { id: 57105, how: "book", ref: null },
   "2026-12-20": { id: 57104, how: "gospel", ref: "Luke 1:46b-55" },
+  "2026-12-27": { id: 59657, how: "any", ref: null },
+  "2027-01-03": { id: 59677, how: "any", ref: null },
   "2027-01-10": { id: 58577, how: "gospel", ref: "Mark 1:4-11" },
   "2027-01-17": { id: 59657, how: "book", ref: null },
   "2027-01-24": { id: 56549, how: "day", ref: null },

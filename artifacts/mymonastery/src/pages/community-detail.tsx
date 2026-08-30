@@ -1057,6 +1057,25 @@ export default function CommunityDetailPage() {
   // today, so this whole section is gated on rawIsBeta below. Reuses the
   // same feed-list endpoint the member-facing feed card would use — there
   // just isn't a member-facing card wired up yet, only this admin entry point.
+  /**
+   * Does this community have a prayer list, and may THIS viewer see it?
+   *
+   * The tile's presence is the server's answer, not a rule copied here. The
+   * member route 403s unless the group has `prayerRequestsEnabled` and is not
+   * public (the owner's rule: "no publicly listed group can have shared
+   * prayer requests") AND the viewer is a joined member rather than a mere
+   * follower. Re-implementing those three conditions client-side is how a
+   * tile ends up offering a page that answers 403 — so ask instead.
+   */
+  const prayerListQ = useQuery<Array<{ id: number }>>({
+    queryKey: [`/api/groups/${slug}/prayer-list`],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-list`),
+    enabled: !!slug,
+    retry: false,
+    staleTime: 60_000,
+  });
+  const hasPrayerList = Array.isArray(prayerListQ.data);
+
   const { data: feedData, isLoading: feedLoading } = useQuery<{
     feeds: Array<{ feedId: number; feedSlug: string; feedTitle: string; feedCoverEmoji: string | null; subscriberCount: number }>;
   }>({
@@ -1675,6 +1694,12 @@ export default function CommunityDetailPage() {
                 // get the management controls inside it (see the section below).
                 { emoji: "👥", label: t("community_detail.tab_members"), go: () => setActiveTab("members") },
                 { emoji: "⛪", label: t("community_detail.tab_services", { defaultValue: "Services" }), go: () => setActiveTab("gatherings") },
+                // EVERYONE, not the admin block — this is where a parishioner
+                // asks for prayer, and it spent its first hour behind the
+                // admin gate where only a leader could find it. The leader's
+                // moderation queue is on the same page; the page shows each
+                // person what they may see.
+                ...(hasPrayerList ? [{ emoji: "🙏", label: t("community_detail.prayer_list", { defaultValue: "Prayer list" }), go: () => setLocation(`/communities/${slug}/prayer-list`) }] : []),
               ]).map((tile, i) => (
                 <button
                   key={i}
@@ -1700,9 +1725,6 @@ export default function CommunityDetailPage() {
                   // Where the weekly reflection is written, a link is posted,
                   // and the group's inbound newsletter address lives.
                   { emoji: "📝", label: t("community_detail.posts", { defaultValue: "Posts & newsletter" }), go: () => setLocation(`/communities/${slug}/posts`) },
-                  // The prayer list is a MEMBER surface too, but a leader
-                  // reaches its queue from here — the page shows both.
-                  { emoji: "🙏", label: t("community_detail.prayer_list", { defaultValue: "Prayer list" }), go: () => setLocation(`/communities/${slug}/prayer-list`) },
                   // Prayer Feeds are beta-only (server-enforced) — the tile is
                   // gated on rawIsBeta so it doesn't invite a 403 for admins
                   // outside the beta program.

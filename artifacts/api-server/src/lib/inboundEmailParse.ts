@@ -59,17 +59,82 @@ export function viewOnlineUrl(html: string): string | null {
   return null;
 }
 
-/** HTML → readable text, for the case where there is no hosted version. */
+/**
+ * HTML → readable text, for the case where there is no hosted version.
+ *
+ * DECODE ENTITIES FIRST, THEN STRIP TAGS. The order was the other way round,
+ * which un-did the stripping: `&lt;img src=x onerror=…&gt;` passed the
+ * tag-stripper untouched (it contains no angle brackets yet) and the decode
+ * step immediately after turned it into real markup in the stored body.
+ * Inert today — group-reflection.tsx renders paragraphs, never
+ * dangerouslySetInnerHTML — but it is stored XSS waiting for the first
+ * surface that renders a post as HTML, and this content arrives by email
+ * from outside the app.
+ *
+ * Decoding `&amp;` LAST for the same reason: decode it first and `&amp;lt;`
+ * becomes `&lt;` becomes `<`, which is the same escape one level deeper.
+ */
 export function htmlToText(html: string): string {
-  return html
+  const decoded = html
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
+    .replace(/&#8217;|&rsquo;/gi, "’").replace(/&#8220;|&ldquo;/gi, "“").replace(/&#8221;|&rdquo;/gi, "”")
+    .replace(/&amp;/gi, "&");
+  return decoded
     .replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ")
     .replace(/<\/(p|div|tr|h[1-6]|li)>/gi, "\n\n")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
-    .replace(/&#8217;|&rsquo;/gi, "’").replace(/&#8220;|&ldquo;/gi, "“").replace(/&#8221;|&rdquo;/gi, "”")
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/**
+ * Did the provider verify that this message really came from the From domain?
+ *
+ * `true` = an explicit pass, `false` = an explicit fail, `null` = the payload
+ * carries no verdict at all (a hand-rolled POST straight at the webhook looks
+ * like this, so the route treats null as a refusal unless told otherwise).
+ *
+ * Three providers, three shapes:
+ *   • Postmark  — a `Headers` array containing `Authentication-Results`.
+ *   • SendGrid  — `dkim` ("{@domain : pass}") and `SPF` ("pass").
+ *   • Mailgun   — `X-Mailgun-Spf` / `X-Mailgun-Dkim-Check-Result`.
+ *
+ * DKIM alone is enough (it survives forwarding, SPF does not), and an SPF
+ * pass whose domain matches the From is enough on its own too.
+ */
+export function senderPassedAuth(body: Record<string, unknown>, from: string): boolean | null {
+  const domain = from.split("@")[1]?.toLowerCase() ?? "";
+  const say = (v: unknown) => String(v ?? "").toLowerCase();
+
+  // Postmark: find the Authentication-Results header in its Headers array.
+  const headers = body["Headers"];
+  let authResults = "";
+  if (Array.isArray(headers)) {
+    for (const h of headers) {
+      const name = say((h as { Name?: string })?.Name);
+      if (name === "authentication-results") authResults += " " + say((h as { Value?: string })?.Value);
+    }
+  }
+  authResults += " " + say(body["Authentication-Results"] ?? body["authentication-results"]);
+
+  const dkim = say(body["dkim"] ?? body["Dkim"] ?? body["X-Mailgun-Dkim-Check-Result"] ?? body["x-mailgun-dkim-check-result"]);
+  const spf = say(body["SPF"] ?? body["spf"] ?? body["X-Mailgun-Spf"] ?? body["x-mailgun-spf"]);
+
+  const hasVerdict = !!authResults.trim() || !!dkim || !!spf;
+  if (!hasVerdict) return null;
+
+  // An explicit pass, in any of the three vocabularies.
+  const dkimPass = /\bpass\b/.test(dkim) || new RegExp(`dkim=pass`).test(authResults);
+  const spfPass = /\bpass\b/.test(spf) || new RegExp(`spf=pass`).test(authResults);
+  // For DKIM the signing domain should be the From's; Postmark and SendGrid
+  // both name it, so check when we can and accept a bare pass when we can't.
+  const dkimDomainOk = !domain || !dkim.includes("@") || dkim.includes(`@${domain}`);
+
+  if (dkimPass && dkimDomainOk) return true;
+  if (spfPass) return true;
+  return false;
 }
 

@@ -372,7 +372,23 @@ function build() {
     if (movedTier) stats.tierMoved++;
     const { art, tierRefs, top } = chosen;
     const ref = (top > 0 ? art.refs.find((r) => matchScore([r], tierRefs) === top) : null) ?? art.refs[0] ?? "";
-    const entry = { id: art.id, ref, followsToday: top >= 2 };
+    /**
+     * "THIS WEEK'S READING" MEANS THE VERSES, NOT THE CHAPTER.
+     *
+     * matchScore: 3 = the verse spans overlap, 2 = same chapter only, 1 =
+     * same book. This said `>= 2`, so a chapter-level match printed the
+     * artwork's own reference under the words "This week's reading" — and 59
+     * of 157 weeks were chapter-only. The week ending 2026-10-25 the parish
+     * reads Matthew 22:34-46, the Great Commandment; the card read "Matthew
+     * 22:15-22", Render unto Caesar. A different passage, in the same
+     * chapter, named as the one being read.
+     *
+     * The owner has already corrected this exact overclaim once: "if it is
+     * not actually the passage from this week, dont have it say the verse."
+     * A chapter-level pick is still a good picture for the week — it simply
+     * doesn't get to claim the reading.
+     */
+    const entry = { id: art.id, ref, followsToday: top >= 3 };
     rows.push([ymd, entry]);
     // The week now has its work; the six days after this one reuse it, and
     // the cap counts a WEEK as one appearance rather than seven.

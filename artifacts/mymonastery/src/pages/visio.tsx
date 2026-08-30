@@ -44,7 +44,7 @@ import { openExternal, openOfficeReading, preloadExternal } from "@/lib/openExte
 import { FROST_BLUR } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
-import { chooseArtwork, artworkById, alternatesForDay, readingUrl, type Chosen } from "@/lib/visioSelect";
+import { chooseArtwork, artworkById, alternatesForDay, readingUrl, canonicalRef, type Chosen } from "@/lib/visioSelect";
 import { isActHidden } from "@/lib/actOverrides";
 import { VisioHowToIntro, visioHowtoSeen, markVisioHowtoSeen } from "@/components/VisioHowToIntro";
 import { getVisioHistory, recordVisioSeen } from "@/lib/visioHistory";
@@ -332,6 +332,7 @@ export default function VisioPage() {
    * and the ref below covers the cached case where no event is coming.
    */
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+
   const bundled = useMemo(() => artworkForDay(today), [today]);
 
   /**
@@ -555,8 +556,52 @@ export default function VisioPage() {
    * makes the first-look beat a plain picture beat rather than changing the
    * beat count.
    */
+  /**
+   * A DEADLINE ON THE PICTURE — the blank-screen rule, applied to the beat
+   * whose only content is an image.
+   *
+   * The looking beat is the painting alone: no title, no words, and the img
+   * is held at opacity 0 until `loadedSrc` matches the src we passed. ACT
+   * serves full-size JPEGs from S3, and eleven of the scheduled works have
+   * spaces or apostrophes in their filenames. If that fetch simply stalls —
+   * no error, so `onError` never fires — beat 2 of 5 is an empty stage with a
+   * Continue button under it, for as long as the person is willing to wait.
+   *
+   * After eight seconds we stop waiting and treat it as failed, which is the
+   * path that already exists: `view` falls back to the bundled Rublev and the
+   * practice continues. A picture that arrives late still paints (the img is
+   * still mounted and still fires onLoad), so the deadline costs nothing on a
+   * slow-but-working connection except the fallback appearing first.
+   */
+  useEffect(() => {
+    if (!view?.img || imageFailed) return;
+    if (loadedSrc === view.img) return;
+    const t = window.setTimeout(() => setImageFailed(true), 8000);
+    return () => window.clearTimeout(t);
+  }, [view?.img, loadedSrc, imageFailed]);
+
   const passageUrl = useMemo(() => (view?.scriptureRef ? readingUrl(view.scriptureRef) : null), [view?.scriptureRef]);
-  const hasReading = !!passageUrl;
+  /**
+   * A passage to open only when this work really is on the week's reading.
+   *
+   * `followsToday` is set by the schedule when the artwork's verses OVERLAP
+   * the Sunday's appointed ones. Without that condition this beat announced
+   * "THE READING — Mark 2:1-12" on an Advent week appointing Mark 13, and
+   * handed the reader off to oremus there: a book-level pick, or the pure
+   * rotation pick some weeks get, presented as the passage the parish is
+   * reading. The title slide and the museum label were already gated; this
+   * beat, the one whose whole job is the passage, was not.
+   *
+   * When it isn't the week's reading the beat stays — as a held look, the
+   * same shape a work with no essay gives the closing slide.
+   */
+  const hasReading = !!passageUrl && !!view?.followsToday;
+  /** ACT files books back to front ("Peter II, 3:8-15a"). Canonical for the
+   *  eye; readingUrl already does its own unwrapping for the link. */
+  const readingLabel = useMemo(
+    () => (view?.scriptureRef ? canonicalRef(view.scriptureRef) : null),
+    [view?.scriptureRef],
+  );
   /** FIRST_LOOK is the picture — with or without a passage to open off it. It
    *  used to be a text slide when there WAS one, which put two slides of
    *  instructions back to back and made the reader tap twice before seeing
@@ -1105,7 +1150,7 @@ export default function VisioPage() {
                 */}
               {view.scriptureRef && view.followsToday && (
                 <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13.5, margin: "5px 0 0", lineHeight: 1.5 }}>
-                  {view.scriptureRef}
+                  {canonicalRef(view.scriptureRef)}
                   {` · ${t("visio.follows_today", { defaultValue: "This week's reading" })}`}
                 </p>
               )}
@@ -1193,7 +1238,7 @@ export default function VisioPage() {
                 is why an audit exists. */}
             {view.scriptureRef && view.followsToday && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "3px 0 0" }}>
-                {view.scriptureRef}
+                {canonicalRef(view.scriptureRef)}
                 {` · ${t("visio.follows_today", { defaultValue: "This week's reading" })}`}
               </p>
             )}
@@ -1226,12 +1271,12 @@ export default function VisioPage() {
             <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
               {t("visio.reading_eyebrow", { defaultValue: "The reading" })}
             </p>
-            {hasReading && view?.scriptureRef ? (
+            {hasReading && readingLabel ? (
               <h2
                 className="prompt-rise"
                 style={{ fontFamily: FONT, fontSize: "clamp(26px, 6.5vw, 34px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: 0, lineHeight: 1.12 }}
               >
-                {view.scriptureRef}
+                {readingLabel}
               </h2>
             ) : null}
             <p style={{ color: "rgba(200,212,192,0.82)", fontFamily: FONT, fontSize: 16.5, lineHeight: 1.6, margin: 0 }}>

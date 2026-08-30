@@ -82,7 +82,39 @@ const rows = [];
 const stats = { weeks: 0, day: 0, gospel: 0, nt: 0, subject: 0, book: 0, any: 0 };
 const pool = ICON_CATALOGUE;
 
-for (const [sunday, reading] of Object.entries(RCL_SUNDAYS)) {
+/**
+ * EVERY SUNDAY IN THE RANGE, not every Sunday the RCL table happens to hold.
+ *
+ * This iterated RCL_SUNDAYS directly, and that table has holes: it jumps from
+ * 2026-12-20 to 2027-01-10, so the two weeks of Christmas had no entry at all
+ * and `suggestedForWeek` returned null. The icon practice's first-open-of-the-
+ * week screen offers three doors — last week's, a new one, and one suggested
+ * from Sunday's readings — and on those Mondays it silently offered two. The
+ * same silence began permanently after the table's last row.
+ *
+ * The fallback pass at the end of the loop ("just recommend something") was
+ * written for exactly these weeks and could never run, because the loop never
+ * reached them. Walking the calendar instead means a missing lectionary row
+ * costs the *reason* for the suggestion, not the suggestion.
+ */
+const SUNDAYS = (() => {
+  const keys = Object.keys(RCL_SUNDAYS).sort();
+  if (keys.length === 0) return [];
+  const out = [];
+  const d = new Date(`${keys[0]}T12:00:00`);
+  const last = new Date(`${keys[keys.length - 1]}T12:00:00`);
+  while (d <= last) {
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+    d.setDate(d.getDate() + 7);
+  }
+  return out;
+})();
+
+for (const sunday of SUNDAYS) {
+  // No lectionary row for this Sunday: still pick, just without a reading to
+  // reason from. `how` falls through to "any" and suggestionReason stays
+  // silent rather than claiming a connection that isn't there.
+  const reading = RCL_SUNDAYS[sunday] ?? { gospel: null, nt: [], url: "" };
   stats.weeks++;
   const gospel = reading.gospel ? [reading.gospel] : [];
   const nt = reading.nt ?? [];
