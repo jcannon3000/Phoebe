@@ -46,7 +46,7 @@ const LEVEL_LABEL: Record<string, string> = {
  *  mirrors mymonastery/src/lib/anchorPractices.ts BY_NAME. */
 const NAMED_ANCHOR_EMOJI: Record<string, string> = {
   "audio divina": "🎵", "creation prayer": "🌍",
-  "contemplative walk": "🚶", "visio divina": "🖼️",
+  "contemplative walk": "🚶🏽", "visio divina": "🖼️",
 };
 const NEWSLETTER_LABEL: Record<string, string> = {
   cac: "CAC Daily Meditation",
@@ -100,7 +100,7 @@ const PRACTICE_LABEL: Record<string, string> = {
 // for Creation Prayer, the walker for a walk.
 const PRACTICE_EMOJI: Record<string, string> = {
   // visio is in PRACTICE_LABEL; without it here the row fell back to ✨.
-  cobreathe: "🌍", listening: "🎵", walk: "🚶", reading: "📖", examen: "🌗",
+  cobreathe: "🌍", listening: "🎵", walk: "🚶🏽", reading: "📖", examen: "🌗",
   visio: "🖼️",
 };
 
@@ -238,7 +238,7 @@ export function describeSpec(spec: {
       // practice the reader never chose, with a sub about a timer it doesn't
       // have. Five kinds exist (officePrefs.ContemplationKind); name them.
       const NAMED_KIND: Record<string, { emoji: string; label: string; sub: string }> = {
-        walk: { emoji: "🚶", label: "Contemplative Walk", sub: "A walk kept as prayer" },
+        walk: { emoji: "🚶🏽", label: "Contemplative Walk", sub: "A walk kept as prayer" },
         audio: { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer" },
         visio: { emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image" },
       };

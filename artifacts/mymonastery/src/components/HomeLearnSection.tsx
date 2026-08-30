@@ -109,6 +109,22 @@ export function HomeLearnSection() {
   // `hiddenTick` is read so the filter re-runs when the event fires; the value
   // itself carries no meaning.
   void hiddenTick;
+  /**
+   * BOTH HOOKS ABOVE THE EARLY RETURN.
+   *
+   * `useRef` and `useInView` used to sit AFTER `if (show.length === 0) return
+   * null;` — so the moment `show` flips from non-empty to empty (a course
+   * finishing, or `hiddenTick` changing what's hidden) the hook count for
+   * this component changes between renders and React throws "Rendered fewer
+   * hooks than expected." `hiddenTick` bumps on the same `COURSE_HIDDEN_EVENT`
+   * this component listens for, and it fires on login and on app-resume via
+   * `courseProgress.ts`'s snapshot re-read — so backgrounding and reopening
+   * the app, on the HOME SCREEN, could take the whole app down.
+   *
+   * Hooks now run unconditionally; the early return moves below them.
+   */
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(rootRef, { once: true, amount: 0.25 });
   const onHome = cards.filter((c) => !isCourseHiddenFromHome(c.key));
   const active = onHome.filter((c) => c.started && c.done < c.total);
   const wolCard = onHome.find((c) => c.key === WAY_OF_LOVE.id);
@@ -119,8 +135,6 @@ export function HomeLearnSection() {
   // card a beat behind. Held hidden until the SECTION scrolls into view (it sits
   // below the fold, so an on-mount cascade would play off-screen and be missed),
   // then the whole cascade fires once, top-to-bottom, via the per-index delay.
-  const rootRef = useRef<HTMLDivElement>(null);
-  const inView = useInView(rootRef, { once: true, amount: 0.25 });
   const enterUp = (i: number) => ({
     initial: { opacity: 0, y: 10 },
     animate: inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },

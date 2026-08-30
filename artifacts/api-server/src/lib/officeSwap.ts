@@ -105,10 +105,10 @@ export const INVITATORY_CATALOG: Array<{ key: string; label: string; latin: stri
 const CANTICLE_EMOJI: Record<string, string> = {
   // Rite I 1–7, mirroring their Rite II counterparts' emoji where the canticle
   // is the same song in the other rite (1↔12, 2↔13, 3↔15, 4↔16, 5↔17, 6↔20, 7↔21).
-  canticle_1: "🌍", canticle_2: "🙌", canticle_3: "🌟", canticle_4: "🌅",
+  canticle_1: "🌍", canticle_2: "🙌🏽", canticle_3: "🌟", canticle_4: "🌅",
   canticle_5: "🕯️", canticle_6: "🎶", canticle_7: "📜",
   canticle_8: "🌊", canticle_9: "💧", canticle_10: "🔍", canticle_11: "✨",
-  canticle_12: "🌍", canticle_13: "🙌", canticle_14: "🕊️", canticle_15: "🌟",
+  canticle_12: "🌍", canticle_13: "🙌🏽", canticle_14: "🕊️", canticle_15: "🌟",
   canticle_16: "🌅", canticle_17: "🕯️", canticle_18: "🐑", canticle_19: "👑",
   canticle_20: "🎶", canticle_21: "📜",
 };

@@ -188,11 +188,11 @@ const THEMES: Array<{ key: string; label: string; emoji: string; keywords: strin
     keywords: ["repent", "return", "conversion", "transform", "renewal", "new life", "metanoia", "turning", "begin again", "reconcil", "confession"] },
   { key: "learn", label: "Learn", emoji: "📖",
     keywords: ["formation", "discipleship", "study", "discern", "education", "catechesis", "scripture", "gospel", "bible", "lectionary", "reading", "teaching", "baptism", "confirmation"] },
-  { key: "pray", label: "Pray", emoji: "🙏",
+  { key: "pray", label: "Pray", emoji: "🙏🏽",
     keywords: ["prayer", "pray", "contemplat", "intercession", "spiritual practice", "daily office", "morning prayer", "evening prayer", "compline", "vespers", "rule of life", "examen", "rosary"] },
   { key: "worship", label: "Worship", emoji: "⛪",
     keywords: ["worship", "eucharist", "liturgy", "preach", "sermon", "sunday", "praise", "hymn", "sacrament", "communion", "gathering", "mass", "rite", "blessing"] },
-  { key: "bless", label: "Bless", emoji: "🤲",
+  { key: "bless", label: "Bless", emoji: "🤲🏽",
     keywords: ["bless", "neighbor", "welcome", "hospitality", "generosity", "stewardship", "tithe", "community", "service", "care", "beloved"] },
   { key: "go", label: "Go", emoji: "🌍",
     keywords: ["mission", "witness", "justice", "reconcil", "outreach", "evangelism", "serve", "immigrant", "poverty", "racial", "equity", "liberation", "peace"] },
@@ -211,7 +211,7 @@ const THEMES: Array<{ key: string; label: string; emoji: string; keywords: strin
     keywords: ["mystic", "saint", "merton", "julian of norwich", "teresa", "john of the cross", "francis", "desert", "hildegard", "eckhart", "thérèse", "therese"] },
   { key: "healing", label: "Grief & Healing", emoji: "🕊️",
     keywords: ["grief", "loss", "healing", "lament", "suffering", "comfort", "wholeness", "trauma", "mourning", "death"] },
-  { key: "prayer", label: "Prayer", emoji: "🙏",
+  { key: "prayer", label: "Prayer", emoji: "🙏🏽",
     keywords: ["prayer", "pray", "intercession", "examen", "rule of life", "spiritual practice", "morning prayer", "evening prayer", "compline"] },
 ];
 

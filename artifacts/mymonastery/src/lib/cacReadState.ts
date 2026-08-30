@@ -767,10 +767,15 @@ export function recordFddOpened(opts?: { flagReturn?: boolean; side?: "morning" 
 // monastery. The page itself loads today's word client-side, so the
 // same URL every day resolves to "today" — matching FDD's pattern.
 // No server-side route on our end.
-// ── The reading sources that are LINKS ONLY ──────────────────────────────
-// Owner asked for each of these as a reflection people can open. They have
-// no tracker and no day-flag: they are a page to read, opened in Phoebe's
-// reader view, and nothing about them counts toward an office.
+// ── Nouwen, Sojourners, Grist ────────────────────────────────────────────
+// Owner asked for each of these as a reflection people can open. They ARRIVED
+// as links only — no tracker, no day-flag, counting toward nothing — and this
+// heading said so long after it stopped being true. Each now has a per-side
+// daily tracker further down this file and a branch in creditAnchorsFor, and
+// all three are in TRACKED_REFLECTION_SOURCES, so opening one satisfies the
+// Reflect anchor exactly as CAC or SSJE does.
+//
+// What is still particular to them is HOW they are fetched:
 //
 // NOUWEN goes through our own server because his permalinks are opaque
 // Squarespace slugs and the meditations index renders client-side (fetching

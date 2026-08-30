@@ -211,10 +211,14 @@ export default function PodcastShowPage() {
     });
   }, [episodes, query, sortNewest]);
 
+  // useIsShowFollowed above the auth gate — it used to sit after it, so the
+  // hook count changed the moment auth settled (or on the 60s re-poll's
+  // transient null), throwing "Rendered more hooks than during the previous
+  // render." on a plain cold open of a shared podcast link.
+  const followed = useIsShowFollowed(slug);
   if (authLoading || !user) return null;
 
   const show = data?.show;
-  const followed = useIsShowFollowed(slug);
 
   return (
     <Layout bgPhoto={podcastBg}>

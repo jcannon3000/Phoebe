@@ -662,9 +662,27 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'article.node-versevoice *{border:0!important;box-shadow:none!important;}',
         /* Verse / Voice / Prayer of the day — the three headings, as header
            text and nothing else. */
-        'article.node-versevoice h2{font-size:13px!important;letter-spacing:.16em;',
-        'text-transform:uppercase;font-weight:600!important;margin:1.5em 0 .5em!important;',
-        'color:rgba(143,175,150,0.95)!important;}',
+        /* THE LABELS ARE TITLES, and were smaller than the words they title
+           (owner: "The Soujerners titles are smaller then the body copy, and
+           the spacing is off"). At 13px over a 20px serif they read as
+           captions attached to the passage above rather than as headings for
+           the one below. 17px in the app's own face, still uppercase and
+           letterspaced so they stay labels, but no longer dwarfed.
+           The margins are PIXELS, not ems: they were 2.1em, which silently
+           scaled with the font size — raising the type would have opened the
+           gaps by a third at the same time. 30 above and 8 below sets the
+           three sections apart and keeps each title with its own text. */
+        'article.node-versevoice h2{font-size:22px!important;letter-spacing:.04em;',
+        'text-transform:uppercase;font-weight:700!important;',
+        'font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'margin:0 0 10px!important;color:rgba(168,197,160,0.95)!important;}',
+        /* The gap between sections lives on the SECTION, not on the heading.
+           A heading's top margin collapses through the section's top edge and
+           merges with whatever sits above, so the space it asked for was only
+           partly honoured — which is why the sections still ran together
+           after the first attempt at this. Padding cannot collapse. */
+        'article.node-versevoice .versevoice-section{padding-top:34px!important;}',
+        'article.node-versevoice .versevoice-section:first-of-type{padding-top:10px!important;}',
         /* THE 96px, which is where the space actually was. Owner: "there is
            still too much space between elements for sojourners and nouwne."
            Measured on the live page rather than guessed: each of the three
@@ -674,8 +692,18 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            air; at phone measure it reads as three separate screens.
            The heading's own margin now carries the whole rhythm. */
         'article.node-versevoice .versevoice-section{margin-top:0!important;',
-        'padding-top:0!important;padding-bottom:0!important;}',
-        'article.node-versevoice .versevoice-header{padding-bottom:0!important;}',
+        'padding-bottom:0!important;}',
+        /* The date sits with the text, not over it (owner: "have the date be
+           left allighned"). Sojourners centres its header; centred over a
+           left-set column it reads as a banner rather than as the day's
+           dateline. */
+        /* …and it starts at the top (owner: "there is too much padding above
+           the day though"). Sojourners gives the header generous room for a
+           wide page; under our own nav bar that space is already there. */
+        'article.node-versevoice .versevoice-header{padding:0!important;',
+        'margin:0!important;text-align:left!important;}',
+        'article.node-versevoice > *:first-child{margin-top:0!important;padding-top:0!important;}',
+        'article.node-versevoice .versevoice-header *{text-align:left!important;}',
         /* BIGGER, AND CLOSER TOGETHER (owner: "increase the size of the
            soujoruners text and descrease the margins").
            A day's Verse and Voice is three short passages, not an article —
@@ -686,14 +714,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            margins come down with them, or bigger text under the same gaps
            just reads as further apart. SCOPED to Sojourners: the shared
            `p,li` rule further down still sets 18px for everyone else. */
-        'article.node-versevoice{padding-left:13px!important;padding-right:13px!important;}',
-        /* THE BODY IS A SERIF, and only the body. Owner: "can it not be all
-           space grotesk?" — Space Grotesk is the app's voice, right for the
-           three small caps headings that label the day, and wrong for three
-           passages you are meant to read slowly. Georgia is the face this app
-           already uses for prayer text, so the verse, the voice and the prayer
-           are set in it and the labels above them stay Grotesk. That contrast
-           is also what makes the sections legible as sections. */
+        'article.node-versevoice{padding-left:20px!important;padding-right:20px!important;}',
+        /* ALL SPACE GROTESK. Owner: "Also why is that not all space grotesk?"
+           — which settles an earlier line of his I read the wrong way round
+           ("can it not be all space grotesk?", which I took as "don't make it
+           all Grotesk" and set the passages in Georgia). One face, the app's
+           own, throughout: the labels carry the hierarchy by size and weight
+           rather than by changing typeface. */
         /* THE FIELD ITEM, not just the paragraph — this is what made the
            three passages uneven (owner: "The cell journey has uneven text").
            Measured on the live page: Sojourners renders each passage as a bare
@@ -702,10 +729,17 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            and left the verse and the prayer at the site's inherited size —
            which is exactly the mismatch on screen. Naming the field item
            itself catches all three however Drupal wrapped them. */
+        /* Every one of these carries the SCOPE twice so it beats the shared
+           `p,li` rule further down, which has equal specificity and would win
+           on source order alone — that tie is what made the three passages
+           uneven in the first place, and it would return the moment Drupal
+           stopped wrapping one of them in a .field-item. */
+        'article.node-versevoice article.node-versevoice .field-item,',
         'article.node-versevoice .field-item,',
         'article.node-versevoice .field-item p,',
         'article.node-versevoice p,article.node-versevoice li,',
-        'article.node-versevoice blockquote{font-family:Georgia,"Times New Roman",serif!important;',
+        'article.node-versevoice blockquote{',
+        'font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
         'font-size:20px!important;line-height:1.6!important;}',
         /* The margin only on the things that stack, so the field item doesn't
            add a second gap under a paragraph it already contains. */
@@ -715,8 +749,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            sections"). Sojourners' own 96px was three separate screens on a
            phone and zero ran them together; the heading's top margin is what
            carries the whole rhythm now, so it is the one number to turn. */
-        'article.node-versevoice h2{margin:2.1em 0 .5em!important;}',
-        'article.node-versevoice h2:first-of-type{margin-top:.6em!important;}',
+
         /* (An attribution rule lived here and is deliberately gone. It quieted
            `.versevoice-section p:last-of-type`, meaning to dim the credit line
            under each passage — but Sojourners nests the quotation so that the
@@ -827,8 +860,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.phoebe-reader-note a{color:rgba(168,197,160,0.75)!important;text-decoration:underline;}',
         /* The site's name at the very top (owner: "keep the oremus title at
            the top and such so we know it's the webpage"). */
-        '.phoebe-reader-masthead{padding:18px 20px 2px!important;font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
-        'font-size:11px!important;letter-spacing:.18em;text-transform:uppercase;color:rgba(143,175,150,0.6)!important;}',
+        /* The publication's name, then the page's own date under it, both
+           left — the shape the owner asked for. It sits at the very top with
+           only enough room above it to clear the bar, because "there is too
+           much padding above the day" was the complaint that preceded it. */
+        '.phoebe-reader-masthead{padding:2px 20px 0!important;margin:0!important;',
+        'font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'font-size:15px!important;font-weight:700!important;letter-spacing:.02em;',
+        'text-align:left!important;color:rgba(168,197,160,0.95)!important;}',
       ]).join('');
 
       function addStyle() {
@@ -936,13 +975,17 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
       /** The site named at the top of the page — it stays in BOTH views. */
       function masthead() {
-        /* NO MASTHEAD. Owner: "the header doesnt need a title." The reader
-           already announces itself by looking like Phoebe, and the page's own
-           title follows immediately underneath — a strapline above it just
-           spent the first line of every reading saying where you already knew
-           you were. Kept as a no-op rather than deleted so the toggle, which
-           shows and hides `.phoebe-reader-masthead`, has nothing to chase. */
-        if (true) return;
+        /* NO MASTHEAD, WITH ONE EXCEPTION. Owner, of the others: "the header
+           doesnt need a title" — the reader already announces itself by
+           looking like Phoebe, and the page's own title follows immediately
+           underneath, so a strapline spent the first line of every reading
+           saying where you already knew you were.
+           SOJOURNERS IS THE EXCEPTION (owner: "Can it say / Soujourners Verse
+           and Voice / Date / Left aligned at the top"). Its page has no title
+           of its own — it opens straight into a date and then three labelled
+           passages — so without this the reading begins with nothing naming
+           it. */
+        if (!isSojo) return;
         if (document.querySelector('.phoebe-reader-masthead') || !document.body) return;
         var m = document.createElement('div');
         m.className = 'phoebe-reader-masthead';
@@ -953,7 +996,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                        // and Voice", and the owner asked for "Voice and
                        // Verse". His wording wins on a label his readers see.
                        : isNouwen ? 'Daily Henri Nouwen Quotes'
-                       : isSojo   ? 'Voice and Verse \\u00b7 Sojourners'
+                       : isSojo   ? 'Sojourners Verse and Voice'
                                   : 'Forward Day by Day';
         document.body.insertBefore(m, document.body.firstChild);
       }
@@ -1074,6 +1117,15 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          * That is also why this looked fine on Forward Day by Day: FDD has no
          * ISOLATE_TARGET, so nothing on it goes through this path.
          */
+        /* PHOEBE'S OWN FURNITURE IS NEVER HIDDEN BY THE ISOLATE.
+           The masthead is inserted as a child of <body>, and isolate() walks
+           up from the kept block hiding every sibling at each level — so on
+           the settle interval's SECOND pass (350ms in) it hid the masthead,
+           and masthead() would not put it back because it early-returns when
+           one already exists. The result was a title that appeared for a third
+           of a second and then vanished, which is worse than never drawing it:
+           it looks like the page moved. */
+        if (el && el.className && String(el.className).indexOf('phoebe-reader-') === 0) return;
         if (!el || el.hasAttribute('data-phoebe-hid')) return;
         el.setAttribute('data-phoebe-hid', el.style.display || '');
         el.style.setProperty('display', 'none', 'important');

@@ -1699,7 +1699,7 @@ export default function CommunityDetailPage() {
                 // admin gate where only a leader could find it. The leader's
                 // moderation queue is on the same page; the page shows each
                 // person what they may see.
-                ...(hasPrayerList ? [{ emoji: "🙏", label: t("community_detail.prayer_list", { defaultValue: "Prayer list" }), go: () => setLocation(`/communities/${slug}/prayer-list`) }] : []),
+                ...(hasPrayerList ? [{ emoji: "🙏🏽", label: t("community_detail.prayer_list", { defaultValue: "Prayer list" }), go: () => setLocation(`/communities/${slug}/prayer-list`) }] : []),
               ]).map((tile, i) => (
                 <button
                   key={i}

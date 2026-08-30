@@ -573,12 +573,7 @@ export default function VisioPage() {
    * still mounted and still fires onLoad), so the deadline costs nothing on a
    * slow-but-working connection except the fallback appearing first.
    */
-  useEffect(() => {
-    if (!view?.img || imageFailed) return;
-    if (loadedSrc === view.img) return;
-    const t = window.setTimeout(() => setImageFailed(true), 8000);
-    return () => window.clearTimeout(t);
-  }, [view?.img, loadedSrc, imageFailed]);
+
 
   const passageUrl = useMemo(() => (view?.scriptureRef ? readingUrl(view.scriptureRef) : null), [view?.scriptureRef]);
   /**
@@ -608,6 +603,33 @@ export default function VisioPage() {
    *  anything. The reading is offered under the work instead. */
   // The image is never shown in-app now — see the note on the two beats.
   const showsImage = step === LOOK || step === LOOK_AGAIN;
+
+  useEffect(() => {
+    /**
+     * ONLY WHILE THE IMAGE IS ACTUALLY MOUNTED.
+     *
+     * The <img> renders on the LOOK beats alone. Armed on every beat, this
+     * fired on the TITLE slide — where nothing is fetching, so `loadedSrc`
+     * can never match — and eight seconds of reading the title, the artist
+     * and the "let your eyes rest where they are drawn" prompt silently
+     * swapped `view` to the bundled fallback for the whole rest of the deck.
+     * The person was then shown a different painting from the one the title
+     * slide had just named and the home card had advertised, with the closing
+     * slide's licence line crediting the wrong work.
+     *
+     * Certain on a first run, because the tutorial renders in front of the
+     * deck while every hook underneath it keeps running.
+     *
+     * The deadline itself is right and stays — a stalled S3 fetch must not
+     * leave beat 2 of 5 an empty stage — it just belongs to the beats that
+     * show the picture.
+     */
+    if (!showsImage) return;
+    if (!view?.img || imageFailed) return;
+    if (loadedSrc === view.img) return;
+    const t = window.setTimeout(() => setImageFailed(true), 8000);
+    return () => window.clearTimeout(t);
+  }, [showsImage, view?.img, loadedSrc, imageFailed]);
 
   /**
    * SIT WITH IT — a 12-second hold before each beat will let you move on.
@@ -1290,7 +1312,7 @@ export default function VisioPage() {
             ) : null}
             <p style={{ color: "rgba(200,212,192,0.82)", fontFamily: FONT, fontSize: 16.5, lineHeight: 1.6, margin: 0 }}>
               {hasReading
-                ? t("visio.reading_body", { defaultValue: "Read it slowly, then come back and look again. You will see the picture differently once you know what the passage says." })
+                ? t("visio.reading_body", { defaultValue: "Consider how you may view the picture differently after reading the passage." })
                 : t("visio.reading_none", { defaultValue: "No passage is appointed for this work today. Stay with it a little longer, then look again." })}
             </p>
           </div>

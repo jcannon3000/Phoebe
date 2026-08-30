@@ -26,7 +26,7 @@ const router: IRouter = Router();
 // name gets a 400, which the client surfaces as "Couldn't save that" — that is
 // exactly what shipping Visio Divina without "visio" here did, on every single
 // completion. Adding a practice on the client means adding it here too.
-const SECTIONS = new Set(["turn", "learn_pray", "learn", "pray", "worship", "bless", "go", "rest", "weekly_review", "examen", "listening", "reading", "podcasts", "walk", "prayer-list", "visio"]);
+const SECTIONS = new Set(["turn", "learn_pray", "learn", "pray", "worship", "bless", "go", "rest", "weekly_review", "examen", "listening", "reading", "podcasts", "walk", "prayer-list", "visio", "icons"]);
 /**
  * A user's OWN practice, as `custom:<anchorId>`.
  *

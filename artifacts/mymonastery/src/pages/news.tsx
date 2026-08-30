@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -127,15 +127,16 @@ export default function NewsPage() {
     staleTime: 10 * 60_000,
   });
 
-  // Gate: redirect non-beta users once status resolves
-  if (!betaLoading && !isBeta) {
-    setLocation("/dashboard");
-    return null;
-  }
-
   const allItems = data?.items ?? [];
   const sources = data?.sources ?? [];
 
+  // useMemo above the redirect gate — it used to sit after it, so a
+  // non-beta user's render dropped a hook the moment the beta check
+  // resolved false, throwing "Rendered fewer hooks than during the previous
+  // render." The redirect itself is also moved out of the render body below,
+  // into an effect — calling setLocation during render is a second defect
+  // this shared the (a state update mid-render, which React warns on and
+  // which raced the very re-render meant to perform it).
   const displayedItems = useMemo(() => {
     if (tab === "all") {
       return [...allItems].sort((a, b) => {
@@ -147,6 +148,13 @@ export default function NewsPage() {
     // Per-source: keep feed order (= website page order)
     return allItems.filter((it) => it.sourceSlug === tab);
   }, [allItems, tab]);
+
+  // Gate: redirect non-beta users once status resolves — in an EFFECT, not
+  // during render.
+  useEffect(() => {
+    if (!betaLoading && !isBeta) setLocation("/dashboard");
+  }, [betaLoading, isBeta, setLocation]);
+  if (!betaLoading && !isBeta) return null;
 
   const tabs: Array<{ key: string; label: string }> = [
     { key: "all", label: "All" },

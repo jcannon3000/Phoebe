@@ -32,6 +32,13 @@ const HOME_MODULES = [
   // missing here, so saving from this page silently stripped it and the server
   // re-appended it at the end — quietly moving the user's feeds card. Keep in sync.
   "office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "chittister",
+  // `icons` and `prayer-list` are in the server's list and were missing here,
+  // which is the same fault the note above records for `feeds` — and worse
+  // than losing them: saving this page dropped them from `order`, the server
+  // re-appended them, and because they were absent from `hidden` too, the
+  // hidden-governs-visibility rule turned both cards ON for someone who had
+  // simply reordered their home.
+  "icons", "prayer-list",
   "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests",
 ] as const;
 type HomeModule = typeof HOME_MODULES[number];
@@ -132,6 +139,8 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     visio:        { label: t("rhythm.row_visio", { defaultValue: "Visio Divina" }), emoji: "🖼️", sub: t("customize_home.module_visio_sub", { defaultValue: "Pray with the day's image, slowly" }) },
     compline:     { label: t("rhythm.card_compline", { defaultValue: "Compline" }), emoji: "🌙", sub: t("customize_home.module_compline_sub", { defaultValue: "The night office · available from 7pm" }) },
     taize:        { label: t("rhythm.card_taize", { defaultValue: "Taizé meditation" }), emoji: "🕯️", sub: t("customize_home.module_taize_sub", { defaultValue: "The newest meditation from Taizé · waits until you've read it" }) },
+    icons:        { label: t("rhythm.card_icons", { defaultValue: "Praying with Icons" }), emoji: "🖼️", sub: t("customize_home.module_icons_sub", { defaultValue: "Sit with an icon, a few minutes at a time" }) },
+    "prayer-list": { label: t("rhythm.card_prayer_list", { defaultValue: "Prayer List" }), emoji: "🙏🏽", sub: t("customize_home.module_prayer_list_sub", { defaultValue: "The people and things you are holding" }) },
     chittister:   { label: t("rhythm.card_chittister", { defaultValue: "Vision and Viewpoint" }), emoji: "🌾", sub: t("customize_home.module_chittister_sub", { defaultValue: "Joan Chittister's weekly · waits until you've read it" }) },
     examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },
     cac:          { label: "CAC Daily Reflection",               emoji: "🌅", sub: "Today's reflection from the Center for Action & Contemplation" },

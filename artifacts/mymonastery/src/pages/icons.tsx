@@ -40,6 +40,7 @@ import { FROST_BLUR } from "@/lib/frost";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -215,6 +216,26 @@ export default function IconsPage() {
    * hidden leaves `chosen` null, and the opening slide's own guard sends the
    * person to the chooser instead.
    */
+  /**
+   * ONE SEEDING EFFECT, because two of them raced.
+   *
+   * There used to be a second effect restoring the WEEK's stored pick. Both
+   * guarded on `if (chosen) return`, and both read `chosen` from the same
+   * render's closure — so on mount both bodies ran and the last write won.
+   * That made the week's pick beat the icon actually prayed with: tap an icon
+   * in the catalogue, back out without sitting, and the opening slide then
+   * showed the one you never prayed with. Worse, if that one had since been
+   * hidden, the second effect kicked you to the chooser even though the first
+   * had just resolved a perfectly good default.
+   *
+   * The practice is no longer week-locked, so the week's pick is not the
+   * right default anyway. THE LAST ICON ACTUALLY PRAYED WITH is, and that is
+   * `getIconHistory()[0]` — the only source consulted here now.
+   *
+   * `byId` is the pool AFTER the admin tool's deletions and icon-toggles, so
+   * an icon the owner has hidden resolves to null and the guard below sends
+   * the person to the chooser rather than showing a work that was removed.
+   */
   useEffect(() => {
     if (chosen) return;
     try {
@@ -223,23 +244,20 @@ export default function IconsPage() {
     } catch { /* no history — the chooser leads */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [byId]);
+
   /**
-   * The week's icon, restored.
+   * NO BLANK OPENING SLIDE.
    *
-   * `byId` is the pool AFTER the admin tool's deletions and icon-toggles, so
-   * an icon deleted mid-week simply isn't found and the week falls back to
-   * choosing again — rather than a work the owner removed reappearing every
-   * day until Sunday, which is the tombstone bug class this app has had
-   * before.
+   * `phase` is chosen from whether history EXISTS, but `chosen` resolves from
+   * whether that icon is still IN the catalogue — two different questions.
+   * Pray with an icon, have the owner hide it in the admin tool, come back:
+   * phase is "open", chosen is null, and `phase === "open" && chosen` matches
+   * nothing while no other branch claims "open". The result is a header and
+   * an empty page — the blank-screen class this repo keeps a rule about.
    */
   useEffect(() => {
-    if (chosen) return;
-    const id = weekIconId();
-    if (id == null) return;
-    const art = byId.get(id);
-    if (art) setChosen(art);
-    else setPhase("week");
-  }, [byId, chosen]);
+    if (phase === "open" && !chosen) setPhase("week");
+  }, [phase, chosen]);
   /** The three doors — resolved against the same pool, for the same reason. */
   const weekDoors = useMemo(() => {
     const last = lastWeekIconId();
@@ -423,6 +441,22 @@ export default function IconsPage() {
     if (!chosen) return;
     const ymd = new Date().toLocaleDateString("en-CA");
     try { recordIconPrayed(chosen.id, ymd); } catch { /* non-fatal */ }
+    /**
+     * MARK THE PRACTICE KEPT — the card's whole reason to exist.
+     *
+     * The icon practice was a menu page for most of its life and wrote only
+     * its own history. It became a rhythm card tonight, with a home-layout
+     * key and a place in the day's anchor count, and this line did not come
+     * with it: the card sat in Next for ever, and because `allHabitsDone`
+     * needs every active anchor, THE DAY COULD NEVER READ AS COMPLETE for
+     * anyone who added it. No completion moment, no "day kept", ever.
+     *
+     * `icons` had to be added to the server's SECTIONS allowlist in the same
+     * change or every POST here would 400 and surface as "Couldn't save
+     * that" — which is precisely what shipping Visio Divina without its own
+     * entry did, on every completion.
+     */
+    markPracticeDoneToday("icons");
     setHistory((h) => [{ id: chosen.id, ymd }, ...h.filter((v) => v.id !== chosen.id)]);
     setPhase("done");
   };

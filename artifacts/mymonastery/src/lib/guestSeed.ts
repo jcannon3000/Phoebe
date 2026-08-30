@@ -57,7 +57,7 @@ export const SEED_VERSION_KEY = "phoebe:guest-seed-version";
 export function predatesSeedStamp(): boolean {
   try { return !localStorage.getItem(SEED_VERSION_KEY); } catch { return false; }
 }
-const SEED_VERSION = "5";
+const SEED_VERSION = "6";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never
 // remove: the whole point is recognizing rules we ourselves wrote.
@@ -72,6 +72,10 @@ const STALE_SEEDS: Array<[string, string]> = [
   // them, so the addition would only ever reach devices installing fresh.
   ["guided-prayer", "ask"],
 ];
+
+// v5's own evening level ("ask") is also v6's stale-seed row above, so a
+// device on v5 (guided-prayer/ask, CAC + Visio) is caught by that same row —
+// migrateStaleSeed only needs to know what ELSE changed for it.
 
 function todayYmd(): string {
   const d = new Date();
@@ -113,6 +117,23 @@ function seedVisio(): void {
   if (changed) cacheHomeLayoutLocalOnly(layout);
 }
 
+/**
+ * THE CAC CARD MUST BE IN THE LAYOUT, NOT LEFT TO THE FALLBACK.
+ *
+ * `useRhythmState`'s `reflectFallback` only fires when there is NO saved home
+ * layout at all (`!hl`) — it exists for a guest who has never customized
+ * anything, so the single reflection preference alone decides the card. The
+ * moment `seedVisio()` started writing a real layout, `hl` was no longer
+ * null, `fromLayout` (which reads the layout) came back empty because "cac"
+ * was never actually IN it, and `chosenReflections` fell through to nothing.
+ * The reflection source was set correctly; the card that reads it was not.
+ * Owner: "CAC Newsletter (Its not showing up)" — this is why.
+ */
+function seedCac(): void {
+  const { layout, changed } = addHomeCard(readCachedHomeLayout(), "cac");
+  if (changed) cacheHomeLayoutLocalOnly(layout);
+}
+
 /** Move a device still sitting on an OLD untouched seed onto today's default.
  *  No-op once stamped, and no-op the moment the levels don't match a seed we
  *  wrote — a customized rule is never overwritten. */
@@ -124,30 +145,29 @@ function migrateStaleSeed(): void {
     const untouched = STALE_SEEDS.some(([m, e]) => m === morning && e === evening);
     if (untouched) {
       setSideLevel("morning", "guided-prayer");
-      // NO EVENING in the default (owner). "ask" is a side's off state — the
-      // one thing isActiveLevel and the customizer both read as "not part of
-      // the rhythm" — so this turns the evening off rather than leaving a
-      // practice on it.
-      setSideLevel("evening", "ask");
-      // The REFLECTION is deliberately not migrated. A device can sit on an
-      // untouched pair of levels and still have chosen its own daily word;
-      // moving the levels is what this migration is for, and rewriting a
-      // reading someone picked would be a different, unasked-for act.
-      //
-      // Visio joins the default, and the silence leaves it — but the silence
-      // only goes if it is still EXACTLY the five minutes the old seed wrote.
-      // Matching levels means the rule is untouched; it does not mean the goal
-      // is, and someone who set their own silence should keep it. A different
-      // value, or none, is left alone.
-      seedVisio();
+      // THE EXAMEN now, replacing the old "no evening" default (owner). A
+      // device on an untouched pair had no evening opinion of its own to
+      // preserve.
+      setSideLevel("evening", "examen");
+      // The REFLECTION SOURCE is deliberately not migrated — a device can sit
+      // on untouched levels and still have chosen its own daily word — but the
+      // CARD is: CAC needs to be IN THE LAYOUT or the fallback that used to
+      // show it (only live while there is no saved layout) never fires once
+      // a saved layout exists. Every device this migration touches gets the
+      // explicit layout entry, not just fresh installs.
+      seedCac();
+      // Five minutes of silence replaces Visio/Creation Prayer as the seed's
+      // contemplative practice. Only for a device still on the OLD goal (or
+      // none) — someone's own chosen goal is never overwritten.
+      const currentGoal = localStorage.getItem(GUEST_GOAL_KEY);
+      if (currentGoal == null || currentGoal === "5") setGuestSilenceGoalMin(5);
       // Express Gratitude joins the default for devices still on an older
       // untouched seed too — added, never removed, so a device that turned it
       // off in the customizer does not get it back on the next boot.
       if (!activeRelationalPractices().includes("gratitude")) {
         setRelationalPractices([...activeRelationalPractices(), "gratitude"]);
       }
-      if (localStorage.getItem(GUEST_GOAL_KEY) === "5") localStorage.removeItem(GUEST_GOAL_KEY);
-      try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
+            try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
       // Same reasoning as the seed below: a precoded default must never migrate
       // up to an account on sign-in, so zero the clock the setters just bumped.
       clearRoutineSyncClock();
@@ -208,27 +228,30 @@ export function seedGuestRule(): void {
      * Divina"). Three practices either way; the third is now something you
      * look at rather than a timer.
      */
+    /**
+     * THE DEFAULT ROUTINE, current version (owner): Simple Guided in the
+     * morning, an Evening Devotion, the CAC's Daily Meditation, Express
+     * Gratitude, and Creation Prayer.
+     *
+     * Every card here except the two office sides is a LAYOUT entry, not a
+     * side level — CAC and Creation Prayer are both read from the home
+     * layout by `useRhythmState`, and a guest who has never saved one gets
+     * only the single-reflection fallback (which is what silently dropped
+     * CAC the moment Visio's layout write made the fallback stop firing).
+     */
     setSideLevel("morning", "guided-prayer");
-    setSideLevel("evening", "ask");
+    // THE EXAMEN, not a devotion (owner, after building it as a devotion:
+    // "let's actually have the examen instead"). "examen" is its own
+    // OfficeLevel — the evening anchor itself, not an add-on card.
+    setSideLevel("evening", "examen");
     setReflectionSource("cac");
     setSideReflection("morning", "cac");
-    /**
-     * AND EXPRESS GRATITUDE (owner: "lets put Express Gratitude in the
-     * standard routine").
-     *
-     * It is a relational practice, so it arrives as an ordinary custom anchor
-     * carrying a QUESTION rather than a checkbox — "Did you tell someone, or
-     * send someone a message, saying what you are grateful for?" — and rides
-     * the "anytime" slot. Nothing about the seed is special-cased for it: it
-     * is the same row the customizer's Relational Practices step writes, so
-     * turning it off there removes it like any other.
-     */
     setRelationalPractices(["gratitude"]);
-    // Visio Divina is this rule's contemplative practice, in place of the five
-    // minutes of silence it used to seed (owner). No GUEST_GOAL_KEY is written:
-    // the goal key is what raises the Silence card, so its absence is how the
-    // silence is "taken out" rather than shown at zero.
-    seedVisio();
+    seedCac();
+    // FIVE MINUTES OF SILENCE, not Creation Prayer (owner's last word). The
+    // goal key is what raises the Silence card at all — its presence, not a
+    // flag — so writing it is the whole seed for this practice.
+    setGuestSilenceGoalMin(5);
     localStorage.setItem(SEED_KEY, todayYmd());
     // Freshly seeded devices are already current — stamp so migrateStaleSeed
     // never has anything to do for them.

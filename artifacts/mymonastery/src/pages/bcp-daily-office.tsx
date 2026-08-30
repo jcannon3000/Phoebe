@@ -2061,7 +2061,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     try {
       if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode), "1"); // Stamp the home card this office completes, so returning home plays its
         // completion moment (the side anchor card is keyed "morning"/"evening").
-        markRecentCompletion(resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
+        // completedCardKey, NOT a third hand-written copy of this ternary.
+        // Owner: "STILL … ANIMATES MORNING PRAYER". The reading deck's last
+        // slide is a lesson_title, so finishing it comes through HERE — and
+        // this line named a side unconditionally, pinning and animating the
+        // Morning Prayer card, which the reader may have prayed at dawn. The
+        // two other completion moments were corrected and this one was missed;
+        // completedCardKey already returns "scripture" for a reading deck (see
+        // its definition) and is what line ~2438 uses.
+        markRecentCompletion(completedCardKey); }
       localStorage.removeItem(officeProgressKey(resolvedMode));
     } catch { /* non-fatal */ }
     // Clear the daily reminder pushes — the "Done" path is the
@@ -2069,13 +2077,29 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // slide). The Amen path clears these too; covering both
     // means completing the office always sweeps the reminder
     // off the lock screen.
-    if (!isSecondPracticeRun) clearOfficeReminderNotifications();
+    // …and NOT for a reading. Finishing the Daily Scripture Reading used to
+    // sweep the morning office's lock-screen reminders away: this deck borrows
+    // the office renderer, and every side-effect in it assumed an office. The
+    // reading is not the office, and the reminder still has a job.
+    if (!isReadingDeck && !isSecondPracticeRun) clearOfficeReminderNotifications();
     // Public /pray page: hand off to its own sign-up close.
     if (onComplete) { onComplete(); return; }
     if (parishOnly) {
       setViewerLocation(`/parish/celebration?surface=${encodeURIComponent(resolvedMode)}`);
     } else if (officesOnlyViewer) {
       setViewerLocation("/parish");
+    } else if (isReadingDeck) {
+      /**
+       * A READING GOES HOME, not into the morning office's closing summary.
+       *
+       * /prayer-mode?closingOnly=1&side=morning is the OFFICE's ending — its
+       * recap and habit screen, keyed to a side. `officeSide` falls through to
+       * "morning" for a reading, so finishing the Daily Scripture Reading
+       * walked the reader into the close of an office they had not just
+       * prayed. The reading is an extra practice reached from the menu; its
+       * ending is the rhythm it came from.
+       */
+      setViewerLocation("/dashboard");
     } else {
       // Always route to the closing summary + habit slide.
       // Used to gate on seamlessReturnRef so a direct-entry
@@ -2097,12 +2121,47 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    *  button, tap-to-navigate, and swipe alike — see handleEnd's comment. */
   function advance() {
     if (isIntercessionSlide) { void amen(); return; }
+    /**
+     * THE LAST LESSON OPENS BEFORE THE DECK ENDS — on every forward path.
+     *
+     * Owner, twice: "STILL SKIPS THE GOSPEL". The bottom bar computes
+     * `lessonEndsDeck = atEnd && !!lessonReadUrl && !finalLessonRead` and
+     * routes to next(), which opens the passage; this function tested `atEnd`
+     * FIRST and went straight to handleEnd(). So the Daily Scripture Reading —
+     * whose final slide IS the Gospel's lesson_title — completed without the
+     * Gospel ever opening, for anyone who tapped the right half of the screen
+     * or swiped, which is most people. An earlier fix corrected the button and
+     * left the two gestures, so the fault survived being "fixed".
+     *
+     * The same condition lives in both places rather than one, which is how
+     * they diverged; it is now expressed here and the bar defers to advance().
+     */
+    if (atEnd && !!lessonReadUrl && !finalLessonRead) { next(); return; }
     if (atEnd) { handleEnd(); return; }
     next();
   }
 
   function next() {
-    if (atEnd) return;
+    /**
+     * AT THE END, BUT WITH A PASSAGE STILL UNREAD, THIS IS NOT A NO-OP.
+     *
+     * This was a bare `if (atEnd) return;` sitting ABOVE the lessonReadUrl
+     * block below — so on the reading deck's final slide, whose whole job is
+     * to open the Gospel, next() returned immediately and did nothing. The
+     * "Next" pill was dead, `setFinalLessonRead(true)` was unreachable code,
+     * and `advance()` routing here (correct in itself) changed nothing.
+     *
+     * That is why this looked fixed twice and wasn't: two commits corrected
+     * the callers while the callee still refused the call. Owner, after the
+     * second: "THE MOST RECENT BUILD WAS NO DIFFERENT… IT HAS NO GOSPEL."
+     *
+     * So the guard now stands aside for exactly the case it was breaking: at
+     * the end, with a reading to open, next() falls through to the block
+     * below and opens it. Everything else about the end of a deck is
+     * unchanged — handleEnd() is still what finishes it, reached from
+     * advance() and from the bottom bar.
+     */
+    if (atEnd && !lessonReadUrl) return;
     // The welcome slide has TWO ways forward — its own "Begin" button and the
     // deck's bottom "Next" pager — and only Begin used to honour the chosen
     // way to pray. Owner: "even though I had venite set, it went to the digital

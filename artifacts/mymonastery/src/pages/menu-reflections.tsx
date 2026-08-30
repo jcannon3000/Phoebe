@@ -16,21 +16,17 @@ import {
 // return page. We still mark the source read so the Daily-progress "Reflect"
 // anchor + home cards update. Select sound handled centrally by MenuHub.
 //
-// TWO KINDS OF ROW HERE, and the difference matters.
+// EVERY ROW HERE IS A TRACKED SOURCE — they have per-side day-flags, they
+// satisfy the Reflect anchor, and marking one read is what makes the home
+// card tick.
 //
-// The first four are TRACKED sources: they have a day-flag, they satisfy the
-// Reflect anchor, and marking them read is what makes the home card tick. The
-// Dean's Commentary was already one of those in every respect except that it
-// had no row on this page — the owner asked for it and it was a one-line
-// omission, not a feature.
-//
-// The last three are LINKS. The owner asked for each of them ("include the
-// Henri Nouwen Daily meditation just like SSJE", Sojourners' Voice and Verse,
-// Grist's daily) and each has a reader view built for it, but none of them has
-// a tracker, so opening one counts toward nothing. That is deliberate for now:
-// a source that ticks the Reflect anchor needs a tracker, a server read-log
-// and a slot in the customizer, and inventing day-flags for three sources at
-// once is how a practice ends up counted twice. They read; they don't score.
+// This used to say the last three (Nouwen, Sojourners, Grist) were links that
+// "read; they don't score". True when they arrived, and false since they were
+// wired up — TRACKED_REFLECTION_SOURCES lists all seven and cacReadState has
+// a tracker for each. The stale note is corrected rather than deleted because
+// its warning still stands: a source that ticks the anchor needs its tracker,
+// its creditAnchorsFor branch and its place in that list, together. Wire one
+// of the three and the card goes green while the anchor stays open.
 export default function MenuReflectionsPage() {
   const [, setLocation] = useLocation();
   const openFdd = () => { markFddRead(); openExternal(FDD_TODAY_URL, { reader: true }); };

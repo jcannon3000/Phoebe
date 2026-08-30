@@ -59,15 +59,18 @@ const KEY_CONTEMPLATION_MINUTES = "phoebe:office:contemplation-minutes";
 const KEY_DEFAULT_OFFICE_ENTRY = "phoebe:office:default-entry";
 
 /**
- * The reflection sources a rule can carry.
+ * The reflection sources a rule can carry. ALL SEVEN ARE TRACKED.
  *
- * The first four are TRACKED — a day-flag, a server read-log, and they satisfy
- * the Reflect anchor. The last three ("nouwen", "sojo", "grist") were added on
- * the owner's ask and are READ-ONLY sources: choosing one puts it in the rule
- * and on the home card, and opening it shows the page in Phoebe's reader view,
- * but nothing about it is scored. Keep that distinction when adding a source —
- * a scored one needs its tracker wired in cacReadState AND creditAnchorsFor,
- * or the card goes green while the anchor stays open.
+ * Each has a per-side day-flag and a tracker in cacReadState, and opening one
+ * satisfies the Reflect anchor. That was not always true: Nouwen, Sojourners
+ * and Grist arrived as read-only links and were wired up afterwards, and this
+ * comment went on saying they were unscored long after they weren't — which
+ * is worse than no comment, because the next person adding a source reads it
+ * as the rule.
+ *
+ * ADDING ONE means three things together, or the card goes green while the
+ * anchor stays open: a tracker in cacReadState, a branch in creditAnchorsFor,
+ * and a place in TRACKED_REFLECTION_SOURCES below.
  */
 export type ReflectionSource = "cac" | "fdd" | "ssje" | "vts" | "nouwen" | "sojo" | "grist" | "none";
 const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "none"];

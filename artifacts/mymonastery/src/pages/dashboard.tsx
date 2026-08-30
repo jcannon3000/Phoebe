@@ -2346,7 +2346,13 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
                 border: `1px solid rgba(${rgb},0.45)`,
               }}
             >
-              {met ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span>&nbsp;{isCreation ? "Kept" : "Sit again"}</> : "Begin"} <span aria-hidden>→</span>
+              {/* A CHECK WHEN IT IS KEPT (owner: "lets change the contemplation
+                  card cta in done from sit again to a check"). This is the
+                  HOME's own contemplation renderer — the change landed in
+                  DailyProgressBody first and this copy kept saying "Sit again",
+                  which is the second-renderer drift this repo keeps getting
+                  caught by: the same card exists twice and only one was fixed. */}
+              {met ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span>&nbsp;{isCreation ? "Kept" : "Kept"}</> : "Begin"} <span aria-hidden>→</span>
             </div>
           )}
         </div>
@@ -2403,7 +2409,8 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
               whiteSpace: "nowrap",
             }}
           >
-            {met ? <>✓ {isCreation ? "Kept" : "Sit again"}</> : "Begin"} <span aria-hidden>→</span>
+            {/* See the hero layout above — the same card, the same check. */}
+            {met ? <>✓ {isCreation ? "Kept" : "Kept"}</> : "Begin"} <span aria-hidden>→</span>
           </div>
         )}
       </div>
@@ -3072,7 +3079,12 @@ function PodcastHomeCard({ show }: { show: FollowedShow }) {
   const inProgressEp = (() => {
     for (const e of playable) {
       if (!listened.has(`${show.slug}:${e.id}`)) continue; // not started
-      const pos = parseFloat(localStorage.getItem(posKey(e.id)) ?? "0") || 0;
+      // Guarded: this runs during RENDER, on the home screen. Private mode
+      // and quota exhaustion both throw on localStorage — unguarded, either
+      // one took the whole app down rather than just this card.
+      let raw: string | null = null;
+      try { raw = localStorage.getItem(posKey(e.id)); } catch { /* private mode */ }
+      const pos = parseFloat(raw ?? "0") || 0;
       if (pos < 30) continue; // virtually not started
       if (e.durationSeconds && pos / e.durationSeconds > 0.95) continue; // virtually done
       return e;
@@ -6505,7 +6517,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "prayer-list", "examen", "visio", "taize", "chittister", "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "prayer-list", "icons", "examen", "visio", "taize", "chittister", "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.

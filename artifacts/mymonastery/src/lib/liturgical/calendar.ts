@@ -141,9 +141,16 @@ export const LESSER_FEASTS_PREF_KEY = "phoebe:observeLesserFeasts";
 
 export function readLesserFeastsPref(): boolean {
   if (typeof window === "undefined") return true;
-  const v = window.localStorage.getItem(LESSER_FEASTS_PREF_KEY);
-  if (v === null) return true;
-  return v === "true";
+  // Guarded: this is called during RENDER (LiturgicalDateHeader), so an
+  // unguarded throw here — private mode, quota — took the whole app down
+  // rather than just falling back to the default.
+  try {
+    const v = window.localStorage.getItem(LESSER_FEASTS_PREF_KEY);
+    if (v === null) return true;
+    return v === "true";
+  } catch {
+    return true;
+  }
 }
 
 export function writeLesserFeastsPref(on: boolean): void {

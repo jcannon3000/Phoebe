@@ -449,7 +449,7 @@ const BCP_CATEGORY_EMOJI: Record<string, string> = {
   "For the Poor and Neglected": "🤲🏽",
   "For Social Justice": "⚖️",
   "For Families": "👪🏽",
-  "For Those in Need": "🫶",
+  "For Those in Need": "🫶🏽",
   "For the Sick": "🩺",
   "For the Dead": "🕊️",
   "Thanksgivings": "🌾",
