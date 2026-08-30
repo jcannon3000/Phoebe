@@ -466,7 +466,10 @@ export default function IconsPage() {
     // there is no settled week to strand anyone in.
     const leave = () => setLocation("/menu/practices");
     const toStart = () => setPhase("week");
-    if (phase === "search") { setPhase("week"); setQuery(""); return; }
+    // Back from the catalogue returns where you came FROM: the intro slide
+    // when there was already an icon on it (the "choose another" door), the
+    // three suggestions when there wasn't.
+    if (phase === "search") { setPhase(chosen ? "open" : "week"); setQuery(""); return; }
     if (phase === "open") { toStart(); return; }
     // Back from the timer returns to the opening slide — one step, not out.
     if (phase === "timer") { setPhase("open"); return; }
@@ -729,17 +732,26 @@ export default function IconsPage() {
               >
                 {t("icons.open_sit", { defaultValue: "Sit with it" })}
               </button>
-              {/* The way to something else. Owner: "have an option that says
-                  choose another icon." Quiet, under the primary action — the
-                  default is the point, and this is the door beside it. */}
+              {/**
+                * THE LAST OPTION ON THE SLIDE, and it opens the CATALOGUE.
+                *
+                * Owner: "the choose another should be under it… as the last
+                * option on the intro slide", and "it would go to that search
+                * we made before with the assortment of icons."
+                *
+                * So it goes to "search", not "week". The doors screen offers
+                * three suggestions; this is the person saying they want to
+                * look, and the browse view is what they mean — the search
+                * field with the full assortment under it.
+                */}
               <button
                 type="button"
-                onClick={() => setPhase("week")}
+                onClick={() => { setQuery(""); setPhase("search"); }}
                 style={{
                   userSelect: "none", WebkitTapHighlightColor: "transparent",
                   background: "transparent", border: "none", color: "rgba(200,212,192,0.72)",
                   fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: "pointer",
-                  padding: "10px 8px 0",
+                  padding: "12px 8px 0",
                 }}
               >
                 {t("icons.open_choose_other", { defaultValue: "Choose another icon" })}
