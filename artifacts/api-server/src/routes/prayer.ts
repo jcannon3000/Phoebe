@@ -2712,7 +2712,11 @@ function caMergeLog(l: CALog | undefined, s: CALog | undefined): CALog {
   const done = caLaterStamp(l?.done, s?.done);
   const skip = caLaterStamp(l?.skip, s?.skip);
   if (done) e.done = done;
-  if (skip && skip !== done) e.skip = skip;
+  // The client's mergeLogEntry twin carries the reasoning: comparing the two
+  // stamps for equality assumed both were today's date, and a weekly practice
+  // stamps `done` with the week's closing Sunday — so both survived on six
+  // days in seven, and `skipped` wins every filter downstream.
+  if (skip && !done) e.skip = skip;
   const rt = caLaterReadToday(l?.readToday, s?.readToday);
   if (rt) e.readToday = rt;
   const total = Math.max(l?.readTotal ?? 0, s?.readTotal ?? 0);

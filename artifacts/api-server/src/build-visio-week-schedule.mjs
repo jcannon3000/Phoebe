@@ -335,10 +335,34 @@ function build() {
     // catalogue. Never nothing (visioSelect's own header: it always returns
     // something — the blank-screen rule this repo keeps).
     if (!chosen) {
-      const scored = ACT_CATALOGUE
-        .map((art) => ({ art, score: matchScore(art.refs, refs) }))
-        .filter((x) => x.score > 0);
-      const top = scored.length ? Math.max(...scored.map((x) => x.score)) : 0;
+      /**
+       * TIERED, like every pass above it.
+       *
+       * This scored the whole catalogue against gospel and epistle TOGETHER
+       * and took the highest, so a strong epistle match beat a weaker gospel
+       * one and the owner's tier order — gospel first, then epistle or OT,
+       * then psalm — was inverted at the bottom of the ladder. The week
+       * ending 2027-08-01 appoints John 6:24-35 and Ephesians 4:1-16, and the
+       * pin was the Ephesians work.
+       *
+       * Walking the tiers here costs nothing: the first tier with any match
+       * at all wins, which is what "gospel first" means.
+       */
+      // `tiers` is already computed at the top of this week's loop.
+      let scored = [];
+      let top = 0;
+      let tierRefsHere = refs;
+      for (const tier of tiers) {
+        const s2 = ACT_CATALOGUE
+          .map((art) => ({ art, score: matchScore(art.refs, tier.refs) }))
+          .filter((x) => x.score > 0);
+        if (s2.length) {
+          scored = s2;
+          top = Math.max(...s2.map((x) => x.score));
+          tierRefsHere = tier.refs;
+          break;
+        }
+      }
       const best = scored.filter((x) => x.score === top).map((x) => x.art);
       /**
        * BOOK-LEVEL RESPECTS THE CAP — no bend here.
@@ -353,7 +377,7 @@ function build() {
        * which is the better trade at this depth.
        */
       const pick = pickFrom(best, true);
-      if (pick) { chosen = { art: pick, tierRefs: refs, top }; stats.book++; }
+      if (pick) { chosen = { art: pick, tierRefs: tierRefsHere, top }; stats.book++; }
     }
 
     if (!chosen) {

@@ -54,7 +54,13 @@ const SLIDES: Slide[] = [
   {
     // Last slide — the invitation, centred, no eyebrow and no headline. Same
     // shape as the Creation Prayer tutorial's third slide.
-    body: "After the first look comes the passage itself, and then a reflection written about the work. Come as often as you like. Let the week soak in.",
+    // NO PROMISE OF A REFLECTION. The pool was reopened to works without
+    // commentaries, so most weeks now have none — 15 of the next 53 — and the
+    // reflection is a pill on the closing slide when there is one, not a beat.
+    // The passage is likewise offered only when the work really is on the
+    // week's reading. A tutorial that describes a shape the practice usually
+    // doesn't take is worse than one that describes less.
+    body: "Come back as often as you like. Where the week's passage is the one the picture holds, you can read it here; where someone has written about the work, that waits at the end. Let the week soak in.",
     art: null,
   },
 ];
@@ -134,7 +140,10 @@ export function VisioHowToIntro({ onDone, photos }: { onDone: () => void; photos
   const pool = photos && photos.length > 0 ? photos : [];
   const photo = pool.length > 0 ? pool[i % pool.length]! : null;
 
-  const next = () => setI((n) => (n >= SLIDES.length - 1 ? (onDone(), n) : n + 1));
+  // onDone OUTSIDE the updater — React double-invokes updaters in StrictMode,
+  // so calling a parent's setState from inside one fires it twice and can warn
+  // about updating another component during render.
+  const next = () => { if (i >= SLIDES.length - 1) onDone(); else setI((n) => n + 1); };
 
   // Desktop keyboard nav — mirrors tap-forward / left-edge back.
   useEffect(() => {
@@ -142,7 +151,7 @@ export function VisioHowToIntro({ onDone, photos }: { onDone: () => void; photos
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
-      if (e.key === "ArrowRight") { e.preventDefault(); setI((n) => (n >= SLIDES.length - 1 ? (onDone(), n) : n + 1)); }
+      if (e.key === "ArrowRight") { e.preventDefault(); setI((n) => { if (n >= SLIDES.length - 1) { queueMicrotask(onDone); return n; } return n + 1; }); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); setI((n) => Math.max(0, n - 1)); }
     };
     window.addEventListener("keydown", onKey);

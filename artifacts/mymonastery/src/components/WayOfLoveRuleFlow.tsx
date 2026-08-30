@@ -1607,7 +1607,19 @@ export default function WayOfLoveRuleFlow({
       title: customTitle,
       emoji: customEmoji,
       slot: customSlot,
-      days: customDays,
+      /**
+       * A WEEKLY PRACTICE HAS NO WEEKDAYS.
+       *
+       * The chips are hidden when "Once a week" is on — the UI already says
+       * scoping a weekly practice to weekdays would be two answers to the
+       * same question — but `customDays` state was never cleared, so it went
+       * on being saved. Turn "Once a week" on for VTS's Community Meal
+       * (days: Mon–Fri) and it became weekly AND still weekday-scoped, so
+       * `anchorOnDay` hid it on Saturday and Sunday: the two days someone who
+       * hasn't kept it yet is most likely to reach for it, and no sign in the
+       * UI that the days were still in force.
+       */
+      days: customWeekly ? null : customDays,
       // undefined, not false — the whitelist only carries "weekly", and an
       // explicit false would be dropped on the next read anyway.
       cadence: customWeekly ? "weekly" : undefined,
@@ -5867,7 +5879,11 @@ export default function WayOfLoveRuleFlow({
         )}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 20px" }}>
           {t("wol_rule.relational_body", {
-            defaultValue: "Small things you do with someone else. Each one is a log — you'll be asked at the end of the day, and you answer yes or not today.",
+            // Just the first sentence (owner). The rest explained the
+            // mechanics of logging on a screen where nothing has been chosen
+            // yet — the rows below say what each practice is, and the day
+            // itself will do the asking.
+            defaultValue: "Small things you do with someone else.",
           })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -5880,6 +5896,23 @@ export default function WayOfLoveRuleFlow({
             ),
           )}
         </div>
+        {/**
+          * THE CAP, SAID OUT LOUD.
+          *
+          * Practices are capped at eight and addCustomAnchor refuses in
+          * silence, so ticking a ninth moved the tick, reported nothing, and
+          * wrote nothing — the row simply came back unticked next time. The
+          * tick is only honest if the screen says when it couldn't be kept.
+          */}
+        {relational.length > 0 && customList.length >= 8 && !relational.every((id) =>
+          customList.some((a) => a.title.trim().toLowerCase() === RELATIONAL_PRACTICES.find((r) => r.id === id)?.title.toLowerCase())
+        ) && (
+          <p style={{ color: "rgba(232,190,150,0.9)", fontSize: 13.5, fontFamily: FONT, lineHeight: 1.55, margin: "16px 0 0" }}>
+            {t("wol_rule.relational_at_cap", {
+              defaultValue: "You're keeping the most practices Phoebe holds at once. Remove one on the next screen to make room for this.",
+            })}
+          </p>
+        )}
         {/* THE WAY OUT. Owner: "for some reason there is not a continue on the
             practice with other people." There wasn't: every other step in this
             flow ends with this line and this one never had it, so the only

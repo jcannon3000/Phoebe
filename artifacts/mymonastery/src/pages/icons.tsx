@@ -401,17 +401,31 @@ export default function IconsPage() {
 
   /** Header Back steps phases; ✕ leaves for the Practices menu it came from. */
   const back = () => {
-    // Back from the sit goes to the DOORS when the week already has an icon —
-    // the search is only a step on the way to choosing one, so returning
-    // there would offer a catalogue nobody asked for.
-    const toStart: Phase = weekIconId() == null ? "week" : "week";
-    if (phase === "search") { setPhase(toStart); setQuery(""); return; }
-    if (phase === "timer") { setPhase(toStart); return; }
-    if (phase === "log") { setPhase(toStart); return; }
-    if (phase === "log-done") { setPhase(toStart); return; }
+    /**
+     * WHERE BACK GOES DEPENDS ON WHETHER THE WEEK IS SETTLED.
+     *
+     * The doors screen offers last week's icon, a suggestion, and the
+     * catalogue — but NOT the icon you are currently sitting with, and every
+     * forward path from it calls setWeekIcon, overwriting this week's choice.
+     * So sending someone there mid-week, from the sit, showed them a screen
+     * with no way back to their own icon and three ways to lose it. (The
+     * ternary that stood here returned "week" on both branches — a
+     * half-finished edit whose comment described the behaviour it lacked.)
+     *
+     * Once the week HAS an icon, Back from the sit leaves the practice, the
+     * way Back from any settled practice does. Before it does, Back returns
+     * to the doors, which is exactly where the choice is still open.
+     */
+    const settled = (() => { try { return weekIconId() != null; } catch { return false; } })();
+    const leave = () => setLocation("/menu/practices");
+    const toStart = () => { if (settled) leave(); else setPhase("week"); };
+    if (phase === "search") { if (settled) leave(); else { setPhase("week"); setQuery(""); } return; }
+    if (phase === "timer") { toStart(); return; }
+    if (phase === "log") { toStart(); return; }
+    if (phase === "log-done") { toStart(); return; }
     if (phase === "pray") { setPhase("timer"); return; }
-    if (phase === "done") { setPhase(toStart); setQuery(""); return; }
-    setLocation("/menu/practices");
+    if (phase === "done") { if (settled) leave(); else { setPhase("week"); setQuery(""); } return; }
+    leave();
   };
   const close = () => setLocation("/menu/practices");
 

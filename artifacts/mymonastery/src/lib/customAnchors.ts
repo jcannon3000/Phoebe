@@ -338,17 +338,28 @@ export function activeRelationalPractices(): RelationalPracticeId[] {
  * own practice with a similar name is never in RELATIONAL_PRACTICES, so it
  * cannot be swept up here.
  */
-export function setRelationalPractices(wanted: readonly RelationalPracticeId[]): void {
+/**
+ * Returns the practices it could NOT add — always empty unless the person is
+ * at the eight-practice cap.
+ *
+ * It used to return nothing, and `addCustomAnchor` refuses silently at the
+ * cap, so ticking "Give someone a hug" as your ninth practice moved the tick,
+ * reported success, wrote nothing, and showed the row unticked next time you
+ * opened the customizer, with no explanation offered anywhere.
+ */
+export function setRelationalPractices(wanted: readonly RelationalPracticeId[]): RelationalPracticeId[] {
   const want = new Set(wanted);
   const existing = getCustomAnchors();
+  const refused: RelationalPracticeId[] = [];
   for (const r of RELATIONAL_PRACTICES) {
     const found = existing.find((a) => a.title.trim().toLowerCase() === r.title.toLowerCase());
     if (want.has(r.id) && !found) {
-      addCustomAnchor(r.title, r.emoji, "anytime", undefined, undefined, undefined, r.prompt);
+      if (!addCustomAnchor(r.title, r.emoji, "anytime", undefined, undefined, undefined, r.prompt)) refused.push(r.id);
     } else if (!want.has(r.id) && found) {
       removeCustomAnchor(found.id);
     }
   }
+  return refused;
 }
 
 export function addCustomAnchor(
@@ -364,17 +375,22 @@ export function addCustomAnchor(
   prompt?: string,
   /** See CustomAnchor.cadence — "weekly" keeps it until Monday. */
   cadence?: "weekly",
-): void {
+): boolean {
+  /** True when the practice now exists; false when it was refused (at the
+   *  cap, or a duplicate title). Callers that don't care may ignore it — but
+   *  a UI that shows a tick has to know the tick meant something. */
   const t = title.trim();
-  if (!t) return;
+  if (!t) return false;
   const list = getCustomAnchors();
-  if (list.length >= MAX_CUSTOM) return;
+  if (list.length >= MAX_CUSTOM) return false;
   // One practice per title, enforced at the ROOT. Every other add-path
   // already checked; the manual "Create your own" form didn't, and the login
   // sync now folds same-title copies into one — so a second "Stretch" made
   // here would survive only until the next sign-in, then silently collapse.
   // Refusing the duplicate up front is the honest version of that.
-  if (list.some((a) => titleKey(a) === t.toLowerCase())) return;
+  // A duplicate is not a failure to report — the practice they asked for is
+  // already there, which is the outcome they wanted.
+  if (list.some((a) => titleKey(a) === t.toLowerCase())) return true;
   // Unique-ish id from time + a little entropy (no server ids needed).
   const id = `c${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
   const clean: ReadingConfig | undefined =
@@ -395,6 +411,7 @@ export function addCustomAnchor(
     ...(cadence === "weekly" ? { cadence: "weekly" } : {}),
   });
   saveDefs(list);
+  return true;
 }
 
 // Ids the user has explicitly deleted (tombstones), so the server retires them
@@ -1231,8 +1248,19 @@ function mergeLogEntry(l: LogEntry | undefined, s: LogEntry | undefined): LogEnt
   const done = laterStamp(l?.done, s?.done);
   const skip = laterStamp(l?.skip, s?.skip);
   if (done) e.done = done;
-  // done + skip are mutually exclusive on a given day — the positive "done" wins.
-  if (skip && skip !== done) e.skip = skip;
+  /**
+   * done and skip are mutually exclusive — and "the same day" is not how to
+   * express that any more.
+   *
+   * This compared the two stamps for equality, which worked while both were
+   * always today's date. A WEEKLY practice stamps `done` with the week's
+   * closing SUNDAY, so on six days in seven `skip !== done` is true and both
+   * survived the merge — and `skipped` wins every filter downstream, so the
+   * practice vanished from the home on the skipped day and reappeared under
+   * Done the next. Keeping the positive when both are present is the rule;
+   * the stamps only decide WHICH day is recorded.
+   */
+  if (skip && !done) e.skip = skip;
   const rt = laterReadToday(l?.readToday, s?.readToday);
   if (rt) e.readToday = rt;
   const total = Math.max(l?.readTotal ?? 0, s?.readTotal ?? 0);

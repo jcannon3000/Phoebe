@@ -803,6 +803,24 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    */
   const minutesNow = (() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); })();
   const EVENING_HERO_AFTER = EVENING_OPEN_HOUR * 60 + 30;
+  /**
+   * A tick that lands ON the boundary, so 4:30 actually happens.
+   *
+   * `minutesNow` is a plain render-time read: a home screen left open at 4:29
+   * would not sprout the evening hero at 4:30 until something else caused a
+   * re-render. Usually a refetch-on-focus covered it, which is to say it
+   * worked when you happened to look away and back — not a mechanism.
+   *
+   * One timer, armed only when the crossing is still ahead, firing once. Not
+   * an interval: the rest of the day it would be a wake-up for nothing.
+   */
+  const [, forceClockTick] = useState(0);
+  useEffect(() => {
+    if (minutesNow >= EVENING_HERO_AFTER) return;
+    const msUntil = (EVENING_HERO_AFTER - minutesNow) * 60_000 - new Date().getSeconds() * 1000;
+    const t = window.setTimeout(() => forceClockTick((n) => n + 1), Math.max(1000, msUntil));
+    return () => window.clearTimeout(t);
+  }, [minutesNow, EVENING_HERO_AFTER]);
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
   // Tapping the ✓ on an already-Done card opens this instead of navigating —
@@ -1511,13 +1529,23 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       onUnlog: getSideLevel("evening") === "custom"
         ? () => unmarkCustomPrayed("evening")
         : () => undoOfficeToday("evening"),
-      title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
-      // After 8 PM the title is "Close the day"; the second line names the actual
-      // evening method (Evening Prayer / Evening Devotion / Pray together).
+      /**
+       * THE EVENING KEEPS ITS NAME ALL EVENING (owner: "lets get rid of
+       * however the evening anchor gets changed to close the day … the
+       * name").
+       *
+       * After 8pm the card renamed itself "Close the day" and demoted the
+       * actual practice to the second line. It meant a card you had looked at
+       * all day became a different card at a certain hour — the one practice
+       * whose name moved — and "Close the day" names a mood rather than the
+       * thing you are about to pray. Evening Prayer is Evening Prayer at
+       * nine o'clock.
+       */
+      title: officeTitle("Evening"),
       blurb: eveningDone
         ? prayed
-        : (daySwapNote("evening") ?? (hour >= 20 ? officeTitle("Evening") : eveningBlurb)),
-      blurbCycle: (eveningDone || hour >= 20 || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycle],
+        : (daySwapNote("evening") ?? eveningBlurb),
+      blurbCycle: (eveningDone || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycle],
       cta: getSideLevel("evening") === "custom" ? t("rhythm.log", { defaultValue: "Log" }) : t("rhythm.begin", { defaultValue: "Begin" }),
       later: false, // never later (owner: all available)
     }] : []),
@@ -1593,7 +1621,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // Creation Prayer, once done, just reads as kept (checked) like the other
       // rhythm cards — no "breathe again" repeat CTA. Silent contemplation keeps
       // "Sit again" (it has no ceiling) unless it's a manual mark (nothing to redo).
-      doneCta: sideIsCreation("morning") || contemplationLogMethod === "manual" ? undefined : t("rhythm.sit_again", { defaultValue: "Sit again" }),
+      // A CHECK, NOT A REPEAT (owner: "lets change the contemplation card cta
+      // in done from sit again to a check"). With no doneCta the card renders
+      // the same ✓ every other kept practice shows — and that ✓ is the unlog
+      // control, so a mis-tap is undoable here exactly as it is elsewhere.
+      // Sitting again is still a tap on the card itself; it just stops being
+      // the loudest thing on a card whose work is finished.
     }] : []),
     ...(eveningContemplationActive ? [{
       key: "contemplation-evening", slot: "evening" as CustomSlot, emoji: namedSide("evening")?.emoji ?? (sideIsCreation("evening") ? "🌍" : "🕯️"), rgb: "62,124,122", done: eveningContemplationDone,
@@ -1603,7 +1636,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       title: namedSide("evening")?.title ?? (sideIsCreation("evening") ? creationTitle("evening") : t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" })),
       blurb: namedSide("evening")?.blurb ?? (sideIsCreation("evening") ? creationBlurb(eveningContemplationDone) : contemplationBlurbFor(eveningContemplationDone, sideSitMin("evening"))),
       cta: !sideIsCreation("evening") && contemplationLogMethod === "manual" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-      doneCta: sideIsCreation("evening") || contemplationLogMethod === "manual" ? undefined : t("rhythm.sit_again", { defaultValue: "Sit again" }),
+      // See the morning card above — the ✓ is the whole done state.
     }] : []),
     // SOLO "Silence" goal card — ONE card with a PROGRESS BAR of today's
     // minutes toward the daily goal. Shown whenever a goal is set and NEITHER
@@ -1643,7 +1676,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurb: t("rhythm.silence_of_goal", { current: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` }),
       progress: { current: contemplationMin, goal: contemplationGoalMin },
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-      doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
+      // See the morning card above — the ✓ is the whole done state.
     }] : []),
     // The active novena — one card while it's in progress, gone once the
     // final day is marked done (novenaActive drops the moment the server

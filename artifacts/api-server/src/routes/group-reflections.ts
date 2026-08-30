@@ -18,7 +18,7 @@
 //     read it on your phone and it must be read on your laptop.
 
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, desc, eq, gt, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import {
   db,
   groupPostsTable,
@@ -88,7 +88,23 @@ router.get("/me/group-reflection/latest", async (req: Request, res: Response): P
        */
       or(isNull(groupPostsTable.expiresAt), gt(groupPostsTable.expiresAt, new Date())),
     ))
-    .orderBy(desc(groupPostsTable.publishedAt))
+    /**
+     * UNREAD FIRST, then newest.
+     *
+     * This ordered by date alone and took one row across ALL the person's
+     * groups — so a parish that posts weekly permanently masked a parish that
+     * posts monthly, and since a written reflection never expires, the quieter
+     * group's post was never seen at all. Not "seen late": never.
+     *
+     * Ordering unread ahead of read makes it behave like the inbox it is —
+     * each group's post gets its turn, and once everything is read the newest
+     * shows in its Done state, which is what the card expects.
+     */
+    .leftJoin(groupPostReadsTable, and(
+      eq(groupPostReadsTable.postId, groupPostsTable.id),
+      eq(groupPostReadsTable.userId, user.id),
+    ))
+    .orderBy(asc(sql`CASE WHEN ${groupPostReadsTable.id} IS NULL THEN 0 ELSE 1 END`), desc(groupPostsTable.publishedAt))
     .limit(1);
 
   if (!row) { res.status(204).end(); return; }
@@ -243,6 +259,73 @@ router.post("/groups/:slug/reflections", async (req: Request, res: Response): Pr
   }).returning();
 
   res.status(201).json(row);
+});
+
+/**
+ * POST /groups/:slug/reflections/:id/publish — publish a draft.
+ *
+ * There was no way to. A post saved with `publish: false` got a null
+ * publishedAt, the feed selects on publishedAt being non-null, and the file
+ * had only POST and DELETE — so a draft was unreachable for ever, and the
+ * compose screen's "save for later" was a quiet delete.
+ *
+ * The expiry is set HERE, not at creation, which is what the create route's
+ * own comment already claimed: "measured from publication rather than
+ * creation, so a draft published later gets its full week rather than a week
+ * that started while nobody could see it." That was true of the words and not
+ * of the code — a draft link post was created with expiresAt null and would
+ * have published with no expiry at all, quietly opting out of the one-week
+ * rule the owner asked for.
+ */
+router.post("/groups/:slug/reflections/:id/publish", async (req: Request, res: Response): Promise<void> => {
+  const user = req.user as SessionUser;
+  if (!user) { res.status(401).json({ error: "not_authenticated" }); return; }
+  const result = await requireAdmin(String(req.params.slug ?? ""), user.id);
+  if (!result) { res.status(403).json({ error: "not_an_admin" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "bad_id" }); return; }
+
+  const [post] = await db.select().from(groupPostsTable)
+    .where(and(eq(groupPostsTable.id, id), eq(groupPostsTable.groupId, result.group.id)))
+    .limit(1);
+  if (!post) { res.status(404).json({ error: "not_found" }); return; }
+  if (post.publishedAt) { res.json({ ok: true, alreadyPublished: true }); return; }
+
+  const now = new Date();
+  const [row] = await db.update(groupPostsTable)
+    .set({
+      publishedAt: now,
+      // A week from NOW for a link post; a written reflection keeps none.
+      expiresAt: post.url ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) : null,
+    })
+    .where(and(eq(groupPostsTable.id, id), eq(groupPostsTable.groupId, result.group.id)))
+    .returning();
+  res.json(row ?? { ok: true });
+});
+
+/**
+ * POST /groups/:slug/rotate-inbound — mint a new inbound address.
+ *
+ * The invite token has had a rotation route since it existed; the inbound one
+ * shipped without. That matters more, not less: an inbound address is a
+ * public write endpoint, so the only remedy if it leaks — forwarded email,
+ * a newsletter footer, a screenshot — was a hand-written UPDATE against
+ * production, per group.
+ */
+router.post("/groups/:slug/rotate-inbound", async (req: Request, res: Response): Promise<void> => {
+  const user = req.user as SessionUser;
+  if (!user) { res.status(401).json({ error: "not_authenticated" }); return; }
+  const result = await requireAdmin(String(req.params.slug ?? ""), user.id);
+  if (!result) { res.status(403).json({ error: "not_an_admin" }); return; }
+
+  const [row] = await db.update(groupsTable)
+    .set({ inboundToken: sql`gen_random_uuid()::text` })
+    .where(eq(groupsTable.id, result.group.id))
+    .returning({ slug: groupsTable.slug, inboundToken: groupsTable.inboundToken });
+  res.json({
+    address: row ? `${row.slug}-${row.inboundToken}@in.withphoebe.app` : null,
+    note: "The old address stops working immediately. Send the new one to whoever mails your newsletter.",
+  });
 });
 
 /** DELETE /groups/:slug/reflections/:id — admin only. */

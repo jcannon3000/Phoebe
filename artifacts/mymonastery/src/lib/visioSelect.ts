@@ -552,6 +552,47 @@ export function alternatesForDay(
   return out;
 }
 
+/**
+ * A stand-in for a week whose pinned work has been hidden.
+ *
+ * Deterministic and week-scoped: it keys off the week's closing Sunday rather
+ * than the day, so every day of that week resolves to the same replacement
+ * and the week keeps showing one image. Matches the hidden work's own
+ * reference where anything can, so the substitute is usually still about the
+ * passage the week is reading; when nothing matches it takes a stable pick
+ * from the pool and stops claiming a reading.
+ */
+function weekSubstituteFor(ymd: string, hiddenId: number): Chosen | null {
+  const p = pool().filter((a) => a.id !== hiddenId);
+  if (p.length === 0) return null;
+  // The week's Sunday — the same key the schedule itself is built on.
+  const d = new Date(`${ymd}T12:00:00`);
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+  const sunday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  // A stable index from the Sunday alone: same answer all week, every device.
+  let h = 0;
+  for (let i = 0; i < sunday.length; i++) h = (h * 31 + sunday.charCodeAt(i)) >>> 0;
+
+  const hidden = BY_ID.get(hiddenId);
+  const wantedRefs = hidden?.refs ?? [];
+  if (wantedRefs.length > 0) {
+    const scored = p
+      .map((art) => ({ art, score: matchScore(art.refs, wantedRefs) }))
+      .filter((x) => x.score >= 2);
+    if (scored.length > 0) {
+      const top = Math.max(...scored.map((x) => x.score));
+      const best = scored.filter((x) => x.score === top).map((x) => x.art);
+      const art = best[h % best.length]!;
+      const ref = art.refs.find((r) => matchScore([r], wantedRefs) === top) ?? art.refs[0] ?? "";
+      // Only a VERSE-level match may claim the week's reading — the same bar
+      // the schedule builder holds itself to.
+      return { art, ref, followsToday: top >= 3 };
+    }
+  }
+  const art = p[h % p.length]!;
+  return { art, ref: art.refs[0] ?? "", followsToday: false };
+}
+
 export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
   /**
    * THE SCHEDULE FIRST — a day's picture is decided ahead of time.
@@ -574,6 +615,24 @@ export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
   if (scheduled) {
     const art = artworkById(scheduled.id);
     if (art) return { art, ref: scheduled.ref, followsToday: scheduled.followsToday };
+    /**
+     * THE PINNED WORK WAS HIDDEN — keep the WEEK together anyway.
+     *
+     * `artworkById` refuses a work the owner deleted at /admin/art-library,
+     * which is right: a deleted work must be unreachable by every path,
+     * including a stale schedule entry. But falling straight through to live
+     * matching broke the practice's one promise — the tutorial says "the same
+     * picture waits for you every day until Sunday" — because live matching
+     * runs against TODAY'S Daily Office lessons and resolves by day ordinal.
+     * Delete the current week's work on a Wednesday and Thursday, Friday and
+     * Saturday each showed a different picture.
+     *
+     * So: substitute at the WEEK's level. Every day of this week asks the
+     * same question — the same Sunday's entry, the same replacement — so the
+     * week stays one image, just not the one that was deleted.
+     */
+    const weekly = weekSubstituteFor(ymd, scheduled.id);
+    if (weekly) return weekly;
   }
 
   // Gospel, then Epistle/OT, then psalms — the first tier that matches at

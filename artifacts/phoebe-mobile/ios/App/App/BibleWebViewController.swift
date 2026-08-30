@@ -348,6 +348,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          the Podbean feed the app already carries, so the Listen button on the
          card plays the episode and this only has to make the sermon readable. */
       var isCathedral = (h === 'cathedral.org' || h.slice(-14) === '.cathedral.org');
+      /* Joan Chittister's weekly. It is a Mailchimp campaign page, which is an
+         HTML EMAIL — see the arm below for why that needs its own handling
+         rather than the usual restyle. */
+      var isChittister = (h === 'mailchi.mp' || h.slice(-11) === '.mailchi.mp');
       /* GRIST IS DELIBERATELY NOT HERE. Owner: "Grist i dont want a reader
          just make sure its light mode and the header is light", and "take out
          the top grist the daily text too" — the masthead line goes with it.
@@ -357,7 +361,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          not. It opens with the ordinary light newsletter chrome instead,
          which is what openExternal's `reader: true` -> lightChrome already
          asks for. */
-      if (!isOremus && !isSsje && !isNouwen && !isFdd && !isSojo && !isCathedral) return;
+      if (!isOremus && !isSsje && !isNouwen && !isFdd && !isSojo && !isCathedral && !isChittister) return;
 
       /**
        * KEEP ONE BLOCK, HIDE ITS SIBLINGS — the technique three of these five
@@ -392,6 +396,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                          : isNouwen ? '.blog-item-inner-wrapper'
                          : isSojo ? 'article.node-versevoice'
                          : isCathedral ? 'main.page'
+                         /* The email's own body table. Mailchimp wraps the
+                            campaign in #templateBody inside #backgroundTable;
+                            isolating it drops the archive bar and the tracking
+                            furniture around it in one move. */
+                         : isChittister ? '#templateBody'
                          : null;
 
       /**
@@ -802,6 +811,41 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'main.page .typography h2,main.page .typography h3{font-size:20px!important;',
         'font-weight:700!important;color:#F0EDE6!important;margin:1.4em 0 .5em!important;}',
         'main.page,main.page *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
+        /* ---- Joan Chittister · Vision and Viewpoint ----------------------
+           A MAILCHIMP CAMPAIGN IS AN HTML EMAIL, and that is the whole
+           problem. Measured on the live page: the campaign sits in
+           `table#backgroundTable` with a hard `width: 734px`, which on a
+           402pt phone runs off the right edge — the owner saw the text
+           cropped mid-sentence and the masthead cut in half. No amount of
+           type styling fixes that; the TABLE has to stop being a table.
+
+           So every table, row and cell is turned into a block that fills the
+           width it is given. This is safe here in a way it would not be on a
+           real page: an email table is a layout hack, not a data table, and
+           there is nothing columnar to destroy.
+
+           Mailchimp's own archive bar (#awesomewrap — Subscribe / Past Issues
+           / RSS / Translate) goes: it belongs to the archive, not to the
+           newsletter, and it was the first thing on the screen. */
+        '#awesomewrap{display:none!important;}',
+        'table,tbody,tr,td,#backgroundTable,#templateBody{display:block!important;',
+        'width:auto!important;max-width:100%!important;height:auto!important;}',
+        '#templateBody{padding:0 16px!important;}',
+        /* Images inside the email are content (the masthead, her portrait) —
+           kept, but never wider than the screen. */
+        '#templateBody img{max-width:100%!important;height:auto!important;}',
+        /* The body reads as prose, the way Sojourners does: Georgia for the
+           passages, Grotesk left to the app's own furniture. */
+        '#templateBody,#templateBody td,#templateBody p,#templateBody span,#templateBody div{',
+        'font-family:Georgia,"Times New Roman",serif!important;font-size:19px!important;',
+        'line-height:1.62!important;color:#F0EDE6!important;background:transparent!important;}',
+        '#templateBody h1,#templateBody h2,#templateBody h3,#templateBody strong,#templateBody b{',
+        'font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'color:#F0EDE6!important;}',
+        '#templateBody a,#templateBody a *{color:#A8C5A0!important;}',
+        /* Email templates set explicit widths and paddings on nearly every
+           cell; both have to go or the block layout inherits the 734px. */
+        '#templateBody *{width:auto!important;max-width:100%!important;}',
         '.blog-item-inner-wrapper img,.blog-item-inner-wrapper figure,',
         '.blog-item-inner-wrapper .sqs-block-image{display:none!important;}',
         /* AND THE GAP THE HIDDEN ONES LEAVE BEHIND. Squarespace wraps every

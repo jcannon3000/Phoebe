@@ -812,7 +812,16 @@ export default function VisioPage() {
   /* (The reset for the commentary's one-shot flag lived here. It went with
      the auto-open: the closing slide no longer hands anyone off, so there is
      no "already opened" state to clear on the way back.) */
-  useEffect(() => { if (step < READING) setReadPassage(false); }, [step, READING]);
+  /**
+   * The one-shot resets whenever you are not ON the reading beat.
+   *
+   * It reset only when `step < READING`, so coming BACK to the beat from
+   * LOOK_AGAIN left the flag set: beat 3, whose entire job is to open the
+   * passage, offered "Continue" instead, and the passage could not be
+   * reopened from the only screen that opens it. Backing up should undo, not
+   * lock.
+   */
+  useEffect(() => { if (step !== READING) setReadPassage(false); }, [step, READING]);
   /**
    * The hand-off flag belongs to ONE beat.
    *

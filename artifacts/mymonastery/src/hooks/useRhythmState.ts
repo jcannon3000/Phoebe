@@ -16,7 +16,7 @@ import {
   type TrackedReflection,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
-import { waitingMeditation, waitingItem, type InboxItem } from "@/lib/taizeInbox";
+import { waitingMeditation, waitingItem, TAIZE_READ_EVENT, type InboxItem } from "@/lib/taizeInbox";
 import { practiceOnDay } from "@/lib/practiceDays";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay, hasAnchorOfficeIntentToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday, isOfficeLoggedToday } from "@/lib/officeManualLog";
@@ -457,6 +457,17 @@ export function useRhythmState(): RhythmState {
     // A cross-device routine sync rewrote the local office levels / slots — force
     // a re-read so the cards reflect the synced rhythm (lib/routineSync).
     window.addEventListener(ROUTINE_SYNCED_EVENT, recheck);
+    /**
+     * An inbox item was marked read (or un-read) IN THIS DOCUMENT.
+     *
+     * markInboxRead has fired this since it was written and nothing listened.
+     * The Taizé and Chittister cards got away with it because they open a
+     * browser first, and `phoebe:browserfinished` / `focus` happen to cover
+     * the return trip. The Cathedral's LISTEN button doesn't open anything —
+     * it starts the podcast player in-app — so its card's move to Done relied
+     * on the player context incidentally re-rendering. Now it doesn't.
+     */
+    window.addEventListener(TAIZE_READ_EVENT, recheck);
     // A goal changed in-document (e.g. a guest sets a silence goal) — the
     // `storage` event only fires cross-tab, so without this the home wouldn't
     // grow the new goal card until a reload. OFFICE_PREFS_EVENT
@@ -484,6 +495,7 @@ export function useRhythmState(): RhythmState {
       window.removeEventListener("phoebe:appactive", recheck);
       window.removeEventListener("phoebe:browserfinished", recheck);
       window.removeEventListener(ROUTINE_SYNCED_EVENT, recheck);
+      window.removeEventListener(TAIZE_READ_EVENT, recheck);
       window.removeEventListener(OFFICE_PREFS_EVENT, recheck);
       window.removeEventListener(GUEST_SILENCE_EVENT, recheck);
     };
