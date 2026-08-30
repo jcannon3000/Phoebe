@@ -75,6 +75,17 @@ export default function MenuPage() {
       // needed); it has its own "Customize more fully" link into the real
       // wizard for anyone who wants to sign in and go deeper.
       ...(isGuest ? [{ emoji: "🎛️", label: t("menu.customize", { defaultValue: "Customize" }), sub: t("menu.customize_sub", { defaultValue: "Daily prayer, newsletter, silence, steps" }), onClick: () => go("/customize") }] : []),
+      /**
+       * THE HOME-SCREEN CONTROLS — reachable at last.
+       *
+       * /customize-home holds the reorder and show/hide handles for every
+       * home module, the feed-first-home picker (moved here from Settings,
+       * whose comment still points at it) and the NCMP card. It had no
+       * inbound link from anywhere in the app: three separate comments
+       * describe it as the canonical surface for those controls, and the only
+       * way to reach it was to type the URL.
+       */
+      { emoji: "🏠", label: t("menu.customize_home", { defaultValue: "Home screen" }), sub: t("menu.customize_home_sub", { defaultValue: "What shows on your home, and in what order" }), onClick: () => go("/customize-home") },
       { emoji: "📖", label: t("menu.bcp"), sub: t("menu.bcp_sub"), onClick: () => go("/menu/bcp") },
       { emoji: "🕯️", label: t("menu.practices"), sub: t("menu.practices_sub"), onClick: () => go("/menu/practices") },
       { emoji: "🌅", label: t("menu.reflections"), sub: t("menu.reflections_sub"), onClick: () => go("/menu/reflections") },

@@ -2199,11 +2199,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
              Owner asked for this twice, at different times: "start at the
              picture not under [it]", then "make sure it scrolls to the top of
              the commentary for the image we are using that day". Both are the
-             article's top — and now that the reader shows the commentary as
-             text only, the article begins with the work's title and its
-             writing, which is exactly what should be under the reader's
-             thumb. No hunting for a nearby image: the pictures are hidden,
-             and the nearest visible one would belong to another work. */
+             article's top, which is why one target satisfies both.
+             (This used to add "the pictures are hidden" as the reason — true
+             while VCS was in the reader, and no longer: VCS left it, so the
+             article now opens with the work itself and the commentary beneath.
+             The target is unchanged and still correct — the article's top IS
+             the picture again, which is the first of the owner's two asks
+             read literally. Don't "fix" this toward an image-hunting scroll
+             on the strength of the old reasoning.) */
           var anchorTop = el.getBoundingClientRect().top + window.pageYOffset;
           phoebeScrollTo(Math.max(0, anchorTop - 8));
           return true;
@@ -2355,6 +2358,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         return matches("oremus.org") || matches("ssje.org")
             || matches("henrinouwen.org") || matches("forwardmovement.org")
             || matches("sojo.net") || matches("cathedral.org")
+            || matches("mailchi.mp")
     }
 
     private func syncChromeToPage() {

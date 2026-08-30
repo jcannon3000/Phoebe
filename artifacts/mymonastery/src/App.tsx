@@ -309,7 +309,10 @@ const MenuLearnPage = lazy(() => import("./pages/menu-learn"));
 const MenuReflectionsPage = lazy(() => import("./pages/menu-reflections"));
 const ReflectionReadPage = lazy(() => import("./pages/reflection-read"));
 const MenuResourcesPage = lazy(() => import("./pages/menu-resources"));
-const HomeBetaPage = lazy(() => import("./pages/home-beta"));
+// (No HomeBetaPage lazy import — /home-beta redirects to /dashboard and no
+// route ever rendered it, so the lazy() only bought the bundle an extra chunk
+// entry. The module itself is still imported for its named exports by
+// home-beta-section, way-of-love-week and weekly-review.)
 const HomeBetaSectionPage = lazy(() => import("./pages/home-beta-section"));
 const WayOfLoveWeekPage = lazy(() => import("./pages/way-of-love-week"));
 const WeeklyReviewPage = lazy(() => import("./pages/weekly-review"));

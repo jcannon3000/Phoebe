@@ -15,7 +15,15 @@
 //   1. point MX records for a subdomain (in.withphoebe.app) at an inbound
 //      provider — Postmark, SendGrid and Mailgun all do inbound parsing;
 //   2. point that provider's inbound webhook at POST /api/inbound/email;
-//   3. set INBOUND_EMAIL_SECRET, and include it as ?secret= on the webhook URL.
+//   3. set INBOUND_EMAIL_SECRET and send it as the `x-inbound-secret` HEADER.
+//      A `?secret=` query parameter is still accepted for a provider that
+//      cannot set headers, but prefer the header: query strings are written
+//      to Railway's HTTP logs, to pino-http's logged URL and to any proxy
+//      access log along the way, so a long-lived shared secret in one is
+//      copied into log storage on every single delivery.
+//   4. configure the provider to POST JSON (Postmark) or form-urlencoded
+//      (Mailgun). SendGrid's Inbound Parse defaults to multipart/form-data,
+//      which nothing in this app parses — see the content-type check below.
 // Until then this route is inert rather than broken: it answers 503 and says
 // so, which is a truer thing for it to do than to 404.
 
@@ -58,8 +66,31 @@ router.post("/inbound/email", async (req: Request, res: Response): Promise<void>
     res.status(503).json({ error: "inbound_not_configured", detail: "INBOUND_EMAIL_SECRET is unset" });
     return;
   }
-  if (!secretOk(req.query["secret"] ?? req.headers["x-inbound-secret"])) {
+  // Header FIRST — see the note at the top on why a query-string secret ends
+  // up in log storage. The query form stays as a fallback, not a default.
+  if (!secretOk(req.headers["x-inbound-secret"] ?? req.query["secret"])) {
     res.status(401).json({ error: "bad_secret" });
+    return;
+  }
+
+  /**
+   * A BODY WE CAN ACTUALLY READ.
+   *
+   * app.ts mounts express.json and express.urlencoded and nothing else, so a
+   * multipart/form-data POST — which is what SendGrid's Inbound Parse sends by
+   * default — arrives as `{}`. That fell through to "no_sender_or_recipient"
+   * with a 200, which tells the provider the delivery SUCCEEDED: no retry, no
+   * error, no trace, and a parish's newsletter silently going nowhere for as
+   * long as it takes someone to notice. Answering 415 makes the provider
+   * retry and log, and names the actual problem.
+   */
+  const ctype = String(req.headers["content-type"] ?? "");
+  if (/multipart\/form-data/i.test(ctype)) {
+    logger.warn({ ctype }, "inbound email rejected: multipart body, no parser mounted");
+    res.status(415).json({
+      error: "unsupported_content_type",
+      detail: "Send JSON or form-urlencoded. SendGrid: turn OFF 'POST the raw, full MIME message' and use the JSON payload, or switch to Postmark.",
+    });
     return;
   }
 

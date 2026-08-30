@@ -570,10 +570,31 @@ function weekKeyOf(now: Date = new Date()): string {
   return iso(d);
 }
 
-/** The period a practice's completion is measured in — a day, or its week. */
+/**
+ * The period a practice's completion is measured in — a day, or its week.
+ *
+ * The cadence lookup is MEMOISED against the raw stored string, because this
+ * sits under `isCustomDoneToday`, which the home calls once per practice on
+ * every recheck — and there are six events that trigger one (focus, pageshow,
+ * storage, appactive, and two custom events). `getCustomAnchors()` is a full
+ * JSON.parse plus a whitelist rebuild of the list, so this turned one
+ * localStorage read into N parses per event.
+ *
+ * Keyed on the stored defs string itself, so an edit invalidates it for free:
+ * if the string differs, the map is rebuilt. No event wiring to forget.
+ */
+let cadenceCache: { raw: string; byId: Map<string, "weekly" | undefined> } | null = null;
+function cadenceOf(id: string): "weekly" | undefined {
+  let raw = "";
+  try { raw = localStorage.getItem(DEFS_KEY) ?? ""; } catch { return undefined; }
+  if (!cadenceCache || cadenceCache.raw !== raw) {
+    cadenceCache = { raw, byId: new Map(getCustomAnchors().map((a) => [a.id, a.cadence])) };
+  }
+  return cadenceCache.byId.get(id);
+}
+
 function periodKeyFor(id: string): string {
-  const anchor = getCustomAnchors().find((a) => a.id === id);
-  return anchor?.cadence === "weekly" ? weekKeyOf() : todayISO();
+  return cadenceOf(id) === "weekly" ? weekKeyOf() : todayISO();
 }
 
 /**

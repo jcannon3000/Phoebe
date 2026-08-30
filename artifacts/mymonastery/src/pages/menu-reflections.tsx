@@ -70,14 +70,24 @@ export default function MenuReflectionsPage() {
    * or nothing is published, the row still opens the publication's own index
    * rather than dead-ending.
    */
-  const weekly = (path: string) => useQuery<InboxItem | null>({
+  /**
+   * Three calls, written out.
+   *
+   * These went through a `weekly(path)` helper that called useQuery inside
+   * it. The order happened to be stable so it worked, but it is a
+   * rules-of-hooks violation — the moment one of the three becomes
+   * conditional (a source turned off, a tier gate) the hook order shifts
+   * between renders and React reads the wrong state into the wrong query.
+   * The shared options stay shared; only the hook calls are unrolled.
+   */
+  const weeklyOpts = (path: string) => ({
     queryKey: [path],
-    queryFn: async () => (await apiRequest("GET", path)) ?? null,
+    queryFn: async () => ((await apiRequest("GET", path)) ?? null) as InboxItem | null,
     staleTime: 30 * 60_000,
   });
-  const taize = weekly("/api/taize/latest");
-  const chittister = weekly("/api/chittister/latest");
-  const cathedral = weekly("/api/cathedral-sermons/latest");
+  const taize = useQuery<InboxItem | null>(weeklyOpts("/api/taize/latest"));
+  const chittister = useQuery<InboxItem | null>(weeklyOpts("/api/chittister/latest"));
+  const cathedral = useQuery<InboxItem | null>(weeklyOpts("/api/cathedral-sermons/latest"));
 
   const openWeekly = (
     source: "taize" | "chittister" | "cathedral",
