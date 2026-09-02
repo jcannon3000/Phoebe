@@ -130,7 +130,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss3.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["Hurry on, my weary soul,", "And I yearde from heaven to-day,", "Hurry on, my weary soul,", "And I yearde from heaven to-day."], printedAs: ["Hurry on, my weary soul,", "And I yearde from heaven to-day,", "Hurry on, my weary soul,", "And I yearde from heaven to-day."] },
+      { number: null, sung: true, expanded: false, lines: ["Hurry on, my weary soul,", "And I yearde from heaven to-day,", "Hurry on, my weary soul,", "And I yearde from heaven to-day."], printedAs: ["Hurry on, my weary soul,", "And I yearde from heaven to-day,", "Hurry on, my weary soul,", "And I yearde from heaven to-day."] },
       { number: 1, sung: false, expanded: false, lines: ["My sin is forgiven and my soul set free,", "And I yearde from heaven to-day,", "My sin is forgiven, and my soul set free,", "And I yearde from heaven to-day."], printedAs: ["My sin is forgiven and my soul set free,", "And I yearde from heaven to-day,", "My sin is forgiven, and my soul set free,", "And I yearde from heaven to-day."] },
       { number: 2, sung: false, expanded: true, lines: ["A baby born in Bethlehem,", "And I yearde from heaven to-day,", "And I yearde from heaven to-day,", "And I yearde from heaven to-day."], printedAs: ["A baby born in Bethlehem,", "And I yearde, &c."] },
       { number: 3, sung: false, expanded: true, lines: ["De trumpet sound in de oder bright land,", "And I yearde from heaven to-day,", "De trumpet sound in de oder bright land,", "And I yearde from heaven to-day."], printedAs: ["De trumpet sound in de oder bright land."] },
@@ -222,7 +222,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss7.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: true, lines: ["My brudder, want to get religion?", "Go down in de lonesome valley, my Lord;"], printedAs: ["My brudder, want to get religion?", "Go down in de lonesome valley, etc."] },
+      { number: null, sung: true, expanded: true, lines: ["My brudder, want to get religion?", "Go down in de lonesome valley, my Lord;"], printedAs: ["My brudder, want to get religion?", "Go down in de lonesome valley, etc."] },
       { number: 1, sung: false, expanded: false, lines: ["Go down in de lonesome valley,", "Go down in de lonesome valley, my Lord;", "Go down in de lonesome valley,", "To meet my Jesus dere."], printedAs: ["Go down in de lonesome valley,", "Go down in de lonesome valley, my Lord;", "Go down in de lonesome valley,", "To meet my Jesus dere."] },
       { number: 2, sung: false, expanded: false, lines: ["O feed on milk and honey."], printedAs: ["O feed on milk and honey."] },
       { number: 3, sung: false, expanded: false, lines: ["O John he write de letter."], printedAs: ["O John he write de letter."] },
@@ -245,7 +245,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss8.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["Chor. I can't stay behind, my Lord,", "I can't stay behind!"], printedAs: ["Chor. I can't stay behind, my Lord,", "I can't stay behind!"] },
+      { number: null, sung: true, expanded: false, lines: ["Chor. I can't stay behind, my Lord,", "I can't stay behind!"], printedAs: ["Chor. I can't stay behind, my Lord,", "I can't stay behind!"] },
       { number: 1, sung: false, expanded: false, lines: ["Dere's room enough, Room enough,", "Room enough in de heaven, my Lord;", "Room enough, Room enough,", "I can't stay behind."], printedAs: ["Dere's room enough, Room enough,", "Room enough in de heaven, my Lord;", "Room enough, Room enough,", "I can't stay behind."] },
       { number: 2, sung: false, expanded: false, lines: ["I been all around, I been all around,", "Been all around de Heaven, my Lord."], printedAs: ["I been all around, I been all around,", "Been all around de Heaven, my Lord."] },
       { number: 3, sung: false, expanded: false, lines: ["I've searched every room--in de Heaven, my Lord."], printedAs: ["I've searched every room--in de Heaven, my Lord."] },
@@ -427,7 +427,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss16.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["O me no weary yet,", "O me no weary yet"], printedAs: ["O me no weary yet,", "O me no weary yet"] },
+      { number: null, sung: true, expanded: false, lines: ["O me no weary yet,", "O me no weary yet"], printedAs: ["O me no weary yet,", "O me no weary yet"] },
       { number: 1, sung: false, expanded: false, lines: ["I Have a witness in my heart,", "O me no weary yet. (Brudder Tony)"], printedAs: ["I Have a witness in my heart,", "O me no weary yet. (Brudder Tony)"] },
       { number: 2, sung: false, expanded: true, lines: ["Since I been in de field to fight,", "Since I been in de field to fight"], printedAs: ["Since I been in de field to fight."] },
       { number: 3, sung: false, expanded: true, lines: ["I have a heaven to maintain,", "I have a heaven to maintain"], printedAs: ["I have a heaven to maintain."] },
@@ -506,7 +506,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss19.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["I wait upon de Lord,", "I wait upon de Lord,", "I wait upon de Lord, my God,", "who take away de sin of the world."], printedAs: ["I wait upon de Lord,", "I wait upon de Lord,", "I wait upon de Lord, my God,", "who take away de sin of the world."] },
+      { number: null, sung: true, expanded: false, lines: ["I wait upon de Lord,", "I wait upon de Lord,", "I wait upon de Lord, my God,", "who take away de sin of the world."], printedAs: ["I wait upon de Lord,", "I wait upon de Lord,", "I wait upon de Lord, my God,", "who take away de sin of the world."] },
       { number: 1, sung: false, expanded: false, lines: ["If you want to find Jesus, go in the wilderness,", "Go in de wilderness, go in de wilderness,", "Mournin' brudder, go in de wilderness,", "I wait upon de Lord."], printedAs: ["If you want to find Jesus, go in the wilderness,", "Go in de wilderness, go in de wilderness,", "Mournin' brudder, go in de wilderness,", "I wait upon de Lord."] },
       { number: 3, sung: false, expanded: true, lines: ["You want to be a Christian,", "You want to be a Christian,", "I wait upon de Lord, my God,", "who take away de sin of the world."], printedAs: ["You want to be a Christian."] },
       { number: 4, sung: false, expanded: true, lines: ["You want to get religion,", "You want to get religion,", "I wait upon de Lord, my God,", "who take away de sin of the world."], printedAs: ["You want to get religion."] },
@@ -755,7 +755,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss29.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["Rain fall and wet Becca Lawton,", "Oh . . . . Rain fall and wet Becca Lawton,", "Oh! Brudder cry holy!"], printedAs: ["Rain fall and wet Becca Lawton,", "Oh . . . . Rain fall and wet Becca Lawton,", "Oh! Brudder cry holy!"] },
+      { number: null, sung: true, expanded: false, lines: ["Rain fall and wet Becca Lawton,", "Oh . . . . Rain fall and wet Becca Lawton,", "Oh! Brudder cry holy!"], printedAs: ["Rain fall and wet Becca Lawton,", "Oh . . . . Rain fall and wet Becca Lawton,", "Oh! Brudder cry holy!"] },
       { number: 1, sung: false, expanded: false, lines: ["Been back holy, I must come slowly;", "Oh! Brudder cry holy!"], printedAs: ["Been back holy, I must come slowly;", "Oh! Brudder cry holy!"] },
       { number: 2, sung: false, expanded: false, lines: ["Do, Becca Lawton, come to me yonder."], printedAs: ["Do, Becca Lawton, come to me yonder."] },
       { number: 3, sung: false, expanded: false, lines: ["Say, brudder Tony, what shall I do now?"], printedAs: ["Say, brudder Tony, what shall I do now?"] },
@@ -1088,7 +1088,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss44.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["I ax all dem brudder roun',", "Brudder, why can't you pray for me?", "I ax all dem brudder roun',", "Brudder, why can't you pray for me?"], printedAs: ["I ax all dem brudder roun',", "Brudder, why can't you pray for me?", "I ax all dem brudder roun',", "Brudder, why can't you pray for me?"] },
+      { number: null, sung: true, expanded: false, lines: ["I ax all dem brudder roun',", "Brudder, why can't you pray for me?", "I ax all dem brudder roun',", "Brudder, why can't you pray for me?"], printedAs: ["I ax all dem brudder roun',", "Brudder, why can't you pray for me?", "I ax all dem brudder roun',", "Brudder, why can't you pray for me?"] },
       { number: 1, sung: false, expanded: false, lines: ["I'm gwine to my heaven, I'm gwine home,", "Archangel open de door;", "I'm gwine to my heaven, I'm gwine home;", "Archangel open de door."], printedAs: ["I'm gwine to my heaven, I'm gwine home,", "Archangel open de door;", "I'm gwine to my heaven, I'm gwine home;", "Archangel open de door."] },
       { number: 2, sung: false, expanded: true, lines: ["Brudder, tuk off your knapsack, I'm gwine home,", "Brudder, why can't you pray for me?", "Archangel open de door,", "Brudder, why can't you pray for me?"], printedAs: ["Brudder, tuk off your knapsack, I'm gwine home;", "Archangel open de door."] },
     ],
@@ -1130,7 +1130,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss46.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["I know member, know Lord,", "I know I yedde de bell da ring."], printedAs: ["I know member, know Lord,", "I know I yedde de bell da ring."] },
+      { number: null, sung: true, expanded: false, lines: ["I know member, know Lord,", "I know I yedde de bell da ring."], printedAs: ["I know member, know Lord,", "I know I yedde de bell da ring."] },
       { number: 1, sung: false, expanded: false, lines: ["Want to go to meeting,", "Bell da ring,", "Want to go to meeting,", "Bell da ring."], printedAs: ["Want to go to meeting,", "Bell da ring,", "Want to go to meeting,", "Bell da ring."] },
       { number: 2, sung: false, expanded: false, lines: ["(Say) Road so stormy,", "Bell da ring,", "(Say) Road so stormy,", "Bell da ring."], printedAs: ["(Say) Road so stormy,", "Bell da ring,", "(Say) Road so stormy,", "Bell da ring."] },
       { number: 3, sung: false, expanded: false, lines: ["I can't get to meetin'."], printedAs: ["I can't get to meetin'."] },
@@ -1471,7 +1471,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss59a.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["I want some valiant soldier here,", "I want some valiant soldier here,", "I want some valiant soldier here,", "To help me bear de cross.", "O hail, Mary, hail!", "O hail, Mary, hail!", "O hail, Mary, hail!", "To help me bear de cross."], printedAs: ["I want some valiant soldier here,", "I want some valiant soldier here,", "I want some valiant soldier here,", "To help me bear de cross.", "O hail, Mary, hail!", "O hail, Mary, hail!", "O hail, Mary, hail!", "To help me bear de cross."] },
+      { number: null, sung: true, expanded: false, lines: ["I want some valiant soldier here,", "I want some valiant soldier here,", "I want some valiant soldier here,", "To help me bear de cross.", "O hail, Mary, hail!", "O hail, Mary, hail!", "O hail, Mary, hail!", "To help me bear de cross."], printedAs: ["I want some valiant soldier here,", "I want some valiant soldier here,", "I want some valiant soldier here,", "To help me bear de cross.", "O hail, Mary, hail!", "O hail, Mary, hail!", "O hail, Mary, hail!", "To help me bear de cross."] },
       { number: 1, sung: true, expanded: false, lines: ["Done wid driber's dribin',", "Done wid driber's dribin',", "Done wid driber's dribin',", "Roll, Jordan, roll."], printedAs: ["Done wid driber's dribin',", "Done wid driber's dribin',", "Done wid driber's dribin',", "Roll, Jordan, roll."] },
       { number: 2, sung: false, expanded: true, lines: ["Done wid massa's hollerin',", "Done wid massa's hollerin',", "Done wid massa's hollerin',", "To help me bear de cross.", "O hail, Mary, hail!", "O hail, Mary, hail!", "O hail, Mary, hail!", "To help me bear de cross."], printedAs: ["Done wid massa's hollerin',"] },
       { number: 3, sung: false, expanded: true, lines: ["Done wid missus' scoldin',", "Done wid missus' scoldin',", "Done wid missus' scoldin',", "To help me bear de cross.", "O hail, Mary, hail!", "O hail, Mary, hail!", "O hail, Mary, hail!", "To help me bear de cross."], printedAs: ["Done wid missus' scoldin'."] },
@@ -1818,7 +1818,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss74.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["Nobody knows de trouble I've had,", "Nobody knows but Jesus,", "Nobody knows de trouble I've had,", "(Sing) Glory hallelu!"], printedAs: ["Nobody knows de trouble I've had,", "Nobody knows but Jesus,", "Nobody knows de trouble I've had,", "(Sing) Glory hallelu!"] },
+      { number: null, sung: true, expanded: false, lines: ["Nobody knows de trouble I've had,", "Nobody knows but Jesus,", "Nobody knows de trouble I've had,", "(Sing) Glory hallelu!"], printedAs: ["Nobody knows de trouble I've had,", "Nobody knows but Jesus,", "Nobody knows de trouble I've had,", "(Sing) Glory hallelu!"] },
       { number: 1, sung: false, expanded: true, lines: ["One morning I was a-walking down, O yes, Lord,", "Nobody knows but Jesus,", "I saw some berries a-hanging down, O yes, Lord,", "(Sing) Glory hallelu!"], printedAs: ["One morning I was a-walking down, O yes, Lord!", "I saw some berries a-hanging down, O yes, Lord!"] },
       { number: 2, sung: false, expanded: true, lines: ["I pick de berry and I suck de juice, O yes, Lord,", "Nobody knows but Jesus,", "Just as sweet as the honey in de comb, O yes, Lord,", "(Sing) Glory hallelu!"], printedAs: ["I pick de berry and I suck de juice, O yes, Lord!", "Just as sweet as the honey in de comb, O yes, Lord!"] },
       { number: 3, sung: false, expanded: true, lines: ["Sometimes I'm up, sometimes I'm down,", "Nobody knows but Jesus,", "Sometimes I'm almost on de groun',", "(Sing) Glory hallelu!"], printedAs: ["Sometimes I'm up, sometimes I'm down,", "Sometimes I'm almost on de groun'."] },
@@ -1842,7 +1842,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss75.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["Let me tell you what is nat'rally de fac'", "Who is on de Lord's side,", "None o' God's chil'n nebber look back,", "Who is on de Lord's side."], printedAs: ["Let me tell you what is nat'rally de fac'", "Who is on de Lord's side,", "None o' God's chil'n nebber look back,", "Who is on de Lord's side."] },
+      { number: null, sung: true, expanded: false, lines: ["Let me tell you what is nat'rally de fac'", "Who is on de Lord's side,", "None o' God's chil'n nebber look back,", "Who is on de Lord's side."], printedAs: ["Let me tell you what is nat'rally de fac'", "Who is on de Lord's side,", "None o' God's chil'n nebber look back,", "Who is on de Lord's side."] },
       { number: 1, sung: false, expanded: false, lines: ["Way in de walley,", "Who is on de Lord's side,", "Way in de walley,", "Who is on de Lord's side."], printedAs: ["Way in de walley,", "Who is on de Lord's side,", "Way in de walley,", "Who is on de Lord's side."] },
       { number: 2, sung: false, expanded: false, lines: ["Weepin' Mary."], printedAs: ["Weepin' Mary."] },
       { number: 3, sung: false, expanded: false, lines: ["Mournin' Marta."], printedAs: ["Mournin' Marta."] },
@@ -1904,7 +1904,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss78.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["One cold freezing morning I lay dis body down;", "I will pick up my cross an' follow my lord", "All roun' my Fader's throne."], printedAs: ["One cold freezing morning I lay dis body down;", "I will pick up my cross an' follow my lord", "All roun' my Fader's throne."] },
+      { number: null, sung: true, expanded: false, lines: ["One cold freezing morning I lay dis body down;", "I will pick up my cross an' follow my lord", "All roun' my Fader's throne."], printedAs: ["One cold freezing morning I lay dis body down;", "I will pick up my cross an' follow my lord", "All roun' my Fader's throne."] },
       { number: 1, sung: false, expanded: false, lines: ["Every hour in de day cry holy,", "Cry holy, my Lord!", "Every hour in de day cry holy,", "Oh show me de crime I've done."], printedAs: ["Every hour in de day cry holy,", "Cry holy, my Lord!", "Every hour in de day cry holy,", "Oh show me de crime I've done."] },
       { number: 2, sung: false, expanded: false, lines: ["Every hour in de night cry Jesus, etc."], printedAs: ["Every hour in de night cry Jesus, etc."] },
     ],
@@ -1925,7 +1925,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss79.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["Good Lord, in de manshans above,", "Good Lord, in de manshans above,", "My Lord, I hope to meet my Jesus", "In de manshans above."], printedAs: ["Good Lord, in de manshans above,", "Good Lord, in de manshans above,", "My Lord, I hope to meet my Jesus", "In de manshans above."] },
+      { number: null, sung: true, expanded: false, lines: ["Good Lord, in de manshans above,", "Good Lord, in de manshans above,", "My Lord, I hope to meet my Jesus", "In de manshans above."], printedAs: ["Good Lord, in de manshans above,", "Good Lord, in de manshans above,", "My Lord, I hope to meet my Jesus", "In de manshans above."] },
       { number: 1, sung: false, expanded: false, lines: ["If you get to heaven before I do,", "Lord, tell my Jesus I'm a-comin' too,", "To de manshans above."], printedAs: ["If you get to heaven before I do,", "Lord, tell my Jesus I'm a-comin' too,", "To de manshans above."] },
       { number: 2, sung: false, expanded: false, lines: ["My Lord, I've had many crosses an' trials here below;", "My Lord, I hope to meet you", "In de manshans above."], printedAs: ["My Lord, I've had many crosses an' trials here below;", "My Lord, I hope to meet you", "In de manshans above."] },
       { number: 3, sung: false, expanded: false, lines: ["Fight on, my brudder, for de manshans above,", "For I hope to meet my Jesus dere", "In de manshans above."], printedAs: ["Fight on, my brudder, for de manshans above,", "For I hope to meet my Jesus dere", "In de manshans above."] },
@@ -2153,7 +2153,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss90.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: false, expanded: false, lines: ["I don't feel weary and noways tired,", "O glory hallelujah."], printedAs: ["I don't feel weary and noways tired,", "O glory hallelujah."] },
+      { number: null, sung: false, expanded: false, lines: ["I don't feel weary and noways tired,", "O glory hallelujah."], printedAs: ["I don't feel weary and noways tired,", "O glory hallelujah."] },
       { number: 1, sung: false, expanded: false, lines: ["Jest let me in the kingdom", "While the world is all on fire.", "O glory hallelujah."], printedAs: ["Jest let me in the kingdom", "While the world is all on fire.", "O glory hallelujah."] },
       { number: 2, sung: false, expanded: true, lines: ["Gwine to live with God forever, While the world is all on fire."], printedAs: ["Gwine to live with God forever, While, etc."] },
       { number: 3, sung: false, expanded: true, lines: ["And keep the ark a-moving, While the world is all on fire."], printedAs: ["And keep the ark a-moving, While, etc."] },
@@ -2194,7 +2194,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss92.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["O shout, O shout, O shout away,", "And don't you mind,", "And glory, glory, glory in my soul!"], printedAs: ["O shout, O shout, O shout away,", "And don't you mind,", "And glory, glory, glory in my soul!"] },
+      { number: null, sung: true, expanded: false, lines: ["O shout, O shout, O shout away,", "And don't you mind,", "And glory, glory, glory in my soul!"], printedAs: ["O shout, O shout, O shout away,", "And don't you mind,", "And glory, glory, glory in my soul!"] },
       { number: 1, sung: false, expanded: false, lines: ["And when 'twas night I thought 'twas day,", "I thought I'd pray my soul away,", "And glory, glory, glory in my soul!"], printedAs: ["And when 'twas night I thought 'twas day,", "I thought I'd pray my soul away,", "And glory, glory, glory in my soul!"] },
       { number: 2, sung: false, expanded: false, lines: ["O Satan told me not to pray,", "He want my soul at judgment day."], printedAs: ["O Satan told me not to pray,", "He want my soul at judgment day."] },
       { number: 3, sung: false, expanded: false, lines: ["And every where I went to pray,", "There some thing was in my way."], printedAs: ["And every where I went to pray,", "There some thing was in my way."] },
@@ -2329,7 +2329,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss98.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["Don't be weary, traveller,", "Come along home to Jesus;", "Don't be weary, traveller,", "Come along home to Jesus."], printedAs: ["Don't be weary, traveller,", "Come along home to Jesus;", "Don't be weary, traveller,", "Come along home to Jesus."] },
+      { number: null, sung: true, expanded: false, lines: ["Don't be weary, traveller,", "Come along home to Jesus;", "Don't be weary, traveller,", "Come along home to Jesus."], printedAs: ["Don't be weary, traveller,", "Come along home to Jesus;", "Don't be weary, traveller,", "Come along home to Jesus."] },
       { number: 1, sung: false, expanded: false, lines: ["My head got wet with the midnight dew,", "Come along home to Jesus;", "Angels bear me witness too,", "Come along home to Jesus."], printedAs: ["My head got wet with the midnight dew,", "Come along home to Jesus;", "Angels bear me witness too,", "Come along home to Jesus."] },
       { number: 2, sung: false, expanded: true, lines: ["Where to go I did not know,", "Come along home to Jesus;", "Ever since he freed my soul,", "Come along home to Jesus."], printedAs: ["Where to go I did not know", "Ever since he freed my soul."] },
       { number: 3, sung: false, expanded: true, lines: ["I look at de worl' and de worl' look new,", "Come along home to Jesus;", "I look at de worl' and de worl' look new,", "Come along home to Jesus."], printedAs: ["I look at de worl' and de worl' look new,", "I look at de worl' and de worl' look new."] },
@@ -2351,7 +2351,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss99.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["Come down, angel, and trouble the water,", "Come down, angel, and trouble the water,", "Come down, angel, and trouble the water,", "And let God's saints come in. (God say you must.)"], printedAs: ["Come down, angel, and trouble the water,", "Come down, angel, and trouble the water,", "Come down, angel, and trouble the water,", "And let God's saints come in. (God say you must.)"] },
+      { number: null, sung: true, expanded: false, lines: ["Come down, angel, and trouble the water,", "Come down, angel, and trouble the water,", "Come down, angel, and trouble the water,", "And let God's saints come in. (God say you must.)"], printedAs: ["Come down, angel, and trouble the water,", "Come down, angel, and trouble the water,", "Come down, angel, and trouble the water,", "And let God's saints come in. (God say you must.)"] },
       { number: 1, sung: false, expanded: false, lines: ["Canaan land is the land for me,", "And let God's saints come in.", "Canaan land is the land for me,", "And let God's saints come in."], printedAs: ["Canaan land is the land for me,", "And let God's saints come in.", "Canaan land is the land for me,", "And let God's saints come in."] },
       { number: 2, sung: false, expanded: true, lines: ["There was a wicked man,", "He kept them children in Egypt land,", "He kept them children in Egypt land,", "And let God's saints come in. (God say you must.)"], printedAs: ["There was a wicked man,", "He kept them children in Egypt land."] },
       { number: 3, sung: false, expanded: true, lines: ["God did say to Moses one day,", "Say, Moses go to Egypt land,", "Say, Moses go to Egypt land,", "And let God's saints come in. (God say you must.)"], printedAs: ["God did say to Moses one day,", "Say, Moses go to Egypt land,"] },
@@ -2376,7 +2376,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss100.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["John saw-r-O, John saw-r-O . . .", "John saw de holy number settin' on de golden altar!"], printedAs: ["John saw-r-O, John saw-r-O . . .", "John saw de holy number settin' on de golden altar!"] },
+      { number: null, sung: true, expanded: false, lines: ["John saw-r-O, John saw-r-O . . .", "John saw de holy number settin' on de golden altar!"], printedAs: ["John saw-r-O, John saw-r-O . . .", "John saw de holy number settin' on de golden altar!"] },
       { number: 1, sung: false, expanded: false, lines: ["It's a little while longer yere below, yere below, yere below,", "It's a little while longer yere below,", "Before de Lamb of God!"], printedAs: ["It's a little while longer yere below, yere below, yere below,", "It's a little while longer yere below,", "Before de Lamb of God!"] },
       { number: 2, sung: false, expanded: false, lines: ["And home to Jesus we will go, we will go, etc.;", "We are de people of de Lord.", "John sawr-O, etc."], printedAs: ["And home to Jesus we will go, we will go, etc.;", "We are de people of de Lord.", "John sawr-O, etc."] },
       { number: 3, sung: false, expanded: false, lines: ["Dere's a golden slipper in de heavens for you, etc.,", "Before de Lamb of God."], printedAs: ["Dere's a golden slipper in de heavens for you, etc.,", "Before de Lamb of God."] },
@@ -2401,7 +2401,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss101.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["O de vinter, O de vinter, O de vinter'll soon be ober, chilen,", "De vinter, O de vinter, O de vinter'll soon be ober, chilen,", "De vinter, O de vinter, O de vinter'll soon be ober, chilen,", "Yes, my Lord!"], printedAs: ["O de vinter, O de vinter, O de vinter'll soon be ober, chilen,", "De vinter, O de vinter, O de vinter'll soon be ober, chilen,", "De vinter, O de vinter, O de vinter'll soon be ober, chilen,", "Yes, my Lord!"] },
+      { number: null, sung: true, expanded: false, lines: ["O de vinter, O de vinter, O de vinter'll soon be ober, chilen,", "De vinter, O de vinter, O de vinter'll soon be ober, chilen,", "De vinter, O de vinter, O de vinter'll soon be ober, chilen,", "Yes, my Lord!"], printedAs: ["O de vinter, O de vinter, O de vinter'll soon be ober, chilen,", "De vinter, O de vinter, O de vinter'll soon be ober, chilen,", "De vinter, O de vinter, O de vinter'll soon be ober, chilen,", "Yes, my Lord!"] },
       { number: 1, sung: false, expanded: false, lines: ["'Tis Paul and Silas bound in chains, chains,", "And one did weep, and de oder one did pray,"], printedAs: ["'Tis Paul and Silas bound in chains, chains,", "And one did weep, and de oder one did pray,"] },
       { number: 2, sung: false, expanded: true, lines: ["You bend your knees on holy ground, ground,", "And ask de Lord, Lord, for to turn you around.", "For De vinter, O de vinter, O de vinter'll soon be ober, chilen,"], printedAs: ["You bend your knees on holy ground, ground,", "And ask de Lord, Lord, for to turn you around.", "For de vinter, etc."] },
       { number: 3, sung: false, expanded: false, lines: ["I turn my eyes towards the sky, sky,", "And ask de Lord, Lord, for wings to fly."], printedAs: ["I turn my eyes towards the sky, sky,", "And ask de Lord, Lord, for wings to fly."] },
@@ -2523,7 +2523,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss107.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["Brudder, guide me home an' I am glad,", "Bright angels biddy me to come;", "Brudder; guide me home an' I am glad,", "Bright angels biddy me to come."], printedAs: ["Brudder, guide me home an' I am glad,", "Bright angels biddy me to come;", "Brudder; guide me home an' I am glad,", "Bright angels biddy me to come."] },
+      { number: null, sung: true, expanded: false, lines: ["Brudder, guide me home an' I am glad,", "Bright angels biddy me to come;", "Brudder; guide me home an' I am glad,", "Bright angels biddy me to come."], printedAs: ["Brudder, guide me home an' I am glad,", "Bright angels biddy me to come;", "Brudder; guide me home an' I am glad,", "Bright angels biddy me to come."] },
       { number: 1, sung: false, expanded: false, lines: ["What a happy time, chil'n,", "What a happy time, chil'n,", "What a happy time, chil'n,", "Bright angels biddy me to come."], printedAs: ["What a happy time, chil'n,", "What a happy time, chil'n,", "What a happy time, chil'n,", "Bright angels biddy me to come."] },
       { number: 2, sung: false, expanded: true, lines: ["Let's go to God, chil'n, ( ter ),", "Bright angels biddy me to come;", "Bright angels biddy me to come,", "Bright angels biddy me to come."], printedAs: ["Let's go to God, chil'n, ( ter )", "Bright angels biddy me to come."] },
     ],
@@ -2889,7 +2889,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss126.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["Come along, Moses, don't get lost, don't get lost, don't get lost,", "Come along, Moses, don't get lost,", "We are the people of God."], printedAs: ["Come along, Moses, don't get lost, don't get lost, don't get lost,", "Come along, Moses, don't get lost,", "We are the people of God."] },
+      { number: null, sung: true, expanded: false, lines: ["Come along, Moses, don't get lost, don't get lost, don't get lost,", "Come along, Moses, don't get lost,", "We are the people of God."], printedAs: ["Come along, Moses, don't get lost, don't get lost, don't get lost,", "Come along, Moses, don't get lost,", "We are the people of God."] },
       { number: 1, sung: false, expanded: false, lines: ["We have a just God to plead-a our cause,", "to plead-a our cause, to plead-a our cause,", "We have a just God to plead-a our cause,", "We are the people of God."], printedAs: ["We have a just God to plead-a our cause,", "to plead-a our cause, to plead-a our cause,", "We have a just God to plead-a our cause,", "We are the people of God."] },
       { number: 2, sung: false, expanded: false, lines: ["He sits in the Heaven and he answers prayer."], printedAs: ["He sits in the Heaven and he answers prayer."] },
       { number: 3, sung: false, expanded: false, lines: ["Stretch out your rod and come across."], printedAs: ["Stretch out your rod and come across."] },
@@ -2930,7 +2930,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss128.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["God got plenty o' room, got plenty o' room,", "'Way in de kingdom,", "God got plenty o' room my Jesus say,", "'Way in de kingdom."], printedAs: ["God got plenty o' room, got plenty o' room,", "'Way in de kingdom,", "God got plenty o' room my Jesus say,", "'Way in de kingdom."] },
+      { number: null, sung: true, expanded: false, lines: ["God got plenty o' room, got plenty o' room,", "'Way in de kingdom,", "God got plenty o' room my Jesus say,", "'Way in de kingdom."], printedAs: ["God got plenty o' room, got plenty o' room,", "'Way in de kingdom,", "God got plenty o' room my Jesus say,", "'Way in de kingdom."] },
       { number: 1, sung: false, expanded: false, lines: ["Brethren, I have come again,", "'Way in de kingdom,", "To help you all to pray and sing,", "'Way in de kingdom."], printedAs: ["Brethren, I have come again,", "'Way in de kingdom,", "To help you all to pray and sing,", "'Way in de kingdom."] },
       { number: 2, sung: false, expanded: false, lines: ["So many-a weeks and days have passed", "Since we met together last."], printedAs: ["So many-a weeks and days have passed", "Since we met together last."] },
       { number: 3, sung: false, expanded: false, lines: ["Old Satan tremble when he sees", "The weakest saints upon their knees."], printedAs: ["Old Satan tremble when he sees", "The weakest saints upon their knees."] },
@@ -2983,7 +2983,7 @@ export const SPIRITUALS: Spiritual[] = [
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss130.jpg",
     refrain: null,
     stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["Mo déjà roulé tout la côte", "Pancor ouar pareil belle Layotte. ( bis )"], printedAs: ["Mo déjà roulé tout la côte", "Pancor ouar pareil belle Layotte. ( bis )"] },
+      { number: null, sung: true, expanded: false, lines: ["Mo déjà roulé tout la côte", "Pancor ouar pareil belle Layotte. ( bis )"], printedAs: ["Mo déjà roulé tout la côte", "Pancor ouar pareil belle Layotte. ( bis )"] },
       { number: 1, sung: false, expanded: false, lines: ["Mo roulé tout la côte,", "Mo roulé tout la colonie;", "Mo pancor ouar griffonne la", "Qua mo gout comme la belle Layotte."], printedAs: ["Mo roulé tout la côte,", "Mo roulé tout la colonie;", "Mo pancor ouar griffonne la", "Qua mo gout comme la belle Layotte."] },
       { number: 2, sung: false, expanded: false, lines: ["Jean Babet, mon ami,", "Si vous couri par en haut,", "Vous mandé belle Layotte", "Cadeau la li té promi mouin."], printedAs: ["Jean Babet, mon ami,", "Si vous couri par en haut,", "Vous mandé belle Layotte", "Cadeau la li té promi mouin."] },
       { number: 3, sung: false, expanded: false, lines: ["Domestique la maison", "Yé tout faché avec mouin,", "Paraporte chanson la", "Mo composé la belle Layotte."], printedAs: ["Domestique la maison", "Yé tout faché avec mouin,", "Paraporte chanson la", "Mo composé la belle Layotte."] },

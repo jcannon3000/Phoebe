@@ -167,16 +167,25 @@ function toStanzas(lyrics) {
     let number = null;
     const m = lines[0]?.match(/^(\d{1,3})[.)]?\s+(.*)$/);
     if (m) { number = +m[1]; lines[0] = m[2]; }
-    else if (i === 0) number = 1;
+    // The opening block is the portion under the staff. It is verse 1 only
+    // when no later verse is actually printed "1." — otherwise numbering it
+    // here renders TWO stanzas as 1, which is what shipped. Marked and
+    // reconciled once every block is known.
+    let inferredNumber = false;
+    if (!m && i === 0) { number = 1; inferredNumber = true; }
     stanzas.push({
       number,
       lines: lines.filter(Boolean),
       printedAs: lines.filter(Boolean).slice(),
       sung,
+      inferredNumber,
       resumesRefrain: hasEtc(lines[lines.length - 1] ?? ""),
       expanded: false,
     });
   }
+  // Drop an inferred "1" that collides with a printed one.
+  const printed = new Set(stanzas.filter((s) => !s.inferredNumber).map((s) => s.number));
+  for (const s of stanzas) if (s.inferredNumber && printed.has(s.number)) s.number = null;
   return stanzas;
 }
 

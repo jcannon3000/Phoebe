@@ -91,7 +91,7 @@ const MINUTES = [0, 1, 2, 3, 5] as const;
  *  starting a countdown. Non-positive, so the countdown effect leaves it be. */
 const NO_TIMER = -1;
 
-type Stage = "opening" | "choose" | "read" | "sit" | "close";
+type Stage = "opening" | "choose" | "prompt" | "read" | "sit" | "close";
 
 function norm(s: string): string {
   try { return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
@@ -284,11 +284,10 @@ export default function SpiritualsPage() {
             published in {SPIRITUALS_SOURCE.year} — the first collection of
             African-American sacred song ever printed. They were written down
             from the singing of freedpeople in the Sea Islands of South Carolina
-            and across the South, and are carried here as they were first set on
-            the page.
+            and across the South.
           </p>
 
-          {primary("Continue", () => setStage("read"))}
+          {primary("Continue", () => setStage("prompt"))}
           {quiet("Choose another song", () => setStage("choose"))}
         </motion.div>
       </>,
@@ -339,26 +338,45 @@ export default function SpiritualsPage() {
     );
   }
 
+  // ----------------------------------------------------------------- prompt
+  //
+  // Its own beat, set exactly as Visio's and Audio Divina's prompts are:
+  // centred, Space Grotesk, no card, and .prompt-rise (index.css) to bring it
+  // up and hold it. The instruction is read on its own and then the song
+  // follows — a prompt boxed above the text is a caption, not a beat.
+  if (stage === "prompt") {
+    return shell(
+      <>
+        {header(() => setStage("opening"), "Meditating on Spirituals")}
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", minHeight: "58vh" }}>
+          <p
+            className="prompt-rise"
+            style={{
+              color: WARM, fontFamily: FONT, fontSize: 21, fontWeight: 500,
+              lineHeight: 1.6, textAlign: "center", maxWidth: 480,
+              margin: "0 auto 36px", textWrap: "balance",
+            }}
+          >
+            As you read this spiritual, notice any words or phrases that stick
+            out to you.
+          </p>
+          {primary("Continue", () => setStage("read"))}
+        </div>
+      </>,
+    );
+  }
+
   // ------------------------------------------------------------------- read
   if (stage === "read") {
     return shell(
       <>
-        {header(() => setStage("opening"), "Read")}
+        {header(() => setStage("prompt"), "Read")}
         <p style={{ color: WARM, fontFamily: SERIF, fontSize: 24, fontStyle: "italic", lineHeight: 1.25, margin: "0 0 4px" }}>
           {song.title}
         </p>
         <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12, margin: "0 0 18px" }}>
           {SPIRITUALS_SOURCE.title}, {SPIRITUALS_SOURCE.year} · no. {song.number}
         </p>
-
-        {/* The noticing prompt, as Audio Divina opens its listening. One
-            instruction, before the text, then out of the way. */}
-        <div style={{ ...FROST, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "13px 15px", marginBottom: 24 }}>
-          <p style={{ color: WARM, fontFamily: SERIF, fontSize: 15, lineHeight: 1.65, margin: 0 }}>
-            As you read this spiritual, notice any words or phrases that stick
-            out to you.
-          </p>
-        </div>
 
         {song.stanzas.map((st, i) => (
           <motion.div key={i}
