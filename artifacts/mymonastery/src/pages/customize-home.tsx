@@ -39,7 +39,7 @@ const HOME_MODULES = [
   // re-appended them, and because they were absent from `hidden` too, the
   // hidden-governs-visibility rule turned both cards ON for someone who had
   // simply reordered their home.
-  "icons", "prayer-list",
+  "icons", "prayer-list", "lectio",
   "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests",
 ] as const;
 type HomeModule = typeof HOME_MODULES[number];
@@ -126,7 +126,7 @@ const HOME_LAYOUT_VERSION = 2;
 // requests (pinned) → community prayers (office) →
 // Forward Day by Day. Everything else is hidden but addable.
 const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "fdd", "contemplation", "listening", "examen", "cac", "ssje", "vts", "ncmp", "podcasts"];
-const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "spirituals", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts"];
+const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "spirituals", "lectio", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts"];
 
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
   const { t } = useTranslation();
@@ -142,6 +142,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     taize:        { label: t("rhythm.card_taize", { defaultValue: "Taizé meditation" }), emoji: "🕯️", sub: t("customize_home.module_taize_sub", { defaultValue: "The newest meditation from Taizé · waits until you've read it" }) },
     icons:        { label: t("rhythm.card_icons", { defaultValue: "Praying with Icons" }), emoji: "🪟", sub: t("customize_home.module_icons_sub", { defaultValue: "One icon for the week" }) },
     spirituals:   { label: t("rhythm.card_spirituals", { defaultValue: "Meditating on Spirituals" }), emoji: "🎶", sub: t("customize_home.module_spirituals_sub", { defaultValue: "Read a spiritual, then sit with it" }) },
+    lectio:       { label: t("rhythm.card_lectio", { defaultValue: "Lectio Divina" }), emoji: "📜", sub: t("customize_home.module_lectio_sub", { defaultValue: "Meditate on today's readings" }) },
     "prayer-list": { label: t("rhythm.card_prayer_list", { defaultValue: "Prayer List" }), emoji: "🙏🏽", sub: t("customize_home.module_prayer_list_sub", { defaultValue: "The people and things you are holding" }) },
     examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },
     cac:          { label: "CAC Daily Reflection",               emoji: "🌅", sub: "Today's reflection from the Center for Action & Contemplation" },

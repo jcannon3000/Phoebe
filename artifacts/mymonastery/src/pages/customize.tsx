@@ -47,8 +47,8 @@ type DailyPrayer = "guided-prayer" | "psalms" | "devotion" | "office" | "reading
 // Contemplative Walk / Visio Divina / Taize / Spirituals), just ONE at a time here (this page is meant to stay a
 // few quick dropdowns, not a multi-select). Backed by the same home-layout
 // module keys those toggles write in WayOfLoveRuleFlow.tsx.
-type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spirituals" | "taize" | "icons";
-const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio", "spirituals", "taize", "icons"];
+type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spirituals" | "taize" | "icons" | "lectio";
+const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio", "spirituals", "taize", "icons", "lectio"];
 function homeCardOn(hl: HomeLayout | null, key: string): boolean {
   return !!hl && hl.order.includes(key) && !hl.hidden.includes(key);
 }
@@ -424,7 +424,7 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
         // was written, so a preset adopted here could never turn either off
         // if the person already had it on, or on if a future preset asks for
         // it.
-        ...Object.fromEntries((["listening", "walk", "visio", "cobreathe", "examen", "compline", "reading", "podcasts", "prayer-list", "icons", "taize"] as const)
+        ...Object.fromEntries((["listening", "walk", "visio", "cobreathe", "examen", "compline", "reading", "podcasts", "prayer-list", "icons", "taize", "lectio"] as const)
           .map((k) => {
             const practiceKey = k === "listening" ? "audio" : k;
             return [k, preset.practices?.[practiceKey as keyof typeof preset.practices] === true];
@@ -759,6 +759,7 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             { value: "visio", label: "Visio Divina" },
             { value: "taize", label: "Taizé meditation" },
             { value: "icons", label: "Praying with Icons" },
+            { value: "lectio", label: "Lectio Divina" },
             ...(spiritualsVisible(user?.isSuperAdmin)
               ? [{ value: "spirituals", label: "Meditating on Spirituals" }]
               : []),

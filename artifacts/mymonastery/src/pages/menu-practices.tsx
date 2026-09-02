@@ -43,6 +43,10 @@ export default function MenuPracticesPage() {
           // (It was a plain external open of Forward Movement's readings page;
           // that page is still what the lessons themselves open into.)
           { emoji: "📰", label: "Daily Scripture Reading", sub: "Today's appointed psalm & lessons", onClick: () => go("/bcp/daily-office?mode=scripture") },
+          // Owner: put Lectio Divina under Scripture Reading — same
+          // lectionary source (today's Old Testament / New Testament /
+          // Gospel), a different, slower way to sit with one of them.
+          { emoji: "📜", label: "Lectio Divina", sub: "Meditate on today's readings", onClick: () => go("/lectio") },
         ],
       }, {
         items: [

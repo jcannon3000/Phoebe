@@ -33,6 +33,7 @@ export const HOME_MODULE_KEYS = [
   "visio",
   // Praying with Icons — one icon a week, sat with daily.
   "icons",
+  "lectio",
   // The inbox practices: they wait rather than expiring at midnight.
   "taize",
   // The reflection newsletters.

@@ -32,7 +32,7 @@ const DEFAULT_HIDDEN_MODULES = [
   "listening", "reading", "walk", "cobreathe", "compline",
   "examen", "cac", "ssje", "vts", "visio", "prayer-list",
   "ncmp", "podcasts", "contemplation",
-  "icons", "taize", "nouwen", "sojo", "grist", "spirituals",
+  "icons", "taize", "nouwen", "sojo", "grist", "spirituals", "lectio",
 ];
 
 export async function resetRoutineToDefault(opts: {
