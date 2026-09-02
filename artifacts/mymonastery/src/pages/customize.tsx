@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { spiritualsVisible } from "@/lib/spiritualsFlag";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -43,11 +44,11 @@ type DailyPrayer = "guided-prayer" | "psalms" | "devotion" | "office" | "reading
 
 // "Add a practice" — the same contemplative add-ons the full customizer's
 // "Add an additional practice" step offers (Audio Divina / The Examen /
-// Contemplative Walk), just ONE at a time here (this page is meant to stay a
+// Contemplative Walk / Visio Divina / Taize / Spirituals), just ONE at a time here (this page is meant to stay a
 // few quick dropdowns, not a multi-select). Backed by the same home-layout
 // module keys those toggles write in WayOfLoveRuleFlow.tsx.
-type AddPractice = "none" | "listening" | "examen" | "walk" | "visio";
-const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio"];
+type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spirituals" | "taize" | "icons";
+const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio", "spirituals", "taize", "icons"];
 function homeCardOn(hl: HomeLayout | null, key: string): boolean {
   return !!hl && hl.order.includes(key) && !hl.hidden.includes(key);
 }
@@ -742,8 +743,12 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
 
           {goalsReady && row("Silence", String(effectiveSilenceMin), SILENCE_OPTS.map((m) => ({ value: String(m), label: `${m} min` })), (v) => applySilence(parseInt(v, 10) || 5))}
 
-          {/* Same three contemplative add-ons as the full customizer's "Add an
-              additional practice" step — just one at a time here. Gated on
+          {/* Same contemplative add-ons as the full customizer's "Add an
+              additional practice" step — just one at a time here. This list
+              and PRACTICE_KEYS above are a SECOND copy of the practice set
+              held by WayOfLoveRuleFlow's commit(); a practice added there and
+              not here is unreachable for every light account, which is the
+              only customizer most people ever see. Gated on
               auth having settled so a light account's saved layout doesn't
               briefly read as "None" before it loads. */}
           {!authLoading && row("Add a practice", addPractice, [
@@ -752,6 +757,11 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             { value: "examen", label: "The Examen" },
             { value: "walk", label: "Contemplative Walk" },
             { value: "visio", label: "Visio Divina" },
+            { value: "taize", label: "Taizé meditation" },
+            { value: "icons", label: "Praying with Icons" },
+            ...(spiritualsVisible(user?.isSuperAdmin)
+              ? [{ value: "spirituals", label: "Meditating on Spirituals" }]
+              : []),
           ], (v) => applyAddPractice(v as AddPractice))}
         </div>
 

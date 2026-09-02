@@ -1013,6 +1013,22 @@ export default function CommunityDetailPage() {
   })();
   const [activeTab, setActiveTab] = useState<"hub" | "prayer" | "gatherings" | "members" | "feed">(initialTab);
 
+  /**
+   * Land at the TOP of a tab, not wherever the last one was scrolled to.
+   *
+   * The hub's tiles (Members · Services · Prayer Feed) sit well down the page,
+   * so tapping one kept that scroll offset and dropped the viewer into the new
+   * view mid-page — with the sticky header pushed up under the status bar, so
+   * "Phoebe" overlapped the clock and the sub-view's own heading was off
+   * screen. It reads as a broken layout; it is only a stale scroll position.
+   *
+   * Keyed on activeTab alone, so it fires on every tab move and NOT on the
+   * data refetches that re-render this page constantly.
+   */
+  useEffect(() => {
+    try { window.scrollTo({ top: 0, behavior: "auto" }); } catch { /* older webview */ }
+  }, [activeTab]);
+
   // Strip the legacy `?welcome=1` query param if it's still in the URL
   // (older links). The dedicated post-signup community welcome overlay
   // was removed — the onboarding flow's final "Welcome." fade is the

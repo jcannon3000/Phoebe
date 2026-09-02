@@ -318,6 +318,33 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               </div>
             )}
 
+            {/* ── Navigate ── collapsible sections: Offices stands alone,
+                Practices and Resources group their members; Letters shows
+                when the viewer has access. */}
+            <div className="px-5 py-4 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
+              {/* Book of Common Prayer taken OFF the menu (owner, 2026-09-02).
+                  The /menu/bcp page and every office route it linked to are
+                  untouched and still reachable — this removed the menu ROW
+                  only, so nothing that deep-links to an office breaks. */}
+              {/* Each category is a single row that navigates to its own
+                  list page (MenuHub style) rather than expanding inline.
+                  Order (owner, 2026-09-02): Practices · Reflections · Learn,
+                  with Practices leading now that BCP is gone. */}
+              <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
+              <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
+              {/* Novenas hidden for all users per owner request (2026-08-07)
+                  — see useRhythmState.ts's NOVENAS_ENABLED comment. */}
+              {/* Learn — the courses tab (Centering Prayer + The Spiritual
+                  Journey on web; The Way of Love everywhere). Everyone sees
+                  it, guests included — courses are part of the light
+                  experience. */}
+              <MenuRow emoji="🎓" label={t("menu.learn", { defaultValue: "Learn" })} onClick={() => goCategory("/menu/learn")} />
+            </div>
+
+            {/* Communities block MOVED here (owner, 2026-09-02): it now sits
+                under the Practices/Reflections/Learn group and directly above
+                the Invite footer, instead of above that group. Order only —
+                every visibility gate inside is unchanged. */}
             {/* ── Communities ── lists the user's communities.
                 Offices-only tier has none, so the whole block is
                 hidden. Rendering branches on count:
@@ -368,35 +395,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 )}
               </div>
             )}
-
-            {/* ── Navigate ── collapsible sections: Offices stands alone,
-                Practices and Resources group their members; Letters shows
-                when the viewer has access. */}
-            <div className="px-5 py-4 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-              {/* Book of Common Prayer — Phoebe-authored prayer-book
-                  surfaces, all in-app. Daily Offices sits at the top
-                  because the four liturgies are the primary entry
-                  point users come back to; Prayers / Psalter /
-                  Collects are reference texts they reach for less
-                  often. The "BCP" prefix on the child labels is
-                  redundant now that they live inside the BCP
-                  section, so the i18n strings drop it. Promoted
-                  above Practices since the office is the spine of
-                  the daily rhythm — users open it first, the
-                  contemplative practices are supplemental. */}
-              {/* Each category is a single row that navigates to its own
-                  list page (MenuHub style) rather than expanding inline. */}
-              <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => goCategory("/menu/bcp")} />
-              <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
-              <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
-              {/* Novenas hidden for all users per owner request (2026-08-07)
-                  — see useRhythmState.ts's NOVENAS_ENABLED comment. */}
-              {/* Learn — the courses tab (Centering Prayer + The Spiritual
-                  Journey on web; The Way of Love everywhere). Everyone sees
-                  it, guests included — courses are part of the light
-                  experience. */}
-              <MenuRow emoji="🎓" label={t("menu.learn", { defaultValue: "Learn" })} onClick={() => goCategory("/menu/learn")} />
-            </div>
 
             {/* ── Account + info footer ── */}
             <div className="px-5 py-3 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
