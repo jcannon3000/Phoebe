@@ -12,12 +12,15 @@ import { openExternal } from "@/lib/openExternal";
 // time, closing with space to lift anything up in prayer. Deck chrome
 // matches Visio/Audio Divina (owner: siblings, not a drawer).
 //
-// This app has no in-app Bible text outside the Psalms — a lesson is
-// always a reference + an external read link (see api-server's
-// assembleLesson.ts). So each round is: hold the question, tap out to
-// actually read the passage, come back. The deck never claims to know
-// whether you read it; like Audio Divina's "listen in the way that's best
-// for you," the reading itself happens away from the screen.
+// READING THE PASSAGE FOLLOWS THE DAILY OFFICE'S OWN PRECEDENT, not a new
+// pattern: bcp-daily-office.tsx's lessonReadUrl/next() removed the lesson
+// slide's own "Read Online" button entirely (owner there: "let's take out
+// the Read Online button, and just have it the way the canticles or psalms
+// work — show the title, then go to next, which would fade into the
+// page") — the SAME Continue tap that advances the deck is what opens the
+// passage. There is no separate "reading" slide and no pill to tap here
+// either: picking a lesson, or tapping Continue on a prompt, opens that
+// passage AND brings up the next prompt in one motion.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -44,14 +47,8 @@ const PROMPTS = [
   "As you return to this passage a second time, consider how God may be speaking to you in this moment.",
   "As you return to the reading a final time, consider what God may be calling you to do through the reading.",
 ];
-const READ_EYEBROW = ["THE READING", "READ IT AGAIN", "ONE FINAL TIME"];
 
-// Read gets its own slide before each prompt (owner: "as the next slide,
-// like the daily scripture slideshow") — same reference-card + Read-online
-// treatment the Daily Office's lesson_title slide uses, opened exactly the
-// same way (openExternal, no in-app text — owner declined the bundled WEB
-// translation; NRSV via bibleGatewayUrl only).
-const PICK = 0, READ1 = 1, PROMPT1 = 2, READ2 = 3, PROMPT2 = 4, READ3 = 5, PROMPT3 = 6, CLOSE = 7;
+const PICK = 0, PROMPT1 = 1, PROMPT2 = 2, PROMPT3 = 3, CLOSE = 4;
 const LAST = CLOSE;
 
 export default function LectioPage() {
@@ -71,10 +68,19 @@ export default function LectioPage() {
   });
   const options = data?.options ?? [];
 
-  const next = () => { if (step < LAST) setStep((s) => s + 1); };
   const prev = () => { if (step > PICK) setStep((s) => s - 1); };
 
-  const openPassage = () => { if (chosen) void openExternal(chosen.readUrl); };
+  // Owner: "get rid of the pills to open ... it should just come up with the
+  // next slide" — picking a lesson, and Continue on every prompt but the
+  // last, both open the passage AND bring up the next prompt in the same
+  // tap, exactly mirroring the office's own lessonReadUrl/next() pattern.
+  const openAndAdvance = (o?: LessonOption | null) => {
+    const target = o ?? chosen;
+    if (target) void openExternal(target.readUrl);
+    setStep((s) => (s < LAST ? s + 1 : s));
+  };
+
+  const pickLesson = (o: LessonOption) => { setChosen(o); openAndAdvance(o); };
 
   const finish = () => {
     markPracticeDoneToday("lectio");
@@ -126,8 +132,18 @@ export default function LectioPage() {
                 <p style={{ color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 16, lineHeight: 1.6, margin: "0 0 24px" }}>
                   Meditate on today's readings.
                 </p>
+                {/* A brief splash while today's readings resolve (owner) —
+                    the deck's own chrome rather than a bare line of text,
+                    so opening Lectio never flashes an empty picker. */}
                 {isLoading && (
-                  <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 14 }}>Loading today's readings…</p>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "12px 0" }}>
+                    <div className="lectio-spin" style={{
+                      width: 28, height: 28, borderRadius: "50%",
+                      border: `2px solid ${DECK_BORDER}`, borderTopColor: SAGE,
+                    }} />
+                    <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 13 }}>Finding today's readings…</p>
+                    <style>{"@keyframes lectio-spin { to { transform: rotate(360deg); } } .lectio-spin { animation: lectio-spin 0.8s linear infinite; }"}</style>
+                  </div>
                 )}
                 {!isLoading && options.length === 0 && (
                   <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 14 }}>No readings could be found for today.</p>
@@ -136,7 +152,7 @@ export default function LectioPage() {
                   {options.map((o) => (
                     <button
                       key={o.kind}
-                      onClick={() => { setChosen(o); next(); }}
+                      onClick={() => pickLesson(o)}
                       style={{
                         userSelect: "none", WebkitTapHighlightColor: "transparent",
                         display: "block", width: "100%", boxSizing: "border-box",
@@ -155,36 +171,15 @@ export default function LectioPage() {
               </>
             )}
 
-            {/* THE READING — its own slide, styled like the Daily Office's
-                lesson_title card (eyebrow + big reference + a Read pill that
-                opens externally exactly the same way that deck already
-                does: openExternal(readUrl), no in-app text). */}
-            {(step === READ1 || step === READ2 || step === READ3) && (
-              <>
-                <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 16px", fontWeight: 600 }}>
-                  {READ_EYEBROW[(step - READ1) / 2]}
-                </p>
-                <h1 className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 32, fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1.1, margin: "0 0 28px" }}>
-                  {chosen?.reference}
-                </h1>
-                <button
-                  onClick={openPassage}
-                  style={{
-                    userSelect: "none", WebkitTapHighlightColor: "transparent",
-                    borderRadius: 999, padding: "12px 24px",
-                    fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer",
-                    ...FROST_CTA, border: `1px solid ${DECK_BORDER}`, color: WARM,
-                  }}
-                >
-                  Read in your Bible →
-                </button>
-              </>
-            )}
-
             {(step === PROMPT1 || step === PROMPT2 || step === PROMPT3) && (
-              <p className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, margin: 0 }}>
-                {PROMPTS[(step - PROMPT1) / 2]}
-              </p>
+              <>
+                <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", margin: "0 0 14px" }}>
+                  {chosen?.reference}
+                </p>
+                <p className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, margin: 0 }}>
+                  {PROMPTS[step - PROMPT1]}
+                </p>
+              </>
             )}
 
             {step === CLOSE && (
@@ -198,7 +193,14 @@ export default function LectioPage() {
         {step !== PICK && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
             <button
-              onClick={step === LAST ? finish : next}
+              onClick={() => {
+                if (step === LAST) { finish(); return; }
+                // Every prompt but the last opens the passage again on its
+                // way to the next prompt (same tap, same as picking a lesson
+                // above); the last prompt just advances to the closing slide.
+                if (step === PROMPT3) { setStep(CLOSE); return; }
+                openAndAdvance();
+              }}
               style={{
                 userSelect: "none", WebkitTapHighlightColor: "transparent",
                 width: "100%", maxWidth: 420, borderRadius: 999, padding: "14px 20px",
