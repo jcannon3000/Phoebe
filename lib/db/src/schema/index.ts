@@ -27,6 +27,7 @@ export * from "./fellows";
 export * from "./gratitude";
 export * from "./journal_entries";
 export * from "./practice_completion";
+export * from "./vcs_daily";
 export * from "./office_audio_alignments";
 export * from "./fellow_invites";
 export * from "./fellow_plans";

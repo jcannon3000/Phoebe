@@ -30,7 +30,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { timingSafeEqual } from "node:crypto";
 import { and, eq, isNotNull } from "drizzle-orm";
-import { db, groupsTable, groupMembersTable, groupPostsTable } from "@workspace/db";
+import { db, groupsTable, groupMembersTable, groupPostsTable, vcsDailyTable } from "@workspace/db";
 import { readMessage, viewOnlineUrl, htmlToText, senderPassedAuth } from "../lib/inboundEmailParse";
 import { logger } from "../lib/logger";
 
@@ -39,6 +39,47 @@ const router: IRouter = Router();
 const SECRET = process.env["INBOUND_EMAIL_SECRET"] ?? "";
 /** The domain the addresses live on. Only used to parse, never to send. */
 const INBOUND_DOMAIN = (process.env["INBOUND_EMAIL_DOMAIN"] ?? "in.withphoebe.app").toLowerCase();
+
+/**
+ * THE VCS ADDRESS — one fixed mailbox, not a per-group one.
+ *
+ * The Visual Commentary on Scripture's "Bible and Art Daily" is an app-wide
+ * reflection source available to every user, not a parish's newsletter, so it
+ * does not carry a group token. It is matched on the local part alone.
+ *
+ * Because it has no token, the SENDER CHECK below is the only thing standing
+ * between this mailbox and anyone who learns the address — and what they would
+ * be injecting is a URL that Phoebe then sends readers to. So it is gated on
+ * the sending DOMAIN plus the provider's own SPF/DKIM verdict, never on the
+ * From: header alone.
+ */
+const VCS_LOCAL = (process.env["VCS_INBOUND_LOCAL"] ?? "vcs").toLowerCase();
+const VCS_SENDER_DOMAIN = (process.env["VCS_SENDER_DOMAIN"] ?? "thevcs.org").toLowerCase();
+
+/**
+ * The commentary link inside a VCS newsletter.
+ *
+ * Takes the first thevcs.org link that is not obviously furniture. The
+ * exclusions matter: a newsletter's first link is nearly always "view online"
+ * or a logo pointing at the homepage, and unsubscribe/preferences links sit in
+ * every one of them. Sending a reader to an unsubscribe URL would be worse
+ * than sending them nowhere.
+ */
+export function vcsCommentaryLink(html: string, text: string): string | null {
+  const hay = `${html}\n${text}`;
+  const urls = hay.match(/https?:\/\/[^\s"'<>)]+/gi) ?? [];
+  const skip = /(unsubscribe|preferences|optout|opt-out|view.?online|viewonline|email.?preferences|privacy|donate|twitter|facebook|instagram|mailchi\.mp\/[^/]*\/?$)/i;
+  for (const raw of urls) {
+    const u = raw.replace(/[.,;:)\]]+$/, "");
+    if (!/^https?:\/\/(www\.)?thevcs\.org\//i.test(u)) continue;
+    if (skip.test(u)) continue;
+    // The bare index is where we already fall back to; it is not an appointment.
+    if (/^https?:\/\/(www\.)?thevcs\.org\/?$/i.test(u)) continue;
+    if (/^https?:\/\/(www\.)?thevcs\.org\/bible-and-art-daily\/?$/i.test(u)) continue;
+    return u;
+  }
+  return null;
+}
 
 /** `<slug>-<token>@<domain>` — the address a parish adds to its list. */
 export function inboundAddressFor(slug: string, token: string | null): string | null {
@@ -105,6 +146,49 @@ router.post("/inbound/email", async (req: Request, res: Response): Promise<void>
   const local = msg.recipients
     .filter((r) => r.endsWith(`@${INBOUND_DOMAIN}`))
     .map((r) => r.slice(0, r.lastIndexOf("@")));
+  /**
+   * THE VCS DAILY, before the group lookup — it is not a group at all.
+   *
+   * See routes/vcs.ts: thevcs.org 403s server-side requests, so this mailbox
+   * is the only way Phoebe can learn the day's appointed commentary.
+   */
+  if (local.includes(VCS_LOCAL)) {
+    // Domain first, then the provider's cryptographic verdict. `From:` is not
+    // authenticated by SMTP, so the domain check alone would let anyone who
+    // knows the address point every reader at a URL of their choosing.
+    const fromDomain = msg.from.slice(msg.from.lastIndexOf("@") + 1).toLowerCase();
+    if (fromDomain !== VCS_SENDER_DOMAIN && !fromDomain.endsWith(`.${VCS_SENDER_DOMAIN}`)) {
+      logger.warn({ from: msg.from }, "vcs inbound rejected: wrong sender domain");
+      res.json({ ok: false, reason: "vcs_sender_domain" }); return;
+    }
+    const verdict = senderPassedAuth(req.body as Record<string, unknown>, msg.from);
+    const allowUnverified = process.env["INBOUND_ALLOW_UNVERIFIED"] === "1";
+    if (verdict !== true && !allowUnverified) {
+      logger.warn({ from: msg.from, verdict }, "vcs inbound rejected: unverified sender");
+      res.json({ ok: false, reason: "vcs_sender_unverified" }); return;
+    }
+    const link = vcsCommentaryLink(msg.html, msg.text);
+    if (!link) {
+      // Do NOT invent one. A wrong link is worse than yesterday's commentary
+      // staying up, because the reader has no way to tell it is wrong.
+      logger.warn({ subject: msg.subject }, "vcs inbound: no commentary link found");
+      res.json({ ok: false, reason: "vcs_no_link" }); return;
+    }
+    const now = new Date();
+    const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    // Upsert: providers retry, and a corrected re-send should win rather than
+    // collide on the unique index and 500 back at them.
+    await db.insert(vcsDailyTable)
+      .values({ ymd, url: link, title: msg.subject || null, sourceSubject: msg.subject || null })
+      .onConflictDoUpdate({
+        target: vcsDailyTable.ymd,
+        set: { url: link, title: msg.subject || null, sourceSubject: msg.subject || null },
+      });
+    logger.info({ ymd, link }, "vcs daily commentary stored");
+    res.json({ ok: true, kind: "vcs", ymd, url: link });
+    return;
+  }
+
   const token = local.map((l) => l.slice(l.lastIndexOf("-") + 1)).find((t) => t.length >= 8);
   if (!token) { res.json({ ok: false, reason: "no_group_token" }); return; }
 

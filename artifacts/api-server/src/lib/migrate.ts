@@ -1079,6 +1079,24 @@ export async function migrate() {
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_practice_completion ON practice_completion (user_id, section, local_date)`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_practice_completion_user_week ON practice_completion (user_id, week_start)`);
 
+    // ── VCS "Bible and Art Daily" — the day's appointed commentary ──────────
+    // Filled by routes/inbound-email.ts from the VCS newsletter, because
+    // thevcs.org answers 403 to server-side requests and cannot be resolved
+    // live the way Nouwen/Grist/VTS/Sojourners are. See schema/vcs_daily.ts.
+    // UNIQUE on ymd: providers retry deliveries, and a redelivered newsletter
+    // must update the day's appointment rather than add a second one.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS vcs_daily (
+        id SERIAL PRIMARY KEY,
+        ymd TEXT NOT NULL,
+        url TEXT NOT NULL,
+        title TEXT,
+        source_subject TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS vcs_daily_ymd_unique ON vcs_daily (ymd)`);
+
     // ── Bless — the weekly "bless your community" intention cycle ──────────
     await run(client, `
       CREATE TABLE IF NOT EXISTS bless_intention (
