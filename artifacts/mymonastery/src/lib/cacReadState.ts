@@ -785,9 +785,19 @@ export const NOUWEN_TODAY_URL = "https://withphoebe.app/api/nouwen/today";
 export function hasReadNouwenToday(): boolean { return nouwenTracker.hasReadToday(); }
 export function markNouwenRead(): void { nouwenTracker.markRead(); creditAnchorsFor("nouwen"); }
 
-// GRIST publishes its daily newsletter at a stable preview URL that always
-// renders the current issue, so no resolution is needed.
-export const GRIST_TODAY_URL = "https://go.grist.org/newsletter/preview/the-daily";
+// GRIST resolves server-side, exactly as Nouwen and VTS do.
+//
+// This used to be https://go.grist.org/newsletter/preview/the-daily, with a
+// comment saying that URL "always renders the current issue, so no resolution
+// is needed". It does not: measured 2026-09-02, it renders the issue of
+// 25 JANUARY 2024. It is a preview of one captured issue. Readers were being
+// served news nearly two years old under the label "the day's climate
+// reporting", and nothing errored — which is why it went unnoticed for so long.
+//
+// /api/grist/today reads Grist's RSS (which IS current) and 302s to the newest
+// piece. See routes/grist.ts for why the newsletter itself can't be resolved:
+// Grist's newsletter archive URLs all 302 to their homepage.
+export const GRIST_TODAY_URL = "https://withphoebe.app/api/grist/today";
 export function hasReadGristToday(): boolean { return gristTracker.hasReadToday(); }
 export function markGristRead(): void { gristTracker.markRead(); creditAnchorsFor("grist"); }
 
@@ -800,15 +810,26 @@ export function markGristRead(): void { gristTracker.markRead(); creditAnchorsFo
  * walks back to Friday rather than opening a 404 — the same fallback shape
  * VTS uses, done arithmetically because the pattern makes it possible.
  */
-export function sojournersTodayUrl(now: Date = new Date()): string {
-  const d = new Date(now.getTime());
-  const day = d.getDay();
-  if (day === 0) d.setDate(d.getDate() - 2);       // Sunday → Friday
-  else if (day === 6) d.setDate(d.getDate() - 1);  // Saturday → Friday
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const yy = String(d.getFullYear() % 100).padStart(2, "0");
-  return `https://sojo.net/daily-wisdom/verse-and-voice-${mm}${dd}${yy}`;
+export function sojournersTodayUrl(): string {
+  /**
+   * RESOLVED SERVER-SIDE, as Nouwen / VTS / Grist are.
+   *
+   * This used to derive https://sojo.net/daily-wisdom/verse-and-voice-MMDDYY
+   * from today's date (mapping Sat/Sun back to Friday) and open it. The FORMAT
+   * was right; the assumption that the issue exists was not. Sojourners is
+   * sometimes days behind, and the derived URL then 404s — measured 2026-09-02:
+   * 090226 and 090126 both 404, 083126 and 082826 both 200.
+   *
+   * What the reader saw was not a tidy error: on Sojourners' 404 page the
+   * reader's isolate target is absent, so the stylesheet switches off and their
+   * raw site renders, masthead and subscribe footer and all. It reads as Phoebe
+   * being broken.
+   *
+   * /api/sojo/today probes back from today and 302s to the newest issue that
+   * actually answers 200. See routes/sojo.ts for why it is a probe rather than
+   * a formula: Verse and Voice has no feed we can read.
+   */
+  return "https://withphoebe.app/api/sojo/today";
 }
 
 export function hasReadSojoToday(): boolean { return sojoTracker.hasReadToday(); }
