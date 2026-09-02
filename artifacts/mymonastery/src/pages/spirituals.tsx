@@ -43,12 +43,12 @@
  * every list above while nothing on earth called markPracticeDoneToday, so it
  * could never be completed. Check the caller exists, not just the lists.
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { SPIRITUALS, SPIRITUALS_SOURCE, type Spiritual } from "@/lib/spiritualsCatalogue";
 import { spiritualForDate } from "@/lib/spiritualsLectionary";
-import { getSpiritualsHistory, recordSpiritualSat } from "@/lib/spiritualsHistory";
+import { recordSpiritualSat } from "@/lib/spiritualsHistory";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { FROST } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
@@ -85,11 +85,12 @@ function songForToday(ymd: string): { song: Spiritual; how: "season" | "rotation
   return { song: POOL[((ord % POOL.length) + POOL.length) % POOL.length]!, how: "cycle", season: null };
 }
 
-const MINUTES = [0, 1, 2, 3, 5] as const;
-
-/** "No timer": a sentinel for `left` that marks the sitting as begun without
- *  starting a countdown. Non-positive, so the countdown effect leaves it be. */
-const NO_TIMER = -1;
+/* NO TIMER HERE (owner, 2026-09-02: "I never asked for a timer").
+   The reflect beat is a title slide, not a sitting: read, reflect, close. The
+   minute pills, the countdown, the interval ref and the NO_TIMER sentinel are
+   all gone rather than hidden — a timer nobody starts is still a timer someone
+   has to reason about. Contemplation is the practice that owns timed sitting;
+   this one doesn't need its own. */
 
 type Stage = "opening" | "choose" | "prompt" | "read" | "sit" | "close";
 
@@ -135,27 +136,12 @@ export default function SpiritualsPage() {
   const [stage, setStage] = useState<Stage>("opening");
   const [chosen, setChosen] = useState<Spiritual | null>(null);
   const [query, setQuery] = useState("");
-  const [minutes, setMinutes] = useState<number>(3);
-  const [left, setLeft] = useState<number | null>(null);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const song = chosen ?? appointed.song;
   const byHand = chosen != null;
-  const history = useMemo(
-    () => (stage === "close" ? getSpiritualsHistory().slice(0, 3) : []),
-    [stage],
-  );
-
-  // The countdown. Cleared on unmount and whenever the sitting ends, so a
-  // back-out mid-sit doesn't leave an interval running.
-  useEffect(() => {
-    if (stage !== "sit" || left == null) return;
-    if (left <= 0) { if (timer.current) clearInterval(timer.current); return; }
-    timer.current = setInterval(() => setLeft((v) => (v == null ? null : Math.max(0, v - 1))), 1000);
-    return () => { if (timer.current) clearInterval(timer.current); };
-  }, [stage, left]);
-
-  useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
+  /* No "Recently" list on the close any more — see the close beat. The
+     history is still WRITTEN (recordSpiritualSat in finish), it just isn't
+     read back here; /spirituals' own chooser is where past songs belong. */
 
   const results = useMemo(() => {
     const q = norm(query.trim());
@@ -177,22 +163,8 @@ export default function SpiritualsPage() {
     // single completion while the local flag still flips (which is what
     // shipping Visio without it did).
     markPracticeDoneToday("spirituals");
-    if (timer.current) clearInterval(timer.current);
     setStage("close");
   };
-
-  const pill = (label: string, on: boolean, onClick: () => void) => (
-    <button type="button" onClick={onClick}
-      style={{
-        userSelect: "none", WebkitTapHighlightColor: "transparent",
-        borderRadius: 999, padding: "9px 15px", fontSize: 13, fontWeight: 600,
-        fontFamily: FONT, cursor: "pointer", color: WARM,
-        background: on ? "rgba(46,107,64,0.6)" : "rgba(240,237,230,0.06)",
-        border: on ? "1px solid rgba(143,175,150,0.65)" : `1px solid ${BORDER}`,
-      }}>
-      {label}
-    </button>
-  );
 
   const primary = (label: string, onClick: () => void) => (
     <button type="button" onClick={onClick}
@@ -220,14 +192,36 @@ export default function SpiritualsPage() {
   /** Where the song came from — shown at the opening and again at the close. */
   const provenance = (s: Spiritual) => [s.collectedAt, s.contributor].filter(Boolean).join(" · ");
 
-  const shell = (children: ReactNode) => (
+  /**
+   * THE CTA SITS AT THE BOTTOM (owner: "the continue button is midway on the
+   * page. it should be at the bottom").
+   *
+   * It used to flow directly after the copy, so on a short slide it landed in
+   * the middle of the screen and on a long one it drifted — the button moved
+   * with the text instead of staying where a thumb is. Audio Divina and Visio
+   * both pin theirs; this now matches. The column fills the viewport, content
+   * takes the slack, and `footer` is pinned under it inside the safe area.
+   */
+  const shell = (children: ReactNode, footer?: ReactNode) => (
     <div style={{ position: "relative", minHeight: "100dvh", background: BG, isolation: "isolate" }}>
       <AnimatedBackground base={BG} variant="subtle" />
       <div style={{
         position: "relative", maxWidth: 620, margin: "0 auto",
-        padding: "calc(env(safe-area-inset-top) + 16px) 18px calc(env(safe-area-inset-bottom) + 32px)",
+        display: "flex", flexDirection: "column", minHeight: "100dvh",
+        padding: "calc(env(safe-area-inset-top) + 16px) 18px calc(env(safe-area-inset-bottom) + 24px)",
+        boxSizing: "border-box",
       }}>
-        {children}
+        {/* `1 0 auto`, and NO minHeight:0 — both deliberate. As `1 1 auto`
+            with minHeight:0 the content was allowed to SHRINK below its natural
+            height, so on the read beat the song was squashed against the
+            viewport, the page stopped scrolling at the last verse and the
+            Continue button underneath became unreachable — the deck could not
+            be advanced. Growing but never shrinking gives both behaviours from
+            one rule: on a short slide the content takes the slack and pushes
+            the footer to the bottom; on a long one the column grows past the
+            viewport and the footer follows the text down. */}
+        <div style={{ flex: "1 0 auto" }}>{children}</div>
+        {footer != null && <div style={{ flex: "0 0 auto", paddingTop: 18 }}>{footer}</div>}
       </div>
     </div>
   );
@@ -287,9 +281,11 @@ export default function SpiritualsPage() {
             and across the South.
           </p>
 
-          {primary("Continue", () => setStage("prompt"))}
-          {quiet("Choose another song", () => setStage("choose"))}
         </motion.div>
+      </>,
+      <>
+        {primary("Continue", () => setStage("prompt"))}
+        {quiet("Choose another song", () => setStage("choose"))}
       </>,
     );
   }
@@ -360,9 +356,9 @@ export default function SpiritualsPage() {
             As you read this spiritual, notice any words or phrases that stick
             out to you.
           </p>
-          {primary("Continue", () => setStage("read"))}
         </div>
       </>,
+      primary("Continue", () => setStage("read")),
     );
   }
 
@@ -402,111 +398,88 @@ export default function SpiritualsPage() {
             ))}
           </div>
         )}
-
-        <div style={{ marginTop: 24 }}>{primary("Continue", () => setStage("sit"))}</div>
+      </>,
+      <>
+        {primary("Continue", () => setStage("sit"))}
         {quiet("Choose another song", () => setStage("choose"))}
       </>,
     );
   }
 
   // -------------------------------------------------------------------- sit
+  /**
+   * REFLECT — a title slide, nothing more (owner: "just have it say take some
+   * time to reflect on what touched you during the reading and bring what is
+   * on your heart to God, just as a title slide, and just have continue at the
+   * bottom, and just go straight").
+   *
+   * This was a timed sitting: minute pills, a countdown, an "End early". None
+   * of that was asked for and none of it belongs here — the practice is read,
+   * reflect, close. Continue completes the day's sitting and goes to the
+   * close, so the walk is straight through with no decision to make.
+   */
   if (stage === "sit") {
-    const running = left != null;
     return shell(
       <>
-        {header(() => { if (timer.current) clearInterval(timer.current); setLeft(null); setStage("read"); }, "Sit")}
-
-        {/* The prayer prompt, glowing off the dark ground the way the title
-            does. Held through the sitting itself, not just before it. */}
-        <p style={{
-          color: WARM, fontFamily: SERIF, fontSize: 21, fontStyle: "italic",
-          lineHeight: 1.6, textAlign: "center", textWrap: "balance",
-          margin: running ? "26px 0 34px" : "18px 0 30px",
-          textShadow: "0 0 26px rgba(143,175,150,0.4), 0 0 58px rgba(143,175,150,0.2)",
-        }}>
-          Take some time to bring what is on your heart to God.
-        </p>
-
-        {!running && (
-          <>
-            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", margin: "0 0 8px" }}>
-              How long
-            </p>
-            <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 22 }}>
-              {MINUTES.map((m) => pill(m === 0 ? "No timer" : `${m} min`, minutes === m, () => setMinutes(m)))}
-            </div>
-
-            {primary(
-              minutes === 0 ? "Begin in silence" : `Sit for ${minutes} min`,
-              // NO_TIMER holds the sitting open: the countdown effect does
-              // nothing at a non-positive value, so Complete simply waits.
-              () => setLeft(minutes === 0 ? NO_TIMER : minutes * 60),
-            )}
-          </>
-        )}
-
-        {running && (
-          <div style={{ textAlign: "center", paddingTop: 40 }}>
-            {left != null && left >= 0 && (
-              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 34, fontVariantNumeric: "tabular-nums", margin: "0 0 30px" }}>
-                {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}
-              </p>
-            )}
-            {left != null && left <= 0 && primary("Complete", finish)}
-            {left != null && left > 0 && quiet("End early", finish)}
-          </div>
-        )}
+        {header(() => setStage("read"), "Reflect")}
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", minHeight: "58vh" }}>
+          <p
+            className="prompt-rise"
+            style={{
+              color: WARM, fontFamily: SERIF, fontSize: 22, fontStyle: "italic",
+              lineHeight: 1.6, textAlign: "center", maxWidth: 480,
+              margin: "0 auto", textWrap: "balance",
+              textShadow: "0 0 26px rgba(143,175,150,0.4), 0 0 58px rgba(143,175,150,0.2)",
+            }}
+          >
+            Take some time to reflect on what touched you during the reading,
+            and bring what is on your heart to God.
+          </p>
+        </div>
       </>,
+      primary("Continue", finish),
     );
   }
 
   // ------------------------------------------------------------------ close
+  /**
+   * THE CLOSE — background, not a card (owner: "there's a lot of stuff on the
+   * last slide on a card … take the card, we just need it on the background
+   * and have it just say who's song this was").
+   *
+   * Was a frosted panel holding an eyebrow, the provenance sentence, the
+   * collector's commentary, a "Recently" list and two buttons — a lot of
+   * furniture at the end of a practice whose whole shape is quiet. The panel,
+   * the commentary and the Recently list are gone; the sentence stands on the
+   * ground on its own.
+   *
+   * The wording is the owner's, and two details in it are deliberate:
+   *   • "in North Carolina", not "at" — it read as a venue rather than a place.
+   *   • the Smithsonian pointer, because "can be found through the Smithsonian"
+   *     is the difference between citing a book and telling someone where to go
+   *     and read it themselves.
+   */
   return shell(
     <>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
-        <p style={{ color: SAGE, fontFamily: FONT, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", margin: "40px 0 14px" }}>
+        <p style={{ color: SAGE, fontFamily: FONT, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", margin: "40px 0 18px" }}>
           Amen
         </p>
-        <div style={{ ...FROST, borderRadius: 16, border: `1px solid ${BORDER}`, padding: 16, marginBottom: 20 }}>
-          <p style={{ color: FAINT, fontFamily: FONT, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", margin: "0 0 6px" }}>
-            Whose song this was
-          </p>
-          <p style={{ color: WARM, fontFamily: SERIF, fontSize: 15, lineHeight: 1.7, margin: 0 }}>
-            “{song.title}” was sung by people held in slavery
-            {song.collectedAt ? ` at ${song.collectedAt}` : ""}, and written down
-            {song.contributor ? ` by ${song.contributor}` : ""} for{" "}
-            {SPIRITUALS_SOURCE.title} ({SPIRITUALS_SOURCE.year}).
-          </p>
-          {song.commentary && (
-            <p style={{ color: SAGE, fontFamily: SERIF, fontSize: 13.5, lineHeight: 1.65, margin: "10px 0 0" }}>
-              {song.commentary}
-            </p>
-          )}
-        </div>
-
-        {history.length > 1 && (
-          <div style={{ marginBottom: 20 }}>
-            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", margin: "0 0 8px" }}>
-              Recently
-            </p>
-            {history.map((h) => {
-              const s = SPIRITUALS.find((x) => x.number === h.number);
-              if (!s) return null;
-              return (
-                <p key={h.number} style={{ color: SAGE, fontFamily: SERIF, fontSize: 14, fontStyle: "italic", lineHeight: 1.5, margin: "4px 0 0" }}>
-                  {s.title}
-                </p>
-              );
-            })}
-          </div>
-        )}
-
-        {primary("Done", () => setLocation("/dashboard"))}
-        {quiet("Sit with another", () => {
-          setLeft(null);
-          setStage("choose");
-        })}
+        <p style={{ color: FAINT, fontFamily: FONT, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", margin: "0 0 10px" }}>
+          Whose song this was
+        </p>
+        <p style={{ color: WARM, fontFamily: SERIF, fontSize: 16, lineHeight: 1.75, margin: 0, maxWidth: 520 }}>
+          “{song.title}” was sung by people held in slavery
+          {song.collectedAt ? ` in ${song.collectedAt}` : ""}, and written down in{" "}
+          <i>{SPIRITUALS_SOURCE.title}</i> ({SPIRITUALS_SOURCE.year}) — the first
+          collection of these songs ever printed, which can be found through the
+          Smithsonian.
+        </p>
       </motion.div>
+    </>,
+    <>
+      {primary("Done", () => setLocation("/dashboard"))}
+      {quiet("Sit with another", () => setStage("choose"))}
     </>,
   );
 }

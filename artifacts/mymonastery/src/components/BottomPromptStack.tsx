@@ -24,6 +24,14 @@ const IMMERSIVE_PRACTICE_ROUTES = new Set<string>([
   // Audio Divina is a full-screen deck now too, with its own footer CTA — the
   // prompt card was landing squarely on its Begin button.
   "/listening",
+  // Meditating on Spirituals — same deck shape, same collision. Its CTA moved
+  // to the bottom of the viewport (owner: "the continue button is midway on
+  // the page, it should be at the bottom") and the prompt card then covered it
+  // OUTRIGHT: on the notice beat the button was not merely crowded, it was
+  // completely hidden and the deck could not be advanced at all. Found by
+  // walking the deck on device after moving the CTA, which is the only way
+  // this class of bug shows up — the code is correct on both sides of it.
+  "/spirituals",
   // The customizer belongs here too. Its Continue now hovers at the bottom of
   // the screen, so a standing prompt card lands squarely on top of it — and on
   // the Back link beneath it, which is how it was found. Designing your rule is
