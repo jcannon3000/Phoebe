@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -70,6 +70,20 @@ export default function LectioPage() {
 
   const prev = () => { if (step > PICK) setStep((s) => s - 1); };
 
+  // A ref, not state — must be readable/settable synchronously within the
+  // SAME event so a second tap arriving before the next render (a fast
+  // double-tap) is caught. Guards against opening the passage twice AND
+  // skipping a prompt: setStep's updater is relative ("s + 1"), so two
+  // calls in a row advance two steps, silently dropping whichever prompt
+  // sat between them.
+  const advancing = useRef(false);
+  const guardedAdvance = (fn: () => void) => {
+    if (advancing.current) return;
+    advancing.current = true;
+    fn();
+    window.setTimeout(() => { advancing.current = false; }, 600);
+  };
+
   // Owner: "get rid of the pills to open ... it should just come up with the
   // next slide" — picking a lesson, and Continue on every prompt but the
   // last, both open the passage AND bring up the next prompt in the same
@@ -80,7 +94,7 @@ export default function LectioPage() {
     setStep((s) => (s < LAST ? s + 1 : s));
   };
 
-  const pickLesson = (o: LessonOption) => { setChosen(o); openAndAdvance(o); };
+  const pickLesson = (o: LessonOption) => { guardedAdvance(() => { setChosen(o); openAndAdvance(o); }); };
 
   const finish = () => {
     markPracticeDoneToday("lectio");
@@ -198,14 +212,14 @@ export default function LectioPage() {
         {step !== PICK && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
             <button
-              onClick={() => {
+              onClick={() => guardedAdvance(() => {
                 if (step === LAST) { finish(); return; }
                 // Every prompt but the last opens the passage again on its
                 // way to the next prompt (same tap, same as picking a lesson
                 // above); the last prompt just advances to the closing slide.
                 if (step === PROMPT3) { setStep(CLOSE); return; }
                 openAndAdvance();
-              }}
+              })}
               style={{
                 userSelect: "none", WebkitTapHighlightColor: "transparent",
                 width: "100%", maxWidth: 420, borderRadius: 999, padding: "14px 20px",
