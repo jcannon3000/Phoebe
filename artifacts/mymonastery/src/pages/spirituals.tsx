@@ -43,7 +43,7 @@
  * every list above while nothing on earth called markPracticeDoneToday, so it
  * could never be completed. Check the caller exists, not just the lists.
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { SPIRITUALS, SPIRITUALS_SOURCE, type Spiritual } from "@/lib/spiritualsCatalogue";
@@ -202,10 +202,64 @@ export default function SpiritualsPage() {
    * both pin theirs; this now matches. The column fills the viewport, content
    * takes the slack, and `footer` is pinned under it inside the safe area.
    */
+  /**
+   * TAP AND SWIPE THROUGH IT, like the office deck and Visio (owner: "the
+   * meditation on spirituals still has a very different UI than the office
+   * slideshow or Visio Divina — no reason for it to be so different").
+   *
+   * This deck could only be advanced by hitting the button. bcp-daily-office
+   * has always taken a tap on the LEFT half as back and the RIGHT half as
+   * forward, plus a horizontal swipe (see its onClick around :2328) — so
+   * moving through a spiritual felt nothing like moving through an office,
+   * which is precisely what was reported.
+   *
+   * The office's two guards are copied deliberately rather than reinvented:
+   *   • a tap that lands on a button/link/field is left alone, so Continue,
+   *     "Choose another song" and the search box still do their own thing;
+   *   • CHOOSER beats are excluded. In the office that's the welcome slide,
+   *     because a stray right-half tap there opens an external site and
+   *     leaves the app. Here it's `choose`, where a stray tap would pick a
+   *     song out from under the reader — and `close`, which is an ending, not
+   *     a slide to walk past.
+   */
+  const stageBack: Partial<Record<Stage, () => void>> = {
+    prompt: () => setStage("opening"),
+    read: () => setStage("prompt"),
+    sit: () => setStage("read"),
+  };
+  const stageForward: Partial<Record<Stage, () => void>> = {
+    opening: () => setStage("prompt"),
+    prompt: () => setStage("read"),
+    read: () => setStage("sit"),
+    sit: () => finish(),
+  };
+  const swipeStartX = useRef<number | null>(null);
+  const deckNav = {
+    onClick: (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("button, a, input, textarea, select, label")) return;
+      const go = e.clientX < window.innerWidth / 2 ? stageBack[stage] : stageForward[stage];
+      go?.();
+    },
+    onTouchStart: (e: React.TouchEvent) => { swipeStartX.current = e.touches[0]?.clientX ?? null; },
+    onTouchEnd: (e: React.TouchEvent) => {
+      const start = swipeStartX.current;
+      swipeStartX.current = null;
+      if (start == null) return;
+      const dx = (e.changedTouches[0]?.clientX ?? start) - start;
+      // Same threshold shape the office uses — a deliberate horizontal drag,
+      // not a scroll that wandered sideways.
+      if (Math.abs(dx) < 60) return;
+      (dx < 0 ? stageForward[stage] : stageBack[stage])?.();
+    },
+  };
+
   const shell = (children: ReactNode, footer?: ReactNode) => (
     <div style={{ position: "relative", minHeight: "100dvh", background: BG, isolation: "isolate" }}>
       <AnimatedBackground base={BG} variant="subtle" />
-      <div style={{
+      <div
+        {...(stage === "choose" || stage === "close" ? {} : deckNav)}
+        style={{
         position: "relative", maxWidth: 620, margin: "0 auto",
         display: "flex", flexDirection: "column", minHeight: "100dvh",
         padding: "calc(env(safe-area-inset-top) + 16px) 18px calc(env(safe-area-inset-bottom) + 24px)",
