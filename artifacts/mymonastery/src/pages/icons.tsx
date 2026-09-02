@@ -32,6 +32,8 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { ICON_CATALOGUE, type IconArtwork } from "@/lib/iconCatalogue";
 import { ACT_CATALOGUE } from "@/lib/visioCatalogue";
+import { ACT_COMMENTARY_CATALOGUE } from "@/lib/visioCommentaryCatalogue";
+import { openExternal } from "@/lib/openExternal";
 import { isActHidden, actIconOn, actIconOff, ACT_OVERRIDES_EVENT } from "@/lib/actOverrides";
 import { weekIconId, lastWeekIconId, setWeekIcon, suggestedForWeek, suggestionReason } from "@/lib/iconWeek";
 import { IconHowToIntro, iconHowtoSeen, markIconHowtoSeen } from "@/components/IconHowToIntro";
@@ -66,6 +68,25 @@ function norm(s: string): string {
     return s.toLowerCase();
   }
 }
+
+/**
+ * THE COMMENTARY FOR AN ICON, when there is one (owner: "if there is a
+ * commentary for any of the icons put it here like it would show in visio").
+ *
+ * Only FOUR of the 121 icons have one — they are the works that also appear in
+ * the Visio commentary catalogue, which is where the essay URLs live. Icons
+ * have no `essay` field of their own, so this joins on the ACT id rather than
+ * duplicating the URLs into iconCatalogue.ts, which is a generated file and
+ * would lose them on the next harvest.
+ *
+ * Returns null for the other 117, and the row simply is not rendered — never a
+ * dead "Read the commentary" link that opens nothing.
+ */
+const COMMENTARY_BY_ID: ReadonlyMap<number, string> = new Map(
+  ACT_COMMENTARY_CATALOGUE
+    .filter((a) => typeof a.essay === "string" && a.essay.startsWith("http"))
+    .map((a) => [a.id, a.essay as string]),
+);
 
 /** How many results the search shows at once — a screenful, not an archive. */
 const RESULT_CAP = 24;
@@ -325,6 +346,25 @@ export default function IconsPage() {
    * Unattributed works are one group of their own, so they take a turn like
    * anyone else instead of flooding the top (they are the largest group).
    */
+  /**
+   * A FRESH SHUFFLE EACH TIME THE BROWSE IS OPENED.
+   *
+   * The shuffle below is keyed on the catalogue, which is stable for the whole
+   * session — and this page does NOT unmount when you back out of the browse
+   * to the week screen and return, it only changes `phase`. So the memo never
+   * recomputed and the order was fixed from first open until the app was
+   * killed. Owner: "make sure this shuffles on icons … so its not the same
+   * everytime i come" — measured before this: entering the browse twice gave a
+   * byte-identical first screen.
+   *
+   * Bumped ONLY when the browse is entered (see setPhase("search") callers),
+   * never on a keystroke or a history change, so icons never move out from
+   * under a finger mid-search — which is what the original memo key was
+   * protecting and is still worth protecting.
+   */
+  const [browseNonce, setBrowseNonce] = useState(0);
+  const openBrowse = () => { setBrowseNonce((n) => n + 1); setPhase("search"); };
+
   const browse = useMemo(() => {
     const shuffled = <T,>(xs: T[]): T[] => {
       const a = [...xs];
@@ -353,26 +393,35 @@ export default function IconsPage() {
       if (!dealt) break;
     }
     return out;
-    // Keyed on the catalogue alone: re-shuffling as someone types, or each
-    // time their history changes, would move icons out from under a finger.
-    // A fresh order per visit is the intent; a fresh order per keystroke isn't.
-  }, [catalogue]);
+    // Keyed on the catalogue AND the open-nonce: re-shuffling as someone types,
+    // or each time their history changes, would move icons out from under a
+    // finger. A fresh order per visit is the intent; a fresh order per
+    // keystroke isn't — and per SESSION, which is what [catalogue] alone gave,
+    // wasn't a fresh order at all.
+  }, [catalogue, browseNonce]);
 
   /**
-   * The search. Empty query browses (see above): recent icons first, since
-   * those are the ones a person returns to, then the shuffle. A query matches
+   * The search. Empty query browses the SHUFFLE, plainly. A query matches
    * title OR artist, word-by-word, so "rublev trinity" and "trinity" both
    * land on the icon.
+   *
+   * RECENTS ARE NO LONGER PINNED ON TOP (owner, 2026-09-02: "make sure this
+   * shuffles on icons … so its not the same everytime i come").
+   *
+   * The shuffle above was already correct and was not the problem. This was:
+   * the browse opened with `[...recent, ...rest]`, so the first tiles were the
+   * same icons in the same order on every visit, and with a few icons prayed
+   * they filled most of the first screen. The variety the shuffle produces
+   * began below the fold, where it read as no variety at all.
+   *
+   * Nothing is lost by dropping them: the icons someone has been praying with
+   * are shown on the closing screen ("The icons you've been praying with
+   * lately"), and any of them is a search away by name. `history` stays in the
+   * dependency list of nothing here on purpose — see the memo keys below.
    */
   const results = useMemo(() => {
     const q = norm(query.trim());
-    if (!q) {
-      const recent = history
-        .map((h) => byId.get(h.id))
-        .filter((a): a is IconArtwork => !!a);
-      const rest = browse.filter((a) => !recent.some((r) => r.id === a.id));
-      return [...recent, ...rest].slice(0, RESULT_CAP);
-    }
+    if (!q) return browse.slice(0, RESULT_CAP);
     const words = q.split(/\s+/).filter(Boolean);
     return catalogue
       .filter((a) => {
@@ -383,7 +432,7 @@ export default function IconsPage() {
         return words.every((w) => hay.includes(w));
       })
       .slice(0, RESULT_CAP);
-  }, [query, history, catalogue, byId, browse]);
+  }, [query, catalogue, browse]);
 
   const choose = (a: IconArtwork) => {
     setChosen(a);
@@ -615,7 +664,7 @@ export default function IconsPage() {
                 )}
                 <button
                   type="button"
-                  onClick={() => setPhase("search")}
+                  onClick={openBrowse}
                   style={{
                     userSelect: "none", WebkitTapHighlightColor: "transparent",
                     borderRadius: 16, padding: "16px 18px", fontSize: 15, fontWeight: 600,
@@ -780,7 +829,7 @@ export default function IconsPage() {
                 */}
               <button
                 type="button"
-                onClick={() => { setQuery(""); setPhase("search"); }}
+                onClick={() => { setQuery(""); openBrowse(); }}
                 style={{
                   userSelect: "none", WebkitTapHighlightColor: "transparent",
                   background: "transparent", border: "none", color: "rgba(200,212,192,0.72)",
@@ -982,6 +1031,25 @@ export default function IconsPage() {
                   </button>
                 ))}
               </div>
+              {/* The commentary, when this icon has one — presented as Visio
+                  presents it: a link OUT to the VCS's own page, never
+                  reproduced here. Four icons carry one; for the rest this
+                  renders nothing rather than a link that goes nowhere. */}
+              {chosen && COMMENTARY_BY_ID.get(chosen.id) && (
+                <button
+                  type="button"
+                  onClick={() => openExternal(COMMENTARY_BY_ID.get(chosen.id)!, { reader: true })}
+                  style={{
+                    userSelect: "none", WebkitTapHighlightColor: "transparent",
+                    width: "100%", maxWidth: 420, marginTop: 2,
+                    background: "none", border: "none", cursor: "pointer",
+                    color: SAGE, fontFamily: FONT, fontSize: 14,
+                    textDecoration: "underline", textUnderlineOffset: 3,
+                  }}
+                >
+                  {t("icons.read_commentary", { defaultValue: "Read the commentary →" })}
+                </button>
+              )}
               {/* The attribution ACT asks for — and the CC-licensed works
                   REQUIRE — for the work just prayed with, exactly where the
                   Visio deck carries its own. */}

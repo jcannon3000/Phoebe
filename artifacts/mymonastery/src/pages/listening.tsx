@@ -580,9 +580,17 @@ export default function ListeningPage() {
                   <p className="text-[16px] leading-relaxed mb-5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
                     Take time once a day to connect with God through music.
                   </p>
-                  {/* Owner: a curated library (Coltrane, Taizé, …) admins can
+                  {/* HIDDEN FOR NOW (owner, 2026-09-02: "hide the browse the
+                      library on audio divina for now").
+                      The library itself is untouched — setView("library") and
+                      the whole SacredLibrary view still work, and /listening
+                      still reaches them by any other route. Only this entry
+                      point is withdrawn, so nothing is torn out and turning it
+                      back on is deleting this comment and the `false &&`.
+                      Was: a curated library (Coltrane, Taizé, …) admins can
                       build — a way in for someone with nothing in mind yet,
                       not a replacement for "let a song come to mind". */}
+                  {false && (
                   <button
                     type="button"
                     onClick={() => setView("library")}
@@ -591,6 +599,7 @@ export default function ListeningPage() {
                   >
                     Browse the library →
                   </button>
+                  )}
                 </div>
               )}
 
@@ -783,7 +792,28 @@ export default function ListeningPage() {
                     <div className="mt-2 flex flex-col gap-1.5 max-h-[34vh] overflow-y-auto">
                       {results.map((r, i) => (
                         <button key={`r-${i}`} type="button" onClick={() => chooseResult(r)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left active:scale-[0.99]" style={glassRow}>
-                          <span aria-hidden>{KIND_EMOJI[r.kind]}</span>
+                          {/* THE ARTWORK, when the result carries one (owner:
+                              "still not getting images here like we used to").
+                              SearchResult has always had `artworkUrl` and both
+                              Spotify and Apple populate it — this row simply
+                              never read it, so every result showed the generic
+                              kind emoji and the search looked like a text list.
+                              The emoji stays as the fallback for a result with
+                              no artwork (an artist row often has none) and for
+                              an image that fails to load, so a row is never
+                              blank. */}
+                          {r.artworkUrl ? (
+                            <img
+                              src={r.artworkUrl}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                              style={{ width: 34, height: 34, borderRadius: 6, objectFit: "cover", flex: "0 0 auto", backgroundColor: "rgba(46,107,64,0.3)" }}
+                            />
+                          ) : (
+                            <span aria-hidden>{KIND_EMOJI[r.kind]}</span>
+                          )}
                           <span className="min-w-0">
                             <span className="block text-[14px] truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.title}</span>
                             {r.subtitle && <span className="block text-[12px] truncate" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{r.subtitle}</span>}
