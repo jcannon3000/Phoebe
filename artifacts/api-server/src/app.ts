@@ -557,14 +557,26 @@ if (fs.existsSync(frontendDist)) {
             closedAt: prayerRequestsTable.closedAt,
             isAnswered: prayerRequestsTable.isAnswered,
             body: prayerRequestsTable.body,
+            expiresAt: prayerRequestsTable.expiresAt,
+            directOnly: prayerRequestsTable.directOnly,
+            parishFeedId: prayerRequestsTable.parishFeedId,
           })
           .from(prayerRequestsTable)
           .where(eq(prayerRequestsTable.shareToken, token));
-        // Closed/answered requests fall through to the default shell —
-        // the SPA renders the "not found" state and the preview should
-        // be generic, not "Someone is asking for prayer" for a request
-        // that's already been wrapped up.
-        if (row && !row.closedAt && !row.isAnswered) {
+        /**
+         * The JSON route this preview mirrors (GET /prayer-requests/share/:token)
+         * refuses closed, answered, EXPIRED, directOnly and parish-scoped
+         * requests. This select fetched none of the last three fields and
+         * checked neither — a directed ("to a fellow") request, a private
+         * parish pastoral concern, or a request that had simply expired
+         * all rendered their real body into an unauthenticated OG preview,
+         * fetched by any link-preview crawler before a human ever clicks
+         * through. Same gate, both routes, now.
+         */
+        if (
+          row && !row.closedAt && !row.isAnswered && !row.directOnly && row.parishFeedId == null
+          && !(row.expiresAt && row.expiresAt.getTime() < Date.now())
+        ) {
           let displayName: string | null = null;
           if (!row.isAnonymous) {
             const stored = row.createdByName?.trim();

@@ -1409,6 +1409,17 @@ router.delete("/prayer-requests/:id/tags/:userId", async (req, res): Promise<voi
         eq(prayerRequestTagsTable.taggedUserId, userId),
         isNull(prayerRequestTagsTable.removedAt),
       ));
+    // Same class as /release and /answer: an unsent queued push for THIS
+    // recipient (only — other tagged users' queued rows are untouched)
+    // used to survive the untag. Removed here, they were held in prayer
+    // for a request they'd just been un-tagged from, tapped the push, and
+    // hit a 403 on by-id.
+    await db.delete(prayerHeldNotificationsTable)
+      .where(and(
+        eq(prayerHeldNotificationsTable.requestId, id),
+        eq(prayerHeldNotificationsTable.recipientId, userId),
+        isNull(prayerHeldNotificationsTable.sentAt),
+      ));
     res.json({ ok: true });
   } catch (err) {
     console.error("[prayer-requests/tags DELETE] failed:", err);
@@ -1680,7 +1691,65 @@ router.patch("/prayer-requests/:id/answer", async (req, res): Promise<void> => {
     .set({ isAnswered: true, answeredAt: new Date(), closedAt: new Date(), closeReason: "answered" })
     .where(eq(prayerRequestsTable.id, id))
     .returning();
+  // Same cleanup as /release — see the comment there. An answered request
+  // shouldn't go on paging people about amens it already stopped collecting.
+  await db.delete(prayerHeldNotificationsTable)
+    .where(and(eq(prayerHeldNotificationsTable.requestId, id), isNull(prayerHeldNotificationsTable.sentAt)));
   res.json(updated);
+});
+
+/**
+ * PATCH /api/prayer-requests/:id/revoke-share — the owner turns their public
+ * link off.
+ *
+ * The schema has said since the column existed that `shareToken: null` "means
+ * sharing is disabled (only possible if the owner explicitly revokes the
+ * link later)" — no route ever did that. The only ways to kill a link were
+ * answering, releasing, or deleting the whole request, none of which fit
+ * "I shared this by mistake" or "this got forwarded somewhere I didn't
+ * intend, but the request itself should stay up." Nulling the token is
+ * enough on its own: both the JSON route and the OG preview select by
+ * `shareToken`, so a null token means neither can find the row at all.
+ */
+router.patch("/prayer-requests/:id/revoke-share", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [request] = await db.select({ ownerId: prayerRequestsTable.ownerId }).from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
+  if (!request) { res.status(404).json({ error: "Not found" }); return; }
+  if (request.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  await db.update(prayerRequestsTable)
+    .set({ shareToken: null })
+    .where(eq(prayerRequestsTable.id, id));
+  res.json({ ok: true });
+});
+
+/**
+ * PATCH /api/prayer-requests/:id/re-share — mint a NEW public link.
+ *
+ * The natural pair to revoke: once a token is null there was also no way
+ * to get a fresh one without deleting and recreating the whole request.
+ * A new random token, never the old one — revoking is meant to actually
+ * kill the address that leaked or got forwarded, not just hide it.
+ */
+router.patch("/prayer-requests/:id/re-share", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [request] = await db.select({ ownerId: prayerRequestsTable.ownerId }).from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
+  if (!request) { res.status(404).json({ error: "Not found" }); return; }
+  if (request.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const newToken = crypto.randomBytes(12).toString("hex");
+  await db.update(prayerRequestsTable)
+    .set({ shareToken: newToken })
+    .where(eq(prayerRequestsTable.id, id));
+  res.json({ ok: true, shareToken: newToken });
 });
 
 // POST /api/prayer-requests/:id/event-update — the owner of a life-event request
@@ -1961,6 +2030,19 @@ router.patch("/prayer-requests/:id/release", async (req, res): Promise<void> => 
     .set({ closedAt: new Date(), closeReason: "released" })
     .where(eq(prayerRequestsTable.id, id))
     .returning();
+  /**
+   * CLEAR ANYTHING STILL QUEUED to notify about this request.
+   *
+   * `prayer_held_notifications` rows with `sentAt IS NULL` are picked up by
+   * the scanner and pushed later — and neither release nor answer ever
+   * touched this table. Owner marks their request answered at 9am; at
+   * 10:15 the queued "Sara and 3 others prayed for your request today"
+   * push fires anyway, deep-linking to something already closed. Only
+   * UNSENT rows are removed — a push that already went out stays as the
+   * historical record it is.
+   */
+  await db.delete(prayerHeldNotificationsTable)
+    .where(and(eq(prayerHeldNotificationsTable.requestId, id), isNull(prayerHeldNotificationsTable.sentAt)));
   res.json(updated);
 });
 
@@ -3092,6 +3174,15 @@ router.get("/prayer-requests/share/:token", async (req, res): Promise<void> => {
       // shareable link to a request they've already wrapped up.
       res.status(404).json({ error: "Not found" }); return;
     }
+    // A request that has RELEASED by expiry, not by the owner closing it,
+    // was missing here entirely — `closedAt` is deliberately left null on
+    // expiry (the owner still gets the "renew or let it close" popup), so
+    // this check never treated an expired request as gone. The share link
+    // therefore stayed world-readable indefinitely past its own "released"
+    // state, for as long as the owner didn't happen to reopen the app.
+    if (row.expiresAt && row.expiresAt.getTime() < Date.now()) {
+      res.status(404).json({ error: "Not found" }); return;
+    }
     // A directed ("to a fellow") request is private — never publicly shareable.
     if (row.directOnly) { res.status(404).json({ error: "Not found" }); return; }
     // A parish "pastoral concern" is private to the requester + parish admins and
@@ -3188,13 +3279,35 @@ router.post("/prayer-requests/share/:token/amen", rateLimit({
     const viewerUserId = req.user ? (req.user as { id: number }).id : null;
 
     if (viewerUserId) {
-      // Authenticated viewer — treat this exactly like the in-app
-      // amen endpoint. ON CONFLICT DO NOTHING for the amen so a re-tap
-      // is a no-op. (Fellows removed 2026-07-23 — no fellow pair created.)
+      // Authenticated viewer — treat this exactly like the in-app amen
+      // endpoint's daily-cap throttle. There is no unique constraint on
+      // (request_id, user_id) — the table is deliberately unbounded so the
+      // same user amening across days still accrues (see the schema
+      // comment) — so onConflictDoNothing() here was a no-op: every tap
+      // through the share link inserted a fresh row, letting a visitor
+      // bypass the one-amen-per-day cap the in-app route enforces just by
+      // reloading the public page. Apply the same viewer-tz "already
+      // amened today" check before inserting.
+      const [viewerRow, viewerAmenRows] = await Promise.all([
+        db.select({ timezone: usersTable.timezone }).from(usersTable).where(eq(usersTable.id, viewerUserId)),
+        db.select({ prayedAt: prayerRequestAmensTable.prayedAt })
+          .from(prayerRequestAmensTable)
+          .where(and(
+            eq(prayerRequestAmensTable.requestId, row.id),
+            eq(prayerRequestAmensTable.userId, viewerUserId),
+          )),
+      ]);
+      const viewerTz = viewerRow[0]?.timezone || "UTC";
+      const viewerYmd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(new Date());
+      const alreadyAmenedToday = viewerAmenRows.some(r =>
+        r.prayedAt && new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(r.prayedAt) === viewerYmd);
+      if (alreadyAmenedToday) {
+        res.json({ ok: true, claimed: true, throttled: true });
+        return;
+      }
       await db
         .insert(prayerRequestAmensTable)
-        .values({ requestId: row.id, userId: viewerUserId })
-        .onConflictDoNothing();
+        .values({ requestId: row.id, userId: viewerUserId });
       res.json({ ok: true, claimed: true });
       return;
     }
