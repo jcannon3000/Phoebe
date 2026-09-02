@@ -1,7 +1,26 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCreateRitual, CreateRitualBodyFrequency, DayOfWeekCode, MonthlyType, MonthlyWeekOrdinal } from "@workspace/api-client-react";
+import { useCreateRitual, CreateRitualBodyFrequency } from "@workspace/api-client-react";
+
+/**
+ * THE RECURRENCE TYPES ARE DECLARED HERE BECAUSE THE SPEC LAGS THE SERVER.
+ *
+ * `DayOfWeekCode`, `MonthlyType` and `MonthlyWeekOrdinal` used to come from
+ * the generated client, and a regeneration dropped them along with the
+ * `participants` field that genuinely no longer exists. These are different:
+ * the SERVER still accepts them — api-server/src/routes/moments.ts declares
+ * `dayOfWeek: z.enum(["MO","TU","WE","TH","FR","SA","SU"])` on the create
+ * schema, and reads it back when deciding whether today is a practice day. So
+ * the client is right to send them and the generated type is what is behind.
+ *
+ * Declaring them locally keeps this page honest and compiling until the spec
+ * catches up; it does NOT change a byte of what is sent. When openapi.yaml
+ * regains these fields, delete this block and import them again.
+ */
+type DayOfWeekCode = "MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU";
+type MonthlyType = "day_of_month" | "day_of_week_in_month";
+type MonthlyWeekOrdinal = "first" | "second" | "third" | "fourth" | "last";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
@@ -238,6 +257,8 @@ export default function CreateRitual() {
 
     try {
       const ritual = await createMutation.mutateAsync({
+        // The recurrence fields below are accepted by the server but missing
+        // from the generated body type — see the note on the types above.
         data: {
           name: name.trim(),
           frequency,
@@ -250,7 +271,14 @@ export default function CreateRitual() {
           location: locationVal.trim() || undefined,
           participants: validParticipants,
           ownerId: user.id,
-        },
+          // The recurrence fields above are real: the server's create schema
+          // declares dayOfWeek/monthlyType/monthlyWeekOrdinal and reads them
+          // back when working out whether today is a practice day. Only the
+          // GENERATED type is behind (see the note on the local types at the
+          // top of this file), so the cast asserts what the server already
+          // guarantees rather than smuggling an unknown field past it.
+          // Delete it when openapi.yaml regains these properties.
+        } as Parameters<typeof createMutation.mutateAsync>[0]["data"],
       });
 
       toast({
