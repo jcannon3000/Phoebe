@@ -24,6 +24,9 @@ import {
   type CourseIndex,
 } from "@/lib/spiritualJourney";
 import { WAY_OF_LOVE, WOL_LESSONS, WOL_TOTAL } from "@/lib/wayOfLoveCourse";
+import { useCacCourses, courseCompletion } from "@/lib/cacCourses";
+import { useCacLibrary } from "@/hooks/useCacLibrary";
+import { useBetaStatus } from "@/hooks/useDemo";
 
 const FONT = "'Space Grotesk', sans-serif";
 const WARM = "#F0EDE6";
@@ -72,6 +75,25 @@ export function HomeLearnSection() {
   const journey = useCourseProgress(SPIRITUAL_JOURNEY.id);
   const wol = useCourseProgress(WAY_OF_LOVE.id);
 
+  /**
+   * CAC seasons appear here too, once someone is actually listening (owner:
+   * "if the admin is listening to it … showing up on their home screen like
+   * the Bishop Buddy one").
+   *
+   * GATED ON THE SAME EXPRESSION as cac-courses / cac-show / cac-course and
+   * the Learn row: `isAdmin || cacLibraryGranted`. A home card that opens a
+   * page which then turns you away is worse than no card, and this is the
+   * fifth surface that has to agree — widen one, widen all.
+   *
+   * The fetch is skipped entirely for everyone else rather than fetched and
+   * filtered, so an ungranted account never asks for a catalogue it may not
+   * see.
+   */
+  const { isAdmin } = useBetaStatus();
+  const { enabled: cacLibraryGranted } = useCacLibrary();
+  const maySeeCac = isAdmin || cacLibraryGranted;
+  const { data: cacData } = useCacCourses({ enabled: maySeeCac });
+
   const cards: LearnCard[] = [];
   if (!native) {
     cards.push(videoCourseCard(CENTERING_PRAYER, CENTERING_INDEX, "/centering-prayer", centering));
@@ -88,6 +110,30 @@ export function HomeLearnSection() {
       done: wol.completedCount,
       total: WOL_TOTAL,
       started: wol.completedCount > 0 || wol.started,
+    });
+  }
+
+  /**
+   * One card per CAC SEASON in progress. Seasons rather than shows, because a
+   * season is the thing with a start and an end — "Turning to the Mystics" as
+   * a whole has thirteen of them and no finish line, so a progress bar across
+   * the show would never move.
+   *
+   * The list below already drops anything not started or already finished, so
+   * these are simply offered on the same terms as every other course and the
+   * shared filter decides.
+   */
+  for (const c of cacData?.courses ?? []) {
+    const { completedCount, total, nextTitle, isStarted } = courseCompletion(c);
+    if (!isStarted) continue;
+    cards.push({
+      key: `cac-${c.id}`,
+      title: `${c.showTitle} · ${c.title}`,
+      nextLabel: nextTitle ?? "",
+      href: `/cac-course/${c.id}`,
+      done: completedCount,
+      total,
+      started: true,
     });
   }
 

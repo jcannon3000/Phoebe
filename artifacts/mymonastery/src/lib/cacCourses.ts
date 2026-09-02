@@ -39,10 +39,17 @@ interface CacCoursesResponse {
   courses: CacCourse[];
 }
 
-export function useCacCourses() {
+/**
+ * `enabled` so a caller that must not see this catalogue never asks for it —
+ * the home's Learn section passes the same admin/grant test the CAC pages use,
+ * and skipping the fetch is cheaper and quieter than fetching then filtering.
+ * Defaults to true, so every existing call site is unchanged.
+ */
+export function useCacCourses(opts?: { enabled?: boolean }) {
   return useQuery<CacCoursesResponse>({
     queryKey: ["/api/podcasts/cac/courses"],
     queryFn: () => apiRequest("GET", "/api/podcasts/cac/courses"),
+    enabled: opts?.enabled ?? true,
     staleTime: 10 * 60_000,
   });
 }
