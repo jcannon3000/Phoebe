@@ -227,6 +227,12 @@ export default function AdminToolsPage() {
                   onClick={() => setLocation("/admin/art-library")}
                 />
                 <LinkRow
+                  emoji="🎧"
+                  label="Audio Library"
+                  description="Curate Audio Divina's album library — search Apple Music, catalogue Apple + Spotify links"
+                  onClick={() => setLocation("/admin/audio-library")}
+                />
+                <LinkRow
                   emoji="🗓️"
                   label="Visio Calendar"
                   description="The year by week — which work each week gets, and whether it's on the reading"

@@ -417,6 +417,7 @@ const BetaClaimPage = lazy(() => import("./pages/beta-claim"));
 const AdminToolsPage = lazy(() => import("./pages/admin-tools"));
 const AdminArtLibraryPage = lazy(() => import("./pages/admin-art-library"));
 const AdminVisioCalendarPage = lazy(() => import("./pages/admin-visio-calendar"));
+const AdminAudioLibraryPage = lazy(() => import("./pages/admin-audio-library"));
 const AdminSpiritualsPage = lazy(() => import("./pages/admin-spirituals"));
 const PilotHomePage = lazy(() => import("./pages/pilot-home"));
 const PilotBuildPage = lazy(() => import("./pages/pilot-build"));
@@ -1056,6 +1057,7 @@ function Router() {
       <Route path="/admin/reports" component={ReportsAdminPage} />
       <Route path="/admin/tools" component={AdminToolsPage} />
       <Route path="/admin/art-library" component={AdminArtLibraryPage} />
+      <Route path="/admin/audio-library" component={AdminAudioLibraryPage} />
       {/* The Visio year, one row per week — super-admin only, gated in the page. */}
       <Route path="/admin/visio-calendar" component={AdminVisioCalendarPage} />
       {/* Slave Songs of the United States (1867) — super-admin only, gated in the page. */}

@@ -4350,6 +4350,38 @@ export async function migrate() {
     await run(client, `ALTER TABLE prayer_request_groups ADD COLUMN IF NOT EXISTS muted_at TIMESTAMPTZ`);
     await run(client, `ALTER TABLE prayer_request_groups ADD COLUMN IF NOT EXISTS muted_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
 
+    // The owner's curated Audio Divina library — admin-picked albums (see
+    // lib/db schema curated_audio.ts). No generated file backs this; the
+    // admin tool is the source of truth, so these are just rows.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS curated_audio_albums (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        artist TEXT NOT NULL,
+        artwork_url TEXT,
+        apple_album_id TEXT,
+        apple_url TEXT,
+        spotify_album_id TEXT,
+        spotify_url TEXT,
+        note TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS curated_audio_tracks (
+        id SERIAL PRIMARY KEY,
+        album_id INTEGER NOT NULL REFERENCES curated_audio_albums(id) ON DELETE CASCADE,
+        track_number INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        duration_ms INTEGER,
+        apple_song_id TEXT,
+        apple_url TEXT,
+        spotify_track_id TEXT,
+        spotify_url TEXT
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_curated_audio_tracks_album ON curated_audio_tracks (album_id)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

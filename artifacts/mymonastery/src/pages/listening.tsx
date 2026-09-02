@@ -11,6 +11,7 @@ import { type ListeningMedium } from "@/lib/listeningLog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
+import { openExternal } from "@/lib/openExternal";
 
 // Audio Divina — sacred listening, kept simple as a JOURNAL/TASK (like gratitude):
 // you put on music, then note what you listened to + how, and mark it done for the
@@ -83,7 +84,16 @@ function relDay(day: string): string {
   return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
-type View = "deck" | "log" | "history";
+type View = "deck" | "log" | "history" | "library";
+
+type CuratedTrack = {
+  id: number; trackNumber: number; title: string;
+  appleUrl: string | null; spotifyUrl: string | null;
+};
+type CuratedAlbum = {
+  id: number; title: string; artist: string; artworkUrl: string | null; note: string | null;
+  appleUrl: string | null; spotifyUrl: string | null; tracks: CuratedTrack[];
+};
 
 // One account-wide log entry (server-backed; syncs across the account).
 type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; felt?: string; shared?: boolean; createdAt: string };
@@ -92,6 +102,16 @@ export default function ListeningPage() {
   const [, setLocation] = useLocation();
   const [view, setView] = useState<View>("deck");
   const [deckStep, setDeckStep] = useState(0);
+  // The curated album library (admin-picked — see admin-audio-library.tsx).
+  // Public, no auth needed — same as the ACT art library.
+  const [libraryAlbum, setLibraryAlbum] = useState<CuratedAlbum | null>(null);
+  const { data: libraryData } = useQuery<{ albums: CuratedAlbum[] }>({
+    queryKey: ["/api/curated-audio"],
+    queryFn: () => apiRequest("GET", "/api/curated-audio") as Promise<{ albums: CuratedAlbum[] }>,
+    enabled: view === "library",
+    staleTime: 5 * 60_000,
+  });
+  const curatedAlbums = libraryData?.albums ?? [];
   /** Has this run through the deck already passed the log beat? See prev(). */
   const loggedHere = useRef(false);
   /** The leaf, picked once per open — the same backdrop Visio and its siblings use. */
@@ -297,6 +317,106 @@ export default function ListeningPage() {
   const DECK_TOTAL = 6;
   const LAST = DONE;
 
+  // ——— Library (curated albums) ———
+  if (view === "library") {
+    const openLink = (url: string | null) => { if (url) void openExternal(url, { system: true }); };
+    return (
+      <RiseSheet bgPhoto={null}>
+        {() => (
+          <motion.div className="w-full" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}>
+            <button
+              onClick={() => { if (libraryAlbum) { setLibraryAlbum(null); } else { setView("deck"); } }}
+              className="text-[14px] mb-5 inline-flex items-center gap-1.5"
+              style={{ color: SAGE, fontFamily: SPACE_GROTESK, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              ← <span>{libraryAlbum ? "Library" : "Audio Divina"}</span>
+            </button>
+
+            {!libraryAlbum && (
+              <>
+                <h1 className="text-xl font-bold leading-tight mb-1" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Library</h1>
+                <p className="text-xs mb-5" style={{ color: SAGE }}>Albums to sit with — tap one to open a track in Apple Music or Spotify.</p>
+                {curatedAlbums.length === 0 ? (
+                  <p className="text-[14px] leading-relaxed mt-10 text-center" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SERIF, fontStyle: "italic" }}>
+                    Nothing in the library yet.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {curatedAlbums.map((a) => (
+                      <button
+                        key={a.id}
+                        onClick={() => setLibraryAlbum(a)}
+                        className="text-left rounded-2xl overflow-hidden"
+                        style={{ ...glassRow, padding: 10, cursor: "pointer" }}
+                      >
+                        {a.artworkUrl ? (
+                          <img src={a.artworkUrl} alt="" loading="lazy" decoding="async" className="w-full aspect-square object-cover rounded-lg mb-2" style={{ backgroundColor: "rgba(46,107,64,0.3)" }} />
+                        ) : (
+                          <div className="w-full aspect-square rounded-lg mb-2 flex items-center justify-center text-[28px]" style={{ background: "rgba(46,107,64,0.3)" }}>🎧</div>
+                        )}
+                        <p className="text-[13px] font-medium leading-snug" style={{ color: WARM, fontFamily: SPACE_GROTESK, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{a.title}</p>
+                        <p className="text-[11.5px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{a.artist}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {libraryAlbum && (
+              <>
+                <div className="flex items-center gap-3 mb-2">
+                  {libraryAlbum.artworkUrl ? (
+                    <img src={libraryAlbum.artworkUrl} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" style={{ backgroundColor: "rgba(46,107,64,0.3)" }} />
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg flex-shrink-0 flex items-center justify-center text-[28px]" style={{ background: "rgba(46,107,64,0.3)" }}>🎧</div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-[16px] font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{libraryAlbum.title}</p>
+                    <p className="text-[13px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{libraryAlbum.artist}</p>
+                  </div>
+                </div>
+                {libraryAlbum.note && (
+                  <p className="text-[13px] leading-relaxed mb-4" style={{ color: "rgba(143,175,150,0.85)", fontFamily: SERIF, fontStyle: "italic" }}>{libraryAlbum.note}</p>
+                )}
+                <div className="flex gap-2 mb-5">
+                  {libraryAlbum.appleUrl && (
+                    <button onClick={() => openLink(libraryAlbum.appleUrl)} className="flex-1 rounded-full py-2 text-[13px] font-semibold" style={{ ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK }}>
+                      Open album in Apple Music
+                    </button>
+                  )}
+                  {libraryAlbum.spotifyUrl && (
+                    <button onClick={() => openLink(libraryAlbum.spotifyUrl)} className="flex-1 rounded-full py-2 text-[13px] font-semibold" style={{ ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK }}>
+                      Open album in Spotify
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  {libraryAlbum.tracks.map((t) => (
+                    <div key={t.id} className="flex items-center gap-3 rounded-2xl px-4 py-3" style={glassRow}>
+                      <span style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 12, width: 20, textAlign: "right", flexShrink: 0 }}>{t.trackNumber}</span>
+                      <span className="flex-1 min-w-0 text-[13.5px]" style={{ color: WARM, fontFamily: SPACE_GROTESK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
+                      {t.appleUrl && (
+                        <button onClick={() => openLink(t.appleUrl)} aria-label="Open in Apple Music" className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: WARM }}>
+                          A
+                        </button>
+                      )}
+                      {t.spotifyUrl && (
+                        <button onClick={() => openLink(t.spotifyUrl)} aria-label="Open in Spotify" className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[15px]" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }}>
+                          🎵
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </motion.div>
+        )}
+      </RiseSheet>
+    );
+  }
+
   /**
    * THE OLD SINGLE-PAGE FORM IS GONE (owner: "i asked that page it goes to
    * after to be taken out").
@@ -457,9 +577,20 @@ export default function ListeningPage() {
                   <h1 className="prompt-rise text-[30px] font-bold leading-tight mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK, letterSpacing: "-0.02em" }}>
                     Sacred listening
                   </h1>
-                  <p className="text-[16px] leading-relaxed" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                  <p className="text-[16px] leading-relaxed mb-5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
                     Take time once a day to connect with God through music.
                   </p>
+                  {/* Owner: a curated library (Coltrane, Taizé, …) admins can
+                      build — a way in for someone with nothing in mind yet,
+                      not a replacement for "let a song come to mind". */}
+                  <button
+                    type="button"
+                    onClick={() => setView("library")}
+                    className="text-[14px]"
+                    style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
+                  >
+                    Browse the library →
+                  </button>
                 </div>
               )}
 

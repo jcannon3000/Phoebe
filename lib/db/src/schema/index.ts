@@ -53,6 +53,7 @@ export * from "./contemplation_goal_history";
 export * from "./breath_sessions";
 export * from "./breath_places";
 export * from "./listening_entries";
+export * from "./curated_audio";
 export * from "./lectio_log_entries";
 export * from "./practice_log_entries";
 export * from "./reflection_reads";

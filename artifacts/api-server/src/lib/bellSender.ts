@@ -133,10 +133,23 @@ export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<
       // leave the slate clean so the next 15-min tick can retry.
       // Inserting on failure means a single transient error silently
       // mutes the user for the rest of the day.
+      //
+      // A thrown exception was never the only failure shape: sendPushToUser
+      // does NOT throw on a per-transport miss — a dead APNs token next to a
+      // healthy web-push subscription resolves normally with
+      // deviceSucceeded: 0. That silently muted a phone for the whole day
+      // (dedup row written, no retry) while a desktop got the push fine —
+      // exactly the failure pushSender.ts's own SendResult comment warns
+      // about. Skip the dedup insert in that case too, same as a throw.
+      let result;
       try {
-        await sendBellPush(user.id);
+        result = await sendBellPush(user.id);
       } catch (err) {
         logger.warn({ err, userId: user.id }, "[bell] push dispatch failed — skipping dedup insert so we retry next tick");
+        continue;
+      }
+      if (result.deviceAttempted > 0 && result.deviceSucceeded === 0) {
+        logger.warn({ userId: user.id }, "[bell] had a device token but it didn't succeed — skipping dedup insert so we retry next tick");
         continue;
       }
 
@@ -1190,11 +1203,18 @@ export async function runVtsCommentarySender(opts: { forceNow?: boolean } = {}):
 
         // Dedupe row goes in only AFTER a successful send, so a transient APNs
         // failure retries next tick instead of muting the day (same rule the
-        // daily bell above follows).
+        // daily bell above follows) — including the non-throwing partial-
+        // failure shape (dead phone token, healthy web-push) documented on
+        // SendResult in pushSender.ts.
+        let vtsResult;
         try {
-          await sendVtsCommentaryPush(r.userId, { articleTitle: meta.title });
+          vtsResult = await sendVtsCommentaryPush(r.userId, { articleTitle: meta.title });
         } catch (err) {
           logger.warn({ err, userId: r.userId }, "[vts-push] dispatch failed — not deduping so we retry");
+          continue;
+        }
+        if (vtsResult.deviceAttempted > 0 && vtsResult.deviceSucceeded === 0) {
+          logger.warn({ userId: r.userId }, "[vts-push] had a device token but it didn't succeed — not deduping so we retry");
           continue;
         }
         await db.insert(bellNotificationsTable).values({
@@ -1347,9 +1367,17 @@ export async function runWeeklyReviewSender(opts: { forceNow?: boolean } = {}): 
         continue;
       }
 
+      // Same rule as the bell and VTS senders above: a dead phone token next
+      // to a healthy web-push subscription resolves without throwing, so the
+      // stamp must check deviceSucceeded too, not just "didn't throw" — or a
+      // one-off transient miss mutes the phone for the rest of the week.
       try {
-        await sendWeeklyReviewPush(r.userId);
-        await db.update(usersTable).set({ weeklyReviewNudgeSentDate: today }).where(eq(usersTable.id, r.userId));
+        const weeklyResult = await sendWeeklyReviewPush(r.userId);
+        if (weeklyResult.deviceAttempted > 0 && weeklyResult.deviceSucceeded === 0) {
+          logger.warn({ userId: r.userId }, "[weekly-review] had a device token but it didn't succeed — not stamping so we retry");
+        } else {
+          await db.update(usersTable).set({ weeklyReviewNudgeSentDate: today }).where(eq(usersTable.id, r.userId));
+        }
       } catch (err) {
         logger.warn({ err, userId: r.userId }, "[weekly-review] push failed");
       }

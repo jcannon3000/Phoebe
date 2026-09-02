@@ -127,4 +127,57 @@ router.get("/apple-music/status", async (_req: Request, res: Response): Promise<
   res.json({ configured: !!(await developerToken()) });
 });
 
+type AppleTrackAttrs = { name?: string; trackNumber?: number; durationInMillis?: number; url?: string };
+type AppleTrackRow = { id: string; attributes?: AppleTrackAttrs };
+type AppleAlbumRow = {
+  id: string;
+  attributes?: AppleAttrs;
+  relationships?: { tracks?: { data?: AppleTrackRow[] } };
+};
+
+// GET /api/apple-music/album/:id — full album + tracklist, for the admin
+// audio-library tool's preview screen (search only returns summary rows).
+// Apple includes the `tracks` relationship on a single-album fetch by
+// default — no ?include= needed.
+router.get("/apple-music/album/:id", async (req: Request, res: Response): Promise<void> => {
+  const id = String(req.params.id ?? "").trim();
+  if (!id) { res.status(400).json({ error: "bad_id" }); return; }
+  const storefront = String(req.query.storefront ?? "us").replace(/[^a-z]/gi, "").slice(0, 2).toLowerCase() || "us";
+
+  const token = await developerToken();
+  if (!token) { res.json({ album: null, reason: "not-configured" }); return; }
+
+  try {
+    const url = `https://api.music.apple.com/v1/catalog/${storefront}/albums/${encodeURIComponent(id)}`;
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) { res.json({ album: null, reason: `apple-${r.status}` }); return; }
+    const j = await r.json() as { data?: AppleAlbumRow[] };
+    const row = j.data?.[0];
+    if (!row) { res.json({ album: null, reason: "not-found" }); return; }
+    const tracks = (row.relationships?.tracks?.data ?? []).map((t) => ({
+      appleSongId: t.id,
+      trackNumber: t.attributes?.trackNumber ?? 0,
+      title: t.attributes?.name ?? "",
+      durationMs: t.attributes?.durationInMillis ?? null,
+      appleUrl: t.attributes?.url ?? "",
+    }));
+    res.json({
+      album: {
+        appleAlbumId: row.id,
+        title: row.attributes?.name ?? "",
+        artist: row.attributes?.artistName ?? "",
+        artworkUrl: artwork(row.attributes?.artwork),
+        appleUrl: row.attributes?.url ?? "",
+        tracks,
+      },
+    });
+  } catch (err) {
+    console.error("apple-music: album lookup failed:", err);
+    res.json({ album: null, reason: "error" });
+  }
+});
+
 export default router;

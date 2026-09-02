@@ -236,6 +236,12 @@ interface SendResult {
   // WHICH device answered.
   deviceSucceeded: number; // native APNs/FCM tokens
   webSucceeded: number;    // browser web-push subscriptions
+  // How many native tokens were actually targeted. Callers that dedupe
+  // per day/week (the bell, VTS commentary, weekly review) need this to
+  // tell "no phone registered — nothing to retry" apart from "phone was
+  // registered but this send didn't reach it" — deviceSucceeded alone is
+  // 0 in both cases. See the three bellSender.ts callers.
+  deviceAttempted: number;
 }
 
 /**
@@ -254,7 +260,7 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
     .from(usersTable)
     .where(eq(usersTable.id, userId));
   if (pref?.pushEnabled === false) {
-    return { attempted: 0, succeeded: 0, invalidated: 0, deviceSucceeded: 0, webSucceeded: 0 };
+    return { attempted: 0, succeeded: 0, invalidated: 0, deviceSucceeded: 0, webSucceeded: 0, deviceAttempted: 0 };
   }
 
   // Centralized emoji strip + title cap — every push goes through this
@@ -332,7 +338,7 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
       },
       "[push] no active device tokens or web subs — skipping send"
     );
-    return { attempted: 0, succeeded: 0, invalidated: 0, deviceSucceeded: 0, webSucceeded: 0 };
+    return { attempted: 0, succeeded: 0, invalidated: 0, deviceSucceeded: 0, webSucceeded: 0, deviceAttempted: tokens.length };
   }
   logger.info(
     { userId, tokenCount: tokens.length, webSubCount: webSubs.length, kind: payload.threadId ?? "generic" },
@@ -341,7 +347,7 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
 
   const result: SendResult = {
     attempted: totalTargets, succeeded: 0, invalidated: 0,
-    deviceSucceeded: 0, webSucceeded: 0,
+    deviceSucceeded: 0, webSucceeded: 0, deviceAttempted: tokens.length,
   };
   const invalidTokenIds: number[] = [];
   const invalidWebSubIds: number[] = [];
