@@ -116,7 +116,12 @@ export default function LectioPage() {
           </button>
         </div>
 
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+        {/* min-height: 0 + overflow-y: auto — a flex child otherwise refuses
+            to shrink below its content's natural height (default min-height:
+            auto), which on a short viewport pushes the Continue button
+            below the fold with nothing to scroll it back into view. Same
+            trap eleanor-6e found in spirituals's own footer rework. */}
+        <div style={{ flex: "1 1 0%", minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
           <motion.div
             key={step}
             initial={{ opacity: 0, y: 10 }}

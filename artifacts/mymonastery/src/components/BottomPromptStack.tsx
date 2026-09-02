@@ -24,6 +24,9 @@ const IMMERSIVE_PRACTICE_ROUTES = new Set<string>([
   // Audio Divina is a full-screen deck now too, with its own footer CTA — the
   // prompt card was landing squarely on its Begin button.
   "/listening",
+  // Lectio Divina — same deck shape, same collision (found the same way:
+  // the notice banner sat squarely on top of Continue during a live test).
+  "/lectio",
   // Meditating on Spirituals — same deck shape, same collision. Its CTA moved
   // to the bottom of the viewport (owner: "the continue button is midway on
   // the page, it should be at the bottom") and the prompt card then covered it
