@@ -504,30 +504,9 @@ function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName, isPast = false 
           <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>
             {req.body}
           </p>
-          {/* "Prayed by N people" line — visible at a glance, before
-              the owner taps in. Server only populates amenPeopleCount
-              for own requests (distinct prayer-ers, not per-day taps),
-              so we render only when the value is set + > 0 to avoid a
-              sad "0 people" on a brand-new request. Tapping it routes
-              to the request detail page, which shows the faces of
-              everyone who prayed — stopPropagation keeps the card's
-              own onClick (the in-page modal) from also firing. */}
-          {req.isOwnRequest
-            && typeof req.amenPeopleCount === "number"
-            && req.amenPeopleCount > 0 && (
-            <Link
-              href={`/prayer-requests/${req.id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="inline-block mt-1"
-            >
-              <span
-                className="text-[11px] underline decoration-dotted underline-offset-2 transition-opacity hover:opacity-80"
-                style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}
-              >
-                🙏🏽 Prayed by {req.amenPeopleCount} {req.amenPeopleCount === 1 ? "person" : "people"} →
-              </span>
-            </Link>
-          )}
+          {/* No "Prayed by N" count (owner: "take out the indication of who
+              prayed the prayer requests… no count"). The detail page it used
+              to link into no longer shows a count or faces either. */}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {/* Home-consistent ✓ — once you've left a word alongside someone

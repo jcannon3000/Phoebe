@@ -82,10 +82,9 @@ export default function MenuReflectionsPage() {
     staleTime: 30 * 60_000,
   });
   const taize = useQuery<InboxItem | null>(weeklyOpts("/api/taize/latest"));
-  const chittister = useQuery<InboxItem | null>(weeklyOpts("/api/chittister/latest"));
 
   const openWeekly = (
-    source: "taize" | "chittister",
+    source: "taize",
     item: InboxItem | null | undefined,
     fallbackUrl: string,
   ) => () => {
@@ -108,9 +107,9 @@ export default function MenuReflectionsPage() {
           items: [
             { emoji: "🌵", label: "CAC Daily Reflection", sub: "Center for Action & Contemplation", onClick: openCac },
             { emoji: "📔", label: "Forward Day by Day", sub: "Today's meditation from Forward Movement", onClick: openFdd },
-            { emoji: "🕊️", label: "Sojourner's Voice and Verse", sub: "Verse, voice and prayer of the day · Sojourners", onClick: openSojo },
+            { emoji: "🕊️", label: "Sojourners Daily Devotion", sub: "Verse, voice and prayer of the day · Sojourners", onClick: openSojo },
             { emoji: "✍🏽", label: "SSJE Reflections", sub: "Today's Brother, Give Us a Word", onClick: openSsje },
-            { emoji: "😊", label: "Daily Henri Nouwen Quotes", sub: "From the Henri Nouwen Society", onClick: openNouwen },
+            { emoji: "😊", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society", onClick: openNouwen },
             { emoji: "🌎", label: "Grist Climate News", sub: "The day's climate reporting", onClick: openGrist },
             // The weeklies. Their subtitle names THIS week's piece when we
             // know it, which is the honest label — "waits until you've read
@@ -119,11 +118,6 @@ export default function MenuReflectionsPage() {
               emoji: "🕯️", label: "Taizé meditation",
               sub: taize.data?.title ?? "The newest meditation from Taizé",
               onClick: openWeekly("taize", taize.data, "https://www.taize.fr/en/tag/meditations"),
-            },
-            {
-              emoji: "🌾", label: "Vision and Viewpoint",
-              sub: chittister.data?.title ?? "Joan Chittister's weekly",
-              onClick: openWeekly("chittister", chittister.data, "https://www.joanchittister.org/pages/newsletters"),
             },
             { emoji: "🦩", label: "VTS Dean's Commentary", sub: "Virginia Theological Seminary", onClick: openVts },
           ],

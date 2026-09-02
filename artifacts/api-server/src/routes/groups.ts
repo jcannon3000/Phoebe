@@ -384,10 +384,13 @@ export async function requireAdmin(groupSlug: string, userId: number) {
 /**
  * A JOINED CONGREGANT — member or admin, but NOT a follower.
  *
- * `requireMember` admits any tier with `joinedAt` set, and the default tier
- * every join grants is `follower`: anyone holding a community's invite link
- * is one. That is right for a feed, which is what a follower signed up for,
- * and wrong for anything a congregation says about itself in confidence.
+ * Owner (2026-08-30): "we need these to be group memberships again not
+ * follows" — a fresh join now defaults to `member`, not `follower`, so this
+ * gate passes almost everyone going forward. The check is kept rather than
+ * removed: it still protects the handful of legacy rows left on the old
+ * `follower` tier (see migrate.ts's follower→member backfill), and it is
+ * the one place that answers "is this person really in the parish" if a
+ * lighter tier is ever reintroduced.
  *
  * Use this wherever the content is the parish talking to its own people —
  * the prayer list above all, where the bodies name real people's illnesses.
@@ -421,13 +424,15 @@ export function redactGroup<T extends Record<string, any>>(group: T, isAdmin: bo
   return out;
 }
 
-// A group is a followed feed, not a social room (see project notes) — most
-// joins default to role "follower". Cap how many a person can follow at
-// once so a growing public directory doesn't turn into an unbounded list of
-// feeds nobody actually reads. Counts ANY active membership (follower,
-// member, admin, hidden_admin — anything with joinedAt set), app-wide.
-// Creating your own new group is intentionally NOT capped by this (see
-// POST /groups) — this limits what you follow, not what you lead.
+// Cap how many communities a person can join at once, so a growing public
+// directory doesn't turn into an unbounded list of communities nobody
+// actually keeps up with. Counts ANY active membership (follower, member,
+// admin, hidden_admin — anything with joinedAt set), app-wide, and the name
+// is a holdover from when a fresh join was a lightweight "follow" — joins
+// are full memberships now (owner, 2026-08-30), but the cap itself is
+// unaffected either way. Creating your own new group is intentionally NOT
+// capped by this (see POST /groups) — this limits what you join, not what
+// you lead.
 export const MAX_FOLLOWED_GROUPS = 3;
 export async function countFollowedGroups(userId: number): Promise<number> {
   const [row] = await db.select({ c: count() })
@@ -1670,7 +1675,11 @@ router.post(
       userId: user.id,
       email: user.email?.toLowerCase() ?? "",
       name: user.name ?? null,
-      role: "follower",
+      // MEMBER, not follower (owner: "we need these to be group memberships
+      // again not follows"). A follow-only tier was tried and is being
+      // reversed — joining a community via its invite link makes you a full
+      // member of it, the same as every other join path in this file.
+      role: "member",
       inviteToken: crypto.randomBytes(16).toString("hex"),
       joinedAt: new Date(),
     });
@@ -1836,12 +1845,12 @@ router.delete("/groups/:slug/members/:memberId", async (req, res): Promise<void>
 
 // PATCH /api/groups/:slug/members/:memberId/role — change a member's role
 // between "follower" | "member" | "admin" | "hidden_admin". Admin-gated.
-// "follower" is the anonymous, count-only tier (the default for anyone who
-// joins); "member" is the smaller, admin-curated tier an admin explicitly
-// promotes someone into. Designating or removing a "hidden_admin" role is
-// additionally pilot-gated (only users in betaUsersTable can make that
-// call). Guards against demoting the last visible admin so a community can
-// never end up without a reachable admin.
+// A fresh join defaults to "member" now (owner, 2026-08-30 reversal);
+// "follower" is a lighter tier that survives only on legacy rows and as a
+// manual demotion an admin can still choose here. Designating or removing a
+// "hidden_admin" role is additionally pilot-gated (only users in
+// betaUsersTable can make that call). Guards against demoting the last
+// visible admin so a community can never end up without a reachable admin.
 router.patch("/groups/:slug/members/:memberId/role", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -4056,8 +4065,9 @@ router.post("/groups/:slug/join-requests/:id/accept", async (req, res): Promise<
       .where(and(eq(groupMembersTable.groupId, result.group.id), eq(groupMembersTable.userId, requester.id)));
     if (existingRow) {
       if (!existingRow.joinedAt) {
+        // MEMBER, not follower — see the note on the invite-link join path.
         await db.update(groupMembersTable)
-          .set({ joinedAt: new Date(), role: "follower" })
+          .set({ joinedAt: new Date(), role: "member" })
           .where(eq(groupMembersTable.id, existingRow.id));
       }
       // else: already active (joined some other way already) — nothing to do.
@@ -4069,7 +4079,8 @@ router.post("/groups/:slug/join-requests/:id/accept", async (req, res): Promise<
           userId: requester.id,
           email: requester.email.toLowerCase(),
           name: requester.name,
-          role: "follower",
+          // MEMBER, not follower — see the note on the invite-link join path.
+          role: "member",
           inviteToken: crypto.randomBytes(16).toString("hex"),
           joinedAt: new Date(),
         });

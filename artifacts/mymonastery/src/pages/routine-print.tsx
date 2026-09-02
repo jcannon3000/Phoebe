@@ -29,8 +29,8 @@ const REFLECTION_NAME: Record<TrackedReflection, string> = {
   fdd: "Forward Day by Day",
   ssje: "Brother, Give Us a Word",
   vts: "VTS Dean's Commentary",
-  nouwen: "Daily Henri Nouwen Quotes",
-  sojo: "Sojourner's Voice and Verse",
+  nouwen: "Nouwen Daily Devotion",
+  sojo: "Sojourners Daily Devotion",
   grist: "Grist Climate News",
 };
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];

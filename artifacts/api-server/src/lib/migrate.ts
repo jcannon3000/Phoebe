@@ -332,7 +332,7 @@ export async function migrate() {
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         email TEXT NOT NULL,
         name TEXT,
-        role TEXT NOT NULL DEFAULT 'follower',
+        role TEXT NOT NULL DEFAULT 'member',
         invite_token TEXT NOT NULL UNIQUE,
         joined_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -3184,6 +3184,26 @@ export async function migrate() {
     // bring the live default in line with the Drizzle schema. Genuinely
     // idempotent (ALTER ... SET DEFAULT), so a plain `run` is correct here.
     await run(client, `ALTER TABLE group_members ALTER COLUMN role SET DEFAULT 'follower'`);
+
+    // ── Followers → members, reversed (owner: "we need these to be group
+    //    memberships again not follows") ─────────────────────────────────
+    // Every application insert path now writes role: "member" on a fresh
+    // join. Bring the live column default back in step — an insert that
+    // forgot to pass role should land on the SAME default the app paths use,
+    // not the tier this reverses.
+    await run(client, `ALTER TABLE group_members ALTER COLUMN role SET DEFAULT 'member'`);
+    // And the existing follower rows themselves — the ones created between
+    // the 2026-07-24 split above and this reversal. Without this they are
+    // stuck on the OLD tier forever: invisible on their own community's
+    // roster, and excluded from that community's prayer list by
+    // requireCongregant, while anyone who joins the identical group
+    // tomorrow gets full access immediately. One-time, mirroring the shape
+    // of the migration it reverses.
+    await runOnce(
+      client,
+      "group_members_follower_to_member_2026_08_30",
+      `UPDATE group_members SET role = 'member' WHERE role = 'follower'`,
+    );
 
     // ── Shareable prayer requests + Fellows (revived) ─────────────────────
     // Three pieces work together:

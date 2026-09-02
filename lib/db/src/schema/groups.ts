@@ -217,7 +217,12 @@ export const groupMembersTable = pgTable("group_members", {
   // "member" (the smaller, admin-curated tier, visible to fellow non-admins
   // on the roster) | "admin" | "hidden_admin" (admin powers, invisible to
   // non-admins). Enforced at the route layer (Zod enums), not a DB constraint.
-  role: text("role").notNull().default("follower"),
+  // MEMBER, not follower — the owner reversed the follower/member tier split
+  // ("we need these to be group memberships again not follows"). This column
+  // default and migrate.ts's live-DB default must agree with the application
+  // insert paths, or an insert that omits role falls through to whichever one
+  // is stale.
+  role: text("role").notNull().default("member"),
   inviteToken: text("invite_token").notNull().unique(),
   joinedAt: timestamp("joined_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

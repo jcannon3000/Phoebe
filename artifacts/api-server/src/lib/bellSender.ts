@@ -1751,9 +1751,13 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   { name: "contemplation-goal",    run: runContemplationGoalSender },
   // VTS Dean's Commentary — weekday ~8am nudge for readers who follow it.
   { name: "vts-commentary",        run: runVtsCommentarySender },
-  // Weekly review + weekly digest are turned OFF for now (the settings
-  // UI for both was removed). Re-add these lines to bring them back.
-  // { name: "weekly-review",         run: runWeeklyReviewSender },
+  // Weekly review — re-enabled (owner: "I didn't get the week review
+  // notification on my phone"). It was commented out here on the reasoning
+  // that its settings UI had been removed; that made "never runs" and "no
+  // way to turn it off" the same bug from two directions. A toggle now
+  // exists in office-settings.tsx.
+  { name: "weekly-review",         run: runWeeklyReviewSender },
+  // Weekly digest stays off — a separate feature, not reported broken.
   // Weekly routine audit — Sunday ~19:00, super admins only, and silent when
   // the audit finds nothing.
   { name: "routine-audit",         run: runRoutineAuditSender },

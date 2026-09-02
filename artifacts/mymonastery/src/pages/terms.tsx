@@ -193,9 +193,10 @@ export function TermsBody() {
           </li>
           <li>
             Attempt to identify, deanonymize, or compile information about
-            other users, including followers of a group whose identities
-            the app deliberately keeps private from anyone other than that
-            group's admins.
+            other users, including anyone a group's admin has moved to the
+            app's quieter, count-only tier — an identity the app
+            deliberately keeps private from anyone other than that group's
+            admins.
           </li>
           <li>
             Interfere with the Service's operation, security, or
@@ -206,7 +207,7 @@ export function TermsBody() {
         <p>
           If you're an admin of a group, you're also responsible for the
           content you post to it and for how you use the visibility that
-          role gives you over your group's followers and members.
+          role gives you over your group's members.
         </p>
         <p>
           We may remove content or suspend accounts that violate these

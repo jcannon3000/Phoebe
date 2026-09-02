@@ -671,8 +671,8 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
           {row("Newsletter", newsletter, [
             // FDD and SSJE moved to the bottom of the list (owner).
             { value: "cac", label: "CAC Daily Meditation" },
-            { value: "sojo", label: "Sojourner's Voice and Verse" },
-            { value: "nouwen", label: "Daily Henri Nouwen Quotes" },
+            { value: "sojo", label: "Sojourners Daily Devotion" },
+            { value: "nouwen", label: "Nouwen Daily Devotion" },
             { value: "grist", label: "Grist Climate News" },
             ...(entitlements.vts || newsletter === "vts"
               ? [{ value: "vts", label: "VTS Dean's Commentary" }]

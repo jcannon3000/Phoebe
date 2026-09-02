@@ -552,6 +552,21 @@ export default function GuidedPrayerPage() {
               )}
             </motion.div>
           )}
+          {/**
+            * THE COLLECT, in Creation Prayer's own closing format — the owner
+            * asked to "emulate that as close as possible" (CobreatheSummary's
+            * slide 0). Same shape, left-aligned rather than centered like the
+            * rest of this deck's slides: a small uppercase eyebrow, the
+            * collect itself in plain (not italic) serif, then the reference
+            * beneath in the same small quiet type.
+            *
+            * The eyebrow IS the day's name (collect.title — "The Third
+            * Sunday after Pentecost", "Ash Wednesday"), the same field
+            * Cobreathe's own eyebrow reads, rather than a generic "The
+            * Collect of the Day" label sitting above a separate bold
+            * headline — that was this slide's own shape before, and it's
+            * the thing being replaced.
+            */}
           {isCollect && collect?.text && (
             <motion.div
               key="collect"
@@ -559,21 +574,16 @@ export default function GuidedPrayerPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "center" }}
+              style={{ maxWidth: 480, textAlign: "left", width: "100%" }}
             >
-              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
-                {t("guided_prayer.collect_eyebrow", { defaultValue: "The Collect of the Day" })}
+              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16, textAlign: "left" }}>
+                {collect.title ?? t("guided_prayer.collect_eyebrow", { defaultValue: "The Collect of the Day" })}
               </p>
-              {collect.title && (
-                <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(20px, 5vw, 28px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 14 }}>
-                  {collect.title}
-                </h2>
-              )}
-              <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(17px, 4.4vw, 21px)", lineHeight: 1.6 }}>
+              <p style={{ color: WARM, margin: 0, fontFamily: SERIF, fontSize: "clamp(20px, 5.5vw, 24px)", lineHeight: 1.5, letterSpacing: "0.005em", textAlign: "left" }}>
                 {collect.text}
               </p>
               {collect.bcpReference && (
-                <p style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT, fontSize: 12, marginTop: 18 }}>
+                <p style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT, fontSize: 12, marginTop: 16, textAlign: "left" }}>
                   {collect.bcpReference}
                 </p>
               )}

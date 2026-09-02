@@ -35,7 +35,6 @@ export const HOME_MODULE_KEYS = [
   "icons",
   // The inbox practices: they wait rather than expiring at midnight.
   "taize",
-  "chittister",
   // The reflection newsletters.
   "cac",
   "fdd",

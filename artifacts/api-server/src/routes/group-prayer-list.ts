@@ -43,8 +43,11 @@ function listIsOpen(group: { prayerRequestsEnabled: boolean; isPublic: boolean }
 
 /**
  * A joined congregant of a group whose list is open — the gate for both member
- * routes. `requireCongregant` rather than `requireMember`: a follower is what
- * anyone holding the invite link becomes, and a follower is not the parish.
+ * routes. `requireCongregant` rather than `requireMember`: a fresh join is a
+ * full member now (owner, 2026-08-30), so this mainly protects the handful of
+ * legacy rows still on the lighter "follower" tier — kept as the gate here
+ * regardless, since it's the one place that answers "is this person really
+ * in the parish" if that tier is ever used again.
  */
 async function requireOpenList(slug: string, userId: number) {
   const membership = await requireCongregant(slug, userId);

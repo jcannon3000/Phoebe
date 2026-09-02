@@ -125,6 +125,20 @@ export default function CommunityJoinPage() {
       // would still treat them as offices-only otherwise) and
       // landing them back on /parish.
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      /**
+       * AND THE GROUPS LIST — or the join is invisible.
+       *
+       * A fresh join with no rule of life lands on `/dashboard` on the
+       * premise, in the effect below, that "the group's content already
+       * surfaces there." It doesn't, if the home's `/api/groups` query is
+       * already cached from earlier in the session: the pill strip keeps
+       * showing whatever it last fetched, the new community never appears
+       * anywhere, and the person who just joined has no way to tell it
+       * worked — even though the server did its part (the admin's new-
+       * member notification fires from the same request). Owner: "the
+       * community didn't show up for the user joining."
+       */
+      await queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
       setAutoJoinStatus(data.alreadyJoined ? "already" : "success");
     },
     onError: (err: unknown) => {

@@ -598,8 +598,28 @@ export default function CobreathePage() {
     // full set (the 12th breath) is reached. An early end still shows the
     // summary of what they breathed, but does NOT count the card done, credit
     // the contemplation sit, or add them to today's communal count.
-    const breaths = Math.max(0, Math.floor(secondsKept / (CYCLE_MS / 1000)));
-    if (breaths < 1) { setLocation("/dashboard"); return; }
+    const rawBreaths = Math.max(0, Math.floor(secondsKept / (CYCLE_MS / 1000)));
+    if (rawBreaths < 1 && !reached) { setLocation("/dashboard"); return; }
+    /**
+     * A COMPLETED SET NEVER SHOWS FEWER BREATHS THAN ITS OWN TARGET.
+     *
+     * `reached` means the 12th (or however many were chosen) breath was
+     * already hit — CobreatheBreath only sets it once `completed >= totalBreaths`.
+     * The elapsed-time division above is a second, independent measurement of
+     * the same fact, and it can come in a hair short: `secondsKept` is a
+     * rounded whole second (`Math.round`), so a set that finished at, say,
+     * 143.6s rounds to 144 fine, but a slower rAF tick or a render that
+     * missed a beat could round down to 143 — one tick shy of `12 * 12 = 144`
+     * — and floor that to 11, or in the worst timing case far fewer. The
+     * fix already shipped in CobreatheOverlay (`Math.max(DEFAULT_TOTAL_
+     * BREATHS, …)`) never reached this page, which is the "two copies of the
+     * same math, only one updated" pattern this app keeps tripping on.
+     *
+     * So: once `reached` is true, the displayed count is at least the
+     * target — the live counter that decided the set was complete is the
+     * one already trusted; this is a floor, not a replacement.
+     */
+    const breaths = reached ? Math.max(lengthBreaths, rawBreaths) : rawBreaths;
     if (reached) {
       logSit(secondsKept);          // credit the contemplation sit (full set only)
       record.mutate(secondsKept);   // count you in today's communal breath + mark done

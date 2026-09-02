@@ -415,37 +415,34 @@ export function PrivacyBody() {
           unless you take a specific action to share something.
         </p>
         <p>
-          <strong>Following a group is anonymous to everyone except that
-          group's admins.</strong> When you join a group, you are a
-          follower by default. Other followers and members never see that
-          you are there — you are counted, not listed, in every view but
-          the admin one. Following a group is a way of receiving its
-          content, not a way of appearing in it.
+          <strong>Joining a group is not anonymous.</strong> When you join
+          a group, you appear by name and profile photo in that group's
+          roster, where other members of the same group can see you. This
+          visibility is limited to that specific group: members of one
+          group are not visible to another group.
         </p>
         <p>
-          <strong>Being a member of a group is not anonymous.</strong> An
-          admin can promote a follower to member, or add someone as a
-          member directly. Members appear by name and profile photo in
-          that group's roster, where other members of the same group can
-          see them. This visibility is limited to that specific group:
-          members of one group are not visible to another group, and
-          members are never visible to that group's followers.
+          <strong>An admin can still make someone's presence quieter.</strong>
+          {" "}A group's leader can move a person to a lighter, count-only
+          tier — visible to the admin, but not listed by name to other
+          members. This is a leader's choice for a particular person, not
+          the default for anyone who joins.
         </p>
         <p>
-          <strong>Admins see their own group's full roster, including
-          followers.</strong> An admin can see everyone who has joined the
-          group they administer — followers and members alike, by name —
-          because managing a group (removing someone, promoting a
-          follower to member) requires knowing who has actually joined.
-          This is leader visibility for moderation, not peer visibility:
-          it is not available to non-admin members, and administering one
-          group gives no visibility into another.
+          <strong>Admins see their own group's full roster.</strong> An
+          admin can see everyone who has joined the group they
+          administer, by name, because managing a group — removing
+          someone, or moving them to the quieter tier above — requires
+          knowing who has actually joined. This is leader visibility for
+          moderation, not peer visibility: it is not available to
+          non-admin members, and administering one group gives no
+          visibility into another.
         </p>
         <p>
           <strong>Shared group content is visible to that group.</strong>
           {" "}Weekly plans, standing intercessions, shared rules of life, and
           Get Involved opportunities posted by an admin are shown to that
-          group's followers and members. Where a group prays a shared rule
+          group's members. Where a group prays a shared rule
           of life, the app shows how many people kept a given practice
           that week as an aggregate count — not a list of who did and who
           didn't.

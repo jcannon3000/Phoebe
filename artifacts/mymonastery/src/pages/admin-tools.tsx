@@ -233,6 +233,12 @@ export default function AdminToolsPage() {
                   onClick={() => setLocation("/admin/visio-calendar")}
                 />
                 <LinkRow
+                  emoji="🎶"
+                  label="Spirituals"
+                  description="Slave Songs of the United States (1867) — all 136, with their metadata"
+                  onClick={() => setLocation("/admin/spirituals")}
+                />
+                <LinkRow
                   emoji="📨"
                   label="Newsletter"
                   description="Email Phoebe users"

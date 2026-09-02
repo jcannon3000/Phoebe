@@ -1353,29 +1353,13 @@ export default function CommunityDetailPage() {
             (owner). It led the page with an empty admin to-do rather than with
             the community, and adding one still lives in Community settings. */}
 
-        {/**
-          * THE GROUP'S RULE OF LIFE — the rhythm these people keep together.
-          *
-          * Owner: "when someone goes to the group, they can publicly see
-          * 'Follow <Group name> routine'."
-          *
-          * This card has existed since the community-rule work and was never
-          * rendered here — it only ever appeared on the join-welcome screen
-          * and as a one-time home offer, both of which you pass through once.
-          * So the rhythm a community keeps had no permanent home on the page
-          * that IS the community, and anyone who tapped past the welcome had
-          * no way back to it.
-          *
-          * Not beta-gated, unlike the pulse and season below it: this is the
-          * thing a follower came to see. It self-gates instead — no rule and
-          * no admin rights renders nothing at all, so a group that keeps no
-          * rhythm shows no empty promise of one, and leaders of such a group
-          * get the quiet doorway to set one.
-          *
-          * Above the pulse and the season because it's the standing rhythm and
-          * those are commentary on it.
-          */}
-        <CommunityRuleCard slug={slug!} />
+        {/* THE GROUP'S RULE OF LIFE moved into the hub tab below (owner:
+            "don't have the rules at the top of the community page but one of
+            the other options"). It used to render here, ABOVE the tab switch
+            entirely — so it was the first thing on every tab, Members and
+            Gatherings and Feed included, not just the page's actual home. It
+            now sits in the hub tab, after the prayers and events sections,
+            which lead instead. */}
 
         {/* BETA — the leader's aggregate weekly pulse (never names, floored
             under 4 members) and the community SEASON (the rule kept together
@@ -1685,6 +1669,22 @@ export default function CommunityDetailPage() {
           <div className="mb-5 flex flex-col" style={{ gap: 22 }}>
             <CommunityPrayersSection slug={slug} />
             <CommunityEventsSection slug={slug} />
+            {/**
+              * THE GROUP'S RULE OF LIFE — the rhythm these people keep
+              * together. Owner: "when someone goes to the group, they can
+              * publicly see 'Follow <Group name> routine.'"
+              *
+              * Lives in the hub tab now, not above the tab switch — it used
+              * to render before any tab was chosen, so it was the first
+              * thing shown on Members, Gatherings and Feed too, not just
+              * here. Prayers and events lead the hub; this follows them, the
+              * standing rhythm after the community's immediate life.
+              *
+              * Self-gates: no rule and no admin rights renders nothing, so a
+              * community with no rhythm shows no empty promise of one, and
+              * its leaders get the quiet doorway to set one.
+              */}
+            <CommunityRuleCard slug={slug!} />
             <div className="flex flex-col" style={{ gap: 10 }}>
               {([
                 // A community is a followed feed — FOLLOWERS (the anonymous
