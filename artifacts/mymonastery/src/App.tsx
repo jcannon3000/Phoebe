@@ -419,6 +419,7 @@ const AdminArtLibraryPage = lazy(() => import("./pages/admin-art-library"));
 const AdminVisioCalendarPage = lazy(() => import("./pages/admin-visio-calendar"));
 const AdminAudioLibraryPage = lazy(() => import("./pages/admin-audio-library"));
 const AdminSpiritualsPage = lazy(() => import("./pages/admin-spirituals"));
+const SpiritualsPage = lazy(() => import("./pages/spirituals"));
 const PilotHomePage = lazy(() => import("./pages/pilot-home"));
 const PilotBuildPage = lazy(() => import("./pages/pilot-build"));
 const CustomizePage = lazy(() => import("./pages/customize"));
@@ -812,7 +813,11 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // and this gate is not guests-only — useGuestMode is true for any signed-in
   // non-beta account, so leaving it out bounced the practice to the dashboard
   // for nearly everyone who could see the card.
-  "/psalms", "/contemplation", "/contemplation-log", "/examen", "/guided-prayer", "/visio", "/icon-prayer", "/reflect/fdd", "/customize",
+  // /spirituals is the same case as /visio: the song and its text are public,
+  // the day's appointment is a local lookup, and completion is a local record —
+  // so it needs no account, and leaving it out of this set would bounce the
+  // practice to the dashboard for every signed-in non-beta account.
+  "/psalms", "/contemplation", "/contemplation-log", "/examen", "/guided-prayer", "/visio", "/icon-prayer", "/spirituals", "/reflect/fdd", "/customize",
   // The Morning/Evening Prayer + Compline picker — reached from the new
   // "Daily Offices" row in Practices (a guest-visible menu), so the target
   // must be guest-allowed too or the tap just bounces back to the dashboard.
@@ -1042,6 +1047,9 @@ function Router() {
       <Route path="/moment/:momentToken/:userToken"><PrayerGate><MomentPostPage /></PrayerGate></Route>
       <Route path="/moments/:id" component={MomentDetail} />
       <Route path="/practices" component={MomentsDashboard} />
+      {/* Meditating on Negro Spirituals — the day appoints a song, and
+          "Choose another" opens the whole collection. */}
+      <Route path="/spirituals" component={SpiritualsPage} />
       <Route path="/morning-prayer/:momentId/:token" component={MorningPrayerPage} />
       <Route path="/ritual/:id" component={RitualDetail} />
       <Route path="/routine/:token" component={RoutineInvitePage} />

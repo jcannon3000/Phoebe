@@ -4,7 +4,7 @@
  * GENERATED FILE. Do not edit by hand: run
  *   node scripts/fetch-spirituals.mjs
  *
- * The first published collection of African-American sacred song: 136
+ * The first published collection of African-American sacred song: 135
  * songs written down from formerly enslaved singers, most of them at Port
  * Royal, South Carolina during the Civil War. Public domain (1867). The text
  * is UNC's Documenting the American South transcription of the book.
@@ -36,7 +36,7 @@ export type SpiritualStanza = {
 };
 
 export type Spiritual = {
-  /** The book's song number, 1-136. */
+  /** The book's song number, 1-135. */
   number: number;
   title: string;
   /** Which of the book's four regional parts. */
@@ -48,8 +48,13 @@ export type Spiritual = {
   /** Who wrote it down (often initials: C. P. W. is Charles Pickard Ware). */
   contributor: string | null;
   bookPage: number | null;
-  /** False for the songs the editors present as secular (Creole set, work songs). */
+  /** False for songs there is evidence are NOT spirituals — rowing, corn,
+   *  play, patrol and steamboat songs, and the Creole set. Only these are kept
+   *  out of the daily lectionary. */
   sacred: boolean;
+  /** Sacred by default, but carrying no obviously religious word — worth the
+   *  owner's eye before it is appointed as a day's prayer. Advisory only. */
+  reviewNeeded: boolean;
   /** The engraved music for this song, scanned. */
   sheetMusic: string | null;
   refrain: string[] | null;
@@ -81,6 +86,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W. Variation, L. McK. G",
     bookPage: 1,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss1.jpg",
     refrain: ["Roll, Jordan, Roll, Jordan, Roll, Jordan, roll!", "O march de angel march,", "O march de angel march;", "O my soul arise in Heaven, Lord,", "For to yearde when Jordan roll."],
     stanzas: [
@@ -101,6 +107,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 2,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss2.jpg",
     refrain: null,
     stanzas: [
@@ -111,7 +118,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 3,
-    title: "I Hear From Heaven to-Day",
+    title: "I Hear From Heaven to-day",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -119,6 +126,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 2,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss3.jpg",
     refrain: ["And I yearde from heaven to-day,", "Hurry on, my weary soul,", "And I yearde from heaven to-day."],
     stanzas: [
@@ -142,6 +150,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W. Variation, Mr. Reuben Tomlinson. Second version, Charleston. Mrs. C. J. Bowen",
     bookPage: 3,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss4a.jpg",
     refrain: ["And I hope dat trump might blow me home", "To de new Jerusalem.", "Blow your trumpet, Gabriel,", "Blow louder, louder;", "And I hope dat trump might blow me home", "To de new Jerusalem."],
     stanzas: [
@@ -162,6 +171,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 4,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss5.jpg",
     refrain: ["And I hain't but one more river to cross;", "I want some valiant soldier", "To help me bear the cross."],
     stanzas: [
@@ -183,6 +193,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 4,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss6a.jpg",
     refrain: null,
     stanzas: [
@@ -207,6 +218,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 5,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss7.jpg",
     refrain: null,
     stanzas: [
@@ -221,7 +233,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 8,
-    title: "I Can'T Stay Behind",
+    title: "I Can't Stay Behind",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -229,6 +241,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 6,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss8.jpg",
     refrain: null,
     stanzas: [
@@ -257,6 +270,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W. Variation, L. McK. G",
     bookPage: 7,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss9a.jpg",
     refrain: null,
     stanzas: [
@@ -278,6 +292,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W. Variation, Savannah. Mr. Arthur L. Ware",
     bookPage: 8,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss10a.jpg",
     refrain: null,
     stanzas: [
@@ -293,7 +308,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 11,
-    title: "There'S a Meeting Here to-Night",
+    title: "There's a Meeting Here to-night",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -301,6 +316,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W. Second version, Charleston. Mrs. Bowen",
     bookPage: 9,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss11a.jpg",
     refrain: null,
     stanzas: [
@@ -321,6 +337,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 10,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss12.jpg",
     refrain: null,
     stanzas: [
@@ -339,6 +356,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 10,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss13.jpg",
     refrain: null,
     stanzas: [
@@ -357,6 +375,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "L. McK. G. Second version, C. P. W",
     bookPage: 10,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss14a.jpg",
     refrain: null,
     stanzas: [
@@ -384,6 +403,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 12,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss15.jpg",
     refrain: null,
     stanzas: [
@@ -403,6 +423,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 12,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss16.jpg",
     refrain: null,
     stanzas: [
@@ -428,6 +449,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 13,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss17.jpg",
     refrain: null,
     stanzas: [
@@ -461,6 +483,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 13,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss18.jpg",
     refrain: null,
     stanzas: [
@@ -479,6 +502,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 14,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss19.jpg",
     refrain: null,
     stanzas: [
@@ -509,6 +533,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: null,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss20.jpg",
     refrain: ["Tell my Jesus huddy, oh;", "I wash my hands in de mornin' glory,", "Tell my Jesus huddy, oh."],
     stanzas: [
@@ -531,6 +556,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: null,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss21a.jpg",
     refrain: ["Member, O, shout glory.", "And-a who gwine to lay dis body,", "Oh ring Jerusalem."],
     stanzas: [
@@ -561,6 +587,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 16,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss22a.jpg",
     refrain: null,
     stanzas: [
@@ -573,7 +600,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 23,
-    title: "I Saw the Beam in my Sister'S Eye",
+    title: "I Saw the Beam in my Sister's Eye",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -581,6 +608,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 17,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss23.jpg",
     refrain: null,
     stanzas: [
@@ -601,6 +629,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 18,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss24.jpg",
     refrain: null,
     stanzas: [
@@ -619,6 +648,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 18,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss25.jpg",
     refrain: null,
     stanzas: [
@@ -637,6 +667,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W. Variation, Lt.-Col. C. T. Trowbridge",
     bookPage: 19,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss26a.jpg",
     refrain: null,
     stanzas: [
@@ -656,7 +687,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 27,
-    title: "Heaven Bell a-Ring",
+    title: "Heaven Bell a-ring",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -664,6 +695,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 20,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss27.jpg",
     refrain: null,
     stanzas: [
@@ -691,7 +723,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 28,
-    title: "Jine 'Em",
+    title: "Jine 'em",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -699,6 +731,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 21,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss28.jpg",
     refrain: null,
     stanzas: [
@@ -718,6 +751,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C.P.W",
     bookPage: 21,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss29.jpg",
     refrain: null,
     stanzas: [
@@ -740,6 +774,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W. Second version, W. F. A",
     bookPage: 22,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss30a.jpg",
     refrain: null,
     stanzas: [
@@ -764,6 +799,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 23,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss31.jpg",
     refrain: null,
     stanzas: [
@@ -804,6 +840,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 24,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss32.jpg",
     refrain: null,
     stanzas: [
@@ -826,6 +863,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 25,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss33.jpg",
     refrain: null,
     stanzas: [
@@ -852,6 +890,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 25,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss34a.jpg",
     refrain: null,
     stanzas: [
@@ -870,6 +909,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 26,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss35.jpg",
     refrain: null,
     stanzas: [
@@ -884,7 +924,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 36,
-    title: "Satan'S Camp a-Fire",
+    title: "Satan's Camp a-fire",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -892,6 +932,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 27,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss36.jpg",
     refrain: null,
     stanzas: [
@@ -910,6 +951,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 27,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss37a.jpg",
     refrain: null,
     stanzas: [
@@ -920,7 +962,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 38,
-    title: "Jesus on the Water-Side",
+    title: "Jesus on the Water-side",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -928,6 +970,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 28,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss38a.jpg",
     refrain: null,
     stanzas: [
@@ -946,6 +989,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 29,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss39.jpg",
     refrain: null,
     stanzas: [
@@ -964,6 +1008,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 29,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss40.jpg",
     refrain: null,
     stanzas: [
@@ -982,6 +1027,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 30,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss41.jpg",
     refrain: null,
     stanzas: [
@@ -992,7 +1038,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 42,
-    title: "I'm a-Trouble in de Mind",
+    title: "I'm a-trouble in de Mind",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -1000,6 +1046,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 30,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss42a.jpg",
     refrain: null,
     stanzas: [
@@ -1018,6 +1065,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 31,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss43.jpg",
     refrain: null,
     stanzas: [
@@ -1036,6 +1084,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 32,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss44.jpg",
     refrain: null,
     stanzas: [
@@ -1048,7 +1097,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 45,
-    title: "My Body Rock 'Long Fever",
+    title: "My Body Rock 'long Fever",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -1056,6 +1105,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A. Second Version, L. Mc. K. G",
     bookPage: 32,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss45a.jpg",
     refrain: null,
     stanzas: [
@@ -1076,6 +1126,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 34,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss46.jpg",
     refrain: null,
     stanzas: [
@@ -1111,6 +1162,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 35,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss47.jpg",
     refrain: null,
     stanzas: [
@@ -1140,6 +1192,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 36,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss48a.jpg",
     refrain: null,
     stanzas: [
@@ -1179,6 +1232,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A. Second Version, Col. Higginson's regiment. Lt.-Col. Trowbridge",
     bookPage: 38,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss49a.jpg",
     refrain: null,
     stanzas: [
@@ -1207,6 +1261,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A. Variation, Charleston. Mrs. Bowen",
     bookPage: 39,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss50a.jpg",
     refrain: null,
     stanzas: [
@@ -1236,6 +1291,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 40,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss51.jpg",
     refrain: null,
     stanzas: [
@@ -1266,6 +1322,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: 41,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss52.jpg",
     refrain: null,
     stanzas: [
@@ -1288,6 +1345,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 41,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss53.jpg",
     refrain: null,
     stanzas: [
@@ -1306,6 +1364,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A. Second Version, C. P. W",
     bookPage: 42,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss54.jpg",
     refrain: null,
     stanzas: [
@@ -1319,7 +1378,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 55,
-    title: "I Can'T Stand the Fire",
+    title: "I Can't Stand the Fire",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -1327,6 +1386,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A. Second Version, C. P. W",
     bookPage: 42,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss55.jpg",
     refrain: null,
     stanzas: [
@@ -1346,6 +1406,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 43,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss56.jpg",
     refrain: null,
     stanzas: [
@@ -1365,6 +1426,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Port Royal Islands. W. F. A",
     bookPage: 43,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss57.jpg",
     refrain: null,
     stanzas: [
@@ -1383,6 +1445,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Capt. J. S. Rogers. Variation, Lt.-Col. Trowbridge",
     bookPage: 44,
     sacred: true,
+    reviewNeeded: true,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss58.jpg",
     refrain: null,
     stanzas: [
@@ -1404,6 +1467,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Capt. J. S. Rogers. Second Version, Mr. H. G. Spaulding",
     bookPage: 45,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss59a.jpg",
     refrain: null,
     stanzas: [
@@ -1425,6 +1489,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Capt. J. S. Rogers",
     bookPage: 46,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss60.jpg",
     refrain: null,
     stanzas: [
@@ -1447,6 +1512,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Lt.-Col Trowbridge",
     bookPage: 46,
     sacred: true,
+    reviewNeeded: true,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss61.jpg",
     refrain: null,
     stanzas: [
@@ -1465,7 +1531,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 62,
-    title: "Good-Bye, Brother",
+    title: "Good-bye, Brother",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -1473,6 +1539,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Capt. Rogers",
     bookPage: 47,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss62.jpg",
     refrain: null,
     stanzas: [
@@ -1493,6 +1560,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Capt. Rogers. Chorus, Lt.-Col. Trowbridge",
     bookPage: 47,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss63a.jpg",
     refrain: null,
     stanzas: [
@@ -1511,6 +1579,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Lt.-Col. Trowbridge",
     bookPage: 48,
     sacred: true,
+    reviewNeeded: true,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss64.jpg",
     refrain: null,
     stanzas: [
@@ -1533,6 +1602,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Lt.-Col. Trowbridge",
     bookPage: 49,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss65.jpg",
     refrain: null,
     stanzas: [
@@ -1543,7 +1613,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 66,
-    title: "The Sin-Sick Soul",
+    title: "The Sin-sick Soul",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -1551,6 +1621,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: 49,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss66.jpg",
     refrain: null,
     stanzas: [
@@ -1569,6 +1640,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 50,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss67.jpg",
     refrain: null,
     stanzas: [
@@ -1587,6 +1659,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 50,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss68.jpg",
     refrain: null,
     stanzas: [
@@ -1614,6 +1687,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 51,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss69.jpg",
     refrain: null,
     stanzas: [
@@ -1640,7 +1714,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 70,
-    title: "Good-Bye",
+    title: "Good-bye",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -1648,6 +1722,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Mrs. Bowen",
     bookPage: 52,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss70.jpg",
     refrain: null,
     stanzas: [
@@ -1666,6 +1741,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Mrs. Bowen",
     bookPage: 52,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss71.jpg",
     refrain: null,
     stanzas: [
@@ -1684,6 +1760,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Mrs. Bowen",
     bookPage: 53,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss72.jpg",
     refrain: null,
     stanzas: [
@@ -1708,6 +1785,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Mrs. Bowen",
     bookPage: 54,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss73.jpg",
     refrain: null,
     stanzas: [
@@ -1728,7 +1806,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 74,
-    title: "Nobody Knows the Trouble I'Ve Had",
+    title: "Nobody Knows the Trouble I've Had",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -1736,6 +1814,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 55,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss74.jpg",
     refrain: null,
     stanzas: [
@@ -1751,7 +1830,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 75,
-    title: "Who is on the Lord'S Side",
+    title: "Who is on the Lord's Side",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -1759,6 +1838,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 56,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss75.jpg",
     refrain: null,
     stanzas: [
@@ -1781,6 +1861,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 57,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss76.jpg",
     refrain: null,
     stanzas: [
@@ -1799,6 +1880,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 57,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss77a.jpg",
     refrain: null,
     stanzas: [
@@ -1818,6 +1900,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 58,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss78.jpg",
     refrain: null,
     stanzas: [
@@ -1838,6 +1921,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 59,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss79.jpg",
     refrain: null,
     stanzas: [
@@ -1859,6 +1943,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 60,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss80.jpg",
     refrain: null,
     stanzas: [
@@ -1871,7 +1956,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 81,
-    title: "Jesus, Won'T You Come By-and-Bye?",
+    title: "Jesus, Won't You Come By-and-bye?",
     part: "I",
     region: "South-Eastern Slave States",
     regionIncludes: "South Carolina, Georgia, and the Sea Islands",
@@ -1879,6 +1964,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: 60,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss81.jpg",
     refrain: null,
     stanzas: [
@@ -1896,7 +1982,8 @@ export const SPIRITUALS: Spiritual[] = [
     collectedAt: "Savannah",
     contributor: "Mr. Kane O'Donnel",
     bookPage: 61,
-    sacred: true,
+    sacred: false,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss82.jpg",
     refrain: null,
     stanzas: [
@@ -1915,6 +2002,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Miss Mary McKim",
     bookPage: 65,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss83.jpg",
     refrain: ["Wake up, Jacob, day is a-breaking,", "I'm on my way;", "O, wake up, Jacob, day is a-breaking,", "I'm on my way.", "I want to go to heaven when I die,", "Do love de Lord!", "I want to go to heaven when I die,", "Do love de Lord! O!"],
     stanzas: [
@@ -1934,6 +2022,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Dr. W. A. Hammond",
     bookPage: 66,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss84.jpg",
     refrain: null,
     stanzas: [
@@ -1954,6 +2043,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Dr. W. A. Hammond",
     bookPage: 67,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss85.jpg",
     refrain: null,
     stanzas: [
@@ -1973,7 +2063,8 @@ export const SPIRITUALS: Spiritual[] = [
     collectedAt: "Maryland",
     contributor: "Dr. W. A. Hammond",
     bookPage: 67,
-    sacred: true,
+    sacred: false,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss86.jpg",
     refrain: null,
     stanzas: [
@@ -1991,7 +2082,8 @@ export const SPIRITUALS: Spiritual[] = [
     collectedAt: "Virginia",
     contributor: "W. F. A",
     bookPage: 68,
-    sacred: true,
+    sacred: false,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss87.jpg",
     refrain: null,
     stanzas: [
@@ -2004,7 +2096,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 88,
-    title: "Jordan'S Mills",
+    title: "Jordan's Mills",
     part: "II",
     region: "Northern Seaboard Slave States",
     regionIncludes: "Delaware, Maryland, Virginia, and North Carolina",
@@ -2012,6 +2104,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 68,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss88.jpg",
     refrain: null,
     stanzas: [
@@ -2032,6 +2125,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 69,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss89.jpg",
     refrain: null,
     stanzas: [
@@ -2047,7 +2141,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 90,
-    title: "I Don'T Feel Weary",
+    title: "I Don't Feel Weary",
     part: "II",
     region: "Northern Seaboard Slave States",
     regionIncludes: "Delaware, Maryland, Virginia, and North Carolina",
@@ -2055,6 +2149,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 70,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss90.jpg",
     refrain: null,
     stanzas: [
@@ -2076,6 +2171,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 70,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss91.jpg",
     refrain: null,
     stanzas: [
@@ -2094,6 +2190,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 71,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss92.jpg",
     refrain: null,
     stanzas: [
@@ -2107,7 +2204,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 93,
-    title: "O'Er the Crossing",
+    title: "O'er the Crossing",
     part: "II",
     region: "Northern Seaboard Slave States",
     regionIncludes: "Delaware, Maryland, Virginia, and North Carolina",
@@ -2115,6 +2212,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Capt. Rogers. Variation, Augusta, Georgia",
     bookPage: 72,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss93a.jpg",
     refrain: null,
     stanzas: [
@@ -2137,6 +2235,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 73,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss94.jpg",
     refrain: null,
     stanzas: [
@@ -2156,6 +2255,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 73,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss95.jpg",
     refrain: null,
     stanzas: [
@@ -2177,6 +2277,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 74,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss96.jpg",
     refrain: null,
     stanzas: [
@@ -2200,6 +2301,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 74,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss97.jpg",
     refrain: null,
     stanzas: [
@@ -2215,7 +2317,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 98,
-    title: "Don'T Be Weary, Traveller",
+    title: "Don't Be Weary, Traveller",
     part: "II",
     region: "Northern Seaboard Slave States",
     regionIncludes: "Delaware, Maryland, Virginia, and North Carolina",
@@ -2223,6 +2325,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 75,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss98.jpg",
     refrain: null,
     stanzas: [
@@ -2236,7 +2339,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 99,
-    title: "Let God'S Saints Come in",
+    title: "Let God's Saints Come in",
     part: "II",
     region: "Northern Seaboard Slave States",
     regionIncludes: "Delaware, Maryland, Virginia, and North Carolina",
@@ -2244,6 +2347,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 76,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss99.jpg",
     refrain: null,
     stanzas: [
@@ -2268,6 +2372,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Capt. G. S. Barton",
     bookPage: 77,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss100.jpg",
     refrain: null,
     stanzas: [
@@ -2292,6 +2397,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Capt. G. S. Barton",
     bookPage: 78,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss101.jpg",
     refrain: null,
     stanzas: [
@@ -2314,6 +2420,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Capt. G. S. Barton",
     bookPage: 79,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss102.jpg",
     refrain: null,
     stanzas: [
@@ -2332,6 +2439,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Mr. G. H. Allan",
     bookPage: 83,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss103.jpg",
     refrain: null,
     stanzas: [
@@ -2351,6 +2459,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Mr. G. H. Allan",
     bookPage: 84,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss104.jpg",
     refrain: null,
     stanzas: [
@@ -2369,6 +2478,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Mr. G. H. Allan",
     bookPage: 84,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss105.jpg",
     refrain: null,
     stanzas: [
@@ -2381,7 +2491,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 106,
-    title: "Sinner Won'T Die No More",
+    title: "Sinner Won't Die No More",
     part: "III",
     region: "Inland Slave States",
     regionIncludes: "Tennessee, Arkansas, and the Mississippi River",
@@ -2389,6 +2499,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Mr. G. H. Allan",
     bookPage: 85,
     sacred: true,
+    reviewNeeded: true,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss106.jpg",
     refrain: null,
     stanzas: [
@@ -2408,6 +2519,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "W. F. A",
     bookPage: 86,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss107.jpg",
     refrain: null,
     stanzas: [
@@ -2420,7 +2532,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 108,
-    title: "Little Children, Then Won'T You Be Glad?",
+    title: "Little Children, Then Won't You Be Glad?",
     part: "III",
     region: "Inland Slave States",
     regionIncludes: "Tennessee, Arkansas, and the Mississippi River",
@@ -2428,6 +2540,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: 87,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss108.jpg",
     refrain: null,
     stanzas: [
@@ -2448,30 +2561,13 @@ export const SPIRITUALS: Spiritual[] = [
     collectedAt: "Pine Bluff, Arkansas",
     contributor: "Mr. E. J. Snow",
     bookPage: 88,
-    sacred: true,
+    sacred: false,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss109.jpg",
     refrain: null,
     stanzas: [
       { number: 1, sung: true, expanded: false, lines: ["As I walked down the new-cut road,", "I met the tap and then the toad;", "The toad commenced to whistle and sing,", "And the possum cut the pigeon wing.", "Along come an old man riding by:", "Old man, if you don't mind, your horse will die;", "If he dies I'll tan his skin,", "And if he lives I'll ride him agin.", "Hi ho, for Charleston gals!", "Charleston gals are the gals for me."], printedAs: ["As I walked down the new-cut road,", "I met the tap and then the toad;", "The toad commenced to whistle and sing,", "And the possum cut the pigeon wing.", "Along come an old man riding by:", "Old man, if you don't mind, your horse will die;", "If he dies I'll tan his skin,", "And if he lives I'll ride him agin.", "Hi ho, for Charleston gals!", "Charleston gals are the gals for me."] },
       { number: 2, sung: false, expanded: false, lines: ["As I went a-walking down the street,", "Up steps Charleston gals to take a walk with me.", "I kep' a walking and they kep' a talking,", "I danced with a gal with a hole in her stocking."], printedAs: ["As I went a-walking down the street,", "Up steps Charleston gals to take a walk with me.", "I kep' a walking and they kep' a talking,", "I danced with a gal with a hole in her stocking."] },
-    ],
-    glosses: [],
-    commentary: null,
-  },
-  {
-    number: 110,
-    title: "Run, Nigger, Run!",
-    part: "III",
-    region: "Inland Slave States",
-    regionIncludes: "Tennessee, Arkansas, and the Mississippi River",
-    collectedAt: "Pine Bluff",
-    contributor: "Mr. E. J. Snow",
-    bookPage: 89,
-    sacred: false,
-    sheetMusic: "https://docsouth.unc.edu/church/allen/ss110.jpg",
-    refrain: null,
-    stanzas: [
-      { number: 1, sung: true, expanded: false, lines: ["O some tell me that a nigger won't steal,", "But I've seen a nigger in my cornfield;", "O run, nigger, run, for the patrol will catch you,", "O run, nigger, run, for 'tis almost day."], printedAs: ["O some tell me that a nigger won't steal,", "But I've seen a nigger in my cornfield;", "O run, nigger, run, for the patrol will catch you,", "O run, nigger, run, for 'tis almost day."] },
     ],
     glosses: [],
     commentary: null,
@@ -2485,7 +2581,8 @@ export const SPIRITUALS: Spiritual[] = [
     collectedAt: "Mississippi River",
     contributor: "Dr. W. A. Hammond",
     bookPage: 89,
-    sacred: true,
+    sacred: false,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss111.jpg",
     refrain: null,
     stanzas: [
@@ -2508,6 +2605,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: 93,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss112.jpg",
     refrain: null,
     stanzas: [
@@ -2531,6 +2629,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Lt.-Col. W. L. Apthorp",
     bookPage: 94,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss113.jpg",
     refrain: null,
     stanzas: [
@@ -2549,6 +2648,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Lt.-Col. W. L. Apthorp",
     bookPage: 94,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss114.jpg",
     refrain: null,
     stanzas: [
@@ -2559,7 +2659,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 115,
-    title: "O Brothers, Don'T Get Weary",
+    title: "O Brothers, Don't Get Weary",
     part: "IV",
     region: "Gulf States",
     regionIncludes: "Florida and Louisiana; miscellaneous",
@@ -2567,6 +2667,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Lt.-Col. W. L. Apthorp",
     bookPage: 95,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss115.jpg",
     refrain: null,
     stanzas: [
@@ -2585,6 +2686,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Lt.-Col. W. L. Apthorp",
     bookPage: 95,
     sacred: true,
+    reviewNeeded: true,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss116.jpg",
     refrain: null,
     stanzas: [
@@ -2595,7 +2697,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 117,
-    title: "Jacob'S Ladder",
+    title: "Jacob's Ladder",
     part: "IV",
     region: "Gulf States",
     regionIncludes: "Florida and Louisiana; miscellaneous",
@@ -2603,6 +2705,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Lt.-Col. W. L. Apthorp",
     bookPage: 96,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss117.jpg",
     refrain: null,
     stanzas: [
@@ -2621,6 +2724,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 97,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss118.jpg",
     refrain: null,
     stanzas: [
@@ -2639,6 +2743,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 97,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss119a.jpg",
     refrain: null,
     stanzas: [
@@ -2659,6 +2764,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Mrs. T. E. Ruggles",
     bookPage: 98,
     sacred: true,
+    reviewNeeded: true,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss120.jpg",
     refrain: null,
     stanzas: [
@@ -2677,6 +2783,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Lt.-Col. Trowbridge",
     bookPage: 99,
     sacred: true,
+    reviewNeeded: true,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss121.jpg",
     refrain: null,
     stanzas: [
@@ -2695,6 +2802,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 99,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss122a.jpg",
     refrain: null,
     stanzas: [
@@ -2705,7 +2813,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 123,
-    title: "Lean on the Lord'S Side",
+    title: "Lean on the Lord's Side",
     part: "IV",
     region: "Gulf States",
     regionIncludes: "Florida and Louisiana; miscellaneous",
@@ -2713,6 +2821,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 100,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss123.jpg",
     refrain: null,
     stanzas: [
@@ -2725,7 +2834,7 @@ export const SPIRITUALS: Spiritual[] = [
   },
   {
     number: 124,
-    title: "These Are All my Father'S Children",
+    title: "These Are All my Father's Children",
     part: "IV",
     region: "Gulf States",
     regionIncludes: "Florida and Louisiana; miscellaneous",
@@ -2733,6 +2842,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 101,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss124.jpg",
     refrain: null,
     stanzas: [
@@ -2751,6 +2861,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Dr. Hammond. Second version. North Carolina. Mrs. Horace James",
     bookPage: 102,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss125b.jpg",
     refrain: null,
     stanzas: [
@@ -2774,6 +2885,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Mrs. Horace James",
     bookPage: 104,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss126.jpg",
     refrain: null,
     stanzas: [
@@ -2795,6 +2907,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Mrs. Horace James",
     bookPage: 105,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss127.jpg",
     refrain: null,
     stanzas: [
@@ -2813,6 +2926,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "C. P. W",
     bookPage: 106,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss128.jpg",
     refrain: null,
     stanzas: [
@@ -2839,6 +2953,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: "Mr. W. A. Baker",
     bookPage: 107,
     sacred: true,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss129.jpg",
     refrain: null,
     stanzas: [
@@ -2864,6 +2979,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: 109,
     sacred: false,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss130.jpg",
     refrain: null,
     stanzas: [
@@ -2885,6 +3001,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: 110,
     sacred: false,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss131.jpg",
     refrain: null,
     stanzas: [
@@ -2903,6 +3020,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: 110,
     sacred: false,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss132.jpg",
     refrain: null,
     stanzas: [
@@ -2921,6 +3039,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: 111,
     sacred: false,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss133.jpg",
     refrain: null,
     stanzas: [
@@ -2939,6 +3058,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: 111,
     sacred: false,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss134.jpg",
     refrain: null,
     stanzas: [
@@ -2960,6 +3080,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: 112,
     sacred: false,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss135.jpg",
     refrain: null,
     stanzas: [
@@ -2978,6 +3099,7 @@ export const SPIRITUALS: Spiritual[] = [
     contributor: null,
     bookPage: 113,
     sacred: false,
+    reviewNeeded: false,
     sheetMusic: "https://docsouth.unc.edu/church/allen/ss136.jpg",
     refrain: null,
     stanzas: [

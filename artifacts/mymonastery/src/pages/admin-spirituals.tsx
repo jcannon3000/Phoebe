@@ -50,6 +50,7 @@ function hay(s: Spiritual): string {
 const FILTERS = [
   { key: "all", label: "All" },
   { key: "sacred", label: "Spirituals" },
+  { key: "review", label: "Needs review" },
   { key: "I", label: "South-Eastern" },
   { key: "II", label: "Northern Seaboard" },
   { key: "III", label: "Inland" },
@@ -75,7 +76,8 @@ export default function AdminSpiritualsPage() {
     const words = q ? q.split(/\s+/).filter(Boolean) : [];
     return SPIRITUALS.filter((s) => {
       if (filter === "sacred" && !s.sacred) return false;
-      if (filter !== "all" && filter !== "sacred" && s.part !== filter) return false;
+      if (filter === "review" && !(s.sacred && s.reviewNeeded)) return false;
+      if (filter !== "all" && filter !== "sacred" && filter !== "review" && s.part !== filter) return false;
       if (!words.length) return true;
       const h = hay(s);
       return words.every((w) => h.includes(w));
@@ -171,6 +173,12 @@ export default function AdminSpiritualsPage() {
               {!s.sacred && (
                 <span style={{ color: FAINT, fontFamily: FONT, fontSize: 9.5, letterSpacing: "0.12em", border: `1px solid ${BORDER}`, borderRadius: 999, padding: "2px 7px" }}>
                   SECULAR
+                </span>
+              )}
+              {s.sacred && s.reviewNeeded && (
+                <span title="No obviously religious word — worth your eye before it is appointed."
+                  style={{ color: "#d8c9a0", fontFamily: FONT, fontSize: 9.5, letterSpacing: "0.12em", border: "1px solid rgba(216,201,160,0.4)", borderRadius: 999, padding: "2px 7px" }}>
+                  REVIEW
                 </span>
               )}
             </button>
