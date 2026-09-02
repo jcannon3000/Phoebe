@@ -8,19 +8,23 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { openExternal } from "@/lib/openExternal";
 
 // Lectio Divina — sit with one of today's three lessons (Old Testament,
-// New Testament, Gospel), read three times, a different question held each
-// time, closing with space to lift anything up in prayer. Deck chrome
-// matches Visio/Audio Divina (owner: siblings, not a drawer).
+// New Testament, Gospel). Owner's corrected order: pick a lesson → the
+// FIRST prompt comes up right away (nothing opened yet) → Next opens the
+// passage AND brings up the second prompt → Next opens it again AND
+// brings up the third prompt → Next opens it a final time AND brings up
+// the closing "lift it up in prayer" slide. Three opens total, each
+// following its own prompt rather than preceding it.
 //
 // READING THE PASSAGE FOLLOWS THE DAILY OFFICE'S OWN PRECEDENT, not a new
 // pattern: bcp-daily-office.tsx's lessonReadUrl/next() removed the lesson
-// slide's own "Read Online" button entirely (owner there: "let's take out
-// the Read Online button, and just have it the way the canticles or psalms
-// work — show the title, then go to next, which would fade into the
-// page") — the SAME Continue tap that advances the deck is what opens the
-// passage. There is no separate "reading" slide and no pill to tap here
-// either: picking a lesson, or tapping Continue on a prompt, opens that
-// passage AND brings up the next prompt in one motion.
+// slide's own "Read Online" button entirely — the SAME Next tap that
+// advances the deck is what opens the passage. No separate "reading"
+// slide, no pill.
+//
+// BOTTOM NAV mirrors that same deck's own pill exactly (its comment even
+// says "Mirrors Lectio" — this brings the two back in sync): a single
+// fixed, centered pill holding Back · step counter · Next/Done, not a
+// full-width Continue button with a separate top-left back link.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -68,6 +72,7 @@ export default function LectioPage() {
   });
   const options = data?.options ?? [];
 
+  const atStart = step === PICK;
   const prev = () => { if (step > PICK) setStep((s) => s - 1); };
 
   // A ref, not state — must be readable/settable synchronously within the
@@ -84,22 +89,27 @@ export default function LectioPage() {
     window.setTimeout(() => { advancing.current = false; }, 600);
   };
 
-  // Owner: "get rid of the pills to open ... it should just come up with the
-  // next slide" — picking a lesson, and Continue on every prompt but the
-  // last, both open the passage AND bring up the next prompt in the same
-  // tap, exactly mirroring the office's own lessonReadUrl/next() pattern.
-  const openAndAdvance = (o?: LessonOption | null) => {
-    const target = o ?? chosen;
-    if (target) void openExternal(target.readUrl);
-    setStep((s) => (s < LAST ? s + 1 : s));
+  const pickLesson = (o: LessonOption) => {
+    // Picking just seats the first prompt — nothing opens yet. Reading
+    // happens on the way OUT of each prompt, not on the way in.
+    guardedAdvance(() => { setChosen(o); setStep(PROMPT1); });
   };
-
-  const pickLesson = (o: LessonOption) => { guardedAdvance(() => { setChosen(o); openAndAdvance(o); }); };
 
   const finish = () => {
     markPracticeDoneToday("lectio");
     setLocation("/dashboard");
   };
+
+  const onNext = () => guardedAdvance(() => {
+    if (step === LAST) { finish(); return; }
+    // Every prompt (1, 2, and 3) opens the passage on its way to the next
+    // beat — the third open lands on the closing slide, not on a fourth
+    // prompt.
+    if (chosen) void openExternal(chosen.readUrl);
+    setStep((s) => (s < LAST ? s + 1 : s));
+  });
+
+  const stepLabel = atStart ? null : `${step} of ${LAST}`;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: DECK_BG, overflow: "hidden" }}>
@@ -113,14 +123,8 @@ export default function LectioPage() {
         position: "absolute", inset: 0,
         background: "linear-gradient(180deg, rgba(9,26,16,0.55) 0%, rgba(9,26,16,0.88) 100%)",
       }} />
-      <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", padding: "calc(env(safe-area-inset-top) + 18px) 20px calc(env(safe-area-inset-bottom) + 20px)" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <button
-            onClick={() => { if (step === PICK) setLocation("/dashboard"); else prev(); }}
-            style={{ userSelect: "none", WebkitTapHighlightColor: "transparent", background: "none", border: "none", color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 14, cursor: "pointer", padding: 6 }}
-          >
-            {step === PICK ? "← Dashboard" : "← Back"}
-          </button>
+      <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", padding: "calc(env(safe-area-inset-top) + 18px) 20px calc(env(safe-area-inset-bottom) + 96px)" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button
             onClick={() => setLocation("/dashboard")}
             aria-label="Close"
@@ -132,9 +136,9 @@ export default function LectioPage() {
 
         {/* min-height: 0 + overflow-y: auto — a flex child otherwise refuses
             to shrink below its content's natural height (default min-height:
-            auto), which on a short viewport pushes the Continue button
-            below the fold with nothing to scroll it back into view. Same
-            trap eleanor-6e found in spirituals's own footer rework. */}
+            auto), which on a short viewport pushes the bottom nav below the
+            fold with nothing to scroll it back into view. Same trap
+            eleanor-6e found in spirituals's own footer rework. */}
         <div style={{ flex: "1 1 0%", minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
           <motion.div
             key={step}
@@ -208,33 +212,55 @@ export default function LectioPage() {
             )}
           </motion.div>
         </div>
+      </div>
 
-        {step !== PICK && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+      {/* Bottom nav pill — Back · step counter · Next/Done. Matches the
+          Daily Office's own bottom pill exactly (its own comment: "Mirrors
+          Lectio" — this is what brings the two back in sync). */}
+      <nav
+        aria-label="Slide navigation"
+        style={{
+          position: "fixed", left: "50%", bottom: "calc(env(safe-area-inset-bottom) + 16px)",
+          transform: "translateX(-50%)", zIndex: 50,
+          background: "rgba(9,26,16, 0.462)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+          border: `1px solid ${DECK_BORDER}`, borderRadius: 999, padding: "8px 12px",
+          boxShadow: "0 8px 28px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.35)",
+          maxWidth: "calc(100vw - 32px)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
+          <button
+            type="button"
+            onClick={prev}
+            disabled={atStart}
+            style={{
+              color: WARM, background: "transparent", border: `1px solid ${DECK_BORDER}`,
+              borderRadius: 999, padding: "6px 14px", fontSize: 12, fontFamily: SPACE_GROTESK,
+              fontWeight: 600, cursor: atStart ? "default" : "pointer", opacity: atStart ? 0.2 : 1,
+            }}
+          >
+            Back
+          </button>
+          {stepLabel && (
+            <p style={{ color: DECK_FAINT, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, whiteSpace: "nowrap", fontFamily: SPACE_GROTESK, flex: "0 0 auto" }}>
+              {stepLabel}
+            </p>
+          )}
+          {!atStart && (
             <button
-              onClick={() => guardedAdvance(() => {
-                if (step === LAST) { finish(); return; }
-                // Every prompt but the last opens the passage again on its
-                // way to the next prompt (same tap, same as picking a lesson
-                // above); the last prompt just advances to the closing slide.
-                if (step === PROMPT3) { setStep(CLOSE); return; }
-                openAndAdvance();
-              })}
+              type="button"
+              onClick={onNext}
               style={{
-                userSelect: "none", WebkitTapHighlightColor: "transparent",
-                width: "100%", maxWidth: 420, borderRadius: 999, padding: "14px 20px",
-                fontSize: 16, fontWeight: 600, fontFamily: SPACE_GROTESK, cursor: "pointer",
-                background: "rgba(46,107,64,0.55)", border: `1px solid ${DECK_BORDER}`, color: WARM,
+                background: "rgba(46,107,64,0.55)", color: WARM, border: "none",
+                borderRadius: 999, padding: "6px 16px", fontSize: 12, fontFamily: SPACE_GROTESK,
+                fontWeight: 600, letterSpacing: "0.02em", cursor: "pointer", whiteSpace: "nowrap",
               }}
             >
-              {step === LAST ? "Done" : "Continue"}
+              {step === LAST ? "Done" : "Next"}
             </button>
-            <span style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.12em" }}>
-              {step} / {LAST}
-            </span>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </nav>
     </div>
   );
 }
