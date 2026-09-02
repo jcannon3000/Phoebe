@@ -5,7 +5,6 @@
  * MyMonastery API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { Participant } from "./participant";
 import type { UpdateRitualBodyFrequency } from "./updateRitualBodyFrequency";
 
 export interface UpdateRitualBody {
@@ -13,6 +12,5 @@ export interface UpdateRitualBody {
   description?: string;
   frequency?: UpdateRitualBodyFrequency;
   dayPreference?: string;
-  participants?: Participant[];
   intention?: string;
 }

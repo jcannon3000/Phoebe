@@ -9,11 +9,6 @@ export interface HealthStatus {
   status: string;
 }
 
-export interface Participant {
-  name: string;
-  email: string;
-}
-
 export interface User {
   id: number;
   name: string;
@@ -59,7 +54,6 @@ export interface Ritual {
    * @nullable
    */
   meetingUrl?: string | null;
-  participants: Participant[];
   /** @nullable */
   intention?: string | null;
   ownerId: number;
@@ -134,7 +128,8 @@ export interface CreateRitualBody {
   description?: string;
   frequency: CreateRitualBodyFrequency;
   dayPreference?: string;
-  participants: Participant[];
+  /** Where the gathering meets. Persisted to rituals.location and echoed back on Ritual; null for video-call gatherings. */
+  location?: string;
   intention?: string;
   ownerId: number;
 }
@@ -154,7 +149,6 @@ export interface UpdateRitualBody {
   description?: string;
   frequency?: UpdateRitualBodyFrequency;
   dayPreference?: string;
-  participants?: Participant[];
   intention?: string;
 }
 

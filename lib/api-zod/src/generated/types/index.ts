@@ -16,7 +16,6 @@ export * from "./meetup";
 export * from "./meetupStatus";
 export * from "./message";
 export * from "./messageRole";
-export * from "./participant";
 export * from "./ritual";
 export * from "./ritualDetail";
 export * from "./ritualFrequency";

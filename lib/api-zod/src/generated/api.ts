@@ -60,12 +60,6 @@ export const ListRitualsResponseItem = zod.object({
     .describe(
       "Video-call link for online gatherings (Zoom \/ Meet \/ Teams). Null for in-person gatherings.",
     ),
-  participants: zod.array(
-    zod.object({
-      name: zod.string(),
-      email: zod.string(),
-    }),
-  ),
   intention: zod.string().nullish(),
   ownerId: zod.number(),
   streak: zod.number(),
@@ -91,12 +85,12 @@ export const CreateRitualBody = zod.object({
   description: zod.string().optional(),
   frequency: zod.enum(["once", "weekly", "biweekly", "monthly"]),
   dayPreference: zod.string().optional(),
-  participants: zod.array(
-    zod.object({
-      name: zod.string(),
-      email: zod.string(),
-    }),
-  ),
+  location: zod
+    .string()
+    .optional()
+    .describe(
+      "Where the gathering meets. Persisted to rituals.location and echoed back on Ritual; null for video-call gatherings.",
+    ),
   intention: zod.string().optional(),
   ownerId: zod.number(),
 });
@@ -122,12 +116,6 @@ export const GetRitualResponse = zod
       .describe(
         "Video-call link for online gatherings (Zoom \/ Meet \/ Teams). Null for in-person gatherings.",
       ),
-    participants: zod.array(
-      zod.object({
-        name: zod.string(),
-        email: zod.string(),
-      }),
-    ),
     intention: zod.string().nullish(),
     ownerId: zod.number(),
     streak: zod.number(),
@@ -184,14 +172,6 @@ export const UpdateRitualBody = zod.object({
   description: zod.string().optional(),
   frequency: zod.enum(["once", "weekly", "biweekly", "monthly"]).optional(),
   dayPreference: zod.string().optional(),
-  participants: zod
-    .array(
-      zod.object({
-        name: zod.string(),
-        email: zod.string(),
-      }),
-    )
-    .optional(),
   intention: zod.string().optional(),
 });
 
@@ -208,12 +188,6 @@ export const UpdateRitualResponse = zod.object({
     .describe(
       "Video-call link for online gatherings (Zoom \/ Meet \/ Teams). Null for in-person gatherings.",
     ),
-  participants: zod.array(
-    zod.object({
-      name: zod.string(),
-      email: zod.string(),
-    }),
-  ),
   intention: zod.string().nullish(),
   ownerId: zod.number(),
   streak: zod.number(),

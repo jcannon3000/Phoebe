@@ -5,7 +5,6 @@
  * MyMonastery API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { Participant } from "./participant";
 import type { RitualFrequency } from "./ritualFrequency";
 import type { RitualStatus } from "./ritualStatus";
 
@@ -24,7 +23,6 @@ export interface Ritual {
    * @nullable
    */
   meetingUrl?: string | null;
-  participants: Participant[];
   /** @nullable */
   intention?: string | null;
   ownerId: number;

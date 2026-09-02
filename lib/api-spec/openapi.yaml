@@ -261,17 +261,6 @@ components:
       required:
         - status
 
-    Participant:
-      type: object
-      properties:
-        name:
-          type: string
-        email:
-          type: string
-      required:
-        - name
-        - email
-
     User:
       type: object
       properties:
@@ -320,10 +309,6 @@ components:
         meetingUrl:
           description: Video-call link for online gatherings (Zoom / Meet / Teams). Null for in-person gatherings.
           type: ["string", "null"]
-        participants:
-          type: array
-          items:
-            $ref: "#/components/schemas/Participant"
         intention:
           type: ["string", "null"]
         ownerId:
@@ -349,7 +334,6 @@ components:
         - id
         - name
         - frequency
-        - participants
         - ownerId
         - streak
         - status
@@ -381,10 +365,10 @@ components:
           enum: [once, weekly, biweekly, monthly]
         dayPreference:
           type: string
-        participants:
-          type: array
-          items:
-            $ref: "#/components/schemas/Participant"
+        location:
+          description: Where the gathering meets. Persisted to rituals.location and
+            echoed back on Ritual; null for video-call gatherings.
+          type: string
         intention:
           type: string
         ownerId:
@@ -392,7 +376,6 @@ components:
       required:
         - name
         - frequency
-        - participants
         - ownerId
 
     UpdateRitualBody:
@@ -407,10 +390,6 @@ components:
           enum: [once, weekly, biweekly, monthly]
         dayPreference:
           type: string
-        participants:
-          type: array
-          items:
-            $ref: "#/components/schemas/Participant"
         intention:
           type: string
 

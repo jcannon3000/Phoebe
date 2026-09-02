@@ -6,14 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CreateRitualBodyFrequency } from "./createRitualBodyFrequency";
-import type { Participant } from "./participant";
 
 export interface CreateRitualBody {
   name: string;
   description?: string;
   frequency: CreateRitualBodyFrequency;
   dayPreference?: string;
-  participants: Participant[];
+  /** Where the gathering meets. Persisted to rituals.location and echoed back on Ritual; null for video-call gatherings. */
+  location?: string;
   intention?: string;
   ownerId: number;
 }
