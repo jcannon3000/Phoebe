@@ -173,7 +173,7 @@ function toStanzas(lyrics) {
       lines: lines.filter(Boolean),
       printedAs: lines.filter(Boolean).slice(),
       sung,
-      resumesRefrain: /&c\.?$/i.test(lines[lines.length - 1] ?? ""),
+      resumesRefrain: hasEtc(lines[lines.length - 1] ?? ""),
       expanded: false,
     });
   }
@@ -181,6 +181,74 @@ function toStanzas(lyrics) {
 }
 
 const norm = (s) => s.toLowerCase().replace(/[^a-z0-9' ]/g, " ").replace(/\s+/g, " ").trim();
+
+/** The book's "and so on" markers: "&c.", "etc.", "etc,", "etc.;", "etcetera". */
+const ETC = /\s*[,;]?\s*(?:&c|etc|etcetera)\b[.,;:]*\s*$/i;
+const hasEtc = (line) => ETC.test(line ?? "");
+
+/**
+ * Restore a line the book cut short.
+ *
+ * A verse ending "For Jesus come, &c." or "My Lord, etc." is telling a singer
+ * who already knows the song to sing the rest of a line printed earlier. The
+ * cue is the FRONT of that earlier line, so the job is to find the line it
+ * points at and write it out whole.
+ *
+ * The cue is matched as a SUFFIX of the shortened line, longest first, because
+ * the pointer is often only the tail of it: "What shall I do for a hiding
+ * place? And a heav'n, &c." cues on "And a heav'n", not on the whole line, and
+ * the words before the cue are kept. Matching is over EVERY stanza — these
+ * cues frequently point at a middle verse rather than the opening one.
+ *
+ * Deliberately completes the LINE ONLY, never the rest of the stanza it found.
+ * Running on to the end of the matched stanza sounds plausible and is wrong:
+ * it silently imports lines the verse never had.
+ *
+ * Returns the completed line(s) as an array, or null when nothing matches
+ * confidently — in which case the book's own abbreviated line stands.
+ */
+function completeCuedLine(line, stanzas, own) {
+  const cueText = line.replace(ETC, "").replace(/[,;:.\s]+$/, "").trim();
+  if (!cueText) return null;
+  const words = cueText.split(/\s+/);
+
+  for (let k = words.length; k >= 1; k--) {
+    const suffix = words.slice(words.length - k).join(" ");
+    const nSuffix = norm(suffix.replace(/^["'“]+/, ""));
+    if (nSuffix.length < 3) continue;
+
+    for (const st of stanzas) {
+      for (const cand of st.lines) {
+        if (st === own && cand === line) continue;       // not itself
+        if (hasEtc(cand)) continue;                       // not another stub
+        if (/\.\s*\.\s*\./.test(cand)) continue;          // printer's ellipsis
+        const nCand = norm(cand);
+        if (!nCand.startsWith(nSuffix)) continue;
+        const prefix = words.slice(0, words.length - k).join(" ");
+
+        // The cue is the FRONT of a longer line: finish that line.
+        if (nCand.length > nSuffix.length) {
+          return [prefix ? `${prefix} ${cand}` : cand];
+        }
+
+        // The cue IS the whole line — so it names a refrain, and what was cut
+        // is the lines that FOLLOW it. Only taken from the opening stanza,
+        // where this book prints its refrains under the staff, and stopped at
+        // another stub; anywhere else this would import lines the verse never
+        // had. Nothing to add means nothing gained, so the stub stands.
+        if (st !== stanzas[0]) continue;
+        const rest = [];
+        for (const nxt of st.lines.slice(st.lines.indexOf(cand) + 1)) {
+          if (hasEtc(nxt) || /\.\s*\.\s*\./.test(nxt)) break;
+          rest.push(nxt);
+        }
+        if (!rest.length) continue;
+        return [prefix ? `${prefix} ${cand}` : cand, ...rest];
+      }
+    }
+  }
+  return null;
+}
 /** Give a substituted line the punctuation the frame's line carried. */
 const repunct = (line, like) =>
   line.replace(/[,;:.!?]+$/, "") + (like.match(/[,;:.!?]+$/)?.[0] ?? "");
@@ -214,21 +282,30 @@ function expandAbbreviations(stanzas) {
     .map((l, i) => (norm(l) === norm(template[0]) ? i : -1))
     .filter((i) => i >= 0);
 
-  let refrain = null;
-  for (const st of stanzas.slice(1)) {
-    const last = st.lines[st.lines.length - 1] ?? "";
+  const refrain = null;
 
-    if (/&c\.?$/i.test(last)) {
-      const cue = last.replace(/&c\.?$/i, "").replace(/^["'“]+/, "").trim().replace(/[,;:!?]+$/, "");
-      if (cue.length < 3) continue;
-      const at = template.findIndex((l) => norm(l).startsWith(norm(cue)));
-      if (at === -1) continue;
-      const tail = template.slice(at);
-      refrain ??= tail;
-      st.lines = [...st.lines.slice(0, -1), ...tail];
+  // PASS 1 — write out every abbreviated line, wherever it sits.
+  //
+  // These cues are NOT only at the end of a verse: "My Lord, etc." is the
+  // SECOND line of its stanza in no. 129 and the FIRST in no. 95. An earlier
+  // version looked at the last line alone and so never even examined 33 of
+  // them, including all eleven in no. 129. Walk every line of every stanza,
+  // the opening one included.
+  for (const st of stanzas) {
+    for (let i = 0; i < st.lines.length; i++) {
+      if (!hasEtc(st.lines[i])) continue;
+      const full = completeCuedLine(st.lines[i], stanzas, st);
+      if (!full) continue;
+      st.lines.splice(i, 1, ...full);
+      i += full.length - 1;                 // don't re-scan what we just wrote
       st.expanded = true;
-      continue;
     }
+  }
+
+  // PASS 2 — verses printed as only their changing line, refilled from the
+  // opening stanza's frame. Runs after pass 1 so the frame is already whole.
+  for (const st of stanzas.slice(1)) {
+    if (st.lines.some(hasEtc)) continue;
 
     if (slots.length >= 2 && st.lines.length < template.length && st.lines.length <= slots.length) {
       const filled = template.slice();
