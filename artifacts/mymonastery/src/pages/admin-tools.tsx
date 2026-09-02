@@ -280,6 +280,22 @@ export default function AdminToolsPage() {
                   description="Daily meditation + podcast courses — demo home screen"
                   onClick={() => setLocation("/cac-home")}
                 />
+                {/* The PODCASTS, reachable directly (owner: "make CAC podcasts
+                    available for admins").
+                    /cac-courses is the shows grid → /cac-show/:slug lists that
+                    show's seasons → /cac-course/:id plays the episodes. The
+                    page already admits admins (it gates on `!isBeta &&
+                    !isAdmin`), so nothing about access changes here — it simply
+                    had no way IN. Its only inbound links were the back-links on
+                    its own child pages, so an admin could reach the seasons
+                    only by first going through the demo home screen and finding
+                    a show. */}
+                <LinkRow
+                  emoji="🎧"
+                  label="CAC Podcasts (beta)"
+                  description="Shows, seasons and episodes — played from CAC's own feeds"
+                  onClick={() => setLocation("/cac-courses")}
+                />
               </>
             )}
           </div>

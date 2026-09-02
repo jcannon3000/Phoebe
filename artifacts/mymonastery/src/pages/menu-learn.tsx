@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { MenuHub } from "@/components/MenuHub";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { useBetaStatus } from "@/hooks/useDemo";
 
 // Learn — the guided courses, as their own menu category (the drawer's Learn
 // row and /menu's Learn group both land here). Centering Prayer and the deeper
@@ -11,6 +12,22 @@ import { isNativeShell } from "@/lib/isNativeShell";
 export default function MenuLearnPage() {
   const [, setLocation] = useLocation();
   const go = (p: string) => setLocation(p);
+  /**
+   * CAC Courses sits here for ADMINS (owner: "i want admins to see CAC courses
+   * under learn like the way of love").
+   *
+   * Gated on exactly the same test /cac-courses itself uses to admit a visitor
+   * — its own guard is `if (!isBeta && !isAdmin)`. Deliberately the SAME
+   * expression rather than a similar one: a row shown more widely than the
+   * page admits is a row that bounces people into a "not open yet" screen, and
+   * a row shown less widely hides a feature from someone who can use it. If
+   * that guard is ever widened, widen it here in the same change.
+   *
+   * It rides CAC's podcast feeds, so — like The Way of Love, and unlike the two
+   * YouTube courses above — it works on iOS as well as web, and needs no
+   * isNativeShell() branch.
+   */
+  const { isBeta, isAdmin } = useBetaStatus();
   return (
     <MenuHub
       title="Learn"
@@ -25,6 +42,9 @@ export default function MenuLearnPage() {
             { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") },
           ] : []),
           { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") },
+          ...(isBeta || isAdmin ? [
+            { emoji: "🌵", label: "CAC Courses", sub: "Rohr, Finley and McLaren — a season at a time", onClick: () => go("/cac-courses") },
+          ] : []),
         ],
       }]}
     />
