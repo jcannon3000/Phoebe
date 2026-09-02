@@ -483,7 +483,12 @@ export function PracticeCard({
     const heroRow = (
       <motion.div
         className={`${pulseOnLoad && !celebrate ? "phoebe-card-outline-pulse" : ""} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: cardTintBg(tint), backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1 }}
+        style={{ background: cardTintBg(tint), backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1,
+          // Safari draws a faint seam along a blurred, bordered, rounded box's
+          // edge — a backdrop-filter + border-radius clipping quirk, not a
+          // logic bug. Forcing Safari to mask through its own radial gradient
+          // makes it clip the blur properly instead of leaving the seam.
+          WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
         animate={celebrate ? { borderColor: [CARD_BORDER, `rgba(${rgb},0.95)`, CARD_BORDER] } : undefined}
         transition={celebrate ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } } : undefined}
       >
@@ -624,7 +629,8 @@ export function PracticeCard({
   const row = (
     <motion.div
       className={`${pulse || !pulseOnLoad ? "" : "phoebe-card-outline-pulse"} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: cardTintBg(tint), ...staticBlur, border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
+      style={{ background: cardTintBg(tint), ...staticBlur, border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1,
+        WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
       initial={blurInitial}
       animate={
         // A just-completed card gets a BRIGHTER, quicker border pulse than the

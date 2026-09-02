@@ -2418,6 +2418,24 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
       ...(contemplative.visio ? ["visio"] : []),
+      /**
+       * THE THREE NEWEST PRACTICES, in the copy that actually runs on Save.
+       *
+       * They were added to buildPrescribeSpec's onKeys/offKeys — the path that
+       * runs ONLY when an admin prescribes a routine to somebody else — and
+       * not to this one, which is what every ordinary Save goes through. Being
+       * in neither list meant they were absent from `order` altogether, the
+       * server backfilled them into `order` AND `hidden`, and hidden governs:
+       * so ticking Praying with Icons, the Taizé meditation or Vision and
+       * Viewpoint and pressing Save switched them OFF, on the very save that
+       * turned them on. Re-opening the customizer then showed them unticked,
+       * because the toggles are seeded back from the home layout.
+       *
+       * This is the second copy of this block; they have now drifted twice.
+       */
+      ...(contemplative.icons ? ["icons"] : []),
+      ...(contemplative.taize ? ["taize"] : []),
+      ...(contemplative.chittister ? ["chittister"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
     const offKeys = [
@@ -2429,6 +2447,10 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
       ...(contemplative.visio ? [] : ["visio"]),
+      // See onKeys above — both halves, or an unticked one is never hidden.
+      ...(contemplative.icons ? [] : ["icons"]),
+      ...(contemplative.taize ? [] : ["taize"]),
+      ...(contemplative.chittister ? [] : ["chittister"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
     // No hardcoded "podcasts" here — extras.podcasts already routes it through

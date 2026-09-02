@@ -601,7 +601,6 @@ export default function VisioPage() {
    *  used to be a text slide when there WAS one, which put two slides of
    *  instructions back to back and made the reader tap twice before seeing
    *  anything. The reading is offered under the work instead. */
-  // The image is never shown in-app now — see the note on the two beats.
   const showsImage = step === LOOK || step === LOOK_AGAIN;
 
   useEffect(() => {
@@ -655,7 +654,15 @@ export default function VisioPage() {
    * door, which is the exact thing the comment above rules out. The hold
    * belongs to the beats that ask you to LOOK.
    */
-  const holdsThisBeat = false;
+  /**
+   * RESTORED WITH THE PICTURE. When the image left the deck this became a
+   * literal `false`, correctly — there was nothing to sit with. The image came
+   * back on the two looking beats and only `showsImage` was remapped, so the
+   * hold has been dead ever since: no pause, no fill, no release. The owner
+   * asked for it ("sit with it each time for 12 seconds") and it belongs to
+   * exactly the beats that show the work.
+   */
+  const holdsThisBeat = step === LOOK || step === LOOK_AGAIN;
   const [holdReady, setHoldReady] = useState(false);
   useEffect(() => {
     if (!holdsThisBeat) { setHoldReady(true); return; }
@@ -678,7 +685,15 @@ export default function VisioPage() {
   /** The beat that is ONLY the picture — where its label belongs. (The
    *  contemplation beat shows the picture too, but carries a prompt under it,
    *  so the title and artist would crowd the words being read.) */
-  const isLookingBeat = false;
+  /**
+   * Also restored — same cause. This gates the museum label (title, artist,
+   * the figures and subjects ACT records) under the picture. With it false the
+   * first look showed a bare image and named nothing at all, which is both a
+   * loss to the practice and an attribution the ACT works are meant to carry.
+   * The contemplation beat keeps its prompt instead, which is why this is LOOK
+   * only.
+   */
+  const isLookingBeat = step === LOOK;
 
   const atEnd = step >= TOTAL - 1;
   const goHome = () => setLocation("/dashboard");

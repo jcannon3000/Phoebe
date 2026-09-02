@@ -434,6 +434,38 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
     setReflectionSource(id);
     setSideReflection("morning", id);
     setSideReflection("evening", id);
+    /**
+     * THE LAYOUT HAS TO CHANGE TOO, or the picker does nothing.
+     *
+     * `useRhythmState` reads the newsletter CARD from the home layout
+     * (`homeCardActive`), and falls back to the bare reflection-source
+     * preference only when there is no saved layout at all. The seed now
+     * always writes one (so the CAC card would actually appear), which
+     * means every guest has a real layout the moment they open this page —
+     * so setting the preference here changed the source but not what the
+     * layout showed, and the newsletter card kept displaying whatever was
+     * already in `order`. Owner: "the simple customizer is not changing the
+     * newsletter."
+     *
+     * So: unhide the chosen source, hide every other tracked one, same as
+     * the add-practice and contemplative-toggle actions on this page already
+     * do for their own keys.
+     */
+    if (id !== "none") {
+      const existing = currentHomeLayout;
+      const order = [...(existing?.order ?? [])];
+      const hidden = new Set(existing?.hidden ?? []);
+      if (!order.includes(id)) order.push(id);
+      hidden.delete(id);
+      for (const other of TRACKED_REFLECTION_SOURCES) {
+        if (other === id) continue;
+        if (!order.includes(other)) order.push(other);
+        hidden.add(other);
+      }
+      const layout: HomeLayout = { order, hidden: [...hidden], v: HOME_LAYOUT_VERSION };
+      if (guest) cacheHomeLayoutLocalOnly(layout);
+      else void saveHomeLayout(layout).catch(() => { /* best-effort */ });
+    }
     if (user) pushRoutineConfig();
   };
 
@@ -623,7 +655,9 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             : row("Daily Prayer", dailyPrayer, [
                 { value: "guided-prayer", label: "Simple Guided Prayer" },
                 { value: "psalms", label: "Psalms" },
-                { value: "office", label: "Offices" },
+                // "Offices" (and the Venite devotion entry it carried) removed
+                // from this row (owner). Anyone already on it keeps it — this
+                // list only decides what a NEW pick offers.
                 { value: "readings", label: "Daily Scripture Readings" },
                 { value: "contemplation", label: "Contemplative Prayer" },
               ], (v) => applyDailyPrayer(v as DailyPrayer))}
@@ -635,8 +669,7 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
               would silently reset their reflection to something they never
               picked. */}
           {row("Newsletter", newsletter, [
-            { value: "fdd", label: "Forward Day by Day" },
-            { value: "ssje", label: "SSJE — Brother, Give Us a Word" },
+            // FDD and SSJE moved to the bottom of the list (owner).
             { value: "cac", label: "CAC Daily Meditation" },
             { value: "sojo", label: "Sojourner's Voice and Verse" },
             { value: "nouwen", label: "Daily Henri Nouwen Quotes" },
@@ -644,6 +677,8 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             ...(entitlements.vts || newsletter === "vts"
               ? [{ value: "vts", label: "VTS Dean's Commentary" }]
               : []),
+            { value: "fdd", label: "Forward Day by Day" },
+            { value: "ssje", label: "SSJE — Brother, Give Us a Word" },
           ], (v) => applyNewsletter(v as ReflectionSource))}
 
           {goalsReady && row("Silence", String(effectiveSilenceMin), SILENCE_OPTS.map((m) => ({ value: String(m), label: `${m} min` })), (v) => applySilence(parseInt(v, 10) || 5))}

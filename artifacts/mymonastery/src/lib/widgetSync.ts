@@ -279,10 +279,27 @@ export function useWidgetSync(): void {
       // instead, the standalone card above is suppressed (same gate as
       // rawCards), so this must be too or it double-counts.
       { active: r.cobreatheStandaloneActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), key: "cobreathe", emoji: "🌍", title: "Creation Prayer", eyebrow: "A prayer for the earth", subtitle: "Breathing together with God's creation", cta: "Begin", kind: "office" },
-      { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), key: "listening", emoji: "🎵", title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music", cta: "Begin", kind: "reflect" },
+      // "Log", not "Begin" — the home card asks you to record what you listened
+      // to, and the widget was offering to start something instead.
+      { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), key: "listening", emoji: "🎵", title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music", cta: "Log", kind: "reflect" },
       { active: r.podcastsActive, done: r.podcastsDone, slot: "afternoon" as CustomSlot, key: "podcasts", emoji: "🎙️", title: "Podcasts", eyebrow: "A podcast episode", subtitle: "Log what you listened to", cta: "Log", kind: "reflect" },
       { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), key: "walk", emoji: "🚶🏽", title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "A walk as prayer", cta: "Log", kind: "office" },
       { active: r.visioActive, done: r.visioDone, slot: getPracticeSlot("visio"), key: "visio", emoji: "🖼️", title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image", cta: "Begin", kind: "office" },
+      /**
+       * THE THREE INBOX PRACTICES AND THE ICON, which this mirror was missing.
+       *
+       * This list is a hand-kept copy of DailyProgressBody's cards, and the
+       * file's own note further down records the last time it fell behind
+       * ("silently dropped cobreathe, listening, walk, reading, examen … from
+       * the count"). It had fallen behind again: with these absent, a day whose
+       * only remaining practice was the icon, the Taizé meditation or
+       * Chittister's weekly showed "The day is kept" on the widget while the
+       * app still had it outstanding — and the dots disagreed with the app's
+       * too, because doneCount and totalAnchors are counted from this array.
+       */
+      { active: r.iconsActive, done: r.iconsDone, slot: "anytime" as CustomSlot, key: "icons", emoji: "🪟", title: "Praying with Icons", eyebrow: "This week's icon", subtitle: "One icon for the week", cta: "Begin", kind: "office" },
+      { active: r.taizeActive, done: r.taizeDone, slot: getPracticeSlot("taize"), key: "taize", emoji: "🕯️", title: "Taizé meditation", eyebrow: "Taizé", subtitle: "The newest meditation from Taizé", cta: "Read", kind: "reflect" },
+      { active: r.chittisterActive, done: r.chittisterDone, slot: getPracticeSlot("chittister"), key: "chittister", emoji: "🌾", title: "Vision and Viewpoint", eyebrow: "Joan Chittister", subtitle: "Joan Chittister's weekly", cta: "Read", kind: "reflect" },
       // Compline rides the evening slot — same fixed placement the home card
       // and the header dot use (it IS the night office, so no slot picker).
       { active: r.complineActive, done: r.complineDone, slot: "evening", key: "compline", emoji: "🌙", title: "Compline", eyebrow: "The night office", subtitle: "The night office", cta: "Begin", kind: "office" },
@@ -396,6 +413,9 @@ export function useWidgetSync(): void {
       novena: "/novena",
       compline: "/bcp/daily-office?mode=compline",
       "reflect-vts": "/vts-reading",
+      icons: "/icon-prayer",
+      taize: "https://www.taize.fr/en/tag/meditations",
+      chittister: "https://www.joanchittister.org/pages/newsletters",
     };
     const contemplationHref = (side: "morning" | "evening", kind: string): string => {
       if (kind === "walk") return "";

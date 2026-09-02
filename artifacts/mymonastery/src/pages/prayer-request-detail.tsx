@@ -613,46 +613,18 @@ export default function PrayerRequestDetailPage() {
               // for this" composer. (Mirrors the owner view's engagement
               // surface; kept inline so the owner view stays untouched.)
               <div className="w-full flex flex-col items-center text-center gap-4">
-                {data.amenCountTotal > 0 ? (
-                  <p
-                    className="text-[13px]"
-                    style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
-                  >
-                    {t("prayer_request_detail.prayed_for_you", { count: data.amenCountTotal })}
-                  </p>
-                ) : (
-                  <p
-                    className="text-[13px] italic"
-                    style={{ color: "rgba(143,175,150,0.7)", fontFamily: "Georgia, 'Times New Roman', serif" }}
-                  >
-                    {t("prayer_request_detail.tagged_awaiting")}
-                  </p>
-                )}
-
-                {/* Avatar rail — everyone who prayed for you, recent first. */}
-                {data.amens.length > 0 && (
-                  <div className="flex items-center justify-center">
-                    {data.amens.slice(0, 8).map((a, i) => (
-                      <div
-                        key={`${a.userId}-${a.prayedAt}`}
-                        className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden border-2"
-                        style={{ borderColor: SLIDE_BG, marginLeft: i === 0 ? 0 : -8, background: "#1A4A2E", color: "#A8C5A0" }}
-                        title={a.userName ?? t("prayer_request_detail.someone")}
-                      >
-                        {a.userAvatarUrl ? (
-                          <img src={a.userAvatarUrl} alt={a.userName ?? t("prayer_request_detail.someone")} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-[11px] font-semibold">{initials(a.userName ?? "")}</span>
-                        )}
-                      </div>
-                    ))}
-                    {data.amens.length > 8 && (
-                      <span className="ml-2 text-[11px]" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                        +{data.amens.length - 8}
-                      </span>
-                    )}
-                  </div>
-                )}
+                {/**
+                  * No count, no faces (owner: "take out the indication of
+                  * who prayed the prayer requests… no count"). Held in
+                  * prayer is between the person and God; this page no
+                  * longer keeps a tally or a rail of who did it.
+                  */}
+                <p
+                  className="text-[13px] italic"
+                  style={{ color: "rgba(143,175,150,0.7)", fontFamily: "Georgia, 'Times New Roman', serif" }}
+                >
+                  {t("prayer_request_detail.tagged_awaiting")}
+                </p>
 
                 {/* Words of comfort left on the request, newest first. */}
                 {data.words.length > 0 && (
@@ -828,51 +800,8 @@ export default function PrayerRequestDetailPage() {
             />
 
 
-            {/* Featured amen — pulses the pray-er the first-amen push is
-                heralding. Only shown when the viewer arrived from that
-                push (?amen=1); opening from the prayer list shows the
-                count + faces row below, but no single featured amen. */}
-            {fromAmenPush && data.amens.length > 0 && (() => {
-              const latestAmen = data.amens[0];
-              const latestAmenName = latestAmen.userName ?? t("prayer_request_detail.someone");
-              return (
-                <div className="w-full flex flex-col items-center text-center gap-3 mt-2">
-                  {latestAmen.userAvatarUrl ? (
-                    <img
-                      src={latestAmen.userAvatarUrl}
-                      alt={latestAmenName}
-                      className="w-14 h-14 rounded-full object-cover prayer-avatar-pulse"
-                    />
-                  ) : (
-                    <div
-                      className="w-14 h-14 rounded-full flex items-center justify-center text-base font-semibold prayer-avatar-pulse"
-                      style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-                    >
-                      {initials(latestAmenName)}
-                    </div>
-                  )}
-                  <p
-                    className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-                    style={{ color: "rgba(143,175,150,0.5)" }}
-                  >
-                    {t("prayer_request_detail.amen_from", { name: latestAmenName })}
-                  </p>
-                </div>
-              );
-            })()}
-
-            {data.amenCountTotal > 0 && (
-              <p
-                className="text-[13px]"
-                style={{
-                  color: "#C8D4C0",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}
-              >
-                {t("prayer_request_detail.prayed_n", { count: data.amenCountTotal })}
-              </p>
-            )}
-
+            {/* No featured amen, no count (owner: "take out the indication
+                of who prayed the prayer requests… no count"). */}
             {data.amens.length === 0 && !showRenewSlide && (
               <p
                 className="text-[13px] italic"
@@ -920,54 +849,7 @@ export default function PrayerRequestDetailPage() {
                 <ShareLinkIconButton /> above. The old inline pill is
                 gone. */}
 
-            {/* Avatar rail — every distinct pray-er, most recent first. Shown
-                whenever anyone has prayed (a single pray-er used to be hidden by
-                a `> 1` gate, so an owner who opened the request without ?amen=1
-                saw the count but never the face). When the viewer arrived from
-                the first-amen push, amens[0] is ALREADY the big featured pulse
-                above, so we drop it from the rail to avoid showing that face
-                twice. */}
-            {(() => {
-              const railAmens = fromAmenPush ? data.amens.slice(1) : data.amens;
-              if (railAmens.length === 0) return null;
-              return (
-                <div className="flex items-center justify-center -mt-1">
-                  {railAmens.slice(0, 8).map((a, i) => (
-                    <div
-                      key={`${a.userId}-${a.prayedAt}`}
-                      className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden border-2"
-                      style={{
-                        borderColor: SLIDE_BG,
-                        marginLeft: i === 0 ? 0 : -8,
-                        background: "#1A4A2E",
-                        color: "#A8C5A0",
-                      }}
-                      title={a.userName ?? t("prayer_request_detail.someone")}
-                    >
-                      {a.userAvatarUrl ? (
-                        <img
-                          src={a.userAvatarUrl}
-                          alt={a.userName ?? t("prayer_request_detail.someone")}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-[11px] font-semibold">
-                          {initials(a.userName ?? "")}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                  {railAmens.length > 8 && (
-                    <span
-                      className="ml-2 text-[11px]"
-                      style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
-                    >
-                      +{railAmens.length - 8}
-                    </span>
-                  )}
-                </div>
-              );
-            })()}
+            {/* No avatar rail (owner: no indication of who prayed, no count). */}
 
             {/* Every word of comfort, newest first. */}
             {data.words.length > 0 && (

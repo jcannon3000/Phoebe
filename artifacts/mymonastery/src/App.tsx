@@ -822,6 +822,22 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // All personal practices — a reflection reader, a listening session, and
   // three tap-to-log surfaces — with no social surface between them.
   "/reflect/cac", "/listening", "/walk-log", "/reading-log", "/podcast-log",
+  /**
+   * THE DEAN'S COMMENTARY'S OWN READER. Owner: "THE VTS NEWSLETTER IS STILL
+   * ADMIN GATED … EVEN THOUGH IT SHOWS UP IN THE ROUTINE, it cant be viewed
+   * once its opened."
+   *
+   * That is this list, and the reason it read as an ADMIN gate is the note
+   * above: `useGuestMode` is true for any signed-in account that is not beta
+   * or a community admin. So the card appeared in the rhythm for everyone —
+   * the entitlement was opened up deliberately — and tapping it bounced every
+   * ordinary reader straight back to the dashboard. Only an admin could
+   * actually read it, which is exactly what he saw.
+   *
+   * /novena is here for the same reason: its card is on the home and its
+   * route was never allow-listed either.
+   */
+  "/vts-reading", "/novena",
   // The branching questionnaire that ENDS in a rule — reached from inside the
   // already-allowlisted /rule-of-life flow, so excluding it broke that flow
   // partway through.
