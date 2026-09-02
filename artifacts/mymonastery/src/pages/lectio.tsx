@@ -52,8 +52,34 @@ const PROMPTS = [
   "As you return to the reading a final time, consider what God may be calling you to do through the reading.",
 ];
 
-const PICK = 0, PROMPT1 = 1, PROMPT2 = 2, PROMPT3 = 3, CLOSE = 4;
+/**
+ * THE READING IS A SLIDE, not a side-trip (owner: "it says one of four, which
+ * is only counting the prompt slides … the reading should be counted as
+ * slides").
+ *
+ * Before this the deck was PICK → three prompts → close, and the passage was
+ * opened as a side effect of leaving each prompt. So the counter read "1 of 4"
+ * while the practice actually has seven beats, and the three readings — the
+ * substance of Lectio — were invisible to the navigation.
+ *
+ * Now each round is READ then REFLECT, which is also the order the prompts
+ * describe ("as you read the passage for the first time…"). The read slide is
+ * shaped like the Daily Office's lesson_title and behaves like it: its Next
+ * OPENS the passage and advances, which is the precedent bcp-daily-office
+ * already set for a lesson.
+ */
+const PICK = 0;
+const READ1 = 1, PROMPT1 = 2, READ2 = 3, PROMPT2 = 4, READ3 = 5, PROMPT3 = 6, CLOSE = 7;
 const LAST = CLOSE;
+const READ_STEPS = [READ1, READ2, READ3];
+const PROMPT_STEPS = [PROMPT1, PROMPT2, PROMPT3];
+/** Which round (0-2) a read/prompt step belongs to — drives the prompt text. */
+function roundOf(step: number): number {
+  const i = PROMPT_STEPS.indexOf(step);
+  if (i >= 0) return i;
+  const r = READ_STEPS.indexOf(step);
+  return r >= 0 ? r : 0;
+}
 
 export default function LectioPage() {
   const [, setLocation] = useLocation();
@@ -90,9 +116,9 @@ export default function LectioPage() {
   };
 
   const pickLesson = (o: LessonOption) => {
-    // Picking just seats the first prompt — nothing opens yet. Reading
-    // happens on the way OUT of each prompt, not on the way in.
-    guardedAdvance(() => { setChosen(o); setStep(PROMPT1); });
+    // Picking seats the first READ slide — nothing opens yet. The passage
+    // opens from that slide's own Next, the way a lesson does in the office.
+    guardedAdvance(() => { setChosen(o); setStep(READ1); });
   };
 
   const finish = () => {
@@ -102,14 +128,20 @@ export default function LectioPage() {
 
   const onNext = () => guardedAdvance(() => {
     if (step === LAST) { finish(); return; }
-    // Every prompt (1, 2, and 3) opens the passage on its way to the next
-    // beat — the third open lands on the closing slide, not on a fourth
-    // prompt.
-    if (chosen) void openExternal(chosen.readUrl);
+    // ONLY a read slide opens the passage. Before, every prompt opened it on
+    // the way out, which is why the reading never had a beat of its own.
+    if (READ_STEPS.includes(step) && chosen) void openExternal(chosen.readUrl);
     setStep((s) => (s < LAST ? s + 1 : s));
   });
 
-  const stepLabel = atStart ? null : `${step} of ${LAST}`;
+  // "3 of 7 · READ" — the same shape the office uses ("{slideIdx + 1} of
+  // {slides.length} · {sectionLabel}"), so the two decks read alike.
+  const sectionLabel = READ_STEPS.includes(step)
+    ? "Read"
+    : PROMPT_STEPS.includes(step)
+      ? "Reflect"
+      : step === CLOSE ? "Pray" : "";
+  const stepLabel = atStart ? null : `${step} of ${LAST} · ${sectionLabel}`;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: DECK_BG, overflow: "hidden" }}>
@@ -194,13 +226,34 @@ export default function LectioPage() {
               </>
             )}
 
-            {(step === PROMPT1 || step === PROMPT2 || step === PROMPT3) && (
+            {/* THE READING, as its own slide — the Daily Office's lesson_title
+                shape: a quiet eyebrow, the reference large, and the round it
+                belongs to. Next opens the passage (see onNext), exactly as a
+                lesson's Next does in that deck. */}
+            {READ_STEPS.includes(step) && (
+              <>
+                <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", margin: "0 0 14px" }}>
+                  {chosen ? KIND_LABEL[chosen.kind] : ""}
+                  {roundOf(step) === 0 ? " · First reading" : roundOf(step) === 1 ? " · Second reading" : " · Third reading"}
+                </p>
+                <h2 className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.25, margin: "0 0 12px" }}>
+                  {chosen?.reference}
+                </h2>
+                <p style={{ color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 15, lineHeight: 1.6, margin: 0 }}>
+                  {roundOf(step) === 0
+                    ? "Read it slowly. Next opens the passage."
+                    : "Return to it. Next opens the passage again."}
+                </p>
+              </>
+            )}
+
+            {PROMPT_STEPS.includes(step) && (
               <>
                 <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", margin: "0 0 14px" }}>
                   {chosen?.reference}
                 </p>
                 <p className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, margin: 0 }}>
-                  {PROMPTS[step - PROMPT1]}
+                  {PROMPTS[roundOf(step)]}
                 </p>
               </>
             )}
@@ -216,8 +269,14 @@ export default function LectioPage() {
 
       {/* Bottom nav pill — Back · step counter · Next/Done. Matches the
           Daily Office's own bottom pill exactly (its own comment: "Mirrors
-          Lectio" — this is what brings the two back in sync). */}
-      <nav
+          Lectio" — this is what brings the two back in sync).
+          HIDDEN ENTIRELY ON THE CHOOSER (owner: "back button at the bottom of
+          the different options on the intro page — we need to get rid of
+          that"). It used to render there disabled at 20% opacity, which is a
+          dimmed control rather than no control: there is nothing to go back
+          to from the first screen, and nothing to advance to until a reading
+          is picked, so the whole bar has no work to do. */}
+      {!atStart && <nav
         aria-label="Slide navigation"
         style={{
           position: "fixed", left: "50%", bottom: "calc(env(safe-area-inset-bottom) + 16px)",
@@ -232,11 +291,14 @@ export default function LectioPage() {
           <button
             type="button"
             onClick={prev}
-            disabled={atStart}
+            /* No `disabled`/dimming here any more: this bar only renders
+               past the chooser (see the nav's own comment), so Back always has
+               somewhere to go — back to the picker from the first read, and a
+               beat at a time after that. */
             style={{
               color: WARM, background: "transparent", border: `1px solid ${DECK_BORDER}`,
               borderRadius: 999, padding: "6px 14px", fontSize: 12, fontFamily: SPACE_GROTESK,
-              fontWeight: 600, cursor: atStart ? "default" : "pointer", opacity: atStart ? 0.2 : 1,
+              fontWeight: 600, cursor: "pointer",
             }}
           >
             Back
@@ -246,7 +308,7 @@ export default function LectioPage() {
               {stepLabel}
             </p>
           )}
-          {!atStart && (
+          {(
             <button
               type="button"
               onClick={onNext}
@@ -260,7 +322,7 @@ export default function LectioPage() {
             </button>
           )}
         </div>
-      </nav>
+      </nav>}
     </div>
   );
 }
