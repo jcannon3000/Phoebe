@@ -208,6 +208,20 @@ router.patch("/prayer-intentions/:id", async (req, res) => {
     }
     if (typeof shared === "boolean") { sets.push(`shared = $${i++}`); vals.push(shared); }
     if (typeof sharedRequestId === "number" || sharedRequestId === null) {
+      // sharedRequestId links this private intention to a prayer_requests row
+      // the client just created by posting the intention to a community. It
+      // arrived unvalidated — the caller could point it at ANY request id,
+      // including one they don't own, and the "Shared" card would then link
+      // to someone else's request. The by-id route's own visibility gate
+      // (garden/tag checks) stops that from leaking a body, but it's still
+      // a broken/misleading pointer for no reason — require ownership here.
+      if (typeof sharedRequestId === "number") {
+        const owns = await pool.query(
+          `SELECT id FROM prayer_requests WHERE id = $1 AND owner_id = $2`,
+          [sharedRequestId, user.id],
+        );
+        if (owns.rows.length === 0) return res.status(400).json({ error: "Invalid sharedRequestId" });
+      }
       sets.push(`shared_request_id = $${i++}`); vals.push(sharedRequestId ?? null);
     }
     if (sets.length === 0) return res.status(400).json({ error: "Nothing to update" });

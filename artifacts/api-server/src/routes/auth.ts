@@ -186,11 +186,24 @@ router.get("/auth/me", async (req, res) => {
     restDays: number[];
     pushEnabled: boolean;
     emailEnabled: boolean;
+    officesOnly: boolean;
   };
-  // Access tier. Phoebe Parish has been removed, so every user reads as
-  // the "full" tier — no DB round-trip, no downgrade. Kept on the payload
-  // so the client's useAuth() shape is unchanged.
-  const access = { tier: "full" as const, parishFeedId: null, parishSlug: null };
+  // Access tier. Phoebe Parish has been removed, so parish-only/unassigned
+  // are dead — but offices-only signups (public-prayer.tsx still POSTs
+  // { officesOnly: true } to /auth/signup) are very much alive, and
+  // blockOfficesOnly (routes/index.ts) still 403s them on most prefixes
+  // using the raw users.offices_only column. This response used to
+  // hardcode "full" for every user regardless of that column, so an
+  // offices-only signup's OWN client thought it had full access — every
+  // `accessTier === "offices-only"` branch (onboarding, bcp-daily-office)
+  // silently never fired — right up until the same user tapped something
+  // blockOfficesOnly blocks and got a 403 out of nowhere. Read the real
+  // column instead of assuming the tier away.
+  const access = {
+    tier: (u.officesOnly ? "offices-only" : "full") as "full" | "offices-only",
+    parishFeedId: null,
+    parishSlug: null,
+  };
   // These five lookups are INDEPENDENT — none uses another's result — yet this is
   // the hottest authenticated endpoint (every app/PWA open). Running them
   // sequentially made the handler's latency the SUM of five round-trips; issuing
