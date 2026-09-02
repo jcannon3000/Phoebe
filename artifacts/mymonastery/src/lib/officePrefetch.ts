@@ -70,6 +70,17 @@ function modeForSide(side: OfficeSide): LiturgyMode | null {
 function modeForLevel(side: OfficeSide, level: string | null): LiturgyMode | null {
   if (level === "office") return side === "morning" ? "morning" : "evening";
   if (level === "devotion") return side === "morning" ? "morning-devotion" : "early-evening-devotion";
+  /**
+   * CREATION PRAYER — it had an endpoint in MODE_ENDPOINT and no way to reach
+   * it. `creation` is a real side level (WayOfLoveRuleFlow's prayFromLevel
+   * returns it, and /creation-devotion?mode=creation-<side> renders through the
+   * same office deck), but this function returned null for it, so
+   * fetchAndCacheOne was never called with "creation-morning" or
+   * "creation-evening" — the two map entries existed and nothing ever asked for
+   * them. Anyone whose office IS Creation Prayer had no offline copy at all,
+   * while the code read as though they did.
+   */
+  if (level === "creation") return side === "morning" ? "creation-morning" : "creation-evening";
   return null;
 }
 
@@ -162,6 +173,17 @@ export async function runOfficePrefetch(): Promise<void> {
       // Compline has no side/level of its own — always available every
       // evening, so always warmed regardless of either side's rule.
       jobs.push(() => fetchAndCacheOne("compline", date, ""));
+      /**
+       * The Daily Scripture Reading, on the same footing as Compline.
+       *
+       * MODE_ENDPOINT has carried "scripture" — with a comment saying it "is
+       * prefetched like one" — while NOTHING ever requested it. It isn't a side
+       * LEVEL (it opens from Practices as /bcp/daily-office?mode=scripture), so
+       * modeForSide could never yield it, and the map entry sat inert. Warmed
+       * unconditionally here for the same reason Compline is: it has no side of
+       * its own and is available every day.
+       */
+      jobs.push(() => fetchAndCacheOne("scripture", date, ""));
     }
     if (jobs.length > 0) await runQueue(jobs);
   } catch { /* best-effort — never surface a prefetch failure to the user */ }
