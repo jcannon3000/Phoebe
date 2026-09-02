@@ -44,8 +44,14 @@ const PROMPTS = [
   "As you return to this passage a second time, consider how God may be speaking to you in this moment.",
   "As you return to the reading a final time, consider what God may be calling you to do through the reading.",
 ];
+const READ_EYEBROW = ["THE READING", "READ IT AGAIN", "ONE FINAL TIME"];
 
-const PICK = 0, PROMPT1 = 1, PROMPT2 = 2, PROMPT3 = 3, CLOSE = 4;
+// Read gets its own slide before each prompt (owner: "as the next slide,
+// like the daily scripture slideshow") — same reference-card + Read-online
+// treatment the Daily Office's lesson_title slide uses, opened exactly the
+// same way (openExternal, no in-app text — owner declined the bundled WEB
+// translation; NRSV via bibleGatewayUrl only).
+const PICK = 0, READ1 = 1, PROMPT1 = 2, READ2 = 3, PROMPT2 = 4, READ3 = 5, PROMPT3 = 6, CLOSE = 7;
 const LAST = CLOSE;
 
 export default function LectioPage() {
@@ -149,27 +155,36 @@ export default function LectioPage() {
               </>
             )}
 
-            {(step === PROMPT1 || step === PROMPT2 || step === PROMPT3) && (
+            {/* THE READING — its own slide, styled like the Daily Office's
+                lesson_title card (eyebrow + big reference + a Read pill that
+                opens externally exactly the same way that deck already
+                does: openExternal(readUrl), no in-app text). */}
+            {(step === READ1 || step === READ2 || step === READ3) && (
               <>
-                {/* The reference itself is the way out to the passage — a
-                    separate "Read the passage" button next to Continue read
-                    as two competing actions on the same slide (owner). */}
+                <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 16px", fontWeight: 600 }}>
+                  {READ_EYEBROW[(step - READ1) / 2]}
+                </p>
+                <h1 className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 32, fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1.1, margin: "0 0 28px" }}>
+                  {chosen?.reference}
+                </h1>
                 <button
                   onClick={openPassage}
                   style={{
                     userSelect: "none", WebkitTapHighlightColor: "transparent",
-                    background: "none", border: "none", cursor: "pointer", padding: 0,
-                    color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5,
-                    letterSpacing: "0.16em", textTransform: "uppercase", margin: "0 0 14px",
-                    textDecoration: "underline", textUnderlineOffset: 3,
+                    borderRadius: 999, padding: "12px 24px",
+                    fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer",
+                    ...FROST_CTA, border: `1px solid ${DECK_BORDER}`, color: WARM,
                   }}
                 >
-                  {chosen?.reference} →
+                  Read in your Bible →
                 </button>
-                <p className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, margin: 0 }}>
-                  {PROMPTS[step - PROMPT1]}
-                </p>
               </>
+            )}
+
+            {(step === PROMPT1 || step === PROMPT2 || step === PROMPT3) && (
+              <p className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, margin: 0 }}>
+                {PROMPTS[(step - PROMPT1) / 2]}
+              </p>
             )}
 
             {step === CLOSE && (

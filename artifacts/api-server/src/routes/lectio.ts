@@ -13,12 +13,12 @@
 // distinction). A PURE lectionary lookup, no slide assembly, no DB write —
 // same shape as /office/readings, cheap enough for every app open.
 //
-// This app has no in-app Bible text for anything but the Psalms (see
-// assembleLesson.ts: "No inline WEB text ... per product direction") — a
-// lesson is always a reference + an external read link. Lectio follows
-// that same rule rather than inventing an in-app reader: each read beat
-// links out (oremus/BibleGateway via bibleGatewayUrl), the reflection
-// prompts live in the app either side of it.
+// The passage gets its own dedicated slide — owner: "as the next slide, like
+// the daily scripture slideshow" — styled like that deck's lesson_title card
+// (big reference, eyebrow, a Read pill), not tucked into a corner of the
+// prompt slide. Text itself stays external (owner explicitly declined the
+// bundled WEB translation): oremus.org (NRSV) via bibleGatewayUrl, same
+// source the office's own NRSV toggle already opens.
 import { Router } from "express";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { getLectionaryReadings } from "../lib/lectionary";
