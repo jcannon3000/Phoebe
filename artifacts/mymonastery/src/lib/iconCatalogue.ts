@@ -1338,24 +1338,6 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "attribution": "Lydia of Thyatira, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: https://www.flickr.com/photos/captspaulding/24499073678/ - CaptSpalding."
  },
  {
-  "id": 57094,
-  "title": "Saint of the Gulf",
-  "artist": "Pittman, Lauren Wright",
-  "date": "2018",
-  "where": "United States",
-  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/lewpstudio_saintofthegulf_thumbnail.jpg",
-  "people": [],
-  "refs": [],
-  "days": [],
-  "subjects": [
-   "Pelican",
-   "Birds"
-  ],
-  "act": "https://act.library.vanderbilt.edu/artworks/57094",
-  "licence": "Used by permission of the artist (non-commercial, with attribution)",
-  "attribution": "Pittman, Lauren Wright. Saint of the Gulf, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Lauren Wright Pittman, http://www.lewpstudio.com/."
- },
- {
   "id": 57100,
   "title": "Martin Luther King, Jr.",
   "artist": "Latimore, Kelly",
