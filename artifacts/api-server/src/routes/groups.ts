@@ -1068,8 +1068,15 @@ router.get("/groups/:slug/metrics-debug", async (req, res): Promise<void> => {
   const result = await requireAdmin(String(req.params.slug ?? ""), user.id);
   if (!result) { res.status(403).json({ error: "Admin only" }); return; }
 
-  const [adminUser] = await db.select({ timezone: usersTable.timezone })
+  // Beta gate — /metrics (the aggregate this debugs) requires beta status;
+  // this raw-row view was missing the same check, so a group admin who
+  // isn't a beta user could still reach it even though the feature it's
+  // debugging is beta-gated everywhere else.
+  const [adminUser] = await db.select({ email: usersTable.email, timezone: usersTable.timezone })
     .from(usersTable).where(eq(usersTable.id, user.id));
+  if (!adminUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const beta = await safeBetaLookup(adminUser.email);
+  if (!beta) { res.status(403).json({ error: "Metrics are beta only for now" }); return; }
   const tz = adminUser?.timezone || "UTC";
   const todayStr = (() => {
     try { return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date()); }
@@ -1098,9 +1105,16 @@ router.get("/groups/:slug/metrics-debug", async (req, res): Promise<void> => {
         WHERE mp.is_checkin = 1
       ),
       amens AS (
+        -- request_id deliberately NOT selected: a member's amen can land on
+        -- a request outside this community entirely (another group, or a
+        -- private/directed request this admin has no visibility into
+        -- anywhere else in the app). This debug view exists to check
+        -- whether writes landed and how they bucketed by day/tz, not to
+        -- hand a group admin a feed of exactly which requests a member
+        -- has been engaging with app-wide.
         SELECT a.user_id,
                to_char((a.prayed_at AT TIME ZONE $2)::date, 'YYYY-MM-DD') AS day,
-               a.prayed_at, a.request_id
+               a.prayed_at
         FROM prayer_request_amens a
         WHERE a.user_id IN (SELECT user_id FROM members)
       )
