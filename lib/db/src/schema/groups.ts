@@ -118,6 +118,21 @@ export const groupsTable = pgTable("groups", {
   // scoping target even if this flag is stale-true from before the group
   // went public).
   prayerRequestsEnabled: boolean("prayer_requests_enabled").notNull().default(false),
+  /**
+   * THE FULL CAC LIBRARY, for a pilot group (owner: "members of special pilot
+   * groups would be able to see the full library" … "only super admins could
+   * turn this on for groups").
+   *
+   * Per-GROUP rather than per-user on purpose: the ask is about a parish or
+   * cohort being given access together, and a group flag is one row to set and
+   * one row to revoke. A member sees the library if ANY group they belong to
+   * has this on — see GET /me/cac-library.
+   *
+   * Only a super admin may change it. A group's own admin cannot grant their
+   * congregation access to someone else's catalogue, which is the whole point
+   * of the gate: what is being handed out is CAC's material, not Phoebe's.
+   */
+  cacLibraryEnabled: boolean("cac_library_enabled").notNull().default(false),
 });
 
 // ── Group join requests ────────────────────────────────────────────────────

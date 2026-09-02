@@ -2,6 +2,7 @@ import { useLocation } from "wouter";
 import { MenuHub } from "@/components/MenuHub";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { useCacLibrary } from "@/hooks/useCacLibrary";
 
 // Learn — the guided courses, as their own menu category (the drawer's Learn
 // row and /menu's Learn group both land here). Centering Prayer and the deeper
@@ -28,6 +29,9 @@ export default function MenuLearnPage() {
    * isNativeShell() branch.
    */
   const { isBeta, isAdmin } = useBetaStatus();
+  // Pilot groups too — the SAME test the three CAC pages use to admit a
+  // visitor, so this row is never offered to someone they turn away.
+  const { enabled: cacLibraryGranted } = useCacLibrary();
   return (
     <MenuHub
       title="Learn"
@@ -42,7 +46,7 @@ export default function MenuLearnPage() {
             { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") },
           ] : []),
           { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") },
-          ...(isBeta || isAdmin ? [
+          ...(isBeta || isAdmin || cacLibraryGranted ? [
             { emoji: "🌵", label: "CAC Courses", sub: "Rohr, Finley and McLaren — a season at a time", onClick: () => go("/cac-courses") },
           ] : []),
         ],

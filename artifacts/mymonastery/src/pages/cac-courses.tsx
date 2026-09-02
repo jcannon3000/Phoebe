@@ -15,12 +15,14 @@ import { Layout } from "@/components/layout";
 import { useCacCourses, courseCompletion } from "@/lib/cacCourses";
 import { useAnyCourseProgressTick } from "@/lib/courseProgress";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { useCacLibrary } from "@/hooks/useCacLibrary";
 import { CAC, CacFrame, CacBetaPill, useCacLeafBg } from "@/lib/cacTheme";
 
 const FROST = { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } as const;
 
 export default function CacCoursesPage() {
   const { isBeta, isAdmin } = useBetaStatus();
+  const { enabled: cacLibraryGranted } = useCacLibrary();
   const { data, isLoading } = useCacCourses();
   const leafBg = useCacLeafBg();
   // Re-render when any season's progress changes, so a show you just
@@ -47,7 +49,14 @@ export default function CacCoursesPage() {
     return [...byShow.values()].sort((a, b) => (a.started === b.started ? 0 : a.started ? -1 : 1));
   }, [courses]);
 
-  if (!isBeta && !isAdmin) {
+  /**
+   * PILOT-GROUP ACCESS (owner: "members of special pilot groups would be able
+   * to see the full library"). Same expression in all four places that gate
+   * this feature — the three CAC pages and the Learn row — so a row can never
+   * be offered to someone the page then turns away, or hidden from someone who
+   * may use it. Widen one, widen all.
+   */
+  if (!isBeta && !isAdmin && !cacLibraryGranted) {
     return (
       <Layout bgPhoto={leafBg}>
         <CacFrame>

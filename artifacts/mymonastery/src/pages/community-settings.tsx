@@ -31,6 +31,7 @@ type Group = {
   // Owner: "a setting in groups to turn on and off prayer list." Hard-off
   // (and un-editable) whenever isPublic is true — see the server route.
   prayerRequestsEnabled?: boolean;
+  cacLibraryEnabled?: boolean;
 };
 
 type Intention = {
@@ -105,6 +106,28 @@ export default function CommunitySettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+  });
+
+  /**
+   * The full CAC library for this group (owner: "members of special pilot
+   * groups would be able to see the full library" … "only super admins could
+   * turn this on for groups").
+   *
+   * Its own PATCH, like the pilot toggle above and unlike the Save button:
+   * a grant of someone else's catalogue should take effect when it is flipped,
+   * not when an unrelated form is submitted.
+   *
+   * The server refuses this for anyone who isn't a super admin — including
+   * this group's own admins — so the UI gate below is convenience, not the
+   * boundary. Invalidates /me/cac-library too, or the person who just granted
+   * it keeps seeing the old answer until the cache ages out.
+   */
+  const cacLibraryMutation = useMutation({
+    mutationFn: (on: boolean) => apiRequest("PATCH", `/api/groups/${slug}/cac-library`, { enabled: on }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/cac-library"] });
     },
   });
 
@@ -665,6 +688,37 @@ export default function CommunitySettingsPage() {
                 </p>
                 <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
                   {t("community_settings.pilot_group_desc", { defaultValue: "Members of a pilot group get the full app. Everyone else uses the simplified public version. Visible to app administrators only." })}
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
+
+        {/* The full CAC library — super admins only, same as Pilot group above.
+            Separate from Pilot deliberately: a pilot group gets the full APP,
+            which is Phoebe's to give; this opens the Center for Action and
+            Contemplation's shows, which is not, so it is granted on its own
+            and can be revoked on its own. */}
+        {amSuper?.isSuperAdmin && (
+          <div
+            className="rounded-xl px-4 py-3.5 mb-4"
+            style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(168,197,160,0.35)" }}
+          >
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={groupData?.group?.cacLibraryEnabled === true}
+                disabled={cacLibraryMutation.isPending}
+                onChange={(e) => cacLibraryMutation.mutate(e.target.checked)}
+                className="mt-1 w-4 h-4 flex-shrink-0 rounded"
+                style={{ accentColor: "#2D5E3F" }}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
+                  {t("community_settings.cac_library", { defaultValue: "Full CAC library" })}
+                </p>
+                <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
+                  {t("community_settings.cac_library_desc", { defaultValue: "Members of this community can browse the Center for Action and Contemplation's shows and seasons under Learn. Visible to app administrators only." })}
                 </p>
               </div>
             </label>
