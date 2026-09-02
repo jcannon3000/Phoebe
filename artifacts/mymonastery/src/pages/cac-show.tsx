@@ -68,7 +68,7 @@ function SeasonRow({ course }: { course: CacCourse }) {
 }
 
 export default function CacShowPage() {
-  const { isBeta, isAdmin } = useBetaStatus();
+  const { isAdmin } = useBetaStatus();
   const { enabled: cacLibraryGranted } = useCacLibrary();
   const { slug } = useParams<{ slug: string }>();
   const { data, isLoading } = useCacCourses();
@@ -86,13 +86,20 @@ export default function CacShowPage() {
   const completedSeasons = seasons.filter((c) => courseCompletion(c).isDone);
 
   /**
-   * PILOT-GROUP ACCESS (owner: "members of special pilot groups would be able
-   * to see the full library"). Same expression in all four places that gate
-   * this feature — the three CAC pages and the Learn row — so a row can never
-   * be offered to someone the page then turns away, or hidden from someone who
-   * may use it. Widen one, widen all.
+   * ADMINS AND GRANTED PILOT GROUPS ONLY (owner: "make sure that first that the
+   * CAC courses are only showing up for the admins").
+   *
+   * `isBeta` was deliberately DROPPED from this test. The page shipped gated on
+   * `!isBeta && !isAdmin`, which let every beta tester in — and what is behind
+   * it is the Center for Action and Contemplation's catalogue, not a Phoebe
+   * feature, so "anyone we happen to be testing with" is the wrong audience.
+   * Access is now a decision someone makes: a super admin, or a group a super
+   * admin granted it to.
+   *
+   * The same expression guards all four surfaces (this page, cac-show,
+   * cac-course, and the Learn row). Widen one, widen all.
    */
-  if (!isBeta && !isAdmin && !cacLibraryGranted) {
+  if (!isAdmin && !cacLibraryGranted) {
     return (
       <Layout bgPhoto={leafBg}>
         <CacFrame>

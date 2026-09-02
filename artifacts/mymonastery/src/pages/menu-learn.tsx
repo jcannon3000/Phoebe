@@ -28,7 +28,7 @@ export default function MenuLearnPage() {
    * YouTube courses above — it works on iOS as well as web, and needs no
    * isNativeShell() branch.
    */
-  const { isBeta, isAdmin } = useBetaStatus();
+  const { isAdmin } = useBetaStatus();
   // Pilot groups too — the SAME test the three CAC pages use to admit a
   // visitor, so this row is never offered to someone they turn away.
   const { enabled: cacLibraryGranted } = useCacLibrary();
@@ -46,7 +46,7 @@ export default function MenuLearnPage() {
             { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") },
           ] : []),
           { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") },
-          ...(isBeta || isAdmin || cacLibraryGranted ? [
+          ...(isAdmin || cacLibraryGranted ? [
             { emoji: "🌵", label: "CAC Courses", sub: "Rohr, Finley and McLaren — a season at a time", onClick: () => go("/cac-courses") },
           ] : []),
         ],
