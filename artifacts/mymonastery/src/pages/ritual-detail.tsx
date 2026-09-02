@@ -342,30 +342,6 @@ export default function RitualDetail() {
               )}
             </div>
 
-            {/* Member names + Add people */}
-            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {ritual.participants.slice(0, 3).map((p, i) => (
-                  <span
-                    key={i}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium"
-                    style={{
-                      border: "1px solid rgba(46,107,64,0.35)",
-                      background: "rgba(74,103,65,0.12)",
-                      color: "#C8D4C0",
-                    }}
-                    title={p.email}
-                  >
-                    {p.name || p.email.split("@")[0]}
-                  </span>
-                ))}
-                {ritual.participants.length > 3 && (
-                  <span className="text-xs font-medium px-2 py-1.5 rounded-full" style={{ color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}>
-                    {t("ritual_detail.more_count", { count: ritual.participants.length - 3 })}
-                  </span>
-                )}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -911,69 +887,11 @@ export default function RitualDetail() {
                 )}
               </div>
 
-              {/* Members — read-only membership display */}
-              {true && (
-                <div className="pt-6 border-t border-border/40">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-foreground">{t("ritual_detail.members")}</h3>
-                  </div>
-                  <div className="space-y-2">
-                    {ritual.participants.map((p: { name: string; email: string }) => {
-                      const isMe = p.email.toLowerCase() === user?.email?.toLowerCase();
-                      const isRemoving = removingEmail === p.email;
-                      return (
-                        <div key={p.email} className="flex items-center justify-between py-1.5">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-medium shrink-0">
-                              {p.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm text-foreground truncate">{p.name}{isMe ? t("ritual_detail.you_suffix") : ""}</p>
-                              <p className="text-xs text-muted-foreground/60 truncate">{p.email}</p>
-                            </div>
-                          </div>
-                          {!isMe && isOwner && (
-                            isRemoving ? (
-                              <div className="flex items-center gap-2 shrink-0 ml-2">
-                                <button
-                                  onClick={async () => {
-                                    setRemovingPending(true);
-                                    try {
-                                      await apiRequest("DELETE", `/api/rituals/${ritualId}/participants/${encodeURIComponent(p.email)}`);
-                                      queryClient.invalidateQueries({ queryKey: [`/api/rituals/${ritualId}`] });
-                                      queryClient.invalidateQueries({ queryKey: ["/api/rituals"] });
-                                      setRemovingEmail(null);
-                                    } catch { /* ignore */ }
-                                    setRemovingPending(false);
-                                  }}
-                                  disabled={removingPending}
-                                  className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors"
-                                >
-                                  {removingPending ? t("ritual_detail.removing") : t("ritual_detail.confirm")}
-                                </button>
-                                <button
-                                  onClick={() => setRemovingEmail(null)}
-                                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  {t("ritual_detail.cancel")}
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setRemovingEmail(p.email)}
-                                className="shrink-0 ml-2 text-xs text-muted-foreground/50 hover:text-rose-500 transition-colors px-2 py-1"
-                                title={t("ritual_detail.remove_member", { name: p.name })}
-                              >
-                                ✕
-                              </button>
-                            )
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {/* (The members roster stood here. A gathering has not had
+                  one since migrate.ts dropped `rituals.participants` — the
+                  server stopped sending the field and the API type stopped
+                  declaring it, so this block read something that no longer
+                  exists and would have thrown on render.) */}
 
               {user?.id === ritual.ownerId && (
                 <div className="pt-8 border-t border-border/20">

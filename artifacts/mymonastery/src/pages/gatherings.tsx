@@ -307,9 +307,6 @@ export default function GatheringsPage() {
   };
   for (const r of rituals ?? []) {
     const next = (r as any).nextMeetupDate ? parseISO((r as any).nextMeetupDate) : null;
-    const parts = ((r.participants ?? []) as any[])
-      .slice(0, 3).map((p: any) => (p.name || p.email || "").split(" ")[0]);
-    const extra = Math.max(0, ((r.participants ?? []) as any[]).length - 3);
     const template = (r as any).template as string | null | undefined;
     const emoji = (template && templateEmoji[template])
       ?? ((r as any).intercessionIntention ? "🙏🏽"
@@ -325,9 +322,12 @@ export default function GatheringsPage() {
       location: (r as any).location,
       href: `/ritual/${r.id}`,
       emoji,
-      participants: parts.length > 0
-        ? parts.join(", ") + (extra > 0 ? ` +${extra}` : "")
-        : undefined,
+      // NO PARTICIPANT NAMES. A gathering has not carried a roster since
+      // migrate.ts dropped `rituals.participants` — the server stopped
+      // sending the field and the API type stopped declaring it, and this
+      // read survived both. It was not a stale label: `r.participants` is
+      // undefined now, so the row simply showed nothing, and any code that
+      // reached past the `?? []` would have thrown.
     });
   }
 
