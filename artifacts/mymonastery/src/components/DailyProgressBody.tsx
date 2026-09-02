@@ -12,6 +12,8 @@ import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from 
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { ReadingBookSheet } from "@/components/ReadingBookSheet";
+import { getReadingBook, unlogReadingToday } from "@/lib/readingBook";
 import { useTranslation } from "react-i18next";
 import { getQueryClient, apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -721,6 +723,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // top with the other hooks — never after an early return (this repo's
   // recurring crash class).
   const visioToday = useVisioToday();
+  // The reading book, re-read whenever its sheet closes so the card's page
+  // number and bar move the moment a page is logged.
+  const [readingSheetOpen, setReadingSheetOpen] = useState(false);
+  const [readingBook, setReadingBook] = useState(() => getReadingBook());
   // ── The just-completed moment ────────────────────────────────────────────
   // Coming back from a practice, the card is already Done in state — so
   // without this it would simply be sitting in the Done list, with nothing to
@@ -770,7 +776,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeDone, taizeWaiting, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1050,6 +1056,22 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     onUnlog: () => unmarkPracticeDoneToday("icons"),
     title: t("rhythm.card_icons", { defaultValue: "Praying with Icons" }),
     blurb: iconsDone ? kept : t("rhythm.blurb_icons", { defaultValue: "Sit with this week's icon" }),
+    cta: t("common.begin", { defaultValue: "Begin" }),
+  };
+
+  /**
+   * MEDITATING ON SPIRITUALS — a song from Slave Songs of the United States
+   * (1867), sat with one line at a time.
+   *
+   * NO onUnlog. Every other optional practice unlogs by clearing its
+   * day-flag; this one records its sit in lib/spiritualsHistory instead, and
+   * undoing means removing a particular song from that record — which the
+   * practice page owns, not this card. Same reasoning as the Taizé card.
+   */
+  const spiritualsCard = {
+    key: "spirituals", emoji: "🎶", rgb: "150,120,90", done: spiritualsDone, href: "/spirituals",
+    title: t("rhythm.card_spirituals", { defaultValue: "Meditating on Spirituals" }),
+    blurb: spiritualsDone ? kept : t("rhythm.blurb_spirituals", { defaultValue: "Sit with a song, one line at a time" }),
     cta: t("common.begin", { defaultValue: "Begin" }),
   };
 
@@ -1594,6 +1616,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
     ...(visioActive ? [{ ...visioCard, slot: getPracticeSlot("visio") }] : []),
+    ...(spiritualsActive ? [{ ...spiritualsCard, slot: getPracticeSlot("spirituals") }] : []),
     ...(iconsActive ? [{ ...iconsCard, slot: getPracticeSlot("icons") }] : []),
     ...(taizeActive ? [{ ...taizeCard, slot: getPracticeSlot("taize") }] : []),
     // No slot lookup: it isn't a scheduled practice, it's post that arrived.
@@ -1612,11 +1635,33 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // meal, say). On an off day it simply isn't part of the rhythm — no card,
     // and nothing downstream counting a dot it can never fill.
     ...customAnchors.filter((a) => !a.skipped && anchorOnDay(a)).map((a) => ({ ...customCard(a), slot: a.slot })),
+    /**
+     * READING — a book, with a progress bar through it (owner: "just like the
+     * contemplation card in the daily flow, which has a progress bar … page
+     * thirty two of two hundred and thirty five").
+     *
+     * No href: the log is a POPUP (owner), so the card opens ReadingBookSheet
+     * rather than navigating. The sheet handles both states — setting the book
+     * up the first time, and asking for a page after that.
+     *
+     * `alwaysShowProgress` because this bar measures the BOOK, not today: it
+     * would be wrong for it to vanish the moment a page is logged, which is
+     * exactly when someone wants to see how far in they are. Same reason the
+     * novena's day count carries the flag.
+     */
     ...(readingActive ? [{
-      key: "reading", slot: getPracticeSlot("reading"), emoji: "📚", rgb: "108,140,180", done: readingDone, href: "/reading-log",
-      onUnlog: () => unmarkPracticeDoneToday("reading"),
-      title: t("rhythm.card_reading", { defaultValue: "Reading" }),
-      blurb: readingDone ? kept : t("rhythm.blurb_reading", { defaultValue: "Log what you read" }),
+      key: "reading", slot: getPracticeSlot("reading"), emoji: "📚", rgb: "108,140,180",
+      done: readingDone,
+      onClick: () => setReadingSheetOpen(true),
+      onUnlog: () => { unlogReadingToday(); unmarkPracticeDoneToday("reading"); },
+      title: readingBook ? readingBook.title : t("rhythm.card_reading", { defaultValue: "Reading" }),
+      blurb: readingBook
+        ? t("rhythm.blurb_reading_page", {
+            defaultValue: "Page {{page}} of {{total}}",
+            page: readingBook.currentPage, total: readingBook.totalPages,
+          })
+        : t("rhythm.blurb_reading_setup", { defaultValue: "Start a book" }),
+      ...(readingBook ? { progress: { current: readingBook.currentPage, goal: readingBook.totalPages }, alwaysShowProgress: true } : {}),
       cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
     }] : []),
     ...(podcastsActive ? [{
@@ -2314,6 +2359,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           />
         );
       })()}
+
+      {readingSheetOpen && (
+        <ReadingBookSheet
+          t={t}
+          onClose={() => { setReadingSheetOpen(false); setReadingBook(getReadingBook()); }}
+          onLogged={(b) => { setReadingBook(b); markPracticeDoneToday("reading"); }}
+          onSkip={() => setPracticeNotToday("reading")}
+        />
+      )}
 
       {/* Tapping the ✓ on a Done card opens this instead of navigating —
           Unlog puts it back in Next, Cancel just closes. */}

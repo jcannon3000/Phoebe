@@ -16,9 +16,12 @@ import { creditAnchorPractice } from "@/lib/officeManualLog";
 // "Today" is the user's LOCAL day (en-CA → ISO 2024-05-26), matching every
 // other rhythm surface.
 
-export type OptionalPractice = "examen" | "listening" | "reading" | "podcasts" | "walk" | "prayer-list" | "visio" | "icons" | "lectio";
+export type OptionalPractice = "examen" | "listening" | "reading" | "podcasts" | "walk" | "prayer-list" | "visio" | "icons" | "spirituals" | "lectio";
 
-function todayLocalISO(): string {
+/** Exported so the reading book can date its page logs with the SAME local
+ *  day these completion flags use — two different "today"s in one practice is
+ *  how a card goes done while its own record says yesterday. */
+export function todayLocalISO(): string {
   return new Date().toLocaleDateString("en-CA");
 }
 
