@@ -258,7 +258,7 @@ const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
  */
 type ExtraMapping =
   | { kind: "level"; level: "office" | "devotion" | "psalms" | "readings" | "guided-prayer" }
-  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" | "icons" | "taize" | "spirituals" }
+  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" | "icons" | "taize" | "spirituals" | "reading" }
   | { kind: "contemplation" }
   | { kind: "newsletter" };
 type ExtraPractice = {
@@ -332,6 +332,22 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // The other two inboxes, on the same terms. They shipped with a card, a
   // menu row and a home-layout key — and no way to TURN ON, because the only
   // switch was on /customize-home, a page nothing in the app links to. The
+  /**
+   * READING — moved here because its only switch was UNREACHABLE.
+   *
+   * The toggle lived on step "extras", whose own comment says it plainly:
+   * "UNREACHABLE today: 'extras' is in no orderedSteps build, and the one
+   * review row that pointed here was retargeted — its Continue was dead
+   * (indexOf -1). Kept because the reading/podcasts toggles it carries have no
+   * other home; give it a place in the flow before pointing anything at it
+   * again." Owner: "I dont see the reading card in the customizer." He could
+   * not, because nothing in the app could reach the page that offered it.
+   *
+   * This is that place in the flow. The copy is the BOOK the practice actually
+   * tracks now — title, author, pages and the page you read to — not the old
+   * generic "log what you read".
+   */
+  { title: () => "Reading", emoji: "📚", sub: "A book, a page a day — with a bar that shows how far in you are.", excludes: "__none__", maps: { kind: "practice", key: "reading" } , group: "contemplative" },
   { title: () => "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__", maps: { kind: "practice", key: "cobreathe" } , group: "contemplative" },
 ];
 
@@ -1257,10 +1273,9 @@ export default function WayOfLoveRuleFlow({
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
   // user's (current-version) home layout (in order, not hidden).
-  const [extras, setExtras] = useState<{ examen: boolean; listening: boolean; reading: boolean; podcasts: boolean; prayerList: boolean }>(() => ({
+  const [extras, setExtras] = useState<{ examen: boolean; listening: boolean; podcasts: boolean; prayerList: boolean }>(() => ({
     examen: homeCardOn(user?.homeLayout, "examen"),
     listening: homeCardOn(user?.homeLayout, "listening"),
-    reading: homeCardOn(user?.homeLayout, "reading"),
     podcasts: homeCardOn(user?.homeLayout, "podcasts"),
     prayerList: homeCardOn(user?.homeLayout, "prayer-list"),
   }));
@@ -1294,7 +1309,6 @@ export default function WayOfLoveRuleFlow({
     setExtras({
       examen: homeCardOn(user.homeLayout, "examen"),
       listening: homeCardOn(user.homeLayout, "listening"),
-      reading: homeCardOn(user.homeLayout, "reading"),
       podcasts: homeCardOn(user.homeLayout, "podcasts"),
       prayerList: homeCardOn(user.homeLayout, "prayer-list"),
     });
@@ -1314,6 +1328,7 @@ export default function WayOfLoveRuleFlow({
       examen: examenSeed,
       walk: homeCardOn(user.homeLayout, "walk"),
       visio: homeCardOn(user.homeLayout, "visio"),
+      reading: homeCardOn(user.homeLayout, "reading"),
       icons: homeCardOn(user.homeLayout, "icons"),
       taize: homeCardOn(user.homeLayout, "taize"),
       spirituals: homeCardOn(user.homeLayout, "spirituals"),
@@ -1338,7 +1353,7 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; spirituals: boolean; compline: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; spirituals: boolean; compline: boolean; reading: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: !creationHeldBySide() && homeCardOn(user?.homeLayout, "cobreathe"),
     audio: homeCardOn(user?.homeLayout, "listening"),
@@ -1351,8 +1366,12 @@ export default function WayOfLoveRuleFlow({
     spirituals: homeCardOn(user?.homeLayout, "spirituals"),
     // Seeded the same way as every sibling — the layout key IS the switch.
     compline: homeCardOn(user?.homeLayout, "compline"),
+    // Reading moved here from the unreachable "extras" step — same seeding as
+    // its siblings, and now the ONLY writer of the "reading" key (extras no
+    // longer carries it, so the two can't disagree).
+    reading: homeCardOn(user?.homeLayout, "reading"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "spirituals" | "compline") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "spirituals" | "compline" | "reading") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -1651,7 +1670,7 @@ export default function WayOfLoveRuleFlow({
     setCustomList(getCustomAnchors());
     setAddingCustom(false);
   };
-  const toggleExtra = (k: "examen" | "listening" | "reading" | "podcasts" | "prayerList") => {
+  const toggleExtra = (k: "examen" | "listening" | "podcasts" | "prayerList") => {
     touchedRef.current = true;
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
   };
@@ -2087,7 +2106,6 @@ export default function WayOfLoveRuleFlow({
     const wantExamenCard = contemplative.examen && prayBySide.evening !== "examen" && prayBySide.morning !== "examen";
     const onKeys = [
       ...(extras.prayerList ? ["prayer-list"] : []),
-      ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
       ...(wantComplineCard ? ["compline"] : []),
       ...(wantExamenCard ? ["examen"] : []),
@@ -2106,11 +2124,11 @@ export default function WayOfLoveRuleFlow({
        */
       ...(contemplative.taize ? ["taize"] : []),
       ...(contemplative.spirituals ? ["spirituals"] : []),
+      ...(contemplative.reading ? ["reading"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
     const offKeys = [
       ...(extras.prayerList ? [] : ["prayer-list"]),
-      ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
       ...(wantComplineCard ? [] : ["compline"]),
       ...(wantExamenCard ? [] : ["examen"]),
@@ -2120,6 +2138,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
       ...(contemplative.spirituals ? [] : ["spirituals"]),
+      ...(contemplative.reading ? [] : ["reading"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
     // No hardcoded "podcasts" here — extras.podcasts already routes it through
@@ -2411,7 +2430,6 @@ export default function WayOfLoveRuleFlow({
     const wantExamenCard = contemplative.examen && prayBySide.evening !== "examen" && prayBySide.morning !== "examen";
     const onKeys = [
       ...(extras.prayerList ? ["prayer-list"] : []),
-      ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
       ...(wantComplineCard ? ["compline"] : []),
       ...(wantExamenCard ? ["examen"] : []),
@@ -2436,11 +2454,11 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.icons ? ["icons"] : []),
       ...(contemplative.taize ? ["taize"] : []),
       ...(contemplative.spirituals ? ["spirituals"] : []),
+      ...(contemplative.reading ? ["reading"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
     const offKeys = [
       ...(extras.prayerList ? [] : ["prayer-list"]),
-      ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
       ...(wantComplineCard ? [] : ["compline"]),
       ...(wantExamenCard ? [] : ["examen"]),
@@ -2451,6 +2469,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
       ...(contemplative.spirituals ? [] : ["spirituals"]),
+      ...(contemplative.reading ? [] : ["reading"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
     // No hardcoded "podcasts" here — extras.podcasts already routes it through
@@ -2597,7 +2616,7 @@ export default function WayOfLoveRuleFlow({
     // wants Visio Divina and a Contemplative Walk gets exactly those, and
     // nothing survives from the rule being replaced.
     setContemplative({
-      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, spirituals: false, compline: false,
+      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, spirituals: false, compline: false, reading: false,
       ...(preset.practices ?? {}),
     });
     /**
@@ -2703,7 +2722,7 @@ export default function WayOfLoveRuleFlow({
     // held in state so commit() can honour it (see anchorReflectionBySide).
     // Cleared first, like the practices above, so nothing carries over.
     setAnchorReflectionBySide({ ...(preset.anchorReflection ?? {}) });
-    setExtras({ examen: false, listening: false, reading: false, podcasts: false, prayerList: false });
+    setExtras({ examen: false, listening: false, podcasts: false, prayerList: false });
     // A side whose practice is the person's own needs its NAME, or the rule
     // adopts an anchor called "Morning Practice".
     if (preset.customNames) {
@@ -5702,6 +5721,25 @@ export default function WayOfLoveRuleFlow({
                 : n.sub;
               return choiceRow(newsletters.includes(n.id), n.label, sub, () => toggleNewsletter(n.id));
             })}
+          {/* TAIZÉ SITS HERE TOO (owner: "not seeing taize in the reflections
+              option of the full customizer").
+              It is NOT a NEWSLETTERS entry, and deliberately so: that list is
+              typed to ReflectionSource, and making Taizé one would drag it into
+              the whole "which newsletter is my anchor" machinery — per-side
+              reflection picks, TRACKED_REFLECTION_SOURCES, the scored-read
+              path. Taizé does not behave like a daily source: it is an INBOX
+              that waits until you read it and then goes quiet until the next
+              one is posted.
+              So it toggles its own practice key instead, and reads as what it
+              is. It also still appears among the contemplative practices —
+              the SAME state either way, so ticking it in one place shows it
+              ticked in the other rather than the two disagreeing. */}
+          {choiceRow(
+            contemplative.taize,
+            `🕯️ ${t("wol_rule.learn_taize", { defaultValue: "Taizé meditation" })}`,
+            t("wol_rule.learn_taize_sub", { defaultValue: "A meditation from Taizé — it waits until you read it." }),
+            () => toggleContemplative("taize"),
+          )}
           {choiceRow(noReflection, t("wol_rule.learn_none", { defaultValue: "None" }), t("wol_rule.learn_none_sub", { defaultValue: "No daily reflection." }), chooseNoReflection)}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
@@ -5846,11 +5884,10 @@ export default function WayOfLoveRuleFlow({
           {/* Prayer List removed from "Add to your day" — it now lives inside the
               Prayer list page (the "My list" tab), not as a separate anchor. */}
           {/* Examen + Audio Divina now live in the Contemplation step. */}
-          {choiceRow(extras.reading, `📚 ${t("wol_rule.extra_reading", { defaultValue: "Reading" })}`, t("wol_rule.extra_reading_sub", { defaultValue: "Log what you read." }), () => toggleExtra("reading"))}
           {choiceRow(extras.podcasts, `🎙️ ${t("wol_rule.extra_podcasts", { defaultValue: "Podcasts" })}`, t("wol_rule.extra_podcasts_sub", { defaultValue: "Log what you listened to." }), () => toggleExtra("podcasts"))}
           {/* When they read — so the Reading card slots into the rhythm at that
               time of day (mirrors journaling above). */}
-          {extras.reading && (
+          {contemplative.reading && (
             <div style={{ margin: "-4px 0 4px", padding: "0 2px" }}>
               <p style={{ color: SAGE_DIM, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 8px", fontFamily: FONT }}>
                 {t("wol_rule.reading_when", { defaultValue: "When do you read?" })}
