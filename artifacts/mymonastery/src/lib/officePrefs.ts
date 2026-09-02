@@ -703,6 +703,23 @@ export function anchorModesFor(side: OfficeSide): string[] {
   }
   // Compline as the side's own anchor completes as "compline", nothing else.
   if (level === "compline") return ["compline"];
+  /**
+   * Creation Prayer completes as its OWN mode, not the side's.
+   *
+   * Reported: "when my whole routine is done, it still shows evening prayer as
+   * if it hasn't been finished." The creation deck runs as resolvedMode
+   * "creation-morning"/"creation-evening" and stamps
+   * phoebe:office-completed:creation-<side>:<day> — but this function returned
+   * [side, devotionMode], so officeLocalDone looked for the wrong two keys and
+   * never found the one that was actually written. sideDone has no "creation"
+   * clause either, so the side could NOT be kept by any route: the card stayed
+   * in Next however faithfully it was prayed.
+   *
+   * PracticeSwitcher already knew — it omits Creation deliberately, with a
+   * comment saying the level "cannot complete" and to fix it here. This is
+   * that fix, so the omission there can be revisited.
+   */
+  if (level === "creation") return [`creation-${side}`];
   return [side, devotionMode];
 }
 
@@ -714,6 +731,9 @@ export function extraOfficeMode(side: OfficeSide, level: OfficeLevel): string | 
   if (level === "devotion" || level === "psalms" || level === "readings" || level === "guided-prayer") {
     return side === "morning" ? "morning-devotion" : "early-evening-devotion";
   }
+  // Same mode the anchor uses (see anchorModesFor) — so Creation Prayer as a
+  // side's SECOND practice completes on the flag its deck actually writes.
+  if (level === "creation") return `creation-${side}`;
   return null;
 }
 

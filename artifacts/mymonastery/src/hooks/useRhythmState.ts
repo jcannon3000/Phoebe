@@ -17,6 +17,8 @@ import {
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { waitingMeditation, waitingItem, TAIZE_READ_EVENT, type InboxItem } from "@/lib/taizeInbox";
+import { getSpiritualsHistory } from "@/lib/spiritualsHistory";
+import { spiritualsVisible } from "@/lib/spiritualsFlag";
 import { practiceOnDay } from "@/lib/practiceDays";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay, hasAnchorOfficeIntentToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday, isOfficeLoggedToday } from "@/lib/officeManualLog";
@@ -130,6 +132,13 @@ function officeModeToSurface(mode: string): string | null {
   if (mode === "compline") return "compline";
   if (mode === "morning-devotion") return "morning-devotion";
   if (mode === "early-evening-devotion") return "early-evening-devotion";
+  // The creation deck posts its prayer-session under the SIDE's surface
+  // (bcp-daily-office maps creation-morning → "morning-prayer",
+  // creation-evening → "evening-prayer"), so the server signal has to be
+  // asked for under that name — otherwise anchorSurfaceHit misses a side that
+  // the server already knows was prayed, and only the local flag saves it.
+  if (mode === "creation-morning") return "morning-prayer";
+  if (mode === "creation-evening") return "evening-prayer";
   return null;
 }
 
@@ -252,6 +261,8 @@ export type RhythmState = {
   visioDone: boolean;
   iconsActive: boolean;
   iconsDone: boolean;
+  spiritualsActive: boolean;
+  spiritualsDone: boolean;
   complineDone: boolean;
   cobreatheDone: boolean;
   prayerListDone: boolean;
@@ -507,6 +518,7 @@ export function useRhythmState(): RhythmState {
     walkSkipped: hasPracticeSkippedToday("walk"),
     visio: hasPracticeDoneToday("visio"),
     icons: hasPracticeDoneToday("icons"),
+    spirituals: hasPracticeDoneToday("spirituals"),
     prayerList: hasPracticeDoneToday("prayer-list"),
   }));
   useEffect(() => {
@@ -519,6 +531,7 @@ export function useRhythmState(): RhythmState {
       walkSkipped: hasPracticeSkippedToday("walk"),
       visio: hasPracticeDoneToday("visio"),
     icons: hasPracticeDoneToday("icons"),
+    spirituals: hasPracticeDoneToday("spirituals"),
       prayerList: hasPracticeDoneToday("prayer-list"),
     });
     window.addEventListener(PRACTICE_DONE_EVENT, recheck);
@@ -751,6 +764,13 @@ export function useRhythmState(): RhythmState {
   // WEEK is the icon's; the sitting is the day's, so completion is
   // day-scoped like every other practice card.
   const iconsActive = homeCardActive(hl, "icons");
+  // Spirituals is admin-only, not public — see lib/spiritualsFlag.ts. Every
+  // consumer (DailyProgressBody's card, the layout dots, widgetSync) reads
+  // spiritualsActive off this hook, so gating it here governs all of them
+  // without touching each call site — and without pulling the key back out of
+  // the ten lists that must agree.
+  const spiritualsActive = spiritualsVisible(user?.isSuperAdmin)
+    && homeCardActive(hl, "spirituals");
   const taizeActive = homeCardActive(hl, "taize");
   // Compline — the night office, offered as a contemplative add-on card.
   // complineActive means "the user has this in their rhythm" (mirrors every
@@ -1204,6 +1224,21 @@ export function useRhythmState(): RhythmState {
   const walkDone = walkActive && (practiceLocal.walk || serverDone("walk"));
   const visioDone = visioActive && (practiceLocal.visio || serverDone("visio"));
   const iconsDone = iconsActive && (practiceLocal.icons || serverDone("icons"));
+  /**
+   * SPIRITUALS COUNTS FROM ITS OWN HISTORY as well as the usual two.
+   *
+   * The practice records a sit in lib/spiritualsHistory (device-local, like
+   * the icon and Visio histories) and deliberately does NOT call
+   * markPracticeDoneToday — so on the standard pair alone the card would sit
+   * in Next all day after someone had prayed it. Reading the history for
+   * today is what makes the card, the dot and the widget agree with what the
+   * practice itself believes, which is this repo's completion-signal rule:
+   * one computation, not three opinions.
+   */
+  const spiritualsDone = spiritualsActive && (
+    practiceLocal.spirituals || serverDone("spirituals")
+    || getSpiritualsHistory().some((h) => h.ymd === day)
+  );
   /**
    * THE INBOX'S DONE, which is deliberately not any of the machinery above.
    *
@@ -1698,6 +1733,8 @@ export function useRhythmState(): RhythmState {
     visioDone,
     iconsActive,
     iconsDone,
+    spiritualsActive,
+    spiritualsDone,
     complineDone,
     cobreatheDone,
     prayerListDone,
