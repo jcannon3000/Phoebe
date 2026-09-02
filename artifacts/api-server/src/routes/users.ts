@@ -11,6 +11,7 @@ import {
   userConnectionsCacheTable,
   waitlistTable,
   contemplationGoalHistoryTable,
+  groupPostsTable,
 } from "@workspace/db";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { exportUserData } from "../lib/userDataExport";
@@ -152,6 +153,26 @@ router.delete("/users/me", async (req, res): Promise<void> => {
         sql`LOWER(${userConnectionsCacheTable.userEmail}) = ${emailLower} OR LOWER(${userConnectionsCacheTable.contactEmail}) = ${emailLower}`,
       );
       await tx.delete(waitlistTable).where(sql`LOWER(${waitlistTable.email}) = ${emailLower}`);
+
+      // 3c) group_posts.author_user_id is ON DELETE SET NULL — right for the
+      //     row (a group's post history is shared parish content, not this
+      //     person's alone, the same "orphan not destroy" call as the parish
+      //     feed below) but WRONG for what's IN the row: `author_name`,
+      //     `title` and `body` are plain text with no FK, so the cascade
+      //     never touched them, and the deleted user's actual written
+      //     reflection kept showing under their real name forever. Scrub
+      //     the content the person asked to be forgotten; leave the row (an
+      //     expired/deleted post is invisible to members anyway) so nothing
+      //     that references it — read receipts, ordering — breaks.
+      await tx.update(groupPostsTable)
+        .set({
+          authorName: null,
+          title: "[Removed]",
+          body: "This post was removed when its author deleted their account.",
+          url: null,
+          ctaLabel: null,
+        })
+        .where(eq(groupPostsTable.authorUserId, user.id));
 
       // Capture the parish this user belongs to BEFORE the delete — the cascade
       // drops their prayer_feed_subscriptions row, and the denormalized

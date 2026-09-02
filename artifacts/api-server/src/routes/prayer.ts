@@ -95,6 +95,60 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     }
   }
 
+  /**
+   * THE FILTERS THE LIST ROUTE APPLIES, APPLIED HERE TOO.
+   *
+   * The garden check above answers "can this viewer see requests from this
+   * owner at all" — it says nothing about closed, expired, muted, or
+   * community-scoped requests, and this route checked none of them. A
+   * request's serial `id` is guessable in sequence, so any garden peer could
+   * walk `1..N` and read every closed, answered, expired, muted or
+   * differently-scoped request any garden peer had ever written — months
+   * after it was released, past the mute, past the community it was
+   * actually shared with. The list route has always excluded all four;
+   * this route just never inherited them.
+   *
+   * Skipped entirely for the owner and for an explicit tag/adopt grant —
+   * same exemptions the list route makes, and for the same reason: your own
+   * closed request should still open for you (to renew or just re-read),
+   * and a tag or adoption is a deliberate grant that community scoping and
+   * mutes shouldn't silently defeat.
+   */
+  if (!viewerIsOwner && !viewerIsTagged) {
+    if (r.closedAt != null) { res.status(403).json({ error: "Forbidden" }); return; }
+    if (r.isAnswered) { res.status(403).json({ error: "Forbidden" }); return; }
+    if (r.expiresAt != null && r.expiresAt.getTime() < Date.now()) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const [adoptedRow] = await db
+      .select({ id: adoptedPrayersTable.id })
+      .from(adoptedPrayersTable)
+      .where(and(
+        eq(adoptedPrayersTable.adopterUserId, sessionUserId),
+        eq(adoptedPrayersTable.requestId, id),
+        isNull(adoptedPrayersTable.releasedAt),
+      ));
+    const viewerIsAdopter = !!adoptedRow;
+    if (!viewerIsAdopter) {
+      const [mutedRow] = await db
+        .select({ id: userMutesTable.id })
+        .from(userMutesTable)
+        .where(and(eq(userMutesTable.muterId, sessionUserId), eq(userMutesTable.mutedUserId, r.ownerId)));
+      if (mutedRow) { res.status(403).json({ error: "Forbidden" }); return; }
+
+      const scopeRows = await db
+        .select({ groupId: prayerRequestGroupsTable.groupId, mutedAt: prayerRequestGroupsTable.mutedAt })
+        .from(prayerRequestGroupsTable)
+        .where(eq(prayerRequestGroupsTable.requestId, id));
+      if (scopeRows.length > 0) {
+        const viewerGroupIds = new Set(await getUserGroupIds(sessionUserId));
+        const sharesAnUnmutedScope = scopeRows.some((g) => viewerGroupIds.has(g.groupId) && g.mutedAt == null);
+        if (!sharesAnUnmutedScope) { res.status(403).json({ error: "Forbidden" }); return; }
+      }
+    }
+  }
+
   const [owner] = await db
     .select({ name: usersTable.name, avatarUrl: usersTable.avatarUrl })
     .from(usersTable)
@@ -716,13 +770,22 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       isAdopted: iAdoptedSet.has(r.id),
       adoptCount: adoptCountByRequest.get(r.id) ?? 0,
       isCorrespondent: false,
-      words: words.map(w => ({
-        authorName: w.authorName,
-        content: w.content,
-        // ISO timestamp — the dashboard uses this to detect new words on the
-        // viewer's own requests and surface a one-at-a-time popup.
-        createdAt: w.createdAt ? w.createdAt.toISOString() : null,
-      })),
+      words: words.map(w => {
+        // Same mask the by-id route already applies (~line 404): the OWNER
+        // can write on their own anonymous request, and this list route
+        // shipped that word under their real name to every garden viewer —
+        // the exact thing "anonymous" was supposed to prevent. A word from
+        // someone else on an anonymous request is unaffected; only the
+        // owner's own name, on their own request, is masked.
+        const maskOwner = r.isAnonymous && w.authorUserId === r.ownerId;
+        return {
+          authorName: maskOwner ? "Someone" : w.authorName,
+          content: w.content,
+          // ISO timestamp — the dashboard uses this to detect new words on the
+          // viewer's own requests and surface a one-at-a-time popup.
+          createdAt: w.createdAt ? w.createdAt.toISOString() : null,
+        };
+      }),
       myWord: myWordRow?.content ?? null,
       nearingExpiry,
       needsRenewal,

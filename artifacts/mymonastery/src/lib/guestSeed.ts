@@ -342,6 +342,28 @@ export function resetDeviceRuleForLogout(): void {
       "phoebe:spotify",           // Spotify OAuth token/verifier/state (audit #19:
                                   // otherwise user B inherits user A's Spotify tokens
                                   // on a shared device)
+      /**
+       * Everything below is a genuine content-history gap, not tidiness: on a
+       * shared device, the next person to sign in inherited the previous
+       * person's Audio Divina listening history, podcast position, Sacred
+       * Library selections, newsletter subscriptions, and per-source
+       * devotional read-state — none of it in any prior list. Grouped by
+       * feature, one prefix each.
+       */
+      "phoebe:listening-",        // Audio Divina: goal, log, songs, artists, history
+      "phoebe:podcast:pos:",      // per-episode playback position
+      "phoebe:podcast-home-shows",// followed podcast shows
+      "phoebe:sacred-library",    // curated music library selections
+      "phoebe:news",              // newsletter subscriptions + read-state
+      "phoebe:icon-",             // Praying with Icons: history, physical log, week pick
+      "phoebe:visio-",            // Visio Divina: history, week pick
+      "phoebe:weekly-",           // Way of Love weekly log (done/day, distinct from the
+                                   // synced phoebe:weekly-practices, already covered below)
+      // Per-source devotional read-state — "did I open today's word", one
+      // per reflection source.
+      "phoebe:cac-", "phoebe:fdd-", "phoebe:ssje-", "phoebe:vts-",
+      "phoebe:grist-", "phoebe:sojo-", "phoebe:nouwen-", "phoebe:taize-",
+      "phoebe:psalms-read", "phoebe:readings-prayed", "phoebe:guided-prayer-read",
     ];
     /**
      * DERIVED from ROUTINE_KEYS, not hand-listed beside it.

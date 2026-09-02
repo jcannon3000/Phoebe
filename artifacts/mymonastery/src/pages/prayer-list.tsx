@@ -1061,7 +1061,16 @@ export default function PrayerListPage() {
   });
   const myIntentions = (myIntentionsData?.intentions ?? []).filter((i) => !i.answered);
   const markIntentionPrayedMut = useMutation({
-    mutationFn: (id: number) => apiRequest("POST", `/api/prayer-intentions/${id}/pray`),
+    /**
+     * The server requires `{ ymd }` and this sent no body at all — every
+     * tap 400ed, `onSuccess` never ran, and `markPracticeDoneToday
+     * ("prayer-list")` never fired. Matches the owner's own report: "I
+     * prayed one of my prayers and it didn't check it off when I came
+     * back." `todayLocalISO()` freshly here, not the memoized `todayYmd`
+     * above — that one is frozen at mount, so a tab left open across
+     * midnight would keep sending yesterday's date.
+     */
+    mutationFn: (id: number) => apiRequest("POST", `/api/prayer-intentions/${id}/pray`, { ymd: todayLocalISO() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-intentions"] });
       // The slideshow's advance() stamps this same legacy flag per personal

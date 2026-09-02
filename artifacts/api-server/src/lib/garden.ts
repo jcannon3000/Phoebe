@@ -6,7 +6,11 @@
 // Membership rules (see prayer.ts history for how they evolved):
 //
 //   1. Anyone in a group the viewer is a joined member of, EXCEPT
-//      users who are hidden_admin in that specific group.
+//      users who are hidden_admin in that specific group, and EXCEPT
+//      groups that are PUBLIC (a large, browseable, followable
+//      community is not the close circle the garden was built to
+//      describe — shared membership there shouldn't make two
+//      strangers each other's prayer-request peers).
 //   2. Letter correspondents (mutual exchange) get added.
 //   3. A global veto: if the viewer belongs to ANY group where
 //      candidate X is a hidden_admin, X is dropped even if rules 1/2
@@ -17,8 +21,8 @@
 //      community. Mirror of the existing rule that group members
 //      can't see hidden_admins.
 
-import { and, eq, inArray, sql } from "drizzle-orm";
-import { db, groupMembersTable, usersTable } from "@workspace/db";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { db, groupMembersTable, groupsTable, usersTable } from "@workspace/db";
 
 // Fellows (the 1:1 social graph) was removed. This helper is retained as a
 // no-op stub returning an empty list so the remaining callers (push fan-out,
@@ -109,15 +113,34 @@ async function computeGardenUserIds(userId: number): Promise<number[]> {
   //     who's hidden_admin in any group the viewer belongs to gets
   //     dropped even if some other path would have added them.
   const myMemberships = await db
-    .select({ groupId: groupMembersTable.groupId, role: groupMembersTable.role })
+    .select({ groupId: groupMembersTable.groupId, role: groupMembersTable.role, isPublic: groupsTable.isPublic })
     .from(groupMembersTable)
+    .innerJoin(groupsTable, eq(groupsTable.id, groupMembersTable.groupId))
     .where(
-      sql`${groupMembersTable.userId} = ${userId}
-          OR LOWER(${groupMembersTable.email}) = ${viewerEmail}`,
+      sql`${groupMembersTable.joinedAt} IS NOT NULL
+          AND (${groupMembersTable.userId} = ${userId}
+          OR LOWER(${groupMembersTable.email}) = ${viewerEmail})`,
     );
+  /**
+   * NOT EVERY GROUP YOU'RE IN MAKES SOMEONE YOUR GARDEN.
+   *
+   * This used to admit any joined membership, full stop — no `joinedAt`
+   * check (a pending invite row counted as a peer relationship before
+   * anyone had accepted it) and no distinction for a large PUBLIC
+   * community. "David scopes a request to his 6-person prayer triad; his
+   * public 'Compline Nightly' community, 400 followers, prayer requests
+   * never switched on, shows it to all of them" — that's this function:
+   * shared membership in ANY group, including a big feed anyone can join,
+   * was enough to become someone's prayer-garden peer on the main feed.
+   *
+   * `myGroupIds` (who counts as MY peer group, for widening the garden)
+   * now excludes public groups. `vetoLookupGroupIds` (the hidden-admin
+   * veto) does NOT exclude them — an admin's privacy should hold
+   * everywhere they administer, public or not.
+   */
   const myGroupIds = Array.from(new Set(
     myMemberships
-      .filter(r => r.role !== "hidden_admin")
+      .filter(r => r.role !== "hidden_admin" && !r.isPublic)
       .map(r => r.groupId),
   ));
   const vetoLookupGroupIds = Array.from(new Set(myMemberships.map(r => r.groupId)));
@@ -151,6 +174,7 @@ async function computeGardenUserIds(userId: number): Promise<number[]> {
       )
       .where(and(
         inArray(groupMembersTable.groupId, myGroupIds),
+        isNotNull(groupMembersTable.joinedAt),
         sql`(${groupMembersTable.role} IS NULL
              OR ${groupMembersTable.role} <> 'hidden_admin')`,
       ));

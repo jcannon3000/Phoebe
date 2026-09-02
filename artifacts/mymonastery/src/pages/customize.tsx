@@ -273,7 +273,27 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
     // The rule's contemplative practice, recorded on each side that keeps one.
     const presetKind = preset.contemplationStyle === "cobreathe" ? "creation" : "silent";
     for (const sd of ["morning", "evening"] as const) {
-      if (contemplationOn[sd]) setSideContemplationKind(sd, presetKind);
+      if (contemplationOn[sd]) {
+        setSideContemplationKind(sd, presetKind);
+      } else {
+        /**
+         * CLEAR the side this preset turns contemplation OFF for.
+         *
+         * `WayOfLoveRuleFlow.tsx`'s `adoptRule` does this same cleanup with a
+         * comment describing exactly why: "a stale 'creation'/2-minute sit
+         * speaks for a rule that never chose it." `getSideContemplationKind`
+         * reads the raw per-side key regardless of whether contemplation is
+         * currently on, so a mark left here by an earlier rule stays live the
+         * moment contemplation is re-enabled without an explicit re-pick.
+         * Reproducible before this fix: adopt VTS (evening kind="creation",
+         * minutes=10), then "A Gentle Start" — the evening's stale
+         * creation-kind/10-minute stamp survived in storage.
+         */
+        try {
+          localStorage.removeItem(`phoebe:office:contemplation-kind:${sd}`);
+          localStorage.removeItem(`phoebe:office:minutes:${sd}`);
+        } catch { /* private mode */ }
+      }
     }
     try { localStorage.setItem("phoebe:contemplation-style", preset.contemplationStyle ?? "silent"); } catch { /* ignore */ }
 
@@ -377,8 +397,17 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
       const order = [...(existing?.order ?? [])];
       const hidden = new Set(existing?.hidden ?? []);
       const wanted: Record<string, boolean> = {
-        // The rule's newsletter, and only that one.
-        ...Object.fromEntries((["fdd", "ssje", "cac", "vts"] as const).map((n) => [n, refl === n])),
+        /**
+         * EVERY TRACKED NEWSLETTER, not four of the seven.
+         *
+         * This named only fdd/ssje/cac/vts — nouwen, sojo and grist were
+         * missing, so a preset could turn any of those three OFF only by
+         * accident (they'd survive from whatever the person had before,
+         * contradicting the header comment above, which claims "every key
+         * the rule doesn't name is hidden"). Full list now, so the claim is
+         * actually true.
+         */
+        ...Object.fromEntries(TRACKED_REFLECTION_SOURCES.map((n) => [n, refl === n])),
         // Its standing practices, and only those. NOTE the one name that
         // differs between the two vocabularies: the home-layout key is
         // "listening", the preset's practices key is "audio". Looking up
@@ -388,12 +417,42 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
         // since reshaped that rule and no preset asks for Audio Divina right
         // now, so the mapping is latent again — and wrong again the moment one
         // does, which is why it stays.
-        ...Object.fromEntries((["listening", "walk", "visio", "cobreathe", "examen", "compline", "reading", "podcasts", "prayer-list"] as const)
+        //
+        // "icons" and "taize" added alongside the newsletters above, for the
+        // same reason — neither existed as a home-layout key when this list
+        // was written, so a preset adopted here could never turn either off
+        // if the person already had it on, or on if a future preset asks for
+        // it.
+        ...Object.fromEntries((["listening", "walk", "visio", "cobreathe", "examen", "compline", "reading", "podcasts", "prayer-list", "icons", "taize"] as const)
           .map((k) => {
             const practiceKey = k === "listening" ? "audio" : k;
             return [k, preset.practices?.[practiceKey as keyof typeof preset.practices] === true];
           })),
       };
+      /**
+       * VTS's Creation Prayer isn't named in `preset.practices` at all — it's
+       * expressed as `silence: true, contemplationStyle: "cobreathe"` (the
+       * preset's own per-side-sit vocabulary), the same fields the full
+       * customizer's `wantCobreathe` reads (`anyContemplation &&
+       * anySideCreation`). Without this, adopting VTS Chapel & Commentary
+       * from this page produced no Creation Prayer card at all, while the
+       * full customizer produces one for the identical preset.
+       */
+      if (preset.silence && preset.contemplationStyle === "cobreathe") {
+        wanted.cobreathe = true;
+      }
+      /**
+       * NO EXAMEN CARD WHEN A SIDE IS ALREADY ANCHORED ON EXAMEN.
+       *
+       * The full customizer's `wantExamenCard` guards against exactly this
+       * — a side whose own anchor IS the Examen, plus a second standalone
+       * Examen practice card, would be the same practice counted twice.
+       * No shipped preset sets both today, so this hasn't fired yet, but
+       * nothing here protected against the day one does.
+       */
+      if (preset.pray === "examen" || eveningChoice === "examen") {
+        wanted.examen = false;
+      }
       for (const [key, on] of Object.entries(wanted)) {
         if (!order.includes(key)) order.push(key);
         if (on) hidden.delete(key); else hidden.add(key);

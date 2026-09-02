@@ -21,12 +21,18 @@ import { OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 const DEFAULT_HIDDEN_MODULES = [
   // The server BACKFILLS every module key into `order`, so a key missing from
   // this list comes back VISIBLE — the opposite of what a reset means. "vts",
-  // "visio" and "prayer-list" were missing, so resetting to default left the
-  // Dean's Commentary and Visio Divina on the home, and the customizer then
-  // seeded them as chosen. Keep this list = every optional module.
+  // "visio" and "prayer-list" were missing once already, so resetting to
+  // default left the Dean's Commentary and Visio Divina on the home, and the
+  // customizer then seeded them as chosen. "icons", "taize", "nouwen", "sojo"
+  // and "grist" were the same gap the second time: anyone who had turned on
+  // Praying with Icons, the Taizé inbox, or any of the three newer
+  // newsletters kept them visible after a "reset," despite this file's own
+  // header promising "every optional add-on is off." Keep this list = every
+  // optional module, not most of them.
   "listening", "reading", "walk", "cobreathe", "compline",
   "examen", "cac", "ssje", "vts", "visio", "prayer-list",
   "ncmp", "podcasts", "contemplation",
+  "icons", "taize", "nouwen", "sojo", "grist",
 ];
 
 export async function resetRoutineToDefault(opts: {
