@@ -1,4 +1,4 @@
-import { and, isNotNull, lt, inArray, sql } from "drizzle-orm";
+import { and, isNotNull, isNull, lt, inArray, sql } from "drizzle-orm";
 import {
   db,
   prayerRequestsTable,
@@ -112,6 +112,19 @@ export async function runRetentionCleanupSender(opts: { forceNow?: boolean } = {
       db.delete(anonymousAmensTable).where(and(
         isNotNull(anonymousAmensTable.claimedAt),
         lt(anonymousAmensTable.claimedAt, D60),
+      ))],
+    // Unclaimed anon amens never had a matching rule — only the claimed half
+    // was ever pruned, so a visitor who amened via a public share link and
+    // never signed up (the common case) left a session_id + optional
+    // visitor_name row that accrued forever. If it hasn't been claimed in a
+    // year it isn't going to be — signup linking happens at signup time, not
+    // months later. YEAR (not D60) so a slow-to-sign-up visitor's amen still
+    // has a full year to be claimed and fanned into a real amen + prevent it
+    // from double counting the visible prayedCount before this deletes it.
+    ["anonymous_amens unclaimed>1y", () =>
+      db.delete(anonymousAmensTable).where(and(
+        isNull(anonymousAmensTable.claimedAt),
+        lt(anonymousAmensTable.createdAt, YEAR),
       ))],
     ["prayer_sessions>1y", () =>
       db.delete(prayerSessionsTable).where(lt(prayerSessionsTable.endedAt, YEAR))],
