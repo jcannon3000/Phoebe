@@ -407,7 +407,6 @@ const PrescribeRoutinePage = lazy(() => import("./pages/prescribe-routine"));
 const CommunityRuleSetPage = lazy(() => import("./pages/community-rule-set"));
 const RoutineInvitePage = lazy(() => import("./pages/routine-invite"));
 const SignPage = lazy(() => import("./pages/sign"));
-const SeasonPage = lazy(() => import("./pages/season"));
 const SharePrayerPage = lazy(() => import("./pages/share-prayer"));
 const CommunitySettingsPage = lazy(() => import("./pages/community-settings"));
 const CommunityPostsPage = lazy(() => import("./pages/community-posts"));
@@ -883,9 +882,6 @@ const GUEST_ALLOWED_PREFIX = [
   // Printable parish/community invite SIGN (/sign/:token) — a leader prints the
   // QR poster; it shows the community name + the routine QR, all public info.
   "/sign/",
-  // Season links (/season/:token) — the one-tap "take the practice home" a
-  // community leader or priest shares; the same no-account-wall rule applies.
-  "/season/",
   // Community invite links (/communities/join/:slug/:token) — the page has its
   // own signup/sign-in flow for signed-out visitors, which the guest gate was
   // bouncing to the dashboard before it could render. An invite link someone
@@ -1055,9 +1051,8 @@ function Router() {
       <Route path="/ritual/:id" component={RitualDetail} />
       <Route path="/routine/:token" component={RoutineInvitePage} />
       <Route path="/sign/:token" component={SignPage} />
-      {/* Seasons — /season/:token (public landing → join → the cohort's day
-          view). Started by a community's leaders or a parish priest. */}
-      <Route path="/season/:token" component={SeasonPage} />
+      {/* "Start a season" is REMOVED entirely (owner) — the /season/:token
+          page, its route, and CommunitySeasonCard are gone. */}
       {/* Letters & Messages removed (owner) — the correspondence/letter-writing
           and 1:1 messaging features are no longer part of the experience. */}
       <Route path="/weekly" component={WeeklyRoutinesPage} />

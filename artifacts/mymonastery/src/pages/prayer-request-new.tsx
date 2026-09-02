@@ -111,14 +111,15 @@ export default function PrayerRequestNew() {
   // with the community (prayer_requests). Only the default "request" kind can be
   // private — life-events / justice are inherently community asks. A private
   // item can also be "a person" (name + optional note), like the prayer list.
-  const [dest, setDest] = useState<"share" | "list">(() => {
+  const [dest, setDest] = useState<"share" | "list" | "group">(() => {
     // Default to keeping it private ("Keep on my list"): a plain request opens
     // with private pre-selected. Life-events / justice are inherently community
-    // asks, so they default to sharing. ?dest=share|list can still override.
+    // asks, so they default to sharing. ?dest=share|list|group can still override.
     try {
       const p = new URLSearchParams(search).get("dest");
       if (p === "share") return "share";
       if (p === "list") return "list";
+      if (p === "group") return "group";
     } catch {}
     return kind === "request" ? "list" : "share";
   });
@@ -126,13 +127,59 @@ export default function PrayerRequestNew() {
   // Pilot is personal-only: always keep it on the private list, never share.
   useEffect(() => { if (isPilot) setDest("list"); }, [isPilot]);
 
-  // Per-community targeting is REMOVED (Jeremy's decision, 2026-09-02): that
-  // path had no moderation at all — it pushed straight to every member of
-  // the chosen group(s) with only a reactive admin mute after the fact. The
-  // group's own Prayer list (/communities/:slug/prayer-list) is the properly
-  // moderated way to reach one community, so this compose flow only offers
-  // "share" as the pre-existing whole-garden behavior now (see the mutation
-  // below — groupIds is no longer sent).
+  /**
+   * "group" — submit to one or more specific communities' MODERATED prayer
+   * lists (owner: "each time I submit a prayer request i need to select what
+   * groups I am submiting it too"). This is NOT the old per-community
+   * targeting that was removed 2026-09-02 (that path pushed straight to
+   * every member with only a reactive admin mute after the fact). It goes
+   * through the properly-gated queue instead — POST
+   * /groups/:slug/prayer-list, one call per selected group, landing
+   * "pending" until that group's own admin approves it — same route the
+   * community's own Prayer list page already uses. "share" (whole-garden)
+   * is untouched and stays a separate destination.
+   */
+  const myGroupsQuery = useQuery<{ groups: Array<{ id: number; slug: string; name: string; emoji: string | null; isPublic?: boolean; prayerRequestsEnabled?: boolean }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+    enabled: !!user,
+  });
+  // Same eligibility rule group-prayer-list.ts's listIsOpen enforces
+  // server-side (prayerRequestsEnabled && !isPublic) — this just keeps the
+  // picker from ever offering a group the server would refuse anyway.
+  const openGroups = (myGroupsQuery.data?.groups ?? []).filter(
+    (g) => !g.isPublic && g.prayerRequestsEnabled !== false,
+  );
+  const [selectedGroupSlugs, setSelectedGroupSlugs] = useState<string[]>([]);
+  const toggleGroupSlug = (slug: string) => {
+    setSelectedGroupSlugs((s) => s.includes(slug) ? s.filter((x) => x !== slug) : [...s, slug]);
+  };
+  const createGroupSubmissionMutation = useMutation({
+    mutationFn: async () => {
+      const trimmed = body.trim();
+      const results = await Promise.allSettled(
+        selectedGroupSlugs.map((slug) => apiRequest("POST", `/api/groups/${slug}/prayer-list`, { body: trimmed })),
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      if (failed === results.length) throw new Error(t("prayer_request.group_submit_failed_all", { defaultValue: "Couldn't submit to any of those communities — try again." }));
+      return { failed };
+    },
+    onSuccess: ({ failed }) => {
+      triggerSubmitFeedback();
+      qc.invalidateQueries({ queryKey: ["/api/me/group-prayer-submissions"] });
+      if (failed > 0) {
+        // Partial failure — landed somewhere, so don't silently navigate away
+        // as if it reached everywhere the person picked.
+        setError(t("prayer_request.group_submit_partial", { defaultValue: "Sent to some communities, but not all — you may have left one since picking it." }));
+      } else {
+        close("/prayer-list");
+      }
+    },
+    onError: (err: any) => {
+      setError(err?.message || t("prayer_request.couldnt_share"));
+    },
+  });
+
   // One calm landscape behind the page, picked once and faded gently up under a
   // dark wash (matching the office/Co-Breathe slides).
   const bgPhoto = useMemo(
@@ -250,9 +297,11 @@ export default function PrayerRequestNew() {
     },
   });
 
-  // Always just needs the prayer text — whether kept private or shared.
-  const canSubmit = body.trim().length > 0;
-  const submitting = createMutation.isPending || addToListMutation.isPending;
+  // Needs the prayer text always; "group" also needs at least one community
+  // picked — an empty selection has nowhere to submit to, and (unlike the
+  // old removed path) must never silently fall back to anything wider.
+  const canSubmit = body.trim().length > 0 && (dest !== "group" || selectedGroupSlugs.length > 0);
+  const submitting = createMutation.isPending || addToListMutation.isPending || createGroupSubmissionMutation.isPending;
 
   // One slide now: validate, then submit. (Life events also carry a title + date.)
   function handleSubmit() {
@@ -260,6 +309,13 @@ export default function PrayerRequestNew() {
       if (body.trim().length === 0) { setError(t("prayer_request.write_request_first")); return; }
       setError("");
       addToListMutation.mutate();
+      return;
+    }
+    if (dest === "group") {
+      if (body.trim().length === 0) { setError(t("prayer_request.write_request_first")); return; }
+      if (selectedGroupSlugs.length === 0) { setError(t("prayer_request.pick_a_community", { defaultValue: "Pick at least one community to submit to." })); return; }
+      setError("");
+      createGroupSubmissionMutation.mutate();
       return;
     }
     if (body.trim().length === 0) { setError(t("prayer_request.write_request_first")); return; }
@@ -328,13 +384,15 @@ export default function PrayerRequestNew() {
             {copy.title}
           </h1>
 
-          {/* Destination — keep it on your private list, or share it with the
-              community. Only the default "request" kind offers privacy. */}
+          {/* Destination — keep it on your private list, share with your whole
+              garden, or submit to specific communities' moderated lists. Only
+              the default "request" kind offers privacy. */}
           {!isLifeEvent && kind === "request" && !isPilot && (
             <div className="w-full flex gap-2">
               {([
                 ["list", t("prayer_request.dest_list", { defaultValue: "Keep on my list" })],
                 ["share", t("prayer_request.dest_share", { defaultValue: "Share with community" })],
+                ...(openGroups.length > 0 ? [["group", t("prayer_request.dest_group", { defaultValue: "Submit to a community" })] as const] : []),
               ] as const).map(([val, label]) => {
                 const on = dest === val;
                 return (
@@ -345,6 +403,37 @@ export default function PrayerRequestNew() {
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {/* "group" — pick which communities. Reviewed by that community's
+              own admin before it reaches anyone (owner). */}
+          {dest === "group" && (
+            <div className="w-full text-left">
+              <p className="text-[12px] mb-2" style={{ color: SAGE_DIM, fontFamily: SPACE }}>
+                {t("prayer_request.pick_communities", { defaultValue: "Submit to which communities?" })}
+              </p>
+              <div className="flex flex-col gap-2">
+                {openGroups.map((g) => {
+                  const isSel = selectedGroupSlugs.includes(g.slug);
+                  return (
+                    <button
+                      key={g.slug}
+                      type="button"
+                      onClick={() => toggleGroupSlug(g.slug)}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left transition-colors"
+                      style={{ background: isSel ? "rgba(46,107,64,0.28)" : GLASS, border: `1px solid ${isSel ? "rgba(143,175,150,0.55)" : GLASS_BORDER}` }}
+                    >
+                      <span className="text-[16px] flex-shrink-0" aria-hidden>{g.emoji || "🏘️"}</span>
+                      <span className="text-[14px] flex-1 truncate" style={{ color: CREAM, fontFamily: SPACE }}>{g.name}</span>
+                      {isSel && <span style={{ color: "#C8D4C0" }} aria-hidden>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11.5px] mt-2.5" style={{ color: SAGE_DIM, fontFamily: SPACE }}>
+                {t("prayer_request.group_moderation_note", { defaultValue: "A leader reads this before it reaches the community." })}
+              </p>
             </div>
           )}
 
@@ -395,20 +484,19 @@ export default function PrayerRequestNew() {
               authoritative layer (auto-flag, the post-create notice) for
               whatever this live check misses. Shown for the public/garden
               path only; the private list isn't read by anyone else. */}
-          {dest === "share" && scanForCrisisLanguage(body) && (
+          {(dest === "share" || dest === "group") && scanForCrisisLanguage(body) && (
             <p className="text-[12px] text-center" style={{ color: SAGE_DIM, fontFamily: SPACE, marginTop: -6 }}>
               {t("prayer_request.crisis_line", { defaultValue: "In crisis? Call or text 988, any time." })}
             </p>
           )}
 
-          {/* Owner: per-community targeting moved to the group's own,
-              properly moderated Prayer list — a leader reads a request
-              there before it reaches anyone, which this compose flow never
-              did. Pointer only; no picker, no group selection here anymore. */}
-          {dest === "share" && (
+          {/* Pointer to the "group" destination above — only shown for
+              "share" (whole-garden); redundant once "group" is already
+              selected, since that IS the moderated community path now. */}
+          {dest === "share" && openGroups.length > 0 && (
             <p className="text-[12px] text-center" style={{ color: SAGE_DIM, fontFamily: SPACE }}>
               {t("prayer_request.community_prayer_list_pointer", {
-                defaultValue: "Want to ask just one community? Post it from that community's own Prayer list, where a leader reads it first.",
+                defaultValue: "Want to ask just one community? Choose “Submit to a community” above instead.",
               })}
             </p>
           )}
@@ -455,7 +543,9 @@ export default function PrayerRequestNew() {
             >
               {dest === "list"
                 ? (addToListMutation.isPending ? t("intentions.adding", { defaultValue: "Adding…" }) : t("intentions.add", { defaultValue: "Add to my list" }))
-                : (createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community"))}
+                : dest === "group"
+                  ? (createGroupSubmissionMutation.isPending ? t("prayer_request.submitting", { defaultValue: "Submitting…" }) : t("prayer_request.submit_to_community", { defaultValue: "Submit for review" }))
+                  : (createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community"))}
             </button>
             <button
               onClick={handleBack}

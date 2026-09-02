@@ -13,7 +13,7 @@
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import { db, groupPrayerRequestsTable } from "@workspace/db";
+import { db, groupPrayerRequestsTable, groupsTable } from "@workspace/db";
 import { requireAdmin, requireCongregant } from "./groups";
 import { perUserRateLimit } from "../lib/rate-limit";
 
@@ -215,6 +215,46 @@ router.delete("/groups/:slug/prayer-list/:id", async (req: Request, res: Respons
     eq(groupPrayerRequestsTable.groupId, result.group.id),
   ));
   res.json({ ok: true });
+});
+
+/**
+ * GET /me/group-prayer-submissions — MY OWN pending submissions, across every
+ * group I've submitted to. Owner: a "Pending prayer requests" section at the
+ * bottom of the prayer-list page — the submitter's-side view of the same
+ * queue the admin routes above manage.
+ *
+ * Scoped to the caller's own submittedByUserId — this is not a moderation
+ * surface, it never lets anyone see another person's pending submission, and
+ * it deliberately does not require group membership to still be current: if
+ * someone left a group after submitting, their own history of having asked
+ * is still theirs to see.
+ */
+router.get("/me/group-prayer-submissions", async (req: Request, res: Response): Promise<void> => {
+  const user = req.user as SessionUser;
+  if (!user) { res.status(401).json({ error: "not_authenticated" }); return; }
+
+  const askedStatus = String(req.query["status"] ?? "pending");
+  const statuses: Status[] = STATUSES.includes(askedStatus as Status) ? [askedStatus as Status] : ["pending"];
+
+  const rows = await db
+    .select({
+      id: groupPrayerRequestsTable.id,
+      body: groupPrayerRequestsTable.body,
+      status: groupPrayerRequestsTable.status,
+      createdAt: groupPrayerRequestsTable.createdAt,
+      groupId: groupPrayerRequestsTable.groupId,
+      groupName: groupsTable.name,
+      groupSlug: groupsTable.slug,
+    })
+    .from(groupPrayerRequestsTable)
+    .innerJoin(groupsTable, eq(groupsTable.id, groupPrayerRequestsTable.groupId))
+    .where(and(
+      eq(groupPrayerRequestsTable.submittedByUserId, user.id),
+      inArray(groupPrayerRequestsTable.status, statuses),
+    ))
+    .orderBy(desc(groupPrayerRequestsTable.createdAt))
+    .limit(100);
+  res.json({ requests: rows });
 });
 
 export default router;

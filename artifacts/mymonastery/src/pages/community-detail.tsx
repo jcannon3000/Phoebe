@@ -9,7 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { CommunityRuleCard } from "@/components/CommunityRuleCard";
-import { CommunitySeasonCard } from "@/components/CommunitySeasonCard";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -1377,10 +1376,9 @@ export default function CommunityDetailPage() {
             now sits in the hub tab, after the prayers and events sections,
             which lead instead. */}
 
-        {/* BETA — the leader's aggregate weekly pulse (never names, floored
-            under 4 members) and the community SEASON (the rule kept together
-            for a bounded few weeks; leaders start it, everyone checks in). */}
-        {rawIsBeta && <CommunitySeasonCard slug={slug} />}
+        {/* The community SEASON card ("start a season") is REMOVED entirely
+            (owner). It used to sit here, beta-gated, next to the leader's
+            weekly pulse below. */}
 
         {/* Beta-only — daily reflection entry (CAC / Forward Day by
             Day). Renders for every joined member of a beta-gated

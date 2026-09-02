@@ -1,8 +1,8 @@
 // Shared "portable routine spec" machinery — sanitize a client-supplied
-// PrescribedRoutineSpec and apply it to a user's account. Used by BOTH accept
-// paths: prescribed-routine / preset links (routes/prescribed-routines.ts) and
-// creator-season joins (routes/creator-seasons.ts). One implementation so the
-// two can't drift.
+// PrescribedRoutineSpec and apply it to a user's account. Used by the
+// prescribed-routine / preset links accept path (routes/prescribed-routines.ts).
+// ("Start a season" — creator-season joins — used to be a second caller;
+// that feature was removed entirely, owner's call.)
 //
 // What "apply" writes: office prefs, home layout, contemplation goal / silence
 // ladder, and the per-device rule-config. It NEVER touches the user's prayers,

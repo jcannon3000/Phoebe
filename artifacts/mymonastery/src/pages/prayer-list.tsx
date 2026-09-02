@@ -1048,6 +1048,17 @@ export default function PrayerListPage() {
   const pastMine = pastMineData ?? [];
   const [showPast, setShowPast] = useState(false);
 
+  // The viewer's OWN pending submissions to communities' moderated prayer
+  // lists — owner: a "Pending prayer requests" section at the bottom, for
+  // requests submitted but not yet accepted by a group's admin.
+  const { data: pendingSubmissionsData } = useQuery<{ requests: Array<{ id: number; body: string; groupName: string; groupSlug: string; createdAt: string }> }>({
+    queryKey: ["/api/me/group-prayer-submissions"],
+    queryFn: () => apiRequest("GET", "/api/me/group-prayer-submissions"),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const pendingSubmissions = pendingSubmissionsData?.requests ?? [];
+
   // The viewer's OWN private list (prayer_intentions) — owner: "the prayer
   // list page should have both community and individual prayers, on the
   // same page, no toggle, personal second." Fetched with ?ymd= (like
@@ -1475,6 +1486,40 @@ export default function PrayerListPage() {
             </div>
           )}
         </section>
+
+        {/* Pending prayer requests — owner: a section at the bottom for
+            requests the viewer has submitted to a community's moderated
+            prayer list, not yet accepted by that group's admin. Distinct
+            from "Past prayers" above (which is the viewer's own PERSONAL
+            requests to their garden that have since ended) — these are
+            group submissions still awaiting review, and can belong to
+            several different communities at once. */}
+        {pendingSubmissions.length > 0 && (
+          <section className="mt-5">
+            <p
+              className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2 px-1"
+              style={{ color: "rgba(200,212,192,0.55)" }}
+            >
+              {t("prayer_list.section_pending", { defaultValue: "Pending prayer requests" })}
+            </p>
+            <div className="flex flex-col gap-2">
+              {pendingSubmissions.map((r) => (
+                <div
+                  key={r.id}
+                  className="rounded-2xl px-4 py-3.5"
+                  style={{ ...FROST, border: "1px solid rgba(200,212,192,0.2)" }}
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-1" style={{ color: "rgba(143,175,150,0.6)" }}>
+                    {t("prayer_list.pending_to_group", { defaultValue: "To {{group}} · awaiting review", group: r.groupName })}
+                  </p>
+                  <p className="text-sm leading-snug" style={{ color: "rgba(240,237,230,0.85)", wordBreak: "break-word" }}>
+                    {r.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
       </div>
 
