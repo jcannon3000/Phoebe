@@ -2258,7 +2258,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     while (target < slides.length && (slides[target]?.type === "lesson" || slides[target]?.type === "lesson_verses")) {
       target += 1;
     }
-    setSlideIdx(Math.min(target, slides.length - 1));
+    // Returning from the reading on the deck's FINAL lesson has nothing to
+    // clamp onto — `Math.min(target, slides.length - 1)` landed back on the
+    // same lesson_title slide (slideIdx itself), re-rendering the identical
+    // "Gospel appointed for this morning" card the reader just came from,
+    // now merely relabeled "Done". Reported: "the daily office reading
+    // shows the gospel title a second time." Finish the office outright
+    // instead — this IS the deck's true end.
+    if (target >= slides.length) { handleEnd(); return; }
+    setSlideIdx(target);
   }
 
   // Keep the arrow-key handler (bound once above) pointing at the current

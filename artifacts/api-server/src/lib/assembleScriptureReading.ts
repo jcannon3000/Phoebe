@@ -158,6 +158,17 @@ export async function assembleScriptureReading(date: Date): Promise<{ slides: Sl
   for (const s of buildLessonSlides(lesson2 ?? "", "second_morning", id)) slides.push(s);
   for (const s of buildLessonSlides(lesson3 ?? "", "gospel_morning", id)) slides.push(s);
 
+  // Owner: a closing slide, rather than the deck simply ending on the
+  // Gospel's title card the instant the reader dismisses. Also closes a
+  // real bug this exposed — the native reader's own "return" step
+  // (nextPastLessonReading in bcp-daily-office.tsx) had nothing to land on
+  // past the final lesson, so it clamped back onto that same title slide,
+  // which then re-rendered as if the Gospel had been shown a second time.
+  // A real next slide fixes both.
+  if (slides.length > 0) {
+    slides.push(slide(id(), "closing", "🙏🏽", "", "Take a moment to bring what may be on your heart from the readings to prayer."));
+  }
+
   return {
     slides,
     dayInfo: {
