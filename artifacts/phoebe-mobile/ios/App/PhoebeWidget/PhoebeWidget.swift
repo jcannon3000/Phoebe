@@ -601,14 +601,20 @@ struct PhoebeWidgetView: View {
             // showing only the dots was a different, quieter thing wearing the
             // same shape. Naming what the dots count is also what makes them
             // legible to someone who has not opened the app today.
+            /* NOT SAGE (owner: "daily progress looks faded like there is an
+               overlay"). It was phoebeSage #8FAF96 — a muted green — sitting
+               directly beside a FULL WHITE wordmark, so the pill read as
+               dimmed rather than as quiet. Nothing was actually overlaying
+               it; the veil was the colour itself. Warm cream is the app's own
+               foreground and puts the pill at the same weight as the name. */
             Text("Daily Progress")
                 .font(sgRegular(9.5))
-                .foregroundColor(phoebeSage)
+                .foregroundColor(phoebeWarm)
                 .lineLimit(1)
             HStack(spacing: 4) {
                 ForEach(0..<total, id: \.self) { i in
                     Circle()
-                        .fill(i < stats.doneCount ? phoebeSage : phoebeSage.opacity(0.28))
+                        .fill(i < stats.doneCount ? phoebeWarm : phoebeWarm.opacity(0.30))
                         .frame(width: 5, height: 5)
                 }
             }
@@ -616,9 +622,9 @@ struct PhoebeWidgetView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
         .background(
-            Capsule().fill(Color(red: 9/255, green: 26/255, blue: 16/255).opacity(0.45))
+            Capsule().fill(Color(red: 9/255, green: 26/255, blue: 16/255).opacity(0.32))
         )
-        .overlay(Capsule().strokeBorder(phoebeSage.opacity(0.22), lineWidth: 1))
+        .overlay(Capsule().strokeBorder(phoebeWarm.opacity(0.30), lineWidth: 1))
         .opacity(total > 0 ? 1 : 0)
     }
 
@@ -669,13 +675,46 @@ struct PhoebeWidgetView: View {
                         // A little bigger (owner) — it is the app's name on its
                         // own widget, and at 12 it read as a caption over the
                         // cards rather than as the thing they belong to.
-                        .font(sgBold(14))
+                        // Then 10% bigger again (owner, 2026-09-02): 14 → 15.4.
+                        // The .padding(.leading, 20) below is UNCHANGED, so the
+                        // left edge holds — SwiftUI lays this text out from its
+                        // leading edge, and growing the point size extends it
+                        // rightward and downward, not left. Do not "recentre"
+                        // it after a size change; that is what would break the
+                        // alignment the owner asked to keep.
+                        .font(sgBold(15.4))
                         .foregroundColor(.white)
                     Spacer(minLength: 8)
                     progressPill(stats)
                 }
-                    .padding(.leading, 12 + 1 + (4 + 16) * s)
-                    .padding(.trailing, 12)
+                    /* LEFT-ALIGNED WITH THE CARDS (owner, 2026-09-02).
+                       Was 12 + 1 + (4 + 16) * s, which lined the wordmark up
+                       with the card's EMOJI — it stepped past the card's outer
+                       edge, its 1pt border, the 4pt accent bar and the row's
+                       own 16pt padding. The owner wants it flush with the
+                       CARDS THEMSELVES, and nextCardsStack sets
+                       .padding(.horizontal, 12). Flush with the card's OUTER
+                       edge read as overhanging to the left, because the card
+                       draws a 1pt border and the "P" carries its own side
+                       bearing — so the owner asked for 8 more ("move phoebe
+                       like 4px to the right / maybe 8"). That offset of 8 past
+                       the card's outer edge is optical alignment with the card's
+                       CONTENT rather than arithmetic alignment with its box.
+                       It then went out to 19.2 and the owner asked for it back
+                       LEFT by 8: 7.2 + 4 = 11.2. THE OFFSET (4) IS THE NUMBER
+                       TO PRESERVE, not the 11.2 — if nextCardsStack's
+                       .padding(.horizontal) moves again, recompute this as that
+                       value + 4 rather than nudging this constant on its own. */
+                    .padding(.leading, 11.2)
+                    /* TRACKS THE CARDS' RIGHT EDGE (owner: "daily progress to
+                       the right to stay right aligned"). The cards went from 12
+                       to 7.2, so the pill follows them out by the same 4.8.
+                       Flush rather than offset, unlike the wordmark on the left:
+                       the pill ends in a filled capsule with a border, which is
+                       a hard edge like the card's own, so it reads as aligned at
+                       the same number. The "P" needed the extra 8 because a
+                       glyph's side bearing is not an edge. */
+                    .padding(.trailing, 7.2)
                     /* PULLED UP INTO THE WIDGET'S OWN MARGIN (owner: "move the
                        phoebe text and the daily progress up").
                        iOS insets widget content by its default margins before
@@ -744,7 +783,12 @@ struct PhoebeWidgetView: View {
                 Spacer(minLength: 0)
             }
         }
-        .padding(.horizontal, 12)
+        /* 40% LESS SIDE PADDING (owner, 2026-09-02): 12 → 7.2, so the
+           cards get 9.6pt wider overall. The header row above is
+           measured FROM this number — its .padding(.leading) moved by
+           the same 4.8 so the wordmark keeps the offset from the card
+           edge the owner just approved. Change one, change the other. */
+        .padding(.horizontal, 7.2)
         // Vertical padding of our OWN is nearly all redundant: iOS already
         // insets widget content by its default margins (~16pt each side) on
         // top of this. Two cards plus 10pt top and bottom came to more than
