@@ -4470,6 +4470,19 @@ export default function WayOfLoveRuleFlow({
           {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
           {!anchoredAsForm("walk") && choiceRow(contemplative.walk, `🚶🏽 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
           {!anchoredAsForm("visio") && choiceRow(contemplative.visio, `🖼️ ${t("wol_rule.cp_visio", { defaultValue: "Visio Divina" })}`, t("wol_rule.cp_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }), () => toggleContemplative("visio"))}
+          {/* THIS LIST IS HARDCODED, not driven by the `group: "contemplative"`
+              options array above — which is exactly how four practices ended up
+              unreachable here. Icons, Taizé and Spirituals all carry
+              group:"contemplative" in that array and none of them rendered on
+              this step; Reading's only toggle was on the dead "extras" step.
+              Owner, twice: "I dont see the reading card in the customizer" and
+              "Not seeing taize in the reflections option of the full
+              customizer."
+              If you add a practice to the options array, ADD IT HERE TOO, or it
+              exists everywhere except the place people choose it. */}
+          {choiceRow(contemplative.icons, `🪟 ${t("wol_rule.cp_icons", { defaultValue: "Praying with Icons" })}`, t("wol_rule.cp_icons_sub", { defaultValue: "Sit with an icon — return to it daily." }), () => toggleContemplative("icons"))}
+          {choiceRow(contemplative.taize, `🕯️ ${t("wol_rule.cp_taize", { defaultValue: "Taizé meditation" })}`, t("wol_rule.cp_taize_sub", { defaultValue: "A meditation from Taizé — it waits until you read it." }), () => toggleContemplative("taize"))}
+          {choiceRow(contemplative.reading, `📚 ${t("wol_rule.cp_reading", { defaultValue: "Reading" })}`, t("wol_rule.cp_reading_sub", { defaultValue: "A book, a page a day — with a bar showing how far in you are." }), () => toggleContemplative("reading"))}
           {/* Last, because it's the answer when none of the named ones is. */}
           {choiceRow(
             customPracticeOn,
