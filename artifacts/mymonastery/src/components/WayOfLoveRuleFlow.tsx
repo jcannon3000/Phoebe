@@ -258,7 +258,7 @@ const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
  */
 type ExtraMapping =
   | { kind: "level"; level: "office" | "devotion" | "psalms" | "readings" | "guided-prayer" }
-  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" | "icons" | "taize" | "chittister" }
+  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" | "icons" | "taize" }
   | { kind: "contemplation" }
   | { kind: "newsletter" };
 type ExtraPractice = {
@@ -329,9 +329,6 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // The other two inboxes, on the same terms. They shipped with a card, a
   // menu row and a home-layout key — and no way to TURN ON, because the only
   // switch was on /customize-home, a page nothing in the app links to. The
-  // owner asked for Chittister's weekly by name ("try to integrate the weekly
-  // here") and could not have found it.
-  { title: () => "Vision and Viewpoint", emoji: "🌾", sub: "Joan Chittister's weekly — it waits until you read it.", excludes: "__none__", maps: { kind: "practice", key: "chittister" } , group: "contemplative" },
   { title: () => "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__", maps: { kind: "practice", key: "cobreathe" } , group: "contemplative" },
 ];
 
@@ -699,8 +696,8 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "vts", label: "🦩 VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
   // Read-only sources (see ReflectionSource): they sit in the rule and open in
   // the reader like the others, but opening one is not scored.
-  { id: "nouwen", label: "😊 Daily Henri Nouwen Quotes", sub: "Henri Nouwen Society" },
-  { id: "sojo", label: "🕊️ Sojourner's Voice and Verse", sub: "Verse, voice and prayer of the day" },
+  { id: "nouwen", label: "😊 Nouwen Daily Devotion", sub: "Henri Nouwen Society" },
+  { id: "sojo", label: "🕊️ Sojourners Daily Devotion", sub: "Verse, voice and prayer of the day" },
   { id: "grist", label: "🌍 Grist Climate News", sub: "The day's climate journalism · weekdays" },
 ];
 
@@ -1316,7 +1313,6 @@ export default function WayOfLoveRuleFlow({
       visio: homeCardOn(user.homeLayout, "visio"),
       icons: homeCardOn(user.homeLayout, "icons"),
       taize: homeCardOn(user.homeLayout, "taize"),
-      chittister: homeCardOn(user.homeLayout, "chittister"),
       compline: homeCardOn(user.homeLayout, "compline"),
     });
     // Per-side Contemplative Prayer — re-seed once the home layout lands.
@@ -1338,7 +1334,7 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; chittister: boolean; compline: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; compline: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: !creationHeldBySide() && homeCardOn(user?.homeLayout, "cobreathe"),
     audio: homeCardOn(user?.homeLayout, "listening"),
@@ -1349,10 +1345,9 @@ export default function WayOfLoveRuleFlow({
     icons: homeCardOn(user?.homeLayout, "icons"),
     taize: homeCardOn(user?.homeLayout, "taize"),
     // Seeded the same way as every sibling — the layout key IS the switch.
-    chittister: homeCardOn(user?.homeLayout, "chittister"),
     compline: homeCardOn(user?.homeLayout, "compline"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "chittister" | "compline") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "compline") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -2105,7 +2100,6 @@ export default function WayOfLoveRuleFlow({
        * on /customize-home, a page nothing in the app links to.
        */
       ...(contemplative.taize ? ["taize"] : []),
-      ...(contemplative.chittister ? ["chittister"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
     const offKeys = [
@@ -2119,7 +2113,6 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.visio ? [] : ["visio"]),
       ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
-      ...(contemplative.chittister ? [] : ["chittister"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
     // No hardcoded "podcasts" here — extras.podcasts already routes it through
@@ -2435,7 +2428,6 @@ export default function WayOfLoveRuleFlow({
        */
       ...(contemplative.icons ? ["icons"] : []),
       ...(contemplative.taize ? ["taize"] : []),
-      ...(contemplative.chittister ? ["chittister"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
     const offKeys = [
@@ -2450,7 +2442,6 @@ export default function WayOfLoveRuleFlow({
       // See onKeys above — both halves, or an unticked one is never hidden.
       ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
-      ...(contemplative.chittister ? [] : ["chittister"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
     // No hardcoded "podcasts" here — extras.podcasts already routes it through
@@ -2597,7 +2588,7 @@ export default function WayOfLoveRuleFlow({
     // wants Visio Divina and a Contemplative Walk gets exactly those, and
     // nothing survives from the rule being replaced.
     setContemplative({
-      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, chittister: false, compline: false,
+      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, compline: false,
       ...(preset.practices ?? {}),
     });
     /**

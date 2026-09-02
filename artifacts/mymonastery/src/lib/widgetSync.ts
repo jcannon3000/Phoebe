@@ -293,13 +293,12 @@ export function useWidgetSync(): void {
        * ("silently dropped cobreathe, listening, walk, reading, examen … from
        * the count"). It had fallen behind again: with these absent, a day whose
        * only remaining practice was the icon, the Taizé meditation or
-       * Chittister's weekly showed "The day is kept" on the widget while the
+       * the Taizé meditation showed "The day is kept" on the widget while the
        * app still had it outstanding — and the dots disagreed with the app's
        * too, because doneCount and totalAnchors are counted from this array.
        */
       { active: r.iconsActive, done: r.iconsDone, slot: "anytime" as CustomSlot, key: "icons", emoji: "🪟", title: "Praying with Icons", eyebrow: "This week's icon", subtitle: "One icon for the week", cta: "Begin", kind: "office" },
       { active: r.taizeActive, done: r.taizeDone, slot: getPracticeSlot("taize"), key: "taize", emoji: "🕯️", title: "Taizé meditation", eyebrow: "Taizé", subtitle: "The newest meditation from Taizé", cta: "Read", kind: "reflect" },
-      { active: r.chittisterActive, done: r.chittisterDone, slot: getPracticeSlot("chittister"), key: "chittister", emoji: "🌾", title: "Vision and Viewpoint", eyebrow: "Joan Chittister", subtitle: "Joan Chittister's weekly", cta: "Read", kind: "reflect" },
       // Compline rides the evening slot — same fixed placement the home card
       // and the header dot use (it IS the night office, so no slot picker).
       { active: r.complineActive, done: r.complineDone, slot: "evening", key: "compline", emoji: "🌙", title: "Compline", eyebrow: "The night office", subtitle: "The night office", cta: "Begin", kind: "office" },
@@ -415,7 +414,6 @@ export function useWidgetSync(): void {
       "reflect-vts": "/vts-reading",
       icons: "/icon-prayer",
       taize: "https://www.taize.fr/en/tag/meditations",
-      chittister: "https://www.joanchittister.org/pages/newsletters",
     };
     const contemplationHref = (side: "morning" | "evening", kind: string): string => {
       if (kind === "walk") return "";

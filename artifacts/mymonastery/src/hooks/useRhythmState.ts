@@ -215,12 +215,8 @@ export type RhythmState = {
    * been posted — and it is never reset by the day turning over.
    */
   taizeActive: boolean;
-  chittisterActive: boolean;
-  chittisterDone: boolean;
-  chittisterWaiting: InboxItem | null;
   /** The newest item REGARDLESS of whether it has been read — the undo needs
    *  it, and `waiting` is null in exactly the case undo applies to. */
-  chittisterLatest: InboxItem | null;
   taizeDone: boolean;
   /** The meditation waiting to be read, or null when the inbox is empty. */
   taizeWaiting: { id: string; title: string; url: string; published: string | null } | null;
@@ -459,7 +455,7 @@ export function useRhythmState(): RhythmState {
      * An inbox item was marked read (or un-read) IN THIS DOCUMENT.
      *
      * markInboxRead has fired this since it was written and nothing listened.
-     * The Taizé and Chittister cards got away with it because they open a
+     * The Taizé card gets away with it because it opens a
      * browser first, and `phoebe:browserfinished` / `focus` happen to cover
      * the return trip. The Cathedral's LISTEN button doesn't open anything —
      * it starts the podcast player in-app — so its card's move to Done relied
@@ -756,7 +752,6 @@ export function useRhythmState(): RhythmState {
   // day-scoped like every other practice card.
   const iconsActive = homeCardActive(hl, "icons");
   const taizeActive = homeCardActive(hl, "taize");
-  const chittisterActive = homeCardActive(hl, "chittister");
   // Compline — the night office, offered as a contemplative add-on card.
   // complineActive means "the user has this in their rhythm" (mirrors every
   // other *Active flag — never time-gated, so the card is reliably present
@@ -1011,18 +1006,12 @@ export function useRhythmState(): RhythmState {
     enabled: taizeActive,
   });
   /**
-   * THE OTHER TWO INBOXES, on exactly the same terms — Joan Chittister's
+   * THE OTHER INBOX, on exactly the same terms —
    * weekly and the National Cathedral's sermons (owner: "try to integrate the
    * weekly here", "doing National Cathedral Sermons as a newsletter in the
    * imbox way"). Both publish real RSS, both are resolved server-side, and
    * both are fetched only when their card is actually in the rhythm.
    */
-  const { data: chittisterLatest } = useQuery<InboxItem | null>({
-    queryKey: ["/api/chittister/latest"],
-    queryFn: async () => (await apiRequest("GET", "/api/chittister/latest")) ?? null,
-    staleTime: 30 * 60_000,
-    enabled: chittisterActive,
-  });
 
   // ANY tracked source counts as "reflected today" — spelled out per source
   // it would quietly stop counting the next one added (this line already had
@@ -1255,8 +1244,6 @@ export function useRhythmState(): RhythmState {
     : null;
   // Same rule for the other two: an empty inbox is DONE, not absent, or the
   // day could never read as finished in the week between publications.
-  const chittisterWaiting = chittisterActive ? waitingItem("chittister", chittisterLatest) : null;
-  const chittisterDone = chittisterActive && chittisterWaiting == null;
   // Compline is an OFFICE, so its done-state comes from the office flags (the
   // office viewer's local stamp) — not the practice_completion table the
   // logging-first practices use.
@@ -1616,7 +1603,6 @@ export function useRhythmState(): RhythmState {
      * inbox — an empty one is kept, not skipped.
      */
     ...(taizeActive ? [taizeDone] : []),
-    ...(chittisterActive ? [chittisterDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted. Same for a
     // custom scoped to weekdays on a day it isn't kept (anchorOnDay): it draws
     // NO card on that day, so counting it here would add a dot that can never
@@ -1659,8 +1645,7 @@ export function useRhythmState(): RhythmState {
      * `offline` still short-circuits, and the routes answer 204 with a 9s
      * timeout, so a dead upstream costs one wait rather than a blank home.
      */
-    (!taizeActive || taizeLatest !== undefined || offline) &&
-    (!chittisterActive || chittisterLatest !== undefined || offline));
+    (!taizeActive || taizeLatest !== undefined || offline));
 
   /**
    * The side's SECOND practice — active when one is stored AND it can be told
@@ -1702,10 +1687,6 @@ export function useRhythmState(): RhythmState {
     taizeDone,
     taizeWaiting,
     groupReflection,
-    chittisterActive,
-    chittisterDone,
-    chittisterWaiting,
-    chittisterLatest: chittisterLatest ?? null,
     complineActive,
     cobreatheActive,
     prayerListActive,

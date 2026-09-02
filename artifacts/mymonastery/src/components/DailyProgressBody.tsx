@@ -51,8 +51,8 @@ const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   ssje: "Brother, Give Us a Word",
   cac: "CAC Daily Meditation",
   vts: "VTS Dean's Commentary",
-  nouwen: "Daily Henri Nouwen Quotes",
-  sojo: "Sojourner's Voice and Verse",
+  nouwen: "Nouwen Daily Devotion",
+  sojo: "Sojourners Daily Devotion",
   grist: "Grist Climate News",
 };
 
@@ -770,7 +770,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, groupReflection, chittisterActive, chittisterDone, chittisterWaiting, chittisterLatest, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, taizeActive, taizeDone, taizeWaiting, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1112,46 +1112,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: taizeWaiting
       ? [taizeWaiting.title, waitingLabel(taizeWaiting)].filter(Boolean).join(" · ")
       : t("rhythm.blurb_taize_empty", { defaultValue: "Nothing new since the last one" }),
-    cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
-  };
-  const chittisterLatestId = chittisterLatest?.id ?? null;
-
-  /**
-   * JOAN CHITTISTER'S WEEKLY — Vision & Viewpoint, in the inbox shape.
-   *
-   * Owner: "https://www.joanchittister.org/pages/newsletters try to integrate
-   * the weekly here." Her newsletters page is a subscribe form with no archive
-   * and the Shopify "Teachings" blog last published in February 2025, so the
-   * source is the Benetvision campaign archive's own feed, filtered to the
-   * Monday sends (the off-day ones are book and Monastic Way promotions —
-   * see routes/weeklyReadings.ts).
-   */
-  const chittisterCard = {
-    key: "chittister", emoji: "🌾", rgb: "150,140,110",
-    done: chittisterDone,
-    // NO `href` when nothing is waiting. PracticeCard falls through to
-    // wouter's <Link> when there is no onClick, and wouter pushStates the
-    // value — a cross-origin pushState throws SecurityError, so tapping the
-    // empty card did nothing except raise an uncaught DOMException. An empty
-    // inbox card is not a link anywhere; it is a card saying nothing is here.
-    ...(chittisterWaiting ? { href: chittisterWaiting.url } : {}),
-    title: t("rhythm.card_chittister", { defaultValue: "Vision and Viewpoint" }),
-    blurb: chittisterWaiting
-      ? [chittisterWaiting.title, waitingLabel(chittisterWaiting)].filter(Boolean).join(" · ")
-      : t("rhythm.blurb_chittister_empty", { defaultValue: "Nothing new since the last one" }),
-    // Marked read when the browser CLOSES, not at tap — the same rule the
-    // newsletter cards learned the hard way.
-    ...(chittisterWaiting ? {
-      onClick: () => openExternalThenMarkRead(
-        chittisterWaiting.url,
-        () => { markInboxRead("chittister", chittisterWaiting.id); swellHaptic(); },
-        { reader: true },
-      ),
-    } : {}),
-    onUnlog: chittisterWaiting ? undefined : () => {
-      // Undo puts the LAST one back — there is no day-flag to clear.
-      if (chittisterLatestId) unmarkInboxRead("chittister", chittisterLatestId);
-    },
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
   };
 
@@ -1638,7 +1598,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(taizeActive ? [{ ...taizeCard, slot: getPracticeSlot("taize") }] : []),
     // No slot lookup: it isn't a scheduled practice, it's post that arrived.
     ...(groupReflectionCard ? [{ ...groupReflectionCard, slot: "anytime" as CustomSlot }] : []),
-    ...(chittisterActive ? [{ ...chittisterCard, slot: getPracticeSlot("chittister") }] : []),
     // Prayer List is a standalone "anytime" practice — it left the
     // morning/evening sides entirely (owner, 2026-08-26: "take your prayer
     // list out of the morning and evening side"), so the card no longer moves

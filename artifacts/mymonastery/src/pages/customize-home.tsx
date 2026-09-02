@@ -31,7 +31,7 @@ const HOME_MODULES = [
   // Must match HOME_MODULE_KEYS in api-server/src/routes/prayer.ts. "feeds" was
   // missing here, so saving from this page silently stripped it and the server
   // re-appended it at the end — quietly moving the user's feeds card. Keep in sync.
-  "office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "chittister",
+  "office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize",
   // `icons` and `prayer-list` are in the server's list and were missing here,
   // which is the same fault the note above records for `feeds` — and worse
   // than losing them: saving this page dropped them from `order`, the server
@@ -125,7 +125,7 @@ const HOME_LAYOUT_VERSION = 2;
 // requests (pinned) → community prayers (office) →
 // Forward Day by Day. Everything else is hidden but addable.
 const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "fdd", "contemplation", "listening", "examen", "cac", "ssje", "vts", "ncmp", "podcasts"];
-const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "chittister", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts"];
+const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts"];
 
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
   const { t } = useTranslation();
@@ -141,7 +141,6 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     taize:        { label: t("rhythm.card_taize", { defaultValue: "Taizé meditation" }), emoji: "🕯️", sub: t("customize_home.module_taize_sub", { defaultValue: "The newest meditation from Taizé · waits until you've read it" }) },
     icons:        { label: t("rhythm.card_icons", { defaultValue: "Praying with Icons" }), emoji: "🖼️", sub: t("customize_home.module_icons_sub", { defaultValue: "Sit with an icon, a few minutes at a time" }) },
     "prayer-list": { label: t("rhythm.card_prayer_list", { defaultValue: "Prayer List" }), emoji: "🙏🏽", sub: t("customize_home.module_prayer_list_sub", { defaultValue: "The people and things you are holding" }) },
-    chittister:   { label: t("rhythm.card_chittister", { defaultValue: "Vision and Viewpoint" }), emoji: "🌾", sub: t("customize_home.module_chittister_sub", { defaultValue: "Joan Chittister's weekly · waits until you've read it" }) },
     examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },
     cac:          { label: "CAC Daily Reflection",               emoji: "🌅", sub: "Today's reflection from the Center for Action & Contemplation" },
     fdd:          { label: "Forward Day by Day",                 emoji: "📖", sub: "Today's meditation from Forward Movement" },
@@ -150,8 +149,8 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     // Owner: "make sure all reflections are availble in the customizer."
     // These three were readable from the Reflections menu but could not be
     // chosen, so the menu offered six and the rhythm accepted four.
-    nouwen:       { label: "Daily Henri Nouwen Quotes",          emoji: "😊", sub: "From the Henri Nouwen Society" },
-    sojo:         { label: "Sojourner's Voice and Verse",        emoji: "🕊️", sub: "Verse, voice and prayer of the day" },
+    nouwen:       { label: "Nouwen Daily Devotion",          emoji: "😊", sub: "From the Henri Nouwen Society" },
+    sojo:         { label: "Sojourners Daily Devotion",        emoji: "🕊️", sub: "Verse, voice and prayer of the day" },
     grist:        { label: "Grist Climate News",                 emoji: "🌎", sub: "The day's climate reporting" },
     ncmp:         { label: "National Cathedral Morning Prayer",  emoji: "📺", sub: "Weekday live broadcast · 7 AM ET" },
     podcasts:     { label: t("customize_home.module_podcasts", { defaultValue: "Podcasts" }), emoji: "🎧", sub: t("customize_home.module_podcasts_sub", { defaultValue: "Shows you've added · pick up where you left off" }) },

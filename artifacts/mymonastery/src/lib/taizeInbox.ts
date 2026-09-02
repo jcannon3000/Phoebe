@@ -25,7 +25,7 @@
 
 /**
  * THREE SOURCES NOW, ONE SHAPE. Taizé was the first; the owner has since asked
- * for Joan Chittister's weekly ("try to integrate the weekly here") and the
+ * for other weekly sources; the
  * National Cathedral's sermons ("doing National Cathedral Sermons as a
  * newsletter in the imbox way").
  *
@@ -35,11 +35,10 @@
  * SOURCE as well, so three inboxes can't read each other's ids. The Taizé
  * functions remain as thin wrappers so existing call sites keep working.
  */
-export type InboxSource = "taize" | "chittister";
+export type InboxSource = "taize";
 
 const READ_KEY_FOR: Record<InboxSource, string> = {
   taize: "phoebe:taize:read-ids",
-  chittister: "phoebe:chittister:read-ids",
 };
 /** How many ids to remember. Only the newest is ever asked about; the rest are
  *  kept so re-reading an older one doesn't resurrect it in the list view. */
