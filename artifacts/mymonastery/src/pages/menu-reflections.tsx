@@ -49,25 +49,11 @@ export default function MenuReflectionsPage() {
   const openNouwen = () => { markNouwenRead(); openExternal(NOUWEN_TODAY_URL, { reader: true }); };
   const openSojo = () => { markSojoRead(); openExternal(sojournersTodayUrl(), { reader: true }); };
   const openGrist = () => { markGristRead(); openExternal(GRIST_TODAY_URL, { reader: true }); };
-  /**
-   * THE VCS DAILY — available to every user (owner: "the daily VCS should be
-   * available for all users").
-   *
-   * Deliberately NOT marked read, unlike every row above it. Marking read is
-   * what ticks the Reflect anchor and settles a home card, and per this file's
-   * own warning that only works when a source has its tracker, its
-   * creditAnchorsFor branch and its place in TRACKED_REFLECTION_SOURCES —
-   * TOGETHER. VCS has none of those yet, so calling a mark here would be the
-   * exact half-wiring that comment warns about: the card goes green while the
-   * anchor stays open. It is a readable row now; making it a tracked, choosable
-   * practice is a separate, deliberate piece of work.
-   *
-   * /api/vcs/today 302s to the commentary VCS appointed for the day, learned
-   * from their newsletter — thevcs.org 403s server-side requests, so it cannot
-   * be resolved live. Until inbound mail is configured it falls back to the
-   * public VCS page rather than erroring. See routes/vcs.ts.
-   */
-  const openVcs = () => openExternal("https://withphoebe.app/api/vcs/today", { reader: true });
+  /* The VCS "Bible and Art Daily" row is TAKEN OUT of Reflections (owner,
+     2026-09-02). The server side stays: routes/vcs.ts, the vcs_daily table and
+     the inbound-email branch that fills it are untouched and still correct, so
+     putting the row back is one line here rather than rebuilding the pipeline.
+     Nothing else linked to it, so removing the row removes the surface. */
 
   /**
    * THE THREE WEEKLIES ARE HERE TOO, not only in the customizer.
@@ -130,7 +116,6 @@ export default function MenuReflectionsPage() {
             { emoji: "✍🏽", label: "SSJE Reflections", sub: "Today's Brother, Give Us a Word", onClick: openSsje },
             { emoji: "😊", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society", onClick: openNouwen },
             { emoji: "🌎", label: "Grist Climate News", sub: "The day's climate reporting", onClick: openGrist },
-            { emoji: "🖼️", label: "Bible and Art Daily", sub: "Today's commentary · The Visual Commentary on Scripture", onClick: openVcs },
             // The weeklies. Their subtitle names THIS week's piece when we
             // know it, which is the honest label — "waits until you've read
             // it" is the card's job, not a menu row's.

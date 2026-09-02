@@ -14,7 +14,20 @@
 const KEY = "phoebe:icon-history";
 const CAP = 30;
 
-export type IconPrayed = { id: number; ymd: string };
+export type IconPrayed = {
+  id: number;
+  ymd: string;
+  /**
+   * How many times this icon has been prayed with.
+   *
+   * Added because recordIconPrayed DE-DUPLICATES — re-praying an icon moves it
+   * to the front rather than appending — so the history had no way to answer
+   * "which do I return to most", which is exactly what the owner asked the
+   * second week-door to show. Optional, and read as 1 when absent, so entries
+   * written before this field keep working rather than counting as zero.
+   */
+  count?: number;
+};
 
 export function getIconHistory(): IconPrayed[] {
   try {
@@ -37,11 +50,45 @@ export function getIconHistory(): IconPrayed[] {
  *  rather than duplicating it — "recent" is about the icon, not the sitting. */
 export function recordIconPrayed(id: number, ymd: string): void {
   try {
-    const rest = getIconHistory().filter((v) => v.id !== id);
-    localStorage.setItem(KEY, JSON.stringify([{ id, ymd }, ...rest].slice(0, CAP)));
+    const all = getIconHistory();
+    const prior = all.find((v) => v.id === id);
+    const rest = all.filter((v) => v.id !== id);
+    // Carry the count forward and add one. An entry from before `count`
+    // existed counts as the single sitting it represents, not as zero.
+    const count = (prior?.count ?? (prior ? 1 : 0)) + 1;
+    localStorage.setItem(KEY, JSON.stringify([{ id, ymd, count }, ...rest].slice(0, CAP)));
   } catch {
     /* private mode / quota — non-fatal */
   }
+}
+
+/**
+ * The icon most recently prayed with — the history is newest-first, so this is
+ * simply the head.
+ *
+ * NOT the same question as iconWeek's lastWeekIconId(), which answers "what was
+ * pinned to LAST WEEK'S Sunday". That is a weekly-rhythm answer, and using it
+ * for "the one you sat with last" is what made the door name an icon the reader
+ * had not just prayed (owner: "first it goes through an icon, then that icon is
+ * not the one that it says was the last one").
+ */
+export function lastIconPrayed(): IconPrayed | null {
+  return getIconHistory()[0] ?? null;
+}
+
+/**
+ * The icon returned to most often, ignoring `excludeId` so the two week doors
+ * never name the same work twice.
+ *
+ * Ties break toward the more recent, since the history is newest-first and
+ * reduce keeps the first strict maximum. Returns null when nothing has been
+ * prayed more than once — "you return to this one most" is a claim, and one
+ * sitting does not support it.
+ */
+export function mostFrequentIcon(excludeId?: number): IconPrayed | null {
+  const pool = getIconHistory().filter((v) => v.id !== excludeId && (v.count ?? 1) > 1);
+  if (pool.length === 0) return null;
+  return pool.reduce((best, v) => ((v.count ?? 1) > (best.count ?? 1) ? v : best), pool[0]!);
 }
 
 /**

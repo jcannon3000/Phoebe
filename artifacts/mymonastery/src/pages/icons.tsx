@@ -35,9 +35,9 @@ import { ACT_CATALOGUE } from "@/lib/visioCatalogue";
 import { ACT_COMMENTARY_CATALOGUE } from "@/lib/visioCommentaryCatalogue";
 import { openExternal } from "@/lib/openExternal";
 import { isActHidden, actIconOn, actIconOff, ACT_OVERRIDES_EVENT } from "@/lib/actOverrides";
-import { weekIconId, lastWeekIconId, setWeekIcon, suggestedForWeek, suggestionReason } from "@/lib/iconWeek";
+import { weekIconId, setWeekIcon, suggestedForWeek, suggestionReason } from "@/lib/iconWeek";
 import { IconHowToIntro, iconHowtoSeen, markIconHowtoSeen } from "@/components/IconHowToIntro";
-import { getIconHistory, recordIconPrayed, getPhysicalIconLogs, recordPhysicalIcon } from "@/lib/iconHistory";
+import { getIconHistory, recordIconPrayed, getPhysicalIconLogs, recordPhysicalIcon, lastIconPrayed, mostFrequentIcon } from "@/lib/iconHistory";
 import { FROST_BLUR } from "@/lib/frost";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
@@ -125,8 +125,13 @@ function WeekDoor({ art, label, note, onClick }: {
       onClick={onClick}
       style={{
         userSelect: "none", WebkitTapHighlightColor: "transparent",
-        display: "flex", alignItems: "center", gap: 14, textAlign: "left",
-        borderRadius: 16, padding: 12,
+        /* FULL LENGTH, VERTICALLY CENTRED (owner). The image used to be a 64px
+           square floating inside 12px of padding, so the card read as a list
+           row with a thumbnail. It now runs the FULL HEIGHT of the card with no
+           padding on its side — the artwork is the point of this door — and the
+           text block is centred against it rather than sitting top-aligned. */
+        width: "100%", display: "flex", alignItems: "stretch", gap: 0, textAlign: "left",
+        borderRadius: 16, padding: 0, overflow: "hidden",
         background: "rgba(240,237,230,0.06)",
         backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
         border: "1px solid rgba(200,212,192,0.18)",
@@ -137,9 +142,16 @@ function WeekDoor({ art, label, note, onClick }: {
         alt=""
         aria-hidden
         decoding="async"
-        style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 10, flexShrink: 0 }}
+        /* An EXPLICIT height, not just alignSelf:stretch. With only a width
+           set, the img keeps its intrinsic aspect ratio and — since nothing
+           else constrains the row — a PORTRAIT icon drove the card to about
+           300pt tall, which is what "full length" turned into on the first
+           attempt. A fixed height with objectFit:cover gives every door the
+           same shape whatever the artwork's proportions, and the text beside
+           it stays centred against it. */
+        style={{ width: 96, height: 112, objectFit: "cover", flexShrink: 0 }}
       />
-      <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+      <span style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 3, minWidth: 0, padding: "14px 16px" }}>
         <span style={{ color: "rgba(143,175,150,0.9)", fontFamily: FONT, fontSize: 10.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>
           {label}
         </span>
@@ -280,19 +292,42 @@ export default function IconsPage() {
     if (phase === "open" && !chosen) setPhase("week");
   }, [phase, chosen]);
   /** The three doors — resolved against the same pool, for the same reason. */
+  /**
+   * THE TWO DOORS: the one just prayed, and the one returned to most.
+   *
+   * `last` used to come from iconWeek's lastWeekIconId(), which answers a
+   * DIFFERENT question — "what was pinned to LAST WEEK'S Sunday". So after
+   * praying an icon, the door named something else entirely (owner: "first it
+   * goes through an icon, then that icon is not the one that it says was the
+   * last one"). It now reads the same history that already powers "the icons
+   * you've been praying with lately", which had the right answer all along.
+   *
+   * The second door is the most-returned-to icon (owner: "add a second one of
+   * my most frequent"), excluding whatever `last` is so the two never name the
+   * same work. It stays hidden until something has actually been prayed more
+   * than once — "you return to this one most" is a claim, and a single sitting
+   * doesn't support it.
+   *
+   * Keyed on `history` as well as the catalogue so the doors refresh the moment
+   * a sitting completes (complete() calls setHistory), rather than showing the
+   * previous answer until the page is remounted.
+   */
   const weekDoors = useMemo(() => {
-    const last = lastWeekIconId();
+    const lastEntry = lastIconPrayed();
+    const lastArt = lastEntry ? byId.get(lastEntry.id) ?? null : null;
+    const freqEntry = mostFrequentIcon(lastArt?.id);
+    const freqArt = freqEntry ? byId.get(freqEntry.id) ?? null : null;
     const suggestion = suggestedForWeek();
-    const lastArt = last != null ? byId.get(last) ?? null : null;
     const sugArt = suggestion ? byId.get(suggestion.id) ?? null : null;
     return {
       last: lastArt,
-      // Collapse to two doors when the suggestion IS last week's icon —
+      frequent: freqArt,
+      // The suggestion is the THIRD door and only when it adds something —
       // the same work under two labels reads as a bug, not a choice.
-      suggested: sugArt && sugArt.id !== lastArt?.id ? sugArt : null,
+      suggested: sugArt && sugArt.id !== lastArt?.id && sugArt.id !== freqArt?.id ? sugArt : null,
       reason: suggestionReason(suggestion),
     };
-  }, [byId]);
+  }, [byId, history]);
   /** Choosing sets the week's icon and opens ON it — see Phase's note. */
   const chooseForWeek = (art: IconArtwork) => {
     setChosen(art);
@@ -650,6 +685,14 @@ export default function IconsPage() {
                     label={t("icons.week_continue", { defaultValue: "The one you sat with last" })}
                     note={null}
                     onClick={() => chooseForWeek(weekDoors.last!)}
+                  />
+                )}
+                {weekDoors.frequent && (
+                  <WeekDoor
+                    art={weekDoors.frequent}
+                    label={t("icons.week_frequent", { defaultValue: "You return to this one most" })}
+                    note={null}
+                    onClick={() => chooseForWeek(weekDoors.frequent!)}
                   />
                 )}
                 {weekDoors.suggested && (
