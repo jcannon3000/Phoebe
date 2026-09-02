@@ -1073,41 +1073,15 @@ router.post("/prayer-requests", rateLimit({
 
   const [owner] = await db.select({ name: usersTable.name, email: usersTable.email }).from(usersTable).where(eq(usersTable.id, sessionUserId));
 
-  // Validate requested groupIds against the caller's ACTUAL memberships —
-  // a hand-crafted id for a group they're not in is silently dropped, not
-  // rejected (matches the tag-validation pattern below). Membership can
-  // be by userId OR by matching (unclaimed) email invite, same lookup
-  // garden.ts uses.
-  let validGroupIds: number[] = [];
-  if (parsed.data.groupIds.length > 0) {
-    const wantedGroupIds = Array.from(new Set(parsed.data.groupIds));
-    const viewerEmail = (owner?.email ?? "").toLowerCase();
-    const myMemberships = await db
-      .select({ groupId: groupMembersTable.groupId })
-      .from(groupMembersTable)
-      .where(and(
-        inArray(groupMembersTable.groupId, wantedGroupIds),
-        sql`(${groupMembersTable.userId} = ${sessionUserId} OR LOWER(${groupMembersTable.email}) = ${viewerEmail})`,
-      ));
-    const memberGroupIds = Array.from(new Set(myMemberships.map(m => m.groupId)));
-    // Server-side enforcement (not just a hidden client checkbox): a group
-    // with prayer requests turned off, OR any public/listed group (owner:
-    // "no publicly listed group can have shared prayer requests" — public
-    // groups can never carry this even if prayer_requests_enabled is
-    // stale-true from before the group went public), is silently dropped
-    // from the scoping list, same as a group the caller isn't in.
-    if (memberGroupIds.length > 0) {
-      const eligibleGroups = await db
-        .select({ id: groupsTable.id })
-        .from(groupsTable)
-        .where(and(
-          inArray(groupsTable.id, memberGroupIds),
-          eq(groupsTable.prayerRequestsEnabled, true),
-          eq(groupsTable.isPublic, false),
-        ));
-      validGroupIds = eligibleGroups.map(g => g.id);
-    }
-  }
+  // groupIds is ALWAYS empty here — the hard-400 refusal above already
+  // returned for any non-empty array, before this line ever runs. This used
+  // to validate requested groupIds against the caller's actual memberships;
+  // deleted as dead code (an audit flagged it as live risk otherwise — a
+  // future refactor moving or loosening that 400 gate without noticing this
+  // block could silently reintroduce the unmoderated group fan-out it was
+  // removed to close). validGroupIds stays as a constant so the two
+  // downstream reads below don't need their own separate change.
+  const validGroupIds: number[] = [];
 
   // Life events live until just after the event itself, so the "how did it go?"
   // nudge can fire the evening of (the +2-day grace keeps the row active through
