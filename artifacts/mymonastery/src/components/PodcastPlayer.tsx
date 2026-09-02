@@ -1512,12 +1512,6 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               {current.segmentEyebrow && (
                 <div style={{ marginBottom: 22 }}>{transportRow}</div>
               )}
-              <div style={{ display: "flex", alignItems: "flex-end" }}>
-                <span style={{ fontFamily: SERIF, fontSize: 58, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1, color: "#F6F0E6" }}>
-                  {duration > 0 ? fmtClock(displayRemaining) : fmtClock(displayTime)}
-                </span>
-              </div>
-
               <div {...scrubHandlers} role="slider" aria-label={t("podcasts.a11y_seek")} aria-valuenow={Math.round(displayPct)}
                 style={{ position: "relative", padding: "11px 0", marginTop: 5, cursor: "pointer", touchAction: "none" }}>
                 <div style={{ height: 5, borderRadius: 999, background: "rgba(246,240,230,0.22)", overflow: "hidden" }}>
