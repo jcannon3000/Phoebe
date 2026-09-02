@@ -6,17 +6,21 @@ import { useCreateRitual, CreateRitualBodyFrequency } from "@workspace/api-clien
 /**
  * THE RECURRENCE TYPES ARE DECLARED HERE BECAUSE THE SPEC LAGS THE SERVER.
  *
- * `DayOfWeekCode`, `MonthlyType` and `MonthlyWeekOrdinal` used to come from
- * the generated client, and a regeneration dropped them along with the
- * `participants` field that genuinely no longer exists. These are different:
- * the SERVER still accepts them — api-server/src/routes/moments.ts declares
+ * `DayOfWeekCode`, `MonthlyType` and `MonthlyWeekOrdinal` have NEVER been in
+ * the generated client — checked at HEAD and back to the initial commit, zero
+ * matches. Not a regeneration that dropped them, which is what this comment
+ * first claimed: openapi.yaml models only /healthz, /users/me and /rituals*,
+ * and no /moments path at all, so orval had nothing to generate them FROM.
+ * The SERVER nevertheless accepts them — api-server/src/routes/moments.ts declares
  * `dayOfWeek: z.enum(["MO","TU","WE","TH","FR","SA","SU"])` on the create
  * schema, and reads it back when deciding whether today is a practice day. So
  * the client is right to send them and the generated type is what is behind.
  *
- * Declaring them locally keeps this page honest and compiling until the spec
- * catches up; it does NOT change a byte of what is sent. When openapi.yaml
- * regains these fields, delete this block and import them again.
+ * Declaring them locally keeps this page honest and compiling, and does NOT
+ * change a byte of what is sent. The deletion trigger is NOT "when the spec
+ * regains these fields" — it never had them, so that wait would never end.
+ * It is: when somebody models the /moments endpoints in openapi.yaml for the
+ * first time. Until then this block is the truth about the recurrence types.
  */
 type DayOfWeekCode = "MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU";
 type MonthlyType = "day_of_month" | "day_of_week_in_month";
