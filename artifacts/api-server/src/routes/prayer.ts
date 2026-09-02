@@ -1017,6 +1017,34 @@ router.post("/prayer-requests", rateLimit({
     return;
   }
 
+  // Owner-requested group scoping ("share to my community") is REMOVED.
+  // This path had no moderation at all — it inserted a prayer_request_groups
+  // row and immediately pushed "{name} is asking for your prayers" to every
+  // group member, with only a REACTIVE post-hoc mute for an admin to catch
+  // it after the fact. That's the opposite of group-prayer-list.ts's own
+  // threat model (an admin reads a request BEFORE it reaches the group,
+  // specifically because it may name a third party's health without their
+  // consent), and that properly-moderated path already exists — Jeremy's
+  // decision was to send people there instead of half-fixing this one.
+  //
+  // Refuse at the input, before any insert, rather than silently re-target
+  // the request: `validGroupIds` filtered to empty falls back to the
+  // WHOLE-GARDEN fan-out below (legacy no-selection behavior, correct in
+  // its own right) — quietly dropping a hand-crafted or now-stale groupIds
+  // array would take a request meant for one parish and push it to the
+  // caller's entire garden instead, silently wider than the bug being
+  // removed. A hard error is also the right choice over creating an
+  // unscoped private request: a silent downgrade means someone believes
+  // their parish is praying for them when nobody is, which is worse than
+  // an error message that sends them to /communities/:slug/prayer-list.
+  if (parsed.data.groupIds.length > 0) {
+    res.status(400).json({
+      error: "group_sharing_moved",
+      message: "Sharing a request straight to a community has moved — post it from the community's own Prayer list instead, where a leader reviews it first.",
+    });
+    return;
+  }
+
   const active = await db.select({ id: prayerRequestsTable.id })
     .from(prayerRequestsTable)
     .where(and(
