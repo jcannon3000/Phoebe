@@ -32,7 +32,7 @@ import { PrayerPromptsSlide } from "@/components/PrayerPromptsSlide";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
-import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, getSideDaySwap, setSideDaySwap, clearSideDaySwap, getSideExtra, extraOfficeMode, type OfficeSide, type OfficeLevel, type DefaultOfficeEntry } from "@/lib/officePrefs";
+import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, getSideDaySwap, setSideDaySwap, clearSideDaySwap, getSideExtra, extraOfficeMode, getScriptureParts, type OfficeSide, type OfficeLevel, type DefaultOfficeEntry } from "@/lib/officePrefs";
 
 /**
  * CHOOSING HOW TO PRAY TODAY IS NOT EDITING YOUR RULE.
@@ -1425,17 +1425,30 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             && !(getSideLevel("morning") === "creation" && getSideLevel("evening") === "creation")
             ? "&single=1"
             : "";
+        // WHICH READINGS this deck carries (owner) — Psalms / OT / NT / Gospel,
+        // all four unless the reader unchecked one on the customizer's config
+        // slide. Sent rather than filtered here so the deck's own "N of M"
+        // counter, resume point and chime all count the real thing.
+        const scriptureParts = resolvedMode === "scripture" ? getScriptureParts() : null;
+        const partsParam = scriptureParts && scriptureParts.length < 4
+          ? `&parts=${scriptureParts.join(",")}`
+          : "";
         // Offline support: bcp-daily-office.tsx's own reads/writes into
         // lib/officeOfflineCache.ts, the store lib/officePrefetch.ts warms
         // for the next 30 days in the background (Wi-Fi only). A live fetch
         // always wins when it succeeds (and refreshes the cache entry for
         // next time); the cache is only consulted when the network fails —
         // this is offline SUPPORT, not a performance cache-first path.
-        const cacheKey = { mode: resolvedMode, date: localDate, confession: confessionKey };
+        // The parts ride the offline key too: a deck fetched with three
+        // readings must never be served from a cache entry that holds four.
+        const cacheKey = {
+          mode: resolvedMode, date: localDate, confession: confessionKey,
+          ...(partsParam ? { parts: scriptureParts!.join(",") } : {}),
+        };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: any;
         try {
-          const res = await fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}${creationSingleParam}`);
+          const res = await fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}${creationSingleParam}${partsParam}`);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           data = await res.json();
           void putOfficeCacheEntry(cacheKey, data);

@@ -33,10 +33,23 @@ export type OfficeCacheKey = {
   // mid-window just means future prefetches write a new key, not that old
   // entries "poison" the new setting (they're simply never read again).
   confession: "" | "0" | "1";
+  /**
+   * WHICH READINGS a Daily Scripture Reading deck holds ("psalms,ot,nt,gospel"
+   * order, comma-joined), or undefined for every other mode AND for the
+   * all-four default.
+   *
+   * In the key because the reader can now ask for fewer: without it a reader
+   * who unchecked the Gospel would have been served the prefetched four-reading
+   * deck from cache — keyId names the fields it hashes, so an extra property on
+   * the object alone would have collided silently. Undefined keeps the id
+   * byte-identical to what every existing entry was written under, so nothing
+   * already cached is orphaned by this.
+   */
+  parts?: string;
 };
 
 function keyId(k: OfficeCacheKey): string {
-  return `${k.mode}:${k.date}:${k.confession}`;
+  return `${k.mode}:${k.date}:${k.confession}${k.parts ? `:${k.parts}` : ""}`;
 }
 
 type Entry = { data: unknown; updatedAt: number };

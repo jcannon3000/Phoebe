@@ -50,8 +50,27 @@ function slide(
   };
 }
 
-export async function assembleScriptureReading(date: Date): Promise<{ slides: Slide[]; dayInfo: unknown }> {
+/**
+ * WHICH of the four readings to include. Absent = all four, which is what a
+ * reader who never touched the setting gets (see officePrefs.getScriptureParts
+ * on the client — it is the same defaulting, said twice on purpose so neither
+ * end can empty the deck on its own).
+ */
+export type ScripturePart = "psalms" | "ot" | "nt" | "gospel";
+const ALL_PARTS: ScripturePart[] = ["psalms", "ot", "nt", "gospel"];
+export function parseScriptureParts(raw: unknown): ScripturePart[] {
+  if (typeof raw !== "string" || !raw.trim()) return [...ALL_PARTS];
+  const picked = raw.split(",").map((s) => s.trim()).filter((s): s is ScripturePart =>
+    (ALL_PARTS as string[]).includes(s));
+  return picked.length > 0 ? picked : [...ALL_PARTS];
+}
+
+export async function assembleScriptureReading(
+  date: Date,
+  parts: ScripturePart[] = ALL_PARTS,
+): Promise<{ slides: Slide[]; dayInfo: unknown }> {
   const liturgicalDay = getOfficeDay(date);
+  const wants = (p: ScripturePart) => parts.includes(p);
 
   /**
    * ALL THREE LESSONS COME FROM THE MORNING TABLE.
@@ -91,7 +110,7 @@ export async function assembleScriptureReading(date: Date): Promise<{ slides: Sl
   const id = () => `scripture-${++n}`;
 
   // ── The psalms ────────────────────────────────────────────────────────────
-  if (appointedPsalms.length > 0) {
+  if (wants("psalms") && appointedPsalms.length > 0) {
     const first = appointedPsalms[0]!;
     const firstData = psalmTexts[`psalm_${first.number}`];
     const combinedEyebrow = appointedPsalms.length === 1
@@ -154,9 +173,12 @@ export async function assembleScriptureReading(date: Date): Promise<{ slides: Sl
   // buildLessonSlides returns nothing for an empty or dashed reference, so a
   // day the lectionary leaves blank simply has one fewer slide rather than a
   // card pointing at a passage called "----------".
-  for (const s of buildLessonSlides(lesson1 ?? "", "first_morning", id)) slides.push(s);
-  for (const s of buildLessonSlides(lesson2 ?? "", "second_morning", id)) slides.push(s);
-  for (const s of buildLessonSlides(lesson3 ?? "", "gospel_morning", id)) slides.push(s);
+  // …each one only if the reader keeps it. The lectionary's own three lessons
+  // are the Old Testament, the Epistle ("New Testament" on the setting, which
+  // is the name a reader would use for it) and the Gospel.
+  if (wants("ot")) for (const s of buildLessonSlides(lesson1 ?? "", "first_morning", id)) slides.push(s);
+  if (wants("nt")) for (const s of buildLessonSlides(lesson2 ?? "", "second_morning", id)) slides.push(s);
+  if (wants("gospel")) for (const s of buildLessonSlides(lesson3 ?? "", "gospel_morning", id)) slides.push(s);
 
   // Owner: a closing slide, rather than the deck simply ending on the
   // Gospel's title card the instant the reader dismisses. Also closes a

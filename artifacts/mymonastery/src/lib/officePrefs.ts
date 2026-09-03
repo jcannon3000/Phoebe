@@ -549,6 +549,59 @@ export function setPsalmCycle(v: PsalmCycle): void {
   } catch { /* non-fatal */ }
 }
 
+/**
+ * WHICH READINGS the Daily Scripture Reading deck includes.
+ *
+ * Owner: "if someone choses scripture reading in the customizer, the settings
+ * slide should have four rows for each reading to check box … Psalms, Old
+ * Testament, New Testament, Gospel. Have them all turned on at first, but they
+ * could uncheck some of them if they want."
+ *
+ * ALL FOUR by default, and that default is what an absent key means — so
+ * nothing already saved changes meaning and a reader who never opens the
+ * setting keeps the whole appointed reading. Stored as a comma list under
+ * `phoebe:scripture-scope` (already carried by the reset, prescribed-routine
+ * and community-rule key lists; it rides ROUTINE_KEYS too, so the choice
+ * follows the person across devices).
+ *
+ * An EMPTY list would be a deck with nothing in it, so the last part can't be
+ * unchecked — setScriptureParts refuses to write empty.
+ */
+export type ScripturePart = "psalms" | "ot" | "nt" | "gospel";
+export const SCRIPTURE_PARTS: ScripturePart[] = ["psalms", "ot", "nt", "gospel"];
+export const SCRIPTURE_PART_LABEL: Record<ScripturePart, string> = {
+  psalms: "Psalms", ot: "Old Testament", nt: "New Testament", gospel: "Gospel",
+};
+const SCRIPTURE_SCOPE_KEY = "phoebe:scripture-scope";
+export function getScriptureParts(): ScripturePart[] {
+  try {
+    const raw = localStorage.getItem(SCRIPTURE_SCOPE_KEY);
+    if (!raw) return [...SCRIPTURE_PARTS];
+    const picked = raw.split(",").map((s) => s.trim()).filter((s): s is ScripturePart =>
+      (SCRIPTURE_PARTS as string[]).includes(s));
+    // A stored value we can't read at all (a legacy spelling, a corrupted
+    // write) means "we don't know", which must not empty someone's reading.
+    return picked.length > 0 ? picked : [...SCRIPTURE_PARTS];
+  } catch { return [...SCRIPTURE_PARTS]; }
+}
+export function isScripturePartOn(part: ScripturePart): boolean {
+  return getScriptureParts().includes(part);
+}
+export function setScriptureParts(parts: ScripturePart[]): void {
+  const clean = SCRIPTURE_PARTS.filter((p) => parts.includes(p));
+  if (clean.length === 0) return; // never an empty deck
+  try {
+    localStorage.setItem(SCRIPTURE_SCOPE_KEY, clean.join(","));
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+/** Toggle one part, refusing to turn the last one off. */
+export function toggleScripturePart(part: ScripturePart): void {
+  const cur = getScriptureParts();
+  const next = cur.includes(part) ? cur.filter((p) => p !== part) : [...cur, part];
+  setScriptureParts(next);
+}
+
 // How the silent Contemplation card is kept: "timer" opens the countdown
 // timer (/contemplation); "manual" just marks the sit done on tap, no timer
 // — owner: "log method... either timer or manual log. or mark as done."

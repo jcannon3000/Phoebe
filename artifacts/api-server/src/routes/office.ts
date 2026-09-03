@@ -24,7 +24,7 @@ import { isUserBeta } from "../lib/parishGate";
 import { resolveLocale } from "../lib/officeI18n";
 import { seedBcpTexts } from "../seeds/bcpTexts";
 import { PSALTER } from "../seeds/bcpPsalter";
-import { assembleScriptureReading } from "../lib/assembleScriptureReading";
+import { assembleScriptureReading, parseScriptureParts } from "../lib/assembleScriptureReading";
 
 const router = Router();
 
@@ -463,7 +463,8 @@ router.get("/devotion/:kind", async (req, res) => {
 router.get("/office/scripture", async (req, res) => {
   const date = parseOfficeDate(req.query.date);
   try {
-    const { slides, dayInfo } = await assembleScriptureReading(date);
+    // ?parts=psalms,ot,nt,gospel — absent means all four.
+    const { slides, dayInfo } = await assembleScriptureReading(date, parseScriptureParts(req.query.parts));
     return res.json({
       slides,
       officeDay: { ...(dayInfo as Record<string, unknown>), totalSlides: slides.length },

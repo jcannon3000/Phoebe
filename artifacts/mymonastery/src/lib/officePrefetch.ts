@@ -18,7 +18,7 @@
 
 import { useEffect } from "react";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { getSideLevel, getSideExtra, getSideConfession, type OfficeSide } from "@/lib/officePrefs";
+import { getSideLevel, getSideExtra, getSideConfession, getScriptureParts, type OfficeSide } from "@/lib/officePrefs";
 import { putOfficeCacheEntry, pruneOfficeCacheBefore, type OfficeCacheKey } from "@/lib/officeOfflineCache";
 import type { LiturgyMode } from "@/pages/bcp-daily-office";
 
@@ -109,12 +109,23 @@ function confessionFor(mode: LiturgyMode, side: OfficeSide): "" | "0" | "1" {
 }
 
 async function fetchAndCacheOne(mode: LiturgyMode, date: string, confession: "" | "0" | "1"): Promise<void> {
-  const key: OfficeCacheKey = { mode, date, confession };
+  /**
+   * The scripture deck is warmed for the READINGS THE PERSON KEEPS.
+   *
+   * Same shape bcp-daily-office.tsx's load() computes: `parts` only when fewer
+   * than four are on, in both the URL and the key. Warming the all-four deck
+   * for someone who unchecked one would cache a day they will never be served
+   * (their key differs), so they'd have no offline copy at all.
+   */
+  const parts = mode === "scripture" ? getScriptureParts() : null;
+  const partsValue = parts && parts.length < 4 ? parts.join(",") : "";
+  const key: OfficeCacheKey = { mode, date, confession, ...(partsValue ? { parts: partsValue } : {}) };
   try {
     const endpoint = MODE_ENDPOINT[mode];
     const sep = endpoint.includes("?") ? "&" : "?";
     const confParam = confession ? `&confession=${confession}` : "";
-    const res = await fetch(`${endpoint}${sep}date=${date}&locale=en${confParam}`);
+    const partsParam = partsValue ? `&parts=${partsValue}` : "";
+    const res = await fetch(`${endpoint}${sep}date=${date}&locale=en${confParam}${partsParam}`);
     if (!res.ok) return;
     const data = await res.json();
     if (!data || !Array.isArray(data.slides) || data.slides.length === 0) return;

@@ -64,6 +64,9 @@ export const ROUTINE_KEYS: string[] = [
   "phoebe:office:contemplation-minutes",
   "phoebe:office:show-cac-close", "phoebe:office:show-fdd-close", "phoebe:office:show-ssje-close",
   "phoebe:fdd-mode", "phoebe:psalm-cycle", "phoebe:contemplation-style", "phoebe:contemplation-log-method",
+  // Which readings the Daily Scripture Reading deck includes (officePrefs'
+  // getScriptureParts). A rule preference, so it travels like one.
+  "phoebe:scripture-scope",
   // Whether the daily silence is one sit or several. Reported: "even though I
   // had multiple sits saved, it defaulted to one sit when I came back" — the
   // interview was writing it into the spec, but a key missing from THIS list is
