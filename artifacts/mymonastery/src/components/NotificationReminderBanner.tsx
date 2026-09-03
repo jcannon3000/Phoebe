@@ -112,8 +112,14 @@ export function NotificationReminderBanner() {
    */
   const DECK_PREFIXES = [
     "/bcp/daily-office", "/prayer-mode", "/begin-prayer", "/guided-prayer", "/psalms",
-    "/examen", "/vts-reading", "/contemplation", "/cobreathe", "/compline",
-    "/lectio", "/visio", "/listening", "/icon-prayer", "/spirituals", "/creation",
+    "/examen", "/vts-reading", "/contemplation", "/cobreathe",
+    "/lectio", "/visio", "/listening", "/icon-prayer", "/spirituals",
+    // The Creation Prayer OFFICE deck (creation-devotion.tsx mounts OfficeViewer
+    // and its fixed pill). It was listed as "/creation", which this exact-or-
+    // slash check never matched, so the banner still covered that deck's nav
+    // (audit 2026-09-03). Compline needs no entry: it runs at
+    // /bcp/daily-office?mode=compline, covered above.
+    "/creation-devotion", "/pray-breath",
   ];
   const path = location.split("?")[0] ?? location;
   if (DECK_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) return null;
