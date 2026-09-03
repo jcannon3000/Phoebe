@@ -1178,7 +1178,7 @@ export default function VisioPage() {
             </h1>
             <div>
               {view.artist && (
-                <p style={{ color: "rgba(200,212,192,0.75)", fontFamily: FONT, fontSize: 15, margin: 0, lineHeight: 1.5 }}>{tidyArtist(view.artist)}</p>
+                <p style={{ color: "rgba(200,212,192,0.75)", fontFamily: FONT, fontSize: 15, margin: 0, lineHeight: 1.5 }}>{t("visio.artist_label", { defaultValue: "Artist: {{name}}", name: tidyArtist(view.artist) })}</p>
               )}
               {/**
                 * THE VERSE ONLY WHEN IT IS ACTUALLY THIS WEEK'S.
@@ -1219,7 +1219,7 @@ export default function VisioPage() {
               style={{ color: "rgba(200,212,192,0.86)", fontFamily: FONT, fontSize: 16.5, lineHeight: 1.6, margin: "4px 0 0", maxWidth: 430 }}
             >
               {t("visio.notice_prompt", {
-                defaultValue: "In a moment you will see this work. Let your eyes rest where they are drawn, and notice what you notice — there is nothing to solve here.",
+                defaultValue: "In a moment you will see this work. Let your eyes rest where they are drawn, and notice what you notice — there is nothing to solve here. Return to this same image each day this week, and see what it shows you as you carry it toward Sunday.",
               })}
             </p>
 
@@ -1260,7 +1260,7 @@ export default function VisioPage() {
           <div style={{ textAlign: "center" }}>
             <p style={{ color: WARM, fontFamily: SERIF, fontSize: 19, fontStyle: "italic", margin: 0 }}>{view.title}</p>
             {view.artist && (
-              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>{tidyArtist(view.artist)}</p>
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>{t("visio.artist_label", { defaultValue: "Artist: {{name}}", name: tidyArtist(view.artist) })}</p>
             )}
             {/* Who the work depicts, in ACT's own words — on the beat where the
                 picture is FIRST shown, not over the title (owner). It belongs
@@ -1273,10 +1273,14 @@ export default function VisioPage() {
             )}
             {/* …and what it is OF. Kept as its own line rather than folded in
                 with the figures: ACT holds them as separate tags, and running
-                them together would read as one list of names. */}
-            {view.subjects.length > 0 && (
+                them together would read as one list of names.
+                CULTURE/COMMUNITY TAGS DROPPED (owner) — ACT's own subject
+                list mixes real subject-matter tags ("Holy Family") with
+                cataloguing tags ("Culture: African"); only the former belong
+                on a museum-label line. */}
+            {view.subjects.filter((s) => !/^(culture|community)\s*:/i.test(s)).length > 0 && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: "3px 0 0", lineHeight: 1.5 }}>
-                {view.subjects.join(" · ")}
+                {view.subjects.filter((s) => !/^(culture|community)\s*:/i.test(s)).join(" · ")}
               </p>
             )}
             {/* Same rule as the title slide — a reference only when the work
@@ -1470,6 +1474,19 @@ export default function VisioPage() {
                 {view.attribution}
                 {view.where ? ` ${view.where}.` : ""}
                 {view.licence ? ` ${view.licence}.` : ""}
+              </p>
+            )}
+            {/* JESUS MAFA — who they are, on every work of theirs. Owner asked
+                for this under any Jesus Mafa image: the artist name alone
+                ("JESUS MAFA") names neither a person nor an obviously
+                identifiable tradition the way "Rembrandt" or "Fra Angelico"
+                does, so the context goes with the work rather than assuming
+                the reader already has it. */}
+            {view?.artist?.trim().toUpperCase() === "JESUS MAFA" && (
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, lineHeight: 1.55, margin: "10px 0 0", textAlign: "center", maxWidth: 420 }}>
+                {t("visio.jesus_mafa_note", {
+                  defaultValue: "In the 1970s, the French Catholic priest François Vidil collaborated with the Mafa community to create a series of artwork known as Vie de Jesus Mafa (Life of Jesus Mafa, or simply Jesus Mafa), which depicts various events in the life of Jesus using Black depictions rather than White. These images were actually depictions of real-world recreations of biblical scenes by Mafa people.",
+                })}
               </p>
             )}
           </div>
