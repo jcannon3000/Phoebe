@@ -54,6 +54,7 @@ export * from "./routine_presets";
 export * from "./contemplation_goal_history";
 export * from "./breath_sessions";
 export * from "./breath_places";
+export * from "./breath_place_breaths";
 export * from "./listening_entries";
 export * from "./curated_audio";
 export * from "./lectio_log_entries";

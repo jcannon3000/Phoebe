@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, breathSessionsTable, breathPlacesTable, usersTable } from "@workspace/db";
+import { db, breathSessionsTable, breathPlacesTable, breathPlaceBreathsTable, usersTable } from "@workspace/db";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { getGardenUserIds, getFellowUserIds } from "../lib/garden";
 import { perUserRateLimit } from "../lib/rate-limit";
@@ -160,6 +160,75 @@ const BUILT_IN_PLACE_ROWS: Record<string, {
   },
 };
 
+/**
+ * The place a breath is attributed to, or null. Accepts the row's id (an
+ * admin-created place, or a built-in whose row is known) or a built-in's SLUG,
+ * which the client sends when it only has the bundled definition; a built-in
+ * with no row yet is seeded here. ONE function for both writers — the daily
+ * session and the per-place tally must never disagree about which row "The
+ * Flamingo" is, or the counts split between two.
+ */
+async function resolvePlaceId(placeId: number | null, placeSlug: string | null): Promise<number | null> {
+  // A place must exist and be active — otherwise drop the attribution
+  // rather than writing a dangling or retired one.
+  let resolvedPlaceId: number | null = null;
+  if (placeId !== null) {
+    const [place] = await db
+      .select({ id: breathPlacesTable.id })
+      .from(breathPlacesTable)
+      .where(and(eq(breathPlacesTable.id, placeId), eq(breathPlacesTable.active, true)))
+      .limit(1);
+    resolvedPlaceId = place?.id ?? null;
+  }
+  if (resolvedPlaceId === null && placeSlug !== null) {
+    const known = BUILT_IN_PLACE_ROWS[placeSlug];
+    if (known) {
+      const [existing] = await db
+        .select({ id: breathPlacesTable.id })
+        .from(breathPlacesTable)
+        .where(and(eq(breathPlacesTable.name, known.name), eq(breathPlacesTable.active, true)))
+        .limit(1);
+      if (existing) resolvedPlaceId = existing.id;
+      else {
+        // onConflictDoNothing + re-select: two breaths arriving together
+        // would otherwise both see no row and both insert. The unique index
+        // on name (see migrate) makes the loser a no-op rather than a
+        // duplicate place with the counts split between them.
+        const [created] = await db
+          .insert(breathPlacesTable)
+          .values({
+            name: known.name,
+            subtitle: known.subtitle,
+            lat: known.lat,
+            lng: known.lng,
+            radiusMeters: known.radiusMeters,
+            centerEmoji: known.centerEmoji,
+            photoUrls: known.photoUrls,
+          })
+          .onConflictDoNothing({ target: breathPlacesTable.name })
+          .returning({ id: breathPlacesTable.id });
+        if (created?.id) resolvedPlaceId = created.id;
+        else {
+          const [raced] = await db
+            .select({ id: breathPlacesTable.id })
+            .from(breathPlacesTable)
+            .where(eq(breathPlacesTable.name, known.name))
+            .limit(1);
+          resolvedPlaceId = raced?.id ?? null;
+        }
+      }
+    }
+  }
+  return resolvedPlaceId;
+}
+
+/** id-or-slug from a route param, the way /breath/places/:id/stats reads it. */
+function parsePlaceParam(raw: string): { placeId: number | null; placeSlug: string | null } {
+  const id = Number(raw);
+  if (Number.isInteger(id) && id > 0) return { placeId: id, placeSlug: null };
+  return { placeId: null, placeSlug: /^[a-z0-9-]{1,64}$/.test(raw) ? raw : null };
+}
+
 router.post("/breath/today", perUserRateLimit("breath_record", { max: 20, windowMs: 60 * 1000 }), async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
@@ -200,56 +269,7 @@ router.post("/breath/today", perUserRateLimit("breath_record", { max: 20, window
   const placeVerified = (placeId !== null || placeSlug !== null) && req.body?.placeVerified === true;
 
   try {
-    // A place must exist and be active — otherwise drop the attribution
-    // rather than writing a dangling or retired one.
-    let resolvedPlaceId: number | null = null;
-    if (placeId !== null) {
-      const [place] = await db
-        .select({ id: breathPlacesTable.id })
-        .from(breathPlacesTable)
-        .where(and(eq(breathPlacesTable.id, placeId), eq(breathPlacesTable.active, true)))
-        .limit(1);
-      resolvedPlaceId = place?.id ?? null;
-    }
-    if (resolvedPlaceId === null && placeSlug !== null) {
-      const known = BUILT_IN_PLACE_ROWS[placeSlug];
-      if (known) {
-        const [existing] = await db
-          .select({ id: breathPlacesTable.id })
-          .from(breathPlacesTable)
-          .where(and(eq(breathPlacesTable.name, known.name), eq(breathPlacesTable.active, true)))
-          .limit(1);
-        if (existing) resolvedPlaceId = existing.id;
-        else {
-          // onConflictDoNothing + re-select: two breaths arriving together
-          // would otherwise both see no row and both insert. The unique index
-          // on name (see migrate) makes the loser a no-op rather than a
-          // duplicate place with the counts split between them.
-          const [created] = await db
-            .insert(breathPlacesTable)
-            .values({
-              name: known.name,
-              subtitle: known.subtitle,
-              lat: known.lat,
-              lng: known.lng,
-              radiusMeters: known.radiusMeters,
-              centerEmoji: known.centerEmoji,
-              photoUrls: known.photoUrls,
-            })
-            .onConflictDoNothing({ target: breathPlacesTable.name })
-            .returning({ id: breathPlacesTable.id });
-          if (created?.id) resolvedPlaceId = created.id;
-          else {
-            const [raced] = await db
-              .select({ id: breathPlacesTable.id })
-              .from(breathPlacesTable)
-              .where(eq(breathPlacesTable.name, known.name))
-              .limit(1);
-            resolvedPlaceId = raced?.id ?? null;
-          }
-        }
-      }
-    }
+    const resolvedPlaceId = await resolvePlaceId(placeId, placeSlug);
     // Idempotent — one breath per local day; a second sit the same day keeps
     // the first row (and its created_at) rather than duplicating. The PLACE,
     // though, is updated: someone who breathes again from the chapel after a
@@ -365,8 +385,8 @@ router.get("/breath/places", async (req: Request, res: Response): Promise<void> 
         // confirmed it. Both are shown: the first is who is holding this
         // place in prayer, the second who is standing in it.
         breathsToday: sql<number>`(
-          SELECT COUNT(*)::int FROM breath_sessions bs
-          WHERE bs.place_id = ${breathPlacesTable.id} AND bs.day = ${day}
+          SELECT COALESCE(SUM(t.breaths), 0)::int FROM breath_place_breaths t
+          WHERE t.place_id = ${breathPlacesTable.id} AND t.day = ${day}
         )`,
         verifiedToday: sql<number>`(
           SELECT COUNT(*)::int FROM breath_sessions bs
@@ -403,6 +423,41 @@ router.get("/breath/places", async (req: Request, res: Response): Promise<void> 
  * month is derived from its YYYY-MM prefix rather than from server time, which
  * would put someone near a month boundary in the wrong month.
  */
+/**
+ * POST /breath/places/:id/breaths { day, breaths } — add a set's breaths to
+ * the person's tally at this place for the day. EVERY set, partial or full:
+ * three breaths are three breaths (owner). Accumulates, so a second sit the
+ * same day adds on rather than replacing. Separate from POST /breath/today,
+ * which stays the completion record (full set only, one per day).
+ */
+router.post("/breath/places/:id/breaths", perUserRateLimit("breath_place_tally", { max: 30, windowMs: 60 * 1000 }), async (req: Request, res: Response): Promise<void> => {
+  const userId = uid(req);
+  if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
+  const { placeId, placeSlug } = parsePlaceParam(String(req.params["id"] ?? ""));
+  if (placeId === null && placeSlug === null) { res.status(400).json({ error: "bad_request" }); return; }
+  const day = String(req.body?.day ?? "");
+  if (!isValidYmd(day)) { res.status(400).json({ error: "bad_request" }); return; }
+  const breathsRaw = Number(req.body?.breaths);
+  // A set is at most a few hundred breaths; anything wilder is a bug, not a sit.
+  const breaths = Number.isFinite(breathsRaw) ? Math.max(0, Math.min(500, Math.round(breathsRaw))) : 0;
+  if (breaths < 1) { res.status(400).json({ error: "bad_request" }); return; }
+  try {
+    const resolved = await resolvePlaceId(placeId, placeSlug);
+    if (resolved === null) { res.status(404).json({ error: "not_found" }); return; }
+    await db
+      .insert(breathPlaceBreathsTable)
+      .values({ userId, placeId: resolved, day, breaths })
+      .onConflictDoUpdate({
+        target: [breathPlaceBreathsTable.userId, breathPlaceBreathsTable.placeId, breathPlaceBreathsTable.day],
+        set: { breaths: sql`${breathPlaceBreathsTable.breaths} + ${breaths}`, updatedAt: new Date() },
+      });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/breath/places/:id/breaths POST] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 router.get("/breath/places/:id/stats", async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
@@ -447,19 +502,21 @@ router.get("/breath/places/:id/stats", async (req: Request, res: Response): Prom
     }
     if (!place) { res.status(404).json({ error: "not_found" }); return; }
 
-    // One pass over this place's rows — three spans, computed with FILTER
-    // rather than three round trips.
+    // One pass over this place's tally — three spans, computed with FILTER
+    // rather than three round trips. BREATHS, summed, not sessions counted:
+    // the slide says "N breaths", and breath_sessions is one row per person
+    // per completed day, which is why twelve breaths used to read as "1".
     const rows = await db.execute<{
       today: number; month_breaths: number; month_people: number;
       all_breaths: number; all_people: number;
     }>(sql`
       SELECT
-        COUNT(*) FILTER (WHERE day = ${day})::int                        AS today,
-        COUNT(*) FILTER (WHERE day LIKE ${monthPrefix})::int             AS month_breaths,
-        COUNT(DISTINCT user_id) FILTER (WHERE day LIKE ${monthPrefix})::int AS month_people,
-        COUNT(*)::int                                                    AS all_breaths,
-        COUNT(DISTINCT user_id)::int                                     AS all_people
-      FROM breath_sessions
+        COALESCE(SUM(breaths) FILTER (WHERE day = ${day}), 0)::int              AS today,
+        COALESCE(SUM(breaths) FILTER (WHERE day LIKE ${monthPrefix}), 0)::int   AS month_breaths,
+        COUNT(DISTINCT user_id) FILTER (WHERE day LIKE ${monthPrefix})::int      AS month_people,
+        COALESCE(SUM(breaths), 0)::int                                          AS all_breaths,
+        COUNT(DISTINCT user_id)::int                                            AS all_people
+      FROM breath_place_breaths
       WHERE place_id = ${place.id}
     `);
     const r = rows.rows?.[0];

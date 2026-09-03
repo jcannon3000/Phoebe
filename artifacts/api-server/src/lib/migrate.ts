@@ -3723,6 +3723,36 @@ export async function migrate() {
     await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS place_id INTEGER REFERENCES breath_places(id) ON DELETE SET NULL`);
     await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS place_verified BOOLEAN NOT NULL DEFAULT FALSE`);
     await run(client, `CREATE INDEX IF NOT EXISTS breath_sessions_place_day_idx ON breath_sessions (place_id, day)`);
+
+    // ── breath_place_breaths — the per-place BREATH tally ───────────────────
+    // breath_sessions is one row per person per completed day, and the place
+    // slide was counting those rows as "breaths" (twelve breaths read as "1";
+    // a set ended early was never recorded). This table counts breaths, every
+    // set, accumulating per person per place per day. See schema/breath_place_breaths.ts.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS breath_place_breaths (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        place_id INTEGER NOT NULL REFERENCES breath_places(id) ON DELETE CASCADE,
+        day TEXT NOT NULL,
+        breaths INTEGER NOT NULL DEFAULT 0,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS breath_place_breaths_user_place_day_unique ON breath_place_breaths (user_id, place_id, day)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS breath_place_breaths_place_day_idx ON breath_place_breaths (place_id, day)`);
+    // ONE-TIME BACKFILL from the sessions that already carry a place: their
+    // breaths are derived from the seconds kept at the client's 12-second
+    // cycle (INHALE_MS + EXHALE_MS in CobreatheBreath), never fewer than one.
+    // ON CONFLICT DO NOTHING keeps this idempotent on every boot AND means a
+    // day the app has already tallied is never overwritten by the estimate.
+    await run(client, `
+      INSERT INTO breath_place_breaths (user_id, place_id, day, breaths)
+      SELECT user_id, place_id, day, GREATEST(1, FLOOR(seconds / 12.0))::int
+      FROM breath_sessions
+      WHERE place_id IS NOT NULL
+      ON CONFLICT (user_id, place_id, day) DO NOTHING
+    `);
     // Say plainly whether the columns the places endpoint depends on are
     // actually there — run() is silent on failure, and a missing column here
     // is invisible until the app shows an error instead of a list of places.

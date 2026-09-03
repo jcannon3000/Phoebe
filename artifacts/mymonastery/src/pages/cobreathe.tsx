@@ -467,6 +467,10 @@ export default function CobreathePage() {
   // Latest user for the guest check inside the stable ([]) logSit callback.
   const userRef = useRef(user);
   userRef.current = user;
+  // Same reason as userRef: handleEnd is a stable ([]) callback and would
+  // otherwise close over the place as it was at mount (null).
+  const placeRef = useRef(place);
+  placeRef.current = place;
   const logSit = useCallback((secondsKept: number) => {
     if (secondsKept < 2) return;
     const already = loggedRef.current;
@@ -623,6 +627,26 @@ export default function CobreathePage() {
     if (reached) {
       logSit(secondsKept);          // credit the contemplation sit (full set only)
       record.mutate(secondsKept);   // count you in today's communal breath + mark done
+    }
+    /**
+     * THE PLACE'S TALLY COUNTS EVERY BREATH — partial sets included (owner,
+     * 2026-09-03, watching three breaths at The Flamingo come up "0"). This is
+     * deliberately NOT the completion record above: that one is full-set-only
+     * and one-per-day by design, and counting its rows is exactly what made
+     * twelve breaths read as "1 breaths". A guest has no account to tally
+     * against; the local summary still shows what they breathed.
+     */
+    const at = placeRef.current;
+    if (at && breaths >= 1 && !isDeviceLocalGuest(userRef.current)) {
+      const target = at.id > 0 ? String(at.id) : encodeURIComponent(at.slug ?? "");
+      if (target) {
+        void apiRequest("POST", `/api/breath/places/${target}/breaths`, { day, breaths })
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/breath/places/stats"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/breath/places"] });
+          })
+          .catch(() => { /* best-effort — the sit itself is already kept */ });
+      }
     }
     // Heart to Heart is OFF — cobreathing with a fellow no longer starts a 1:1
     // prayer exchange (no Heart to Heart features are turned on).
