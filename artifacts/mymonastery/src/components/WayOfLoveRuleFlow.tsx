@@ -1725,6 +1725,16 @@ export default function WayOfLoveRuleFlow({
     setEntryPhase("list");
   };
 
+  /**
+   * A REFUSED ADD HAS TO SAY SO.
+   *
+   * addCustomAnchor returns false at the eight-practice cap and writes
+   * nothing. This ignored it: the form cleared, the sub-slide closed, and the
+   * practice simply wasn't there — the same silent refusal that made a ticked
+   * relational practice come back unticked, which the owner reported and this
+   * file already fixed once on that step.
+   */
+  const [customRefused, setCustomRefused] = useState(false);
   const addCustom = () => {
     const title = customTitle.trim();
     if (!title) return;
@@ -1732,7 +1742,11 @@ export default function WayOfLoveRuleFlow({
     const reading: ReadingConfig | undefined = customIsReading
       ? { unit: customUnit, ...(Number.isFinite(goalNum) && goalNum > 0 ? { goal: goalNum } : {}) }
       : undefined;
-    addCustomAnchor(title, customEmoji.trim() || (customIsReading ? "📖" : "🌿"), customSlot, reading);
+    if (!addCustomAnchor(title, customEmoji.trim() || (customIsReading ? "📖" : "🌿"), customSlot, reading)) {
+      setCustomRefused(true);
+      return; // keep what they typed — they may want to remove something first
+    }
+    setCustomRefused(false);
     setCustomTitle("");
     setCustomEmoji("");
     setCustomGoal("");
@@ -4384,9 +4398,19 @@ export default function WayOfLoveRuleFlow({
             {ctaButton(t("wol_rule.add_cta", { defaultValue: "Add to my routine" }), () => {
               const name = newCustomName.trim();
               if (!name) { setEntryPhase("list"); return; }
-              addCustomAnchor(name, "🌿", "anytime");
+              // Refused at the eight-practice cap: say so and stay, rather
+              // than returning to a list that quietly doesn't contain it.
+              if (!addCustomAnchor(name, "🌿", "anytime")) { setCustomRefused(true); return; }
+              setCustomRefused(false);
               afterAdd();
             })}
+            {customRefused && (
+              <p style={{ color: "rgba(232,190,150,0.9)", fontSize: 13.5, fontFamily: FONT, lineHeight: 1.55, margin: "12px 0 0" }}>
+                {t("wol_rule.custom_at_cap", {
+                  defaultValue: "You're keeping the most practices Phoebe holds at once. Take one off to make room for this.",
+                })}
+              </p>
+            )}
           </div>
         </>,
       );
@@ -6465,6 +6489,13 @@ export default function WayOfLoveRuleFlow({
           </div>
         )}
 
+        {customRefused && (
+          <p style={{ color: "rgba(232,190,150,0.9)", fontSize: 13.5, fontFamily: FONT, lineHeight: 1.55, margin: "14px 0 0" }}>
+            {t("wol_rule.custom_at_cap", {
+              defaultValue: "You're keeping the most practices Phoebe holds at once. Take one off above to make room for this.",
+            })}
+          </p>
+        )}
         {showForm && (
           <>
             {/* Name first — emoji + name + Add. */}

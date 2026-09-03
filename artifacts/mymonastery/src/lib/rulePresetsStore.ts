@@ -110,7 +110,15 @@ export async function refreshRoutinePresets(force = false): Promise<void> {
   try {
     const cached = readCache();
     if (!force && cached && Date.now() - cached.fetchedAt < MAX_AGE) return;
-    const res = await fetch("/api/routine-presets");
+    /**
+     * A FORCED refresh must not be answered from the HTTP cache.
+     *
+     * The GET is sent with `Cache-Control: public, max-age=300` — right for
+     * the boot-time warm, wrong immediately after an admin saves: the webview
+     * would hand back the pre-save body for five minutes, so the page they
+     * just saved from would go on showing the old rule.
+     */
+    const res = await fetch("/api/routine-presets", force ? { cache: "no-store" } : undefined);
     if (!res.ok) return;
     const data = await res.json() as Omit<Overlay, "fetchedAt">;
     if (!data || !Array.isArray(data.presets)) return;
@@ -118,9 +126,18 @@ export async function refreshRoutinePresets(force = false): Promise<void> {
   } catch { /* offline, blocked, private mode — the built-ins still apply */ }
 }
 
-/** What the admin tool edits, straight from the server (never the cache). */
+/**
+ * What the admin tool edits, straight from the server — and never from a
+ * cache, HTTP or otherwise.
+ *
+ * `no-store` is load-bearing, not belt-and-braces: without it the editor read
+ * the five-minute cached body, so a rule saved a moment ago came back
+ * unedited — no "· edited" badge, no "Revert to built-in", and no way to
+ * undo the save until the cache expired (found on the simulator by
+ * eleanor-3a).
+ */
 export async function fetchRoutinePresetOverlay(): Promise<Omit<Overlay, "fetchedAt">> {
-  const res = await fetch("/api/routine-presets");
+  const res = await fetch("/api/routine-presets", { cache: "no-store" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.json();
 }
