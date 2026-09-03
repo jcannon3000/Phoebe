@@ -7,6 +7,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import DeckNavPill from "@/components/DeckNavPill";
 import { type ListeningMedium } from "@/lib/listeningLog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -316,6 +317,8 @@ export default function ListeningPage() {
   const INTRO = 0, LISTEN = 1, HOW = 2, LOG = 3, LIFT = 4, DONE = 5;
   const DECK_TOTAL = 6;
   const LAST = DONE;
+  // The pill's section label — the office's "N of M · Section" shape.
+  const LISTEN_SECTION = ["Begin", "Listen", "How", "Log", "Pray", "Done"];
 
   // ——— Library (curated albums) ———
   if (view === "library") {
@@ -533,7 +536,12 @@ export default function ListeningPage() {
           >
             ← Back
           </button>
-          <span style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+          {/* The office's frosted title pill, not a bare eyebrow — same chrome
+              as bcp-daily-office, Lectio and Visio. */}
+          <span
+            className="rounded-full"
+            style={{ background: "rgba(9,26,16,0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${DECK_BORDER}`, color: WARM, fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", padding: "6px 16px", fontFamily: SPACE_GROTESK, whiteSpace: "nowrap" }}
+          >
             Audio Divina
           </span>
           <button
@@ -544,7 +552,7 @@ export default function ListeningPage() {
             // handed you a second, older version of the same practice.
             onClick={() => setLocation("/dashboard")}
             aria-label="Close"
-            style={{ userSelect: "none", WebkitTapHighlightColor: "transparent", width: 32, height: 32, borderRadius: 999, background: "rgba(9,26,16,0.5)", border: `1px solid ${DECK_BORDER}`, color: WARM, cursor: "pointer", padding: 0 }}
+            style={{ userSelect: "none", WebkitTapHighlightColor: "transparent", width: 38, height: 38, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(9,26,16,0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${DECK_BORDER}`, color: WARM, cursor: "pointer", padding: 0, fontSize: 15 }}
           >
             ✕
           </button>
@@ -859,72 +867,39 @@ export default function ListeningPage() {
                 </div>
               )}
             </motion.div>
+            <div aria-hidden style={{ flex: "0 0 auto", height: 84 }} />
         </div>
 
-        {/* Footer — Visio's, including the step counter. */}
-        <div style={{ padding: "10px 20px calc(env(safe-area-inset-bottom) + 18px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-          <button
-            onClick={() => {
-              /**
-               * The log records and MOVES ON to the prayer beat — it isn't the
-               * end of the deck any more. The prayer beat is, and it closes out
-               * to the log view.
-               *
-               * And with nothing to record it just moves on. Moving the log
-               * into the MIDDLE of the deck turned a disabled button from a
-               * "finish this to be done" into a locked door in front of the
-               * last beat — reachable simply by having already logged today,
-               * which leaves the field empty. Gesture nav is off on this beat
-               * (its taps belong to the search field), so there was no way
-               * past it at all. The practice must never trap you before its
-               * prayer.
-               */
+        {/* The office's bottom pill — Back · "N of 6 · Section" · Next — in
+            place of the full-width CTA + "N / 6" (owner: match the office).
+            The labels keep their jobs: "Log it" names what's missing on the
+            log beat, "Done" closes. See DeckNavPill. */}
+        <DeckNavPill
+          label={`${deckStep + 1} of ${DECK_TOTAL} · ${LISTEN_SECTION[deckStep] ?? ""}`}
+          back={{ onClick: prev, disabled: deckStep === INTRO }}
+          primary={{
+            // Held (inert, dimmed) until something is named on the log beat —
+            // or a log already exists today, in which case it just moves on.
+            inert: atLog && !logSatisfied,
+            onClick: () => {
               if (atLog) {
-                // Nothing named and nothing kept today: the beat holds. (The
-                // button is disabled too — this is the belt to that's braces,
-                // since a keyboard Enter can still reach a styled button.)
                 if (!logSatisfied) return;
                 // The flag means "a log was actually written", not "we passed
-                // this beat" — set unconditionally it made Back skip the log
-                // for someone who had recorded nothing, which is exactly the
-                // person who might want to go back and record something.
+                // this beat" — so Back can still return to an empty form.
                 if (what.trim()) { logToday(); loggedHere.current = true; }
                 next();
                 return;
               }
-              // The closing slide finishes the practice and returns to the
-              // rhythm. (It used to reset to the intro and show the old form.)
+              // The closing slide finishes the practice and returns to the rhythm.
               if (deckStep === LAST) { loggedHere.current = false; setDeckStep(INTRO); setLocation("/dashboard"); return; }
               next();
-            }}
-            disabled={atLog && !logSatisfied}
-            style={{
-              userSelect: "none", WebkitTapHighlightColor: "transparent",
-              width: "100%", maxWidth: 420, borderRadius: 999, padding: "14px 20px",
-              fontSize: 16, fontWeight: 600, fontFamily: SPACE_GROTESK,
-              cursor: atLog && !logSatisfied ? "default" : "pointer",
-              ...FROST_CTA,
-              border: `1px solid ${DECK_BORDER}`,
-              // Dimmed rather than hidden, so it reads as "not yet" instead of
-              // "gone" — the field above it is what turns it on.
-              background: atLog && !logSatisfied ? "rgba(46,107,64,0.22)" : "rgba(46,107,64,0.55)",
-              color: atLog && !logSatisfied ? SAGE : WARM,
-            }}
-          >
-            {deckStep === INTRO
+            },
+            label: deckStep === INTRO
               ? "Begin"
-              // "Log it" whenever a record is wanted — including while the
-              // field is still empty and the button is held, because that is
-              // the moment the label has a job: it names what's missing.
-              // "Continue" only for someone who already logged today and left
-              // the form empty, where a second record isn't being made.
               : atLog ? (what.trim() || !keptToday ? "Log it" : "Continue")
-                : deckStep === LAST ? "Done" : "Continue"}
-          </button>
-          <span style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.12em" }}>
-            {deckStep + 1} / {DECK_TOTAL}
-          </span>
-        </div>
+                : deckStep === LAST ? "Done" : "Next",
+          }}
+        />
       </div>
     );
   }

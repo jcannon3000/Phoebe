@@ -42,6 +42,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { openExternal, openOfficeReading, preloadExternal } from "@/lib/openExternal";
 import { FROST_BLUR } from "@/lib/frost";
+import DeckNavPill from "@/components/DeckNavPill";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
 import { chooseArtwork, artworkById, alternatesForDay, readingUrl, canonicalRef, type Chosen } from "@/lib/visioSelect";
@@ -528,6 +529,8 @@ export default function VisioPage() {
   const TITLE = 0, LOOK = 1, READING = 2, LOOK_AGAIN = 3, DONE = 4;
   const [step, setStep] = useState(TITLE);
   const TOTAL = 5;
+  // The pill's section label — the office's "N of M · Section" shape.
+  const VISIO_SECTION = ["Begin", "Look", "Reading", "Pray", "Done"];
   /**
    * Which beats hold the picture.
    *
@@ -992,13 +995,9 @@ export default function VisioPage() {
            button actually enables. Restarts each beat: the element is keyed by
            the step, so it remounts. (No backticks in here — this is inside a
            template literal and one would end it.) */
-        @keyframes visio-hold-grow { from { width: 0%; } to { width: 100%; } }
-        .visio-hold-fill { width: 0%; animation: visio-hold-grow 12s linear forwards; }
         /* Continue arriving once the hold is up — the same 6px rise the app's
            illuminated titles use (title-glow-fade-in), so the word lands the
            way they do rather than blinking into place. */
-        @keyframes visio-cta-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        .visio-cta-rise { animation: visio-cta-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 
         /* (The prompts rise and then hold still — .prompt-rise, in index.css,
            shared with Audio Divina's deck. See its own note there.) */
@@ -1014,14 +1013,19 @@ export default function VisioPage() {
         >
           ← {t("common.back", { defaultValue: "Back" })}
         </button>
-        <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+        {/* The office's frosted title pill and 38px ✕ circle, not a bare
+            eyebrow — same chrome as bcp-daily-office and Lectio. */}
+        <span
+          className="rounded-full"
+          style={{ background: "rgba(9,26,16,0.297)", ...FROST_BLUR, border: `1px solid ${BORDER}`, color: WARM, fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", padding: "6px 16px", fontFamily: FONT, whiteSpace: "nowrap" }}
+        >
           {t("visio.title", { defaultValue: "Visio Divina" })}
         </span>
         <button
           type="button"
           onClick={goHome}
           aria-label={t("common.close", { defaultValue: "Close" })}
-          style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", width: 32, height: 32, borderRadius: 999, background: "rgba(9,26,16,0.5)", border: `1px solid ${BORDER}`, color: WARM, cursor: "pointer", padding: 0 }}
+          style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", width: 38, height: 38, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(9,26,16,0.297)", ...FROST_BLUR, border: `1px solid ${BORDER}`, color: WARM, cursor: "pointer", padding: 0, fontSize: 15 }}
         >
           ✕
         </button>
@@ -1492,107 +1496,36 @@ export default function VisioPage() {
           </div>
         )}
           </motion.div>
+          <div aria-hidden style={{ flex: "0 0 auto", height: 84 }} />
       </div>
 
-      <div style={{ padding: "10px 20px calc(env(safe-area-inset-bottom) + 18px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-        {/**
-          * "Pause before continuing" (owner: "above the bar that loads for
-          * twelve seconds, have it say pause before continuing").
-          *
-          * The pill goes deliberately WORDLESS while the wash fills — a label
-          * for an action the button will refuse reads as broken. But wordless
-          * also says nothing about WHY it won't move, and a filling bar with
-          * no explanation reads as loading, which invites you to wait on the
-          * app rather than to look at the picture. One line above it names
-          * what the wait is for. It's the only text on the beat besides the
-          * work's own, so it sits in the caption size and colour, not the
-          * prompt's — an instruction about the deck, not part of the prayer.
-          *
-          * Only while the hold is actually running: once Continue arrives the
-          * line has nothing left to explain, and leaving it there would ask
-          * for a pause that is already over.
-          */}
-        {holdsThisBeat && !holdReady && (
-          <p
-            aria-hidden
-            style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, letterSpacing: "0.02em", margin: "0 0 2px", textAlign: "center" }}
-          >
-            {t("visio.hold_hint", { defaultValue: "Pause before continuing" })}
-          </p>
-        )}
-        <button
-          type="button"
-          // Inert until the hold is up, rather than disabled: a `disabled`
-          // button is dropped from the accessibility tree and can't announce
-          // WHY it isn't working. This one stays focusable and says so.
-          onClick={() => { if (holdReady) next(); }}
-          aria-disabled={!holdReady}
-          aria-label={holdReady ? undefined : t("visio.hold_aria", { defaultValue: "Stay with this a moment longer" })}
-          // Frosted, like every other CTA in the app (lib/frost) — this one
-          // was a flat green panel sitting on a photo backdrop that every
-          // surface around it lets through.
-          style={{ position: "relative", overflow: "hidden", userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420, background: "rgba(46,107,64,0.55)", ...FROST_BLUR, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", border: `1px solid ${BORDER}`, color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: holdReady ? "pointer" : "default", opacity: holdReady ? 1 : 0.72, transition: "opacity 420ms ease-out" }}
-        >
-          {/* The wash filling under the label while the hold runs — the same
-              language prayer-mode's amen hold uses, so "wait with this" looks
-              the same wherever the app asks for it. Keyed by the step so it
-              restarts on every beat. */}
-          {!holdReady && (
-            <span
-              key={step}
-              aria-hidden
-              className="visio-hold-fill"
-              style={{ position: "absolute", left: 0, top: 0, bottom: 0, background: "rgba(168,197,160,0.16)", pointerEvents: "none" }}
-            />
-          )}
-          <span
-            key={`${step}-${holdReady}`}
-            className={holdsThisBeat && holdReady ? "visio-cta-rise" : undefined}
-            // A BLOCK with a reserved line box, because this span renders
-            // nothing at all while the hold runs (owner: "the height of the
-            // progress bar shouldn't be shorter when it is loading"). Empty,
-            // an inline span has no line box, so the button collapsed to its
-            // padding and then jumped taller the moment the word arrived —
-            // the filling pill changing size under your eyes on the one beat
-            // that's asking you to hold still. minHeight only applies to a
-            // block, so it's a block; the button still centres it.
-            style={{ position: "relative", display: "block", minHeight: 20, lineHeight: "20px" }}
-          >
-            {/* NOTHING while the hold runs, and Continue RISES when it's time
-                (owner). A button labelled for an action it will refuse reads as
-                broken, and a substitute label ("Stay with it") is still a word
-                asking to be read on a beat whose whole job is looking. So: an
-                empty pill with its wash filling, then the word arrives — the
-                same 6px rise the app's illuminated titles use, which is what
-                makes it read as arriving rather than appearing. */}
-            {!holdReady
-              ? null
-              // The button that opens the reading says the SAME thing wherever
-              // it appears. It said "Look and read" here and "Read reflection"
-              // on the closing card — one destination under two names, which
-              // is how a reader ends up unsure whether they're two different
-              // things (owner, comparing the two: "why is there
-              // inconsistency"). One phrase, one key.
-              // In deck order: the passage off the first look, the reflection
-              // off the beat after it. Same rule for both — one destination,
-              // one phrase, wherever it appears.
-              : readingOpens
-                ? `${t("visio.read_passage", { defaultValue: "Read the passage" })} \u2192`
-              : step === TITLE
-                ? t("common.begin", { defaultValue: "Begin" })
-                // Audit: the closing slide's button doesn't continue anything —
-                // it marks the practice kept and leaves. Saying "Continue"
-                // there described the one tap in this deck that isn't one.
-                // The closing slide's button doesn't continue anything — it
-                // marks the practice kept and leaves. Owner: "it should just
-                // be finished as, like, CTA on the last screen."
-                : step === DONE
-                  ? t("visio.finished", { defaultValue: "Finished" })
-                  : t("common.continue", { defaultValue: "Continue" })}
-          </span>
-        </button>
-        <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.12em" }}>{step + 1} / {TOTAL}</span>
-      </div>
+      {/* The office's bottom pill — Back · "N of 5 · Section" · Next — in place
+          of the full-width CTA + "N / 5" this deck had grown (owner: match the
+          office). The 12-second hold keeps its exact behaviour inside the
+          pill: wordless with the wash filling, the hint above, Continue
+          rising when it arrives. See DeckNavPill. */}
+      <DeckNavPill
+        hint={holdsThisBeat && !holdReady ? t("visio.hold_hint", { defaultValue: "Pause before continuing" }) : null}
+        label={`${step + 1} of ${TOTAL} · ${VISIO_SECTION[step] ?? ""}`}
+        back={{ onClick: prev, disabled: step === 0 }}
+        primary={{
+          onClick: next,
+          inert: !holdReady,
+          ariaLabel: holdReady ? undefined : t("visio.hold_aria", { defaultValue: "Stay with this a moment longer" }),
+          hold: { active: holdsThisBeat && !holdReady, key: step },
+          rise: holdsThisBeat && holdReady,
+          // The button that opens the reading says the SAME thing wherever it
+          // appears (owner: "why is there inconsistency"); the closing slide's
+          // button finishes and says so (owner: "it should just be finished").
+          label: readingOpens
+            ? `${t("visio.read_passage", { defaultValue: "Read the passage" })} \u2192`
+            : step === TITLE
+              ? t("common.begin", { defaultValue: "Begin" })
+              : step === DONE
+                ? t("visio.finished", { defaultValue: "Finished" })
+                : t("common.continue", { defaultValue: "Continue" }),
+        }}
+      />
     </div>
   );
 }
