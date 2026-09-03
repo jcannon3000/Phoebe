@@ -2696,6 +2696,11 @@ export default function WayOfLoveRuleFlow({
   // bridge lands here with ?adopt=centering) CARRIES the rule to auto-adopt, so
   // the recipient's rhythm arrives in one tap (no stick shift). Runs once on mount.
   const autoAdoptedRef = useRef(false);
+  /** Opened ON a rule (?adopt=…): the preset editor, or a shared link that
+   *  names the rhythm. There is no entry fork behind such a flow — it was
+   *  entered from somewhere else entirely — so Back from the first step must
+   *  leave, not reveal a chooser the person never passed through. */
+  const seededOnARuleRef = useRef(false);
   useEffect(() => {
     if (autoAdoptedRef.current) return;
     autoAdoptedRef.current = true;
@@ -2722,6 +2727,7 @@ export default function WayOfLoveRuleFlow({
         // final Save. Adopting for YOURSELF still commits — that is the one
         // tap the shared link promises.
         adoptRule(preset, { seedOnly: prescribe });
+        seededOnARuleRef.current = true;
         if (prescribe) {
           setEntryChoiceMade(true);
           setManualMode("scratch");
@@ -2963,6 +2969,31 @@ export default function WayOfLoveRuleFlow({
    * renders through: any future intrinsically-wide control — another native
    * input, a long unbroken string — would have hit exactly the same wall.
    */
+  /**
+   * ?debugsteps=1 — draw the step machine's own state on the slide.
+   *
+   * A Continue that does nothing has two possible stories (no next step, or a
+   * next step that doesn't stick), and on a simulator there is no console to
+   * tell them apart — but there is a screenshot. Off unless the flag is in the
+   * URL, so it can never reach a reader.
+   */
+  const debugSteps = useMemo(() => {
+    try { return new URLSearchParams(window.location.search).get("debugsteps") === "1"; }
+    catch { return false; }
+  }, []);
+  /** Evaluated at RENDER time, not here: `orderedSteps` is declared further
+   *  down, and a function body may reference it while a const initialiser
+   *  may not. */
+  const renderStepDebug = () => (debugSteps ? (
+    <p style={{ color: "#E8BE96", fontFamily: "ui-monospace, monospace", fontSize: 11, lineHeight: 1.5, margin: "10px 0 0", wordBreak: "break-word" }}>
+      step={String(step)} · idx={orderedSteps.indexOf(step)}/{orderedSteps.length}
+      {" · next="}{String(orderedSteps[orderedSteps.indexOf(step) + 1] ?? "—")}
+      {" · singleEditRow="}{String(singleEditRow ?? "—")}
+      {" · prescribe="}{String(!!prescribe)}{" · manualMode="}{manualMode}
+      {" · order="}{orderedSteps.join(",")}
+    </p>
+  ) : null);
+
   const shell = (children: ReactNode) => {
     // The top bar carries Back and the Layout X only. The primary action sits
     // at the BOTTOM (see ctaButton), and the two whole-routine actions are
@@ -3004,6 +3035,7 @@ export default function WayOfLoveRuleFlow({
             as wide as the home-screen cards, not a narrower column. */}
         <div className="w-full md:max-w-[56rem] md:mx-auto" style={{ flex: 1, minWidth: 0, maxWidth: "100%", display: "flex", flexDirection: "column" }}>
           {children}
+        {renderStepDebug()}
         </div>
       </div>
     </div>
@@ -3466,7 +3498,12 @@ export default function WayOfLoveRuleFlow({
     // undo one tap, not drop you two slides back at the fork.
     if (canEditParts && manualMode === "preset" && groupPending) { setGroupPending(null); return; }
     if (canEditParts && manualMode === "preset" && presetPending) { setPresetPending(null); return; }
-    if (entryChoiceMade && showEntryChoice) { setEntryChoiceMade(false); return; }
+    // …but not when the flow was opened ON a rule. Reported from the preset
+    // editor: Back on the first step opened "How would you like to build it?"
+    // INSIDE the editor, and it took a second Back to leave — a chooser the
+    // admin never passed through on the way in, offering to replace the very
+    // rule they came to edit.
+    if (entryChoiceMade && showEntryChoice && !seededOnARuleRef.current) { setEntryChoiceMade(false); return; }
     onBack();
   };
   // Is the CURRENT step the last one in whichever flow variant is active
