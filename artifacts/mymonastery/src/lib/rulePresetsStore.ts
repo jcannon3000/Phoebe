@@ -137,7 +137,12 @@ export async function refreshRoutinePresets(force = false): Promise<void> {
  * eleanor-3a).
  */
 export async function fetchRoutinePresetOverlay(): Promise<Omit<Overlay, "fetchedAt">> {
-  const res = await fetch("/api/routine-presets", { cache: "no-store" });
+  // A UNIQUE URL as well as no-store. `cache: "no-store"` is honoured by
+  // browsers but WKWebView has been seen serving its own copy anyway, and the
+  // symptom is nasty: a rule reverted to built-in still reads "· edited",
+  // which invites an admin to revert it again. A URL nothing has ever
+  // requested cannot be answered from any cache, ours or the platform's.
+  const res = await fetch(`/api/routine-presets?t=${Date.now()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.json();
 }
