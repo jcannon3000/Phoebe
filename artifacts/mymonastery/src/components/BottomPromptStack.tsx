@@ -68,7 +68,13 @@ const IMMERSIVE_PRACTICE_ROUTES = new Set<string>([
 // always yields the top slot to anything more urgent).
 export function BottomPromptStack() {
   const [location] = useLocation();
-  if (IMMERSIVE_PRACTICE_ROUTES.has(location)) return null;
+  // Compare the PATH alone. wouter hands back a pathname today, but this set
+  // is exact-match and a route that ever arrives carrying a query ("?adopt=…"
+  // while a preset is being edited) would miss every entry and put a standing
+  // prompt back over a practice — a silent failure, since the prompt looks
+  // like it belongs.
+  const path = location.split("?")[0] ?? location;
+  if (IMMERSIVE_PRACTICE_ROUTES.has(path)) return null;
   return (
     <div
       className="fixed left-0 right-0 z-50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-2"

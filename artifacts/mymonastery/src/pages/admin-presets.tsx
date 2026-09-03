@@ -493,6 +493,14 @@ export default function AdminPresetsPage() {
     // exactly like editing your own rhythm, which is the whole ask.
     return (
       <Layout bgPhoto={flowLeaf} chromeless onClose={endDesign}>
+        {/* ABOVE anything fixed. A tap on the wizard's Continue died in a band
+            ~80-140pt from the bottom of this page while the button itself was
+            plainly visible (eleanor-3a, three builds) — something fixed and
+            unpainted was taking it. Rather than hunt every candidate, the
+            flow takes its own stacking context above the app's bottom layers
+            (the prompt stack sits at z-50), so nothing can sit between a
+            reader and the control they can see. */}
+        <div style={{ position: "relative", zIndex: 60, minHeight: "100%", display: "flex", flexDirection: "column" }}>
         <WayOfLoveRuleFlow
           prescribe
           // The rule itself, not a slug in the URL — see adoptPreset.
@@ -501,6 +509,7 @@ export default function AdminPresetsPage() {
           onBack={endDesign}
           onDone={() => { /* unused in prescribe mode — commit() routes to onPrescribe */ }}
         />
+        </div>
       </Layout>
     );
   }
