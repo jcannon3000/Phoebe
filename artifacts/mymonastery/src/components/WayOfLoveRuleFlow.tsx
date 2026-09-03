@@ -4565,9 +4565,12 @@ export default function WayOfLoveRuleFlow({
               "Not seeing taize in the reflections option of the full
               customizer."
               If you add a practice to the options array, ADD IT HERE TOO, or it
-              exists everywhere except the place people choose it. */}
+              exists everywhere except the place people choose it.
+              TAIZÉ IS DELIBERATELY NOT HERE (owner, 2026-09-03: "taize should
+              not be in contemplation"). Its one row is on the reflections step;
+              it toggles the same `contemplative.taize` state, and both onKeys
+              copies still read it. */}
           {choiceRow(contemplative.icons, `🪟 ${t("wol_rule.cp_icons", { defaultValue: "Praying with Icons" })}`, t("wol_rule.cp_icons_sub", { defaultValue: "Sit with an icon — return to it daily." }), () => toggleContemplative("icons"))}
-          {choiceRow(contemplative.taize, `🕯️ ${t("wol_rule.cp_taize", { defaultValue: "Taizé meditation" })}`, t("wol_rule.cp_taize_sub", { defaultValue: "A meditation from Taizé — it waits until you read it." }), () => toggleContemplative("taize"))}
           {choiceRow(contemplative.reading, `📚 ${t("wol_rule.cp_reading", { defaultValue: "Reading" })}`, t("wol_rule.cp_reading_sub", { defaultValue: "A book, a page a day — with a bar showing how far in you are." }), () => toggleContemplative("reading"))}
           {/* When they read — the picker lived on the dead "extras" step, so
               Reading's slot could never be changed from the customizer. */}
