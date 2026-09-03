@@ -88,7 +88,111 @@ const MODEL = process.env.ROUTINE_INTERVIEW_MODEL || "gpt-5.6-luna";
 const FOLLOWUP_MODEL = process.env.ROUTINE_INTERVIEW_FOLLOWUP_MODEL || MODEL;
 const BUILD_MODEL = process.env.ROUTINE_INTERVIEW_BUILD_MODEL || MODEL;
 
-// ── Phoebe's vocabulary ──────────────────────────────────────────────────────
+// ── The FLAT catalogue (the new framework) ───────────────────────────────────
+//
+// Owner (2026-09-03): the interview "was based on the old framework of the
+// weekly progress cards with three dots, and so it needed to ask specifically
+// about each anchor — but we moved away from anchors so much." The home is a
+// flat list of practice cards now — every card one equal unit, the day kept
+// when all are done; morning/evening survive as PLUMBING (office levels,
+// extras, per-side kinds), not as the three things a person is asked about.
+//
+// So the model no longer fills the anchor-shaped spec. It returns ONE LIST of
+// practices — what they keep, and when — over the same catalogue the
+// customizer offers, and specFromPractices() below maps that list onto the
+// existing PrescribedRoutineSpec so sanitizeSpec, scrubRuleConfig, the
+// normalizers, hideUnchosen, describeSpec and applyRoutineSpecToUser all keep
+// working untouched. The anchor rules live in the adapter, where they are
+// deterministic, instead of in a thousand words of prompt.
+//
+// PHOEBE_VOCAB (below) is kept only for the LEGACY response shape — a model
+// that returns "spec" instead of "practices" still goes through the old path.
+type FlatKind = "prayer" | "silence" | "practice" | "newsletter" | "custom";
+type CatalogueEntry = { kind: FlatKind; label: string; hint: string; side?: "morning" | "evening" };
+/**
+ * Every key the model may use. `kind` decides how the adapter places it:
+ *   prayer     — a form of prayer that takes a HALF of the day (the plumbing
+ *                still calls this a side's level). `side` is the default when
+ *                the person named none.
+ *   silence    — the daily silence goal (minutes / sits / log method).
+ *   practice   — a card kept somewhere in the day (a home-layout key).
+ *   newsletter — a daily reflection (a home-layout key).
+ *   custom     — their own, by name.
+ * Keep in step with the customizer's contemplative step + /customize rows.
+ */
+const CATALOGUE: Record<string, CatalogueEntry> = {
+  office:          { kind: "prayer", label: "the Daily Office (Morning/Evening Prayer, BCP 1979)", hint: "\"Morning Prayer\", \"Evening Prayer\", \"the office(s)\", \"the hours\"" },
+  devotion:        { kind: "prayer", label: "a short devotion", hint: "much briefer than the office" },
+  psalms:          { kind: "prayer", label: "the day's appointed psalms", hint: "\"the psalter\"" },
+  readings:        { kind: "prayer", label: "Daily Scripture Reading — the appointed lectionary readings", hint: "\"the lectionary\", \"the daily readings\"; NOT a book they chose (that is \"reading\")" },
+  "guided-prayer": { kind: "prayer", label: "Simple Guided Prayer — a ~3 minute guided form", hint: "morning-shaped", side: "morning" },
+  examen:          { kind: "prayer", label: "the Examen — reviewing the day with God", hint: "evening-shaped", side: "evening" },
+  compline:        { kind: "prayer", label: "Compline, the night office", hint: "always evening", side: "evening" },
+  fdd:             { kind: "prayer", label: "Forward Day by Day AS their prayer for that part of the day", hint: "only when the meditation IS what they pray; otherwise it is the newsletter \"fdd\"" },
+  "reflect-sit":   { kind: "prayer", label: "a silent sit AS their prayer for that part of the day", hint: "centering prayer, Christian meditation, the Jesus Prayer kept silently — when the sit IS the morning or the evening" },
+  custom:          { kind: "custom", label: "a practice of their own naming", hint: "\"Chapel\", \"The Rosary\", \"Morning Pages\" — give \"title\"; NEVER a placeholder like \"Morning practice\"" },
+  silence:         { kind: "silence", label: "time in silence across the day", hint: "minutes ALL TOLD, one sit or several, timer or logged by hand; NOT for a sit that is itself the morning/evening prayer (use reflect-sit)" },
+  creation:        { kind: "practice", label: "Creation Prayer — a guided breath", hint: "\"Co-Breathe\", \"the breath\"" },
+  walk:            { kind: "practice", label: "a Contemplative Walk", hint: "\"prayer walk\"" },
+  listening:       { kind: "practice", label: "Audio Divina — praying with music", hint: "\"sacred listening\"" },
+  visio:           { kind: "practice", label: "Visio Divina — praying with an image", hint: "" },
+  icons:           { kind: "practice", label: "Praying with Icons — one icon for the week", hint: "" },
+  taize:           { kind: "practice", label: "the Taizé meditation (weekly)", hint: "" },
+  spirituals:      { kind: "practice", label: "Meditating on Spirituals — a spiritual sung as prayer", hint: "" },
+  lectio:          { kind: "practice", label: "Lectio Divina — a passage read slowly three times", hint: "" },
+  reading:         { kind: "practice", label: "Reading — a book they are working through", hint: "honours \"when\"" },
+  podcasts:        { kind: "practice", label: "Podcasts", hint: "" },
+  cac:             { kind: "newsletter", label: "the CAC Daily Meditation (Center for Action and Contemplation, Richard Rohr)", hint: "\"the daily meditation\"" },
+  ssje:            { kind: "newsletter", label: "SSJE — Brother, Give Us a Word", hint: "" },
+  vts:             { kind: "newsletter", label: "the VTS Dean's Commentary", hint: "\"the Dean's\", \"VTS\" — never fdd" },
+  sojo:            { kind: "newsletter", label: "the Sojourners daily devotion", hint: "" },
+  nouwen:          { kind: "newsletter", label: "the Henri Nouwen daily devotion", hint: "" },
+  grist:           { kind: "newsletter", label: "Grist climate news", hint: "" },
+};
+// "fdd" is a newsletter too — the same key, read as a card when it is not a
+// side's prayer. The adapter decides by `when`: no side → newsletter.
+const NEWSLETTER_KEYS = new Set(["cac", "fdd", "ssje", "vts", "sojo", "nouwen", "grist"]);
+const WHEN = new Set(["morning", "midday", "afternoon", "evening", "anytime"]);
+
+const FLAT_VOCAB = `
+PHOEBE'S CATALOGUE — every practice you may record, by key. Use only these keys.
+
+${Object.entries(CATALOGUE).map(([k, e]) => `  ${k.padEnd(14)} — ${e.label}${e.hint ? ` (${e.hint})` : ""}`).join("\n")}
+
+A rhythm is ONE LIST of practices. There are no "anchors" to choose and no
+"main practice" to decide between — if someone prays Morning Prayer AND sits
+in silence AND reads the CAC, that is three entries, each recorded once.
+
+For each entry:
+  key      one of the keys above (required)
+  when     morning | midday | afternoon | evening | anytime. Use what they
+           said. For a form of prayer (office, devotion, psalms, readings,
+           guided-prayer, examen, compline, fdd, reflect-sit, custom) "when"
+           says which half of the day it is prayed in; leave it out if they
+           didn't say and the practice has no natural time.
+  medium   for office / devotion only: book | read | listen | venite.
+           DEFAULT "venite" unless they clearly described another way. Never
+           ask — a later screen offers it as a dropdown.
+  time     "HH:MM" 24-hour, only when they named one.
+  minutes  for "silence": total minutes across the day (1-180).
+  sits     for "silence": "one" | "several".
+  log      for "silence": "timer" when they name a length (they are timing
+           it), "manual" only when a timer is ruled out (church, a bell, no
+           length at all).
+  title    for "custom": ≤40 chars in their own words. emoji: one emoji.
+
+NEVER record one practice twice (the lectionary as "readings" AND as
+"reading"; a silent sit as "reflect-sit" AND as "silence"). A sit that IS
+their morning or evening prayer is "reflect-sit" with that "when"; silence
+kept beside another prayer is "silence".
+
+VIRGINIA THEOLOGICAL SEMINARY — the single exception to "add nothing they
+didn't describe": if they are at / attend / teach at / graduated from VTS, or
+write "VTS", include { "key": "vts" } and say so in notes. Nothing else may be
+added on similar reasoning.
+`.trim();
+
+// ── Phoebe's vocabulary (LEGACY shape) ──────────────────────────────────────
 // Kept as ONE string used by both calls so the two can't describe different
 // apps. Every value here is one sanitizeSpec() actually accepts — if you add a
 // practice to ALLOWED_LEVELS or HOME_MODULE_KEYS in lib/routineSpec.ts, add it
@@ -313,32 +417,23 @@ homeLayout.hidden — same keys, for cards to hide.
 // stated once here and referenced by both calls, so the follow-up questions
 // and the build step are chasing the same four gaps rather than wandering.
 const FOUR_THINGS = `
-WHAT YOU ARE DEFINING — these four, and nothing else:
+WHAT YOU ARE DEFINING — the practices they keep, as ONE list:
 
-  1. MORNING PRACTICE — what they pray in the morning, and how they take it
-     (on screen, from their physical prayer book, read aloud, and so on).
-  2. EVENING PRACTICE — the same for the evening. May be a different practice
-     and a different form from the morning.
-  3. CONTEMPLATION — silent prayer. Whether they sit at all, for how long, and
-     whether it belongs to a side of the day or stands on its own.
-  4. NEWSLETTERS — the daily reflections they read: the CAC daily meditation,
-     Forward Day by Day, SSJE, the VTS Dean's Commentary. Which ones, if any,
-     and whether a given one is their PRACTICE for a side or a reading
-     alongside it.
+  · The forms of PRAYER they keep and WHEN — Morning Prayer, Evening Prayer,
+    Compline, the psalms, the appointed readings, a short devotion, Simple
+    Guided Prayer, the Examen, a silent sit that is itself their prayer, or
+    something they name.
+  · SILENCE — whether they sit at all, roughly how many minutes all told, and
+    whether that is one sit or several.
+  · Practices kept through the day — a walk, a breath, sacred listening,
+    Visio Divina, an icon, a spiritual, Lectio, a book, podcasts.
+  · NEWSLETTERS — the daily reflections they read: the CAC meditation, Forward
+    Day by Day, SSJE, the VTS Dean's Commentary, Sojourners, Nouwen, Grist.
 
-VIRGINIA THEOLOGICAL SEMINARY — the SINGLE exception to "add nothing they
-didn't describe". If they say they are at, attend, teach at, study at, or
-graduated from Virginia Theological Seminary — or write "VTS" — turn the Dean's
-Commentary ON: set a reflection to "vts" and include "vts" in homeLayout.order.
-It is their own seminary's daily word. Note it in your notes so they can see it
-was added and take it off.
-
-This exception is exhausted by that one newsletter. It is not a precedent, and
-nothing else may be added on similar reasoning — no "they mentioned a parish so
-they'd probably want…", no rounding a mention of church into a practice.
-
-Do not chase anything outside these four. Reminder times are worth capturing
-when they mention them, but they are a detail of 1 and 2, never the subject.
+Every one of these is a card of equal standing on their home. There is no
+"main" practice and no anchor to pick — do not ask which of two practices
+matters more. Reminder times are worth capturing when mentioned, but they
+are a detail of a practice, never the subject.
 `.trim();
 
 // Owner: "make sure we are looking through an Episcopal lens. I said morning
@@ -642,12 +737,12 @@ function cleanText(v: unknown, max: number): string {
  * real gap from a detail. That's this: names, not keys.
  */
 const PRACTICE_MENU_PLAIN = `
-WHAT PHOEBE CAN RECORD — so you know what counts as an answer:
+WHAT PHOEBE CAN RECORD — so you know what counts as an answer. One list:
 
-  Morning, and evening, each hold ONE main practice. It can be the Daily Office
-  (Morning/Evening Prayer), a short devotion, the appointed psalms, the day's
-  readings, Simple Guided Prayer, the Examen, Forward Day by Day, a silent sit,
-  Compline, or something they name themselves. A side can also be empty.
+  Forms of prayer, each at a time of day: the Daily Office (Morning/Evening
+  Prayer), a short devotion, the appointed psalms, the day's readings, Simple
+  Guided Prayer, the Examen, Compline, Forward Day by Day, a silent sit, or
+  something they name themselves. As many as they keep.
 
   How they take an office: from their prayer book, on a screen, read aloud, or
   on venite.app. DON'T ASK — a later screen offers this as a dropdown.
@@ -656,10 +751,11 @@ WHAT PHOEBE CAN RECORD — so you know what counts as an answer:
   whether that's one sit or several.
 
   Daily reflections, any number: the CAC meditation, Forward Day by Day, SSJE,
-  the VTS Dean's Commentary.
+  the VTS Dean's Commentary, Sojourners, Nouwen, Grist.
 
   Practices kept through the day: a contemplative walk, sacred listening,
-  Creation Prayer (a guided breath), reading.
+  Creation Prayer (a guided breath), Visio Divina, Praying with Icons, the
+  Taizé meditation, Spirituals, Lectio Divina, reading a book, podcasts.
 
   Anything else they keep is recorded under its own name, so an unusual
   practice is never a problem — you don't need to force it onto this list.
@@ -733,7 +829,7 @@ const RC_LEVELS = new Set([
   "readings", "psalms", "examen", "creation", "guided-prayer", "custom", "compline",
 ]);
 const RC_ENTRIES = new Set(["read", "listen", "watch", "book", "venite"]);
-const RC_REFLECTIONS = new Set(["cac", "fdd", "ssje", "vts", "none"]);
+const RC_REFLECTIONS = new Set(["cac", "fdd", "ssje", "vts", "sojo", "nouwen", "grist", "none"]);
 const RC_SLOTS = new Set(["morning", "anytime", "midday", "afternoon", "evening"]);
 const RC_STYLES = new Set(["silent", "cobreathe"]);
 /**
@@ -1335,11 +1431,9 @@ Never ask about something they already answered clearly. Never ask them to pick
 between Phoebe's internal option names — ask about their practice in their own
 words, the way a person would.
 
-IF THEY NAMED TWO PRACTICES FOR ONE SIDE, ask which is the anchor. A side holds
-one anchor, and choosing for them gets the person's own rhythm backwards half
-the time. Ask it as a choice between the two things they actually said —
-"Which of those is your main morning prayer, and which is the extra?" — with
-both as "choices".
+IF THEY NAMED TWO FORMS OF PRAYER AT THE SAME TIME OF DAY, that is two
+practices, both recorded — never ask which is the "main" one. Ask only when
+you genuinely can't tell WHEN one of them is kept.
 
 CONTEMPLATION needs its SHAPE, not just its presence. If silence comes up at
 all, make sure you end up knowing: is it ONE sit, or several practices spread
@@ -1441,6 +1535,156 @@ often), never about the rest of their day.`
   res.json({ questions });
 });
 
+/**
+ * FLAT LIST → the existing spec.
+ *
+ * The one place the plumbing's shape is known. Deterministic on purpose: the
+ * old prompt asked the model to decide anchors, extras, per-side kinds and
+ * where a sit "belongs", and every one of those became a normalizer when the
+ * model got it wrong. Here the rules are code:
+ *
+ *   · A form of prayer takes the half of the day it names (or its natural
+ *     one). The FIRST on a side is that side's level; a SECOND becomes the
+ *     side's extra practice (the plumbing's "two practices on one side"
+ *     escape hatch); a third or a custom one becomes a custom practice with
+ *     that slot. Nothing is dropped.
+ *   · A walk / breath / Audio Divina / Visio Divina named for a half of the
+ *     day that has NO prayer form IS that side's contemplative practice
+ *     (flag + kind); otherwise it is an all-day card.
+ *   · "silence" is the daily goal; "reflect-sit" is a side's prayer. The
+ *     existing normalizeContemplation still re-homes a stray sit.
+ *   · Every card goes into homeLayout.order; hideUnchosen states the rest.
+ */
+type FlatPractice = {
+  key: string; when?: string; medium?: string; time?: string;
+  minutes?: number; sits?: string; log?: string; title?: string; emoji?: string;
+};
+function parseFlatPractices(raw: unknown): FlatPractice[] {
+  if (!Array.isArray(raw)) return [];
+  const out: FlatPractice[] = [];
+  for (const item of raw.slice(0, 24)) {
+    if (!item || typeof item !== "object") continue;
+    const it = item as Record<string, unknown>;
+    const key = cleanText(it.key, 24).toLowerCase();
+    if (!key) continue;
+    const when = cleanText(it.when, 12).toLowerCase();
+    const minutes = typeof it.minutes === "number" ? it.minutes : parseInt(cleanText(it.minutes, 6), 10);
+    out.push({
+      key,
+      when: WHEN.has(when) ? when : undefined,
+      medium: cleanText(it.medium, 12).toLowerCase() || undefined,
+      time: cleanText(it.time, 5) || undefined,
+      minutes: Number.isFinite(minutes) ? Math.max(0, Math.min(180, Math.round(minutes))) : undefined,
+      sits: cleanText(it.sits, 8).toLowerCase() || undefined,
+      log: cleanText(it.log, 8).toLowerCase() || undefined,
+      title: cleanText(it.title, 40) || undefined,
+      emoji: cleanText(it.emoji, 8) || undefined,
+    });
+  }
+  return out;
+}
+
+const SIDE_KIND_OF: Record<string, string> = { creation: "creation", walk: "walk", listening: "audio", visio: "visio" };
+const SLOT_KEY_OF: Record<string, string> = { creation: "cobreathe", walk: "walk", listening: "listening", visio: "visio", reading: "reading" };
+
+function specFromPractices(items: FlatPractice[]): { spec: Record<string, any>; customPractices: CustomPractice[]; notes: string[] } {
+  const rc: Record<string, string> = {};
+  const order: string[] = [];
+  const add = (k: string) => { if (!order.includes(k)) order.push(k); };
+  const notes: string[] = [];
+  const customs: CustomPractice[] = [];
+  const op: Record<string, any> = {
+    defaultPrayerLevel: "ask", contemplationGoalMinutes: 0, contemplationReminderEnabled: false,
+    morning: "none", evening: "none", morningTime: null, eveningTime: null,
+  };
+  const sideTaken: Record<"morning" | "evening", boolean> = { morning: false, evening: false };
+  const sideOf = (p: FlatPractice, entry: CatalogueEntry): "morning" | "evening" => {
+    if (p.when === "morning" || p.when === "evening") return p.when;
+    if (entry.side) return entry.side;
+    // A prayer form with no time named: the first free half, morning first.
+    return sideTaken.morning ? "evening" : "morning";
+  };
+
+  // Prayer forms first, so the sides are settled before day practices ask
+  // whether a side is free.
+  const prayers = items.filter((p) => CATALOGUE[p.key]?.kind === "prayer" || (p.key === "fdd" && (p.when === "morning" || p.when === "evening")) || CATALOGUE[p.key]?.kind === "custom");
+  for (const p of prayers) {
+    const entry = CATALOGUE[p.key]!;
+    const side = sideOf(p, entry);
+    const level = p.key; // catalogue prayer keys ARE OfficeLevels (validated by RC_LEVELS later)
+    if (!sideTaken[side]) {
+      sideTaken[side] = true;
+      rc[`phoebe:office:level:${side}`] = level;
+      if (level === "custom" && p.title) rc[`phoebe:office:custom-name:${side}`] = p.title;
+      if ((level === "office" || level === "devotion") && p.medium && RC_ENTRIES.has(p.medium)) rc[`phoebe:office:entry:${side}`] = p.medium;
+      if (p.time && /^([01]\d|2[0-3]):[0-5]\d$/.test(p.time)) op[`${side}Time`] = p.time;
+      if (level === "compline" || level === "examen" || level === "fdd") add(level);
+      add("office");
+    } else if (level !== "custom" && !rc[`phoebe:office:extra:${side}`]) {
+      // The plumbing's second seat on a side.
+      rc[`phoebe:office:extra:${side}`] = level;
+      notes.push(`Two practices in the ${side}: both kept, one alongside the other.`);
+    } else {
+      customs.push({ title: p.title || CATALOGUE[p.key]?.label.split(" — ")[0] || p.key, emoji: p.emoji || "🌿", slot: side });
+    }
+  }
+
+  for (const p of items) {
+    const entry = CATALOGUE[p.key];
+    if (!entry) { notes.push(`We couldn't match "${p.key}" to a practice Phoebe has, so it was left off.`); continue; }
+    if (entry.kind === "prayer" || entry.kind === "custom") continue; // done above
+    if (entry.kind === "silence" || p.key === "silence") {
+      if (p.minutes && p.minutes > 0) {
+        op.contemplationGoalMinutes = Math.max(op.contemplationGoalMinutes, p.minutes);
+        op.contemplationReminderEnabled = true;
+        rc["phoebe:contemplation-log-method"] = p.log === "manual" ? "manual" : "timer";
+        rc["phoebe:contemplation-sits"] = p.sits === "several" ? "several" : "one";
+        add("contemplation");
+      }
+      continue;
+    }
+    if (entry.kind === "newsletter" || NEWSLETTER_KEYS.has(p.key)) {
+      add(p.key);
+      if (!rc["phoebe:office:reflection-source"]) rc["phoebe:office:reflection-source"] = p.key;
+      continue;
+    }
+    // A day practice. Named for a half of the day that holds no prayer form →
+    // that side's contemplative practice (its own Morning/Evening card).
+    const sideKind = SIDE_KIND_OF[p.key];
+    if (sideKind && (p.when === "morning" || p.when === "evening") && !sideTaken[p.when]) {
+      sideTaken[p.when] = true;
+      rc[`phoebe:office:contemplation:${p.when}`] = "1";
+      rc[`phoebe:office:contemplation-kind:${p.when}`] = sideKind;
+      if (p.minutes && p.minutes > 0) rc[`phoebe:office:minutes:${p.when}`] = String(p.minutes);
+      add("contemplation");
+      continue;
+    }
+    const slotKey = SLOT_KEY_OF[p.key];
+    if (slotKey) {
+      // The app treats cobreathe/listening/walk/examen as available all day and
+      // ignores any other slot; only reading honours one.
+      rc[`phoebe:slot:${slotKey}`] = slotKey === "reading" && p.when ? p.when : "anytime";
+      add(slotKey);
+      continue;
+    }
+    add(p.key); // icons, taize, spirituals, lectio, podcasts — layout-driven cards
+  }
+
+  if (!sideTaken.morning) rc["phoebe:office:level:morning"] = rc["phoebe:office:level:morning"] ?? "ask";
+  if (!sideTaken.evening) rc["phoebe:office:level:evening"] = rc["phoebe:office:level:evening"] ?? "ask";
+  if (order.length === 0) add("office");
+  // The global anchor pref: the office when either side prays it, else the
+  // first side's level (what the customizer's own commit writes).
+  const lv = [rc["phoebe:office:level:morning"], rc["phoebe:office:level:evening"]].filter((l) => l && l !== "ask");
+  op.defaultPrayerLevel = lv.includes("office") ? "office" : lv.includes("devotion") ? "devotion" : "ask";
+
+  return {
+    spec: { v: 1, officePrefs: op, silenceLadderEnabled: false, homeLayout: { order, hidden: [] }, ruleConfig: rc },
+    customPractices: customs,
+    notes,
+  };
+}
+
 // ── POST /api/routine-interview/build ────────────────────────────────────────
 // Owner: "based on the initial responses and the follow-up clarifications, then
 // have it built in ... and then it presents the routine for them." Returns the
@@ -1464,34 +1708,24 @@ router.post("/routine-interview/build", perUserRateLimit("routine_interview_buil
 
   const system = `${TRANSCRIBE_NOT_PRESCRIBE}
 
-${PHOEBE_VOCAB}
+${FLAT_VOCAB}
 
-Now produce their routine. Respond with ONLY JSON in exactly this shape:
+Now record their rhythm. Respond with ONLY JSON in exactly this shape:
 
 {
-  "summary": "2-3 sentences, second person, describing the rhythm you programmed in plain language. No option names, no JSON keys.",
+  "summary": "2-3 sentences, second person, describing the rhythm you recorded in plain language. No option names, no JSON keys.",
   "notes": ["short note about any judgement call or closest-match you had to make"],
-  "customPractices": [{ "title": "The Rosary", "emoji": "📿", "slot": "evening" }],
-  "spec": {
-    "v": 1,
-    "officePrefs": {
-      "defaultPrayerLevel": "office",
-      "contemplationGoalMinutes": 0,
-      "contemplationReminderEnabled": false,
-      "morning": "none",
-      "evening": "none",
-      "morningTime": null,
-      "eveningTime": null
-    },
-    "silenceLadderEnabled": false,
-    "homeLayout": { "order": ["office"], "hidden": [] },
-    "ruleConfig": { "phoebe:office:level:morning": "office" }
-  }
+  "practices": [
+    { "key": "office", "when": "morning", "medium": "book", "time": "07:00" },
+    { "key": "silence", "minutes": 20, "sits": "one", "log": "timer" },
+    { "key": "cac" },
+    { "key": "walk", "when": "afternoon" },
+    { "key": "custom", "title": "The Rosary", "emoji": "📿", "when": "evening" }
+  ]
 }
 
-homeLayout.order must be non-empty. Put a side's anchor practice in ruleConfig
-under phoebe:office:level:<side>, and set that side to "ask" if they don't pray
-then. "notes" may be an empty array when nothing needed judgement.`;
+"practices" must be non-empty. "notes" may be an empty array when nothing
+needed judgement.`;
 
   // Corrections from the read-back round: we showed them what we'd heard for a
   // side and they said it was wrong. These carry more weight than the original
@@ -1539,11 +1773,17 @@ then. "notes" may be an empty array when nothing needed judgement.`;
   // list, and the person loses a description and two answers to "the
   // assistant's answer came back garbled". The layout is derivable from the
   // routine itself, so derive it rather than fail.
-  repairHomeLayout(out.data?.spec);
+  // THE FLAT LIST is the contract now; the adapter turns it into the spec the
+  // rest of this pipeline has always taken. A model that answers in the legacy
+  // shape ("spec") still goes through the old path.
+  const flat = parseFlatPractices(out.data?.practices);
+  const adapted = flat.length > 0 ? specFromPractices(flat) : null;
+  const rawSpec = adapted ? adapted.spec : out.data?.spec;
+  repairHomeLayout(rawSpec);
 
   // The model's spec is untrusted input. sanitizeSpec allowlists every field
   // and returns null when what's left isn't a usable routine.
-  const spec = sanitizeSpec(out.data?.spec);
+  const spec = sanitizeSpec(rawSpec);
   if (!spec) { res.status(502).json({ error: "ai_bad_spec" }); return; }
 
   // Value-check the rule-config the model wrote (sanitizeSpec only checked its
@@ -1561,10 +1801,12 @@ then. "notes" may be an empty array when nothing needed judgement.`;
     : [];
   // The model's own judgement calls, plus anything we had to reject — both
   // belong on the review screen for the same reason.
-  const cardNote = droppedCardNote(out.data?.spec, spec.homeLayout.order);
-  const notes = [...modelNotes, ...scrubNotes, ...(cardNote ? [cardNote] : [])].slice(0, 8);
+  const cardNote = droppedCardNote(rawSpec, spec.homeLayout.order);
+  const notes = [...modelNotes, ...(adapted?.notes ?? []), ...scrubNotes, ...(cardNote ? [cardNote] : [])].slice(0, 8);
 
-  const parsedCustoms = parseCustomPractices(out.data?.customPractices);
+  // Customs come from the adapter on the flat path (a "custom" entry, or a
+  // third prayer form on one side); from the model's own array on the legacy one.
+  const parsedCustoms = adapted ? adapted.customPractices : parseCustomPractices(out.data?.customPractices);
   const { presets: mislabelled, customs: customPractices } = splitCustomPractices(parsedCustoms);
   // A preset the model called "custom" becomes the real thing: its own slot and
   // its own card, not a second look-alike beside it. Done before hideUnchosen

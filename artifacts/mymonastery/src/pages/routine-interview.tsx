@@ -53,19 +53,17 @@ type Phase =
   | "confirm" | "extras" | "review";
 type InterviewMode = "scratch" | "adjust";
 
-// The read-back sections, in the order the day runs.
-const CONFIRM_SECTIONS: Array<{ key: SpecSection; title: string; ask: string }> = [
-  { key: "morning", title: "Your morning", ask: "Is that your morning?" },
-  // Not "Silence": a walk or a breath counts as their contemplative practice
-  // and reads back on this slide, so the heading has to cover more than sitting.
-  { key: "contemplation", title: "Your contemplative practice", ask: "Is that right?" },
-  { key: "evening", title: "Your evening", ask: "Is that your evening?" },
-  // Owner: "if there's something in addition to an anchor practice ... a fourth
-  // slide." Where a second practice on a side lands (a Morning Devotion kept
-  // alongside Morning Prayer), plus anything else Phoebe has no name for — so
-  // it gets read back and can be corrected, rather than appearing for the first
-  // time on the final review.
-  { key: "practices", title: "Anything else you keep", ask: "Is that right?" },
+// ONE read-back slide, not four.
+//
+// The four slides ("Your morning" / "Your contemplative practice" / "Your
+// evening" / "Anything else") were the old three-dot frame — an anchor per
+// half of the day plus a remainder. Owner (2026-09-03): "we moved away from
+// anchors so much." The home is one flat list of practice cards, so the
+// read-back is the same list, once, with each practice's own controls under
+// it. `key` is kept only so the adjust flow's changedSections diff and the
+// review's gear can still address it.
+const CONFIRM_SECTIONS: Array<{ key: string; title: string; ask: string }> = [
+  { key: "all", title: "Your rhythm", ask: "Is that right?" },
 ];
 
 // The manual customizer's "Add an additional practice" step, replicated. Each
@@ -361,7 +359,7 @@ export default function RoutineInterviewPage() {
   // the extras page to get back — losing your place to change one dropdown.
   const [returnToReview, setReturnToReview] = useState(false);
   // Read-back → "Change it myself": the practice picker, open on one section.
-  const [pickingPractice, setPickingPractice] = useState(false);
+  const [pickingSide, setPickingSide] = useState<"morning" | "evening" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
 
@@ -398,7 +396,7 @@ export default function RoutineInterviewPage() {
 
   // Close the picker whenever the slide changes, so it never appears already
   // open on a section they haven't asked to edit.
-  useEffect(() => { setPickingPractice(false); }, [confirmIndex, phase]);
+  useEffect(() => { setPickingSide(null); }, [confirmIndex, phase]);
 
   // Seed the sit controls from what was actually built, so the panel opens
   // showing their minutes and log method rather than the component defaults.
@@ -451,28 +449,11 @@ export default function RoutineInterviewPage() {
     return ["walk", "cobreathe", "listening"].some((k) => !!rc[`phoebe:slot:${k}`]);
   })();
 
-  const confirmSections = (
-    touchedSections.length > 0
-      ? CONFIRM_SECTIONS.filter((sec) => touchedSections.includes(sec.key))
-      : CONFIRM_SECTIONS
-  ).filter((sec) =>
-    // Contemplation earns its slide even when empty — that's the one that ASKS
-    // (see the picker). Every other section with nothing in it is a slide with
-    // no card and a question about nothing, which is what an empty morning
-    // used to render.
-    // Contemplation earns a slide when it has rows OR when it's going to ASK.
-    // It used to be exempt unconditionally, which rendered an empty slide —
-    // heading, "here's what we heard", no card, no controls — for anyone whose
-    // contemplative practice is a walk or a breath, since those rows live in
-    // the "practices" section now.
-    // Owner: "take out the last slide in the third stage that shows
-    // contemplative practices — if they haven't said it already, let's not do
-    // that at this stage." So contemplation gets a slide only when there is
-    // something to READ BACK. The interview records what they keep; offering a
-    // menu of practices they never mentioned is the recommending job, and it
-    // belongs to the customizer, not here.
-    settings.some((r) => r.section === sec.key),
-  );
+  // The single slide earns itself whenever there is anything to read back. An
+  // adjustment that changed nothing visible (touchedSections empty AND a
+  // baseline existed) still shows it — an empty read-back is the worse reading
+  // of an ambiguous signal (see the note above).
+  const confirmSections = settings.length > 0 ? CONFIRM_SECTIONS : [];
 
   // Every read-back section filtered out — nothing left to confirm. Move on
   // rather than render an empty slide. In an EFFECT, not during render: calling
@@ -1073,52 +1054,24 @@ export default function RoutineInterviewPage() {
   // SANITIZED spec, so this is a read-back of the routine itself, not of the
   // model's prose about it.
   if (phase === "confirm") {
-    // Guard the index: a rebuild triggered by a correction can come back with a
-    // SHORTER list than the one being walked, and reading past the end would
-    // crash the slide.
-    // Empty list → Math.min(0, -1) is -1 → undefined → `section.key` throws a
-    // white screen mid-flow. The useEffect that redirects runs AFTER this
-    // render, so it cannot save us; render nothing and let it move us on.
     if (confirmSections.length === 0) return null;
-    const section = confirmSections[Math.max(0, Math.min(confirmIndex, confirmSections.length - 1))]!;
-    const rows = settings.filter((r) => r.section === section.key);
-    const isLast = confirmIndex >= confirmSections.length - 1;
+    const section = confirmSections[0]!;
+    // EVERY row, once — the home's own list, read back.
+    const rows = settings;
     const specNow = (spec ?? {}) as any;
-    const prefs = (specNow.officePrefs ?? {}) as {
-      morning?: string; evening?: string; morningTime?: string | null; eveningTime?: string | null;
-      contemplationGoalMinutes?: number;
-    };
-    /**
-     * This slide is about THE SIT.
-     *
-     * Owner: "we want it to focus just on the sit — asking how much time, how
-     * often, things like that." So a walk / breath / sacred listening reads
-     * back under "practices" now, not here.
-     *
-     * Which means an empty `rows` no longer proves they keep nothing
-     * contemplative: they might have described a walk, which lives in the
-     * rule-config. Ask only when BOTH are absent, or someone who told us about
-     * their walk gets asked whether they'd like a contemplative practice.
-     */
+    const prefs = (specNow.officePrefs ?? {}) as Record<string, any>;
     const rcNow = (specNow.ruleConfig ?? {}) as Record<string, string>;
-    // Always false now that a contemplation slide requires rows (see the
-    // filter above). The picker markup below is left in place but unreachable;
-    // it is the only implementation of "choose a contemplative practice" and
-    // will be wanted again if that step ever returns to this flow.
-    const asking = false as boolean;
-    // A sit we DID hear — the slide becomes an editable panel for it.
-    const hasSit = section.key === "contemplation" && rows.length > 0;
-    const isSide = section.key === "morning" || section.key === "evening";
-    const reminderOn = isSide && (prefs as any)[section.key] !== "none" && !!(prefs as any)[section.key];
-    const reminderTime = (isSide && ((prefs as any)[`${section.key}Time`] as string | null))
-      || (section.key === "morning" ? "07:00" : "18:00");
-    // Only the office and the short devotion have a medium to choose. Psalms,
-    // the Examen and Compline are one surface each, so a "how" row there would
-    // be a control with nothing behind it.
-    const sideLevel = ((specNow.ruleConfig ?? {}) as Record<string, string>)[`phoebe:office:level:${section.key}`];
-    const mediumApplies = isSide && (sideLevel === "office" || sideLevel === "devotion");
-    const mediumValue = ((specNow.ruleConfig ?? {}) as Record<string, string>)[`phoebe:office:entry:${section.key}`]
-      || "venite";
+    // The halves of the day that hold a form of prayer — each gets its format
+    // dropdown, reminder switch and "change it myself" picker under the list,
+    // exactly the controls the old per-side slides carried.
+    const sides = (["morning", "evening"] as const).filter((sd) => rows.some((r) => r.id === `side:${sd}`));
+    const hasSit = rows.some((r) => r.id === "contemplation");
+    const reminderOnFor = (sd: "morning" | "evening") => !!prefs[sd] && prefs[sd] !== "none";
+    const reminderTimeFor = (sd: "morning" | "evening") => (prefs[`${sd}Time`] as string | null) || (sd === "morning" ? "07:00" : "18:00");
+    const levelFor = (sd: "morning" | "evening") => rcNow[`phoebe:office:level:${sd}`];
+    // Only the office and the short devotion have a medium to choose.
+    const mediumAppliesFor = (sd: "morning" | "evening") => levelFor(sd) === "office" || levelFor(sd) === "devotion";
+    const mediumFor = (sd: "morning" | "evening") => rcNow[`phoebe:office:entry:${sd}`] || "venite";
 
     /** Patch the pending spec in place. Nothing is written to the account until
      *  the final review, so these edits are free to be direct. */
@@ -1133,273 +1086,158 @@ export default function RoutineInterviewPage() {
       });
     };
 
-    /** Keep the REVIEW in step with the sit controls. `settings` is what the
-     *  final screen renders, so a sit edited here that still read "15 min ·
-     *  with a timer" at the end would be asking them to approve the number
-     *  they'd just changed. Only the contemplation section holds sit rows now. */
+    /** Keep the REVIEW in step with the sit controls — `settings` is what the
+     *  final screen renders. */
     const syncSitRows = (mins: number, log: "timer" | "manual", often: "once" | "more") => {
       const sub = `${mins} min a day${often === "more" ? ", across a few sits" : ""} · ${log === "manual" ? "tap to log" : "with a timer"}`;
-      setSettings((prev) => prev.map((r) => (r.section === "contemplation" ? { ...r, sub } : r)));
+      setSettings((prev) => prev.map((r) => (r.id === "contemplation" ? { ...r, sub } : r)));
     };
 
     const advance = () => {
       setError(null); setShowFix(false); setFixText("");
-      // Came here from the review's gear → go straight back to it. They came to
-      // change one thing, not to re-walk the flow.
       if (returnToReview) { setReturnToReview(false); setPhase("review"); return; }
-      if (isLast) { setPhase(skipExtras ? "review" : "extras"); return; }
-      setConfirmIndex((i2) => i2 + 1);
-    };
-    /**
-     * Advance the Silence picker: choose → (length → log method) → next slide.
-     *
-     * The chosen practice is written straight onto the pending spec AND
-     * appended to `settings`, because `settings` is what the final review
-     * renders. A pick that changed the spec without showing up there would be
-     * applied to the account while being absent from the screen that asks you
-     * to approve it.
-     */
-    const contNext = () => {
-      setError(null);
-      if (contStep === 0) {
-        if (contPick === "silence") { setContStep(1); return; }
-        const choice = CONTEMPLATIVE_CHOICES.find((c) => c.key === contPick);
-        if (choice?.slot) {
-          patchSpec((d) => {
-            d.ruleConfig[`phoebe:slot:${choice.key}`] = choice.slot;
-            const order: string[] = d.homeLayout.order ?? [];
-            if (!order.includes(choice.key)) order.push(choice.key);
-            d.homeLayout.order = order;
-            d.homeLayout.hidden = (d.homeLayout.hidden ?? []).filter((k: string) => k !== choice.key);
-          });
-          setSettings((prev) => [...prev, {
-            id: `slot:${choice.key}`,
-            emoji: choice.emoji, label: choice.label,
-            sub: SLOT_TEXT[choice.slot!] ?? "Each day", section: "contemplation",
-          }]);
-        }
-        advance();
-        return;
-      }
-      if (contStep === 1) { setContStep(2); return; }
-      patchSpec((d) => {
-        d.officePrefs.contemplationGoalMinutes = contMinutes;
-        d.ruleConfig["phoebe:contemplation-style"] = "silent";
-        d.ruleConfig["phoebe:contemplation-log-method"] = contLog;
-        d.ruleConfig["phoebe:contemplation-sits"] = contOften === "more" ? "several" : "one";
-        const order: string[] = d.homeLayout.order ?? [];
-        if (!order.includes("contemplation")) order.push("contemplation");
-        d.homeLayout.order = order;
-        d.homeLayout.hidden = (d.homeLayout.hidden ?? []).filter((k: string) => k !== "contemplation");
-      });
-      setSettings((prev) => [...prev, {
-        id: "contemplation",
-        emoji: "🕯️", label: "Silence",
-        sub: `${contMinutes} min a day · ${contLog === "manual" ? "tap to log" : "with a timer"}`,
-        section: "contemplation",
-      }]);
-      advance();
+      setPhase(skipExtras ? "review" : "extras");
     };
 
     const saveFix = () => {
       const t = fixText.trim();
-      // Empty box → close it, don't advance. Advancing here is what made the
-      // correction path feel like it "just goes back".
       if (!t) { setShowFix(false); return; }
-      // Rebuild with the correction folded in rather than patching the spec
-      // here — the model owns turning "actually I use the book" into a level
-      // and an entry, and a half-corrected spec is worse than a fresh one.
-      // Replace this section's correction rather than appending. Correcting
-      // the same slide twice used to send BOTH lines to the model — "Morning:
-      // actually the book" followed by "Morning: no, on screen" — leaving it
-      // to reconcile two contradictory instructions from the same person about
-      // the same thing. The latest word wins, which is what they mean.
-      const next = [
-        ...corrections.filter((c) => !c.startsWith(`${section.title}: `)),
-        `${section.title}: ${t}`,
-      ];
+      // Rebuild with the correction folded in — the model owns turning "actually
+      // I use the book" into a practice and a medium. The latest correction
+      // replaces the last, so the model never reconciles two contradictory
+      // lines from the same person.
+      const next = [...corrections.filter((c) => !c.startsWith(`${section.title}: `)), `${section.title}: ${t}`];
       setCorrections(next);
-      // Come back to THIS section so they can see their correction landed.
-      void submitFollowups(next, confirmIndex);
+      void submitFollowups(next, 0);
     };
+
+    const sideCap = (sd: "morning" | "evening") => (sd === "morning" ? "Morning" : "Evening");
 
     return (
       <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
         <div style={wrap}>
           {progressBars}
           <div>
-            <p style={eyebrow}>{`Part ${confirmIndex + 1} of ${confirmSections.length}`} 🌿</p>
-            <h1 style={h1}>
-              {pickingPractice
-                ? (section.key === "morning" ? "Your morning" : "Your evening")
-                : asking ? (contStep === 1 ? "How long?" : contStep === 2 ? "How you'll keep it" : "A contemplative practice")
-                  : section.title}
-            </h1>
+            <p style={eyebrow}>Here's what we heard 🌿</p>
+            <h1 style={h1}>{pickingSide ? `Your ${pickingSide}` : section.title}</h1>
             <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
-              {pickingPractice
+              {pickingSide
                 ? "Choose what you pray, then how you take it."
-                : !asking
-                ? "Here's what we heard."
-                : contStep === 1
-                  ? "However long you actually sit. You can change it any time."
-                  : contStep === 2
-                    ? "What should happen when you tap the card?"
-                    : "We didn't hear one — would you like one? \u201CNot right now\u201D is a real answer."}
+                : "One list — every practice you keep, the way it will sit on your home. Change anything below."}
             </p>
           </div>
 
-          {rows.length > 0 && !pickingPractice && (
+          {rows.length > 0 && !pickingSide && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {rows.map((r, i2) => (
-                <div key={`${r.label}-${i2}`} style={routineCard}>
-                  <div style={routineAccent} />
-                  <div style={{ flex: 1, minWidth: 0, padding: "18px 20px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={routineBadge} aria-hidden>{r.emoji}</span>
-                      <p style={{ color: WARM, fontFamily: FONT, fontSize: 18, fontWeight: 600, margin: 0 }}>{r.label}</p>
+              {rows.map((r, i2) => {
+                const sd = r.id === "side:morning" ? "morning" : r.id === "side:evening" ? "evening" : null;
+                return (
+                  <div key={`${r.id}-${i2}`} style={routineCard}>
+                    <div style={routineAccent} />
+                    <div style={{ flex: 1, minWidth: 0, padding: "18px 20px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={routineBadge} aria-hidden>{r.emoji}</span>
+                        <p style={{ color: WARM, fontFamily: FONT, fontSize: 18, fontWeight: 600, margin: 0 }}>{r.label}</p>
+                      </div>
+                      {/* The controls below own the medium and the sit's numbers,
+                          so the card reads from the live spec rather than the sub
+                          the server rendered. */}
+                      <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, margin: "8px 0 0" }}>
+                        {r.id === "contemplation"
+                          ? "Silent prayer"
+                          : sd && mediumAppliesFor(sd)
+                            ? (MEDIUM_OPTIONS.find((o) => o.value === mediumFor(sd))?.label ?? r.sub)
+                            : r.sub}
+                      </p>
                     </div>
-                    {/* The dropdown below owns the medium once it's shown, so
-                        the card reads from the live spec rather than from the
-                        sub the server rendered — otherwise changing it there
-                        would leave the card still claiming the old one. */}
-                    <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, margin: "8px 0 0" }}>
-                      {hasSit
-                        // The controls below own the minutes and the log
-                        // method now, so the card must not also state them —
-                        // it would be asserting the old values underneath the
-                        // switches that change them.
-                        ? "Silent prayer"
-                        : mediumApplies && i2 === 0
-                          ? (MEDIUM_OPTIONS.find((o) => o.value === mediumValue)?.label ?? r.sub)
-                          : r.sub}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Per half of the day: the format dropdown, the reminder switch and
+              the practice picker — the same controls the old per-side slides
+              carried, now under the one list. */}
+          {!pickingSide && sides.map((sd) => {
+            const reminderOn = reminderOnFor(sd);
+            const reminderTime = reminderTimeFor(sd);
+            return (
+              <div key={sd} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <p style={{ ...eyebrow, marginBottom: 0 }}>{sideCap(sd)}</p>
+                {mediumAppliesFor(sd) && (
+                  <div>
+                    <p style={{ ...eyebrow, marginBottom: 8, opacity: 0.8 }}>What format</p>
+                    <SelectPill
+                      value={mediumFor(sd)}
+                      ariaLabel={`${sideCap(sd)} format`}
+                      onChange={(v) => patchSpec((d) => { d.ruleConfig[`phoebe:office:entry:${sd}`] = v; })}
+                    >
+                      {MEDIUM_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </SelectPill>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => patchSpec((d) => {
+                    if (reminderOn) {
+                      d.officePrefs[sd] = "none";
+                    } else {
+                      const level = d.ruleConfig[`phoebe:office:level:${sd}`];
+                      d.officePrefs[sd] = level === "devotion" ? "devotion" : "office";
+                      if (!d.officePrefs[`${sd}Time`]) d.officePrefs[`${sd}Time`] = sd === "morning" ? "07:00" : "18:00";
+                    }
+                  })}
+                  style={{
+                    width: "100%", textAlign: "left", cursor: "pointer",
+                    background: reminderOn ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${reminderOn ? "rgba(110,180,130,0.5)" : CARD_B}`,
+                    borderRadius: 16, padding: 16, display: "flex", alignItems: "center",
+                    justifyContent: "space-between", gap: 12,
+                  }}
+                  aria-pressed={reminderOn}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: 16, fontWeight: 700, color: WARM, fontFamily: FONT, margin: 0 }}>🔔 Remind me</p>
+                    <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
+                      {reminderOn ? `A gentle nudge to pray in the ${sd}.` : "No daily nudge — pray when you like."}
                     </p>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                  <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: reminderOn ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
+                    <span style={{ position: "absolute", top: 3, left: reminderOn ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: WARM, transition: "left 0.2s" }} />
+                  </span>
+                </button>
+                {reminderOn && (
+                  <div style={{ position: "relative", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}>
+                    <input
+                      type="time"
+                      value={reminderTime}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (/^\d{2}:\d{2}$/.test(v)) patchSpec((d) => { d.officePrefs[`${sd}Time`] = v; });
+                      }}
+                      aria-label={`${sideCap(sd)} reminder time`}
+                      style={{
+                        ...card, width: "100%", maxWidth: "100%", minWidth: 0,
+                        boxSizing: "border-box", color: WARM,
+                        fontFamily: FONT, fontSize: 16, outline: "none", colorScheme: "dark",
+                        padding: "13px 40px 13px 14px",
+                      }}
+                    />
+                    <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+                  </div>
+                )}
+                <button type="button" onClick={() => setPickingSide(sd)} style={quietBtn}>
+                  Change the {sd} practice
+                </button>
+              </div>
+            );
+          })}
 
-          {/* How they take it. A dropdown, not a question — see MEDIUM_OPTIONS. */}
-          {isSide && rows.length > 0 && mediumApplies && (
-            <div>
-              {/* Owner: "it shouldn't say how do you take it... it should ask what
-                  format." */}
-              <p style={{ ...eyebrow, marginBottom: 8 }}>What format</p>
-              <SelectPill
-                value={mediumValue}
-                ariaLabel="What format"
-                onChange={(v) => patchSpec((d) => { d.ruleConfig[`phoebe:office:entry:${section.key}`] = v; })}
-              >
-                {MEDIUM_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </SelectPill>
-            </div>
-          )}
-
-          {/* Reminder — its own control, under the practice card. Owner: "as a
-              separate UI, similar to how it is in the manual slideshow, have it
-              ask if they would like a notification or [that] it is off." Same
-              one-line switch the customizer uses, and the time only appears
-              when the switch is on. */}
-          {isSide && rows.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button
-                type="button"
-                onClick={() => patchSpec((d) => {
-                  if (reminderOn) {
-                    d.officePrefs[section.key] = "none";
-                  } else {
-                    // Match the reminder to what they actually pray, the way
-                    // the customizer does — a devotion side gets the devotion
-                    // nudge, everything else the office one.
-                    const level = d.ruleConfig[`phoebe:office:level:${section.key}`];
-                    d.officePrefs[section.key] = level === "devotion" ? "devotion" : "office";
-                    if (!d.officePrefs[`${section.key}Time`]) {
-                      d.officePrefs[`${section.key}Time`] = section.key === "morning" ? "07:00" : "18:00";
-                    }
-                  }
-                })}
-                style={{
-                  width: "100%", textAlign: "left", cursor: "pointer",
-                  background: reminderOn ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${reminderOn ? "rgba(110,180,130,0.5)" : CARD_B}`,
-                  borderRadius: 16, padding: 16, display: "flex", alignItems: "center",
-                  justifyContent: "space-between", gap: 12,
-                }}
-                aria-pressed={reminderOn}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ fontSize: 16, fontWeight: 700, color: WARM, fontFamily: FONT, margin: 0 }}>🔔 Remind me</p>
-                  <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
-                    {reminderOn
-                      ? `A gentle nudge to pray in the ${section.key}.`
-                      : "No daily nudge — pray when you like."}
-                  </p>
-                </div>
-                <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: reminderOn ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
-                  <span style={{ position: "absolute", top: 3, left: reminderOn ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: WARM, transition: "left 0.2s" }} />
-                </span>
-              </button>
-              {reminderOn && (
-                // Wrapped so the chevron can sit on it. Owner: "the time needs
-                // to go full length of the screen — there's no drop-down arrow
-                // on that bar right now." Full width it already is; the arrow
-                // was missing, so the row read as a plain field beside two
-                // pills that clearly opened something. input[type=time] DOES
-                // open a picker on tap — the affordance just wasn't drawn.
-                // The WRAPPER carries the width constraints too, not just the
-                // input. A bare position:relative div is sized by its content,
-                // so it inherited input[type=time]'s intrinsic native width and
-                // pushed the row past the cards above it — the bar stayed
-                // oversized even after the input itself was capped.
-                <div style={{ position: "relative", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}>
-                <input
-                  type="time"
-                  value={reminderTime}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    // Only keep a complete HH:MM — a half-typed time would
-                    // fail the server's time check and silently become null.
-                    if (/^\d{2}:\d{2}$/.test(v)) patchSpec((d) => { d.officePrefs[`${section.key}Time`] = v; });
-                  }}
-                  aria-label="Reminder time"
-                  style={{
-                    // maxWidth/minWidth matter here: iOS gives input[type=time]
-                    // an intrinsic width from its native control that ignores
-                    // width:100%, which is what made the 7:00 AM row sit wider
-                    // than the cards above it.
-                    // Full length, matching the customizer's twin of this row
-                    // and the controls above it. maxWidth/minWidth are the
-                    // overflow guard, not a size — iOS gives input[type=time]
-                    // an intrinsic native width that ignores width:100%.
-                    ...card, width: "100%", maxWidth: "100%", minWidth: 0,
-                    boxSizing: "border-box", color: WARM,
-                    fontFamily: FONT, fontSize: 16, outline: "none", colorScheme: "dark",
-                    // Room for the chevron on the right.
-                    padding: "13px 40px 13px 14px",
-                  }}
-                />
-                <span
-                  aria-hidden
-                  style={{
-                    position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
-                    color: SAGE, fontSize: 12, pointerEvents: "none",
-                  }}
-                >
-                  ▾
-                </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* The sit, as controls rather than a claim. Owner, after a real run:
-              it never asked whether fifteen minutes was the only sit, and never
-              asked whether they'd use the in-app timer or log it by hand.
-              Both are asked here, on the third stage, where a control can't
-              forget to fire the way a prompt instruction can. */}
-          {hasSit && (
+          {/* The sit, as controls rather than a claim. */}
+          {!pickingSide && hasSit && (
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div>
                 <p style={{ ...eyebrow, marginBottom: 8 }}>How often you sit</p>
@@ -1415,9 +1253,7 @@ export default function RoutineInterviewPage() {
                         type="button"
                         onClick={() => {
                           setContOften(o.v);
-                          patchSpec((d) => {
-                            d.ruleConfig["phoebe:contemplation-sits"] = o.v === "more" ? "several" : "one";
-                          });
+                          patchSpec((d) => { d.ruleConfig["phoebe:contemplation-sits"] = o.v === "more" ? "several" : "one"; });
                           syncSitRows(contMinutes, contLog, o.v);
                         }}
                         style={{
@@ -1435,32 +1271,13 @@ export default function RoutineInterviewPage() {
                   })}
                 </div>
               </div>
-
               <div>
-                {/* Owner: "it should be contemplation time, [and] the time
-                    should be in a dropdown, wide one-row pill like the manual
-                    customizer."
-
-                    Phoebe's goal field is a DAILY TOTAL either way, so both
-                    answers write the same number — asking "once or more?" is
-                    what makes that number right. Someone who sits three times
-                    reads a bare "how long?" as one sit and under-reports the
-                    day, so the hint below says which is being asked for. */}
-                {/* Ask the question, don't just label the field (owner). A
-                    bare "Contemplation time" over a number box leaves the
-                    person to infer whether it means one sit or the whole day —
-                    which is the exact ambiguity the "how often" row above is
-                    there to settle. */}
                 <p style={{ ...eyebrow, marginBottom: 8 }}>Contemplation time</p>
                 <p style={{ color: WARM, fontFamily: FONT, fontSize: 15.5, lineHeight: 1.5, margin: "0 0 10px" }}>
                   {contOften === "more"
                     ? "How much time would you like to spend in contemplative prayer across the day?"
                     : "How much time would you like to spend in contemplative prayer?"}
                 </p>
-                {/* A text field, not presets (owner). A silence practice is
-                    whatever length it actually is — 12 minutes, 25, 40 — and a
-                    fixed list quietly rounds people to the nearest option we
-                    happened to think of. */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <input
                     type="number"
@@ -1470,9 +1287,6 @@ export default function RoutineInterviewPage() {
                     value={contMinutes === 0 ? "" : String(contMinutes)}
                     onChange={(e) => {
                       const raw = e.target.value.replace(/[^0-9]/g, "");
-                      // Allow the field to be empty mid-edit without writing 0
-                      // to the spec — clearing it to type "45" shouldn't land
-                      // as "no silence" for the keystroke in between.
                       if (raw === "") { setContMinutes(0); return; }
                       const m = Math.max(1, Math.min(180, parseInt(raw, 10)));
                       setContMinutes(m);
@@ -1492,7 +1306,6 @@ export default function RoutineInterviewPage() {
                   {contOften === "more" ? "Across the whole day." : "For your daily sit."}
                 </p>
               </div>
-
               <div>
                 <p style={{ ...eyebrow, marginBottom: 8 }}>How you keep it</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1532,48 +1345,30 @@ export default function RoutineInterviewPage() {
             </div>
           )}
 
-          {/* Change the practice by hand — no rebuild, no spinner, nothing else
-              in the routine moves. Writes the level straight onto the pending
-              spec and relabels the row, which is all "not quite" was ever
-              really being asked to accomplish for a side.
-
-              Rendered as its OWN screen, not a list under the card. Owner: "it
-              shouldn't just do a list on that screen — it should go into the
-              full UI of the manual editor, another slide, the first slide of
-              the morning where it has those main top-level options and then the
-              secondary options." So while this is open the card, the read-back
-              question and the yes/no buttons are all hidden (see the guards
-              below), leaving the practice list on top and the format and
-              reminder beneath it — the customizer's morning slide, in here. */}
-          {pickingPractice && isSide && (
+          {/* Change a half of the day's prayer by hand — no rebuild, nothing else
+              moves. The customizer's own picker, in here. */}
+          {pickingSide && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <p style={{ ...eyebrow, marginBottom: 2 }}>What do you pray instead?</p>
               {SIDE_PRACTICES
-                // Compline is the night office — never a morning anchor.
-                .filter((o) => !(o.level === "compline" && section.key === "morning"))
+                .filter((o) => !(o.level === "compline" && pickingSide === "morning"))
                 .map((o) => {
-                  const cap = section.key === "morning" ? "Morning" : "Evening";
-                  const on = sideLevel === o.level;
+                  const cap = sideCap(pickingSide);
+                  const on = levelFor(pickingSide) === o.level;
                   return (
                     <button
                       key={o.level}
                       type="button"
                       onClick={() => {
+                        const sd = pickingSide;
                         patchSpec((d) => {
-                          d.ruleConfig[`phoebe:office:level:${section.key}`] = o.level;
-                          // The format only applies to the office and the short
-                          // devotion; carrying "on venite.app" onto the Examen
-                          // would describe a way to pray it that doesn't exist.
-                          if (o.level !== "office" && o.level !== "devotion") {
-                            delete d.ruleConfig[`phoebe:office:entry:${section.key}`];
-                          }
+                          d.ruleConfig[`phoebe:office:level:${sd}`] = o.level;
+                          if (o.level !== "office" && o.level !== "devotion") delete d.ruleConfig[`phoebe:office:entry:${sd}`];
                         });
                         setSettings((prev) => prev.map((r) => (
-                          r.id === `side:${section.key}`
-                            ? { ...r, label: o.label(cap), sub: o.sub }
-                            : r
+                          r.id === `side:${sd}` ? { ...r, label: o.label(cap), sub: o.sub } : r
                         )));
-                        setPickingPractice(false);
+                        setPickingSide(null);
                       }}
                       style={{
                         ...card, width: "100%", boxSizing: "border-box", textAlign: "left",
@@ -1590,89 +1385,6 @@ export default function RoutineInterviewPage() {
                     </button>
                   );
                 })}
-            </div>
-          )}
-
-          {asking && contStep === 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {[...CONTEMPLATIVE_CHOICES, { key: "none", emoji: "🌿", label: "Not right now", sub: "Leave silence out of your rhythm." }].map((c) => {
-                const on = contPick === c.key;
-                return (
-                  <button
-                    key={c.key}
-                    type="button"
-                    onClick={() => setContPick(on ? null : c.key)}
-                    style={{
-                      ...card, width: "100%", boxSizing: "border-box", textAlign: "left", cursor: "pointer",
-                      padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
-                      border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
-                      background: on ? "rgba(45,94,63,0.55)" : CARD,
-                    }}
-                    aria-pressed={on}
-                  >
-                    <span aria-hidden style={{ fontSize: 20 }}>{c.emoji}</span>
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ display: "block", color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 15.5, fontWeight: on ? 700 : 600 }}>{c.label}</span>
-                      <span style={{ display: "block", color: SAGE, fontFamily: FONT, fontSize: 13, marginTop: 2 }}>{c.sub}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {asking && contStep === 1 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {SILENCE_LENGTHS.map((m) => {
-                const on = contMinutes === m;
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setContMinutes(m)}
-                    style={{
-                      flex: "1 1 28%", cursor: "pointer", padding: "16px 10px", borderRadius: 14,
-                      border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
-                      background: on ? "rgba(45,94,63,0.55)" : CARD,
-                      color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 16, fontWeight: on ? 700 : 600,
-                    }}
-                    aria-pressed={on}
-                  >
-                    {m} min
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {asking && contStep === 2 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {([
-                { v: "timer" as const, emoji: "⏱️", label: "Timer", sub: "Sit with a countdown — tap Begin to start it." },
-                { v: "manual" as const, emoji: "✅", label: "Tap to log", sub: "No timer — tap the card to mark it done." },
-              ]).map((o) => {
-                const on = contLog === o.v;
-                return (
-                  <button
-                    key={o.v}
-                    type="button"
-                    onClick={() => setContLog(o.v)}
-                    style={{
-                      ...card, width: "100%", boxSizing: "border-box", textAlign: "left", cursor: "pointer",
-                      padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
-                      border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
-                      background: on ? "rgba(45,94,63,0.55)" : CARD,
-                    }}
-                    aria-pressed={on}
-                  >
-                    <span aria-hidden style={{ fontSize: 20 }}>{o.emoji}</span>
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ display: "block", color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 15.5, fontWeight: on ? 700 : 600 }}>{o.label}</span>
-                      <span style={{ display: "block", color: SAGE, fontFamily: FONT, fontSize: 13, marginTop: 2 }}>{o.sub}</span>
-                    </span>
-                  </button>
-                );
-              })}
             </div>
           )}
 
@@ -1694,71 +1406,25 @@ export default function RoutineInterviewPage() {
 
           {showFix ? (
             <button type="button" onClick={saveFix} style={primaryBtn}>Use this instead</button>
-          ) : asking ? (
-            <button
-              type="button"
-              onClick={contNext}
-              disabled={contStep === 0 && contPick === null}
-              style={{ ...primaryBtn, opacity: contStep === 0 && contPick === null ? 0.45 : 1 }}
-            >
-              Continue
-            </button>
-          ) : pickingPractice ? (
-            <button type="button" onClick={() => setPickingPractice(false)} style={primaryBtn}>
-              Done
-            </button>
+          ) : pickingSide ? (
+            <button type="button" onClick={() => setPickingSide(null)} style={primaryBtn}>Never mind</button>
           ) : (
             <button type="button" onClick={advance} style={primaryBtn}>
               {section.ask.replace(/\?$/, "")} — yes
             </button>
           )}
-          {/* Nothing to disagree with on a slide that's asking rather than
-              telling — "Not quite" there would just be a second no. */}
-          {/* Owner: "instead of 'not quite', how about it goes to an adjust
-              where they do it manually."
-
-              For a side, the manual path is complete — format and reminder are
-              already inline above, and the picker covers the practice — so it
-              leads, and the model is never involved in a correction. Describing
-              it in words stays as a quiet second option, for the case the
-              picker can't express ("I alternate", "only on Fridays"), where a
-              rebuild really is the right tool. */}
-          {!asking && isSide && !showFix && (
-            <button
-              type="button"
-              onClick={() => setPickingPractice((v) => !v)}
-              style={quietBtn}
-            >
-              {pickingPractice ? "Never mind" : "Change it myself"}
+          {/* Anything the controls above can't express ("I alternate", "only
+              on Fridays") goes back through the model as a correction. */}
+          {!pickingSide && (
+            <button type="button" onClick={() => setShowFix((v) => !v)} style={quietBtn}>
+              {showFix ? "Never mind" : "Not quite — tell us what's different"}
             </button>
           )}
-          {/* On a SIDE there is no "Not quite" any more. Everything it used to
-              cover is editable in place — the practice picker above, the format
-              dropdown and the reminder switch on the card — so the old button
-              opened a text box that rebuilt the routine, and tapping through it
-              with nothing typed simply advanced. Reported as "not quite doesn't
-              have you edit it, it just goes back". The remaining sections have
-              no inline controls yet, so they keep it. */}
-          {!asking && !pickingPractice && !isSide && (
-            <button
-              type="button"
-              onClick={() => (showFix ? setShowFix(false) : setShowFix(true))}
-              style={quietBtn}
-            >
-              {showFix ? "Never mind" : "Not quite"}
-            </button>
-          )}
-          {!showFix && (
+          {!showFix && !pickingSide && (
             <button
               type="button"
               onClick={() => {
                 setError(null);
-                if (asking && contStep > 0) { setContStep((st) => (st === 2 ? 1 : 0)); return; }
-                if (confirmIndex > 0) { setConfirmIndex((i2) => i2 - 1); return; }
-                // An adjustment that needed no clarification has no follow-up
-                // slides to go back to. Sending them there rendered a live
-                // dead-end: "One question", no question text, an empty box and
-                // a Continue that rebuilt from nothing.
                 if (questions.length === 0) { setPhase("describe"); return; }
                 setQIndex(questions.length - 1);
                 setPhase("followups");
@@ -2138,9 +1804,9 @@ export default function RoutineInterviewPage() {
                           const target = r.id === "contemplation"
                             ? "contemplation"
                             : r.id.startsWith("side:") ? r.id.slice("side:".length) : null;
-                          if (target) {
-                            const idx = confirmSections.findIndex((sec) => sec.key === target);
-                            if (idx >= 0) {
+                          if (target && confirmSections.length > 0) {
+                            const idx = 0;
+                            {
                               setError(null);
                               setEditingRow(null);
                               setConfirmIndex(idx);
