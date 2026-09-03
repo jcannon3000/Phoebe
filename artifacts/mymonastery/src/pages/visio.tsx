@@ -1276,6 +1276,19 @@ export default function VisioPage() {
                 })}
               </p>
             )}
+            {/* …and the rest of it, in the same place (owner: "I want that the
+                other note, the one which included about how they were real
+                scenes"). Both paragraphs belong with the picture at first
+                sight rather than at the end, so this is where the whole story
+                of the series is now told; the closing slide keeps the
+                Vanderbilt attribution alone. */}
+            {view.artist?.trim().toUpperCase() === "JESUS MAFA" && (
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: "6px auto 0", lineHeight: 1.55, maxWidth: 420 }}>
+                {t("visio.jesus_mafa_note", {
+                  defaultValue: "In the 1970s, the French Catholic priest François Vidil collaborated with the Mafa community to create a series of artwork known as Vie de Jesus Mafa (Life of Jesus Mafa, or simply Jesus Mafa), which depicts various events in the life of Jesus using Black depictions rather than White. These images were actually depictions of real-world recreations of biblical scenes by Mafa people.",
+                })}
+              </p>
+            )}
             {/* Who the work depicts, in ACT's own words — on the beat where the
                 picture is FIRST shown, not over the title (owner). It belongs
                 with the looking: a museum label names the figures beside the
@@ -1490,19 +1503,10 @@ export default function VisioPage() {
                 {view.licence ? ` ${view.licence}.` : ""}
               </p>
             )}
-            {/* JESUS MAFA — who they are, on every work of theirs. Owner asked
-                for this under any Jesus Mafa image: the artist name alone
-                ("JESUS MAFA") names neither a person nor an obviously
-                identifiable tradition the way "Rembrandt" or "Fra Angelico"
-                does, so the context goes with the work rather than assuming
-                the reader already has it. */}
-            {view?.artist?.trim().toUpperCase() === "JESUS MAFA" && (
-              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, lineHeight: 1.55, margin: "10px 0 0", textAlign: "center", maxWidth: 420 }}>
-                {t("visio.jesus_mafa_note", {
-                  defaultValue: "In the 1970s, the French Catholic priest François Vidil collaborated with the Mafa community to create a series of artwork known as Vie de Jesus Mafa (Life of Jesus Mafa, or simply Jesus Mafa), which depicts various events in the life of Jesus using Black depictions rather than White. These images were actually depictions of real-world recreations of biblical scenes by Mafa people.",
-                })}
-              </p>
-            )}
+            {/* The Jesus Mafa note used to trail this attribution. It now sits
+                UNDER THE PICTURE on the first looking beat (owner), where the
+                reader meets the work — saying it in both places would be the
+                same paragraph twice in one sitting. */}
           </div>
         )}
           </motion.div>
