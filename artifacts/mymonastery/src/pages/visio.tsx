@@ -1004,12 +1004,15 @@ export default function VisioPage() {
       `}</style>
 
       {/* Header — Back / title / close, matching the office's reader chrome. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "calc(env(safe-area-inset-top) + 12px) 16px 8px", gap: 10 }}>
+      {/* Same top padding as the office header (max(1.5rem, safe-top)) — with
+          safe-top + 12 this row sat ~12pt lower than the office's and
+          Lectio's on a real notch (simulator audit). */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(1.5rem, env(safe-area-inset-top)) 16px 8px", gap: 10 }}>
         <button
           type="button"
           onClick={prev}
           disabled={step === 0}
-          style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", background: "none", border: "none", color: step === 0 ? "transparent" : SAGE, fontFamily: FONT, fontSize: 14, cursor: step === 0 ? "default" : "pointer", padding: 6 }}
+          style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", background: "none", border: "none", color: SAGE, opacity: step === 0 ? 0.2 : 1, fontFamily: FONT, fontSize: 14, cursor: step === 0 ? "default" : "pointer", padding: 6 }}
         >
           ← {t("common.back", { defaultValue: "Back" })}
         </button>

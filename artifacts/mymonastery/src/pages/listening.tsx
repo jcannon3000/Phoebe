@@ -527,12 +527,14 @@ export default function ListeningPage() {
         )}
 
         {/* Back / title / close — Visio's own header, to the pixel. */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "calc(env(safe-area-inset-top) + 12px) 16px 8px", gap: 10 }}>
+        {/* Same top padding as the office header (max(1.5rem, safe-top)) —
+            safe-top + 12 sat ~12pt lower than the office's on a real notch. */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(1.5rem, env(safe-area-inset-top)) 16px 8px", gap: 10 }}>
           <button
             type="button"
             onClick={prev}
             disabled={deckStep === INTRO}
-            style={{ userSelect: "none", WebkitTapHighlightColor: "transparent", background: "none", border: "none", color: deckStep === INTRO ? "transparent" : SAGE, fontFamily: SPACE_GROTESK, fontSize: 14, cursor: deckStep === INTRO ? "default" : "pointer", padding: 6 }}
+            style={{ userSelect: "none", WebkitTapHighlightColor: "transparent", background: "none", border: "none", color: SAGE, opacity: deckStep === INTRO ? 0.2 : 1, fontFamily: SPACE_GROTESK, fontSize: 14, cursor: deckStep === INTRO ? "default" : "pointer", padding: 6 }}
           >
             ← Back
           </button>

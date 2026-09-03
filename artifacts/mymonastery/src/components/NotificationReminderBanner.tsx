@@ -101,6 +101,22 @@ export function NotificationReminderBanner() {
   // don't compete for their attention with a notifications ask until they've
   // actually landed on the app.
   if (!show || location === "/overview-deck") return null;
+  /**
+   * NEVER OVER A DECK'S NAV. The practice slideshows carry their one nav in
+   * a fixed pill at the bottom of the screen, and this banner sits in the
+   * same place: on the simulator it covered the office deck's Back/Next
+   * entirely until dismissed (a "Turn on notifications" ask sitting on top of
+   * the only way to pray the office). A deck is also the wrong moment for the
+   * ask — the person is mid-practice. Suppressed on every deck route; the
+   * banner is standing, so it's there again on the home.
+   */
+  const DECK_PREFIXES = [
+    "/bcp/daily-office", "/prayer-mode", "/begin-prayer", "/guided-prayer", "/psalms",
+    "/examen", "/vts-reading", "/contemplation", "/cobreathe", "/compline",
+    "/lectio", "/visio", "/listening", "/icon-prayer", "/spirituals", "/creation",
+  ];
+  const path = location.split("?")[0] ?? location;
+  if (DECK_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) return null;
 
   return (
     <div
