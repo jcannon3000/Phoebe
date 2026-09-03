@@ -6,6 +6,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { openExternal } from "@/lib/openExternal";
+import { X } from "lucide-react";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 // Lectio Divina — sit with one of today's three lessons (Old Testament,
 // New Testament, Gospel). Owner's corrected order: pick a lesson → the
@@ -121,6 +123,15 @@ export default function LectioPage() {
     guardedAdvance(() => { setChosen(o); setStep(READ1); });
   };
 
+  // "← Back" (top-left) returns to wherever this was opened from — the
+  // Practices menu, usually — while ✕ goes home. Falls back to home when
+  // Lectio is the first thing in the session (deep link, cold start), where
+  // history.back() would leave the webview with nowhere to go.
+  const leave = () => {
+    if (window.history.length > 1) window.history.back();
+    else setLocation("/dashboard");
+  };
+
   const finish = () => {
     markPracticeDoneToday("lectio");
     setLocation("/dashboard");
@@ -145,26 +156,76 @@ export default function LectioPage() {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: DECK_BG, overflow: "hidden" }}>
-      {deckBackdrop && (
-        <img src={deckBackdrop} alt="" aria-hidden style={{
-          position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover",
-          opacity: 0.16, filter: "saturate(0.7)",
-        }} />
+      {/* Backdrop — the same either/or every other deck makes (listening:523,
+          examen:172, visio:986): a photo with a darkening gradient when one
+          is available, the app's drifting AnimatedBackground when not. The
+          leaf pool is the owner's choice for this deck specifically, so it
+          stays the first option; before this the else-branch was a flat
+          #091A10, the one screen in the app with a dead-still ground. */}
+      {deckBackdrop ? (
+        <>
+          <img src={deckBackdrop} alt="" aria-hidden style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover",
+            opacity: 0.16, filter: "saturate(0.7)",
+          }} />
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(180deg, rgba(9,26,16,0.55) 0%, rgba(9,26,16,0.88) 100%)",
+          }} />
+        </>
+      ) : (
+        <AnimatedBackground base={DECK_BG} variant="subtle" fadeTop />
       )}
-      <div style={{
-        position: "absolute", inset: 0,
-        background: "linear-gradient(180deg, rgba(9,26,16,0.55) 0%, rgba(9,26,16,0.88) 100%)",
-      }} />
-      <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", padding: "calc(env(safe-area-inset-top) + 18px) 20px calc(env(safe-area-inset-bottom) + 96px)" }}>
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      {/* Top bar — ← Back / title pill / ✕ circle. The Daily Office's header
+          (bcp-daily-office.tsx ~2887) carries the comment "Mirrors Lectio's
+          header": it was copied from here, and this deck then drifted to a
+          bare ✕ while the office kept the full shape. This is the original
+          catching back up to its copy — same grid, same frosted pill, same
+          38px circle — so the two decks read as one family again.
+          The title pill is left off the chooser, whose h1 already says
+          "Lectio Divina" a few lines below where the pill would sit. */}
+      <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, pointerEvents: "none" }}>
+        <div
+          style={{
+            maxWidth: 672, margin: "0 auto", width: "100%", padding: "max(1.5rem, env(safe-area-inset-top)) 20px 8px",
+            boxSizing: "border-box",
+            display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 12,
+            pointerEvents: "auto",
+          }}
+        >
           <button
-            onClick={() => setLocation("/dashboard")}
-            aria-label="Close"
-            style={{ background: "none", border: "none", color: DECK_FAINT, fontSize: 20, cursor: "pointer", padding: 6 }}
+            type="button"
+            onClick={leave}
+            style={{ color: DECK_FAINT, fontSize: 13, background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", fontFamily: SPACE_GROTESK }}
           >
-            ✕
+            ← Back
           </button>
+          {!atStart ? (
+            <span style={{
+              borderRadius: 999,
+              background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+              border: `1px solid ${DECK_BORDER}`, color: WARM,
+              fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", padding: "6px 16px",
+              fontFamily: SPACE_GROTESK, whiteSpace: "nowrap",
+            }}>
+              Lectio Divina
+            </span>
+          ) : <span />}
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={() => setLocation("/dashboard")}
+              aria-label="Close"
+              style={{ width: 38, height: 38, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${DECK_BORDER}`, color: WARM, cursor: "pointer", padding: 0 }}
+            >
+              <X size={19} />
+            </button>
+          </div>
         </div>
+      </header>
+      {/* Top padding clears the fixed header so a tall chooser list never
+          slides under it; the column itself is otherwise unchanged. */}
+      <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", padding: "calc(env(safe-area-inset-top) + 76px) 20px calc(env(safe-area-inset-bottom) + 96px)" }}>
 
         {/* min-height: 0 + overflow-y: auto — a flex child otherwise refuses
             to shrink below its content's natural height (default min-height:
