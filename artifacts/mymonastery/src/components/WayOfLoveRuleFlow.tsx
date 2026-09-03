@@ -55,6 +55,10 @@ import {
   type FddMode,
   getPsalmCycle,
   setPsalmCycle,
+  getScriptureParts,
+  toggleScripturePart,
+  SCRIPTURE_PARTS,
+  SCRIPTURE_PART_LABEL,
   getCommunityWithOffice,
   setCommunityWithOffice as persistCommunityWithOffice,
   getSideContemplation,
@@ -66,6 +70,7 @@ import {
   setContemplationLogMethod,
   type ContemplationLogMethod,
   type PsalmCycle,
+  type ScripturePart,
   type ReflectionSource,
   getSideDayRules,
   setSideDayRules,
@@ -1278,6 +1283,26 @@ export default function WayOfLoveRuleFlow({
     setFddMode(m);
   };
   // Which Psalter cycle "Praying the Psalms" follows (the psalms-cycle step).
+  /**
+   * WHICH READINGS the Daily Scripture Reading carries — Psalms, Old
+   * Testament, New Testament, Gospel.
+   *
+   * Owner: "have them all turned on at first, but they could uncheck some of
+   * them if they want." All four is what an unset preference means, so the
+   * rows open ticked for everyone. The choice belongs to the PRACTICE, not to
+   * a side, so both a morning and an evening readings side write the same
+   * setting — the same way the psalm cycle beside it is shared.
+   */
+  const [scriptureParts, setScripturePartsState] = useState<ScripturePart[]>(() => getScriptureParts());
+  const toggleReading = (part: ScripturePart) => {
+    // The last one can't be turned off — a deck with no readings in it is not
+    // a reading. setScriptureParts refuses the empty write; this keeps the
+    // tick honest rather than letting it move and be silently reverted.
+    if (scriptureParts.length === 1 && scriptureParts[0] === part) return;
+    touchedRef.current = true;
+    toggleScripturePart(part);
+    setScripturePartsState(getScriptureParts());
+  };
   const [psalmCycle, setPsalmCycleState] = useState<PsalmCycle>(() => getPsalmCycle());
   const choosePsalmCycle = (c: PsalmCycle) => {
     touchedRef.current = true;
@@ -2717,6 +2742,14 @@ export default function WayOfLoveRuleFlow({
         if (!named.has(a.title.trim().toLowerCase()) && !isRelationalAnchor(a)) removeCustomAnchor(a.id);
       }
       setCustomList(getCustomAnchors());
+    }
+    // The rule's own relational practices JOIN what's already kept — the sweep
+    // above spares relational anchors on purpose, so adoption adds and never
+    // removes here. commit() turns `relational` into anchors via
+    // setRelationalPractices, exactly as a tick on the Relational step would.
+    if (preset.relational?.length) {
+      const add = preset.relational;
+      setRelational((cur) => Array.from(new Set([...cur, ...add])));
     }
     // Every SlottedPractice — a key missing here survives a preset as a stale
     // phoebe:slot:* the edit list can read back as a ghost row (icons, taizé
@@ -5548,6 +5581,37 @@ export default function WayOfLoveRuleFlow({
               {choiceRow(psalmCycle === "office", `📖 ${t("wol_rule.psalms_office_label", { defaultValue: "In step with the office" })}`, t("wol_rule.psalms_office_sub", { defaultValue: "The psalms appointed in the daily office — about 2–3 a day." }), () => choosePsalmCycle("office"))}
               {choiceRow(psalmCycle === "monthly", `📜 ${t("wol_rule.psalms_monthly_label", { defaultValue: "The whole Psalter, monthly" })}`, t("wol_rule.psalms_monthly_sub", { defaultValue: "All 150 psalms across a month — fuller, more psalms a day (about 5)." }), () => choosePsalmCycle("monthly"))}
             </div>
+          </>
+        )}
+        {/* WHICH READINGS — the four the lectionary appoints, each its own row
+            (owner: "four rows for each reading to check box in our standard UI
+            of the dot for each possible reading"). Ticked to begin with; the
+            deck asks the server for exactly what is left on, so the reading's
+            own "N of M" counts the real thing. */}
+        {prayBySide[side] === "readings" && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.readings_which_title", { defaultValue: "Which readings?" })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 4 }}>
+              {SCRIPTURE_PARTS.map((part) => choiceRow(
+                scriptureParts.includes(part),
+                `${part === "psalms" ? "📜" : part === "gospel" ? "✝️" : "📖"} ${t(`wol_rule.reading_${part}`, { defaultValue: SCRIPTURE_PART_LABEL[part] })}`,
+                part === "psalms"
+                  ? t("wol_rule.reading_psalms_sub", { defaultValue: "The psalms appointed for today, said in full." })
+                  : part === "ot"
+                    ? t("wol_rule.reading_ot_sub", { defaultValue: "The day's first lesson." })
+                    : part === "nt"
+                      ? t("wol_rule.reading_nt_sub", { defaultValue: "The day's epistle." })
+                      : t("wol_rule.reading_gospel_sub", { defaultValue: "The day's Gospel." }),
+                () => toggleReading(part),
+              ))}
+            </div>
+            {scriptureParts.length === 1 && (
+              <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, lineHeight: 1.5, margin: "0 0 6px" }}>
+                {t("wol_rule.readings_keep_one", { defaultValue: "Keep at least one reading." })}
+              </p>
+            )}
           </>
         )}
         {/* The per-side "How long is your sit?" row USED to live here. Owner:

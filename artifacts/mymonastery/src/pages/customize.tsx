@@ -18,7 +18,7 @@ import {
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin, predatesSeedStamp } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset, type OfficeSideKey } from "@/lib/rulePresets";
-import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot, isRelationalAnchor } from "@/lib/customAnchors";
+import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot, isRelationalAnchor, activeRelationalPractices, setRelationalPractices } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 
@@ -359,6 +359,11 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
         addCustomAnchor(c.title, c.emoji, c.slot, undefined, c.days, c.office);
         existing.add(c.title.trim().toLowerCase());
       }
+    }
+    // The rule's relational practices join the person's own — added, never
+    // removed (the sweep above spares relational anchors). Mirrors adoptRule.
+    if (preset.relational?.length) {
+      setRelationalPractices(Array.from(new Set([...activeRelationalPractices(), ...preset.relational])));
     }
 
     /**

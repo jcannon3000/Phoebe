@@ -9,8 +9,7 @@
 // editor you opened.
 
 import type { ReflectionSource } from "@/lib/officePrefs";
-import type { CustomSlot, SlottedPractice } from "@/lib/customAnchors";
-import { WEEKDAYS } from "@/lib/customAnchors";
+import type { CustomSlot, SlottedPractice, RelationalPracticeId } from "@/lib/customAnchors";
 
 export type OfficeSideKey = "morning" | "evening";
 
@@ -92,6 +91,15 @@ export type RulePreset = {
   practices?: Partial<Record<"cobreathe" | "audio" | "examen" | "walk" | "visio" | "compline", boolean>>;
   /** Which part of the day those practices ride at (customAnchors.setPracticeSlot). */
   practiceSlots?: Partial<Record<SlottedPractice, CustomSlot>>;
+  /**
+   * RELATIONAL practices the rule keeps (customAnchors.RELATIONAL_PRACTICES
+   * ids — "gratitude", "hug", "call"). Adopting ADDS these to whatever
+   * relational practices the person already keeps; it never removes one —
+   * both adopt paths deliberately spare relational anchors in their sweep
+   * (see the 2026-09-02 audit fix), and a rule saying "thank someone" is not
+   * a reason to stop hugging anyone.
+   */
+  relational?: RelationalPracticeId[];
 };
 
 // The order is the owner's, not a formula: A Gentle Start leads because it's
@@ -127,54 +135,31 @@ export const RULE_PRESETS: RulePreset[] = [
   { id: "centering",      emoji: "🕯️", sides: { morning: true, evening: true },  pray: "none", silence: true, goalMin: 15, reflections: ["cac"],
     title: "Centering Prayer", blurb: "Two daily sits in the school of Thomas Keating. The silence is the prayer.",
     rows: [{ emoji: "🕯️", label: "15 minutes of silence, morning and evening" }, { emoji: "📖", label: "The CAC's Daily Meditation" }] },
-  // VTS CHAPEL & COMMENTARY — the seminary's own day (owner). Chapel opens it,
-  // Creation Prayer closes it, the Dean's word and a ten-minute sit sit between,
-  // and the community meal is kept on the days the community actually eats
-  // together.
+  // VTS (owner, 2026-09-03: "Make the VTS Preset — Simple Guided (Morning),
+  // VTS Dean's Commentary, Express Gratitude, Visio Divina, The Examen
+  // (Evening)"). This REPLACES the seminary's Chapel-and-Community-Meal day
+  // under the same id, so anyone who adopted the old shape is still "on VTS"
+  // and re-adopting sweeps Chapel and the meal away like any other rule swap.
   //
-  // The evening side is the BREATH (silence + silenceSide "evening" +
-  // contemplationStyle "cobreathe"), while goalMin 10 raises the separate
-  // all-day contemplation card — useRhythmState's silenceGoalCardActive
-  // explicitly allows that pairing (`creationPerSide && contemplationGoalMin >
-  // 0`), and that card opens the SILENT timer, so the ten minutes are a real
-  // sit rather than breaths.
+  // Morning and evening are the same pair A Gentle Start uses (Simple Guided
+  // Prayer opens, the Examen closes). Visio Divina is a standing practice
+  // with its own card, so it's said with `practices`, at no fixed hour; the
+  // Dean's word is the reflection; Express gratitude arrives through
+  // `relational`, the same machinery the default seed uses for it.
   { id: "vts", emoji: "🦩", sides: { morning: true, evening: true },
-    // The morning is SIMPLE GUIDED PRAYER (owner). Chapel is no longer the
-    // morning's named practice: it stands on its own below, with its own card
-    // and its own "Open Morning Prayer" door. Carrying it in BOTH places put
-    // two Chapels in the rhythm — one from the side, one from the practice.
-    pray: "guidedPrayer", evening: "none",
-    silence: true, silenceSide: "evening", contemplationStyle: "cobreathe", goalMin: 10,
+    pray: "guidedPrayer", evening: "examen",
+    silence: false, goalMin: 0,
     reflections: ["vts"],
-    customAnchors: [
-      // CHAPEL — the seminary's own practice, and the reason `office` exists.
-      // Chapel is sometimes Morning Prayer, so its log popup offers "Open
-      // Morning Prayer" alongside Done: a student without the physical prayer
-      // book prays it here and it counts (owner). It arrives ONLY with this
-      // preset — it isn't in the customizer's list of practices to add.
-      { title: "Chapel", emoji: "⛪", slot: "morning", days: WEEKDAYS, office: "morning" as const },
-      { title: "Community Meal", emoji: "🍽️", slot: "midday", days: WEEKDAYS },
-    ],
-    // Chapel scopes ITSELF to weekdays now (its own `days`), so these rules are
-    // only about the weekend's own shape: Saturday keeps Morning Prayer, and
-    // Sunday is worship — a thing you go to rather than a thing the app leads,
-    // so it stays a practice of your own that you keep with a tap.
-    dayRules: {
-      morning: [
-        { days: [6], pray: "offices" },
-        { days: [0], pray: "ownPractice", name: "Worship" },
-      ],
-    },
-    title: "VTS Chapel & Commentary", blurb: "The seminary's day — Chapel on weekdays, Morning Prayer on Saturday, worship on Sunday, the Dean's word, ten minutes of silence, and Creation Prayer at its close.",
+    practices: { visio: true },
+    practiceSlots: { visio: "anytime" },
+    relational: ["gratitude"],
+    title: "VTS", blurb: "The seminary's rhythm — Simple Guided Prayer to open the day, the Dean's word, a thank-you said to someone, an image to sit with, and the Examen to close it.",
     rows: [
-      { emoji: "⛪", label: "Chapel on weekdays — or pray Morning Prayer here" },
       { emoji: "🙌🏽", label: "Simple Guided Prayer in the morning" },
-      { emoji: "📖", label: "Morning Prayer on Saturdays" },
-      { emoji: "🕊️", label: "Worship on Sundays" },
       { emoji: "🦩", label: "The VTS Dean's Commentary" },
-      { emoji: "🕯️", label: "10 minutes of contemplative prayer" },
-      { emoji: "🌍", label: "Creation Prayer in the evening" },
-      { emoji: "🍽️", label: "Community Meal, weekdays" },
+      { emoji: "🙏🏽", label: "Express gratitude" },
+      { emoji: "🖼️", label: "Visio Divina" },
+      { emoji: "🌗", label: "The Examen in the evening" },
     ] },
   // CONTEMPLATIVE ART (owner) — a rule for someone who prays with their eyes.
   // The morning is Visio Divina, which is a practice with its OWN card rather
