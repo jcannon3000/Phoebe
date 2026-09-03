@@ -495,6 +495,8 @@ export default function AdminPresetsPage() {
       <Layout bgPhoto={flowLeaf} chromeless onClose={endDesign}>
         <WayOfLoveRuleFlow
           prescribe
+          // The rule itself, not a slug in the URL — see adoptPreset.
+          adoptPreset={resolveAdoptPreset(designing)}
           onPrescribe={saveFromFlow}
           onBack={endDesign}
           onDone={() => { /* unused in prescribe mode — commit() routes to onPrescribe */ }}

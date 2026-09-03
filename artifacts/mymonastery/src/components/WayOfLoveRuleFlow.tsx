@@ -786,6 +786,7 @@ export default function WayOfLoveRuleFlow({
   // designing here never disturbs the admin's own rhythm.
   prescribe = false,
   onPrescribe,
+  adoptPreset,
   // Pilot: a trimmed rhythm builder (morning/evening → reflections → silence →
   // one custom anchor). Drops the contemplative multi-select, per-practice
   // time-of-day slides, "add to your day" extras, the weekly rhythm, and CAC.
@@ -803,6 +804,18 @@ export default function WayOfLoveRuleFlow({
   onDone: () => void;
   prescribe?: boolean;
   onPrescribe?: (spec: RoutineSpec) => void;
+  /**
+   * Open the flow ON this rule, seeding every step from it and writing
+   * nothing until Save.
+   *
+   * A PROP rather than the ?adopt= query param the shared links use: the
+   * preset editor mounts this inside its own page, so the caller already has
+   * the rule in hand — and reading it back out of a URL it had just written
+   * with history.replaceState is a race for no reason (a mount that read the
+   * URL a moment early seeded from the ADMIN's own rhythm instead of the
+   * preset, seen on the simulator). The query param stays for real links.
+   */
+  adoptPreset?: RulePreset | null;
   pilot?: boolean;
   guest?: boolean;
 }) {
@@ -2709,11 +2722,13 @@ export default function WayOfLoveRuleFlow({
     if (autoAdoptedRef.current) return;
     autoAdoptedRef.current = true;
     try {
+      // The PROP first — the caller handing us the rule outright — then the
+      // ?adopt= param a shared link carries. resolveAdoptPreset, not the
+      // picker list alone: an admin editing a preset seeds from the OVERLAY
+      // row (their last save), and the default rhythm answers to its own
+      // reserved slug.
       const id = new URLSearchParams(window.location.search).get("adopt");
-      // resolveAdoptPreset, not the picker list alone: an admin editing a
-      // preset seeds from the OVERLAY row (their last save), and the default
-      // rhythm answers to its own reserved slug.
-      const preset = id ? resolveAdoptPreset(id) : null;
+      const preset = adoptPreset ?? (id ? resolveAdoptPreset(id) : null);
       // NEVER silently replace an EXISTING rule — the Centering course's
       // practice bridge lands here with ?adopt=centering, and one tap was
       // wiping a person's Morning/Evening offices ("it reverted back to
@@ -2995,7 +3010,11 @@ export default function WayOfLoveRuleFlow({
    *  down, and a function body may reference it while a const initialiser
    *  may not. */
   const renderStepDebug = () => (debugSteps ? (
-    <p style={{ color: "#E8BE96", fontFamily: "ui-monospace, monospace", fontSize: 11, lineHeight: 1.5, margin: "10px 0 0", wordBreak: "break-word" }}>
+    <p style={{
+      color: "#1A1A1A", background: "#E8BE96", borderRadius: 8, padding: "8px 10px",
+      fontFamily: "ui-monospace, monospace", fontSize: 11, lineHeight: 1.5,
+      margin: "0 0 12px", wordBreak: "break-word",
+    }}>
       step={String(step)} · idx={orderedSteps.indexOf(step)}/{orderedSteps.length}
       {" · next="}{String(orderedSteps[orderedSteps.indexOf(step) + 1] ?? "—")}
       {" · singleEditRow="}{String(singleEditRow ?? "—")}
@@ -3044,8 +3063,8 @@ export default function WayOfLoveRuleFlow({
             56rem the home uses (.dash-shell) so the customizer cards are exactly
             as wide as the home-screen cards, not a narrower column. */}
         <div className="w-full md:max-w-[56rem] md:mx-auto" style={{ flex: 1, minWidth: 0, maxWidth: "100%", display: "flex", flexDirection: "column" }}>
+          {renderStepDebug()}
           {children}
-        {renderStepDebug()}
         </div>
       </div>
     </div>
