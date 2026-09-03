@@ -5,6 +5,8 @@ import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { ChevronRight } from "lucide-react";
+import { DEBUG_STEPS_KEY } from "@/components/WayOfLoveRuleFlow";
+import { useState } from "react";
 
 function Toggle({
   label,
@@ -76,6 +78,9 @@ export default function AdminToolsPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { rawIsBeta, rawIsAdmin: isAdmin, betaViewEnabled, toggleBetaView } = useBetaStatus();
+  const [stepDebugOn, setStepDebugOn] = useState<boolean>(() => {
+    try { return localStorage.getItem(DEBUG_STEPS_KEY) === "1"; } catch { return false; }
+  });
   const [communityAdminView, toggleCommunityAdminView] = useCommunityAdminToggle();
 
   const { data: groupsData } = useQuery<{
@@ -198,6 +203,24 @@ export default function AdminToolsPage() {
                     (ROUTINE_INTERVIEW_ENTRY_HIDDEN in WayOfLoveRuleFlow), so
                     without a door here the page was only reachable by typing
                     the URL. Owner: put it in the admin tools. */}
+                {/* STEP DEBUG — draws the customizer's own step machine
+                    (current step, its index, what comes next, the whole
+                    order) under each slide. For a stuck Continue on a device
+                    with no console and no address bar: the state that would
+                    have been a console.log, in a screenshot. */}
+                <Toggle
+                  label="Step debug in the customizer"
+                  description="Show which step the flow is on, and what it thinks comes next"
+                  enabled={stepDebugOn}
+                  onToggle={() => {
+                    const next = !stepDebugOn;
+                    setStepDebugOn(next);
+                    try {
+                      if (next) localStorage.setItem(DEBUG_STEPS_KEY, "1");
+                      else localStorage.removeItem(DEBUG_STEPS_KEY);
+                    } catch { /* private mode */ }
+                  }}
+                />
                 {/* The starter rhythms, and the default a new device seeds
                     (owner: "an admin tool where I could edit the preset
                     routines including the default one"). */}

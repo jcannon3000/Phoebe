@@ -743,6 +743,10 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
 
 // A captured routine, identical to what commit() would write — used by the
 // "prescribe a routine for someone" flow. Mirrors PrescribedRoutineSpec server-side.
+/** Admin Tools → "Step debug" writes this; the customizer reads it to draw
+ *  its step machine on the slide. See renderStepDebug. */
+export const DEBUG_STEPS_KEY = "phoebe:debug-steps";
+
 export type RoutineSpec = {
   v: 1;
   officePrefs: {
@@ -2978,8 +2982,14 @@ export default function WayOfLoveRuleFlow({
    * URL, so it can never reach a reader.
    */
   const debugSteps = useMemo(() => {
-    try { return new URLSearchParams(window.location.search).get("debugsteps") === "1"; }
-    catch { return false; }
+    try {
+      if (new URLSearchParams(window.location.search).get("debugsteps") === "1") return true;
+      // …and a stored flag, because the query param is unreachable where this
+      // most needs reading: the iOS shell is a frozen local bundle with no
+      // address bar and no URL scheme of its own, so a tester on the simulator
+      // cannot put anything in the URL. Admin Tools → "Step debug" flips it.
+      return localStorage.getItem(DEBUG_STEPS_KEY) === "1";
+    } catch { return false; }
   }, []);
   /** Evaluated at RENDER time, not here: `orderedSteps` is declared further
    *  down, and a function body may reference it while a const initialiser
