@@ -76,16 +76,21 @@ export default function MenuPage() {
       // wizard for anyone who wants to sign in and go deeper.
       ...(isGuest ? [{ emoji: "🎛️", label: t("menu.customize", { defaultValue: "Customize" }), sub: t("menu.customize_sub", { defaultValue: "Daily prayer, newsletter, silence, steps" }), onClick: () => go("/customize") }] : []),
       /**
-       * THE HOME-SCREEN CONTROLS — reachable at last.
+       * THE "HOME SCREEN" ROW IS RETIRED (owner, 2026-09-02: "there is no use
+       * for the customize home screen anymore").
        *
-       * /customize-home holds the reorder and show/hide handles for every
-       * home module, the feed-first-home picker (moved here from Settings,
-       * whose comment still points at it) and the NCMP card. It had no
-       * inbound link from anywhere in the app: three separate comments
-       * describe it as the canonical surface for those controls, and the only
-       * way to reach it was to type the URL.
+       * /customize-home offered drag-to-reorder and show/hide for every home
+       * module. What a person actually keeps is now decided in the rule-of-life
+       * customizer — which practices are on, and the slot each sits in — so a
+       * second surface for the same decision was one more place for the two to
+       * disagree. Its reorder handles were also easy to trigger by accident
+       * while scrolling, which silently rewrote the saved order.
+       *
+       * The ROUTE and the page are left in place: they still hold the
+       * feed-first-home picker and the NCMP card, which have no other home
+       * yet, and a deep link should not 404. This removes the menu entry only,
+       * so nothing routes people to it.
        */
-      { emoji: "🏠", label: t("menu.customize_home", { defaultValue: "Home screen" }), sub: t("menu.customize_home_sub", { defaultValue: "What shows on your home, and in what order" }), onClick: () => go("/customize-home") },
       { emoji: "📖", label: t("menu.bcp"), sub: t("menu.bcp_sub"), onClick: () => go("/menu/bcp") },
       { emoji: "🕯️", label: t("menu.practices"), sub: t("menu.practices_sub"), onClick: () => go("/menu/practices") },
       { emoji: "🌅", label: t("menu.reflections"), sub: t("menu.reflections_sub"), onClick: () => go("/menu/reflections") },
