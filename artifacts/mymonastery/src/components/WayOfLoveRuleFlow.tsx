@@ -31,7 +31,7 @@ import { summarizeRuleSpec, type RuleSpec } from "@/lib/ruleSummary";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePresets";
-import { RELATIONAL_PRACTICES, activeRelationalPractices, setRelationalPractices, type RelationalPracticeId, getCustomAnchors, addCustomAnchor, removeCustomAnchor, updateCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
+import { RELATIONAL_PRACTICES, activeRelationalPractices, setRelationalPractices, isRelationalAnchor, addCustomRelationalPractice, type RelationalPracticeId, getCustomAnchors, addCustomAnchor, removeCustomAnchor, updateCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues, flushRoutineConfig } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
 import { getRoutineOrder } from "@/lib/routineOrder";
@@ -1589,6 +1589,11 @@ export default function WayOfLoveRuleFlow({
   // When they already have practices, the add form moves to its own sub-slide;
   // "Add new" flips this on, the form's Add / Back flips it off.
   const [addingCustom, setAddingCustom] = useState(false);
+  // A relational practice the user types themselves, beyond the curated
+  // three (hug / gratitude / call) — owner asked for this and it was never
+  // built. Its own tiny field rather than routing through "Create your own",
+  // since that page is exactly where a relational practice must NOT show up.
+  const [customRelationalTitle, setCustomRelationalTitle] = useState("");
   useEffect(() => {
     const refresh = () => setCustomList(getCustomAnchors());
     window.addEventListener(CUSTOM_ANCHORS_EVENT, refresh);
@@ -5971,6 +5976,51 @@ export default function WayOfLoveRuleFlow({
               () => toggleRelational(r.id),
             ),
           )}
+          {/* The user's OWN relational practices — typed by hand, beyond the
+              curated three. Shown here (not on Create-your-own) because
+              that's what they are. */}
+          {customList.filter((a) => a.isRelational === true
+            && !RELATIONAL_PRACTICES.some((r) => r.title.trim().toLowerCase() === a.title.trim().toLowerCase()))
+            .map((a) => (
+              <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B_ACTIVE}`, borderRadius: 12, padding: "11px 14px" }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }} aria-hidden>{a.emoji || "🤝"}</span>
+                <span style={{ flex: 1, minWidth: 0, color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT }}>{a.title}</span>
+                <button
+                  type="button"
+                  onClick={() => { touchedRef.current = true; removeCustomAnchor(a.id); setCustomList(getCustomAnchors()); }}
+                  aria-label={t("common.remove", { defaultValue: "Remove" })}
+                  style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", fontSize: 16, padding: "2px 6px" }}
+                >✕</button>
+              </div>
+            ))}
+          {/* Add your own — a free-text relational practice beyond hug / gratitude
+              / call. Owner asked for this on its own step and it had never been
+              built; it's marked isRelational so it can never flatten into a
+              plain custom practice on the Create-your-own page. */}
+          <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
+            <input
+              value={customRelationalTitle}
+              onChange={(e) => setCustomRelationalTitle(e.target.value)}
+              placeholder={t("wol_rule.relational_add_placeholder", { defaultValue: "Add your own — e.g. Write a letter" })}
+              aria-label={t("wol_rule.relational_add_placeholder", { defaultValue: "Add your own relational practice" })}
+              style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const title = customRelationalTitle.trim();
+                if (!title) return;
+                touchedRef.current = true;
+                if (addCustomRelationalPractice(title)) {
+                  setCustomRelationalTitle("");
+                  setCustomList(getCustomAnchors());
+                }
+              }}
+              style={{ flexShrink: 0, background: "rgba(46,107,64,0.30)", border: `1px solid ${CARD_B_ACTIVE}`, borderRadius: 12, padding: "0 18px", color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+            >
+              {t("common.add", { defaultValue: "Add" })}
+            </button>
+          </div>
         </div>
         {/**
           * THE CAP, SAID OUT LOUD.
@@ -6128,7 +6178,12 @@ export default function WayOfLoveRuleFlow({
         </>,
       );
     }
-    const hasCustoms = customList.length > 0;
+    // A relational practice — curated OR the user's own typed-in one — lives
+    // on the Relational step, not here. Without this filter "Express
+    // gratitude" (and now any hand-typed relational practice) showed up on
+    // the generic Create-your-own page as an ordinary custom card.
+    const nonRelationalCustoms = customList.filter((a) => !isRelationalAnchor(a));
+    const hasCustoms = nonRelationalCustoms.length > 0;
     // Once they have at least one practice, the list leads with a wide "Add new"
     // pill, and the add form moves to its own sub-slide (addingCustom). A
     // first-timer with no practices yet sees the form directly.
@@ -6149,7 +6204,7 @@ export default function WayOfLoveRuleFlow({
 
         {showList && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "20px 0 0" }}>
-            {customList.map((a) => (
+            {nonRelationalCustoms.map((a) => (
               <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "11px 14px" }}>
                 <span style={{ fontSize: 18, flexShrink: 0 }} aria-hidden>{a.emoji}</span>
                 <span style={{ flex: 1, minWidth: 0, color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</span>
@@ -6548,14 +6603,14 @@ export default function WayOfLoveRuleFlow({
       const relationalDef = RELATIONAL_PRACTICES.find(
         (r) => r.title.trim().toLowerCase() === a.title.trim().toLowerCase(),
       );
-      if (relationalDef) return {
-        emoji: a.emoji || relationalDef.emoji,
+      if (relationalDef || isRelationalAnchor(a)) return {
+        emoji: a.emoji || relationalDef?.emoji || "🤝",
         label: a.title,
         sub: "Relational · asked at the end of the day",
         step: "relational" as Step,
         remove: () => {
           touchedRef.current = true;
-          setRelational((cur) => cur.filter((id) => id !== relationalDef.id));
+          if (relationalDef) setRelational((cur) => cur.filter((id) => id !== relationalDef.id));
           removeCustomAnchor(a.id);
           setCustomList(getCustomAnchors());
         },

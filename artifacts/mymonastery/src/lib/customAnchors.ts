@@ -85,7 +85,7 @@ export function slotOpensLabel(slot: CustomSlot): string | null {
 // Built-in practices that the customizer places at a chosen time of day
 // (Co-Breathe, Audio Divina, the Examen) — each carries a per-device slot.
 // Sensible defaults if the user never picks one.
-export type SlottedPractice = "cobreathe" | "listening" | "examen" | "walk" | "reading" | "visio" | "icons" | "taize";
+export type SlottedPractice = "cobreathe" | "listening" | "examen" | "walk" | "reading" | "visio" | "icons" | "taize" | "spirituals";
 const PRACTICE_SLOT_DEFAULT: Record<SlottedPractice, CustomSlot> = {
   // Visio Divina is looked at whenever there's light and quiet — not pinned.
   visio: "anytime",
@@ -96,6 +96,8 @@ const PRACTICE_SLOT_DEFAULT: Record<SlottedPractice, CustomSlot> = {
   // part of the day. The same is true of the other two inbox sources —
   // (other weekly sources have come and gone).
   taize: "anytime",
+  // A song to sit with belongs to no hour in particular.
+  spirituals: "anytime",
   cobreathe: "morning",
   listening: "midday",
   examen: "evening",
@@ -187,6 +189,24 @@ export type CustomAnchor = {
    * together and a person doesn't meet three different ideas of "this week".
    */
   cadence?: "weekly";
+  /**
+   * TRUE for a relational practice — one kept WITH someone else, asked about
+   * with `prompt` rather than a bare checkbox.
+   *
+   * Before this existed, RELATIONAL_PRACTICES were matched purely by TITLE
+   * against the curated list — which meant (a) any renderer that forgot to
+   * re-derive that same title match showed "Express gratitude" as an ordinary
+   * custom practice (reported: it "flattened into a custom practice" on the
+   * generic Create-your-own page), and (b) a person's OWN typed relational
+   * practice could never be recognised as relational at all — it wasn't on
+   * the curated list by construction. A real stored flag fixes both: it
+   * survives regardless of title, and a custom relational entry is relational
+   * from the moment it's created.
+   *
+   * Absent (not `false`) on every anchor saved before this existed — a reader
+   * still falls back to the title match for those, in `isRelationalAnchor`.
+   */
+  isRelational?: true;
 };
 
 /** Mon–Fri, the common case (a weekday practice). */
@@ -276,6 +296,7 @@ export function getCustomAnchors(): CustomAnchor[] {
           ...(office === "morning" || office === "evening" ? { office } : {}),
           ...(typeof rawPrompt === "string" && rawPrompt.trim() ? { prompt: rawPrompt } : {}),
           ...((a as { cadence?: unknown }).cadence === "weekly" ? { cadence: "weekly" as const } : {}),
+          ...((a as { isRelational?: unknown }).isRelational === true ? { isRelational: true as const } : {}),
         };
       });
   } catch {
@@ -326,10 +347,45 @@ export const RELATIONAL_PRACTICES = [
 
 export type RelationalPracticeId = (typeof RELATIONAL_PRACTICES)[number]["id"];
 
+/**
+ * Is this anchor a relational practice — one of the curated three, or a
+ * person's own?
+ *
+ * Prefers the stored `isRelational` flag; falls back to the title match for
+ * anchors saved before the flag existed (every curated one, from before this
+ * shipped). A user-typed custom relational practice only ever carries the
+ * flag — it was never on the curated list to title-match against — which is
+ * exactly the case the flag exists for.
+ */
+export function isRelationalAnchor(a: { title: string; isRelational?: boolean }): boolean {
+  return a.isRelational === true
+    || RELATIONAL_PRACTICES.some((r) => r.title.trim().toLowerCase() === a.title.trim().toLowerCase());
+}
+
 /** Which relational practices are currently in the rule, by id. */
 export function activeRelationalPractices(): RelationalPracticeId[] {
   const titles = new Set(getCustomAnchors().map((a) => a.title.trim().toLowerCase()));
   return RELATIONAL_PRACTICES.filter((r) => titles.has(r.title.toLowerCase())).map((r) => r.id);
+}
+
+/** The user's OWN relational practices — typed by hand, not off the curated
+ *  list. What the "Create your own" page must exclude, alongside the three
+ *  curated ones, so a relational practice never flattens into a plain custom
+ *  one there. */
+export function customRelationalAnchors(): CustomAnchor[] {
+  const curated = new Set(RELATIONAL_PRACTICES.map((r) => r.title.toLowerCase()));
+  return getCustomAnchors().filter((a) => a.isRelational === true && !curated.has(a.title.trim().toLowerCase()));
+}
+
+/**
+ * Add a practice the user typed themselves on the Relational Practices step.
+ * Always marked `isRelational`, so it never shows on the generic
+ * custom-practices page and always reopens back into the Relational step.
+ */
+export function addCustomRelationalPractice(title: string, prompt?: string): boolean {
+  const t = title.trim();
+  if (!t) return false;
+  return addCustomAnchor(t, "🤝", "anytime", undefined, undefined, undefined, prompt?.trim() || `Did you ${t.toLowerCase()} today?`, undefined, true);
 }
 
 /**
@@ -355,7 +411,7 @@ export function setRelationalPractices(wanted: readonly RelationalPracticeId[]):
   for (const r of RELATIONAL_PRACTICES) {
     const found = existing.find((a) => a.title.trim().toLowerCase() === r.title.toLowerCase());
     if (want.has(r.id) && !found) {
-      if (!addCustomAnchor(r.title, r.emoji, "anytime", undefined, undefined, undefined, r.prompt)) refused.push(r.id);
+      if (!addCustomAnchor(r.title, r.emoji, "anytime", undefined, undefined, undefined, r.prompt, undefined, true)) refused.push(r.id);
     } else if (!want.has(r.id) && found) {
       removeCustomAnchor(found.id);
     }
@@ -376,6 +432,8 @@ export function addCustomAnchor(
   prompt?: string,
   /** See CustomAnchor.cadence — "weekly" keeps it until Monday. */
   cadence?: "weekly",
+  /** See CustomAnchor.isRelational. */
+  isRelational?: true,
 ): boolean {
   /** True when the practice now exists; false when it was refused (at the
    *  cap, or a duplicate title). Callers that don't care may ignore it — but
@@ -410,6 +468,7 @@ export function addCustomAnchor(
     ...(office ? { office } : {}),
     ...(prompt && prompt.trim() ? { prompt: prompt.trim() } : {}),
     ...(cadence === "weekly" ? { cadence: "weekly" } : {}),
+    ...(isRelational ? { isRelational: true } : {}),
   });
   saveDefs(list);
   return true;
