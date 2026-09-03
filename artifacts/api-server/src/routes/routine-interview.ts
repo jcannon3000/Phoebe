@@ -34,11 +34,33 @@
  */
 import { Router, type IRouter } from "express";
 import { sanitizeSpec, applyRoutineSpecToUser, captureRoutineSpec, readCustomAnchorDefs, HOME_MODULE_KEYS } from "../lib/routineSpec";
+import { isSuperAdminUser } from "../lib/superAdmin";
 import { perUserRateLimit } from "../lib/rate-limit";
 import { describeSpec, SLOT_LABEL, type SpecRow, type SpecSection, type CustomAnchorDef } from "../lib/routineDescribe";
 import { saveRoutineSnapshot } from "./routine-snapshots";
 
 const router: IRouter = Router();
+
+/**
+ * ADMINS ONLY, ON THE SERVER TOO.
+ *
+ * Owner: "the routine interview is only in admin tools for admins" — which is
+ * true of the DOOR: the customizer's own entry is switched off for everyone
+ * (ROUTINE_INTERVIEW_ENTRY_HIDDEN) and the only link lives behind Admin Tools.
+ * But a hidden link is not a lock: /followups and /build each spend OpenAI
+ * tokens on a model call, and until now any signed-in person who typed the
+ * path could spend them. So the server now enforces what the UI already
+ * assumes, and the two agree.
+ *
+ * Returns true when the request has been answered (401/403) and the handler
+ * should stop.
+ */
+async function refuseUnlessAdmin(req: any, res: any): Promise<boolean> {
+  const userId = getUserId(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return true; }
+  if (!(await isSuperAdminUser(userId))) { res.status(403).json({ error: "Admin access required" }); return true; }
+  return false;
+}
 
 function getUserId(req: any): number | null {
   return req.user ? (req.user as { id: number }).id : null;
@@ -1307,6 +1329,10 @@ async function currentRoutineContext(userId: number): Promise<string> {
 router.get("/routine-interview/current", async (req, res): Promise<void> => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  // NOT admin-gated: this is a plain read of the CALLER'S OWN routine, and
+  // the customizer's edit list (WayOfLoveRuleFlow's reloadEditRows) calls it
+  // for every user. Gating it here would empty "Your rhythm" for everyone
+  // who isn't an admin. It spends nothing and discloses nothing but your own.
   try {
     const spec = await captureRoutineSpec(userId);
     // Standing practices ride their own column, not the spec — see describeSpec.
@@ -1366,6 +1392,7 @@ router.post("/routine-interview/followups", perUserRateLimit("routine_interview_
 }), async (req, res): Promise<void> => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (await refuseUnlessAdmin(req, res)) return;
 
   const description = cleanText(req.body?.description, 4000);
   if (description.length < 10) { res.status(400).json({ error: "too_short" }); return; }
@@ -1695,6 +1722,7 @@ router.post("/routine-interview/build", perUserRateLimit("routine_interview_buil
 }), async (req, res): Promise<void> => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (await refuseUnlessAdmin(req, res)) return;
 
   const description = cleanText(req.body?.description, 4000);
   if (description.length < 10) { res.status(400).json({ error: "too_short" }); return; }
@@ -1859,6 +1887,7 @@ router.post("/routine-interview/apply", perUserRateLimit("routine_interview_appl
 }), async (req, res): Promise<void> => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (await refuseUnlessAdmin(req, res)) return;
 
   const spec = sanitizeSpec(req.body?.spec);
   if (!spec) { res.status(400).json({ error: "invalid_spec" }); return; }
