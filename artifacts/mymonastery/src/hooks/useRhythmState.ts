@@ -230,6 +230,16 @@ export type RhythmState = {
   /** The meditation waiting to be read, or null when the inbox is empty. */
   taizeWaiting: { id: string; title: string; url: string; published: string | null } | null;
   /**
+   * The newest item REGARDLESS of whether it has been read.
+   *
+   * The Done-state card still needs somewhere to point: tapping it used to be
+   * a no-op once `taizeWaiting` went null (already read), so the card sat in
+   * Done with no way back into the meditation you just read. This is that
+   * meditation — reopening it doesn't re-mark anything, since it's already
+   * marked.
+   */
+  taizeLatest: { id: string; title: string; url: string; published: string | null } | null;
+  /**
    * A group admin's weekly reflection, waiting to be read.
    *
    * NO `active` FLAG, deliberately — unlike every other optional practice this
@@ -1568,7 +1578,13 @@ export function useRhythmState(): RhythmState {
     // who set only the minutes goal), so it counts exactly one dot here and
     // the dots always match the cards.
     ...(silenceGoalCardActive ? [silenceGoalCardDone] : []),
-    ...reflections.map((r) => r.done),
+    // ONE dot for every newsletter together, not one per source. Each
+    // newsletter still gets its own card (reflections.map above) — this only
+    // changes the daily-progress tally, which used to add a dot per source
+    // (three newsletters read as three anchors kept, when the person did one
+    // thing: caught up on their reading). Filled only once every chosen
+    // source is read today.
+    ...(reflectActive ? [reflections.every((r) => r.done)] : []),
     ...(eveningActive ? [eveningDone] : []),
     ...(eveningExtraLevel ? [eveningExtraDone] : []),
     ...(eveningContemplationActive ? [eveningContemplationDone] : []),
@@ -1721,6 +1737,7 @@ export function useRhythmState(): RhythmState {
     taizeActive,
     taizeDone,
     taizeWaiting,
+    taizeLatest: taizeLatest ?? null,
     groupReflection,
     complineActive,
     cobreatheActive,

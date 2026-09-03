@@ -776,7 +776,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeDone, taizeWaiting, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeDone, taizeWaiting, taizeLatest, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1127,8 +1127,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
      */
     onClick: () => {
       const m = taizeWaiting;
-      if (!m) return;
-      openExternalThenMarkRead(m.url, () => { markTaizeRead(m.id); swellHaptic(); }, { reader: true });
+      if (m) {
+        openExternalThenMarkRead(m.url, () => { markTaizeRead(m.id); swellHaptic(); }, { reader: true });
+        return;
+      }
+      // Done — nothing new since the last one. Reopen the one already read
+      // rather than no-op: markTaizeRead on an id already marked is a no-op,
+      // so this is just "let them read it again," not a re-completion.
+      const last = taizeLatest;
+      if (last) openExternalThenMarkRead(last.url, () => {}, { reader: true });
     },
     title: t("rhythm.card_taize", { defaultValue: "Taizé meditation" }),
     blurb: taizeWaiting
