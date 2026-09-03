@@ -36,6 +36,7 @@ export const HOME_MODULE_KEYS = [
   "lectio",
   // The inbox practices: they wait rather than expiring at midnight.
   "taize",
+  "spirituals",
   // The reflection newsletters.
   "cac",
   "fdd",
