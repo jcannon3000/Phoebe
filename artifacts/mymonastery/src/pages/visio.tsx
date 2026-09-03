@@ -51,6 +51,7 @@ import { getVisioHistory, recordVisioSeen } from "@/lib/visioHistory";
 import { useVisioLessons } from "@/hooks/useVisioToday";
 import { apiRequest } from "@/lib/queryClient";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import ZoomableImage from "@/components/ZoomableImage";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
@@ -1073,40 +1074,23 @@ export default function VisioPage() {
             off the scenery — without it a dark artwork dissolves into the
             wash. */}
         {showsImage && view && (
-          <img
+          /* PINCH, DOUBLE-TAP OR SCROLL TO GET CLOSER (owner: "we want people
+             to be able to zoom in on the images"). The frame holds the same
+             band the picture had; ZoomableImage magnifies INSIDE it and hands
+             a plain tap back to the deck. */
+          <ZoomableImage
             src={view.img}
             alt={`${view.title}${view.artist ? ` — ${view.artist}` : ""}`}
-            decoding="async"
-            /**
-             * Record the src WE ASKED FOR, never the browser's `currentSrc`.
-             *
-             * `currentSrc` comes back RESOLVED and percent-encoded, so any URL
-             * containing a space, an apostrophe or a non-ASCII character never
-             * equalled `view.img` again and the gate below held the painting at
-             * opacity 0 for good. 136 of the 317 works in the catalogue have
-             * exactly such a filename ("Peter's Vision-Frank Wesley.jpg",
-             * "Miraculous Catch MAFA.jpg"), so roughly two days in five opened
-             * on a blank frame with the title and the artist underneath it —
-             * reported as "the picture was not showing". The image had loaded
-             * fine; nothing was ever wrong with the fetch.
-             *
-             * Comparing the string we handed the element sidesteps URL
-             * normalisation entirely, and still keys the flag by src, which is
-             * what stops a cached image from deadlocking at 0 (see above).
-             *
-             * Both paths stay: the event for a fresh fetch, the ref for one the
-             * browser already had decoded before React attached the handler.
-             */
-            ref={(el) => { if (el?.complete && el.naturalWidth > 0) setLoadedSrc(view.img); }}
+            style={{ flex: "0 0 auto", maxWidth: "100%", maxHeight: "62vh", borderRadius: 10 }}
+            imgRef={(el) => { if (el?.complete && el.naturalWidth > 0) setLoadedSrc(view.img); }}
             onLoad={() => setLoadedSrc(view.img)}
             onError={() => setImageFailed(true)}
-            style={{
-              flex: "0 0 auto",
+            imgStyle={{
               maxWidth: "100%",
               // Smaller on the contemplation beat so the prompt sits under it
-            // rather than below the fold — the picture is what you're praying
-            // with there, not the whole screen.
-            maxHeight: "62vh",
+              // rather than below the fold — the picture is what you're praying
+              // with there, not the whole screen.
+              maxHeight: "62vh",
               objectFit: "contain", borderRadius: 10,
               boxShadow: "0 26px 74px rgba(0,0,0,0.66), 0 4px 14px rgba(0,0,0,0.45)",
               // Fades in rather than snapping: these load over the network,
@@ -1262,32 +1246,25 @@ export default function VisioPage() {
             {view.artist && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>{t("visio.artist_label", { defaultValue: "Artist: {{name}}", name: tidyArtist(view.artist) })}</p>
             )}
-            {/* JESUS MAFA, IN ONE LINE, UNDER THE PICTURE ITSELF (owner: "I
-                want it under the picture the first time … that quote I gave
-                you the first time").
-                This beat is `step === LOOK`, so it is literally the first
-                showing — the second look (LOOK_AGAIN) doesn't render this
-                block, and the fuller history of the series stays on the
-                closing slide where the attribution is. */}
+            {/* WHO JESUS MAFA ARE — UNDER THE FIRST IMAGE (owner: "we want the
+                description under the first image"). This block is
+                `step === LOOK`, the beat where the picture first appears, so
+                the description arrives with the work itself: not on the title
+                slide before it, and not on the second look after it. The
+                closing slide keeps the Vanderbilt attribution alone. */}
             {view.artist?.trim().toUpperCase() === "JESUS MAFA" && (
-              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: "8px auto 0", lineHeight: 1.55, maxWidth: 420 }}>
-                {t("visio.jesus_mafa_line", {
-                  defaultValue: "JESUS MAFA is a response to the New Testament readings from the Lectionary by a Christian community in Cameroon, Africa.",
-                })}
-              </p>
-            )}
-            {/* …and the rest of it, in the same place (owner: "I want that the
-                other note, the one which included about how they were real
-                scenes"). Both paragraphs belong with the picture at first
-                sight rather than at the end, so this is where the whole story
-                of the series is now told; the closing slide keeps the
-                Vanderbilt attribution alone. */}
-            {view.artist?.trim().toUpperCase() === "JESUS MAFA" && (
-              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: "6px auto 0", lineHeight: 1.55, maxWidth: 420 }}>
-                {t("visio.jesus_mafa_note", {
-                  defaultValue: "In the 1970s, the French Catholic priest François Vidil collaborated with the Mafa community to create a series of artwork known as Vie de Jesus Mafa (Life of Jesus Mafa, or simply Jesus Mafa), which depicts various events in the life of Jesus using Black depictions rather than White. These images were actually depictions of real-world recreations of biblical scenes by Mafa people.",
-                })}
-              </p>
+              <div style={{ maxWidth: 430, margin: "8px auto 0", display: "flex", flexDirection: "column", gap: 6 }}>
+                <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.55, margin: 0 }}>
+                  {t("visio.jesus_mafa_line", {
+                    defaultValue: "JESUS MAFA is a response to the New Testament readings from the Lectionary by a Christian community in Cameroon, Africa.",
+                  })}
+                </p>
+                <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.55, margin: 0 }}>
+                  {t("visio.jesus_mafa_note", {
+                    defaultValue: "In the 1970s, the French Catholic priest François Vidil collaborated with the Mafa community to create a series of artwork known as Vie de Jesus Mafa (Life of Jesus Mafa, or simply Jesus Mafa), which depicts various events in the life of Jesus using Black depictions rather than White. These images were actually depictions of real-world recreations of biblical scenes by Mafa people.",
+                  })}
+                </p>
+              </div>
             )}
             {/* Who the work depicts, in ACT's own words — on the beat where the
                 picture is FIRST shown, not over the title (owner). It belongs
