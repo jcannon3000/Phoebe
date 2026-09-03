@@ -153,7 +153,7 @@ export const RULE_PRESETS: RulePreset[] = [
     practices: { visio: true },
     practiceSlots: { visio: "anytime" },
     relational: ["gratitude"],
-    title: "VTS", blurb: "The seminary's rhythm — Simple Guided Prayer to open the day, the Dean's word, a thank-you said to someone, an image to sit with, and the Examen to close it.",
+    title: "VTS", blurb: "Simple Guided Prayer in the morning, the VTS Dean's Commentary, Express gratitude, Visio Divina, and the Examen in the evening.",
     rows: [
       { emoji: "🙌🏽", label: "Simple Guided Prayer in the morning" },
       { emoji: "🦩", label: "The VTS Dean's Commentary" },
