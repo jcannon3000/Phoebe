@@ -5107,7 +5107,14 @@ export default function WayOfLoveRuleFlow({
             // "fix the forward vs CAC issue").
             t("wol_rule.pray_fdd_sub", {
               defaultValue: "Today's meditation from {{source}}, in place of an office.",
-              source: NEWSLETTERS.find((n) => n.id === (anchorReflectionBySide[side] ?? getSideReflectionExplicit(side) ?? "fdd"))?.sub
+              // `newsletters` before the device pref: it is what THIS flow
+              // has chosen — the seeded rule's newsletter when a preset is
+              // being edited or prescribed, and the reader's own the rest of
+              // the time (it is initialised from their layout). Reading the
+              // device first named the ADMIN's newsletter on a rule that
+              // carries someone else's (eleanor-3a, editing VTS as a reader
+              // whose own source is the CAC).
+              source: NEWSLETTERS.find((n) => n.id === (anchorReflectionBySide[side] ?? newsletters[0] ?? getSideReflectionExplicit(side) ?? "fdd"))?.sub
                 ?? t("wol_rule.pray_fdd_source_generic", { defaultValue: "your newsletter" }),
             }),
             () => {
