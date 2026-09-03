@@ -1262,6 +1262,20 @@ export default function VisioPage() {
             {view.artist && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>{t("visio.artist_label", { defaultValue: "Artist: {{name}}", name: tidyArtist(view.artist) })}</p>
             )}
+            {/* JESUS MAFA, IN ONE LINE, UNDER THE PICTURE ITSELF (owner: "I
+                want it under the picture the first time … that quote I gave
+                you the first time").
+                This beat is `step === LOOK`, so it is literally the first
+                showing — the second look (LOOK_AGAIN) doesn't render this
+                block, and the fuller history of the series stays on the
+                closing slide where the attribution is. */}
+            {view.artist?.trim().toUpperCase() === "JESUS MAFA" && (
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: "8px auto 0", lineHeight: 1.55, maxWidth: 420 }}>
+                {t("visio.jesus_mafa_line", {
+                  defaultValue: "JESUS MAFA is a response to the New Testament readings from the Lectionary by a Christian community in Cameroon, Africa.",
+                })}
+              </p>
+            )}
             {/* Who the work depicts, in ACT's own words — on the beat where the
                 picture is FIRST shown, not over the title (owner). It belongs
                 with the looking: a museum label names the figures beside the
