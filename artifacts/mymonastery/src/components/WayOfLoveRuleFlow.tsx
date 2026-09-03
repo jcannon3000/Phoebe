@@ -3909,7 +3909,7 @@ export default function WayOfLoveRuleFlow({
       <>
         {stepHeader(
           t("wol_rule.preset_eyebrow", { defaultValue: "Start from a preset" }),
-          t("wol_rule.preset_title", { defaultValue: "A rhythm someone has already shaped" }),
+          t("wol_rule.preset_title", { defaultValue: "Begin a preset routine" }),
         )}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
           {t("wol_rule.preset_body", {
