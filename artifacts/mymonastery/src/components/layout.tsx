@@ -731,7 +731,11 @@ function DailyProgressPill() {
     ...(morningExtraLevel ? [{ key: "extra-morning", done: morningExtraDone }] : []),
     // Reflection is the DEFAULT second dot (right after Morning) — ahead of any
     // custom morning practice — unless the user reorders their rhythm.
-    ...reflections.map((r) => ({ key: `reflect-${r.source}`, done: r.done })),
+    // ONE dot for every newsletter together (owner) — the same collapse
+    // useRhythmState's coreFlags makes, so this pill and totalAnchors agree.
+    // It used to be one per source: two newsletters made a 3-dot pill over a
+    // 2-anchor day.
+    ...(reflections.length > 0 ? [{ key: "reflect", done: reflections.every((r) => r.done) }] : []),
     ...cDots("morning"),
     // Contemplation is PER SIDE (a Morning + an Evening sit) — one dot each,
     // matching the two home cards, not a single aggregate "silence" dot (that

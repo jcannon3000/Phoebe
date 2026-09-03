@@ -255,14 +255,30 @@ export function useWidgetSync(): void {
       // A novena in "replace" mode takes over its slot's item entirely — same
       // gate as the rawCards/dotDefs replace-mode entries — so it's primary too.
       { active: !!(r.novenaReplacesMorning && r.novenaActive), done: r.novenaDone, slot: "morning", key: "novena", emoji: "🕊️", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office", isPrimary: true },
-      ...r.reflections.map((rf) => ({
+      /**
+       * ONE ITEM — and so one dot — for every newsletter together (owner),
+       * matching useRhythmState's coreFlags and the header pill. Per source
+       * this made the widget count three anchors for a person who follows
+       * three newsletters, while the app counted one. A single source keeps
+       * its own key (the deep-link map knows "reflect-vts"); several collapse
+       * to "reflect", which has no route and opens the home like the other
+       * cards the widget can't act on itself.
+       */
+      ...(r.reflections.length === 1 ? r.reflections.map((rf) => ({
         active: true, done: rf.done, slot: "morning" as CustomSlot,
         key: `reflect-${rf.source}`, emoji: rf.source === "vts" ? "🦩" : "📖",
         title: REFLECTION_NAME[rf.source] ?? "Today's reflection",
         eyebrow: REFLECTION_NAME[rf.source] ?? "Today's reflection",
         subtitle: (rf.source === "cac" && cacMetaQ.data?.title) ? cacMetaQ.data.title : "A few minutes with the day's word",
         cta: "Read", kind: "reflect" as const,
-      })),
+      })) : r.reflections.length > 1 ? [{
+        active: true, done: r.reflections.every((rf) => rf.done), slot: "morning" as CustomSlot,
+        key: "reflect", emoji: "📖",
+        title: "Today's reflections",
+        eyebrow: "Today's reflections",
+        subtitle: `${r.reflections.filter((rf) => rf.done).length} of ${r.reflections.length} read`,
+        cta: "Read", kind: "reflect" as const,
+      }] : []),
       // Named by the side's KIND — the widget called a Creation Prayer (or a
       // walk, or Audio Divina) side "Contemplation … in silence" while every
       // in-app surface named it correctly, and this file's whole contract is
@@ -298,6 +314,7 @@ export function useWidgetSync(): void {
        * too, because doneCount and totalAnchors are counted from this array.
        */
       { active: r.iconsActive, done: r.iconsDone, slot: "anytime" as CustomSlot, key: "icons", emoji: "🪟", title: "Praying with Icons", eyebrow: "This week's icon", subtitle: "One icon for the week", cta: "Begin", kind: "office" },
+      { active: r.spiritualsActive, done: r.spiritualsDone, slot: getPracticeSlot("spirituals"), key: "spirituals", emoji: "🎶", title: "Meditating on Spirituals", eyebrow: "Today's song", subtitle: "Sit with a song, one line at a time", cta: "Begin", kind: "office" },
       { active: r.taizeActive, done: r.taizeDone, slot: getPracticeSlot("taize"), key: "taize", emoji: "🕯️", title: "Taizé meditation", eyebrow: "Taizé", subtitle: "The newest meditation from Taizé", cta: "Read", kind: "reflect" },
       // Compline rides the evening slot — same fixed placement the home card
       // and the header dot use (it IS the night office, so no slot picker).
@@ -413,6 +430,7 @@ export function useWidgetSync(): void {
       compline: "/bcp/daily-office?mode=compline",
       "reflect-vts": "/vts-reading",
       icons: "/icon-prayer",
+      spirituals: "/spirituals",
       taize: "https://www.taize.fr/en/tag/meditations",
     };
     const contemplationHref = (side: "morning" | "evening", kind: string): string => {
