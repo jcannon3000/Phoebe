@@ -20,59 +20,16 @@ import { Layout } from "@/components/layout";
 import { takePrescribedSpec } from "@/lib/prescribeHandoff";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
-import { pushRoutineConfig, setRoutineSyncSuspended, ROUTINE_KEYS } from "@/lib/routineSync";
+import { setRoutineSyncSuspended } from "@/lib/routineSync";
+import { snapshotRoutine, restoreRoutine } from "@/lib/routineDesignGuard";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
-// The localStorage keys the customizer writes for the routine STRUCTURE — we
-// snapshot + restore exactly these so designing for someone else never touches
-// the admin's own rhythm.
-//
-// Derived from routineSync's ROUTINE_KEYS rather than mirrored by hand. The
-// hand-copied version drifted twice: `phoebe:contemplation-log-method` (the
-// customizer's log-method row) and `phoebe:hide-turn-learn-pray` (its Weekly
-// Progress toggle) were both added to ROUTINE_KEYS and never here, so touching
-// either control while designing for someone else permanently overwrote the
-// admin's own setting and pushed it to their devices. The prefixes stay because
-// per-side office/slot keys are enumerated dynamically (custom anchors add
-// their own), so they can't all be listed literally.
-const ROUTINE_PREFIXES = ["phoebe:office:", "phoebe:slot:"];
-const ROUTINE_EXACT = new Set<string>([
-  ...ROUTINE_KEYS,
-  "phoebe:scripture-scope",
-  "phoebe:routine:updated-at",
-]);
-function isRoutineKey(k: string): boolean {
-  return ROUTINE_PREFIXES.some((p) => k.startsWith(p)) || ROUTINE_EXACT.has(k);
-}
-function snapshotRoutine(): Record<string, string> {
-  const out: Record<string, string> = {};
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && isRoutineKey(k)) { const v = localStorage.getItem(k); if (v != null) out[k] = v; }
-    }
-  } catch { /* private mode */ }
-  return out;
-}
-function restoreRoutine(snap: Record<string, string>): void {
-  try {
-    const toRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && isRoutineKey(k)) toRemove.push(k); }
-    for (const k of toRemove) localStorage.removeItem(k);
-    for (const [k, v] of Object.entries(snap)) localStorage.setItem(k, v);
-  } catch { /* private mode */ }
-  // Designing is over: let this device sync again, and re-assert the admin's
-  // OWN routine. The revert this comment used to promise was the only defence,
-  // and it could not run if the tab was closed mid-design — the push is now
-  // SUSPENDED for the whole session instead, so there is normally nothing on
-  // the server to revert.
-  setRoutineSyncSuspended(false);
-  pushRoutineConfig();
-}
-
+// The snapshot/restore guard moved to lib/routineDesignGuard — the preset
+// editor (admin-presets.tsx) needs exactly the same one, and a second copy of
+// a key list is how this one drifted twice before.
 export default function PrescribeRoutinePage() {
   // slug is absent on the /prescribe (app-wide preset, super admin) route.
   const { slug } = useParams<{ slug?: string }>();

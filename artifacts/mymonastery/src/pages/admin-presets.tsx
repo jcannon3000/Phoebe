@@ -354,6 +354,45 @@ export default function AdminPresetsPage() {
               : [...(draft.relational ?? []), v as RelationalPracticeId],
           })} />
       </div>
+      {/* WHEN those practices ride. They were carried through on save but had
+          no field, so a rule's practice times could only be changed by hand in
+          the JSON box (audit, eleanor-3a). Shown for the practices this rule
+          actually turns on, plus any that already carry a time. The flag is
+          called "audio" and the slot is called "listening" — the same practice
+          under two names, so the row maps between them. */}
+      <div>
+        <p style={label}>Practice times</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          {SLOTTED.filter((k) => {
+            const flag = k === "listening" ? "audio" : k;
+            return (draft.practiceSlots ?? {})[k] !== undefined
+              || (draft.practices ?? {})[flag as keyof NonNullable<RulePreset["practices"]>] === true;
+          }).map((k) => (
+            <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span style={{ color: DIM, fontFamily: FONT, fontSize: 12.5 }}>{k}</span>
+              <select
+                value={(draft.practiceSlots ?? {})[k] ?? "anytime"}
+                onChange={(e) => setDraft({
+                  ...draft,
+                  practiceSlots: { ...(draft.practiceSlots ?? {}), [k]: e.target.value as CustomSlot },
+                })}
+                style={{ ...field, width: "auto", padding: "6px 8px", fontSize: 12.5, cursor: "pointer" }}
+              >
+                {CUSTOM_SLOTS.map((sl) => <option key={sl} value={sl}>{sl}</option>)}
+              </select>
+            </span>
+          ))}
+          {SLOTTED.every((k) => {
+            const flag = k === "listening" ? "audio" : k;
+            return (draft.practiceSlots ?? {})[k] === undefined
+              && (draft.practices ?? {})[flag as keyof NonNullable<RulePreset["practices"]>] !== true;
+          }) && (
+            <span style={{ color: DIM, fontFamily: FONT, fontSize: 12.5 }}>
+              Turn a standing practice on above to give it a time.
+            </span>
+          )}
+        </div>
+      </div>
       <div>
         <p style={label}>Everything else (JSON — day rules, custom anchors, per-side names)</p>
         <textarea value={extraJson} rows={8} spellCheck={false}

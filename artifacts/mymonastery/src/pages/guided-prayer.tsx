@@ -239,20 +239,22 @@ export default function GuidedPrayerPage() {
   const isExamen = getSideLevel(side) === "examen";
   const showPrayerList = prayerListEnabled && !isExamen && activeIntentions.length > 0;
 
-  // The Collect of the Day — the same closing collect the BCP office ends
-  // on (BCP p. 98's "one or more Collects, the Collect of the Day being
-  // first"), tacked on after the prayer list. Owner: "include the collect
-  // of the day in simple guided after [the intercessions]." Same Examen
-  // exclusion as the prayer list — Examen isn't a BCP office, so it
-  // shouldn't pick up this office-shaped closing either.
-  const today = (() => { try { return new Date().toLocaleDateString("en-CA"); } catch { return ""; } })();
-  const { data: collect } = useQuery<{ title: string | null; text: string | null; bcpReference: string | null }>({
-    queryKey: ["/api/office/collect", today],
-    queryFn: () => apiRequest("GET", `/api/office/collect?date=${today}`),
-    enabled: !isExamen,
-    staleTime: 30 * 60_000,
-  });
-  const showCollect = !isExamen && !!collect?.text;
+  /**
+   * NO COLLECT. Owner (2026-09-03): "take the collect off simple guided
+   * prayer — we don't want it to show on the end of the slideshow."
+   *
+   * It had been added on the office's precedent (BCP p. 98's "one or more
+   * Collects, the Collect of the Day being first"), but Simple Guided Prayer
+   * is three minutes of praise, confession, thanksgiving and supplication —
+   * not an office — and it should end where its own shape ends.
+   *
+   * The step arithmetic below still asks about `showCollect`, and it is
+   * always false now: the constant keeps every offset honest (the prayer
+   * list, the Dean's Commentary and the closing all count from it) rather
+   * than being unpicked by hand, which is how an off-by-one lands in a deck.
+   * The fetch is gone with it — no request, nothing to render.
+   */
+  const showCollect = false;
 
   /**
    * THE DEAN'S COMMENTARY, offered at the end — but only to someone who is
@@ -306,11 +308,10 @@ export default function GuidedPrayerPage() {
   const prayer = prayerIndex >= 0 ? activeIntentions[prayerIndex] : null;
   const collectStep = prayerListStep + prayerCount;
   const isPrayerList = prayer != null;
-  const isCollect = showCollect && step === collectStep;
   /** Last of the tail — after the collect, the way a reading follows prayer. */
   const deanStep = collectStep + (showCollect ? 1 : 0);
   const isDean = showDeanOffer && step === deanStep;
-  const movement = !isIntro && !isClosing && !isPrayerList && !isCollect && !isDean ? MOVEMENTS[step - 1] : null;
+  const movement = !isIntro && !isClosing && !isPrayerList && !isDean ? MOVEMENTS[step - 1] : null;
 
   const isLastMovement = movement != null && movement.n === MOVEMENTS.length;
   const hasTail = showPrayerList || showCollect || showDeanOffer;
@@ -329,10 +330,7 @@ export default function GuidedPrayerPage() {
         ? (showCollect || showDeanOffer || prayerIndex < prayerCount - 1
             ? { label: t("guided_prayer.amen"), onClick: () => setStep((s) => (s + 1) as typeof step) }
             : { label: t("guided_prayer.amen"), onClick: () => setLocation("/dashboard") })
-      : isCollect
-        ? (showDeanOffer
-            ? { label: t("guided_prayer.continue"), onClick: () => setStep((s) => (s + 1) as typeof step) }
-            : { label: t("common.done"), onClick: () => setLocation("/dashboard") })
+      /* (The collect's own button went with its slide.) */
       : isDean
         /**
          * "No thank you" is the PRIMARY here, and the offer is the secondary
@@ -552,43 +550,10 @@ export default function GuidedPrayerPage() {
               )}
             </motion.div>
           )}
-          {/**
-            * THE COLLECT, in Creation Prayer's own closing format — the owner
-            * asked to "emulate that as close as possible" (CobreatheSummary's
-            * slide 0). Same shape, left-aligned rather than centered like the
-            * rest of this deck's slides: a small uppercase eyebrow, the
-            * collect itself in plain (not italic) serif, then the reference
-            * beneath in the same small quiet type.
-            *
-            * The eyebrow IS the day's name (collect.title — "The Third
-            * Sunday after Pentecost", "Ash Wednesday"), the same field
-            * Cobreathe's own eyebrow reads, rather than a generic "The
-            * Collect of the Day" label sitting above a separate bold
-            * headline — that was this slide's own shape before, and it's
-            * the thing being replaced.
-            */}
-          {isCollect && collect?.text && (
-            <motion.div
-              key="collect"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "left", width: "100%" }}
-            >
-              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16, textAlign: "left" }}>
-                {collect.title ?? t("guided_prayer.collect_eyebrow", { defaultValue: "The Collect of the Day" })}
-              </p>
-              <p style={{ color: WARM, margin: 0, fontFamily: SERIF, fontSize: "clamp(20px, 5.5vw, 24px)", lineHeight: 1.5, letterSpacing: "0.005em", textAlign: "left" }}>
-                {collect.text}
-              </p>
-              {collect.bcpReference && (
-                <p style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT, fontSize: 12, marginTop: 16, textAlign: "left" }}>
-                  {collect.bcpReference}
-                </p>
-              )}
-            </motion.div>
-          )}
+          {/* The Collect of the Day used to close this deck. Owner: "take the
+              collect off simple guided prayer — we don't want it to show on
+              the end of the slideshow." Removed with its fetch; see
+              showCollect above for why the step arithmetic still names it. */}
 
           {/* The Dean's Commentary offer — the last slide, and only for a
               reader who keeps it and hasn't read it today. See showDeanOffer. */}
