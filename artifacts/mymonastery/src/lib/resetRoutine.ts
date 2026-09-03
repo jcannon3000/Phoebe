@@ -29,8 +29,13 @@ const DEFAULT_HIDDEN_MODULES = [
   // newsletters kept them visible after a "reset," despite this file's own
   // header promising "every optional add-on is off." Keep this list = every
   // optional module, not most of them.
+  // NOT "cac" and NOT "visio": they ARE the default now (owner, seed v7 —
+  // Simple Guided Prayer · CAC · Express Gratitude · Visio Divina in the
+  // evening). seedGuestRule() below writes both into the layout; hiding
+  // them here undid the seed on the very next line, so a signed-in reset
+  // landed on a home with no newsletter and no Visio — reset ≠ default.
   "listening", "reading", "walk", "cobreathe", "compline",
-  "examen", "cac", "ssje", "vts", "visio", "prayer-list",
+  "examen", "ssje", "vts", "prayer-list",
   "ncmp", "podcasts", "contemplation",
   "icons", "taize", "nouwen", "sojo", "grist", "spirituals", "lectio",
 ];
@@ -62,9 +67,11 @@ export async function resetRoutineToDefault(opts: {
     try {
       await saveHomeLayout({ order: [], hidden: DEFAULT_HIDDEN_MODULES, v: HOME_LAYOUT_VERSION });
     } catch { /* stays cached + dirty; retried on next app-active */ }
-    // Office anchor back to the full Office; silence goal back to the 5-min seed.
+    // Office anchor back to the full Office; NO silence goal — the default's
+    // contemplative practice is Visio Divina (seed v7), and a 5 here raised
+    // a Silence card the seed never asked for.
     try {
-      await apiRequest("PUT", "/api/me/office-prefs", { defaultPrayerLevel: "office", contemplationGoalMinutes: 5 });
+      await apiRequest("PUT", "/api/me/office-prefs", { defaultPrayerLevel: "office", contemplationGoalMinutes: 0 });
     } catch { /* non-fatal */ }
     // Sync the re-seeded per-side levels / slots up into rule_config.
     pushRoutineConfig();

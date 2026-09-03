@@ -239,7 +239,10 @@ export default function SimpleRuleEditor({
   const morningLevel = getExplicitSideLevel("morning");
   const eveningLevel = getExplicitSideLevel("evening");
   const reflection = getReflectionSource();
-  const silenceMin = getGuestSilenceGoalMinRaw() ?? 5;
+  // 0, not 5: the seed no longer writes a silence goal (Visio Divina is the
+  // default's contemplative practice), so a never-written key means "none".
+  // Defaulting to 5 here put the Silence card back on the first save.
+  const silenceMin = getGuestSilenceGoalMinRaw() ?? 0;
 
   function chooseOffice(side: OfficeSide, level: OfficeLevel) {
     setSideLevel(side, level);

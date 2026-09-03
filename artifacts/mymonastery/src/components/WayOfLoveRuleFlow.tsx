@@ -997,8 +997,10 @@ export default function WayOfLoveRuleFlow({
   // seed the field from it and the Silence step opens on what the home shows.
   const [goal, setGoal] = useState(() => {
     if (guest) {
-      const g = getGuestSilenceGoalMinRaw();
-      if (g != null) return String(g);
+      // A never-written key is "no goal" — the seed stopped writing 5 when
+      // Visio Divina became the default's contemplative practice. Falling
+      // through to "5" here resurrected the Silence card on the first commit.
+      return String(getGuestSilenceGoalMinRaw() ?? 0);
     }
     return "5";
   });
@@ -1594,6 +1596,9 @@ export default function WayOfLoveRuleFlow({
   // built. Its own tiny field rather than routing through "Create your own",
   // since that page is exactly where a relational practice must NOT show up.
   const [customRelationalTitle, setCustomRelationalTitle] = useState("");
+  // The free-text add was refused (the eight-practice cap) — the field must
+  // say so rather than keep the text and write nothing.
+  const [customRelationalRefused, setCustomRelationalRefused] = useState(false);
   useEffect(() => {
     const refresh = () => setCustomList(getCustomAnchors());
     window.addEventListener(CUSTOM_ANCHORS_EVENT, refresh);
@@ -2652,8 +2657,17 @@ export default function WayOfLoveRuleFlow({
     setExtraWantedBySide({ morning: false, evening: false });
     if (!prescribe) {
       const named = new Set((preset.customAnchors ?? []).map((c) => c.title.trim().toLowerCase()));
+      /**
+       * RELATIONAL PRACTICES SURVIVE A PRESET — the same rule customize.tsx's
+       * sweep keeps. No preset carries one, so "the preset doesn't name it"
+       * says nothing about whether the person is finished with it. The
+       * curated three used to survive here only by accident: commit() re-ran
+       * setRelationalPractices afterwards and re-added them under a NEW id,
+       * orphaning their kept-days. A hand-typed relational practice had no
+       * such rescue and was tombstoned for good.
+       */
       for (const a of getCustomAnchors()) {
-        if (!named.has(a.title.trim().toLowerCase())) removeCustomAnchor(a.id);
+        if (!named.has(a.title.trim().toLowerCase()) && !isRelationalAnchor(a)) removeCustomAnchor(a.id);
       }
       setCustomList(getCustomAnchors());
     }
@@ -6013,7 +6027,10 @@ export default function WayOfLoveRuleFlow({
                 touchedRef.current = true;
                 if (addCustomRelationalPractice(title)) {
                   setCustomRelationalTitle("");
+                  setCustomRelationalRefused(false);
                   setCustomList(getCustomAnchors());
+                } else {
+                  setCustomRelationalRefused(true);
                 }
               }}
               style={{ flexShrink: 0, background: "rgba(46,107,64,0.30)", border: `1px solid ${CARD_B_ACTIVE}`, borderRadius: 12, padding: "0 18px", color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
@@ -6030,9 +6047,9 @@ export default function WayOfLoveRuleFlow({
           * wrote nothing — the row simply came back unticked next time. The
           * tick is only honest if the screen says when it couldn't be kept.
           */}
-        {relational.length > 0 && customList.length >= 8 && !relational.every((id) =>
+        {(customRelationalRefused || (relational.length > 0 && customList.length >= 8 && !relational.every((id) =>
           customList.some((a) => a.title.trim().toLowerCase() === RELATIONAL_PRACTICES.find((r) => r.id === id)?.title.toLowerCase())
-        ) && (
+        ))) && (
           <p style={{ color: "rgba(232,190,150,0.9)", fontSize: 13.5, fontFamily: FONT, lineHeight: 1.55, margin: "16px 0 0" }}>
             {t("wol_rule.relational_at_cap", {
               defaultValue: "You're keeping the most practices Phoebe holds at once. Remove one on the next screen to make room for this.",

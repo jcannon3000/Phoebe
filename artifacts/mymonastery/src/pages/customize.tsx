@@ -18,7 +18,7 @@ import {
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin, predatesSeedStamp } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset, type OfficeSideKey } from "@/lib/rulePresets";
-import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot, RELATIONAL_PRACTICES } from "@/lib/customAnchors";
+import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot, isRelationalAnchor } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 
@@ -140,12 +140,15 @@ export default function CustomizePage() {
   const [dailyPrayer, setDailyPrayer] = useState<DailyPrayer>(() => currentDailyPrayer());
   const [ownPracticeLocked] = useState<boolean>(() => isOwnPracticeSide());
   const [newsletter, setNewsletter] = useState<ReflectionSource>(() => getReflectionSource());
+  // 0 is a real answer ("no silence goal") — the seed's default has none, now
+  // that Visio Divina is its contemplative practice. `|| 5` turned a fresh
+  // guest's 0 into a row reading "5 min" over a home with no Silence card.
   const [silenceMin, setSilenceMin] = useState<number>(() =>
-    guest ? (getGuestSilenceGoalMin() || 5) : 5,
+    guest ? getGuestSilenceGoalMin() : 5,
   );
   // Once office-prefs load for a light (non-guest) account, adopt its saved
-  // goal instead of the guest fallback default above.
-  const effectiveSilenceMin = guest ? silenceMin : (officePrefs?.contemplationGoalMinutes || silenceMin);
+  // goal instead of the guest fallback default above (`??`, so a saved 0 holds).
+  const effectiveSilenceMin = guest ? silenceMin : (officePrefs?.contemplationGoalMinutes ?? silenceMin);
 
   // "Add a practice" — read straight from the current home layout every render
   // (a guest's cached copy is instant; a light account's arrives via useAuth's
@@ -339,10 +342,10 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
        * sweep is followed by setRelationalPractices re-adding them — the two
        * adopt paths disagreeing is the exact failure this block warns about.
        */
-      const relational = new Set(RELATIONAL_PRACTICES.map((r) => r.title.trim().toLowerCase()));
+      // isRelationalAnchor, not a title Set: a hand-typed relational practice
+      // carries only the stored flag and is on no curated list to match.
       for (const a of getCustomAnchors()) {
-        const title = a.title.trim().toLowerCase();
-        if (!named.has(title) && !relational.has(title)) removeCustomAnchor(a.id);
+        if (!named.has(a.title.trim().toLowerCase()) && !isRelationalAnchor(a)) removeCustomAnchor(a.id);
       }
     }
     // The rule's own standing practices, idempotent by title.
@@ -741,7 +744,9 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             { value: "ssje", label: "SSJE — Brother, Give Us a Word" },
           ], (v) => applyNewsletter(v as ReflectionSource))}
 
-          {goalsReady && row("Silence", String(effectiveSilenceMin), SILENCE_OPTS.map((m) => ({ value: String(m), label: `${m} min` })), (v) => applySilence(parseInt(v, 10) || 5))}
+          {/* "None" leads: the default rhythm keeps no silence goal, and a
+              row that can only say 5–60 can't show the truth for it. */}
+          {goalsReady && row("Silence", String(effectiveSilenceMin), [{ value: "0", label: "None" }, ...SILENCE_OPTS.map((m) => ({ value: String(m), label: `${m} min` }))], (v) => applySilence(parseInt(v, 10) || 0))}
 
           {/* Same contemplative add-ons as the full customizer's "Add an
               additional practice" step — just one at a time here. This list

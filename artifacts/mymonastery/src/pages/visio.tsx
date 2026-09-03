@@ -1278,9 +1278,9 @@ export default function VisioPage() {
                 list mixes real subject-matter tags ("Holy Family") with
                 cataloguing tags ("Culture: African"); only the former belong
                 on a museum-label line. */}
-            {view.subjects.filter((s) => !/^(culture|community)\s*:/i.test(s)).length > 0 && (
+            {view.subjects.filter((s) => !/^(culture|community)\b/i.test(s)).length > 0 && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: "3px 0 0", lineHeight: 1.5 }}>
-                {view.subjects.filter((s) => !/^(culture|community)\s*:/i.test(s)).join(" · ")}
+                {view.subjects.filter((s) => !/^(culture|community)\b/i.test(s)).join(" · ")}
               </p>
             )}
             {/* Same rule as the title slide — a reference only when the work
