@@ -33,7 +33,7 @@ import { useEntitlements } from "@/hooks/useEntitlements";
 import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePresets";
 import { RELATIONAL_PRACTICES, activeRelationalPractices, setRelationalPractices, isRelationalAnchor, addCustomRelationalPractice, type RelationalPracticeId, getCustomAnchors, addCustomAnchor, removeCustomAnchor, updateCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues, flushRoutineConfig } from "@/lib/routineSync";
-import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
+import { saveHomeLayout, cacheHomeLayoutLocalOnly, readCachedHomeLayout, applyCachedHomeLayout, type HomeLayout } from "@/lib/homeLayoutCache";
 import { getRoutineOrder } from "@/lib/routineOrder";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw } from "@/lib/guestSeed";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
@@ -696,6 +696,18 @@ function creationHeldBySide(): boolean {
   );
 }
 
+/**
+ * The layout the HOME is actually rendering — the local cache when it is
+ * dirty (a PUT in flight or dropped) or when there is no user, else the
+ * server copy. The seeds read `user.homeLayout` directly while the home read
+ * the cache, so after a save that hadn't reached the server yet, reopening
+ * the customizer seeded every add-on OFF and the next Save wrote them all
+ * into `hidden` (audit 2026-09-03).
+ */
+function seedLayout(u: { homeLayout?: HomeLayout | null } | null | undefined): HomeLayout | null {
+  if (!u) return readCachedHomeLayout();
+  return applyCachedHomeLayout(u).homeLayout ?? null;
+}
 function homeCardOn(
   hl: { order?: string[]; hidden?: string[]; v?: number } | null | undefined,
   key: string,
@@ -1138,7 +1150,7 @@ export default function WayOfLoveRuleFlow({
     setRelational((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
   const [newsletters, setNewsletters] = useState<ReflectionSource[]>(() => {
-    const fromLayout = TRACKED_REFLECTION_SOURCES.filter((s) => homeCardOn(user?.homeLayout, s));
+    const fromLayout = TRACKED_REFLECTION_SOURCES.filter((s) => homeCardOn(seedLayout(user), s));
     if (fromLayout.length > 0) return [...fromLayout];
     const r = getReflectionSource();
     return r && r !== "none" ? [r] : ["fdd"];
@@ -1276,10 +1288,10 @@ export default function WayOfLoveRuleFlow({
   // Daily-progress checkmark. Seeded from whether the card is already on the
   // user's (current-version) home layout (in order, not hidden).
   const [extras, setExtras] = useState<{ examen: boolean; listening: boolean; podcasts: boolean; prayerList: boolean }>(() => ({
-    examen: homeCardOn(user?.homeLayout, "examen"),
-    listening: homeCardOn(user?.homeLayout, "listening"),
-    podcasts: homeCardOn(user?.homeLayout, "podcasts"),
-    prayerList: homeCardOn(user?.homeLayout, "prayer-list"),
+    examen: homeCardOn(seedLayout(user), "examen"),
+    listening: homeCardOn(seedLayout(user), "listening"),
+    podcasts: homeCardOn(seedLayout(user), "podcasts"),
+    prayerList: homeCardOn(seedLayout(user), "prayer-list"),
   }));
   // The weekly Way of Love rhythm (Commune · Go · Bless · Rest) — available to
   // everyone now (un-beta-gated), all-four-or-nothing. Turned on here and kept
@@ -1309,32 +1321,33 @@ export default function WayOfLoveRuleFlow({
     if (extrasHydrated.current || touchedRef.current || !user?.homeLayout) return;
     extrasHydrated.current = true;
     setExtras({
-      examen: homeCardOn(user.homeLayout, "examen"),
-      listening: homeCardOn(user.homeLayout, "listening"),
-      podcasts: homeCardOn(user.homeLayout, "podcasts"),
-      prayerList: homeCardOn(user.homeLayout, "prayer-list"),
+      examen: homeCardOn(seedLayout(user), "examen"),
+      listening: homeCardOn(seedLayout(user), "listening"),
+      podcasts: homeCardOn(seedLayout(user), "podcasts"),
+      prayerList: homeCardOn(seedLayout(user), "prayer-list"),
     });
     // Re-seed the reflection multi-select from the layout cards too — same
     // reason: `user` was likely null at the initializer, so an existing
     // cac+fdd+ssje selection would otherwise collapse to one on re-open.
-    const fromLayout = TRACKED_REFLECTION_SOURCES.filter((s) => homeCardOn(user.homeLayout, s));
+    const fromLayout = TRACKED_REFLECTION_SOURCES.filter((s) => homeCardOn(seedLayout(user), s));
     if (fromLayout.length > 0) setNewsletters([...fromLayout]);
     // Contemplative Prayer + the Examen are add-ons now (not office anchors), so
     // seed them from the saved office LEVEL (reflect-sit / examen) — plus the
     // examen home card — rather than from prayBySide.
     const silentSeed = getSideContemplation("morning") || getSideContemplation("evening") || getSideLevel("morning") === "reflect-sit" || getSideLevel("evening") === "reflect-sit";
-    const examenSeed = homeCardOn(user.homeLayout, "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen";
+    const examenSeed = homeCardOn(seedLayout(user), "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen";
     setContemplative((c) => touchedRef.current ? c : {
-      cobreathe: !creationHeldBySide() && homeCardOn(user.homeLayout, "cobreathe"),
-      audio: homeCardOn(user.homeLayout, "listening"),
+      cobreathe: !creationHeldBySide() && homeCardOn(seedLayout(user), "cobreathe"),
+      audio: homeCardOn(seedLayout(user), "listening"),
       examen: examenSeed,
-      walk: homeCardOn(user.homeLayout, "walk"),
-      visio: homeCardOn(user.homeLayout, "visio"),
-      reading: homeCardOn(user.homeLayout, "reading"),
-      icons: homeCardOn(user.homeLayout, "icons"),
-      taize: homeCardOn(user.homeLayout, "taize"),
-      spirituals: homeCardOn(user.homeLayout, "spirituals"),
-      compline: homeCardOn(user.homeLayout, "compline"),
+      walk: homeCardOn(seedLayout(user), "walk"),
+      visio: homeCardOn(seedLayout(user), "visio"),
+      reading: homeCardOn(seedLayout(user), "reading"),
+      icons: homeCardOn(seedLayout(user), "icons"),
+      taize: homeCardOn(seedLayout(user), "taize"),
+      spirituals: homeCardOn(seedLayout(user), "spirituals"),
+      compline: homeCardOn(seedLayout(user), "compline"),
+      lectio: homeCardOn(seedLayout(user), "lectio"),
     });
     // Per-side Contemplative Prayer — re-seed once the home layout lands.
     setContemplationBySide((p) => touchedRef.current ? p : {
@@ -1355,25 +1368,29 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; spirituals: boolean; compline: boolean; reading: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; spirituals: boolean; compline: boolean; reading: boolean; lectio: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
-    cobreathe: !creationHeldBySide() && homeCardOn(user?.homeLayout, "cobreathe"),
-    audio: homeCardOn(user?.homeLayout, "listening"),
-    examen: homeCardOn(user?.homeLayout, "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen",
-    walk: homeCardOn(user?.homeLayout, "walk"),
+    cobreathe: !creationHeldBySide() && homeCardOn(seedLayout(user), "cobreathe"),
+    audio: homeCardOn(seedLayout(user), "listening"),
+    examen: homeCardOn(seedLayout(user), "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen",
+    walk: homeCardOn(seedLayout(user), "walk"),
     // Visio Divina — praying with an artwork. Same shape as its siblings.
-    visio: homeCardOn(user?.homeLayout, "visio"),
-    icons: homeCardOn(user?.homeLayout, "icons"),
-    taize: homeCardOn(user?.homeLayout, "taize"),
-    spirituals: homeCardOn(user?.homeLayout, "spirituals"),
+    visio: homeCardOn(seedLayout(user), "visio"),
+    icons: homeCardOn(seedLayout(user), "icons"),
+    taize: homeCardOn(seedLayout(user), "taize"),
+    spirituals: homeCardOn(seedLayout(user), "spirituals"),
     // Seeded the same way as every sibling — the layout key IS the switch.
-    compline: homeCardOn(user?.homeLayout, "compline"),
+    compline: homeCardOn(seedLayout(user), "compline"),
     // Reading moved here from the unreachable "extras" step — same seeding as
     // its siblings, and now the ONLY writer of the "reading" key (extras no
     // longer carries it, so the two can't disagree).
-    reading: homeCardOn(user?.homeLayout, "reading"),
+    reading: homeCardOn(seedLayout(user), "reading"),
+    // Lectio Divina had NO state here at all, so it was absent from both
+    // onKeys and offKeys, the server backfilled it into order AND hidden,
+    // and every full-customizer Save switched it off (audit 2026-09-03).
+    lectio: homeCardOn(seedLayout(user), "lectio"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "spirituals" | "compline" | "reading") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "spirituals" | "compline" | "reading" | "lectio") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -1720,8 +1737,19 @@ export default function WayOfLoveRuleFlow({
       const params = new URLSearchParams(window.location.search);
       const rowId = params.get("edit");
       if (!rowId) return;
+      // The limited (guest / pilot) flows have no "contemplative" or
+      // "contemplation-goal" step, so a deep edit into one landed on a step
+      // goNext can't find — the file's own dead-Continue class.
+      if (guest || pilot) return;
       const st = stepForRow(rowId);
       if (!st) return;
+      // A side's SECOND practice is only in orderedSteps while the side
+      // "wants" one; deep-editing it without saying so made its Continue
+      // save the practice unconfigured instead of walking to its config.
+      if (rowId === "extra:morning" || rowId === "extra:evening") {
+        const side: OfficeSide = rowId === "extra:morning" ? "morning" : "evening";
+        setExtraWantedBySide((p) => ({ ...p, [side]: true }));
+      }
       const ret = params.get("return");
       // Same-origin PATH only — never an absolute URL, so this can't be used to
       // bounce someone off-site after saving.
@@ -2134,6 +2162,7 @@ export default function WayOfLoveRuleFlow({
        */
       ...(contemplative.taize ? ["taize"] : []),
       ...(contemplative.spirituals ? ["spirituals"] : []),
+      ...(contemplative.lectio ? ["lectio"] : []),
       ...(contemplative.reading ? ["reading"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
@@ -2148,6 +2177,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
       ...(contemplative.spirituals ? [] : ["spirituals"]),
+      ...(contemplative.lectio ? [] : ["lectio"]),
       ...(contemplative.reading ? [] : ["reading"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
@@ -2247,7 +2277,22 @@ export default function WayOfLoveRuleFlow({
     }
   };
 
-  const commit = () => {
+  /**
+   * `exit` — leave the customizer when done (the default, and what the final
+   * Save wants). The flat list's ✕-Remove and the gear's single-practice Save
+   * pass `exit: false`: they call commit() to make the edit durable and then
+   * expect to STAY on the list — but commit() ended with an unconditional
+   * onDone(), which is `setLocation("/dashboard")` in the parent. Removing
+   * one practice, or changing one and pressing Save, threw the person out to
+   * the home (audit 2026-09-03; "we've been having issues with it").
+   */
+  const commitInFlight = useRef(false);
+  const commit = (opts?: { exit?: boolean }) => {
+    // DOUBLE-TAP GUARD — the final Save fired the whole write set twice
+    // (layout PUT, routine push, office-prefs PUT, onDone) on a double tap.
+    if (commitInFlight.current) return;
+    commitInFlight.current = true;
+    setTimeout(() => { commitInFlight.current = false; }, 1500);
     // PRESCRIBE FIRST. commitExtraPractices() and the custom-anchor add below
     // WRITE — localStorage and, through customAnchors' own debounced pipe, a
     // server PUT that prescribe-routine's snapshot/suspend does not gate. With
@@ -2464,6 +2509,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.icons ? ["icons"] : []),
       ...(contemplative.taize ? ["taize"] : []),
       ...(contemplative.spirituals ? ["spirituals"] : []),
+      ...(contemplative.lectio ? ["lectio"] : []),
       ...(contemplative.reading ? ["reading"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
@@ -2479,6 +2525,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
       ...(contemplative.spirituals ? [] : ["spirituals"]),
+      ...(contemplative.lectio ? [] : ["lectio"]),
       ...(contemplative.reading ? [] : ["reading"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
@@ -2518,7 +2565,7 @@ export default function WayOfLoveRuleFlow({
      * commit used to land on a review of the rule just written. The home is
      * that review, and it is the real one — the cards they will actually tap.
      */
-    onDone();
+    if (opts?.exit !== false) onDone();
   };
   /**
    * THE RULES YOUR GROUPS KEEP — offered above the app's own presets.
@@ -2626,7 +2673,7 @@ export default function WayOfLoveRuleFlow({
     // wants Visio Divina and a Contemplative Walk gets exactly those, and
     // nothing survives from the rule being replaced.
     setContemplative({
-      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, spirituals: false, compline: false, reading: false,
+      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, spirituals: false, compline: false, reading: false, lectio: false,
       ...(preset.practices ?? {}),
     });
     /**
@@ -2671,7 +2718,10 @@ export default function WayOfLoveRuleFlow({
       }
       setCustomList(getCustomAnchors());
     }
-    for (const k of ["cobreathe", "listening", "examen", "walk", "reading", "visio"] as const) {
+    // Every SlottedPractice — a key missing here survives a preset as a stale
+    // phoebe:slot:* the edit list can read back as a ghost row (icons, taizé
+    // and spirituals were missing).
+    for (const k of ["cobreathe", "listening", "examen", "walk", "reading", "visio", "icons", "taize", "spirituals"] as const) {
       const wanted = (preset.practiceSlots ?? {})[k] != null
         || (k === "cobreathe" && preset.practices?.cobreathe)
         || (k === "listening" && preset.practices?.audio)
@@ -3160,12 +3210,16 @@ export default function WayOfLoveRuleFlow({
   const [reviewEditTick, setReviewEditTick] = useState(0);
   useEffect(() => {
     if (reviewEditTick === 0) return;   // never on mount
-    commit();
+    // Durable, but STAY — a removal from the list is not "I'm finished".
+    commit({ exit: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewEditTick]);
 
   const finishSingleEdit = () => {
-    commit();
+    // Durable, but STAY — the list below is where a gear edit returns to.
+    // With the default exit, onDone() navigated to the home and everything
+    // after this line ran on a screen that was already leaving.
+    commit({ exit: false });
     const ret = singleEditReturnTo;
     setSingleEditRow(null);
     setSingleEditReturnTo(null);
@@ -3934,15 +3988,20 @@ export default function WayOfLoveRuleFlow({
     const sideFree = (sd: OfficeSide) => { const l = getExplicitSideLevel(sd); return l === null || l === "ask"; };
     const sideHolds = (sd: OfficeSide, lvl: OfficeLevel) => getExplicitSideLevel(sd) === lvl;
     const layoutNow = () => {
-      const hl = user?.homeLayout as { order?: string[]; hidden?: string[] } | undefined;
+      // The EFFECTIVE layout (see seedLayout) — building on a stale or null
+      // server copy wrote a layout containing only the key being added, and
+      // every other card fell out of the home.
+      const hl = seedLayout(user) as { order?: string[]; hidden?: string[] } | null;
       return { order: [...(hl?.order ?? [])], hidden: [...(hl?.hidden ?? [])] };
     };
     const unhideCard = (key: string) => {
       const l = layoutNow();
       if (!l.order.includes(key)) l.order.push(key);
       l.hidden = l.hidden.filter((k) => k !== key);
-      cacheHomeLayoutLocalOnly({ order: l.order, hidden: l.hidden });
-      void saveHomeLayout({ order: l.order, hidden: l.hidden });
+      // Same split as commit(): a guest's PUT 401s and leaves the dirty flag
+      // retrying forever; saveHomeLayout already caches for a signed-in user.
+      if (user) void saveHomeLayout({ order: l.order, hidden: l.hidden });
+      else cacheHomeLayoutLocalOnly({ order: l.order, hidden: l.hidden });
     };
     const afterAdd = () => {
       touchedRef.current = true;
@@ -3987,7 +4046,7 @@ export default function WayOfLoveRuleFlow({
       }));
     const practiceItem = (key: SlottedPractice | "compline", emoji: string, name: string): AddItem => ({
       key: `practice:${key}`, emoji, name,
-      inRoutine: () => homeCardOn(user?.homeLayout, key === "listening" ? "listening" : key),
+      inRoutine: () => homeCardOn(seedLayout(user), key === "listening" ? "listening" : key),
       add: () => {
         unhideCard(key);
         if (key !== "compline") setPracticeSlot(key as SlottedPractice, "anytime");
@@ -3996,7 +4055,7 @@ export default function WayOfLoveRuleFlow({
     });
     const reflectionItem = (src: "cac" | "fdd" | "ssje" | "vts", name: string): AddItem => ({
       key: `refl:${src}`, emoji: src === "vts" ? "🦩" : "📖", name,
-      inRoutine: () => homeCardOn(user?.homeLayout, src),
+      inRoutine: () => homeCardOn(seedLayout(user), src),
       add: () => { unhideCard(src); afterAdd(); },
     });
     const CATALOG: Record<string, { title: string; emoji: string; sub: string; items: AddItem[] }> = {
@@ -4062,7 +4121,8 @@ export default function WayOfLoveRuleFlow({
         localStorage.setItem("phoebe:notify-target:morning", notifyTarget.morning);
         localStorage.setItem("phoebe:notify-target:evening", notifyTarget.evening);
       } catch { /* private mode */ }
-      pushRoutineConfig();
+      // Signed-in only, like commit(): a guest has no server rule_config.
+      if (user) pushRoutineConfig();
       if (user) apiRequest("PUT", "/api/me/office-prefs", {
         morning: reminderIsOn("morning") ? PRAY_REMINDER_PREF[prayBySide.morning] : "none",
         evening: reminderIsOn("evening") ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
@@ -4213,6 +4273,10 @@ export default function WayOfLoveRuleFlow({
               const min = Math.max(1, Math.min(180, parseInt(sitMinutes, 10) || 10));
               chooseGoal(String(min));
               goalEngagedRef.current = true;
+              // A guest's home reads the device goal key, which only commit()
+              // wrote — and this path returns to the list, so commit() may
+              // never run. Without it the Silence card never appeared.
+              if (guest) setGuestSilenceGoalMin(min);
               if (user) apiRequest("PUT", "/api/me/office-prefs", { contemplationGoalMinutes: min, contemplationReminderEnabled: true })
                 .then(() => qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] })).catch(() => { /* best-effort */ });
               afterAdd();
@@ -4502,6 +4566,31 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(contemplative.icons, `🪟 ${t("wol_rule.cp_icons", { defaultValue: "Praying with Icons" })}`, t("wol_rule.cp_icons_sub", { defaultValue: "Sit with an icon — return to it daily." }), () => toggleContemplative("icons"))}
           {choiceRow(contemplative.taize, `🕯️ ${t("wol_rule.cp_taize", { defaultValue: "Taizé meditation" })}`, t("wol_rule.cp_taize_sub", { defaultValue: "A meditation from Taizé — it waits until you read it." }), () => toggleContemplative("taize"))}
           {choiceRow(contemplative.reading, `📚 ${t("wol_rule.cp_reading", { defaultValue: "Reading" })}`, t("wol_rule.cp_reading_sub", { defaultValue: "A book, a page a day — with a bar showing how far in you are." }), () => toggleContemplative("reading"))}
+          {/* When they read — the picker lived on the dead "extras" step, so
+              Reading's slot could never be changed from the customizer. */}
+          {contemplative.reading && (
+            <div style={{ margin: "-2px 0 6px", padding: "0 2px" }}>
+              <p style={{ color: SAGE_DIM, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 8px", fontFamily: FONT }}>
+                {t("wol_rule.reading_when", { defaultValue: "When do you read?" })}
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
+                {CUSTOM_SLOTS.map((s) => {
+                  const on = readingSlot === s;
+                  return (
+                    <button key={s} type="button" onClick={() => chooseReadingSlot(s)}
+                      style={{ ...FROST_BLUR, background: on ? CARD_ACTIVE : CARD, border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`, color: on ? CREAM : SAGE, borderRadius: 10, padding: "9px 4px", fontSize: 12.5, fontWeight: on ? 700 : 500, fontFamily: FONT, cursor: "pointer", textAlign: "center" }}>
+                      {SLOT_LABEL[s]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {/* Spirituals and Lectio — in the options array, in both onKeys copies,
+              on the server, and (until now) not on this step. See the note
+              above: ADD IT HERE TOO. */}
+          {choiceRow(contemplative.spirituals, `🎶 ${t("wol_rule.cp_spirituals", { defaultValue: "Meditating on Spirituals" })}`, t("wol_rule.cp_spirituals_sub", { defaultValue: "A spiritual for the day, sung as prayer." }), () => toggleContemplative("spirituals"))}
+          {choiceRow(contemplative.lectio, `📜 ${t("wol_rule.cp_lectio", { defaultValue: "Lectio Divina" })}`, t("wol_rule.cp_lectio_sub", { defaultValue: "Read a passage slowly, three times — listen, reflect, pray." }), () => toggleContemplative("lectio"))}
           {/* Last, because it's the answer when none of the named ones is. */}
           {choiceRow(
             customPracticeOn,
@@ -6320,7 +6409,7 @@ export default function WayOfLoveRuleFlow({
           </div>
         ) : (
           <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <button onClick={isLastStep ? commit : goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+            <button onClick={isLastStep ? () => commit() : goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
               {/* "Save", not "Save my daily rhythm" (owner) — it is the last
                   tap of the flow and it goes straight to the home. */}
               {isLastStep ? t("wol_rule.finish_save", { defaultValue: "Save" }) : t("ruleOfLife.continue", { defaultValue: "Continue" })}

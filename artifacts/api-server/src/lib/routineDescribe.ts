@@ -78,6 +78,16 @@ const PRACTICE_LABEL: Record<string, string> = {
   // Card titles, so no articles: "a Contemplative Walk" reads fine inside a
   // sentence and wrong as the name at the top of a card.
   walk: "Contemplative Walk", reading: "Reading", examen: "The Examen",
+  /**
+   * EVERY layout-driven practice, or it has a card and no row. The loop below
+   * skips any key that isn't named here, so Compline, Praying with Icons, the
+   * Taizé meditation, Spirituals, Podcasts and Lectio Divina were on the home
+   * with nothing in "Your rhythm" to order, ✕ or gear — the same failure the
+   * loop's own comment records for Visio, one list further down (audit
+   * 2026-09-03). Keep in step with HOME_MODULE_KEYS.
+   */
+  compline: "Compline", icons: "Praying with Icons", taize: "Taizé meditation",
+  spirituals: "Meditating on Spirituals", podcasts: "Podcasts", lectio: "Lectio Divina",
 };
 
 /**
@@ -102,6 +112,7 @@ const PRACTICE_EMOJI: Record<string, string> = {
   // visio is in PRACTICE_LABEL; without it here the row fell back to ✨.
   cobreathe: "🌍", listening: "🎵", walk: "🚶🏽", reading: "📖", examen: "🌗",
   visio: "🖼️",
+  compline: "🌙", icons: "🪟", taize: "🕯️", spirituals: "🎶", podcasts: "🎙️", lectio: "📜",
 };
 
 const ALWAYS_ANYTIME = new Set(["cobreathe", "listening", "examen", "walk"]);
