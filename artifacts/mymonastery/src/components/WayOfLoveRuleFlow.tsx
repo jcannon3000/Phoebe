@@ -4402,7 +4402,10 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(
             effectiveEntryChoice === "manual",
             `✍🏽 ${t("wol_rule.entry_manual", { defaultValue: "Edit your routine" })}`,
-            t("wol_rule.entry_manual_sub", { defaultValue: "Your day as it stands — reorder it, change a practice, take one off." }),
+            // Says what it DOES: this walks the flow step by step (owner, 2026-09-03:
+            // the flat list "we moved away from"). The old copy promised a
+            // reorderable list that never opened.
+            t("wol_rule.entry_manual_sub", { defaultValue: "Walk through your routine step by step — when you pray, each practice, your newsletters." }),
             () => setEntryChoice("manual"),
           )}
           {/* Adopting REPLACES the rhythm (the owner's own ruling), so this is
@@ -4986,7 +4989,16 @@ export default function WayOfLoveRuleFlow({
           {side === "morning" && choiceRow(
             prayBySide[side] === "fdd",
             `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Reflection" })}`,
-            t("wol_rule.pray_fdd_sub", { defaultValue: "Today's meditation from Forward Movement." }),
+            // NAMES THE SOURCE — the same lookup the learn step's tick uses
+            // (anchorReflectionBySide → explicit side pref → fdd). It said
+            // "from Forward Movement" for everyone, so a CAC reader saw the
+            // wrong newsletter named on their own morning practice (owner:
+            // "fix the forward vs CAC issue").
+            t("wol_rule.pray_fdd_sub", {
+              defaultValue: "Today's meditation from {{source}}, in place of an office.",
+              source: NEWSLETTERS.find((n) => n.id === (anchorReflectionBySide[side] ?? getSideReflectionExplicit(side) ?? "fdd"))?.sub
+                ?? t("wol_rule.pray_fdd_source_generic", { defaultValue: "your newsletter" }),
+            }),
             () => {
               if (prayBySide[side] === "fdd") { touchedRef.current = true; choosePrayBySide(side, "none"); return; }
               touchedRef.current = true;
