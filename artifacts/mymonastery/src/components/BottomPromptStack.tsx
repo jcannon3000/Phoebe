@@ -40,6 +40,12 @@ const IMMERSIVE_PRACTICE_ROUTES = new Set<string>([
   // the Back link beneath it, which is how it was found. Designing your rule is
   // also a sitting you shouldn't be interrupted during.
   "/rule-of-life", "/customize",
+  // …and the PRESET EDITOR, which mounts that same customizer to edit a rule
+  // (admin-presets.tsx). Same screen, same hovering Continue — the banner sat
+  // squarely on it while designing, found on the simulator. Listed as a route
+  // rather than gated on "is the wizard open", so it can't drift out of step
+  // with a page that mounts the flow tomorrow.
+  "/admin/presets",
   // A brand-new visitor sees the overview deck before ever reaching home —
   // don't compete for their attention with a notifications ask until they've
   // actually landed on the app. (Moved up from NotificationReminderBanner so
