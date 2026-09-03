@@ -3404,7 +3404,20 @@ export default function WayOfLoveRuleFlow({
       finishSingleEdit();
       return;
     }
-    if (next) setStep(next);
+    if (next) { setStep(next); return; }
+    /**
+     * NO NEXT STEP MEANS THIS ONE IS THE END — so Continue must SAVE.
+     *
+     * Most steps draw their own `ctaButton(Continue, goNext)` rather than the
+     * shared footer button, which is the one that knows about the last step.
+     * On any step that turns out to be last, that Continue did nothing at all:
+     * the file's documented dead-Continue class, and the reason a preset
+     * edited through this flow could reach Relational Practices with no way to
+     * finish (reported from the simulator). Committing here makes every such
+     * button honest without having to find and re-wire each one — and where
+     * the shared button is used, it already commits, so nothing changes.
+     */
+    commit();
   };
   const goPrev = () => {
     // One practice, one slide: Back returns to the list rather than reversing
