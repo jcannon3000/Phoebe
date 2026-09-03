@@ -34,7 +34,7 @@ import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePreset
 // The presets WITH the admin's edits laid over them (lib/rulePresetsStore).
 // RULE_PRESETS stays imported: it is the fallback this returns when there is
 // no overlay, and the type still comes from there.
-import { getEffectiveRulePresets } from "@/lib/rulePresetsStore";
+import { getEffectiveRulePresets, resolveAdoptPreset } from "@/lib/rulePresetsStore";
 import { RELATIONAL_PRACTICES, activeRelationalPractices, setRelationalPractices, isRelationalAnchor, addCustomRelationalPractice, type RelationalPracticeId, getCustomAnchors, addCustomAnchor, removeCustomAnchor, updateCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues, flushRoutineConfig } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly, readCachedHomeLayout, applyCachedHomeLayout, type HomeLayout } from "@/lib/homeLayoutCache";
@@ -757,6 +757,19 @@ export type RoutineSpec = {
   silenceLadderEnabled: boolean;
   homeLayout: { order: string[]; hidden: string[]; v?: number };
   ruleConfig: Record<string, string>;
+  /**
+   * The relational practices the flow's own step collected.
+   *
+   * They are CUSTOM ANCHORS on a real account, which is a different channel
+   * from this spec — and in prescribe mode commit() hands off before it writes
+   * any anchors, so without this the Relational step would render, accept a
+   * tick and silently drop it. A step that shows, takes input and saves
+   * nothing is the inert-fix class this file has been bitten by before.
+   *
+   * Optional, and ignored by the server's sanitizeSpec (a prescribed-routine
+   * link still carries no anchors); the preset editor is what reads it.
+   */
+  relational?: RelationalPracticeId[];
 };
 
 export default function WayOfLoveRuleFlow({
@@ -2236,6 +2249,8 @@ export default function WayOfLoveRuleFlow({
       if (k.startsWith("phoebe:course:")) delete ruleConfig[k];
     }
     return {
+      // The flow's own Relational step — see RoutineSpec.relational.
+      relational: [...relational],
       v: 1,
       officePrefs,
       silenceLadderEnabled: wantLadder,
@@ -2672,14 +2687,21 @@ export default function WayOfLoveRuleFlow({
     autoAdoptedRef.current = true;
     try {
       const id = new URLSearchParams(window.location.search).get("adopt");
-      const preset = id ? getEffectiveRulePresets().find((p) => p.id === id) : null;
+      // resolveAdoptPreset, not the picker list alone: an admin editing a
+      // preset seeds from the OVERLAY row (their last save), and the default
+      // rhythm answers to its own reserved slug.
+      const preset = id ? resolveAdoptPreset(id) : null;
       // NEVER silently replace an EXISTING rule — the Centering course's
       // practice bridge lands here with ?adopt=centering, and one tap was
       // wiping a person's Morning/Evening offices ("it reverted back to
       // contemplation"). Auto-adopt is for first authors only; anyone with a
       // rule lands in their normal customizer, rule intact.
       const hasRule = !!(getExplicitSideLevel("morning") || getExplicitSideLevel("evening"));
-      if (preset && !hasRule) { setShowWhy(false); adoptRule(preset); }
+      // …but in PRESCRIBE mode there is no rule of theirs to protect: the flow
+      // is being used to design someone else's, or to edit a preset, and the
+      // whole point is to start from the rule named in the link. An admin
+      // always has a rule of their own, so without this the seed never ran.
+      if (preset && (!hasRule || prescribe)) { setShowWhy(false); adoptRule(preset); }
     } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

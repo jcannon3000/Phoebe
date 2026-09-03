@@ -1,9 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { RULE_PRESETS, type RulePreset } from "@/lib/rulePresets";
-import { fetchRoutinePresetOverlay, refreshRoutinePresets, type DefaultSeed } from "@/lib/rulePresetsStore";
+import WayOfLoveRuleFlow, { type RoutineSpec } from "@/components/WayOfLoveRuleFlow";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { snapshotRoutine, restoreRoutine } from "@/lib/routineDesignGuard";
+import { setRoutineSyncSuspended } from "@/lib/routineSync";
+import {
+  fetchRoutinePresetOverlay, refreshRoutinePresets, resolveAdoptPreset,
+  specToPresetBody, specToDefaultSeed, SEED_DEFAULT_FALLBACK, type DefaultSeed,
+} from "@/lib/rulePresetsStore";
 import { TRACKED_REFLECTION_SOURCES, type ReflectionSource } from "@/lib/officePrefs";
 import { RELATIONAL_PRACTICES, CUSTOM_SLOTS, type CustomSlot, type RelationalPracticeId } from "@/lib/customAnchors";
 
@@ -111,6 +118,43 @@ export default function AdminPresetsPage() {
   const [editing, setEditing] = useState<string | null>(null);   // preset id/slug
   const [editingDefault, setEditingDefault] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  /**
+   * EDIT OPENS THE REAL CUSTOMIZER.
+   *
+   * Owner: "what I wanted for each is when I hit Edit it would go through the
+   * full flow as if I was editing my own routine." So this mounts the same
+   * WayOfLoveRuleFlow everyone else uses, in PRESCRIBE mode — the mode that
+   * exists for designing a rule that isn't yours: commit() hands the finished
+   * routine to onPrescribe instead of writing it to the admin's account.
+   *
+   * The flow still writes as it goes (that is how it captures a rule-config),
+   * so the admin's own rhythm is snapshotted on the way in, the sync is
+   * suspended for the session, and everything is put back on the way out —
+   * the same guard prescribing uses (lib/routineDesignGuard).
+   */
+  const [designing, setDesigning] = useState<string | null>(null);
+  const snapRef = useRef<Record<string, string> | null>(null);
+  const restoredRef = useRef(false);
+  const beginDesign = (slug: string) => {
+    snapRef.current = snapshotRoutine();
+    restoredRef.current = false;
+    setRoutineSyncSuspended(true);
+    // The flow seeds itself from ?adopt= on mount (resolveAdoptPreset knows
+    // the overlay rows and the default's reserved slug), so the URL carries
+    // which rule is being edited. replace, so Back doesn't re-enter it.
+    try { window.history.replaceState(null, "", `/admin/presets?adopt=${encodeURIComponent(slug)}`); } catch { /* ignore */ }
+    setDesigning(slug);
+  };
+  const endDesign = () => {
+    if (!restoredRef.current && snapRef.current) { restoreRoutine(snapRef.current); restoredRef.current = true; }
+    try { window.history.replaceState(null, "", "/admin/presets"); } catch { /* ignore */ }
+    setDesigning(null);
+  };
+  // Leaving the page mid-design must still put the admin's rhythm back.
+  useEffect(() => () => {
+    if (!restoredRef.current && snapRef.current) { restoreRoutine(snapRef.current); restoredRef.current = true; }
+  }, []);
+  const flowLeaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
@@ -163,6 +207,23 @@ export default function AdminPresetsPage() {
     } catch (e) {
       setError(`Couldn't revert — ${(e as Error)?.message ?? "unknown error"}.`);
     }
+  };
+
+  /** The customizer finished: map what it built onto the stored shape, put the
+   *  admin's own rhythm back, and save. */
+  const saveFromFlow = (spec: RoutineSpec) => {
+    const slug = designing;
+    if (!slug) return;
+    if (slug === "__default__") {
+      const base = storedDefault ?? SEED_DEFAULT_FALLBACK;
+      void save(slug, specToDefaultSeed(spec, base));
+    } else {
+      const current = effective.find((e) => e.id === slug);
+      const base = (current?.body ?? resolveAdoptPreset(slug)) as RulePreset | null;
+      if (!base) { setError("That rule disappeared while it was being edited — nothing was saved."); endDesign(); return; }
+      void save(slug, specToPresetBody(spec, base), rowFor(slug)?.hidden ?? false);
+    }
+    endDesign();
   };
 
   // ── The default rhythm ─────────────────────────────────────────────────────
@@ -426,6 +487,22 @@ export default function AdminPresetsPage() {
     </div>
   );
 
+  if (designing) {
+    // Mounted the way rule-of-life.tsx and prescribe-routine.tsx mount it —
+    // chromeless Layout with the leaf backdrop — so editing a preset looks
+    // exactly like editing your own rhythm, which is the whole ask.
+    return (
+      <Layout bgPhoto={flowLeaf} chromeless onClose={endDesign}>
+        <WayOfLoveRuleFlow
+          prescribe
+          onPrescribe={saveFromFlow}
+          onBack={endDesign}
+          onDone={() => { /* unused in prescribe mode — commit() routes to onPrescribe */ }}
+        />
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "18px 18px 60px", display: "flex", flexDirection: "column", gap: 18 }}>
@@ -454,9 +531,12 @@ export default function AdminPresetsPage() {
                 What a new device seeds, and where “reset routine to default” lands.
               </p>
             </div>
-            {!editingDefault && (
-              <button type="button" style={btn()} onClick={() => setEditingDefault(true)}>Edit</button>
-            )}
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <button type="button" style={btn(true)} onClick={() => beginDesign("__default__")}>Edit</button>
+              {!editingDefault && (
+                <button type="button" style={btn()} onClick={() => setEditingDefault(true)}>Quick fields</button>
+              )}
+            </div>
           </div>
           {editingDefault && <div style={{ marginTop: 16 }}>{defaultEditor}</div>}
         </div>
@@ -479,7 +559,10 @@ export default function AdminPresetsPage() {
                       {e.body.blurb ?? "—"}
                     </p>
                   </div>
-                  {!open && <button type="button" style={btn()} onClick={() => openPreset(e.id)}>Edit</button>}
+                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <button type="button" style={btn(true)} onClick={() => beginDesign(e.id)}>Edit</button>
+                    {!open && <button type="button" style={btn()} onClick={() => openPreset(e.id)}>Quick fields</button>}
+                  </div>
                 </div>
                 {open && <div style={{ marginTop: 16 }}>{presetEditor}</div>}
               </div>
