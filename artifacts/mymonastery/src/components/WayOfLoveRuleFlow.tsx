@@ -2701,7 +2701,19 @@ export default function WayOfLoveRuleFlow({
       // is being used to design someone else's, or to edit a preset, and the
       // whole point is to start from the rule named in the link. An admin
       // always has a rule of their own, so without this the seed never ran.
-      if (preset && (!hasRule || prescribe)) { setShowWhy(false); adoptRule(preset); }
+      if (preset && (!hasRule || prescribe)) {
+        setShowWhy(false);
+        // DESIGNING (the preset editor, prescribing for someone else): seed
+        // the flow and open it on its first step, writing nothing until the
+        // final Save. Adopting for YOURSELF still commits — that is the one
+        // tap the shared link promises.
+        adoptRule(preset, { seedOnly: prescribe });
+        if (prescribe) {
+          setEntryChoiceMade(true);
+          setManualMode("scratch");
+          setStep("sides");
+        }
+      }
     } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -2709,7 +2721,18 @@ export default function WayOfLoveRuleFlow({
   // Adopting a named starter rule presets the flow state, then parks its id so
   // THIS effect (next render, after the setters apply) writes it via the same
   // commit() the full flow uses — landing on the review screen to behold it.
-  const adoptRule = (preset: RulePreset) => {
+  /**
+   * `seedOnly` — fill the flow's state from the rule and STOP there.
+   *
+   * Adopting normally ends by committing (that is what "adopt this rule"
+   * means: the person tapped a card and expects a rhythm). The preset EDITOR
+   * wants the same seeding and none of the writing: it opens the wizard on a
+   * rule so an admin can walk it. Without this, tapping Edit mounted the flow,
+   * auto-adopted, committed on the next render and saved the preset back
+   * unchanged — the admin never saw a single step (caught on the simulator by
+   * eleanor-3a).
+   */
+  const adoptRule = (preset: RulePreset, opts?: { seedOnly?: boolean }) => {
     touchedRef.current = true;
     lastAdoptedPresetRef.current = preset.id;
     setSides(preset.sides);
@@ -2892,6 +2915,8 @@ export default function WayOfLoveRuleFlow({
       }
     }
     try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } })); } catch { /* ignore */ }
+    // Seeding only: no commit, and the caller decides where the flow lands.
+    if (opts?.seedOnly) return;
     setAdoptId(preset.id);
   };
   useEffect(() => {
