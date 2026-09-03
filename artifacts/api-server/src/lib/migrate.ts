@@ -1818,6 +1818,29 @@ export async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    /**
+     * THE STARTER RHYTHMS, editable by a super admin (schema/routine_presets).
+     *
+     * An OVERLAY on the presets that ship in code: a row whose slug matches a
+     * built-in replaces it, a new slug adds one, `hidden` takes one off the
+     * picker, and the reserved slug "__default__" is the default rhythm a new
+     * device seeds. An empty table means the app behaves exactly as it does
+     * with no admin edits at all.
+     */
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS routine_presets (
+        id SERIAL PRIMARY KEY,
+        slug TEXT NOT NULL UNIQUE,
+        body JSONB NOT NULL,
+        hidden BOOLEAN NOT NULL DEFAULT FALSE,
+        sort_order INTEGER,
+        updated_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS routine_presets_by_slug ON routine_presets (slug)`);
+
     // The only read pattern: this user's snapshots, newest first.
     await run(client, `CREATE INDEX IF NOT EXISTS routine_snapshots_user_created_idx ON routine_snapshots (user_id, created_at)`);
 

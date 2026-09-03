@@ -60,6 +60,7 @@ import ruleOfLifeRouter from "./ruleOfLife";
 import buildfaithRouter from "./buildfaith";
 import prescribedRoutinesRouter from "./prescribed-routines";
 import routineInterviewRouter from "./routine-interview";
+import routinePresetsRouter from "./routine-presets";
 import routineAuditRouter from "./routine-audit";
 import routineSnapshotsRouter from "./routine-snapshots";
 
@@ -194,6 +195,8 @@ router.use(reflectionsRouter);
 router.use(buildfaithRouter);
 router.use("/rule-of-life", ruleOfLifeRouter);
 router.use(prescribedRoutinesRouter);
+// The editable starter rhythms + the default one (super-admin writes, public reads).
+router.use(routinePresetsRouter);
 router.use(routineInterviewRouter);
 router.use(routineAuditRouter);
 router.use(routineSnapshotsRouter);

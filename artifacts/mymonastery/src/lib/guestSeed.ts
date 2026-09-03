@@ -23,6 +23,7 @@ import { setSideLevel, setReflectionSource, setSideReflection, getExplicitSideLe
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, cacheHomeLayoutLocalOnly, addHomeCard } from "@/lib/homeLayoutCache";
 import { setPracticeSlot, setRelationalPractices, activeRelationalPractices } from "@/lib/customAnchors";
 import { clearRoutineSyncClock } from "@/lib/routineSync";
+import { getStoredDefaultSeed, type DefaultSeed } from "@/lib/rulePresetsStore";
 
 const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 
@@ -134,15 +135,72 @@ function seedCac(): void {
   if (changed) cacheHomeLayoutLocalOnly(layout);
 }
 
+/**
+ * THE DEFAULT AS DATA — a rhythm a super admin edited (routine_presets'
+ * "__default__" row, cached by lib/rulePresetsStore).
+ *
+ * The same writes the hardcoded seed below makes, taken from the row instead:
+ * the two side levels, the newsletter, the cards to turn on, the relational
+ * practices, the silence goal and any practice slots. When there is no row —
+ * no network yet, an untouched install, an admin who never edited it — the
+ * hardcoded default stands, which is why this returns false rather than
+ * writing a half-rhythm.
+ */
+function applyDefaultSeed(d: DefaultSeed | null): boolean {
+  if (!d) return false;
+  setSideLevel("morning", d.morning as Parameters<typeof setSideLevel>[1]);
+  setSideLevel("evening", d.evening as Parameters<typeof setSideLevel>[1]);
+  if (d.reflection && d.reflection !== "none") {
+    setReflectionSource(d.reflection);
+    setSideReflection("morning", d.reflection);
+  }
+  let layout: ReturnType<typeof addHomeCard>["layout"] | null = readCachedHomeLayout();
+  let changed = false;
+  for (const key of d.cards ?? []) {
+    const r = addHomeCard(layout, key);
+    layout = r.layout; changed = changed || r.changed;
+  }
+  if (changed && layout) cacheHomeLayoutLocalOnly(layout);
+  for (const [key, slot] of Object.entries(d.slots ?? {})) {
+    setPracticeSlot(key as Parameters<typeof setPracticeSlot>[0], slot as Parameters<typeof setPracticeSlot>[1]);
+  }
+  setRelationalPractices(d.relational ?? []);
+  setGuestSilenceGoalMin(d.silenceMin ?? 0);
+  // What version of the admin's default this device is standing on, so a later
+  // edit can reach an untouched device (SEED_VERSION does the same job for
+  // changes made in code).
+  try { localStorage.setItem(DEFAULT_SEED_VERSION_KEY, String(d.version ?? 1)); } catch { /* private mode */ }
+  return true;
+}
+
+/** The admin default this device last applied, or 0. */
+function appliedDefaultVersion(): number {
+  try { return parseInt(localStorage.getItem(DEFAULT_SEED_VERSION_KEY) ?? "0", 10) || 0; } catch { return 0; }
+}
+export const DEFAULT_SEED_VERSION_KEY = "phoebe:guest-seed-default-version";
+
 /** Move a device still sitting on an OLD untouched seed onto today's default.
  *  No-op once stamped, and no-op the moment the levels don't match a seed we
  *  wrote — a customized rule is never overwritten. */
 function migrateStaleSeed(): void {
   try {
-    if (localStorage.getItem(SEED_VERSION_KEY) === SEED_VERSION) return;
+    const stored = getStoredDefaultSeed();
+    // An admin edit reaches an untouched device even when the CODE seed hasn't
+    // moved — that's what the stored version is for. Without this the overlay
+    // would only ever apply to installs that had never opened the app.
+    const adminMoved = !!stored && (stored.version ?? 1) > appliedDefaultVersion();
+    if (localStorage.getItem(SEED_VERSION_KEY) === SEED_VERSION && !adminMoved) return;
     const morning = getExplicitSideLevel("morning");
     const evening = getExplicitSideLevel("evening");
     const untouched = STALE_SEEDS.some(([m, e]) => m === morning && e === evening);
+    if (untouched && applyDefaultSeed(stored)) {
+      // The admin's default replaced the code one wholesale; nothing below
+      // applies (it would re-add practices their rhythm leaves out).
+      try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
+      clearRoutineSyncClock();
+      localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
+      return;
+    }
     if (untouched) {
       setSideLevel("morning", "guided-prayer");
       // NO EVENING OFFICE (owner, v7): Visio Divina is the evening practice
@@ -245,6 +303,16 @@ export function seedGuestRule(): void {
      * only the single-reflection fallback (which is what silently dropped
      * CAC the moment Visio's layout write made the fallback stop firing).
      */
+    // THE ADMIN'S DEFAULT, when there is one (routine_presets "__default__").
+    // The block below is what ships in the app, and it is what a device with
+    // no cached overlay gets — a first open with no network still lands on a
+    // real rhythm rather than waiting for one.
+    if (applyDefaultSeed(getStoredDefaultSeed())) {
+      localStorage.setItem(SEED_KEY, todayYmd());
+      localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
+      clearRoutineSyncClock();
+      return;
+    }
     setSideLevel("morning", "guided-prayer");
     // NO EVENING OFFICE (owner, v7): "Simple guided prayer as the morning
     // practice, the CAC newsletter, the Gratitude relational practice, and
