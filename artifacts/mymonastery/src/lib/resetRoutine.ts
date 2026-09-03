@@ -13,6 +13,7 @@ import { clearRoutineKeys, pushRoutineConfig, ROUTINE_SYNCED_EVENT } from "@/lib
 import { clearCustomAnchors, syncCustomAnchorsFromServer, type CustomAnchorSnapshot } from "@/lib/customAnchors";
 import { clearHomeLayoutCache, saveHomeLayout, HOME_LAYOUT_VERSION } from "@/lib/homeLayoutCache";
 import { clearGuestSeed, seedGuestRule } from "@/lib/guestSeed";
+import { getStoredDefaultSeed } from "@/lib/rulePresetsStore";
 import { OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 
 // The default home shows the office (Pray) + the reflection (FDD) + the pinned
@@ -40,6 +41,15 @@ const DEFAULT_HIDDEN_MODULES = [
   "icons", "taize", "nouwen", "sojo", "grist", "spirituals", "lectio",
 ];
 
+/** Every module a rhythm may or may not carry — what an admin-set default is
+ *  measured against. (The staples the home always shows are excluded where
+ *  this is used.) */
+const ALL_OPTIONAL_MODULES = [
+  "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen",
+  "visio", "icons", "lectio", "taize", "spirituals", "cac", "fdd", "ssje", "vts",
+  "nouwen", "sojo", "grist", "ncmp", "podcasts", "prayer-list",
+];
+
 export async function resetRoutineToDefault(opts: {
   realUser: boolean;
   // Write the given fresh /auth/me object into the query cache (qc.setQueryData).
@@ -64,14 +74,32 @@ export async function resetRoutineToDefault(opts: {
   if (opts.realUser) {
     // Default home layout: office + FDD visible, every add-on hidden. An empty
     // `order` lets the server fill in the canonical order; `hidden` does the work.
+    /**
+     * WHEN AN ADMIN HAS SET THE DEFAULT, RESET MEANS THEIR DEFAULT.
+     *
+     * seedGuestRule (step 2 above) already applies the stored row, so a
+     * hardcoded hidden-list here would hide the very cards it just turned on
+     * — reset ≠ default, which is the exact bug 4fe70067 fixed for the code
+     * default. Everything the admin's rhythm doesn't name is hidden, except
+     * the three the home always carries.
+     */
+    const adminDefault = getStoredDefaultSeed();
+    const ALWAYS_VISIBLE = ["office", "feeds", "requests"];
+    const hidden = adminDefault
+      ? [...new Set([...DEFAULT_HIDDEN_MODULES, ...ALL_OPTIONAL_MODULES])]
+          .filter((k) => !adminDefault.cards.includes(k) && !ALWAYS_VISIBLE.includes(k))
+      : DEFAULT_HIDDEN_MODULES;
     try {
-      await saveHomeLayout({ order: [], hidden: DEFAULT_HIDDEN_MODULES, v: HOME_LAYOUT_VERSION });
+      await saveHomeLayout({ order: [], hidden, v: HOME_LAYOUT_VERSION });
     } catch { /* stays cached + dirty; retried on next app-active */ }
     // Office anchor back to the full Office; NO silence goal — the default's
     // contemplative practice is Visio Divina (seed v7), and a 5 here raised
     // a Silence card the seed never asked for.
     try {
-      await apiRequest("PUT", "/api/me/office-prefs", { defaultPrayerLevel: "office", contemplationGoalMinutes: 0 });
+      await apiRequest("PUT", "/api/me/office-prefs", {
+        defaultPrayerLevel: "office",
+        contemplationGoalMinutes: adminDefault?.silenceMin ?? 0,
+      });
     } catch { /* non-fatal */ }
     // Sync the re-seeded per-side levels / slots up into rule_config.
     pushRoutineConfig();

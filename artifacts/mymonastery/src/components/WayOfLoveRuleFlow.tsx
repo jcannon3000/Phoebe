@@ -31,6 +31,10 @@ import { summarizeRuleSpec, type RuleSpec } from "@/lib/ruleSummary";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePresets";
+// The presets WITH the admin's edits laid over them (lib/rulePresetsStore).
+// RULE_PRESETS stays imported: it is the fallback this returns when there is
+// no overlay, and the type still comes from there.
+import { getEffectiveRulePresets } from "@/lib/rulePresetsStore";
 import { RELATIONAL_PRACTICES, activeRelationalPractices, setRelationalPractices, isRelationalAnchor, addCustomRelationalPractice, type RelationalPracticeId, getCustomAnchors, addCustomAnchor, removeCustomAnchor, updateCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues, flushRoutineConfig } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly, readCachedHomeLayout, applyCachedHomeLayout, type HomeLayout } from "@/lib/homeLayoutCache";
@@ -2668,7 +2672,7 @@ export default function WayOfLoveRuleFlow({
     autoAdoptedRef.current = true;
     try {
       const id = new URLSearchParams(window.location.search).get("adopt");
-      const preset = id ? RULE_PRESETS.find((p) => p.id === id) : null;
+      const preset = id ? getEffectiveRulePresets().find((p) => p.id === id) : null;
       // NEVER silently replace an EXISTING rule — the Centering course's
       // practice bridge lands here with ?adopt=centering, and one tap was
       // wiping a person's Morning/Evening offices ("it reverted back to
@@ -3855,7 +3859,7 @@ export default function WayOfLoveRuleFlow({
         </>,
       );
     }
-    const pending = presetPending ? RULE_PRESETS.find((p) => p.id === presetPending) ?? null : null;
+    const pending = presetPending ? getEffectiveRulePresets().find((p) => p.id === presetPending) ?? null : null;
     if (pending) {
       return shell(
         <>
@@ -3964,7 +3968,7 @@ export default function WayOfLoveRuleFlow({
               </p>
             </>
           )}
-          {RULE_PRESETS.map((preset) => (
+          {getEffectiveRulePresets().map((preset) => (
             <button
               key={preset.id}
               type="button"

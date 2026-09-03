@@ -18,6 +18,7 @@ import {
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin, predatesSeedStamp } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset, type OfficeSideKey } from "@/lib/rulePresets";
+import { getEffectiveRulePresets } from "@/lib/rulePresetsStore";
 import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot, isRelationalAnchor, activeRelationalPractices, setRelationalPractices } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
@@ -670,7 +671,7 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             Start from a preset rhythm
           </summary>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-            {RULE_PRESETS.filter((p) => p.title).map((preset) => (
+            {getEffectiveRulePresets().filter((p) => p.title).map((preset) => (
               <button
                 key={preset.id}
                 type="button"

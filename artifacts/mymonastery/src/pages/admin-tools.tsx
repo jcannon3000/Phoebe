@@ -198,6 +198,15 @@ export default function AdminToolsPage() {
                     (ROUTINE_INTERVIEW_ENTRY_HIDDEN in WayOfLoveRuleFlow), so
                     without a door here the page was only reachable by typing
                     the URL. Owner: put it in the admin tools. */}
+                {/* The starter rhythms, and the default a new device seeds
+                    (owner: "an admin tool where I could edit the preset
+                    routines including the default one"). */}
+                <LinkRow
+                  emoji="🌱"
+                  label="Preset routines"
+                  description="Edit the starter rhythms and the default one"
+                  onClick={() => setLocation("/admin/presets")}
+                />
                 <LinkRow
                   emoji="💬"
                   label="Routine interview"

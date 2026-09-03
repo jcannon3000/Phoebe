@@ -425,6 +425,13 @@ const PilotBuildPage = lazy(() => import("./pages/pilot-build"));
 const CustomizePage = lazy(() => import("./pages/customize"));
 const AdminMinistriesPage = lazy(() => import("./pages/admin-ministries"));
 const AdminBreathPlacesPage = lazy(() => import("./pages/admin-breath-places"));
+const AdminPresetsPage = lazy(() => import("@/pages/admin-presets"));
+
+function RoutinePresetRefresh(): null {
+  useEffect(() => { void refreshRoutinePresets(); }, []);
+  return null;
+}
+import { refreshRoutinePresets } from "@/lib/rulePresetsStore";
 const AdminUserMetricsPage = lazy(() => import("./pages/admin-user-metrics"));
 const MyPrayerFeedsPage = lazy(() => import("./pages/my-prayer-feeds"));
 const AdminNewsletterPage = lazy(() => import("./pages/admin-newsletter"));
@@ -1068,6 +1075,8 @@ function Router() {
       <Route path="/admin/spirituals" component={AdminSpiritualsPage} />
       <Route path="/admin/ministries" component={AdminMinistriesPage} />
       <Route path="/admin/breath-places" component={AdminBreathPlacesPage} />
+      {/* The starter rhythms + the default one, as data (owner). */}
+      <Route path="/admin/presets" component={AdminPresetsPage} />
       <Route path="/admin/users" component={AdminUserMetricsPage} />
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />
@@ -1402,6 +1411,10 @@ function App() {
           <LocaleSync />
           <AppOpenTracker />
           <WidgetSync />
+          {/* The admin's preset overlay, refreshed in the background — never
+              blocking: everything reads the cache, and an empty cache is the
+              presets that ship in the app. */}
+          <RoutinePresetRefresh />
           <OfficeOfflinePrefetch />
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />
