@@ -933,7 +933,14 @@ function OpeningSplash() {
   // it fire exactly once, the moment user first appears.
   const startedRef = useRef(false);
   useEffect(() => {
-    if (startedRef.current || phase === "gone" || !native || !user) return;
+    // No longer gated on `user` (owner, 2026-09-04: "it took like 5 seconds
+    // of the flash … this is CRUCIAL"). Waiting for /api/auth/me made the
+    // sign-in round trip part of the splash on every first launch of the day
+    // (the persisted cache is busted daily), and the home's cards are held
+    // until the splash finishes. The once-per-launch flag is stamped here at
+    // the START of the beat exactly as before; the render guard below still
+    // keeps the splash on screen while auth is loading, so nothing flashes.
+    if (startedRef.current || phase === "gone" || !native) return;
     startedRef.current = true;
     try { sessionStorage.setItem("phoebe:splash-shown", "1"); } catch { /* ignore */ }
     // Nothing to read anymore — just the icon — so this is a beat, not a hold.
@@ -941,7 +948,7 @@ function OpeningSplash() {
     // enough" — the beat plus the fade plus the failsafe below bound the wait.
     const id = setTimeout(() => setPhase((cur) => (cur === "in" ? "out" : cur)), 700);
     return () => clearTimeout(id);
-  }, [user, phase, native]);
+  }, [phase, native]);
   /**
    * Failsafe dismissal — the reason the splash gets stuck.
    *
