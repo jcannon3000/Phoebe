@@ -937,7 +937,9 @@ function OpeningSplash() {
     startedRef.current = true;
     try { sessionStorage.setItem("phoebe:splash-shown", "1"); } catch { /* ignore */ }
     // Nothing to read anymore — just the icon — so this is a beat, not a hold.
-    const id = setTimeout(() => setPhase((cur) => (cur === "in" ? "out" : cur)), 1200);
+    // 0.7s (was 1.2s): owner, 2026-09-04, "it's still not loading fast
+    // enough" — the beat plus the fade plus the failsafe below bound the wait.
+    const id = setTimeout(() => setPhase((cur) => (cur === "in" ? "out" : cur)), 700);
     return () => clearTimeout(id);
   }, [user, phase, native]);
   /**
@@ -951,8 +953,8 @@ function OpeningSplash() {
    *
    * Same class as the blank-screen rule this codebase already keeps — a fetch
    * that gates the UI needs a timeout. Six seconds is far past a healthy
-   * launch (the normal hold is 1.2s) and far short of the "is this app
-   * broken?" threshold.
+   * launch (the normal hold is 0.7s) and far short of the "is this app
+   * broken?" threshold. Three seconds (was six): owner, 2026-09-04.
    */
   useEffect(() => {
     if (phase !== "in" || !native) return;
@@ -964,7 +966,7 @@ function OpeningSplash() {
       startedRef.current = true;
       try { sessionStorage.setItem("phoebe:splash-shown", "1"); } catch { /* ignore */ }
       setPhase((cur) => (cur === "in" ? "out" : cur));
-    }, 6000);
+    }, 3000);
     return () => clearTimeout(id);
   }, [phase, native]);
 
