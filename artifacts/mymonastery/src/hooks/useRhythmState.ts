@@ -812,7 +812,8 @@ export function useRhythmState(): RhythmState {
   // …and the weekly one, gated on the layout AND on being an admin. Both
   // halves matter: the gate is what makes it admin-only, and the layout key is
   // what lets an admin turn it off like any other card.
-  const andrewsActive = !!user?.isSuperAdmin && homeCardActive(hl, "andrews");
+  // Public since 2026-09-04 (owner: "let's just make Andrew's Version public").
+  const andrewsActive = homeCardActive(hl, "andrews");
   // Compline — the night office, offered as a contemplative add-on card.
   // complineActive means "the user has this in their rhythm" (mirrors every
   // other *Active flag — never time-gated, so the card is reliably present
