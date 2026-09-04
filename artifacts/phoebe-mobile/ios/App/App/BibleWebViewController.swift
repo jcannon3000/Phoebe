@@ -106,6 +106,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     var officeSlideLabel: String?
     /** The office's own section label ("LESSON", "CANTICLE", …). */
     var officeSectionLabel: String?
+    /** Earlier issues of a newsletter, newest first — shown under a "Previous"
+     *  menu top right on article pages (owner: "'previous', which would list
+     *  the last 7"). Empty means no menu. Picking one loads it in place. */
+    var previousIssues: [(title: String, url: URL)] = []
     /** A screenshot of the office slide, taken just before this browser opened
      *  — the veil for `officeChrome`, in place of the Splash leaf. nil falls
      *  back to Splash, so a snapshot failure degrades rather than crashes. */
@@ -1495,6 +1499,20 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             // the toggle here too — "put standard in the top right" — so a
             // reader who wants the rest of the page (the fuller post, the
             // subscribe form) can have it back in one tap.
+            // "Previous" — the last issues of a newsletter, where the caller
+            // passed them. A menu of titles, like the office's section
+            // picker; each loads in place so Done still finishes the reading.
+            var previousItem: UIBarButtonItem? = nil
+            if !previousIssues.isEmpty {
+                let actions = previousIssues.map { issue in
+                    UIAction(title: issue.title) { [weak self] _ in
+                        self?.webView.load(URLRequest(url: issue.url))
+                    }
+                }
+                let item = UIBarButtonItem(title: "Previous", image: nil, primaryAction: nil, menu: UIMenu(children: actions))
+                item.accessibilityLabel = "Previous issues"
+                previousItem = item
+            }
             if isReaderHost {
                 // Titled from the state, not hardcoded: the reader can be off
                 // when this chrome is built, and a button labelled "Standard"
@@ -1506,9 +1524,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 // corner as on the office chrome, so the control doesn't move
                 // between one reader and another. (An earlier "left side of
                 // the screen" is superseded; it read oddly beside Done.)
-                navigationItem.rightBarButtonItem = standardItem
+                navigationItem.rightBarButtonItems = [standardItem] + (previousItem.map { [$0] } ?? [])
             } else {
-                navigationItem.rightBarButtonItem = nil
+                navigationItem.rightBarButtonItem = previousItem
             }
             title = nil
         } else {
@@ -2871,6 +2889,7 @@ final class BibleBrowser: NSObject {
         officeTitle: String? = nil,
         officeSlideLabel: String? = nil,
         officeSectionLabel: String? = nil,
+        previousIssues: [(title: String, url: URL)] = [],
         snapshotVeilImage: UIImage? = nil,
         onOfficePrev: (() -> Void)? = nil,
         onOfficeNext: (() -> Void)? = nil,
@@ -2888,6 +2907,7 @@ final class BibleBrowser: NSObject {
         vc.officeTitleText = officeTitle
         vc.officeSlideLabel = officeSlideLabel
         vc.officeSectionLabel = officeSectionLabel
+        vc.previousIssues = previousIssues
         vc.snapshotVeilImage = snapshotVeilImage
         vc.onOfficePrev = onOfficePrev
         vc.onOfficeNext = onOfficeNext

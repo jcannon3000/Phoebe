@@ -105,4 +105,13 @@ router.get("/andrews/latest", async (_req: Request, res: Response): Promise<void
   res.json(list[0]);
 });
 
+// GET /api/andrews/posts → the newest posts, newest first, capped at ten.
+// Feeds the reader's "Previous" menu (owner: "'previous', which would list
+// the last 7") — the client takes the seven it shows.
+router.get("/andrews/posts", async (_req: Request, res: Response): Promise<void> => {
+  const list = await weeklyPosts();
+  res.setHeader("Cache-Control", "public, max-age=900");
+  res.json(list.slice(0, 10));
+});
+
 export default router;

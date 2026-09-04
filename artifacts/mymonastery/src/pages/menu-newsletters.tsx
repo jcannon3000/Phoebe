@@ -16,6 +16,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { apiRequest } from "@/lib/queryClient";
 import { markInboxRead, type InboxItem, type InboxSource } from "@/lib/taizeInbox";
+import { usePreviousIssues } from "@/hooks/usePreviousIssues";
 import {
   reflectionSourceUrl,
   markCacRead, markFddRead, markSsjeRead, markVtsRead,
@@ -135,8 +136,15 @@ export default function MenuNewslettersPage() {
   // Taizé opens in the reader as its home card does; Andrew's Version opens
   // the Substack page as they built it (owner: no reader on that one), so
   // both match their cards exactly.
+  // The last seven issues ride along so the reader can offer "Previous"
+  // top right (owner) — where the office's Options menu used to appear on
+  // Andrew's, which opened as a plain page. Both weeklies now open as
+  // articles.
+  const taizePrevious = usePreviousIssues("taize", group === "weekly");
+  const andrewsPrevious = usePreviousIssues("andrews", group === "weekly" && !!user?.isSuperAdmin);
   const openWeekly = (source: InboxSource, item: InboxItem | null, fallbackUrl: string, reader: boolean) => () => {
-    const opts = reader ? { reader: true } : undefined;
+    const previous = source === "taize" ? taizePrevious : andrewsPrevious;
+    const opts = { ...(reader ? { reader: true } : {}), ...(previous.length ? { previous } : {}) };
     if (!item?.url) { openExternal(fallbackUrl, opts); return; }
     openExternalThenMarkRead(item.url, () => markInboxRead(source, item.id), opts);
   };
@@ -178,7 +186,7 @@ export default function MenuNewslettersPage() {
       key: "andrews", emoji: "📰", title: "Andrew's Version", publisher: "Yale Divinity School", cadence: "weekly" as const,
       about: "A weekly lectionary commentary from Yale Divinity School",
       followed: on("andrews"), done: rs.andrewsDone, latestTitle: andrewsLatest?.title,
-      open: openWeekly("andrews", andrewsLatest, andrewsLatest?.url ?? "https://andrewmcgowan.substack.com/", false),
+      open: openWeekly("andrews", andrewsLatest, andrewsLatest?.url ?? "https://andrewmcgowan.substack.com/", true),
     } satisfies Entry] : []),
   ];
   const inGroup = entries.filter((e) => e.cadence === group);

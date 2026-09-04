@@ -1351,7 +1351,7 @@ declare global {
       // got blocked. Calling Browser.open directly from the click
       // handler keeps it within the gesture, so SFSafariViewController
       // is allowed to present.
-      openInAppBrowser?: (url: string, opts?: { lightChrome?: boolean; backChrome?: boolean; officeChrome?: boolean; officeTitle?: string; slideLabel?: string; sectionLabel?: string }) => Promise<void>;
+      openInAppBrowser?: (url: string, opts?: { lightChrome?: boolean; backChrome?: boolean; officeChrome?: boolean; officeTitle?: string; slideLabel?: string; sectionLabel?: string; previous?: { title: string; url: string }[] }) => Promise<void>;
       // SFSafariViewController with entersReaderIfAvailable — shares Safari's
       // system-wide cookie jar (unlike openInAppBrowser's own WKWebView data
       // store). See lib/openExternal.ts's `reader` option on the web side.
@@ -1506,7 +1506,7 @@ function exposePublicApi() {
     isNative() {
       return Capacitor.isNativePlatform();
     },
-    async openInAppBrowser(url: string, opts?: { lightChrome?: boolean; backChrome?: boolean; officeChrome?: boolean; officeTitle?: string; slideLabel?: string; sectionLabel?: string }) {
+    async openInAppBrowser(url: string, opts?: { lightChrome?: boolean; backChrome?: boolean; officeChrome?: boolean; officeTitle?: string; slideLabel?: string; sectionLabel?: string; previous?: { title: string; url: string }[] }) {
       if (!url) return;
       // Prefer the native BibleBrowser plugin (custom WKWebView wrapped
       // in a UINavigationController) — its Done button stays pinned at
@@ -1517,7 +1517,7 @@ function exposePublicApi() {
       // the SFSafariViewController path via Browser.open, then to
       // window.open as a last resort.
       try {
-        const cap = (window as { Capacitor?: { Plugins?: Record<string, { open?: (opts: { url: string } & { lightChrome?: boolean; backChrome?: boolean; officeChrome?: boolean; officeTitle?: string; slideLabel?: string; sectionLabel?: string }) => Promise<void> }> } }).Capacitor;
+        const cap = (window as { Capacitor?: { Plugins?: Record<string, { open?: (opts: { url: string } & { lightChrome?: boolean; backChrome?: boolean; officeChrome?: boolean; officeTitle?: string; slideLabel?: string; sectionLabel?: string; previous?: { title: string; url: string }[] }) => Promise<void> }> } }).Capacitor;
         const biblePlugin = cap?.Plugins?.BibleBrowser;
         if (biblePlugin?.open) {
           await biblePlugin.open({
@@ -1532,6 +1532,8 @@ function exposePublicApi() {
             // and BibleBrowserPlugin's getBool.
             backChrome: !!opts?.backChrome,
             officeChrome: !!opts?.officeChrome,
+            // The reader's "Previous" menu — the last issues of a newsletter.
+            ...(opts?.previous?.length ? { previous: opts.previous } : {}),
             officeTitle: opts?.officeTitle,
             slideLabel: opts?.slideLabel,
             sectionLabel: opts?.sectionLabel,

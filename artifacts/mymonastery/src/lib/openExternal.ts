@@ -21,6 +21,7 @@ type PhoebeNative = {
       officeTitle?: string;
       slideLabel?: string;
       sectionLabel?: string;
+      previous?: { title: string; url: string }[];
     },
   ) => Promise<void>;
   preloadInAppBrowser?: (url: string) => Promise<void>;
@@ -47,6 +48,13 @@ type PhoebeNative = {
  */
 type OpenOpts = {
   reader?: boolean;
+  /**
+   * Earlier issues of the thing being opened — the native reader shows them
+   * under a "Previous" menu top right (owner: "'previous', which would list
+   * the last 7"), in place of the office Options menu that a plain open
+   * gets. Newest first; the reader loads whichever is picked in place.
+   */
+  previous?: { title: string; url: string }[];
   /**
    * Label the one top-left button "Back" instead of "Done".
    *
@@ -157,7 +165,7 @@ export function openExternal(url: string, opts?: OpenOpts): boolean {
    */
   if (opts?.system) return openWebTab(url);
   if (native?.openInAppBrowser) {
-    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back });
+    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back, ...(opts?.previous?.length ? { previous: opts.previous } : {}) });
     return true;
   }
   // Web fallback. noopener for security; noreferrer to keep the
@@ -182,7 +190,7 @@ export function openExternalThenMarkRead(
   // read the INSTANT the link opens rather than when the person comes back —
   // that was the "newsletter dot flips at tap time" bug.
   if (native?.isNative?.() && native?.openInAppBrowser) {
-    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back });
+    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back, ...(opts?.previous?.length ? { previous: opts.previous } : {}) });
     const onDone = () => {
       window.removeEventListener("phoebe:browserfinished", onDone);
       markRead();

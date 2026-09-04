@@ -139,6 +139,14 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
         let officeTitle = call.getString("officeTitle")
         let officeSlideLabel = call.getString("slideLabel")
         let officeSectionLabel = call.getString("sectionLabel")
+        // Earlier issues for the reader's "Previous" menu — [{title, url}],
+        // newest first; anything malformed is simply left out.
+        let previousIssues: [(title: String, url: URL)] = (call.getArray("previous") ?? []).compactMap { raw in
+            guard let d = raw as? [String: Any],
+                  let t = d["title"] as? String, !t.isEmpty,
+                  let u = d["url"] as? String, let url = URL(string: u) else { return nil }
+            return (title: t, url: url)
+        }
         // A snapshot of the office slide already on screen — becomes the
         // loading veil in place of the generic Splash leaf, so the browser
         // opens as a continuation of what the reader was just looking at
@@ -217,6 +225,7 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                         officeTitle: officeTitle,
                         officeSlideLabel: officeSlideLabel,
                         officeSectionLabel: officeSectionLabel,
+                        previousIssues: previousIssues,
                         snapshotVeilImage: snapshotVeilImage,
                         onOfficePrev: onOfficePrev,
                         onOfficeNext: onOfficeNext,
@@ -240,6 +249,7 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                 officeTitle: officeTitle,
                 officeSlideLabel: officeSlideLabel,
                 officeSectionLabel: officeSectionLabel,
+                previousIssues: previousIssues,
                 snapshotVeilImage: snapshotVeilImage,
                 onOfficePrev: onOfficePrev,
                 onOfficeNext: onOfficeNext,

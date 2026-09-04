@@ -41,6 +41,7 @@ import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { waitingLabel, markTaizeRead, markAndrewsRead } from "@/lib/taizeInbox";
+import { usePreviousIssues } from "@/hooks/usePreviousIssues";
 import { useBetaStatus } from "@/hooks/useDemo";
 import {
   COURSE_EVENT, COURSE_LENGTH, COURSE_TITLE,
@@ -1139,7 +1140,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const courseShown = courseIsAdmin && !isCourseFinished();
 
   const dailyPrayerCourseCard = {
-    key: "daily-prayer-course", emoji: "✝️", rgb: "200,164,106",
+    key: "daily-prayer-course", emoji: "🙏🏽", rgb: "200,164,106",
     done: courseDone,
     href: "/daily-prayer-course",
     title: COURSE_TITLE,
@@ -1149,6 +1150,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
   };
 
+  // The last seven issues for the reader's "Previous" menu (owner). Fetched
+  // only while the card can show, so a home without the weeklies asks for
+  // nothing.
+  const taizePrevious = usePreviousIssues("taize", taizeShown);
+  const andrewsPrevious = usePreviousIssues("andrews", andrewsShown);
   const taizeCard = {
     key: "taize", emoji: "🕯️", rgb: "120,150,175",
     done: taizeDone,
@@ -1169,14 +1175,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     onClick: () => {
       const m = taizeWaiting;
       if (m) {
-        openExternalThenMarkRead(m.url, () => { markTaizeRead(m.id); swellHaptic(); }, { reader: true });
+        openExternalThenMarkRead(m.url, () => { markTaizeRead(m.id); swellHaptic(); }, { reader: true, previous: taizePrevious });
         return;
       }
       // Done — nothing new since the last one. Reopen the one already read
       // rather than no-op: markTaizeRead on an id already marked is a no-op,
       // so this is just "let them read it again," not a re-completion.
       const last = taizeLatest;
-      if (last) openExternalThenMarkRead(last.url, () => {}, { reader: true });
+      if (last) openExternalThenMarkRead(last.url, () => {}, { reader: true, previous: taizePrevious });
     },
     title: t("rhythm.card_taize", { defaultValue: "Taizé meditation" }),
     blurb: taizeWaiting
@@ -1206,11 +1212,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     onClick: () => {
       const post = andrewsWaiting;
       if (post) {
-        openExternalThenMarkRead(post.url, () => { markAndrewsRead(post.id); swellHaptic(); });
+        openExternalThenMarkRead(post.url, () => { markAndrewsRead(post.id); swellHaptic(); }, { reader: true, previous: andrewsPrevious });
         return;
       }
       const last = andrewsLatest;
-      if (last) openExternalThenMarkRead(last.url, () => {});
+      if (last) openExternalThenMarkRead(last.url, () => {}, { reader: true, previous: andrewsPrevious });
     },
     title: t("rhythm.card_andrews", { defaultValue: "Andrew's Version" }),
     blurb: andrewsWaiting
