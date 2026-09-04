@@ -437,6 +437,8 @@ export function useWidgetSync(): void {
       if (kind === "walk") return "";
       if (kind === "audio") return "/listening";
       if (kind === "visio") return "/visio";
+      if (kind === "lectio") return "/lectio";
+      if (kind === "reading") return "/reading-log";
       if (kind === "creation") return `/cobreathe?side=${side}`;
       return `/contemplation?begin=1&side=${side}`;
     };

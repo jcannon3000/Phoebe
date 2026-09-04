@@ -46,12 +46,12 @@ export default function MenuPracticesPage() {
           // Owner: put Lectio Divina under Scripture Reading — same
           // lectionary source (today's Old Testament / New Testament /
           // Gospel), a different, slower way to sit with one of them.
-          { emoji: "📜", label: "Lectio Divina", sub: "Meditate on today's readings", onClick: () => go("/lectio") },
         ],
       }, {
         items: [
           // Contemplation leads the rest of the list.
           { emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", onClick: () => go("/contemplation") },
+          { emoji: "📜", label: "Lectio Divina", sub: "Meditate on today's readings", onClick: () => go("/lectio") },
           // Novenas hidden for all users per owner request (2026-08-07) — see
           // useRhythmState.ts's NOVENAS_ENABLED comment for why.
           { emoji: "🌗", label: "The Examen", sub: "Review the day with God", onClick: () => go("/examen") },

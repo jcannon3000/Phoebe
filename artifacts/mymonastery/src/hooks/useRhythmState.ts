@@ -550,6 +550,7 @@ export function useRhythmState(): RhythmState {
     examen: hasPracticeDoneToday("examen"),
     listening: hasPracticeDoneToday("listening"),
     reading: hasPracticeDoneToday("reading"),
+    lectio: hasPracticeDoneToday("lectio"),
     podcasts: hasPracticeDoneToday("podcasts"),
     walk: hasPracticeDoneToday("walk"),
     walkSkipped: hasPracticeSkippedToday("walk"),
@@ -563,6 +564,7 @@ export function useRhythmState(): RhythmState {
       examen: hasPracticeDoneToday("examen"),
       listening: hasPracticeDoneToday("listening"),
       reading: hasPracticeDoneToday("reading"),
+    lectio: hasPracticeDoneToday("lectio"),
       podcasts: hasPracticeDoneToday("podcasts"),
       walk: hasPracticeDoneToday("walk"),
       walkSkipped: hasPracticeSkippedToday("walk"),
@@ -1481,7 +1483,11 @@ export function useRhythmState(): RhythmState {
     kind === "walk" ? (practiceLocal.walk || serverDone("walk"))
       : kind === "audio" ? (practiceLocal.listening || serverDone("listening"))
         : kind === "visio" ? (practiceLocal.visio || serverDone("visio"))
-          : null;
+          // A side that keeps Lectio Divina or Reading as its contemplative
+          // practice (owner, 2026-09-04) is done when that practice was.
+          : kind === "lectio" ? (practiceLocal.lectio || serverDone("lectio"))
+            : kind === "reading" ? (practiceLocal.reading || serverDone("reading"))
+              : null;
   const morningContemplationDone = kindKept(morningContemplationKind)
     ?? (contemplationSideDone.morning || sidesToday.morning);
   const eveningContemplationDone = kindKept(eveningContemplationKind)

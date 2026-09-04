@@ -1553,7 +1553,7 @@ export default function WayOfLoveRuleFlow({
   // and its own row in the standing-practices multi-select — it was simply
   // never added to THIS list, so the "which practice?" dropdown on a side
   // couldn't offer the one contemplative practice that shipped last.
-  const CONTEMPLATIVE_FORMS = ["prayer", "creation", "walk", "audio", "visio"] as const;
+  const CONTEMPLATIVE_FORMS = ["prayer", "creation", "walk", "audio", "visio", "lectio", "reading"] as const;
   type ContemplativeForm = (typeof CONTEMPLATIVE_FORMS)[number];
   // Owner: "the Examen and Compline shouldn't be in contemplative practice in
   // evening as they can be chosen other places." Compline is one of the prayer
@@ -1587,6 +1587,8 @@ export default function WayOfLoveRuleFlow({
         if (named?.key === "visio") return "visio";
         if (named?.key === "walk") return "walk";
         if (named?.key === "listening") return "audio";
+        if (named?.key === "lectio") return "lectio";
+        if (named?.key === "reading") return "reading";
       }
       const on = getSideContemplationExplicit(s) ?? (getSideLevel(s) === "reflect-sit");
       if (!on) return null;
@@ -2161,7 +2163,8 @@ export default function WayOfLoveRuleFlow({
           const f = contemplativeForm[side];
           setSideContemplationKind(side,
             f === "creation" ? "creation" : f === "walk" ? "walk"
-              : f === "audio" ? "audio" : f === "visio" ? "visio" : "silent");
+              : f === "audio" ? "audio" : f === "visio" ? "visio"
+                : f === "lectio" ? "lectio" : f === "reading" ? "reading" : "silent");
         }
         // Sit length is per side (config picker), NOT the daily goal.
         if (contemplationBySide[side]) setSideMinutes(side, minutesBySide[side]);
@@ -2447,7 +2450,8 @@ export default function WayOfLoveRuleFlow({
           const f = contemplativeForm[side];
           setSideContemplationKind(side,
             f === "creation" ? "creation" : f === "walk" ? "walk"
-              : f === "audio" ? "audio" : f === "visio" ? "visio" : "silent");
+              : f === "audio" ? "audio" : f === "visio" ? "visio"
+                : f === "lectio" ? "lectio" : f === "reading" ? "reading" : "silent");
         }
         // Sit length is per side (config picker), NOT the daily goal — a
         // 90-minute goal must not put a 90-minute sit on each card (owner).
@@ -5495,7 +5499,9 @@ export default function WayOfLoveRuleFlow({
       : f === "creation" ? { emoji: "🌍", label: t("wol_rule.cf_creation", { defaultValue: "Creation Prayer" }), sub: t("wol_rule.cf_creation_sub", { defaultValue: "Breathing with creation, at one shared pace." }) }
       : f === "walk" ? { emoji: "🚶🏽", label: t("wol_rule.cf_walk", { defaultValue: "Contemplative Walk" }), sub: t("wol_rule.cf_walk_sub", { defaultValue: "A walk kept as prayer, attentive to what's around you." }) }
       : f === "audio" ? { emoji: "🎵", label: t("wol_rule.cf_audio", { defaultValue: "Audio Divina" }), sub: t("wol_rule.cf_audio_sub", { defaultValue: "Connecting with God through music." }) }
-      : { emoji: "🖼️", label: t("wol_rule.cf_visio", { defaultValue: "Visio Divina" }), sub: t("wol_rule.cf_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }) };
+            : f === "visio" ? { emoji: "🖼️", label: t("wol_rule.cf_visio", { defaultValue: "Visio Divina" }), sub: t("wol_rule.cf_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }) }
+      : f === "lectio" ? { emoji: "📜", label: t("wol_rule.cf_lectio", { defaultValue: "Lectio Divina" }), sub: t("wol_rule.cf_lectio_sub", { defaultValue: "Read a passage slowly, three times — listen, reflect, pray." }) }
+      : { emoji: "📚", label: t("wol_rule.cf_reading", { defaultValue: "Reading" }), sub: t("wol_rule.cf_reading_sub", { defaultValue: "A book, a page a day — with a bar showing how far in you are." }) };
     return shell(
       <>
         {backRow(goPrev)}

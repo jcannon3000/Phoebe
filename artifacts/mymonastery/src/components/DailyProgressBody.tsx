@@ -1374,6 +1374,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     walk: { emoji: "🚶🏽", title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), blurb: t("rhythm.blurb_walk", { defaultValue: "A walk kept as prayer" }), href: "" },
     audio: { emoji: "🎵", title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }), blurb: t("rhythm.blurb_listening", { defaultValue: "Connecting with God through music" }), href: "/listening" },
     visio: { emoji: "🖼️", title: t("rhythm.card_visio", { defaultValue: "Visio Divina" }), blurb: t("rhythm.blurb_visio", { defaultValue: "Pray with the day's image" }), href: "/visio" },
+    lectio: { emoji: "📜", title: t("rhythm.card_lectio", { defaultValue: "Lectio Divina" }), blurb: t("rhythm.blurb_lectio", { defaultValue: "Read a passage slowly, three times" }), href: "/lectio" },
+    reading: { emoji: "📚", title: t("rhythm.card_reading", { defaultValue: "Reading" }), blurb: t("rhythm.blurb_reading_side", { defaultValue: "A page a day" }), href: "/reading-log" },
   };
   const namedSide = (side: "morning" | "evening") => NAMED_SIDE_PRACTICE[sideKind(side)] ?? null;
   // Kept for the handful of places that genuinely have no side in hand.

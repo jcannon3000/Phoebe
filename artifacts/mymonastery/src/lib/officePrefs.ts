@@ -1013,8 +1013,10 @@ export function setSideContemplation(side: OfficeSide, v: boolean): void {
  * app's own practices; they belong in the KIND, beside silence and the breath,
  * not disguised as something home-made.
  */
-export type ContemplationKind = "silent" | "creation" | "walk" | "audio" | "visio";
-const CONTEMPLATION_KINDS: ContemplationKind[] = ["silent", "creation", "walk", "audio", "visio"];
+// "lectio" and "reading" joined 2026-09-04 (owner: Lectio Divina and Reading
+// as a side's contemplative practice, "not just for the contemplative slide").
+export type ContemplationKind = "silent" | "creation" | "walk" | "audio" | "visio" | "lectio" | "reading";
+const CONTEMPLATION_KINDS: ContemplationKind[] = ["silent", "creation", "walk", "audio", "visio", "lectio", "reading"];
 
 export function getContemplationStyleGlobal(): ContemplationKind {
   try {
