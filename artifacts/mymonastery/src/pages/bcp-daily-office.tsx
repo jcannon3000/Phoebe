@@ -712,7 +712,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    * That is exactly what happened — the completion fell through to "morning"
    * because every branch above it names an evening mode.
    */
-  const isReadingDeck = resolvedMode === "scripture";
+  const isReadingDeck = resolvedMode === "scripture" || resolvedMode === "sunday";
 
   const completedCardKey = (() => {
     // A reading has no office card to animate.
@@ -5984,6 +5984,10 @@ export default function BcpDailyOfficePage() {
     // pray" to honour (no listen/venite variants) and no beta gate, so none of
     // the branching below applies to it.
     if (mode === "scripture") { setShowMode("scripture"); return; }
+    // The Sunday readings deck likewise — and without this branch the page
+    // fell through to the Daily Prayer chooser (owner: "why in the world
+    // would Sunday readings go to Daily Prayer").
+    if (mode === "sunday") { setShowMode("sunday"); return; }
     if (
       mode === "morning" ||
       mode === "evening" ||
