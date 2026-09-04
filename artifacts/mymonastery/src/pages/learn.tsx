@@ -13,6 +13,8 @@ import { SPIRITUAL_JOURNEY, JOURNEY_TOTAL, CENTERING_PRAYER, CENTERING_TOTAL } f
 import { WAY_OF_LOVE, WOL_TOTAL } from "@/lib/wayOfLoveCourse";
 import { useCourseProgress } from "@/lib/courseProgress";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
+import { useBetaStatus } from "@/hooks/useDemo";
+import { DAILY_PRAYER_SERMON } from "@/lib/sermonDailyPrayer";
 
 interface LearnTopic {
   id: string;
@@ -41,7 +43,26 @@ export default function LearnPage() {
   // can carry the resolved arrays without re-running hooks on render.
   const gatheringSlides = useGatheringSlides();
   const correspondenceSlides = useCorrespondenceSlides();
+  // ADMINS ONLY for now: the sermon below is the preacher's own work, and it
+  // waits behind this gate until he has said yes to it living here.
+  const { rawIsAdmin: isAdmin } = useBetaStatus();
   const TOPICS: LearnTopic[] = [
+    /**
+     * A SERMON, read a slide at a time — the first Learn topic that is
+     * somebody else's voice rather than the app's. Owner: "build it just for
+     * admins right now", and "it should be called the power of daily prayer".
+     * Preached for Year A, Pentecost 14 on Exodus 3, Romans 12 and Matthew 16.
+     */
+    ...(isAdmin ? [{
+      id: "daily-prayer-sermon",
+      title: "The Power of Daily Prayer",
+      emoji: "✝️",
+      blurb: "A sermon on costly grace — Year A, Pentecost 14",
+      slides: DAILY_PRAYER_SERMON,
+      accent: "#C8A46A",
+      background: "rgba(200,164,106,0.10)",
+      border: "rgba(200,164,106,0.30)",
+    }] : []),
     {
       id: "gatherings",
       title: t("learn.gatherings_title"),

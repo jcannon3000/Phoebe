@@ -46,6 +46,12 @@ export default function MenuLearnPage() {
             { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") },
           ] : []),
           { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") },
+          // The reading topics (/learn) had no row here at all — the page was
+          // reachable only from the features deck. Admin-only for now because
+          // the sermon it currently carries is.
+          ...(isAdmin ? [
+            { emoji: "📖", label: "Readings", sub: "Short pieces to read a slide at a time", onClick: () => go("/learn") },
+          ] : []),
           ...(isAdmin || cacLibraryGranted ? [
             { emoji: "🌵", label: "CAC Courses", sub: "Rohr, Finley and McLaren — a season at a time", onClick: () => go("/cac-courses") },
           ] : []),
