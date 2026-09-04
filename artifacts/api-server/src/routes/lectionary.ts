@@ -55,7 +55,10 @@ router.get("/lectionary/sunday", async (_req: Request, res: Response): Promise<v
   let url: string = rcl?.url ?? LECTIONARYPAGE_HOMEPAGE;
   try {
     const reading = await getUpcomingSundayReading();
-    if (reading.sundayName) name = reading.sundayName;
+    // Only when the seed actually has THIS Sunday: getReadingForSunday falls
+    // back to the nearest earlier entry, whose name would be last week's
+    // ("Sunday closest to August 31" over the Proper 18 page, 2026-09-06).
+    if (reading.sundayDate === iso && reading.sundayName) name = reading.sundayName;
     if (!rcl?.url && reading.sourceUrl && reading.sourceUrl.startsWith("http")) url = reading.sourceUrl;
   } catch (err) {
     console.warn("[lectionary/sunday] seed lookup failed:", err);
