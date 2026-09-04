@@ -38,7 +38,7 @@ const DEFAULT_HIDDEN_MODULES = [
   "listening", "reading", "walk", "cobreathe", "compline",
   "examen", "ssje", "vts", "prayer-list",
   "ncmp", "podcasts", "contemplation",
-  "icons", "taize", "nouwen", "sojo", "grist", "spirituals", "lectio",
+  "icons", "taize", "andrews", "nouwen", "sojo", "grist", "spirituals", "lectio",
 ];
 
 /** Every module a rhythm may or may not carry — what an admin-set default is
@@ -46,7 +46,7 @@ const DEFAULT_HIDDEN_MODULES = [
  *  this is used.) */
 const ALL_OPTIONAL_MODULES = [
   "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen",
-  "visio", "icons", "lectio", "taize", "spirituals", "cac", "fdd", "ssje", "vts",
+  "visio", "icons", "lectio", "taize", "andrews", "spirituals", "cac", "fdd", "ssje", "vts",
   "nouwen", "sojo", "grist", "ncmp", "podcasts", "prayer-list",
 ];
 

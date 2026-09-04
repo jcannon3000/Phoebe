@@ -160,6 +160,7 @@ const CATALOGUE: Record<string, CatalogueEntry> = {
   visio:           { kind: "practice", label: "Visio Divina — praying with an image", hint: "" },
   icons:           { kind: "practice", label: "Praying with Icons — one icon for the week", hint: "" },
   taize:           { kind: "practice", label: "the Taizé meditation (weekly)", hint: "" },
+  andrews:         { kind: "practice", label: "Andrew's Version — a weekly comment on the lectionary", hint: "abmcg.substack.com; admin-only for now" },
   spirituals:      { kind: "practice", label: "Meditating on Spirituals — a spiritual sung as prayer", hint: "" },
   lectio:          { kind: "practice", label: "Lectio Divina — a passage read slowly three times", hint: "" },
   reading:         { kind: "practice", label: "Reading — a book they are working through", hint: "honours \"when\"" },

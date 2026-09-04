@@ -40,7 +40,7 @@ import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
-import { waitingLabel, markTaizeRead } from "@/lib/taizeInbox";
+import { waitingLabel, markTaizeRead, markAndrewsRead } from "@/lib/taizeInbox";
 
 /** The card's emoji per source — the same ones the Reflections menu uses, so
  *  a reflection looks like itself wherever it appears. */
@@ -776,7 +776,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeDone, taizeWaiting, taizeLatest, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeDone, taizeWaiting, taizeLatest, andrewsActive, andrewsDone, andrewsWaiting, andrewsLatest, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1141,6 +1141,40 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: taizeWaiting
       ? [taizeWaiting.title, waitingLabel(taizeWaiting)].filter(Boolean).join(" · ")
       : t("rhythm.blurb_taize_empty", { defaultValue: "Nothing new since the last one" }),
+    cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
+  };
+
+  /**
+   * "ANDREW'S VERSION" — the weekly lectionary comment, on Taizé's terms.
+   *
+   * Owner: "create a weekly like taize version and make it admin only", and
+   * "don't do a reader" — so tapping it opens the publication's own page as
+   * they built it, not a stripped text column. Admin-only lives in
+   * `andrewsActive` (useRhythmState), so this card simply never exists for a
+   * reader.
+   *
+   * Marked read on OPEN, like every other card here that leaves for someone
+   * else's site: the reader may finish there and never come back through the
+   * app. And a card in Done still opens the post it just read, rather than
+   * doing nothing — the fix its sibling needed.
+   */
+  const andrewsCard = {
+    key: "andrews", emoji: "📰", rgb: "150,140,180",
+    done: andrewsDone,
+    href: "",
+    onClick: () => {
+      const post = andrewsWaiting;
+      if (post) {
+        openExternalThenMarkRead(post.url, () => { markAndrewsRead(post.id); swellHaptic(); });
+        return;
+      }
+      const last = andrewsLatest;
+      if (last) openExternalThenMarkRead(last.url, () => {});
+    },
+    title: t("rhythm.card_andrews", { defaultValue: "Andrew's Version" }),
+    blurb: andrewsWaiting
+      ? [andrewsWaiting.title, waitingLabel(andrewsWaiting)].filter(Boolean).join(" · ")
+      : t("rhythm.blurb_andrews_empty", { defaultValue: "Nothing new since the last one" }),
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
   };
 
@@ -1626,6 +1660,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(spiritualsActive ? [{ ...spiritualsCard, slot: getPracticeSlot("spirituals") }] : []),
     ...(iconsActive ? [{ ...iconsCard, slot: getPracticeSlot("icons") }] : []),
     ...(taizeActive ? [{ ...taizeCard, slot: getPracticeSlot("taize") }] : []),
+    // A weekly comment belongs to no hour in particular, like its sibling.
+    ...(andrewsActive ? [{ ...andrewsCard, slot: "anytime" as const }] : []),
     // No slot lookup: it isn't a scheduled practice, it's post that arrived.
     ...(groupReflectionCard ? [{ ...groupReflectionCard, slot: "anytime" as CustomSlot }] : []),
     // Prayer List is a standalone "anytime" practice — it left the

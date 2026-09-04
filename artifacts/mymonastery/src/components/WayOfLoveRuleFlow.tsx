@@ -1404,6 +1404,7 @@ export default function WayOfLoveRuleFlow({
       reading: homeCardOn(seedLayout(user), "reading"),
       icons: homeCardOn(seedLayout(user), "icons"),
       taize: homeCardOn(seedLayout(user), "taize"),
+      andrews: homeCardOn(seedLayout(user), "andrews"),
       spirituals: homeCardOn(seedLayout(user), "spirituals"),
       compline: homeCardOn(seedLayout(user), "compline"),
       lectio: homeCardOn(seedLayout(user), "lectio"),
@@ -1427,7 +1428,7 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; spirituals: boolean; compline: boolean; reading: boolean; lectio: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; andrews: boolean; spirituals: boolean; compline: boolean; reading: boolean; lectio: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: !creationHeldBySide() && homeCardOn(seedLayout(user), "cobreathe"),
     audio: homeCardOn(seedLayout(user), "listening"),
@@ -1437,6 +1438,7 @@ export default function WayOfLoveRuleFlow({
     visio: homeCardOn(seedLayout(user), "visio"),
     icons: homeCardOn(seedLayout(user), "icons"),
     taize: homeCardOn(seedLayout(user), "taize"),
+    andrews: homeCardOn(seedLayout(user), "andrews"),
     spirituals: homeCardOn(seedLayout(user), "spirituals"),
     // Seeded the same way as every sibling — the layout key IS the switch.
     compline: homeCardOn(seedLayout(user), "compline"),
@@ -1449,7 +1451,7 @@ export default function WayOfLoveRuleFlow({
     // and every full-customizer Save switched it off (audit 2026-09-03).
     lectio: homeCardOn(seedLayout(user), "lectio"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "spirituals" | "compline" | "reading" | "lectio") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "andrews" | "spirituals" | "compline" | "reading" | "lectio") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -2234,6 +2236,7 @@ export default function WayOfLoveRuleFlow({
        * on /customize-home, a page nothing in the app links to.
        */
       ...(contemplative.taize ? ["taize"] : []),
+      ...(contemplative.andrews ? ["andrews"] : []),
       ...(contemplative.spirituals ? ["spirituals"] : []),
       ...(contemplative.lectio ? ["lectio"] : []),
       ...(contemplative.reading ? ["reading"] : []),
@@ -2249,6 +2252,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.visio ? [] : ["visio"]),
       ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
+      ...(contemplative.andrews ? [] : ["andrews"]),
       ...(contemplative.spirituals ? [] : ["spirituals"]),
       ...(contemplative.lectio ? [] : ["lectio"]),
       ...(contemplative.reading ? [] : ["reading"]),
@@ -2583,6 +2587,7 @@ export default function WayOfLoveRuleFlow({
        */
       ...(contemplative.icons ? ["icons"] : []),
       ...(contemplative.taize ? ["taize"] : []),
+      ...(contemplative.andrews ? ["andrews"] : []),
       ...(contemplative.spirituals ? ["spirituals"] : []),
       ...(contemplative.lectio ? ["lectio"] : []),
       ...(contemplative.reading ? ["reading"] : []),
@@ -2599,6 +2604,7 @@ export default function WayOfLoveRuleFlow({
       // See onKeys above — both halves, or an unticked one is never hidden.
       ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
+      ...(contemplative.andrews ? [] : ["andrews"]),
       ...(contemplative.spirituals ? [] : ["spirituals"]),
       ...(contemplative.lectio ? [] : ["lectio"]),
       ...(contemplative.reading ? [] : ["reading"]),
@@ -2786,7 +2792,7 @@ export default function WayOfLoveRuleFlow({
     // wants Visio Divina and a Contemplative Walk gets exactly those, and
     // nothing survives from the rule being replaced.
     setContemplative({
-      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, spirituals: false, compline: false, reading: false, lectio: false,
+      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, andrews: false, spirituals: false, compline: false, reading: false, lectio: false,
       ...(preset.practices ?? {}),
     });
     /**
@@ -6100,6 +6106,17 @@ export default function WayOfLoveRuleFlow({
             `🕯️ ${t("wol_rule.learn_taize", { defaultValue: "Taizé meditation" })}`,
             t("wol_rule.learn_taize_sub", { defaultValue: "A meditation from Taizé — it waits until you read it." }),
             () => toggleContemplative("taize"),
+          )}
+          {/* THE WEEKLY ONE — admin only for now (owner: "create a weekly
+              like taize version and make it admin only"). Same inbox terms as
+              Taizé above it, same reason it isn't a NEWSLETTERS entry, and
+              the same practice key either way. isSuperAdmin gates the row;
+              useRhythmState gates the card, so neither can show it alone. */}
+          {isSuperAdmin && choiceRow(
+            contemplative.andrews,
+            `📰 ${t("wol_rule.learn_andrews", { defaultValue: "Andrew's Version" })}`,
+            t("wol_rule.learn_andrews_sub", { defaultValue: "A weekly comment on the lectionary — it waits until you read it." }),
+            () => toggleContemplative("andrews"),
           )}
           {choiceRow(noReflection, t("wol_rule.learn_none", { defaultValue: "None" }), t("wol_rule.learn_none_sub", { defaultValue: "No daily reflection." }), chooseNoReflection)}
         </div>

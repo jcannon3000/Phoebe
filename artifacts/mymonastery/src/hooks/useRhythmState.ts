@@ -240,6 +240,16 @@ export type RhythmState = {
    */
   taizeLatest: { id: string; title: string; url: string; published: string | null } | null;
   /**
+   * "Andrew's Version" — a WEEKLY lectionary comment, on the same inbox terms
+   * as Taizé (owner: "create a weekly like taize version and make it admin
+   * only"). ADMIN ONLY for now: `andrewsActive` is false for everyone else, so
+   * the card, its dot and its query never exist for a reader.
+   */
+  andrewsActive: boolean;
+  andrewsDone: boolean;
+  andrewsWaiting: { id: string; title: string; url: string; published: string | null } | null;
+  andrewsLatest: { id: string; title: string; url: string; published: string | null } | null;
+  /**
    * A group admin's weekly reflection, waiting to be read.
    *
    * NO `active` FLAG, deliberately — unlike every other optional practice this
@@ -782,6 +792,10 @@ export function useRhythmState(): RhythmState {
   const spiritualsActive = spiritualsVisible(user?.isSuperAdmin)
     && homeCardActive(hl, "spirituals");
   const taizeActive = homeCardActive(hl, "taize");
+  // …and the weekly one, gated on the layout AND on being an admin. Both
+  // halves matter: the gate is what makes it admin-only, and the layout key is
+  // what lets an admin turn it off like any other card.
+  const andrewsActive = !!user?.isSuperAdmin && homeCardActive(hl, "andrews");
   // Compline — the night office, offered as a contemplative add-on card.
   // complineActive means "the user has this in their rhythm" (mirrors every
   // other *Active flag — never time-gated, so the card is reliably present
@@ -1035,6 +1049,14 @@ export function useRhythmState(): RhythmState {
     staleTime: 30 * 60_000,
     enabled: taizeActive,
   });
+  const { data: andrewsLatest } = useQuery<InboxItem | null>({
+    queryKey: ["/api/andrews/latest"],
+    // `?? null` for the same reason as its sibling above: 204 → undefined →
+    // react-query throws, when all it means is "nothing published".
+    queryFn: async () => (await apiRequest("GET", "/api/andrews/latest")) ?? null,
+    staleTime: 30 * 60_000,
+    enabled: andrewsActive,
+  });
   /**
    * THE OTHER INBOX, on exactly the same terms —
    * weekly and the National Cathedral's sermons (owner: "try to integrate the
@@ -1264,6 +1286,8 @@ export function useRhythmState(): RhythmState {
    */
   const taizeWaiting = taizeActive ? waitingMeditation(taizeLatest) : null;
   const taizeDone = taizeActive && taizeWaiting == null;
+  const andrewsWaiting = andrewsActive ? waitingItem("andrews", andrewsLatest) : null;
+  const andrewsDone = andrewsActive && andrewsWaiting == null;
   /**
    * Waiting only while UNREAD. The server tells us whether this person has
    * read it (per-user, not per-device — see the route), so a reflection read
@@ -1654,6 +1678,7 @@ export function useRhythmState(): RhythmState {
      * inbox — an empty one is kept, not skipped.
      */
     ...(taizeActive ? [taizeDone] : []),
+    ...(andrewsActive ? [andrewsDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted. Same for a
     // custom scoped to weekdays on a day it isn't kept (anchorOnDay): it draws
     // NO card on that day, so counting it here would add a dot that can never
@@ -1696,7 +1721,8 @@ export function useRhythmState(): RhythmState {
      * `offline` still short-circuits, and the routes answer 204 with a 9s
      * timeout, so a dead upstream costs one wait rather than a blank home.
      */
-    (!taizeActive || taizeLatest !== undefined || offline));
+    (!taizeActive || taizeLatest !== undefined || offline) &&
+    (!andrewsActive || andrewsLatest !== undefined || offline));
 
   /**
    * The side's SECOND practice — active when one is stored AND it can be told
@@ -1738,6 +1764,10 @@ export function useRhythmState(): RhythmState {
     taizeDone,
     taizeWaiting,
     taizeLatest: taizeLatest ?? null,
+    andrewsActive,
+    andrewsDone,
+    andrewsWaiting,
+    andrewsLatest: andrewsLatest ?? null,
     groupReflection,
     complineActive,
     cobreatheActive,

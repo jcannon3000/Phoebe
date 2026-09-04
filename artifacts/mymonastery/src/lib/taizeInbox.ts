@@ -35,10 +35,14 @@
  * SOURCE as well, so three inboxes can't read each other's ids. The Taizé
  * functions remain as thin wrappers so existing call sites keep working.
  */
-export type InboxSource = "taize";
+export type InboxSource = "taize" | "andrews";
 
 const READ_KEY_FOR: Record<InboxSource, string> = {
   taize: "phoebe:taize:read-ids",
+  // "Andrew's Version" — a weekly lectionary comment (abmcg.substack.com),
+  // kept on exactly these terms: read THIS one, and nothing returns until a
+  // new one is posted.
+  andrews: "phoebe:andrews:read-ids",
 };
 /** How many ids to remember. Only the newest is ever asked about; the rest are
  *  kept so re-reading an older one doesn't resurrect it in the list view. */
@@ -89,6 +93,7 @@ export function markInboxRead(source: InboxSource, id: string): void {
   }
 }
 export function markTaizeRead(id: string): void { markInboxRead("taize", id); }
+export function markAndrewsRead(id: string): void { markInboxRead("andrews", id); }
 
 /** Put it back in the inbox — the undo for a mis-tap, mirroring unlog elsewhere. */
 export function unmarkInboxRead(source: InboxSource, id: string): void {

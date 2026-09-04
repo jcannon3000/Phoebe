@@ -36,6 +36,9 @@ export const HOME_MODULE_KEYS = [
   "lectio",
   // The inbox practices: they wait rather than expiring at midnight.
   "taize",
+  // "Andrew's Version" — a weekly lectionary comment, kept as an inbox like
+  // Taizé. Admin-only on the client for now.
+  "andrews",
   "spirituals",
   // The reflection newsletters.
   "cac",
