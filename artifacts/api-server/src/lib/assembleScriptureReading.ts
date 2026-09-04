@@ -110,7 +110,7 @@ export async function assembleSundayReading(
     "The Psalm Appointed For Sunday",
     "sunday",
     // Owner's order for Sunday: OT, then the psalm in the office UI, NT, Gospel.
-    { psalmAfterOt: true },
+    { psalmAfterOt: true, sundayKinds: true },
   );
   return { slides, dayInfo: { sundayDate: tracks.sundayDate, track: track === 2 && tracks.track2 ? 2 : 1, hasTrack2: !!tracks.track2, url: tracks.url } };
 }
@@ -121,7 +121,7 @@ async function buildScriptureSlides(
   parts: ScripturePart[],
   psalmSubtitle: string,
   idPrefix: string,
-  opts: { psalmAfterOt?: boolean } = {},
+  opts: { psalmAfterOt?: boolean; sundayKinds?: boolean } = {},
 ): Promise<Slide[]> {
   const wants = (p: ScripturePart) => parts.includes(p);
   const { psalms } = refs;
@@ -220,10 +220,13 @@ async function buildScriptureSlides(
     // is the name a reader would use for it) and the Gospel.
   };
   if (!opts.psalmAfterOt) emitPsalms();
-  if (wants("ot")) for (const s of buildLessonSlides(lesson1, "first_morning", id)) slides.push(s);
+  const kinds = opts.sundayKinds
+    ? (["ot_sunday", "epistle_sunday", "gospel_sunday"] as const)
+    : (["first_morning", "second_morning", "gospel_morning"] as const);
+  if (wants("ot")) for (const s of buildLessonSlides(lesson1, kinds[0], id)) slides.push(s);
   if (opts.psalmAfterOt) emitPsalms();
-  if (wants("nt")) for (const s of buildLessonSlides(lesson2, "second_morning", id)) slides.push(s);
-  if (wants("gospel")) for (const s of buildLessonSlides(lesson3, "gospel_morning", id)) slides.push(s);
+  if (wants("nt")) for (const s of buildLessonSlides(lesson2, kinds[1], id)) slides.push(s);
+  if (wants("gospel")) for (const s of buildLessonSlides(lesson3, kinds[2], id)) slides.push(s);
 
   // Owner: a closing slide, rather than the deck simply ending on the
   // Gospel's title card the instant the reader dismisses. Also closes a

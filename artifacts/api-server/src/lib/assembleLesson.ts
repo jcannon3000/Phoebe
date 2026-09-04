@@ -38,7 +38,11 @@ export type LessonKind =
   | "first_evening"
   | "gospel_evening"
   | "devotion_morning"
-  | "devotion_evening";
+  | "devotion_evening"
+  // The Sunday readings deck (RCL) — This Sunday's OT / Epistle / Gospel.
+  | "ot_sunday"
+  | "epistle_sunday"
+  | "gospel_sunday";
 
 // Subtitle copy for the title slide — mirrors how psalm_title's
 // subtitle reads ("The Psalm Appointed For This Morning"). Stamped on
@@ -52,6 +56,9 @@ const LESSON_SUBTITLE: Record<LessonKind, string> = {
   gospel_evening: "The Gospel Appointed For This Evening",
   devotion_morning: "The Lesson Appointed For This Morning",
   devotion_evening: "The Lesson Appointed For This Evening",
+  ot_sunday: "The Old Testament Reading Appointed For Sunday",
+  epistle_sunday: "The Epistle Appointed For Sunday",
+  gospel_sunday: "The Gospel Appointed For Sunday",
 };
 
 const LESSON_EYEBROW: Record<LessonKind, string> = {
@@ -62,6 +69,9 @@ const LESSON_EYEBROW: Record<LessonKind, string> = {
   gospel_evening: "THE GOSPEL",
   devotion_morning: "A READING FROM SCRIPTURE",
   devotion_evening: "A READING FROM SCRIPTURE",
+  ot_sunday: "THE OLD TESTAMENT",
+  epistle_sunday: "THE EPISTLE",
+  gospel_sunday: "THE GOSPEL",
 };
 
 const LESSON_EMOJI: Record<LessonKind, string> = {
@@ -72,6 +82,9 @@ const LESSON_EMOJI: Record<LessonKind, string> = {
   gospel_evening: "✝️",
   devotion_morning: "📜",
   devotion_evening: "📜",
+  ot_sunday: "📜",
+  epistle_sunday: "📜",
+  gospel_sunday: "✝️",
 };
 
 const READING_NOTE_BIBLE =
