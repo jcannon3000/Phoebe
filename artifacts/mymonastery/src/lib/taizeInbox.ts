@@ -50,7 +50,7 @@ const READ_KEY_FOR: Record<"taize" | "andrews", string> = {
   andrews: "phoebe:andrews:read-ids",
 };
 function readKey(source: InboxSource): string {
-  return source === "taize" || source === "andrews" ? readKey(source) : `phoebe:inbox:${source}:read-ids`;
+  return source === "taize" || source === "andrews" ? READ_KEY_FOR[source] : `phoebe:inbox:${source}:read-ids`;
 }
 /** How many ids to remember. Only the newest is ever asked about; the rest are
  *  kept so re-reading an older one doesn't resurrect it in the list view. */
@@ -67,7 +67,7 @@ const READ_DAY_KEY_FOR: Record<"taize" | "andrews", string> = {
   andrews: "phoebe:andrews:read-days",
 };
 function readDayKey(source: InboxSource): string {
-  return source === "taize" || source === "andrews" ? readDayKey(source) : `phoebe:inbox:${source}:read-days`;
+  return source === "taize" || source === "andrews" ? READ_DAY_KEY_FOR[source] : `phoebe:inbox:${source}:read-days`;
 }
 function localDay(): string {
   const d = new Date();
