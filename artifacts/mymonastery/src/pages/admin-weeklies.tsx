@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -44,6 +44,11 @@ export default function AdminWeekliesPage() {
   const [busy, setBusy] = useState<"preview" | "save" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
+  // "new" = a pasted link being previewed; "edit" = an existing publication's
+  // name / subtitle / description (owner: "an edit button that would lead to
+  // a page to edit that publication's name, description"). Same form.
+  const [mode, setMode] = useState<"new" | "edit">("new");
+  const formRef = useRef<HTMLDivElement | null>(null);
   const [form, setForm] = useState({ slug: "", title: "", subtitle: "", description: "", emoji: "📰" });
 
   const list = useQuery<WeeklySource[]>({
@@ -62,6 +67,7 @@ export default function AdminWeekliesPage() {
     setBusy("preview"); setError(null); setPreview(null);
     try {
       const p = (await apiRequest("POST", "/api/admin/weeklies/preview", { url })) as Preview;
+      setMode("new");
       setPreview(p);
       setForm({ slug: p.slug, title: p.proposal.title, subtitle: p.proposal.subtitle, description: p.proposal.description, emoji: "📰" });
     } catch (e) {
@@ -79,6 +85,19 @@ export default function AdminWeekliesPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message.replace(/^\d+:\s*/, "") : "Could not save.");
     } finally { setBusy(null); }
+  };
+
+  const startEdit = (w: WeeklySource) => {
+    setError(null);
+    setMode("edit");
+    setPreview({
+      siteUrl: w.siteUrl, feedUrl: w.feedUrl, slug: w.slug, exists: true,
+      channel: { title: w.title, description: w.description }, posts: [],
+      proposal: { title: w.title, subtitle: w.subtitle, description: w.description }, proposedBy: "feed",
+    });
+    setForm({ slug: w.slug, title: w.title, subtitle: w.subtitle, description: w.description, emoji: w.emoji || "📰" });
+    setUrl(w.siteUrl);
+    window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
 
   const remove = async (slug: string) => {
@@ -124,11 +143,15 @@ export default function AdminWeekliesPage() {
         {error && <p style={{ color: "#E0A48A", fontSize: 13, marginTop: 10 }}>{error}</p>}
 
         {preview && (
-          <div style={{ marginTop: 20, padding: 16, borderRadius: 16, background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.18)" }}>
-            <p style={{ color: SAGE, fontSize: 12, margin: 0 }}>
-              {preview.posts.length} recent posts · copy proposed by {preview.proposedBy === "ai" ? "AI" : "the feed"}
-              {preview.exists && " · this slug already exists — saving updates it"}
-            </p>
+          <div ref={formRef} style={{ marginTop: 20, padding: 16, borderRadius: 16, background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.18)" }}>
+            {mode === "edit" ? (
+              <p style={{ color: WARM, fontSize: 15, fontWeight: 700, margin: 0 }}>Edit publication</p>
+            ) : (
+              <p style={{ color: SAGE, fontSize: 12, margin: 0 }}>
+                {preview.posts.length} recent posts · copy proposed by {preview.proposedBy === "ai" ? "AI" : "the feed"}
+                {preview.exists && " · this slug already exists — saving updates it"}
+              </p>
+            )}
             <label style={LABEL}>Title</label>
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} style={FIELD} maxLength={60} />
             <label style={LABEL}>Subtitle</label>
@@ -142,14 +165,14 @@ export default function AdminWeekliesPage() {
               </div>
               <div style={{ flex: 2 }}>
                 <label style={LABEL}>Slug</label>
-                <input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase() })} style={FIELD} maxLength={40} autoCapitalize="none" />
+                <input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase() })} style={{ ...FIELD, opacity: mode === "edit" ? 0.6 : 1 }} maxLength={40} autoCapitalize="none" readOnly={mode === "edit"} />
               </div>
             </div>
             {preview.posts[0] && (
               <p style={{ color: SAGE, fontSize: 12, marginTop: 12 }}>Newest: “{preview.posts[0].title}”{preview.posts[0].published ? ` · ${preview.posts[0].published}` : ""}</p>
             )}
             <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
-              {pill(busy === "save" ? "Saving…" : "Save publication", () => { void doSave(); }, busy != null || !form.title.trim() || !form.slug.trim(), true)}
+              {pill(busy === "save" ? "Saving…" : (mode === "edit" ? "Save changes" : "Save publication"), () => { void doSave(); }, busy != null || !form.title.trim() || !form.slug.trim(), true)}
               {pill("Cancel", () => setPreview(null), busy != null)}
             </div>
           </div>
@@ -164,6 +187,10 @@ export default function AdminWeekliesPage() {
               <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{w.title}</p>
               <p style={{ margin: "2px 0 0", fontSize: 12, color: SAGE, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.subtitle || w.description || w.slug}</p>
             </div>
+            <button type="button" onClick={() => startEdit(w)}
+              style={{ background: "none", border: "1px solid rgba(143,175,150,0.4)", color: WARM, borderRadius: 999, padding: "6px 12px", fontFamily: FONT, fontSize: 12, cursor: "pointer" }}>
+              Edit
+            </button>
             <button type="button" onClick={() => { void remove(w.slug); }}
               style={{ background: "none", border: "1px solid rgba(224,164,138,0.4)", color: "#E0A48A", borderRadius: 999, padding: "6px 12px", fontFamily: FONT, fontSize: 12, cursor: "pointer" }}>
               Remove
