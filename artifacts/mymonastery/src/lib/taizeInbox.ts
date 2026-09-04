@@ -47,6 +47,37 @@ const READ_KEY_FOR: Record<InboxSource, string> = {
 /** How many ids to remember. Only the newest is ever asked about; the rest are
  *  kept so re-reading an older one doesn't resurrect it in the list view. */
 const KEEP = 40;
+/**
+ * WHEN each issue was read — id → local YYYY-MM-DD. Kept beside the id list
+ * rather than inside it so nothing already stored changes shape. Owner
+ * (2026-09-04): "weekly newsletters shouldn't show in Done after the day
+ * they were read" — so "done" for a weekly card is "read TODAY", which needs
+ * the day, and the id list alone can't say it.
+ */
+const READ_DAY_KEY_FOR: Record<InboxSource, string> = {
+  taize: "phoebe:taize:read-days",
+  andrews: "phoebe:andrews:read-days",
+};
+function localDay(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function readDays(source: InboxSource): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(READ_DAY_KEY_FOR[source]);
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {};
+  } catch { return {}; }
+}
+/** The local day this issue was read, or null if it never was. */
+export function inboxReadDay(source: InboxSource, id: string): string | null {
+  const d = readDays(source)[id];
+  return typeof d === "string" ? d : null;
+}
+/** Was this issue read TODAY (local)? What a weekly card's "done" means. */
+export function inboxReadToday(source: InboxSource, id: string): boolean {
+  return inboxReadDay(source, id) === localDay();
+}
 
 export type TaizeMeditation = {
   id: string;
@@ -91,6 +122,13 @@ export function markInboxRead(source: InboxSource, id: string): void {
   } catch {
     /* private mode — it just won't be remembered */
   }
+  try {
+    const days = readDays(source);
+    days[id] = localDay();
+    // Cap alongside the id list so it can't grow without bound.
+    const keep = Object.entries(days).slice(-KEEP);
+    localStorage.setItem(READ_DAY_KEY_FOR[source], JSON.stringify(Object.fromEntries(keep)));
+  } catch { /* non-fatal */ }
 }
 export function markTaizeRead(id: string): void { markInboxRead("taize", id); }
 export function markAndrewsRead(id: string): void { markInboxRead("andrews", id); }
@@ -104,6 +142,11 @@ export function unmarkInboxRead(source: InboxSource, id: string): void {
   } catch {
     /* ignore */
   }
+  try {
+    const days = readDays(source);
+    delete days[id];
+    localStorage.setItem(READ_DAY_KEY_FOR[source], JSON.stringify(days));
+  } catch { /* non-fatal */ }
 }
 export function unmarkTaizeRead(id: string): void { unmarkInboxRead("taize", id); }
 

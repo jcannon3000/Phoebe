@@ -1003,6 +1003,7 @@ function Router() {
           404s. The per-source read page below is unchanged. */}
       <Route path="/menu/newsletters" component={MenuNewslettersPage} />
       <Route path="/menu/newsletters/:group" component={MenuNewslettersPage} />
+      <Route path="/menu/newsletters/:group/manage" component={MenuNewslettersPage} />
       <Route path="/menu/reflections" component={MenuNewslettersPage} />
       <Route path="/menu/reflections/:source" component={ReflectionReadPage} />
       <Route path="/menu/resources" component={MenuResourcesPage} />

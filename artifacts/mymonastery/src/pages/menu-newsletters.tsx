@@ -1,9 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { MenuHub } from "@/components/MenuHub";
+import { ToggleRow } from "@/components/ToggleRow";
+import { useQueryClient } from "@tanstack/react-query";
+import { addHomeCard, applyCachedHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, isHomeCardOn, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 import { PracticeCard, PUBLICATION_NAME, REFLECTION_EMOJI, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { TRACKED_REFLECTION_SOURCES } from "@/lib/officePrefs";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -55,6 +58,11 @@ type Entry = {
   /** "Daily · publisher" / "Weekly · publisher" — the cadence the owner asked
    *  to be visible, carried in the sub-line rather than as a third section. */
   publisher: string;
+  /** What the publication IS, when its name alone doesn't say (owner, on
+   *  Andrew's Version: "the description should be about it being a
+   *  lectionary commentary from Yale Divinity"). Shown in place of the
+   *  publisher wherever there is room for a sentence. */
+  about?: string;
   cadence: "daily" | "weekly";
   followed: boolean;
   done: boolean;
@@ -91,8 +99,22 @@ export default function MenuNewslettersPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  // /menu/newsletters/:group and /menu/newsletters/:group/manage — Manage is
+  // PER LIST (owner: "it should only show the ones on that page, either daily
+  // or the weeklies"), so it takes its cadence from the page it was opened
+  // from and returns there.
   const [, params] = useRoute<{ group?: string }>("/menu/newsletters/:group");
-  const group: "daily" | "weekly" | null = params?.group === "daily" ? "daily" : params?.group === "weekly" ? "weekly" : null;
+  const [, manageParams] = useRoute<{ group?: string }>("/menu/newsletters/:group/manage");
+  const rawGroup = manageParams?.group ?? params?.group;
+  const group: "daily" | "weekly" | null = rawGroup === "daily" ? "daily" : rawGroup === "weekly" ? "weekly" : null;
+  const managing = !!manageParams && group !== null;
+  const qc = useQueryClient();
+  // Re-render after a layout write. saveHomeLayout caches the new layout
+  // synchronously, but the page only re-rendered when the /api/auth/me refetch
+  // returned a DIFFERENT user object — and while the PUT is still in flight
+  // it returns the same one, so the switch showed the previous state until
+  // the next tap. Bumping here re-reads the (dirty) cache at once.
+  const [, bump] = useState(0);
   const rs = useRhythmState();
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
@@ -119,12 +141,27 @@ export default function MenuNewslettersPage() {
     openExternalThenMarkRead(item.url, () => markInboxRead(source, item.id), opts);
   };
 
+  /**
+   * FOLLOWED = in the home layout (order, not hidden) — the EFFECTIVE layout,
+   * local cache over the server copy while a save is in flight. Not the
+   * hook's active-today flags: Taizé and the Dean's Commentary are followed
+   * all week but active only on their days, and reading the active flag
+   * here showed them as off with nothing to turn on. DONE still comes from
+   * the hook, which is the one computation for "read today".
+   */
+  const layoutNow = (): HomeLayout => {
+    const eff = user ? applyCachedHomeLayout(user).homeLayout : readCachedHomeLayout();
+    return { order: [...(eff?.order ?? [])], hidden: [...(eff?.hidden ?? [])], v: eff?.v ?? HOME_LAYOUT_VERSION };
+  };
+  const layout = layoutNow();
+  const on = (key: string) => isHomeCardOn(layout, key);
+
   const entries: Entry[] = [
     ...DAILY.map((d): Entry => {
       const r = rs.reflections.find((x) => x.source === d.source);
       return {
         key: d.source, emoji: d.emoji, title: d.title, publisher: d.publisher, cadence: "daily",
-        followed: !!r, done: !!r?.done,
+        followed: on(d.source), done: !!r?.done,
         open: () => {
           MARK_READ[d.source]();
           if (d.source === "vts") { setLocation("/vts-reading"); return; }
@@ -134,12 +171,13 @@ export default function MenuNewslettersPage() {
     }),
     {
       key: "taize", emoji: "🕯️", title: "Taizé meditation", publisher: "Taizé", cadence: "weekly",
-      followed: rs.taizeActive, done: rs.taizeDone, latestTitle: taizeLatest?.title,
+      followed: on("taize"), done: rs.taizeDone, latestTitle: taizeLatest?.title,
       open: openWeekly("taize", taizeLatest, "https://www.taize.fr/en/tag/meditations", true),
     },
     ...(user?.isSuperAdmin ? [{
-      key: "andrews", emoji: "📰", title: "Andrew's Version", publisher: "Andrew McGowan · Yale", cadence: "weekly" as const,
-      followed: rs.andrewsActive, done: rs.andrewsDone, latestTitle: andrewsLatest?.title,
+      key: "andrews", emoji: "📰", title: "Andrew's Version", publisher: "Yale Divinity School", cadence: "weekly" as const,
+      about: "A weekly lectionary commentary from Yale Divinity School",
+      followed: on("andrews"), done: rs.andrewsDone, latestTitle: andrewsLatest?.title,
       open: openWeekly("andrews", andrewsLatest, andrewsLatest?.url ?? "https://andrewmcgowan.substack.com/", false),
     } satisfies Entry] : []),
   ];
@@ -150,7 +188,7 @@ export default function MenuNewslettersPage() {
   const cadenceWord = (c: Entry["cadence"]) =>
     c === "daily" ? t("newsletters.daily", { defaultValue: "Daily" }) : t("newsletters.weekly", { defaultValue: "Weekly" });
   const blurbFor = (e: Entry) => {
-    const lead = e.latestTitle ? e.latestTitle : e.publisher;
+    const lead = e.latestTitle ? e.latestTitle : (e.about ?? e.publisher);
     return `${cadenceWord(e.cadence)} · ${lead}`;
   };
 
@@ -181,7 +219,92 @@ export default function MenuNewslettersPage() {
       pulseOnLoad={false}
     />
   );
-  const manage = () => setLocation(isDeviceLocalGuest(user) ? "/customize" : "/rule-of-life");
+  const manage = () => setLocation(`/menu/newsletters/${group}/manage`);
+
+  /**
+   * FOLLOW / UNFOLLOW — the same writes the customizer makes, nothing new.
+   * The home layout is the one source of "followed": a key in `order` and not
+   * in `hidden` is a card on the home, and useRhythmState reads exactly that
+   * (owner: "the manage subscription needs to have its own UI, not just go to
+   * shape my routine"). Follow = addHomeCard (append if missing, un-hide);
+   * unfollow = put the key in `hidden`, which is how the customizer's
+   * off-keys say "deliberately off" (NOT removeHomeCard, whose dropping-from-
+   * order semantics are for revoking a feed's grant). Built on the EFFECTIVE
+   * layout — the local cache when a save is still in flight — the way the
+   * customizer's add path is, so a second toggle a moment later can't build
+   * on a stale server copy. Same save split as commit(): a guest's PUT would
+   * 401 forever, so guests cache locally.
+   */
+  const writeLayout = (l: HomeLayout) => {
+    if (user && !isDeviceLocalGuest(user)) {
+      // Same shape as customize-home's saveLayout mutation. The user query is
+      // patched FIRST and refetched only once the PUT has settled: refetching
+      // at once raced the PUT — the GET came back with the old layout, the
+      // PUT then cleared the dirty flag, and the switch snapped back to off
+      // (turning Taizé back on failed twice this way on the simulator).
+      void qc.cancelQueries({ queryKey: ["/api/auth/me"] });
+      qc.setQueryData(["/api/auth/me"], (curr: unknown) => {
+        if (!curr || typeof curr !== "object") return curr;
+        return { ...(curr as Record<string, unknown>), homeLayout: { order: l.order, hidden: l.hidden, v: l.v ?? HOME_LAYOUT_VERSION } };
+      });
+      saveHomeLayout(l).finally(() => { qc.invalidateQueries({ queryKey: ["/api/auth/me"] }); });
+    } else {
+      cacheHomeLayoutLocalOnly(l);
+      qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    }
+    bump((n) => n + 1);
+  };
+  const setFollowed = (key: string, on: boolean) => {
+    const cur = layoutNow();
+    if (on) {
+      const { layout, changed } = addHomeCard(cur, key);
+      if (changed) writeLayout(layout);
+      return;
+    }
+    if (cur.hidden.includes(key)) return;
+    writeLayout({ ...cur, hidden: [...cur.hidden, key] });
+  };
+
+  if (managing) {
+    const row = (e: Entry) => (
+      <ToggleRow
+        key={e.key}
+        emoji={e.emoji}
+        label={e.title}
+        description={e.followed
+          ? t("newsletters.following", { defaultValue: "On your home · {{who}}", who: e.publisher })
+          : (e.about ?? e.publisher)}
+        enabled={e.followed}
+        onToggle={() => setFollowed(e.key, !e.followed)}
+      />
+    );
+    const rows = entries.filter((e) => e.cadence === group);
+    const word = cadenceWord(group as "daily" | "weekly");
+    return (
+      <Layout bgPhoto={bgPhoto}>
+        <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
+          <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", color: WARM, fontFamily: FONT, paddingBottom: 48 }}>
+            <button
+              type="button"
+              onClick={() => setLocation(`/menu/newsletters/${group}`)}
+              style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              ← {word}
+            </button>
+            <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em" }}>
+              {t("newsletters.manage", { defaultValue: "Manage subscriptions" })}
+            </h1>
+            <p style={{ fontSize: 14, color: SAGE, margin: "0 0 20px", lineHeight: 1.5 }}>
+              {group === "daily"
+                ? t("newsletters.manage_daily_sub", { defaultValue: "Switch a daily newsletter on and it gets a card on your home; off, and it comes off." })
+                : t("newsletters.manage_weekly_sub", { defaultValue: "Switch a weekly newsletter on and its newest issue waits on your home until you've read it." })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{rows.map(row)}</div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   if (group === null) {
     return (
@@ -209,7 +332,7 @@ export default function MenuNewslettersPage() {
     );
   }
 
-  const groupLabel = cadenceWord(group);
+  const groupLabel = cadenceWord(group as "daily" | "weekly");
   return (
     <Layout bgPhoto={bgPhoto}>
       <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>

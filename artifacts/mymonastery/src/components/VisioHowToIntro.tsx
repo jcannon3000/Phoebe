@@ -38,17 +38,21 @@ export function markVisioHowtoSeen(): void {
 
 type Slide = { eyebrow?: string; title?: string; body: string; art: "look" | "week" | null };
 
+// Owner (2026-09-04): "less prescriptive and more about what they can do" —
+// so each slide offers options (a few minutes or an hour, the whole or a
+// corner, once or every day) instead of telling them how the looking should
+// go or what it will do to them.
 const SLIDES: Slide[] = [
   {
     eyebrow: "Visio Divina",
-    title: "Looking as prayer",
-    body: "One work of art, chosen for the passage the lectionary appoints this week. There is nothing to solve and nothing to finish — you look, and you let the looking be the prayer.",
+    title: "Praying with a picture",
+    body: "Each week brings one work of art, chosen alongside the passage the lectionary appoints. You can spend a few minutes with it or much longer, take in the whole or stay with a single corner. There is nothing to get right.",
     art: "look",
   },
   {
     eyebrow: "One image, all week",
     title: "Come back to it",
-    body: "The same picture waits for you every day until Sunday. What you notice on Thursday is not what you noticed on Monday, and that is the point: the passage has time to work on you.",
+    body: "The same picture is here every day until Sunday. You can return once or every day, at any hour. Many people find they notice something different each time.",
     art: "week",
   },
   {
@@ -60,7 +64,7 @@ const SLIDES: Slide[] = [
     // The passage is likewise offered only when the work really is on the
     // week's reading. A tutorial that describes a shape the practice usually
     // doesn't take is worse than one that describes less.
-    body: "Come back as often as you like. Where the week's passage is the one the picture holds, you can read it here; where someone has written about the work, that waits at the end. Let the week soak in.",
+    body: "Come back as often as you like. Where the week's passage is the one the picture holds, you can read it here; where someone has written about the work, you'll find that at the end.",
     art: null,
   },
 ];

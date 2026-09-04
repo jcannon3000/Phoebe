@@ -315,7 +315,7 @@ export function useWidgetSync(): void {
        */
       { active: r.iconsActive, done: r.iconsDone, slot: "anytime" as CustomSlot, key: "icons", emoji: "🪟", title: "Praying with Icons", eyebrow: "This week's icon", subtitle: "One icon for the week", cta: "Begin", kind: "office" },
       { active: r.spiritualsActive, done: r.spiritualsDone, slot: getPracticeSlot("spirituals"), key: "spirituals", emoji: "🎶", title: "Meditating on Spirituals", eyebrow: "Today's song", subtitle: "Sit with a song, one line at a time", cta: "Begin", kind: "office" },
-      { active: r.taizeActive, done: r.taizeDone, slot: getPracticeSlot("taize"), key: "taize", emoji: "🕯️", title: "Taizé meditation", eyebrow: "Taizé", subtitle: "The newest meditation from Taizé", cta: "Read", kind: "reflect" },
+      { active: r.taizeShown, done: r.taizeDone, slot: getPracticeSlot("taize"), key: "taize", emoji: "🕯️", title: "Taizé meditation", eyebrow: "Taizé", subtitle: "The newest meditation from Taizé", cta: "Read", kind: "reflect" },
       // Compline rides the evening slot — same fixed placement the home card
       // and the header dot use (it IS the night office, so no slot picker).
       { active: r.complineActive, done: r.complineDone, slot: "evening", key: "compline", emoji: "🌙", title: "Compline", eyebrow: "The night office", subtitle: "The night office", cta: "Begin", kind: "office" },

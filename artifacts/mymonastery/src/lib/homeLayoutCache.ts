@@ -159,6 +159,19 @@ export function applyCachedHomeLayout<T extends { homeLayout?: HomeLayout | null
 //     removal and leaves it alone.
 //
 // Returns true if the layout actually changed (so callers can skip the PUT).
+/**
+ * Is this card IN the layout — in `order` and not `hidden`? That is
+ * "followed"/"turned on" as the customizer means it. It is deliberately NOT
+ * useRhythmState's homeCardActive, which also asks practiceOnDay(): a weekly
+ * or weekday-only card is followed all week but active only on its days, and
+ * a "manage" screen that read the active flag showed Taizé as off on a Friday
+ * and then had nothing to turn on (2026-09-04).
+ */
+export function isHomeCardOn(layout: HomeLayout | null | undefined, key: string): boolean {
+  if (!layout) return false;
+  return (layout.order ?? []).includes(key) && !(layout.hidden ?? []).includes(key);
+}
+
 export function addHomeCard(
   current: HomeLayout | null | undefined,
   key: string,

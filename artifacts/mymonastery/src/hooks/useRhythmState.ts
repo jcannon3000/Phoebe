@@ -16,7 +16,7 @@ import {
   type TrackedReflection,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
-import { waitingMeditation, waitingItem, TAIZE_READ_EVENT, type InboxItem } from "@/lib/taizeInbox";
+import { waitingMeditation, waitingItem, TAIZE_READ_EVENT, type InboxItem, inboxReadToday } from "@/lib/taizeInbox";
 import { getSpiritualsHistory } from "@/lib/spiritualsHistory";
 import { spiritualsVisible } from "@/lib/spiritualsFlag";
 import { practiceOnDay } from "@/lib/practiceDays";
@@ -224,6 +224,8 @@ export type RhythmState = {
    * been posted — and it is never reset by the day turning over.
    */
   taizeActive: boolean;
+  /** The Taizé card exists today: a meditation is waiting, or one was read today. */
+  taizeShown: boolean;
   /** The newest item REGARDLESS of whether it has been read — the undo needs
    *  it, and `waiting` is null in exactly the case undo applies to. */
   taizeDone: boolean;
@@ -246,6 +248,8 @@ export type RhythmState = {
    * the card, its dot and its query never exist for a reader.
    */
   andrewsActive: boolean;
+  /** See taizeShown. */
+  andrewsShown: boolean;
   andrewsDone: boolean;
   andrewsWaiting: { id: string; title: string; url: string; published: string | null } | null;
   andrewsLatest: { id: string; title: string; url: string; published: string | null } | null;
@@ -1285,9 +1289,20 @@ export function useRhythmState(): RhythmState {
    * never read as finished in the week between meditations.
    */
   const taizeWaiting = taizeActive ? waitingMeditation(taizeLatest) : null;
-  const taizeDone = taizeActive && taizeWaiting == null;
+  /**
+   * DONE = READ TODAY, not "nothing waiting". Owner (2026-09-04): "weekly
+   * newsletters shouldn't show in Done after the day they were read." With
+   * `waiting == null` alone, a meditation read on Monday sat in Done until
+   * Taizé posted the next one. Now the card is done only on the day it was
+   * read; on the days after, with nothing waiting, it isn't shown at all —
+   * see taizeShown/andrewsShown, which every renderer reads.
+   */
+  const taizeDone = taizeActive && taizeWaiting == null && !!taizeLatest && inboxReadToday("taize", taizeLatest.id);
   const andrewsWaiting = andrewsActive ? waitingItem("andrews", andrewsLatest) : null;
-  const andrewsDone = andrewsActive && andrewsWaiting == null;
+  const andrewsDone = andrewsActive && andrewsWaiting == null && !!andrewsLatest && inboxReadToday("andrews", andrewsLatest.id);
+  /** Whether the weekly card exists TODAY: something to read, or read today. */
+  const taizeShown = taizeActive && (taizeWaiting != null || taizeDone);
+  const andrewsShown = andrewsActive && (andrewsWaiting != null || andrewsDone);
   /**
    * Waiting only while UNREAD. The server tells us whether this person has
    * read it (per-user, not per-device — see the route), so a reflection read
@@ -1677,8 +1692,9 @@ export function useRhythmState(): RhythmState {
      * thing the person still owes today. That is what makes an inbox an
      * inbox — an empty one is kept, not skipped.
      */
-    ...(taizeActive ? [taizeDone] : []),
-    ...(andrewsActive ? [andrewsDone] : []),
+    // Weekly inbox cards count only on the days they exist (see taizeShown).
+    ...(taizeShown ? [taizeDone] : []),
+    ...(andrewsShown ? [andrewsDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted. Same for a
     // custom scoped to weekdays on a day it isn't kept (anchorOnDay): it draws
     // NO card on that day, so counting it here would add a dot that can never
@@ -1761,10 +1777,12 @@ export function useRhythmState(): RhythmState {
     walkActive,
     visioActive,
     taizeActive,
+    taizeShown,
     taizeDone,
     taizeWaiting,
     taizeLatest: taizeLatest ?? null,
     andrewsActive,
+    andrewsShown,
     andrewsDone,
     andrewsWaiting,
     andrewsLatest: andrewsLatest ?? null,
