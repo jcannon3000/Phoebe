@@ -86,7 +86,7 @@ const ACTIONS: Record<SectionKey, ActionDef[]> = {
   learn: [
     { emoji: "📖", label: "Today's reflection", sub: "Forward Day by Day", route: "/reflect/fdd", tkey: "reflection" },
     { emoji: "📿", label: "Pray the Daily Office", sub: "Scripture lessons & prayers", route: "/prayer-chooser", tkey: "office" },
-    { emoji: "🌅", label: "More reflections", sub: "From across the church", route: "/menu/reflections", tkey: "reflections" },
+    { emoji: "🌅", label: "More reflections", sub: "From across the church", route: "/menu/newsletters", tkey: "reflections" },
   ],
   pray: [
     { emoji: "📿", label: "Pray the Daily Office", sub: "Morning or Evening Prayer", route: "/prayer-chooser", tkey: "office" },

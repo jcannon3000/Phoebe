@@ -306,7 +306,7 @@ const MenuPage = lazy(() => import("./pages/menu"));
 const MenuBcpPage = lazy(() => import("./pages/menu-bcp"));
 const MenuPracticesPage = lazy(() => import("./pages/menu-practices"));
 const MenuLearnPage = lazy(() => import("./pages/menu-learn"));
-const MenuReflectionsPage = lazy(() => import("./pages/menu-reflections"));
+const MenuNewslettersPage = lazy(() => import("./pages/menu-newsletters"));
 const ReflectionReadPage = lazy(() => import("./pages/reflection-read"));
 const MenuResourcesPage = lazy(() => import("./pages/menu-resources"));
 // (No HomeBetaPage lazy import — /home-beta redirects to /dashboard and no
@@ -763,7 +763,7 @@ function OfficeBrowserOptions() {
 const PILOT_ALLOWED_EXACT = new Set<string>([
   "/", "/pilot/home", "/pilot/build",
   "/prayer-list", "/pray-request/new", "/intentions",
-  "/menu", "/menu/practices", "/menu/reflections", "/menu/bcp",
+  "/menu", "/menu/practices", "/menu/reflections", "/menu/newsletters", "/menu/bcp",
   "/contemplation", "/contemplation-log", "/cobreathe", "/offices", "/vts-reading",
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
   "/pray",
@@ -811,7 +811,7 @@ function PilotGate({ children }: { children: ReactNode }) {
 // would loop). No-op entirely when guest mode isn't active.
 const GUEST_ALLOWED_EXACT = new Set<string>([
   "/", "/dashboard", "/daily-progress",
-  "/menu", "/menu/bcp", "/menu/practices", "/menu/learn", "/menu/reflections", "/menu/resources",
+  "/menu", "/menu/bcp", "/menu/practices", "/menu/learn", "/menu/reflections", "/menu/newsletters", "/menu/resources",
   // Practices that need no account to pray — the Examen and the Simple Guided
   // Prayer (PACT) sit alongside /contemplation and /cobreathe here. Signing in
   // only adds the server-side session log.
@@ -875,7 +875,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
 ]);
 const GUEST_ALLOWED_PREFIX = [
   "/bcp", "/prayer-mode", "/cobreathe",
-  "/rule-of-life", "/settings", "/menu/reflections/",
+  "/rule-of-life", "/settings", "/menu/reflections/", "/menu/newsletters/",
   // Saints index + detail pages (guest Resources → Saints).
   "/saints",
   // Prescribed-routine / preset-rule invite links (/routine/:token) — "join a
@@ -998,7 +998,11 @@ function Router() {
       <Route path="/menu/bcp" component={MenuBcpPage} />
       <Route path="/menu/practices" component={MenuPracticesPage} />
       <Route path="/menu/learn" component={MenuLearnPage} />
-      <Route path="/menu/reflections" component={MenuReflectionsPage} />
+      {/* Newsletters — Subscriptions and All, as home cards. /menu/reflections
+          is the old name; it keeps routing here so nothing that linked to it
+          404s. The per-source read page below is unchanged. */}
+      <Route path="/menu/newsletters" component={MenuNewslettersPage} />
+      <Route path="/menu/reflections" component={MenuNewslettersPage} />
       <Route path="/menu/reflections/:source" component={ReflectionReadPage} />
       <Route path="/menu/resources" component={MenuResourcesPage} />
       <Route path="/office/forward" component={OfficeFmPage} />

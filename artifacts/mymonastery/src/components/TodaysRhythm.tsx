@@ -77,7 +77,7 @@ export function TodaysRhythm() {
     },
     {
       key: "reflect", label: t("rhythm.reflect", { defaultValue: "Reflect" }), icon: "📖",
-      done: reflectDone, href: "/menu/reflections",
+      done: reflectDone, href: "/menu/newsletters",
       cta: t("rhythm.cta_reflect", { defaultValue: "Read today's reflection" }),
       blurb: t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" }),
     },

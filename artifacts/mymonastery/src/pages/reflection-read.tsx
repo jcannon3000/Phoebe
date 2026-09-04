@@ -175,7 +175,7 @@ export default function ReflectionReadPage() {
       <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 8, padding: "14px 14px max(16px, env(safe-area-inset-bottom))" }}>
         <button
           type="button"
-          onClick={() => setLocation("/menu/reflections")}
+          onClick={() => setLocation("/menu/newsletters")}
           className="transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ background: "none", border: "none", color: "#A8C5A0", fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "12px 8px", whiteSpace: "nowrap" }}
         >

@@ -665,6 +665,8 @@ export const en = {
     bcp_sub: "Daily Offices, Prayers, Psalter, Collects",
     practices_sub: "Contemplation, Gratitude, Journal, Examen",
     reflections_sub: "Forward Day by Day, CAC, SSJE",
+    newsletters: "Newsletters",
+    newsletters_sub: "Daily words and weekly letters",
     audio_sub: "Offices read aloud + podcasts",
     communities_sub: "Your communities",
     resources_sub: "Lectionary, Find a Church, Saints, Building Faith",

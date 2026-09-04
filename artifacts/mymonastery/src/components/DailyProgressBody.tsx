@@ -44,11 +44,11 @@ import { waitingLabel, markTaizeRead, markAndrewsRead } from "@/lib/taizeInbox";
 
 /** The card's emoji per source — the same ones the Reflections menu uses, so
  *  a reflection looks like itself wherever it appears. */
-const REFLECTION_EMOJI: Record<TrackedReflection, string> = {
+export const REFLECTION_EMOJI: Record<TrackedReflection, string> = {
   cac: "🌵", fdd: "📔", ssje: "✍🏽", vts: "🦩", nouwen: "😊", sojo: "🕊️", grist: "🌎",
 };
 
-const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
+export const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
   ssje: "Brother, Give Us a Word",
   cac: "CAC Daily Meditation",

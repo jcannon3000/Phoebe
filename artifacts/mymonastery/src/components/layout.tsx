@@ -331,7 +331,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   Order (owner, 2026-09-02): Practices · Reflections · Learn,
                   with Practices leading now that BCP is gone. */}
               <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
-              <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
+              <MenuRow emoji="🌅" label={t("menu.newsletters", { defaultValue: "Newsletters" })} onClick={() => goCategory("/menu/newsletters")} />
               {/* Novenas hidden for all users per owner request (2026-08-07)
                   — see useRhythmState.ts's NOVENAS_ENABLED comment. */}
               {/* Learn — the courses tab (Centering Prayer + The Spiritual
