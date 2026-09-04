@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
-import { PracticeCard, PUBLICATION_NAME, REFLECTION_EMOJI } from "@/components/DailyProgressBody";
+import { MenuHub } from "@/components/MenuHub";
+import { PracticeCard, PUBLICATION_NAME, REFLECTION_EMOJI, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { TRACKED_REFLECTION_SOURCES } from "@/lib/officePrefs";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,32 +21,31 @@ import {
 import type { TrackedReflection } from "@/lib/cacReadState";
 
 /**
- * /menu/newsletters — every newsletter, in two sections, as home cards.
+ * /menu/newsletters — the newsletters: Daily or Weekly first, then, inside
+ * each, Subscriptions and All as home cards.
  *
- * Owner (2026-09-04): "change the menu title to newsletters … break it down
- * into two sections … that says subscriptions and all, just like Next and
- * Done. Anyone that's subscribed shows up in Subscriptions, all the other
- * ones [in All], and show our cards like they're on the home screen, and
- * somewhere on the page, like the top right, Manage subscriptions."
+ * Owner (2026-09-04), in order: "split those into two categories … daily and
+ * [weekly] … change the menu title to newsletters … you click on that, you
+ * have two options" — then "break it down into two sections … subscriptions
+ * and all, just like Next and Done … show our cards like they're on the home
+ * screen, and … top right, manage subscriptions" — then "I wanted the split
+ * between daily and weekly first." So: /menu/newsletters is the hub with two
+ * rows (MenuHub, the same page shape as Practices); /menu/newsletters/daily
+ * and /weekly are the lists, each with the home's Subscriptions/All sections
+ * (owner: "make sure you build all this consistent with other UIs").
  *
- * CONSISTENT WITH THE OTHER UIS (owner): the page chrome is MenuHub's — the
- * same back link, title and subtitle the Practices and Daily Offices pages
- * draw — and the rows are the home's own PracticeCard, not an imitation, with
- * the home's section headings above them. "Followed" is read from
- * useRhythmState, the ONE computation the home cards, the header dots and the
- * widget already share, so a newsletter can't be in Subscriptions here and
- * missing from the home (or the reverse).
- *
- * Daily sources open today's issue the way their home cards do (the reader,
- * or the Dean's in-app slideshow); weekly sources (Taizé, Andrew's Version —
- * the inbox pattern) open their newest issue and mark it read, which clears
- * the home card too. Andrew's Version is still super-admin-only, the same
- * gate useRhythmState applies to its card.
+ * The rows are the home's own PracticeCard, and "followed"/"done" come from
+ * useRhythmState — the ONE computation the home cards, header dots and widget
+ * share — so a newsletter can't be followed here and absent there. Which
+ * sources exist comes from TRACKED_REFLECTION_SOURCES and the inbox sources;
+ * names and emoji from the home card's maps. Daily sources open today's
+ * issue as their cards do; weekly ones (Taizé, Andrew's Version — the inbox
+ * pattern) open the newest issue and mark it read through lib/taizeInbox, so
+ * card and page agree. Andrew's is super-admin-only, the card's own gate.
  */
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
-const REFLECT_RGB = "96,141,209";
 
 type DailySource = TrackedReflection;
 type Entry = {
@@ -91,6 +91,8 @@ export default function MenuNewslettersPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const [, params] = useRoute<{ group?: string }>("/menu/newsletters/:group");
+  const group: "daily" | "weekly" | null = params?.group === "daily" ? "daily" : params?.group === "weekly" ? "weekly" : null;
   const rs = useRhythmState();
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
@@ -103,8 +105,8 @@ export default function MenuNewslettersPage() {
     staleTime: 30 * 60_000,
     enabled,
   });
-  const taizeQ = useQuery<InboxItem | null>(latestOpts("/api/taize/latest", true));
-  const andrewsQ = useQuery<InboxItem | null>(latestOpts("/api/andrews/latest", !!user?.isSuperAdmin));
+  const taizeQ = useQuery<InboxItem | null>(latestOpts("/api/taize/latest", group === "weekly"));
+  const andrewsQ = useQuery<InboxItem | null>(latestOpts("/api/andrews/latest", group === "weekly" && !!user?.isSuperAdmin));
   const taizeLatest = rs.taizeLatest ?? taizeQ.data ?? null;
   const andrewsLatest = rs.andrewsLatest ?? andrewsQ.data ?? null;
 
@@ -141,8 +143,9 @@ export default function MenuNewslettersPage() {
       open: openWeekly("andrews", andrewsLatest, andrewsLatest?.url ?? "https://andrewmcgowan.substack.com/", false),
     } satisfies Entry] : []),
   ];
-  const subscribed = entries.filter((e) => e.followed);
-  const others = entries.filter((e) => !e.followed);
+  const inGroup = entries.filter((e) => e.cadence === group);
+  const subscribed = inGroup.filter((e) => e.followed);
+  const others = inGroup.filter((e) => !e.followed);
 
   const cadenceWord = (c: Entry["cadence"]) =>
     c === "daily" ? t("newsletters.daily", { defaultValue: "Daily" }) : t("newsletters.weekly", { defaultValue: "Weekly" });
@@ -159,7 +162,11 @@ export default function MenuNewslettersPage() {
       <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
     </div>
   );
-  const card = (e: Entry) => (
+  // The home's palette, not a source colour: the home recolours every card
+  // along its green→purple gradient by position (rhythmGradientRgb), and the
+  // reflection cards' own blue never reaches the screen there — so it mustn't
+  // here either (owner: "I never asked for blue UI, just green").
+  const card = (e: Entry, i: number, n: number) => (
     <PracticeCard
       key={e.key}
       emoji={e.emoji}
@@ -168,7 +175,7 @@ export default function MenuNewslettersPage() {
       cta={t("rhythm.read", { defaultValue: "Read" })}
       done={e.done}
       doneCta={t("rhythm.read", { defaultValue: "Read" })}
-      rgb={REFLECT_RGB}
+      rgb={rhythmGradientRgb(i, n)}
       onClick={e.open}
       onOpen={e.open}
       pulseOnLoad={false}
@@ -176,16 +183,43 @@ export default function MenuNewslettersPage() {
   );
   const manage = () => setLocation(isDeviceLocalGuest(user) ? "/customize" : "/rule-of-life");
 
+  if (group === null) {
+    return (
+      <MenuHub
+        title={t("menu.newsletters", { defaultValue: "Newsletters" })}
+        emoji="🌅"
+        subtitle={t("menu.newsletters_sub_long", { defaultValue: "Daily words and weekly letters, from across the church." })}
+        backLabel={t("menu.title", { defaultValue: "Menu" })}
+        backHref="/menu"
+        groups={[{
+          items: [
+            {
+              emoji: "☀️", label: t("newsletters.daily", { defaultValue: "Daily" }),
+              sub: entries.filter((e) => e.cadence === "daily").map((e) => e.title).join(", "),
+              onClick: () => setLocation("/menu/newsletters/daily"),
+            },
+            {
+              emoji: "🗓️", label: t("newsletters.weekly", { defaultValue: "Weekly" }),
+              sub: entries.filter((e) => e.cadence === "weekly").map((e) => e.title).join(", "),
+              onClick: () => setLocation("/menu/newsletters/weekly"),
+            },
+          ],
+        }]}
+      />
+    );
+  }
+
+  const groupLabel = cadenceWord(group);
   return (
     <Layout bgPhoto={bgPhoto}>
       <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
         <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", color: WARM, fontFamily: FONT, paddingBottom: 48 }}>
           <button
             type="button"
-            onClick={() => setLocation("/menu")}
+            onClick={() => setLocation("/menu/newsletters")}
             style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6 }}
           >
-            ← {t("menu.title", { defaultValue: "Menu" })}
+            ← {t("menu.newsletters", { defaultValue: "Newsletters" })}
           </button>
 
           {/* Title row — MenuHub's h1, with the one thing this page adds: the
@@ -193,7 +227,7 @@ export default function MenuNewslettersPage() {
               the top right, manage subscriptions"). */}
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
             <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em" }}>
-              {t("menu.newsletters", { defaultValue: "Newsletters" })} 🌅
+              {groupLabel} {group === "daily" ? "☀️" : "🗓️"}
             </h1>
             <button
               type="button"
@@ -204,14 +238,16 @@ export default function MenuNewslettersPage() {
             </button>
           </div>
           <p style={{ fontSize: 14, color: SAGE, margin: "0 0 20px", lineHeight: 1.5 }}>
-            {t("menu.newsletters_sub", { defaultValue: "Daily words and weekly letters, from across the church." })}
+            {group === "daily"
+              ? t("newsletters.daily_sub", { defaultValue: "A word for today, from across the church." })
+              : t("newsletters.weekly_sub", { defaultValue: "The newest issue waits until you've read it." })}
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
             <div>
               {sectionHeader(t("newsletters.subscriptions", { defaultValue: "Subscriptions" }))}
               {subscribed.length > 0 ? (
-                <div className="flex flex-col gap-2">{subscribed.map(card)}</div>
+                <div className="flex flex-col gap-2">{subscribed.map((e, i) => card(e, i, subscribed.length))}</div>
               ) : (
                 <p style={{ fontSize: 14, color: SAGE, margin: "6px 0 0", lineHeight: 1.5 }}>
                   {t("newsletters.none_yet", { defaultValue: "You're not following any yet. Pick some in Manage subscriptions and they'll have a card on your home." })}
@@ -221,7 +257,7 @@ export default function MenuNewslettersPage() {
             {others.length > 0 && (
               <div>
                 {sectionHeader(t("newsletters.all", { defaultValue: "All" }))}
-                <div className="flex flex-col gap-2">{others.map(card)}</div>
+                <div className="flex flex-col gap-2">{others.map((e, i) => card(e, i, others.length))}</div>
               </div>
             )}
           </div>

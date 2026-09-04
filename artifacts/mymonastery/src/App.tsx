@@ -998,10 +998,11 @@ function Router() {
       <Route path="/menu/bcp" component={MenuBcpPage} />
       <Route path="/menu/practices" component={MenuPracticesPage} />
       <Route path="/menu/learn" component={MenuLearnPage} />
-      {/* Newsletters — Subscriptions and All, as home cards. /menu/reflections
+      {/* Newsletters — Daily/Weekly hub, then Subscriptions and All as home cards. /menu/reflections
           is the old name; it keeps routing here so nothing that linked to it
           404s. The per-source read page below is unchanged. */}
       <Route path="/menu/newsletters" component={MenuNewslettersPage} />
+      <Route path="/menu/newsletters/:group" component={MenuNewslettersPage} />
       <Route path="/menu/reflections" component={MenuNewslettersPage} />
       <Route path="/menu/reflections/:source" component={ReflectionReadPage} />
       <Route path="/menu/resources" component={MenuResourcesPage} />
