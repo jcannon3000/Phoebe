@@ -61,11 +61,24 @@ export default function ThisSundayPage() {
   const andrewsPrevious = usePreviousIssues("andrews", isAdmin);
 
   const readingsLine = sunday
-    ? [sunday.gospel, sunday.psalm].filter(Boolean).join(" · ")
+    ? [sunday.ot[0], sunday.psalm, sunday.nt[0], sunday.gospel].filter(Boolean).join(" · ")
     : "";
   const sundayLine = sunday
     ? [sunday.name ?? sundayLabel(sunday.sundayDate), readingsLine].filter(Boolean).join(" · ")
     : t("this_sunday.loading", { defaultValue: "Finding the readings…" });
+
+  // The passages on oremus (owner: "use passages from oremus") — the host
+  // Phoebe's reader restyles, the way the office's "Read online" pill opens a
+  // lesson. Track 1 of the Old Testament where the RCL offers two.
+  const passages = sunday
+    ? [sunday.ot[0], sunday.psalm, sunday.nt[0], sunday.gospel].filter((p): p is string => !!p)
+    : [];
+  // NEWLINE-separated: oremus renders several passages on one page only that
+  // way (or as repeated ?passage= params); "; " and "," return its landing
+  // page — probed 2026-09-04.
+  const oremusUrl = passages.length > 0
+    ? `https://bible.oremus.org/?passage=${encodeURIComponent(passages.join("\n"))}`
+    : null;
 
   const cards = [
     {
@@ -73,7 +86,7 @@ export default function ThisSundayPage() {
       title: t("this_sunday.readings", { defaultValue: "Sunday readings" }),
       blurb: sundayLine,
       cta: t("rhythm.read", { defaultValue: "Read" }),
-      open: () => { if (sunday?.url) openExternal(sunday.url, { reader: true }); },
+      open: () => { const u = oremusUrl ?? sunday?.url; if (u) openExternal(u, { reader: true }); },
     },
     {
       key: "visio", emoji: "🖼️",
@@ -84,7 +97,9 @@ export default function ThisSundayPage() {
     },
     ...(isAdmin ? [{
       key: "commentary", emoji: "📰",
-      title: t("this_sunday.commentary", { defaultValue: "Scripture commentary from Yale" }),
+      // "Scripture commentary from Yale" truncated on the card; the second line
+      // still carries the owner's words.
+      title: t("this_sunday.commentary", { defaultValue: "Yale commentary" }),
       blurb: t("this_sunday.commentary_sub", { defaultValue: "Dr. Andrew McGowan's commentary on the lectionary" }),
       cta: t("rhythm.read", { defaultValue: "Read" }),
       open: () => {
