@@ -100,11 +100,17 @@ export async function assembleSundayReading(
   const tracks = await getSundayTracks();
   if (!tracks) return { slides: [], dayInfo: { sundayDate: null, track } };
   const t = track === 2 && tracks.track2 ? tracks.track2 : tracks.track1;
+  // The RCL page says "Psalm 119:33-40"; the office lectionary (and so
+  // parsePsalmRef) speaks in bare "119:33-40" — the word dropped the psalm
+  // from the deck entirely on the first run.
+  const psalmRef = t.psalm ? t.psalm.replace(/^\s*psalms?\s+/i, "").trim() : "";
   const slides = await buildScriptureSlides(
-    { psalms: t.psalm ? [t.psalm] : [], ot: t.ot ?? "", nt: t.nt ?? "", gospel: t.gospel ?? "" },
+    { psalms: psalmRef ? [psalmRef] : [], ot: t.ot ?? "", nt: t.nt ?? "", gospel: t.gospel ?? "" },
     parts,
     "The Psalm Appointed For Sunday",
     "sunday",
+    // Owner's order for Sunday: OT, then the psalm in the office UI, NT, Gospel.
+    { psalmAfterOt: true },
   );
   return { slides, dayInfo: { sundayDate: tracks.sundayDate, track: track === 2 && tracks.track2 ? 2 : 1, hasTrack2: !!tracks.track2, url: tracks.url } };
 }
@@ -115,6 +121,7 @@ async function buildScriptureSlides(
   parts: ScripturePart[],
   psalmSubtitle: string,
   idPrefix: string,
+  opts: { psalmAfterOt?: boolean } = {},
 ): Promise<Slide[]> {
   const wants = (p: ScripturePart) => parts.includes(p);
   const { psalms } = refs;
@@ -144,73 +151,77 @@ async function buildScriptureSlides(
   const id = () => `${idPrefix}-${++n}`;
 
   // ── The psalms ────────────────────────────────────────────────────────────
+  const emitPsalms = () => {
   if (wants("psalms") && appointedPsalms.length > 0) {
-    const first = appointedPsalms[0]!;
-    const firstData = psalmTexts[`psalm_${first.number}`];
-    const combinedEyebrow = appointedPsalms.length === 1
-      ? psalmEyebrow(first)
-      : `PSALMS ${appointedPsalms.map((p) => (p.range ? `${p.number}:${p.range[0]}-${p.range[1]}` : `${p.number}`)).join(" & ")}`;
-    // The TITLE the owner asked to see is the psalm's Latin incipit — "Beatus
-    // vir qui non abiit" — which is what the psalter carries as its name and
-    // what the office's own title card shows.
-    const combinedTitle = appointedPsalms.length === 1
-      ? (firstData?.title ?? null)
-      : `Psalms ${appointedPsalms.map((p) => `${p.number}`).join(" & ")}`;
+      const first = appointedPsalms[0]!;
+      const firstData = psalmTexts[`psalm_${first.number}`];
+      const combinedEyebrow = appointedPsalms.length === 1
+        ? psalmEyebrow(first)
+        : `PSALMS ${appointedPsalms.map((p) => (p.range ? `${p.number}:${p.range[0]}-${p.range[1]}` : `${p.number}`)).join(" & ")}`;
+      // The TITLE the owner asked to see is the psalm's Latin incipit — "Beatus
+      // vir qui non abiit" — which is what the psalter carries as its name and
+      // what the office's own title card shows.
+      const combinedTitle = appointedPsalms.length === 1
+        ? (firstData?.title ?? null)
+        : `Psalms ${appointedPsalms.map((p) => `${p.number}`).join(" & ")}`;
 
-    slides.push(
-      slide(id(), "psalm_title", "📖", combinedEyebrow, "", {
-        title: combinedTitle,
-        bcpReference: firstData?.bcpReference ?? null,
-        metadata: {
-          psalmNumber: first.number,
-          psalmRange: first.range,
-          psalmRef: appointedPsalms.map((p) => p.raw).join(" & "),
-          combined: appointedPsalms.length > 1,
-          // The subtitle the office stamps names the office it belongs to;
-          // this deck isn't one, so it says what it is.
-          psalmSubtitle,
-        },
-      }),
-    );
-
-    type Chunk = { content: string; psalmRef: typeof appointedPsalms[number] };
-    const allChunks: Chunk[] = [];
-    for (const psalmRef of appointedPsalms) {
-      const data = psalmTexts[`psalm_${psalmRef.number}`];
-      const sliced = data && psalmRef.range ? sliceVersesByRange(data.content, psalmRef.range) : data?.content;
-      if (sliced) {
-        for (const chunk of splitPsalmIntoChunks(sliced, 4)) allChunks.push({ content: chunk, psalmRef });
-      } else {
-        // Same honest fallback the offices use rather than a blank slide.
-        allChunks.push({ content: `[Psalm ${psalmRef.raw} — see BCP Psalter]`, psalmRef });
-      }
-    }
-    allChunks.forEach((c, i) => {
-      const data = psalmTexts[`psalm_${c.psalmRef.number}`];
       slides.push(
-        slide(id(), "psalm", "📖", psalmEyebrow(c.psalmRef), c.content, {
-          title: data?.title ?? null,
-          bcpReference: data?.bcpReference ?? null,
+        slide(id(), "psalm_title", "📖", combinedEyebrow, "", {
+          title: combinedTitle,
+          bcpReference: firstData?.bcpReference ?? null,
           metadata: {
-            psalmNumber: c.psalmRef.number,
-            psalmRange: c.psalmRef.range,
-            psalmRef: c.psalmRef.raw,
-            psalmChunkIndex: i,
-            psalmChunkTotal: allChunks.length,
+            psalmNumber: first.number,
+            psalmRange: first.range,
+            psalmRef: appointedPsalms.map((p) => p.raw).join(" & "),
+            combined: appointedPsalms.length > 1,
+            // The subtitle the office stamps names the office it belongs to;
+            // this deck isn't one, so it says what it is.
+            psalmSubtitle,
           },
         }),
       );
-    });
-  }
 
-  // ── The three lessons, in the order he asked for ──────────────────────────
-  // buildLessonSlides returns nothing for an empty or dashed reference, so a
-  // day the lectionary leaves blank simply has one fewer slide rather than a
-  // card pointing at a passage called "----------".
-  // …each one only if the reader keeps it. The lectionary's own three lessons
-  // are the Old Testament, the Epistle ("New Testament" on the setting, which
-  // is the name a reader would use for it) and the Gospel.
+      type Chunk = { content: string; psalmRef: typeof appointedPsalms[number] };
+      const allChunks: Chunk[] = [];
+      for (const psalmRef of appointedPsalms) {
+        const data = psalmTexts[`psalm_${psalmRef.number}`];
+        const sliced = data && psalmRef.range ? sliceVersesByRange(data.content, psalmRef.range) : data?.content;
+        if (sliced) {
+          for (const chunk of splitPsalmIntoChunks(sliced, 4)) allChunks.push({ content: chunk, psalmRef });
+        } else {
+          // Same honest fallback the offices use rather than a blank slide.
+          allChunks.push({ content: `[Psalm ${psalmRef.raw} — see BCP Psalter]`, psalmRef });
+        }
+      }
+      allChunks.forEach((c, i) => {
+        const data = psalmTexts[`psalm_${c.psalmRef.number}`];
+        slides.push(
+          slide(id(), "psalm", "📖", psalmEyebrow(c.psalmRef), c.content, {
+            title: data?.title ?? null,
+            bcpReference: data?.bcpReference ?? null,
+            metadata: {
+              psalmNumber: c.psalmRef.number,
+              psalmRange: c.psalmRef.range,
+              psalmRef: c.psalmRef.raw,
+              psalmChunkIndex: i,
+              psalmChunkTotal: allChunks.length,
+            },
+          }),
+        );
+      });
+    }
+
+    // ── The three lessons, in the order he asked for ──────────────────────────
+    // buildLessonSlides returns nothing for an empty or dashed reference, so a
+    // day the lectionary leaves blank simply has one fewer slide rather than a
+    // card pointing at a passage called "----------".
+    // …each one only if the reader keeps it. The lectionary's own three lessons
+    // are the Old Testament, the Epistle ("New Testament" on the setting, which
+    // is the name a reader would use for it) and the Gospel.
+  };
+  if (!opts.psalmAfterOt) emitPsalms();
   if (wants("ot")) for (const s of buildLessonSlides(lesson1, "first_morning", id)) slides.push(s);
+  if (opts.psalmAfterOt) emitPsalms();
   if (wants("nt")) for (const s of buildLessonSlides(lesson2, "second_morning", id)) slides.push(s);
   if (wants("gospel")) for (const s of buildLessonSlides(lesson3, "gospel_morning", id)) slides.push(s);
 
