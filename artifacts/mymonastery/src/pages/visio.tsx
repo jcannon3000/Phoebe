@@ -97,6 +97,18 @@ function tidyDate(d: string): string {
  * like "died 1504". Ranges that HAVE both years are left to tidyDate.
  */
 function tidyArtist(a: string): string {
+  /**
+   * "JESUS MAFA" is the SERIES, not a person — Vie de Jesus Mafa, made with
+   * the Mafa community of northern Cameroon. ACT files it as the artist, and
+   * printed under "Artist:" it reads like someone's name (owner: "change the
+   * artist name Jesus Mafa to Mafa community, Cameroon").
+   *
+   * A DISPLAY rename only: the catalogue value is untouched, so the
+   * series note further down still keys off it, and the formal attribution on
+   * the closing slide still credits the work the way ACT and the publisher
+   * record it.
+   */
+  if (a.trim().toUpperCase() === "JESUS MAFA") return "Mafa community, Cameroon";
   return tidyDate(a.replace(/(^|[,\s])-\s*(\d{3,4})/g, "$1d. $2"));
 }
 
@@ -1034,11 +1046,22 @@ export default function VisioPage() {
         onClick={onTapNavigate}
         style={{
           flex: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center",
-          // The gospel beat fills from the top so the image can hold a fixed
-          // band and the text scroll under it; every other beat is centred.
-          justifyContent: "center",
+          /**
+           * `flex-start` + auto margins on the beat, NOT `center`.
+           *
+           * A centred flex column that OVERFLOWS its scroll container clips at
+           * the TOP: the overflow splits above and below, and only the bottom
+           * half can be scrolled to. Auto margins centre identically while
+           * there is room and stop centring when there isn't — which is what a
+           * long description needs (owner: the picture centred, the words
+           * scrolling under the Continue).
+           */
+          justifyContent: "flex-start",
           padding: "0 20px", gap: 16,
           overflowY: "auto",
+          // Room for the floating CTA, so the LAST line of a long description
+          // can be scrolled clear of it rather than living underneath it.
+          paddingBottom: "calc(env(safe-area-inset-bottom) + 132px)",
         }}
       >
         {/* Owner: "we also want each slide to fade into each other." A keyed
@@ -1062,7 +1085,9 @@ export default function VisioPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.34, ease: "easeOut" }}
-            style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}
+            /* Auto margins: centred while the beat is short, top-anchored the
+               moment it is taller than the stage. See the container above. */
+            style={{ margin: "auto 0", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}
           >
         {/* The painting, lit from behind by itself.
             Owner: "have it be on a blurred background and there's a drop
@@ -1204,7 +1229,7 @@ export default function VisioPage() {
             >
               {t("visio.notice_prompt", {
                 // The owner's own words, kept as dictated (2026-09-04).
-                defaultValue: "As you are shown this work, notice to where your eyes are drawn to. And perhaps what touches your heart? You can return to this image throughout the week to let it work on you as you prepare for Sunday.",
+                defaultValue: "As you view this work related to this Sunday's scripture readings, consider what touches your heart.",
               })}
             </p>
 
@@ -1490,7 +1515,18 @@ export default function VisioPage() {
           </motion.div>
       </div>
 
-      <div style={{ padding: "10px 20px calc(env(safe-area-inset-bottom) + 18px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+      {/* FLOATING, not a band below (owner: "any description under that
+          scrolls under the continue"). Absolute over the stage with a scrim,
+          so a long description passes beneath it instead of stopping above
+          it. pointerEvents:none on the layer and auto on the controls, so a
+          tap that misses the pill still reaches the stage's own
+          tap-to-advance. */}
+      <div style={{
+        position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 5, pointerEvents: "none",
+        padding: "10px 20px calc(env(safe-area-inset-bottom) + 18px)",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+        background: "linear-gradient(to top, rgba(9,26,16,0.94) 0%, rgba(9,26,16,0.80) 58%, rgba(9,26,16,0) 100%)",
+      }}>
         {/**
           * "Pause before continuing" (owner: "above the bar that loads for
           * twelve seconds, have it say pause before continuing").
@@ -1518,6 +1554,8 @@ export default function VisioPage() {
         )}
         <button
           type="button"
+          // The floating layer above is pointerEvents:none; the pill takes its
+          // own taps back.
           // Inert until the hold is up, rather than disabled: a `disabled`
           // button is dropped from the accessibility tree and can't announce
           // WHY it isn't working. This one stays focusable and says so.
@@ -1527,7 +1565,7 @@ export default function VisioPage() {
           // Frosted, like every other CTA in the app (lib/frost) — this one
           // was a flat green panel sitting on a photo backdrop that every
           // surface around it lets through.
-          style={{ position: "relative", overflow: "hidden", userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420, background: "rgba(46,107,64,0.55)", ...FROST_BLUR, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", border: `1px solid ${BORDER}`, color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: holdReady ? "pointer" : "default", opacity: holdReady ? 1 : 0.72, transition: "opacity 420ms ease-out" }}
+          style={{ pointerEvents: "auto", position: "relative", overflow: "hidden", userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420, background: "rgba(46,107,64,0.55)", ...FROST_BLUR, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", border: `1px solid ${BORDER}`, color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: holdReady ? "pointer" : "default", opacity: holdReady ? 1 : 0.72, transition: "opacity 420ms ease-out" }}
         >
           {/* The wash filling under the label while the hold runs — the same
               language prayer-mode's amen hold uses, so "wait with this" looks
