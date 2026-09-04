@@ -4618,7 +4618,7 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(
             effectiveEntryChoice === "preset",
             `📋 ${t("wol_rule.entry3_preset", { defaultValue: "Choose a preset routine" })}`,
-            t("wol_rule.entry3_preset_sub", { defaultValue: "Start from a rhythm someone else keeps." }),
+            t("wol_rule.entry3_preset_sub", { defaultValue: "Begin from one of Phoebe's preset routines." }),
             () => setEntryChoice("preset"),
           )}
           {/* Owner: "a third option where it says revert to past routine, and
