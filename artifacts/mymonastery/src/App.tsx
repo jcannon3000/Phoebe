@@ -427,6 +427,7 @@ const AdminMinistriesPage = lazy(() => import("./pages/admin-ministries"));
 const AdminBreathPlacesPage = lazy(() => import("./pages/admin-breath-places"));
 const AdminPresetsPage = lazy(() => import("@/pages/admin-presets"));
 const AdminWeekliesPage = lazy(() => import("@/pages/admin-weeklies"));
+const ThisSundayPage = lazy(() => import("@/pages/this-sunday"));
 
 function RoutinePresetRefresh(): null {
   useEffect(() => { void refreshRoutinePresets(); }, []);
@@ -813,6 +814,7 @@ function PilotGate({ children }: { children: ReactNode }) {
 const GUEST_ALLOWED_EXACT = new Set<string>([
   "/", "/dashboard", "/daily-progress",
   "/menu", "/menu/bcp", "/menu/practices", "/menu/learn", "/menu/reflections", "/menu/newsletters", "/menu/resources",
+  "/this-sunday",
   // Practices that need no account to pray — the Examen and the Simple Guided
   // Prayer (PACT) sit alongside /contemplation and /cobreathe here. Signing in
   // only adds the server-side session log.
@@ -1002,6 +1004,7 @@ function Router() {
       {/* Newsletters — Daily/Weekly hub, then Subscriptions and All as home cards. /menu/reflections
           is the old name; it keeps routing here so nothing that linked to it
           404s. The per-source read page below is unchanged. */}
+      <Route path="/this-sunday" component={ThisSundayPage} />
       <Route path="/menu/newsletters" component={MenuNewslettersPage} />
       <Route path="/menu/newsletters/:group" component={MenuNewslettersPage} />
       <Route path="/menu/newsletters/:group/manage" component={MenuNewslettersPage} />

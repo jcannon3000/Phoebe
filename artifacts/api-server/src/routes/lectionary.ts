@@ -13,7 +13,8 @@
 // waking up at 9 AM doesn't ping lectionarypage.net every time.
 
 import { Router, type IRouter, type Request, type Response } from "express";
-import { getUpcomingSundayReading } from "../lib/rclLectionary";
+import { getUpcomingSundayReading, nextSundayDate } from "../lib/rclLectionary";
+import { RCL_SUNDAYS } from "../data/rclSundays";
 
 const router: IRouter = Router();
 
@@ -39,6 +40,31 @@ router.get("/lectionary/today", async (_req: Request, res: Response): Promise<vo
   // without making the rollover invisible to mid-week readers.
   res.setHeader("Cache-Control", "public, max-age=3600");
   res.redirect(302, url);
+});
+
+// GET /api/lectionary/sunday → the coming Sunday: its date and name, the
+// lectionarypage.net page (what "Sunday readings" opens in the reader — the
+// same reader the Daily Scripture Readings practice uses), and the appointed
+// readings for the card's second line. Owner (2026-09-04): "This Sunday" under
+// Learn — Sunday readings, Visio Divina, and Andrew McGowan's commentary.
+router.get("/lectionary/sunday", async (_req: Request, res: Response): Promise<void> => {
+  const sunday = nextSundayDate();
+  const iso = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, "0")}-${String(sunday.getDate()).padStart(2, "0")}`;
+  const rcl = RCL_SUNDAYS[iso] ?? null;
+  let name: string | null = null;
+  let url: string = rcl?.url ?? LECTIONARYPAGE_HOMEPAGE;
+  try {
+    const reading = await getUpcomingSundayReading();
+    if (reading.sundayName) name = reading.sundayName;
+    if (!rcl?.url && reading.sourceUrl && reading.sourceUrl.startsWith("http")) url = reading.sourceUrl;
+  } catch (err) {
+    console.warn("[lectionary/sunday] seed lookup failed:", err);
+  }
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.json({
+    sundayDate: iso, name, url,
+    gospel: rcl?.gospel ?? null, psalm: rcl?.psalm ?? null, nt: rcl?.nt ?? [], ot: rcl?.ot ?? [],
+  });
 });
 
 export default router;

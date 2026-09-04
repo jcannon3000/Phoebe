@@ -45,6 +45,7 @@ export default function MenuLearnPage() {
             { emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", onClick: () => go("/centering-prayer") },
             { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") },
           ] : []),
+          { emoji: "🗓️", label: "This Sunday", sub: "The readings, an image and a word for the coming Sunday", onClick: () => go("/this-sunday") },
           { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") },
           // The reading topics (/learn) had no row here at all — the page was
           // reachable only from the features deck. Admin-only for now because
