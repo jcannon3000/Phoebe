@@ -113,10 +113,10 @@ export default function ThisSundayPage() {
         <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", color: WARM, fontFamily: FONT, paddingBottom: 48 }}>
           <button
             type="button"
-            onClick={() => setLocation("/menu/learn")}
+            onClick={() => setLocation("/menu")}
             style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6 }}
           >
-            ← {t("menu.learn", { defaultValue: "Learn" })}
+            ← {t("menu.title", { defaultValue: "Menu" })}
           </button>
           <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em" }}>
             {t("this_sunday.title", { defaultValue: "This Sunday" })} 🗓️

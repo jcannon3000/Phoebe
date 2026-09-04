@@ -339,6 +339,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   it, guests included — courses are part of the light
                   experience. */}
               <MenuRow emoji="🎓" label={t("menu.learn", { defaultValue: "Learn" })} onClick={() => goCategory("/menu/learn")} />
+              {/* This Sunday — the coming Sunday's readings (as the scripture
+                  deck), Visio Divina and the commentary. Its OWN row, right
+                  below Learn (owner, 2026-09-04: "below Learn like the next
+                  option, not in it"). */}
+              <MenuRow emoji="🗓️" label={t("menu.this_sunday", { defaultValue: "This Sunday" })} onClick={() => goCategory("/this-sunday")} />
             </div>
 
             {/* Communities block MOVED here (owner, 2026-09-02): it now sits

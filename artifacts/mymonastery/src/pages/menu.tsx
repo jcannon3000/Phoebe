@@ -111,12 +111,19 @@ export default function MenuPage() {
   // allowlist and the home's Learn band starts the Way of Love for a fresh
   // guest — so there's no guest gating here, only the platform rule.
   const learn: MenuHubGroup = { header: "Learn", items: [] };
+  // "This Sunday" — its own option right below Learn (owner, 2026-09-04:
+  // "below Learn like the next option, not in it"). Its own group so it reads
+  // as a sibling of Learn, not a course inside it.
+  const thisSunday: MenuHubGroup = {
+    items: [{ emoji: "🗓️", label: t("menu.this_sunday", { defaultValue: "This Sunday" }), sub: t("menu.this_sunday_sub", { defaultValue: "The readings, an image and a word for the coming Sunday" }), onClick: () => go("/this-sunday") }],
+  };
   if (!isNativeShell()) {
     learn.items.push({ emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", onClick: () => go("/centering-prayer") });
     learn.items.push({ emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") });
   }
   learn.items.push({ emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") });
   groups.push(learn);
+  groups.push(thisSunday);
 
   // Explore — community + reference content.
   const explore: MenuHubGroup = { header: t("menu.hdr_explore"), items: [] };
