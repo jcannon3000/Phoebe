@@ -177,11 +177,16 @@ export function NotificationReminderBanner() {
             opacity: working ? 0.6 : 1,
           }}
         >
+          {/* "Turn on" in BOTH states (owner: "it should say something like
+              begin or turn on"). It used to read "How?" once the OS had
+              already refused — accurate about what the tap does (it can only
+              show the manual route; no API can re-open that dialog) but it
+              read as a help link rather than the one action this card is for.
+              The body line above already says the switch lives outside the
+              app, and tapping still opens those directions. */}
           {working
             ? t("notif_reminder.enabling", { defaultValue: "Turning on…" })
-            : permission === "denied"
-              ? t("notif_reminder.how", { defaultValue: "How?" })
-              : t("notif_reminder.enable", { defaultValue: "Turn on" })}
+            : t("notif_reminder.enable", { defaultValue: "Turn on" })}
         </button>
         <button
           type="button"
