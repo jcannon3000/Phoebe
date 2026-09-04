@@ -1667,8 +1667,6 @@ export default function WayOfLoveRuleFlow({
   // into the rhythm at the right point. Kept across adds (often several land in
   // the same slot).
   const [customSlot, setCustomSlot] = useState<CustomSlot>("anytime");
-  const [readingSlot, setReadingSlotState] = useState<CustomSlot>(() => getPracticeSlot("reading"));
-  const chooseReadingSlot = (s: CustomSlot) => { touchedRef.current = true; setReadingSlotState(s); setPracticeSlot("reading", s); };
   // Reading ritual toggle — when on, the new practice is logged by an amount
   // (chapter / page / time) instead of a plain check, with an optional daily goal.
   const [customIsReading, setCustomIsReading] = useState(false);
@@ -4773,26 +4771,9 @@ export default function WayOfLoveRuleFlow({
               copies still read it. */}
           {choiceRow(contemplative.icons, `🪟 ${t("wol_rule.cp_icons", { defaultValue: "Praying with Icons" })}`, t("wol_rule.cp_icons_sub", { defaultValue: "Sit with an icon — return to it daily." }), () => toggleContemplative("icons"))}
           {choiceRow(contemplative.reading, `📚 ${t("wol_rule.cp_reading", { defaultValue: "Reading" })}`, t("wol_rule.cp_reading_sub", { defaultValue: "A book, a page a day — with a bar showing how far in you are." }), () => toggleContemplative("reading"))}
-          {/* When they read — the picker lived on the dead "extras" step, so
-              Reading's slot could never be changed from the customizer. */}
-          {contemplative.reading && (
-            <div style={{ margin: "-2px 0 6px", padding: "0 2px" }}>
-              <p style={{ color: SAGE_DIM, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 8px", fontFamily: FONT }}>
-                {t("wol_rule.reading_when", { defaultValue: "When do you read?" })}
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
-                {CUSTOM_SLOTS.map((s) => {
-                  const on = readingSlot === s;
-                  return (
-                    <button key={s} type="button" onClick={() => chooseReadingSlot(s)}
-                      style={{ ...FROST_BLUR, background: on ? CARD_ACTIVE : CARD, border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`, color: on ? CREAM : SAGE, borderRadius: 10, padding: "9px 4px", fontSize: 12.5, fontWeight: on ? 700 : 500, fontFamily: FONT, cursor: "pointer", textAlign: "center" }}>
-                      {SLOT_LABEL[s]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* No time-of-day picker for Reading (owner, 2026-09-04: "reading
+              shouldn't have the times of day like this") — it is an all-day card,
+              like Audio Divina and the walk; getPracticeSlot("reading") says so. */}
           {/* Spirituals and Lectio — in the options array, in both onKeys copies,
               on the server, and (until now) not on this step. See the note
               above: ADD IT HERE TOO. */}
@@ -6277,38 +6258,6 @@ export default function WayOfLoveRuleFlow({
               Prayer list page (the "My list" tab), not as a separate anchor. */}
           {/* Examen + Audio Divina now live in the Contemplation step. */}
           {choiceRow(extras.podcasts, `🎙️ ${t("wol_rule.extra_podcasts", { defaultValue: "Podcasts" })}`, t("wol_rule.extra_podcasts_sub", { defaultValue: "Log what you listened to." }), () => toggleExtra("podcasts"))}
-          {/* When they read — so the Reading card slots into the rhythm at that
-              time of day (mirrors journaling above). */}
-          {contemplative.reading && (
-            <div style={{ margin: "-4px 0 4px", padding: "0 2px" }}>
-              <p style={{ color: SAGE_DIM, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 8px", fontFamily: FONT }}>
-                {t("wol_rule.reading_when", { defaultValue: "When do you read?" })}
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
-                {CUSTOM_SLOTS.map((s) => {
-                  const on = readingSlot === s;
-                  const label = SLOT_LABEL[s];
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => chooseReadingSlot(s)}
-                      style={{
-                        ...FROST_BLUR,
-                        background: on ? CARD_ACTIVE : CARD,
-                        border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
-                        color: on ? CREAM : SAGE,
-                        borderRadius: 10, padding: "9px 4px", fontSize: 12.5, fontWeight: on ? 700 : 500,
-                        fontFamily: FONT, cursor: "pointer", textAlign: "center",
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
