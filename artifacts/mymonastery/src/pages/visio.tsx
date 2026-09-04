@@ -1203,7 +1203,8 @@ export default function VisioPage() {
               style={{ color: "rgba(200,212,192,0.86)", fontFamily: FONT, fontSize: 16.5, lineHeight: 1.6, margin: "4px 0 0", maxWidth: 430 }}
             >
               {t("visio.notice_prompt", {
-                defaultValue: "In a moment you will see this work. Let your eyes rest where they are drawn, and notice what you notice — there is nothing to solve here. Return to this same image each day this week, and see what it shows you as you carry it toward Sunday.",
+                // The owner's own words, kept as dictated (2026-09-04).
+                defaultValue: "As you are shown this work, notice to where your eyes are drawn to. And perhaps what touches your heart? You can return to this image throughout the week to let it work on you as you prepare for Sunday.",
               })}
             </p>
 
