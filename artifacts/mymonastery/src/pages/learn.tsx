@@ -56,7 +56,7 @@ export default function LearnPage() {
     ...(isAdmin ? [{
       id: "daily-prayer-sermon",
       title: "The Power of Daily Prayer",
-      emoji: "✝️",
+      emoji: "🙏🏽",
       blurb: "A sermon on costly grace — Year A, Pentecost 14",
       slides: DAILY_PRAYER_SERMON,
       accent: "#C8A46A",
