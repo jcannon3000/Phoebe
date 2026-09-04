@@ -51,7 +51,6 @@ export default function MenuLearnPage() {
           // the sermon it currently carries is.
           ...(isAdmin ? [
             { emoji: "📖", label: "Readings", sub: "Short pieces to read a slide at a time", onClick: () => go("/learn") },
-            { emoji: "🙏🏽", label: "The Power of Daily Prayer", sub: "A sermon over eight days — one beat each morning", onClick: () => go("/daily-prayer-course") },
           ] : []),
           ...(isAdmin || cacLibraryGranted ? [
             { emoji: "🌵", label: "CAC Courses", sub: "Rohr, Finley and McLaren — a season at a time", onClick: () => go("/cac-courses") },
