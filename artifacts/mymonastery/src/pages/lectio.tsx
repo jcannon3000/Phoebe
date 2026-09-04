@@ -55,32 +55,31 @@ const PROMPTS = [
 ];
 
 /**
- * THE READING IS A SLIDE, not a side-trip (owner: "it says one of four, which
- * is only counting the prompt slides … the reading should be counted as
- * slides").
+ * PROMPTS ONLY — the reading is the READER, not a slide.
  *
- * Before this the deck was PICK → three prompts → close, and the passage was
- * opened as a side effect of leaving each prompt. So the counter read "1 of 4"
- * while the practice actually has seven beats, and the three readings — the
- * substance of Lectio — were invisible to the navigation.
+ * Owner: "there's no reason why there's a title slide for the reading. There
+ * should be no title slides for the reading. There should just be the
+ * prompts. And it needs to start with the first prompt, then show the text the
+ * first time. Second prompt show the text the second time. Third prompt show
+ * the text third time, and then the closing reflection."
  *
- * Now each round is READ then REFLECT, which is also the order the prompts
- * describe ("as you read the passage for the first time…"). The read slide is
- * shaped like the Daily Office's lesson_title and behaves like it: its Next
- * OPENS the passage and advances, which is the precedent bcp-daily-office
- * already set for a lesson.
+ * So the deck is PICK → three prompts → close, and each prompt's Next opens
+ * the passage. A title card announcing a reading the person is about to be
+ * shown says nothing the prompt hasn't already said, and it put a beat
+ * between the instruction and the text it describes.
+ *
+ * (It briefly ran the other way — READ then REFLECT, three of each — because
+ * the counter was said to be under-reporting the practice. The count is
+ * honest either way; it is the beats that changed.)
  */
 const PICK = 0;
-const READ1 = 1, PROMPT1 = 2, READ2 = 3, PROMPT2 = 4, READ3 = 5, PROMPT3 = 6, CLOSE = 7;
+const PROMPT1 = 1, PROMPT2 = 2, PROMPT3 = 3, CLOSE = 4;
 const LAST = CLOSE;
-const READ_STEPS = [READ1, READ2, READ3];
 const PROMPT_STEPS = [PROMPT1, PROMPT2, PROMPT3];
-/** Which round (0-2) a read/prompt step belongs to — drives the prompt text. */
+/** Which round (0-2) a prompt belongs to — drives the prompt text. */
 function roundOf(step: number): number {
   const i = PROMPT_STEPS.indexOf(step);
-  if (i >= 0) return i;
-  const r = READ_STEPS.indexOf(step);
-  return r >= 0 ? r : 0;
+  return i >= 0 ? i : 0;
 }
 
 export default function LectioPage() {
@@ -120,7 +119,7 @@ export default function LectioPage() {
   const pickLesson = (o: LessonOption) => {
     // Picking seats the first READ slide — nothing opens yet. The passage
     // opens from that slide's own Next, the way a lesson does in the office.
-    guardedAdvance(() => { setChosen(o); setStep(READ1); });
+    guardedAdvance(() => { setChosen(o); setStep(PROMPT1); });
   };
 
   // "← Back" (top-left) returns to wherever this was opened from — the
@@ -154,7 +153,7 @@ export default function LectioPage() {
      * it falls back to a plain tab and the deck advances on the way out, as
      * before.
      */
-    if (READ_STEPS.includes(step) && chosen) {
+    if (PROMPT_STEPS.includes(step) && chosen) {
       const label = `${step} of ${LAST} · ${sectionLabelFor(step)}`;
       if (hasNativeBrowser()) {
         /**
@@ -215,9 +214,7 @@ export default function LectioPage() {
   // a function of the step because the reader needs the label for the slide it
   // was opened FROM, which is not always the one being rendered.
   const sectionLabelFor = (n: number): string =>
-    READ_STEPS.includes(n) ? "Read"
-      : PROMPT_STEPS.includes(n) ? "Reflect"
-        : n === CLOSE ? "Pray" : "";
+    PROMPT_STEPS.includes(n) ? "Read" : n === CLOSE ? "Pray" : "";
   const sectionLabel = sectionLabelFor(step);
   const stepLabel = atStart ? null : `${step} of ${LAST} · ${sectionLabel}`;
 
@@ -354,31 +351,14 @@ export default function LectioPage() {
               </>
             )}
 
-            {/* THE READING, as its own slide — the Daily Office's lesson_title
-                shape: a quiet eyebrow, the reference large, and the round it
-                belongs to. Next opens the passage (see onNext), exactly as a
-                lesson's Next does in that deck. */}
-            {READ_STEPS.includes(step) && (
-              <>
-                <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", margin: "0 0 14px" }}>
-                  {chosen ? KIND_LABEL[chosen.kind] : ""}
-                  {roundOf(step) === 0 ? " · First reading" : roundOf(step) === 1 ? " · Second reading" : " · Third reading"}
-                </p>
-                <h2 className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.25, margin: "0 0 12px" }}>
-                  {chosen?.reference}
-                </h2>
-                <p style={{ color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 15, lineHeight: 1.6, margin: 0 }}>
-                  {roundOf(step) === 0
-                    ? "Read it slowly. Next opens the passage."
-                    : "Return to it. Next opens the passage again."}
-                </p>
-              </>
-            )}
-
+            {/* No reading slide: the passage IS the reader, opened from each
+                prompt's own Next (owner). The prompt names which time round
+                it is, so nothing is lost by not announcing it first. */}
             {PROMPT_STEPS.includes(step) && (
               <>
                 <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", margin: "0 0 14px" }}>
                   {chosen?.reference}
+                  {roundOf(step) === 0 ? " · First reading" : roundOf(step) === 1 ? " · Second reading" : " · Third reading"}
                 </p>
                 <p className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, margin: 0 }}>
                   {PROMPTS[roundOf(step)]}
