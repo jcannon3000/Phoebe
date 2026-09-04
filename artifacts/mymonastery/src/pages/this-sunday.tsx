@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -29,9 +29,11 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
+type Track = { ot: string | null; psalm: string | null; nt: string | null; gospel: string | null };
 type Sunday = {
   sundayDate: string; name: string | null; url: string;
   gospel: string | null; psalm: string | null; nt: string[]; ot: string[];
+  track1: Track | null; track2: Track | null;
 };
 
 function sundayLabel(iso: string): string {
@@ -60,33 +62,28 @@ export default function ThisSundayPage() {
   });
   const andrewsPrevious = usePreviousIssues("andrews", isAdmin);
 
-  const readingsLine = sunday
-    ? [sunday.ot[0], sunday.psalm, sunday.nt[0], sunday.gospel].filter(Boolean).join(" · ")
+  // Track 1 / Track 2 (owner: "a Track A or B toggle on the opening page that
+  // would affect what readings are in the deck"). Only offered when the RCL
+  // appoints two; the deck reads ?track=.
+  const [track, setTrack] = useState<1 | 2>(1);
+  const hasTrack2 = !!sunday?.track2;
+  const chosen: Track | null = sunday ? (track === 2 && sunday.track2 ? sunday.track2 : sunday.track1) : null;
+  const readingsLine = chosen
+    ? [chosen.ot, chosen.psalm, chosen.nt, chosen.gospel].filter(Boolean).join(" · ")
     : "";
   const sundayLine = sunday
     ? [sunday.name ?? sundayLabel(sunday.sundayDate), readingsLine].filter(Boolean).join(" · ")
     : t("this_sunday.loading", { defaultValue: "Finding the readings…" });
-
-  // The passages on oremus (owner: "use passages from oremus") — the host
-  // Phoebe's reader restyles, the way the office's "Read online" pill opens a
-  // lesson. Track 1 of the Old Testament where the RCL offers two.
-  const passages = sunday
-    ? [sunday.ot[0], sunday.psalm, sunday.nt[0], sunday.gospel].filter((p): p is string => !!p)
-    : [];
-  // NEWLINE-separated: oremus renders several passages on one page only that
-  // way (or as repeated ?passage= params); "; " and "," return its landing
-  // page — probed 2026-09-04.
-  const oremusUrl = passages.length > 0
-    ? `https://bible.oremus.org/?passage=${encodeURIComponent(passages.join("\n"))}`
-    : null;
 
   const cards = [
     {
       key: "readings", emoji: "📖",
       title: t("this_sunday.readings", { defaultValue: "Sunday readings" }),
       blurb: sundayLine,
-      cta: t("rhythm.read", { defaultValue: "Read" }),
-      open: () => { const u = oremusUrl ?? sunday?.url; if (u) openExternal(u, { reader: true }); },
+      cta: t("rhythm.begin", { defaultValue: "Begin" }),
+      // The Daily Scripture Reading deck (owner: "just like the Daily Scripture
+      // Reading UI … bar at the bottom"), fed with this Sunday's track.
+      open: () => setLocation(`/bcp/daily-office?mode=sunday&track=${track}`),
     },
     {
       key: "visio", emoji: "🖼️",
@@ -129,6 +126,20 @@ export default function ThisSundayPage() {
               ? t("this_sunday.sub", { defaultValue: "{{when}} — the readings, an image, and a word on them.", when: sundayLabel(sunday.sundayDate) })
               : t("this_sunday.sub_loading", { defaultValue: "The coming Sunday — its readings, an image, and a word on them." })}
           </p>
+          {hasTrack2 && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              {([1, 2] as const).map((n) => {
+                const on = track === n;
+                return (
+                  <button key={n} type="button" onClick={() => setTrack(n)}
+                    style={{ flex: 1, background: on ? "rgba(46,107,64,0.45)" : "rgba(200,212,192,0.06)", border: `1px solid ${on ? "rgba(168,197,160,0.6)" : "rgba(200,212,192,0.18)"}`,
+                      color: WARM, fontFamily: FONT, fontSize: 14, fontWeight: on ? 700 : 500, borderRadius: 999, padding: "9px 0", cursor: "pointer" }}>
+                    {t(n === 1 ? "this_sunday.track1" : "this_sunday.track2", { defaultValue: n === 1 ? "Track 1" : "Track 2" })}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {cards.map((c, i) => (
               <PracticeCard

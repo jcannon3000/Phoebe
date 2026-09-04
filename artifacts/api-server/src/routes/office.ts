@@ -24,7 +24,7 @@ import { isUserBeta } from "../lib/parishGate";
 import { resolveLocale } from "../lib/officeI18n";
 import { seedBcpTexts } from "../seeds/bcpTexts";
 import { PSALTER } from "../seeds/bcpPsalter";
-import { assembleScriptureReading, parseScriptureParts } from "../lib/assembleScriptureReading";
+import { assembleScriptureReading, assembleSundayReading, parseScriptureParts } from "../lib/assembleScriptureReading";
 
 const router = Router();
 
@@ -460,6 +460,24 @@ router.get("/devotion/:kind", async (req, res) => {
  * points at this endpoint and everything downstream — progress, resume, the
  * chime, read-aloud — works because it is the same deck.
  */
+// GET /api/office/sunday?track=1|2 — the coming Sunday's RCL readings as the
+// scripture deck: psalm in the office UI, then OT / NT / Gospel title cards.
+// One track at a time; the This Sunday page carries the toggle.
+router.get("/office/sunday", async (req, res) => {
+  const track: 1 | 2 = String(req.query.track ?? "1") === "2" ? 2 : 1;
+  try {
+    const { slides, dayInfo } = await assembleSundayReading(track, parseScriptureParts(req.query.parts));
+    return res.json({
+      slides,
+      officeDay: { ...(dayInfo as Record<string, unknown>), totalSlides: slides.length },
+      cacheDate: `${(dayInfo as { sundayDate?: string | null }).sundayDate ?? "none"}-t${track}`,
+    });
+  } catch (err) {
+    console.error("Sunday reading assembly failed:", err);
+    return res.json({ slides: [], officeDay: { totalSlides: 0 }, cacheDate: "none" });
+  }
+});
+
 router.get("/office/scripture", async (req, res) => {
   const date = parseOfficeDate(req.query.date);
   try {

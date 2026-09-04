@@ -21,6 +21,7 @@ import { inArray } from "drizzle-orm";
 import { db, bcpTextsTable } from "@workspace/db";
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getLectionaryReadings } from "./lectionary";
+import { getSundayTracks } from "./rclTracks";
 import { buildLessonSlides } from "./assembleLesson";
 import { parsePsalmRef, sliceVersesByRange, splitPsalmIntoChunks, psalmEyebrow } from "./psalmRange";
 import type { Slide, SlideType } from "./assembleMorningPrayer";
@@ -70,21 +71,54 @@ export async function assembleScriptureReading(
   parts: ScripturePart[] = ALL_PARTS,
 ): Promise<{ slides: Slide[]; dayInfo: unknown }> {
   const liturgicalDay = getOfficeDay(date);
-  const wants = (p: ScripturePart) => parts.includes(p);
-
-  /**
-   * ALL THREE LESSONS COME FROM THE MORNING TABLE.
-   *
-   * The Daily Office Lectionary appoints the Old Testament and Epistle at
-   * Morning Prayer and the Gospel at Evening Prayer, but that is a LAYOUT
-   * choice about where each is read — the morning entry carries all three
-   * (lesson3 is the day's Gospel, which Evening Prayer then reads as its own).
-   * Morning Prayer's Epistle slide already links lesson3 as "Read Gospel" on
-   * exactly this reasoning. A reading practice isn't bound by where an office
-   * puts each lesson, and the owner asked for all three in one sitting.
-   */
   const { psalms, lesson1, lesson2, lesson3 } = getLectionaryReadings(liturgicalDay, "morning");
+  const slides = await buildScriptureSlides(
+    { psalms, ot: lesson1 ?? "", nt: lesson2 ?? "", gospel: lesson3 ?? "" },
+    parts,
+    "The Psalm Appointed For Today",
+    "scripture",
+  );
+  return {
+    slides,
+    dayInfo: {
+      date: date.toISOString().slice(0, 10),
+      season: liturgicalDay.season,
+      feastName: liturgicalDay.feastName,
+    },
+  };
+}
 
+/**
+ * The coming Sunday's readings as the same deck — one RCL track at a time
+ * (owner: "OT / PSALM (office UI) / NT / GOSPEL … just like the Daily
+ * Scripture Reading UI", with "a Track A or B toggle on the opening page").
+ */
+export async function assembleSundayReading(
+  track: 1 | 2,
+  parts: ScripturePart[] = ALL_PARTS,
+): Promise<{ slides: Slide[]; dayInfo: unknown }> {
+  const tracks = await getSundayTracks();
+  if (!tracks) return { slides: [], dayInfo: { sundayDate: null, track } };
+  const t = track === 2 && tracks.track2 ? tracks.track2 : tracks.track1;
+  const slides = await buildScriptureSlides(
+    { psalms: t.psalm ? [t.psalm] : [], ot: t.ot ?? "", nt: t.nt ?? "", gospel: t.gospel ?? "" },
+    parts,
+    "The Psalm Appointed For Sunday",
+    "sunday",
+  );
+  return { slides, dayInfo: { sundayDate: tracks.sundayDate, track: track === 2 && tracks.track2 ? 2 : 1, hasTrack2: !!tracks.track2, url: tracks.url } };
+}
+
+/** The psalm(s) in full as office slides, then the lessons as title cards. */
+async function buildScriptureSlides(
+  refs: { psalms: string[]; ot: string; nt: string; gospel: string },
+  parts: ScripturePart[],
+  psalmSubtitle: string,
+  idPrefix: string,
+): Promise<Slide[]> {
+  const wants = (p: ScripturePart) => parts.includes(p);
+  const { psalms } = refs;
+  const lesson1 = refs.ot, lesson2 = refs.nt, lesson3 = refs.gospel;
   const appointedPsalms = psalms
     .map((r) => parsePsalmRef(r))
     .filter((p): p is NonNullable<typeof p> => p !== null);
@@ -107,7 +141,7 @@ export async function assembleScriptureReading(
 
   const slides: Slide[] = [];
   let n = 0;
-  const id = () => `scripture-${++n}`;
+  const id = () => `${idPrefix}-${++n}`;
 
   // ── The psalms ────────────────────────────────────────────────────────────
   if (wants("psalms") && appointedPsalms.length > 0) {
@@ -134,7 +168,7 @@ export async function assembleScriptureReading(
           combined: appointedPsalms.length > 1,
           // The subtitle the office stamps names the office it belongs to;
           // this deck isn't one, so it says what it is.
-          psalmSubtitle: "The Psalm Appointed For Today",
+          psalmSubtitle,
         },
       }),
     );
@@ -176,9 +210,9 @@ export async function assembleScriptureReading(
   // …each one only if the reader keeps it. The lectionary's own three lessons
   // are the Old Testament, the Epistle ("New Testament" on the setting, which
   // is the name a reader would use for it) and the Gospel.
-  if (wants("ot")) for (const s of buildLessonSlides(lesson1 ?? "", "first_morning", id)) slides.push(s);
-  if (wants("nt")) for (const s of buildLessonSlides(lesson2 ?? "", "second_morning", id)) slides.push(s);
-  if (wants("gospel")) for (const s of buildLessonSlides(lesson3 ?? "", "gospel_morning", id)) slides.push(s);
+  if (wants("ot")) for (const s of buildLessonSlides(lesson1, "first_morning", id)) slides.push(s);
+  if (wants("nt")) for (const s of buildLessonSlides(lesson2, "second_morning", id)) slides.push(s);
+  if (wants("gospel")) for (const s of buildLessonSlides(lesson3, "gospel_morning", id)) slides.push(s);
 
   // Owner: a closing slide, rather than the deck simply ending on the
   // Gospel's title card the instant the reader dismisses. Also closes a
@@ -191,12 +225,5 @@ export async function assembleScriptureReading(
     slides.push(slide(id(), "closing", "🙏🏽", "", "Take a moment to bring what may be on your heart from the readings to prayer."));
   }
 
-  return {
-    slides,
-    dayInfo: {
-      date: date.toISOString().slice(0, 10),
-      season: liturgicalDay.season,
-      feastName: liturgicalDay.feastName,
-    },
-  };
+  return slides;
 }

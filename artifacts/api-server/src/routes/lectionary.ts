@@ -15,6 +15,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getUpcomingSundayReading, nextSundayDate } from "../lib/rclLectionary";
 import { RCL_SUNDAYS } from "../data/rclSundays";
+import { getSundayTracks } from "../lib/rclTracks";
 
 const router: IRouter = Router();
 
@@ -63,10 +64,14 @@ router.get("/lectionary/sunday", async (_req: Request, res: Response): Promise<v
   } catch (err) {
     console.warn("[lectionary/sunday] seed lookup failed:", err);
   }
+  // BY TRACK, for the This Sunday page's Track 1 / Track 2 toggle.
+  let tracks: Awaited<ReturnType<typeof getSundayTracks>> = null;
+  try { tracks = await getSundayTracks(); } catch (err) { console.warn("[lectionary/sunday] tracks failed:", err); }
   res.setHeader("Cache-Control", "public, max-age=3600");
   res.json({
     sundayDate: iso, name, url,
     gospel: rcl?.gospel ?? null, psalm: rcl?.psalm ?? null, nt: rcl?.nt ?? [], ot: rcl?.ot ?? [],
+    track1: tracks?.track1 ?? null, track2: tracks?.track2 ?? null,
   });
 });
 

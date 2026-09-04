@@ -118,7 +118,10 @@ export type LiturgyMode =
   | "creation-evening"
   // The Daily Scripture Reading deck — psalms in full, then the three lessons.
   // Not an office; it rides this renderer because it is the same slide shape.
-  | "scripture";
+  | "scripture"
+  // The coming Sunday's RCL readings, one track at a time — the same deck,
+  // opened from Learn → This Sunday with ?track=1|2.
+  | "sunday";
 
 // ── Per-day localStorage progress ───────────────────────────────────────────
 // Mirrors prayer-mode's resume-where-you-left-off pattern. The home-screen
@@ -555,6 +558,7 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
   "creation-morning": { endpoint: "/api/devotion/creation-morning", title: "Creation Prayer · Morning" },
   "creation-evening": { endpoint: "/api/devotion/creation-evening", title: "Creation Prayer · Evening" },
   scripture: { endpoint: "/api/office/scripture", title: "Daily Scripture Reading" },
+  sunday: { endpoint: "/api/office/sunday", title: "Sunday Readings" },
 };
 
 export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker, initialBook, initialSlide }: OfficeViewerProps) {
@@ -1433,6 +1437,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         const partsParam = scriptureParts && scriptureParts.length < 4
           ? `&parts=${scriptureParts.join(",")}`
           : "";
+        // Sunday readings: which RCL track (This Sunday's toggle) — only that deck reads it.
+        const trackParam = resolvedMode === "sunday" ? `&track=${new URLSearchParams(window.location.search).get("track") === "2" ? "2" : "1"}` : "";
         // Offline support: bcp-daily-office.tsx's own reads/writes into
         // lib/officeOfflineCache.ts, the store lib/officePrefetch.ts warms
         // for the next 30 days in the background (Wi-Fi only). A live fetch
@@ -1448,7 +1454,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: any;
         try {
-          const res = await fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}${creationSingleParam}${partsParam}`);
+          const res = await fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}${creationSingleParam}${partsParam}${trackParam}`);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           data = await res.json();
           void putOfficeCacheEntry(cacheKey, data);
@@ -4875,6 +4881,7 @@ const MODE_START_PAGE: Record<LiturgyMode, string> = {
   // readings, not a liturgy — so its badge names the psalter, which is the one
   // part of it a paper book actually carries.
   scripture: "p. 585",
+  sunday: "RCL",
   morning: "p. 75",
   evening: "p. 115",
   compline: "p. 127",

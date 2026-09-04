@@ -43,6 +43,7 @@ const MODE_ENDPOINT: Record<LiturgyMode, string> = {
   // MODE_START_PAGE in bcp-daily-office are the other two — and adding the
   // mode without it is what broke the client typecheck.
   "scripture": "/api/office/scripture",
+  "sunday": "/api/office/sunday",
 };
 
 function todayYmd(): string {
