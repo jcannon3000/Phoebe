@@ -1,11 +1,11 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
-import { openExternal } from "@/lib/openExternal";
+import { openExternal, openOfficeReading, hasNativeBrowser } from "@/lib/openExternal";
 import { X } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 
@@ -141,17 +141,84 @@ export default function LectioPage() {
     if (step === LAST) { finish(); return; }
     // ONLY a read slide opens the passage. Before, every prompt opened it on
     // the way out, which is why the reading never had a beat of its own.
-    if (READ_STEPS.includes(step) && chosen) void openExternal(chosen.readUrl);
+    /**
+     * THE PASSAGE OPENS WITH THE DECK'S OWN CHROME (owner: "the bottom bar is
+     * supposed to show up over the reader as it does in the office").
+     *
+     * A plain openExternal gets the default reader — Done | Standard |
+     * Options, and no pill — so the reading was the one beat of this deck with
+     * no way forward except backing out of the browser. openOfficeReading
+     * builds the floating Back · "N of M · SECTION" · Next pill over the page
+     * and reports its taps back as phoebe:office-{prev,next}-slide, which the
+     * effect below steps THIS deck with. Web has no native chrome to build, so
+     * it falls back to a plain tab and the deck advances on the way out, as
+     * before.
+     */
+    if (READ_STEPS.includes(step) && chosen) {
+      const label = `${step} of ${LAST} · ${sectionLabelFor(step)}`;
+      if (hasNativeBrowser()) {
+        /**
+         * AND THE DECK STAYS PUT, exactly as the office does.
+         *
+         * The reading is a beat, and the reader's own Next is what ends it —
+         * so this returns rather than falling through to the advance below.
+         * Advancing here as well would put the deck on the next prompt while
+         * the passage was still open, and the pill's Next would then skip
+         * that prompt entirely.
+         */
+        openOfficeReading(chosen.readUrl, {
+          officeTitle: "Lectio Divina",
+          slideLabel: label,
+          sectionLabel: sectionLabelFor(step),
+        });
+        return;
+      }
+      // Web: no chrome to build over someone else's tab, so the deck advances
+      // on the way out and the reading is behind you when you return.
+      void openExternal(chosen.readUrl);
+    }
     setStep((s) => (s < LAST ? s + 1 : s));
   });
 
+  /**
+   * THE READER'S OWN PILL, stepping this deck.
+   *
+   * The native browser reports its floating Back/Next as
+   * phoebe:office-{prev,next}-slide once it has dismissed — the same events
+   * the office listens for (bcp-daily-office.tsx). Read through a ref rather
+   * than closing over prev/onNext directly: this effect is mount-only, and by
+   * the time a tap arrives the deck has usually moved on from the slide the
+   * handlers were created on.
+   *
+   * NEXT SKIPS THE OPEN. onNext on a read slide opens the passage — which is
+   * where we already are — so stepping from the reader's own Next would open
+   * it a second time on the way out. This advances the index and nothing else.
+   */
+  const readerNavRef = useRef({ prev: () => {}, next: () => {} });
+  readerNavRef.current = {
+    prev,
+    next: () => setStep((n) => (n < LAST ? n + 1 : n)),
+  };
+  useEffect(() => {
+    const onPrev = () => readerNavRef.current.prev();
+    const onNextSlide = () => readerNavRef.current.next();
+    window.addEventListener("phoebe:office-prev-slide", onPrev);
+    window.addEventListener("phoebe:office-next-slide", onNextSlide);
+    return () => {
+      window.removeEventListener("phoebe:office-prev-slide", onPrev);
+      window.removeEventListener("phoebe:office-next-slide", onNextSlide);
+    };
+  }, []);
+
   // "3 of 7 · READ" — the same shape the office uses ("{slideIdx + 1} of
-  // {slides.length} · {sectionLabel}"), so the two decks read alike.
-  const sectionLabel = READ_STEPS.includes(step)
-    ? "Read"
-    : PROMPT_STEPS.includes(step)
-      ? "Reflect"
-      : step === CLOSE ? "Pray" : "";
+  // {slides.length} · {sectionLabel}"), so the two decks read alike. Taken as
+  // a function of the step because the reader needs the label for the slide it
+  // was opened FROM, which is not always the one being rendered.
+  const sectionLabelFor = (n: number): string =>
+    READ_STEPS.includes(n) ? "Read"
+      : PROMPT_STEPS.includes(n) ? "Reflect"
+        : n === CLOSE ? "Pray" : "";
+  const sectionLabel = sectionLabelFor(step);
   const stepLabel = atStart ? null : `${step} of ${LAST} · ${sectionLabel}`;
 
   return (
