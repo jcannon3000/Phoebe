@@ -49,9 +49,11 @@ export default function ThisSundayPage() {
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   const sundayQ = useQuery<Sunday | null>({
-    queryKey: ["/api/lectionary/sunday"],
-    staleTime: 60 * 60_000,
-    queryFn: async () => ((await apiRequest("GET", "/api/lectionary/sunday")) as Sunday | null) ?? null,
+    queryKey: ["/api/lectionary/sunday", 2],
+    staleTime: 10 * 60_000,
+    // ?v=2 busts the WebView's HTTP cache of the pre-tracks body (served
+    // with an hour's max-age); harmless once every cache has rolled over.
+    queryFn: async () => ((await apiRequest("GET", "/api/lectionary/sunday?v=2")) as Sunday | null) ?? null,
   });
   const sunday = sundayQ.data ?? null;
   const andrewsQ = useQuery<InboxItem | null>({

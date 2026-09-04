@@ -67,7 +67,10 @@ router.get("/lectionary/sunday", async (_req: Request, res: Response): Promise<v
   // BY TRACK, for the This Sunday page's Track 1 / Track 2 toggle.
   let tracks: Awaited<ReturnType<typeof getSundayTracks>> = null;
   try { tracks = await getSundayTracks(); } catch (err) { console.warn("[lectionary/sunday] tracks failed:", err); }
-  res.setHeader("Cache-Control", "public, max-age=3600");
+  // Ten minutes, not an hour: the WebView's HTTP cache honours this, and an
+  // hour served the pre-tracks body to the This Sunday page long after the
+  // deploy (2026-09-04).
+  res.setHeader("Cache-Control", "public, max-age=600");
   res.json({
     sundayDate: iso, name, url,
     gospel: rcl?.gospel ?? null, psalm: rcl?.psalm ?? null, nt: rcl?.nt ?? [], ot: rcl?.ot ?? [],
