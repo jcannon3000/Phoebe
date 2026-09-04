@@ -132,7 +132,7 @@ export default function MenuNewslettersPage() {
     enabled,
   });
   const taizeQ = useQuery<InboxItem | null>(latestOpts("/api/taize/latest", group === "weekly"));
-  const andrewsQ = useQuery<InboxItem | null>(latestOpts("/api/andrews/latest", group === "weekly"));
+  const andrewsQ = useQuery<InboxItem | null>(latestOpts("/api/andrews/latest", group === "weekly" && !!user?.isSuperAdmin));
   const taizeLatest = rs.taizeLatest ?? taizeQ.data ?? null;
   const andrewsLatest = rs.andrewsLatest ?? andrewsQ.data ?? null;
 
@@ -144,7 +144,7 @@ export default function MenuNewslettersPage() {
   // Andrew's, which opened as a plain page. Both weeklies now open as
   // articles.
   const taizePrevious = usePreviousIssues("taize", group === "weekly");
-  const andrewsPrevious = usePreviousIssues("andrews", group === "weekly");
+  const andrewsPrevious = usePreviousIssues("andrews", group === "weekly" && !!user?.isSuperAdmin);
   // The pasted-in Substack weeklies (lib/weeklies.ts): the list carries
   // `subscribed`, the hook carries each card's inbox state.
   const weeklySources = useWeeklies(group === "weekly");
@@ -190,12 +190,12 @@ export default function MenuNewslettersPage() {
       followed: on("taize"), done: rs.taizeDone, latestTitle: taizeLatest?.title,
       open: openWeekly("taize", taizeLatest, "https://www.taize.fr/en/tag/meditations", true),
     },
-    {
-      key: "andrews", emoji: "📰", title: "Andrew's Version", publisher: "Yale Divinity School", cadence: "weekly",
+    ...(user?.isSuperAdmin ? [{
+      key: "andrews", emoji: "📰", title: "Andrew's Version", publisher: "Yale Divinity School", cadence: "weekly" as const,
       about: "A lectionary commentary from Yale Divinity School",
       followed: on("andrews"), done: rs.andrewsDone, latestTitle: andrewsLatest?.title,
       open: openWeekly("andrews", andrewsLatest, andrewsLatest?.url ?? "https://andrewmcgowan.substack.com/", true),
-    },
+    } satisfies Entry] : []),
     ...weeklySources.map((w): Entry => {
       const key = weeklySourceId(w.slug);
       const state = rs.weeklies.find((x) => x.slug === w.slug);

@@ -6,6 +6,7 @@ import { Layout } from "@/components/layout";
 import { PracticeCard, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { usePreviousIssues } from "@/hooks/usePreviousIssues";
 import { markAndrewsRead, type InboxItem } from "@/lib/taizeInbox";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -44,6 +45,7 @@ function sundayLabel(iso: string): string {
 export default function ThisSundayPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
+  const { rawIsAdmin: isAdmin } = useBetaStatus();
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   const sundayQ = useQuery<Sunday | null>({
@@ -56,10 +58,11 @@ export default function ThisSundayPage() {
   const sunday = sundayQ.data ?? null;
   const andrewsQ = useQuery<InboxItem | null>({
     queryKey: ["/api/andrews/latest"],
+    enabled: isAdmin,
     staleTime: 15 * 60_000,
     queryFn: async () => ((await apiRequest("GET", "/api/andrews/latest")) as InboxItem | null) ?? null,
   });
-  const andrewsPrevious = usePreviousIssues("andrews", true);
+  const andrewsPrevious = usePreviousIssues("andrews", isAdmin);
 
   // Track 1 / Track 2 (owner: "a Track A or B toggle on the opening page that
   // would affect what readings are in the deck"). Only offered when the RCL
@@ -91,8 +94,7 @@ export default function ThisSundayPage() {
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       open: () => setLocation("/visio"),
     },
-    // Public since 2026-09-04 (owner: "let's just make Andrew's Version public").
-    ...([{
+    ...(isAdmin ? [{
       key: "commentary", emoji: "📰",
       // "Scripture commentary from Yale" truncated on the card; the second line
       // still carries the owner's words.
@@ -104,7 +106,7 @@ export default function ThisSundayPage() {
         if (!post?.url) { openExternal("https://abmcg.substack.com/", { reader: true }); return; }
         openExternalThenMarkRead(post.url, () => markAndrewsRead(post.id), { reader: true, previous: andrewsPrevious });
       },
-    }]),
+    }] : []),
   ];
 
   return (

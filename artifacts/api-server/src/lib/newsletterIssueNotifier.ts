@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { taizeMeditations } from "../routes/taize";
 import { weeklyPosts } from "../routes/andrews";
 import { sendPushToUsers } from "./pushSender";
+import { isSuperAdminUser } from "./superAdmin";
 import { listWeeklySources, weeklySubscriberIds } from "../routes/weeklies";
 import { feedPosts } from "./weeklyFeed";
 import { getCurrentTimeInTz } from "./tz";
@@ -70,8 +71,11 @@ async function followerIds(source: Source): Promise<number[]> {
       AND NOT COALESCE((home_layout->'hidden') ? ${source}, false)
       AND push_enabled IS DISTINCT FROM false
   `);
-  // Andrew's Version is public since 2026-09-04 — no admin filter.
-  return rows.rows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+  const ids = rows.rows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+  if (source !== "andrews") return ids;
+  const keep: number[] = [];
+  for (const id of ids) if (await isSuperAdminUser(id)) keep.push(id);
+  return keep;
 }
 
 /**

@@ -6101,7 +6101,7 @@ export default function WayOfLoveRuleFlow({
               Taizé above it, same reason it isn't a NEWSLETTERS entry, and
               the same practice key either way. isSuperAdmin gates the row;
               useRhythmState gates the card, so neither can show it alone. */}
-          {choiceRow(
+          {isSuperAdmin && choiceRow(
             contemplative.andrews,
             `📰 ${t("wol_rule.learn_andrews", { defaultValue: "Andrew's Version" })}`,
             t("wol_rule.learn_andrews_sub", { defaultValue: "A lectionary commentary from Yale Divinity School — it waits until you read it." }),
