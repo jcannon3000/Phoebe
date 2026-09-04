@@ -44,8 +44,15 @@ let cached: { url: string; title: string; isToday: boolean; fetchedAt: number; d
 // the TTL happened to also expire) could still serve yesterday's feed
 // item, showing yesterday's commentary date on the reader.
 function todayStamp(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  // THE SAME CALENDAR isFromToday() uses — New York, VTS's own. This used to
+  // be the server's local date, which on Railway is UTC: after 8 PM Eastern
+  // the stamp already said "tomorrow" while isFromToday still said "today",
+  // so yesterday's commentary was cached under today's stamp with
+  // isToday=true and served all the next morning while the card (which reads
+  // the feed cache, refreshed every 30 min) had already moved to the new post
+  // (owner, 2026-09-04: "the vts deans commentary showed yesterday's
+  // newsletter today even though the card shows today's title").
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
 }
 
 function decodeEntities(s: string): string {
@@ -295,7 +302,6 @@ type TextCacheEntry = {
 let textCached: TextCacheEntry | null = null;
 // One in-flight background feed refresh at a time, so a burst of readers on
 // the fast path can't fan out into a pile of concurrent vts.edu polls.
-let bgRefresh: Promise<unknown> | null = null;
 
 async function resolveTodayText(): Promise<TextCacheEntry> {
   /**
@@ -318,12 +324,27 @@ async function resolveTodayText(): Promise<TextCacheEntry> {
    * entirely, so we keep checking rather than serving a stale piece all day.
    */
   const stamp = todayStamp();
-  if (textCached && textCached.day === stamp && textCached.isToday && textCached.paragraphs.length > 0) {
-    if (!bgRefresh) {
-      bgRefresh = resolveToday()
-        .catch(() => { /* best effort — the cached entry is still good */ })
-        .finally(() => { bgRefresh = null; });
-    }
+  /**
+   * SERVE THE CACHED TEXT ONLY WHILE THE FEED STILL POINTS AT IT.
+   *
+   * The old fast path trusted a same-day entry's own `isToday` flag and only
+   * refreshed the FEED in the background — nothing ever compared the two, so
+   * once yesterday's text carried today's stamp (see todayStamp) it was
+   * served for the whole day, while /today-meta, reading the feed cache,
+   * showed the new post's title. The card and the reader were two copies of
+   * "today" that had drifted apart.
+   *
+   * Now the text is served straight from cache only when the feed cache is
+   * itself fresh (inside CACHE_TTL_MS, same day) AND names the same URL. Any
+   * other case pays one bounded feed fetch (resolveToday, 5 s cap, cached for
+   * 30 min after) and then reuses the text if the URL hasn't changed — the
+   * common case after the TTL lapses — or scrapes the new post if it has.
+   */
+  const feedFresh = cached !== null && Date.now() - cached.fetchedAt < CACHE_TTL_MS && cached.day === stamp;
+  if (
+    textCached && textCached.day === stamp && textCached.paragraphs.length > 0
+    && feedFresh && cached!.url === textCached.url
+  ) {
     return textCached;
   }
 
