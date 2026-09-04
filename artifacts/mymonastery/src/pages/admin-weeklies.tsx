@@ -82,7 +82,7 @@ export default function AdminWeekliesPage() {
   };
 
   const remove = async (slug: string) => {
-    if (!window.confirm("Remove this weekly for everyone who follows it?")) return;
+    if (!window.confirm("Remove this publication for everyone who follows it?")) return;
     await apiRequest("DELETE", `/api/admin/weeklies/${slug}`);
     invalidate();
   };
@@ -105,14 +105,14 @@ export default function AdminWeekliesPage() {
 
   return (
     <Layout>
-      <div style={{ maxWidth: 640, margin: "0 auto", padding: "8px 16px 48px", color: WARM, fontFamily: FONT }}>
+      <div style={{ maxWidth: 640, width: "100%", boxSizing: "border-box", margin: "0 auto", padding: "8px 16px 48px", color: WARM, fontFamily: FONT }}>
         <button type="button" onClick={() => setLocation("/admin/tools")}
           style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 14 }}>
           ← Admin Tools
         </button>
-        <h1 style={{ fontSize: 26, fontWeight: 700, margin: "0 0 6px" }}>Weekly newsletters</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, margin: "0 0 6px" }}>Publications</h1>
         <p style={{ color: SAGE, fontSize: 14, margin: "0 0 18px", lineHeight: 1.5 }}>
-          Paste a Substack link. Phoebe finds its feed, proposes a title, subtitle and description for you to edit, and the weekly joins the Newsletters menu.
+          Paste a Substack link. Phoebe finds its feed, proposes a title, subtitle and description for you to edit, and the publication joins the Newsletters menu.
         </p>
 
         <label style={LABEL}>Substack link</label>
@@ -126,7 +126,7 @@ export default function AdminWeekliesPage() {
         {preview && (
           <div style={{ marginTop: 20, padding: 16, borderRadius: 16, background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.18)" }}>
             <p style={{ color: SAGE, fontSize: 12, margin: 0 }}>
-              Feed: {preview.feedUrl} · {preview.posts.length} recent posts · copy proposed by {preview.proposedBy === "ai" ? "AI" : "the feed"}
+              {preview.posts.length} recent posts · copy proposed by {preview.proposedBy === "ai" ? "AI" : "the feed"}
               {preview.exists && " · this slug already exists — saving updates it"}
             </p>
             <label style={LABEL}>Title</label>
@@ -149,20 +149,20 @@ export default function AdminWeekliesPage() {
               <p style={{ color: SAGE, fontSize: 12, marginTop: 12 }}>Newest: “{preview.posts[0].title}”{preview.posts[0].published ? ` · ${preview.posts[0].published}` : ""}</p>
             )}
             <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
-              {pill(busy === "save" ? "Saving…" : "Save weekly", () => { void doSave(); }, busy != null || !form.title.trim() || !form.slug.trim(), true)}
+              {pill(busy === "save" ? "Saving…" : "Save publication", () => { void doSave(); }, busy != null || !form.title.trim() || !form.slug.trim(), true)}
               {pill("Cancel", () => setPreview(null), busy != null)}
             </div>
           </div>
         )}
 
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: "28px 0 10px", color: SAGE, letterSpacing: "0.08em", textTransform: "uppercase" }}>Current weeklies</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 700, margin: "28px 0 10px", color: SAGE, letterSpacing: "0.08em", textTransform: "uppercase" }}>Current publications</h2>
         {(list.data ?? []).length === 0 && <p style={{ color: SAGE, fontSize: 14 }}>None yet.</p>}
         {(list.data ?? []).map((w) => (
           <div key={w.slug} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", marginBottom: 8, borderRadius: 14, background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.18)" }}>
             <span style={{ fontSize: 22 }}>{w.emoji || "📰"}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{w.title}</p>
-              <p style={{ margin: "2px 0 0", fontSize: 12, color: SAGE, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.subtitle || w.siteUrl} · {w.slug}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: SAGE, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.subtitle || w.description || w.slug}</p>
             </div>
             <button type="button" onClick={() => { void remove(w.slug); }}
               style={{ background: "none", border: "1px solid rgba(224,164,138,0.4)", color: "#E0A48A", borderRadius: 999, padding: "6px 12px", fontFamily: FONT, fontSize: 12, cursor: "pointer" }}>

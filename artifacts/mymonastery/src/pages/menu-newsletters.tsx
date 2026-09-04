@@ -220,7 +220,11 @@ export default function MenuNewslettersPage() {
   const others = inGroup.filter((e) => !e.followed);
 
   const cadenceWord = (c: Entry["cadence"]) =>
-    c === "daily" ? t("newsletters.daily", { defaultValue: "Daily" }) : t("newsletters.weekly", { defaultValue: "Weekly" });
+    c === "daily" ? t("newsletters.daily", { defaultValue: "Daily" }) : t("newsletters.publication", { defaultValue: "Publication" });
+  // The GROUP's name — owner (2026-09-04): "let's call weekly newsletters
+  // Publications", on the split page and everywhere else.
+  const groupTitle = (c: Entry["cadence"]) =>
+    c === "daily" ? t("newsletters.daily_reflections", { defaultValue: "Daily Reflections" }) : t("newsletters.publications", { defaultValue: "Publications" });
   const blurbFor = (e: Entry) => {
     const lead = e.latestTitle ? e.latestTitle : (e.about ?? e.publisher);
     return `${cadenceWord(e.cadence)} · ${lead}`;
@@ -327,7 +331,7 @@ export default function MenuNewslettersPage() {
       />
     );
     const rows = entries.filter((e) => e.cadence === group);
-    const word = cadenceWord(group as "daily" | "weekly");
+    const word = groupTitle(group as "daily" | "weekly");
     return (
       <Layout bgPhoto={bgPhoto}>
         <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
@@ -345,7 +349,7 @@ export default function MenuNewslettersPage() {
             <p style={{ fontSize: 14, color: SAGE, margin: "0 0 20px", lineHeight: 1.5 }}>
               {group === "daily"
                 ? t("newsletters.manage_daily_sub", { defaultValue: "Switch a daily newsletter on and it gets a card on your home; off, and it comes off." })
-                : t("newsletters.manage_weekly_sub", { defaultValue: "Switch a weekly newsletter on and its newest issue waits on your home until you've read it." })}
+                : t("newsletters.manage_weekly_sub", { defaultValue: "Switch a publication on and its newest issue waits on your home until you've read it." })}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{rows.map(row)}</div>
           </div>
@@ -359,21 +363,21 @@ export default function MenuNewslettersPage() {
       <MenuHub
         title={t("menu.newsletters", { defaultValue: "Newsletters" })}
         emoji="🌅"
-        subtitle={t("menu.newsletters_sub_long", { defaultValue: "Daily words and weekly letters, from across the church." })}
+        subtitle={t("menu.newsletters_sub_long", { defaultValue: "Daily words and publications, from across the church." })}
         backLabel={t("menu.title", { defaultValue: "Menu" })}
         backHref="/menu"
         groups={[{
           items: [
             {
-              emoji: "☀️", label: t("newsletters.daily", { defaultValue: "Daily" }),
+              emoji: "☀️", label: t("newsletters.daily_reflections", { defaultValue: "Daily Reflections" }),
               // One line, not the roll of names (owner: "just have the daily vs
               // weekly options have one line for the second line description").
               sub: t("newsletters.daily_sub", { defaultValue: "A short reading for each day" }),
               onClick: () => setLocation("/menu/newsletters/daily"),
             },
             {
-              emoji: "🗓️", label: t("newsletters.weekly", { defaultValue: "Weekly" }),
-              sub: t("newsletters.weekly_sub", { defaultValue: "One letter each week" }),
+              emoji: "🗞️", label: t("newsletters.publications", { defaultValue: "Publications" }),
+              sub: t("newsletters.publications_sub", { defaultValue: "A letter each week from a publication" }),
               onClick: () => setLocation("/menu/newsletters/weekly"),
             },
           ],
@@ -382,7 +386,7 @@ export default function MenuNewslettersPage() {
     );
   }
 
-  const groupLabel = cadenceWord(group as "daily" | "weekly");
+  const groupLabel = groupTitle(group as "daily" | "weekly");
   return (
     <Layout bgPhoto={bgPhoto}>
       <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>

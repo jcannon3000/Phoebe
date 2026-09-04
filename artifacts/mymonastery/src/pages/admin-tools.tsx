@@ -195,8 +195,8 @@ export default function AdminToolsPage() {
                     routines including the default one"). */}
                 <LinkRow
                   emoji="📰"
-                  label="Weekly newsletters"
-                  description="Paste a Substack link and it becomes a weekly"
+                  label="Publications"
+                  description="Paste a Substack link and it becomes a publication"
                   onClick={() => setLocation("/admin/weeklies")}
                 />
                 <LinkRow

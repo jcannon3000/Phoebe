@@ -666,7 +666,7 @@ export const en = {
     practices_sub: "Contemplation, Gratitude, Journal, Examen",
     reflections_sub: "Forward Day by Day, CAC, SSJE",
     newsletters: "Newsletters",
-    newsletters_sub: "Daily words and weekly letters",
+    newsletters_sub: "Daily words and publications",
     audio_sub: "Offices read aloud + podcasts",
     communities_sub: "Your communities",
     resources_sub: "Lectionary, Find a Church, Saints, Building Faith",

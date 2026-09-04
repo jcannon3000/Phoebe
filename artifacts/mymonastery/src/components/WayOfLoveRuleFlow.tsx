@@ -6110,7 +6110,7 @@ export default function WayOfLoveRuleFlow({
           {!prescribe && weeklySources.map((w) => choiceRow(
             w.subscribed,
             `${w.emoji || "📰"} ${w.title}`,
-            w.subtitle || w.description || t("wol_rule.learn_weekly_sub", { defaultValue: "A weekly letter — it waits until you read it." }),
+            w.subtitle || w.description || t("wol_rule.learn_publication_sub", { defaultValue: "A publication — it waits until you read it." }),
             () => { void setWeeklySubscription(w.slug, !w.subscribed); },
           ))}
           {choiceRow(noReflection, t("wol_rule.learn_none", { defaultValue: "None" }), t("wol_rule.learn_none_sub", { defaultValue: "No daily reflection." }), chooseNoReflection)}
