@@ -4,6 +4,8 @@ import { taizeMeditations } from "../routes/taize";
 import { weeklyPosts } from "../routes/andrews";
 import { sendPushToUsers } from "./pushSender";
 import { isSuperAdminUser } from "./superAdmin";
+import { listWeeklySources, weeklySubscriberIds } from "../routes/weeklies";
+import { feedPosts } from "./weeklyFeed";
 import { getCurrentTimeInTz } from "./tz";
 import { logger } from "./logger";
 
@@ -81,7 +83,7 @@ async function followerIds(source: Source): Promise<number[]> {
  * that differs from the source's previous one, "baseline" when it is the
  * first row ever for the source, and "seen" when the row already existed.
  */
-async function claim(source: Source, issueId: string): Promise<"new" | "baseline" | "seen"> {
+async function claim(source: string, issueId: string): Promise<"new" | "baseline" | "seen"> {
   const prior = await db.execute<{ n: number }>(sql`
     SELECT COUNT(*)::int AS n FROM newsletter_issue_pushes WHERE source = ${source}
   `);
@@ -124,6 +126,44 @@ export async function runNewsletterIssueNotifier(now: Date = new Date()): Promis
       logger.info({ source, issue: issue.id, recipients: ids.length }, "[newsletter-push] sent");
     } catch (err) {
       logger.warn({ err: err instanceof Error ? err.message : String(err), source }, "[newsletter-push] tick failed");
+    }
+  }
+  await runDynamicWeeklies();
+}
+
+/**
+ * The pasted-in weeklies (routes/weeklies.ts) — same claim, same window,
+ * same copy; the source key is "w:<slug>" so it can never collide with the
+ * two built-in sources above, and followers come from weekly_subscriptions.
+ */
+async function runDynamicWeeklies(): Promise<void> {
+  let sources;
+  try { sources = await listWeeklySources(); } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[newsletter-push] could not list weeklies");
+    return;
+  }
+  for (const src of sources) {
+    const key = `w:${src.slug}`;
+    try {
+      const first = (await feedPosts(src.feedUrl))[0];
+      if (!first) continue;
+      const state = await claim(key, first.id);
+      if (state !== "new") {
+        if (state === "baseline") logger.info({ source: key, issue: first.id }, "[newsletter-push] baseline recorded, no push");
+        continue;
+      }
+      const ids = await weeklySubscriberIds(src.slug);
+      if (ids.length === 0) { logger.info({ source: key, issue: first.id }, "[newsletter-push] new issue, no followers"); continue; }
+      await sendPushToUsers(ids, {
+        title: "Fresh Off The Presses",
+        body: `${src.title}: "${first.title}" is now available.`,
+        path: "/menu/newsletters/weekly",
+        threadId: "newsletter-weekly",
+        collapseId: `newsletter-${key}-${first.id}`,
+      });
+      logger.info({ source: key, issue: first.id, recipients: ids.length }, "[newsletter-push] sent");
+    } catch (err) {
+      logger.warn({ err: err instanceof Error ? err.message : String(err), source: key }, "[newsletter-push] tick failed");
     }
   }
 }

@@ -26,6 +26,7 @@ import { FROST, FROST_BLUR } from "@/lib/frost";
 import { Spinner } from "@/components/ui/spinner";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
+import { useWeeklies, useSetWeeklySubscription } from "@/lib/weeklies";
 import { adoptRoutineConfig } from "@/lib/routineSync";
 import { summarizeRuleSpec, type RuleSpec } from "@/lib/ruleSummary";
 import { useAuth } from "@/hooks/useAuth";
@@ -834,6 +835,13 @@ export default function WayOfLoveRuleFlow({
   // so a step list computed from it would flicker, and an initial `step`
   // computed from it would skip the slide entirely for the admin it's for.
   const { rawIsAdmin: isSuperAdmin } = useBetaStatus();
+  // The pasted-in Substack weeklies (lib/weeklies.ts). Not layout keys, so
+  // they aren't in onKeys/offKeys: a tap writes the subscription at once,
+  // the way the Relational step writes, and the Newsletters page's Manage
+  // switch reads the same row. Hidden in prescribe mode — a preset can't
+  // carry a subscription, and a tap there would change the ADMIN's own.
+  const weeklySources = useWeeklies(!prescribe);
+  const setWeeklySubscription = useSetWeeklySubscription();
   const [entryChoiceMade, setEntryChoiceMade] = useState(false);
   /**
    * Manual path, second question: rebuild the whole thing, or change one part?
@@ -6118,6 +6126,12 @@ export default function WayOfLoveRuleFlow({
             t("wol_rule.learn_andrews_sub", { defaultValue: "A weekly comment on the lectionary — it waits until you read it." }),
             () => toggleContemplative("andrews"),
           )}
+          {!prescribe && weeklySources.map((w) => choiceRow(
+            w.subscribed,
+            `${w.emoji || "📰"} ${w.title}`,
+            w.subtitle || w.description || t("wol_rule.learn_weekly_sub", { defaultValue: "A weekly letter — it waits until you read it." }),
+            () => { void setWeeklySubscription(w.slug, !w.subscribed); },
+          ))}
           {choiceRow(noReflection, t("wol_rule.learn_none", { defaultValue: "None" }), t("wol_rule.learn_none_sub", { defaultValue: "No daily reflection." }), chooseNoReflection)}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}

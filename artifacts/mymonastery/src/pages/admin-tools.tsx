@@ -194,6 +194,12 @@ export default function AdminToolsPage() {
                     (owner: "an admin tool where I could edit the preset
                     routines including the default one"). */}
                 <LinkRow
+                  emoji="📰"
+                  label="Weekly newsletters"
+                  description="Paste a Substack link and it becomes a weekly"
+                  onClick={() => setLocation("/admin/weeklies")}
+                />
+                <LinkRow
                   emoji="🌱"
                   label="Preset routines"
                   description="Edit the starter rhythms and the default one"

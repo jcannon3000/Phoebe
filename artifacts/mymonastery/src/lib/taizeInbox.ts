@@ -35,15 +35,23 @@
  * SOURCE as well, so three inboxes can't read each other's ids. The Taizé
  * functions remain as thin wrappers so existing call sites keep working.
  */
-export type InboxSource = "taize" | "andrews";
+/**
+ * "taize" and "andrews" are the built-in weeklies; "w:<slug>" is a pasted-in
+ * Substack (lib/weeklies.ts). The read-state keys below are derived, so a
+ * new source needs nothing here.
+ */
+export type InboxSource = "taize" | "andrews" | `w:${string}`;
 
-const READ_KEY_FOR: Record<InboxSource, string> = {
+const READ_KEY_FOR: Record<"taize" | "andrews", string> = {
   taize: "phoebe:taize:read-ids",
   // "Andrew's Version" — a weekly lectionary comment (abmcg.substack.com),
   // kept on exactly these terms: read THIS one, and nothing returns until a
   // new one is posted.
   andrews: "phoebe:andrews:read-ids",
 };
+function readKey(source: InboxSource): string {
+  return source === "taize" || source === "andrews" ? readKey(source) : `phoebe:inbox:${source}:read-ids`;
+}
 /** How many ids to remember. Only the newest is ever asked about; the rest are
  *  kept so re-reading an older one doesn't resurrect it in the list view. */
 const KEEP = 40;
@@ -54,17 +62,20 @@ const KEEP = 40;
  * they were read" — so "done" for a weekly card is "read TODAY", which needs
  * the day, and the id list alone can't say it.
  */
-const READ_DAY_KEY_FOR: Record<InboxSource, string> = {
+const READ_DAY_KEY_FOR: Record<"taize" | "andrews", string> = {
   taize: "phoebe:taize:read-days",
   andrews: "phoebe:andrews:read-days",
 };
+function readDayKey(source: InboxSource): string {
+  return source === "taize" || source === "andrews" ? readDayKey(source) : `phoebe:inbox:${source}:read-days`;
+}
 function localDay(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 function readDays(source: InboxSource): Record<string, string> {
   try {
-    const raw = localStorage.getItem(READ_DAY_KEY_FOR[source]);
+    const raw = localStorage.getItem(readDayKey(source));
     const parsed: unknown = raw ? JSON.parse(raw) : null;
     return parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {};
   } catch { return {}; }
@@ -90,7 +101,7 @@ export type InboxItem = TaizeMeditation;
 
 function readIds(source: InboxSource = "taize"): string[] {
   try {
-    const raw = localStorage.getItem(READ_KEY_FOR[source]);
+    const raw = localStorage.getItem(readKey(source));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
@@ -117,7 +128,7 @@ export function markInboxRead(source: InboxSource, id: string): void {
   if (!id) return;
   const kept = readIds(source).filter((x) => x !== id);
   try {
-    localStorage.setItem(READ_KEY_FOR[source], JSON.stringify([id, ...kept].slice(0, KEEP)));
+    localStorage.setItem(readKey(source), JSON.stringify([id, ...kept].slice(0, KEEP)));
     window.dispatchEvent(new CustomEvent(TAIZE_READ_EVENT, { detail: { id, source } }));
   } catch {
     /* private mode — it just won't be remembered */
@@ -127,7 +138,7 @@ export function markInboxRead(source: InboxSource, id: string): void {
     days[id] = localDay();
     // Cap alongside the id list so it can't grow without bound.
     const keep = Object.entries(days).slice(-KEEP);
-    localStorage.setItem(READ_DAY_KEY_FOR[source], JSON.stringify(Object.fromEntries(keep)));
+    localStorage.setItem(readDayKey(source), JSON.stringify(Object.fromEntries(keep)));
   } catch { /* non-fatal */ }
 }
 export function markTaizeRead(id: string): void { markInboxRead("taize", id); }
@@ -137,7 +148,7 @@ export function markAndrewsRead(id: string): void { markInboxRead("andrews", id)
 export function unmarkInboxRead(source: InboxSource, id: string): void {
   if (!id) return;
   try {
-    localStorage.setItem(READ_KEY_FOR[source], JSON.stringify(readIds(source).filter((x) => x !== id).slice(0, KEEP)));
+    localStorage.setItem(readKey(source), JSON.stringify(readIds(source).filter((x) => x !== id).slice(0, KEEP)));
     window.dispatchEvent(new CustomEvent(TAIZE_READ_EVENT, { detail: { id, source } }));
   } catch {
     /* ignore */
@@ -145,7 +156,7 @@ export function unmarkInboxRead(source: InboxSource, id: string): void {
   try {
     const days = readDays(source);
     delete days[id];
-    localStorage.setItem(READ_DAY_KEY_FOR[source], JSON.stringify(days));
+    localStorage.setItem(readDayKey(source), JSON.stringify(days));
   } catch { /* non-fatal */ }
 }
 export function unmarkTaizeRead(id: string): void { unmarkInboxRead("taize", id); }

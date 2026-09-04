@@ -426,6 +426,7 @@ const CustomizePage = lazy(() => import("./pages/customize"));
 const AdminMinistriesPage = lazy(() => import("./pages/admin-ministries"));
 const AdminBreathPlacesPage = lazy(() => import("./pages/admin-breath-places"));
 const AdminPresetsPage = lazy(() => import("@/pages/admin-presets"));
+const AdminWeekliesPage = lazy(() => import("@/pages/admin-weeklies"));
 
 function RoutinePresetRefresh(): null {
   useEffect(() => { void refreshRoutinePresets(); }, []);
@@ -1083,6 +1084,7 @@ function Router() {
       <Route path="/admin/breath-places" component={AdminBreathPlacesPage} />
       {/* The starter rhythms + the default one, as data (owner). */}
       <Route path="/admin/presets" component={AdminPresetsPage} />
+      <Route path="/admin/weeklies" component={AdminWeekliesPage} />
       <Route path="/admin/users" component={AdminUserMetricsPage} />
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />

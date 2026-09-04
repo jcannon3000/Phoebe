@@ -16,7 +16,8 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { apiRequest } from "@/lib/queryClient";
 import { markInboxRead, type InboxItem, type InboxSource } from "@/lib/taizeInbox";
-import { usePreviousIssues } from "@/hooks/usePreviousIssues";
+import { usePreviousIssues, usePreviousIssuesFor } from "@/hooks/usePreviousIssues";
+import { useWeeklies, useSetWeeklySubscription, weeklySourceId } from "@/lib/weeklies";
 import {
   reflectionSourceUrl,
   markCacRead, markFddRead, markSsjeRead, markVtsRead,
@@ -64,6 +65,8 @@ type Entry = {
    *  lectionary commentary from Yale Divinity"). Shown in place of the
    *  publisher wherever there is room for a sentence. */
   about?: string;
+  /** A pasted-in weekly follows through the subscription API, not the layout. */
+  subscribe?: (on: boolean) => void;
   cadence: "daily" | "weekly";
   followed: boolean;
   done: boolean;
@@ -142,6 +145,11 @@ export default function MenuNewslettersPage() {
   // articles.
   const taizePrevious = usePreviousIssues("taize", group === "weekly");
   const andrewsPrevious = usePreviousIssues("andrews", group === "weekly" && !!user?.isSuperAdmin);
+  // The pasted-in Substack weeklies (lib/weeklies.ts): the list carries
+  // `subscribed`, the hook carries each card's inbox state.
+  const weeklySources = useWeeklies(group === "weekly");
+  const setWeeklySubscription = useSetWeeklySubscription();
+  const weeklyPrevious = usePreviousIssuesFor(weeklySources.map((w) => ({ source: weeklySourceId(w.slug), enabled: group === "weekly" })));
   const openWeekly = (source: InboxSource, item: InboxItem | null, fallbackUrl: string, reader: boolean) => () => {
     const previous = source === "taize" ? taizePrevious : andrewsPrevious;
     const opts = { ...(reader ? { reader: true } : {}), ...(previous.length ? { previous } : {}) };
@@ -188,6 +196,24 @@ export default function MenuNewslettersPage() {
       followed: on("andrews"), done: rs.andrewsDone, latestTitle: andrewsLatest?.title,
       open: openWeekly("andrews", andrewsLatest, andrewsLatest?.url ?? "https://andrewmcgowan.substack.com/", true),
     } satisfies Entry] : []),
+    ...weeklySources.map((w): Entry => {
+      const key = weeklySourceId(w.slug);
+      const state = rs.weeklies.find((x) => x.slug === w.slug);
+      const latest = state?.latest ?? null;
+      const previous = weeklyPrevious[key] ?? [];
+      return {
+        key, emoji: w.emoji || "📰", title: w.title, publisher: w.subtitle || w.title, cadence: "weekly",
+        about: w.description || w.subtitle || undefined,
+        followed: w.subscribed, done: !!state?.done, latestTitle: latest?.title,
+        // Not a layout key: following is a subscription row on the server.
+        subscribe: (on: boolean) => { void setWeeklySubscription(w.slug, on); },
+        open: () => {
+          const opts = { reader: true, ...(previous.length ? { previous } : {}) };
+          if (!latest?.url) { openExternal(w.siteUrl, opts); return; }
+          openExternalThenMarkRead(latest.url, () => markInboxRead(key, latest.id), opts);
+        },
+      };
+    }),
   ];
   const inGroup = entries.filter((e) => e.cadence === group);
   const subscribed = inGroup.filter((e) => e.followed);
@@ -262,15 +288,29 @@ export default function MenuNewslettersPage() {
     }
     bump((n) => n + 1);
   };
+  /**
+   * Every layout key on THIS page that is off goes into `hidden` on each write.
+   * The server backfills every known key into `order` on save, and a key that
+   * is merely absent comes back ON — Andrew's Version switched itself on
+   * after a Taizé toggle that way (audit, 2026-09-04). Hidden governs.
+   */
+  const withOffKeysHidden = (l: HomeLayout, justTurnedOn?: string): HomeLayout => {
+    const hidden = new Set(l.hidden);
+    for (const e of entries) {
+      if (e.subscribe || e.cadence !== group || e.key === justTurnedOn) continue;
+      if (!isHomeCardOn(l, e.key)) hidden.add(e.key);
+    }
+    return { ...l, hidden: [...hidden] };
+  };
   const setFollowed = (key: string, on: boolean) => {
     const cur = layoutNow();
     if (on) {
       const { layout, changed } = addHomeCard(cur, key);
-      if (changed) writeLayout(layout);
+      if (changed) writeLayout(withOffKeysHidden(layout, key));
       return;
     }
     if (cur.hidden.includes(key)) return;
-    writeLayout({ ...cur, hidden: [...cur.hidden, key] });
+    writeLayout(withOffKeysHidden({ ...cur, hidden: [...cur.hidden, key] }));
   };
 
   if (managing) {
@@ -283,7 +323,7 @@ export default function MenuNewslettersPage() {
           ? t("newsletters.following", { defaultValue: "On your home · {{who}}", who: e.publisher })
           : (e.about ?? e.publisher)}
         enabled={e.followed}
-        onToggle={() => setFollowed(e.key, !e.followed)}
+        onToggle={() => (e.subscribe ? e.subscribe(!e.followed) : setFollowed(e.key, !e.followed))}
       />
     );
     const rows = entries.filter((e) => e.cadence === group);

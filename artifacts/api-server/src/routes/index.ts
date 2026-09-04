@@ -62,6 +62,7 @@ import prescribedRoutinesRouter from "./prescribed-routines";
 import routineInterviewRouter from "./routine-interview";
 import routinePresetsRouter from "./routine-presets";
 import andrewsRouter from "./andrews";
+import weekliesRouter from "./weeklies";
 import routineAuditRouter from "./routine-audit";
 import routineSnapshotsRouter from "./routine-snapshots";
 
@@ -200,6 +201,7 @@ router.use(prescribedRoutinesRouter);
 router.use(routinePresetsRouter);
 // "Andrew's Version" — the weekly inbox practice (admin-only on the client).
 router.use(andrewsRouter);
+router.use(weekliesRouter);
 router.use(routineInterviewRouter);
 router.use(routineAuditRouter);
 router.use(routineSnapshotsRouter);

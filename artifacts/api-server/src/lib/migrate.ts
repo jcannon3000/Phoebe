@@ -3782,6 +3782,33 @@ export async function migrate() {
       )
     `);
 
+    // ── weekly_sources + weekly_subscriptions — pasted-in Substack weeklies ──
+    // An admin pastes a link (routes/weeklies.ts); subscriptions live here,
+    // NOT in home_layout, whose server allowlist would strip a dynamic key.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS weekly_sources (
+        slug TEXT PRIMARY KEY,
+        site_url TEXT NOT NULL,
+        feed_url TEXT NOT NULL,
+        title TEXT NOT NULL,
+        subtitle TEXT NOT NULL DEFAULT '',
+        description TEXT NOT NULL DEFAULT '',
+        emoji TEXT NOT NULL DEFAULT '📰',
+        enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS weekly_subscriptions (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        slug TEXT NOT NULL REFERENCES weekly_sources(slug) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, slug)
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS weekly_subscriptions_slug_idx ON weekly_subscriptions (slug)`);
+
     // ── listening_entries (Audio Divina log — account-wide) ─────────────────
     // Append log of "sacred listening" sittings (what + how), one row per log.
     await run(client, `

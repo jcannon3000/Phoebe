@@ -17,6 +17,13 @@ import {
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { waitingMeditation, waitingItem, TAIZE_READ_EVENT, type InboxItem, inboxReadToday } from "@/lib/taizeInbox";
+import { useWeeklies, useWeeklyLatest, weeklySourceId } from "@/lib/weeklies";
+
+export type WeeklyCardState = {
+  slug: string; key: `w:${string}`; title: string; subtitle: string; emoji: string;
+  active: boolean; shown: boolean; done: boolean;
+  waiting: InboxItem | null; latest: InboxItem | null;
+};
 import { getSpiritualsHistory } from "@/lib/spiritualsHistory";
 import { spiritualsVisible } from "@/lib/spiritualsFlag";
 import { practiceOnDay } from "@/lib/practiceDays";
@@ -253,6 +260,12 @@ export type RhythmState = {
   andrewsDone: boolean;
   andrewsWaiting: { id: string; title: string; url: string; published: string | null } | null;
   andrewsLatest: { id: string; title: string; url: string; published: string | null } | null;
+  /**
+   * The pasted-in Substack weeklies the person follows (lib/weeklies.ts), on
+   * the same inbox terms as Taizé: a card while an issue waits or was read
+   * today. `key` is the card/read-state id ("w:<slug>").
+   */
+  weeklies: WeeklyCardState[];
   /**
    * A group admin's weekly reflection, waiting to be read.
    *
@@ -1053,6 +1066,10 @@ export function useRhythmState(): RhythmState {
     staleTime: 30 * 60_000,
     enabled: taizeActive,
   });
+  // Pasted-in weeklies: the list (with `subscribed`) and one newest-post map.
+  const weeklySources = useWeeklies();
+  const anyWeekly = weeklySources.some((w) => w.subscribed);
+  const weeklyLatest = useWeeklyLatest(anyWeekly);
   const { data: andrewsLatest } = useQuery<InboxItem | null>({
     queryKey: ["/api/andrews/latest"],
     // `?? null` for the same reason as its sibling above: 204 → undefined →
@@ -1303,6 +1320,15 @@ export function useRhythmState(): RhythmState {
   /** Whether the weekly card exists TODAY: something to read, or read today. */
   const taizeShown = taizeActive && (taizeWaiting != null || taizeDone);
   const andrewsShown = andrewsActive && (andrewsWaiting != null || andrewsDone);
+  const weeklies: WeeklyCardState[] = weeklySources
+    .filter((w) => w.subscribed)
+    .map((w) => {
+      const key = weeklySourceId(w.slug);
+      const latest = weeklyLatest?.[w.slug] ?? null;
+      const waiting = waitingItem(key, latest);
+      const done = waiting == null && !!latest && inboxReadToday(key, latest.id);
+      return { slug: w.slug, key, title: w.title, subtitle: w.subtitle, emoji: w.emoji, active: true, shown: waiting != null || done, done, waiting, latest };
+    });
   /**
    * Waiting only while UNREAD. The server tells us whether this person has
    * read it (per-user, not per-device — see the route), so a reflection read
@@ -1695,6 +1721,7 @@ export function useRhythmState(): RhythmState {
     // Weekly inbox cards count only on the days they exist (see taizeShown).
     ...(taizeShown ? [taizeDone] : []),
     ...(andrewsShown ? [andrewsDone] : []),
+    ...weeklies.filter((w) => w.shown).map((w) => w.done),
     // "Not today" customs drop out entirely — no dot, not counted. Same for a
     // custom scoped to weekdays on a day it isn't kept (anchorOnDay): it draws
     // NO card on that day, so counting it here would add a dot that can never
@@ -1738,7 +1765,8 @@ export function useRhythmState(): RhythmState {
      * timeout, so a dead upstream costs one wait rather than a blank home.
      */
     (!taizeActive || taizeLatest !== undefined || offline) &&
-    (!andrewsActive || andrewsLatest !== undefined || offline));
+    (!andrewsActive || andrewsLatest !== undefined || offline) &&
+    (!anyWeekly || weeklyLatest !== undefined || offline));
 
   /**
    * The side's SECOND practice — active when one is stored AND it can be told
@@ -1786,6 +1814,7 @@ export function useRhythmState(): RhythmState {
     andrewsDone,
     andrewsWaiting,
     andrewsLatest: andrewsLatest ?? null,
+    weeklies,
     groupReflection,
     complineActive,
     cobreatheActive,
