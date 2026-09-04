@@ -41,11 +41,6 @@ import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { waitingLabel, markTaizeRead, markAndrewsRead } from "@/lib/taizeInbox";
-import { useBetaStatus } from "@/hooks/useDemo";
-import {
-  COURSE_EVENT, COURSE_LENGTH, COURSE_TITLE,
-  currentDay as coursePresentDay, isTodayRead as courseTodayRead, isCourseFinished,
-} from "@/lib/dailyPrayerCourse";
 
 /** The card's emoji per source — the same ones the Reflections menu uses, so
  *  a reflection looks like itself wherever it appears. */
@@ -1113,42 +1108,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * has none — undoing means putting a particular meditation back, which the
    * practice page owns.
    */
-  /**
-   * THE EIGHT-DAY COURSE, as a card in the rhythm (owner's demo: "a daily
-   * onboarding course for new users… one thing at a time over the course of 8
-   * days").
-   *
-   * Deliberately NOT wired into useRhythmState's flags: this is a demo, and a
-   * card that joined the day's dot count would change what "the day is kept"
-   * means for the admins trying it out. It sits beside the practices and
-   * counts toward nothing.
-   */
-  const { rawIsAdmin: courseIsAdmin } = useBetaStatus();
-  const [courseTick, setCourseTick] = useState(0);
-  useEffect(() => {
-    const bump = () => setCourseTick((n) => n + 1);
-    window.addEventListener(COURSE_EVENT, bump);
-    return () => window.removeEventListener(COURSE_EVENT, bump);
-  }, []);
-  // `courseTick` is read here only so the reads below re-run when a day is
-  // marked — the listener is what actually knows, and a lint-silenced unused
-  // variable would be the kind of thing that gets deleted later by someone
-  // tidying up.
-  const courseDay = courseTick >= 0 ? coursePresentDay() : 1;
-  const courseDone = courseTodayRead();
-  const courseShown = courseIsAdmin && !isCourseFinished();
-
-  const dailyPrayerCourseCard = {
-    key: "daily-prayer-course", emoji: "✝️", rgb: "200,164,106",
-    done: courseDone,
-    href: "/daily-prayer-course",
-    title: COURSE_TITLE,
-    blurb: courseDone
-      ? `Day ${courseDay} of ${COURSE_LENGTH} · kept today`
-      : `Day ${courseDay} of ${COURSE_LENGTH} · a few minutes`,
-    cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
-  };
-
   const taizeCard = {
     key: "taize", emoji: "🕯️", rgb: "120,150,175",
     done: taizeDone,
@@ -1704,9 +1663,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(taizeShown ? [{ ...taizeCard, slot: getPracticeSlot("taize") }] : []),
     // A weekly comment belongs to no hour in particular, like its sibling.
     ...(andrewsShown ? [{ ...andrewsCard, slot: "anytime" as const }] : []),
-    // The course reads in the morning, beside the day's prayer — which is what
-    // makes it a rhythm rather than a reading someone gets to eventually.
-    ...(courseShown ? [{ ...dailyPrayerCourseCard, slot: "morning" as const }] : []),
     // No slot lookup: it isn't a scheduled practice, it's post that arrived.
     ...(groupReflectionCard ? [{ ...groupReflectionCard, slot: "anytime" as CustomSlot }] : []),
     // Prayer List is a standalone "anytime" practice — it left the

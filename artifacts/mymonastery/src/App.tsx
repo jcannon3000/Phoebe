@@ -426,6 +426,7 @@ const CustomizePage = lazy(() => import("./pages/customize"));
 const AdminMinistriesPage = lazy(() => import("./pages/admin-ministries"));
 const AdminBreathPlacesPage = lazy(() => import("./pages/admin-breath-places"));
 const AdminPresetsPage = lazy(() => import("@/pages/admin-presets"));
+const DailyPrayerCoursePage = lazy(() => import("@/pages/daily-prayer-course"));
 
 function RoutinePresetRefresh(): null {
   useEffect(() => { void refreshRoutinePresets(); }, []);
@@ -1083,6 +1084,8 @@ function Router() {
       <Route path="/admin/breath-places" component={AdminBreathPlacesPage} />
       {/* The starter rhythms + the default one, as data (owner). */}
       <Route path="/admin/presets" component={AdminPresetsPage} />
+      {/* The eight-day sermon course — a demo, admins only (see the page). */}
+      <Route path="/daily-prayer-course" component={DailyPrayerCoursePage} />
       <Route path="/admin/users" component={AdminUserMetricsPage} />
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />
