@@ -3768,6 +3768,20 @@ export async function migrate() {
       logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[migrate] breath_sessions: could not verify place columns");
     }
 
+    // ── newsletter_issue_pushes — one row per weekly issue seen ─────────────
+    // The "Fresh Off The Presses" push (lib/newsletterIssueNotifier.ts) claims
+    // each weekly newsletter issue here exactly once; `pushed` is false for a
+    // source's first-ever row, which is a silent baseline.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS newsletter_issue_pushes (
+        source TEXT NOT NULL,
+        issue_id TEXT NOT NULL,
+        pushed BOOLEAN NOT NULL DEFAULT TRUE,
+        seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (source, issue_id)
+      )
+    `);
+
     // ── listening_entries (Audio Divina log — account-wide) ─────────────────
     // Append log of "sacred listening" sittings (what + how), one row per log.
     await run(client, `

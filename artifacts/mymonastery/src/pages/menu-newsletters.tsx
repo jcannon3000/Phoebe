@@ -326,12 +326,14 @@ export default function MenuNewslettersPage() {
           items: [
             {
               emoji: "☀️", label: t("newsletters.daily", { defaultValue: "Daily" }),
-              sub: entries.filter((e) => e.cadence === "daily").map((e) => e.title).join(", "),
+              // One line, not the roll of names (owner: "just have the daily vs
+              // weekly options have one line for the second line description").
+              sub: t("newsletters.daily_sub", { defaultValue: "A short reading for each day" }),
               onClick: () => setLocation("/menu/newsletters/daily"),
             },
             {
               emoji: "🗓️", label: t("newsletters.weekly", { defaultValue: "Weekly" }),
-              sub: entries.filter((e) => e.cadence === "weekly").map((e) => e.title).join(", "),
+              sub: t("newsletters.weekly_sub", { defaultValue: "A letter each week — it waits until you've read it" }),
               onClick: () => setLocation("/menu/newsletters/weekly"),
             },
           ],

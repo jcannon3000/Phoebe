@@ -7,6 +7,7 @@ import { startGoalCleanupScheduler } from "./lib/goalCleanup";
 import { startPrayerHeldScanner } from "./lib/prayerHeldScanner";
 import { startMinistrySyncScheduler } from "./lib/ministryScraper";
 import { startOfficeAlignmentScheduler } from "./lib/officeAlignmentScheduler";
+import { startNewsletterIssueNotifier } from "./lib/newsletterIssueNotifier";
 import { captureError } from "./lib/sentry";
 // Bell system uses calendar events, not email cron — no scheduler needed
 
@@ -62,6 +63,10 @@ migrate()
       startPrayerHeldScanner();
       // Daily: re-scrape enabled ministry websites into draft events.
       startMinistrySyncScheduler();
+      // Every 30 min (daytime, New York): "Fresh Off The Presses" when a
+      // weekly newsletter has a new issue. Claims are atomic, so safe beside
+      // a worker.
+      startNewsletterIssueNotifier();
       // Hourly (morning/evening windows): transcribe + align the day's office
       // and FDD audio so the read-aloud word-highlighting / skip markers are
       // BUILT IN THE MORNING and ready the moment someone opens the office —

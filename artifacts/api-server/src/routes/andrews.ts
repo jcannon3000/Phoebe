@@ -72,7 +72,7 @@ function parse(xml: string): WeeklyPost[] {
   return out;
 }
 
-async function weeklyPosts(): Promise<WeeklyPost[]> {
+export async function weeklyPosts(): Promise<WeeklyPost[]> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.value;
   // Node's fetch has no default timeout, and a hung upstream would hold this
   // handler open — the same guard every other fetcher here carries.
