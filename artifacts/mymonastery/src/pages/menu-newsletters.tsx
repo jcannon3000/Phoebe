@@ -333,7 +333,7 @@ export default function MenuNewslettersPage() {
             },
             {
               emoji: "🗓️", label: t("newsletters.weekly", { defaultValue: "Weekly" }),
-              sub: t("newsletters.weekly_sub", { defaultValue: "A letter each week — it waits until you've read it" }),
+              sub: t("newsletters.weekly_sub", { defaultValue: "One letter each week" }),
               onClick: () => setLocation("/menu/newsletters/weekly"),
             },
           ],
