@@ -6104,7 +6104,7 @@ export default function WayOfLoveRuleFlow({
           {isSuperAdmin && choiceRow(
             contemplative.andrews,
             `📰 ${t("wol_rule.learn_andrews", { defaultValue: "Andrew's Version" })}`,
-            t("wol_rule.learn_andrews_sub", { defaultValue: "A weekly comment on the lectionary — it waits until you read it." }),
+            t("wol_rule.learn_andrews_sub", { defaultValue: "A lectionary commentary from Yale Divinity School — it waits until you read it." }),
             () => toggleContemplative("andrews"),
           )}
           {!prescribe && weeklySources.map((w) => choiceRow(

@@ -192,7 +192,7 @@ export default function MenuNewslettersPage() {
     },
     ...(user?.isSuperAdmin ? [{
       key: "andrews", emoji: "📰", title: "Andrew's Version", publisher: "Yale Divinity School", cadence: "weekly" as const,
-      about: "A weekly lectionary commentary from Yale Divinity School",
+      about: "A lectionary commentary from Yale Divinity School",
       followed: on("andrews"), done: rs.andrewsDone, latestTitle: andrewsLatest?.title,
       open: openWeekly("andrews", andrewsLatest, andrewsLatest?.url ?? "https://andrewmcgowan.substack.com/", true),
     } satisfies Entry] : []),
@@ -377,7 +377,7 @@ export default function MenuNewslettersPage() {
             },
             {
               emoji: "🗞️", label: t("newsletters.publications", { defaultValue: "Publications" }),
-              sub: t("newsletters.publications_sub", { defaultValue: "A letter each week from a publication" }),
+              sub: t("newsletters.publications_sub", { defaultValue: "Letters that wait until you've read them" }),
               onClick: () => setLocation("/menu/newsletters/weekly"),
             },
           ],

@@ -135,7 +135,7 @@ export async function proposeCopy(channel: { title: string; description: string 
         temperature: 0.4,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: "You write short, warm copy for a Christian prayer app's newsletter cards. Reply with JSON {\"title\",\"subtitle\",\"description\"}. title: the newsletter's name, at most 40 characters. subtitle: one line under 60 characters saying what it is and who writes it (e.g. \"A weekly lectionary commentary from Yale Divinity School\"). description: one or two sentences, under 180 characters, plain and unhyped, no exclamation marks." },
+          { role: "system", content: "You write short, warm copy for a Christian prayer app's newsletter cards. Reply with JSON {\"title\",\"subtitle\",\"description\"}. title: the newsletter's name, at most 40 characters. subtitle: one line under 60 characters saying what it is and who writes it (e.g. \"A lectionary commentary from Yale Divinity School\"). description: one or two sentences, under 180 characters, plain and unhyped, no exclamation marks. Never use the words weekly, newsletter or Substack — these are called publications." },
           { role: "user", content: JSON.stringify({ feedTitle: channel.title, feedDescription: channel.description, recentTitles: posts.slice(0, 6).map((p) => p.title) }) },
         ],
       }),
