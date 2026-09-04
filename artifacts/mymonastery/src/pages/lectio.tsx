@@ -137,48 +137,60 @@ export default function LectioPage() {
     setLocation("/dashboard");
   };
 
+  /**
+   * Open the passage for one beat — the reader with this deck's own bottom
+   * pill over it on native (openOfficeReading reports its taps back as
+   * phoebe:office-{prev,next}-slide), a plain tab on web, where there is no
+   * chrome to build over someone else's page.
+   */
+  const openPassage = (n: number) => {
+    if (!chosen) return;
+    if (hasNativeBrowser()) {
+      openOfficeReading(chosen.readUrl, {
+        officeTitle: "Lectio Divina",
+        slideLabel: `${n} of ${LAST} · ${sectionLabelFor(n)}`,
+        sectionLabel: sectionLabelFor(n),
+      });
+      return;
+    }
+    void openExternal(chosen.readUrl);
+  };
+
   const onNext = () => guardedAdvance(() => {
     if (step === LAST) { finish(); return; }
-    // ONLY a read slide opens the passage. Before, every prompt opened it on
-    // the way out, which is why the reading never had a beat of its own.
-    /**
-     * THE PASSAGE OPENS WITH THE DECK'S OWN CHROME (owner: "the bottom bar is
-     * supposed to show up over the reader as it does in the office").
-     *
-     * A plain openExternal gets the default reader — Done | Standard |
-     * Options, and no pill — so the reading was the one beat of this deck with
-     * no way forward except backing out of the browser. openOfficeReading
-     * builds the floating Back · "N of M · SECTION" · Next pill over the page
-     * and reports its taps back as phoebe:office-{prev,next}-slide, which the
-     * effect below steps THIS deck with. Web has no native chrome to build, so
-     * it falls back to a plain tab and the deck advances on the way out, as
-     * before.
-     */
-    if (TEXT_STEPS.includes(step) && chosen) {
-      const label = `${step} of ${LAST} · ${sectionLabelFor(step)}`;
-      if (hasNativeBrowser()) {
-        /**
-         * AND THE DECK STAYS PUT, exactly as the office does.
-         *
-         * The reading is a beat, and the reader's own Next is what ends it —
-         * so this returns rather than falling through to the advance below.
-         * Advancing here as well would put the deck on the next prompt while
-         * the passage was still open, and the pill's Next would then skip
-         * that prompt entirely.
-         */
-        openOfficeReading(chosen.readUrl, {
-          officeTitle: "Lectio Divina",
-          slideLabel: label,
-          sectionLabel: sectionLabelFor(step),
-        });
-        return;
-      }
-      // Web: no chrome to build over someone else's tab, so the deck advances
-      // on the way out and the reading is behind you when you return.
-      void openExternal(chosen.readUrl);
-    }
+    // The passage opens on ARRIVAL now (see openedForStepRef), so Next from a
+    // text beat simply moves on — the reader's own pill does the same thing
+    // from over the page.
     setStep((s) => (s < LAST ? s + 1 : s));
   });
+
+  /**
+   * THE TEXT BEAT OPENS ITSELF (owner, in capitals: "THERE SHOULD BE NO TITLE
+   * SLIDES FOR THE READINGS").
+   *
+   * It had one: arriving at a text beat showed "GOSPEL · SECOND READING /
+   * John 9:18-41" and waited for another Next. That is the title card again,
+   * wearing the counter's clothes. Landing on the beat now opens the passage
+   * itself; the slide underneath is only what a person sees if they dismiss
+   * the reader, and it offers the way back in rather than announcing
+   * anything.
+   *
+   * Keyed by step so it fires ONCE per arrival — not on every re-render, and
+   * not again when the reader closes and this deck re-renders underneath.
+   */
+  const openedForStepRef = useRef<number | null>(null);
+  useEffect(() => {
+    // Cleared on every non-text beat, so ARRIVING at a text beat always opens
+    // the passage — including arriving backwards from the next prompt. The ref
+    // only stops a second open at the SAME beat, which is what would otherwise
+    // trap someone who just closed the reader with the X.
+    if (!TEXT_STEPS.includes(step)) { openedForStepRef.current = null; return; }
+    if (!chosen) return;
+    if (openedForStepRef.current === step) return;
+    openedForStepRef.current = step;
+    openPassage(step);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, chosen]);
 
   /**
    * THE READER'S OWN PILL, stepping this deck.
@@ -190,9 +202,8 @@ export default function LectioPage() {
    * the time a tap arrives the deck has usually moved on from the slide the
    * handlers were created on.
    *
-   * NEXT SKIPS THE OPEN. onNext on a read slide opens the passage — which is
-   * where we already are — so stepping from the reader's own Next would open
-   * it a second time on the way out. This advances the index and nothing else.
+   * Next here moves the index and NOTHING else — it must not run onNext, whose
+   * arrival effect would open the passage we are stepping out of.
    */
   const readerNavRef = useRef({ prev: () => {}, next: () => {} });
   readerNavRef.current = {
@@ -354,21 +365,22 @@ export default function LectioPage() {
               </>
             )}
 
-            {/* THE TEXT BEAT. Not a title card announcing a reading — the
-                passage itself, which on native means the reader opening over
-                this deck with its own pill. This slide is what the person
-                sees for the moment before it does, and what web (no native
-                chrome) leaves them on. */}
+            {/* THE TEXT BEAT — no title card (owner). The passage opens on
+                arrival; this is the fallback a person meets only if they
+                dismissed the reader, so it offers the way back in rather than
+                announcing a reading they have already been shown. */}
             {TEXT_STEPS.includes(step) && (
-              <>
-                <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", margin: 0 }}>
-                  {chosen ? KIND_LABEL[chosen.kind] : ""}
-                  {roundOf(step) === 0 ? " · First reading" : roundOf(step) === 1 ? " · Second reading" : " · Third reading"}
-                </p>
-                <h2 className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>
-                  {chosen?.reference}
-                </h2>
-              </>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); openPassage(step); }}
+                style={{
+                  background: "transparent", border: `1px solid ${DECK_BORDER}`, borderRadius: 999,
+                  color: WARM, fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600,
+                  padding: "12px 22px", cursor: "pointer",
+                }}
+              >
+                {chosen ? `Read ${chosen.reference} →` : "Read the passage →"}
+              </button>
             )}
             {PROMPT_STEPS.includes(step) && (
               <>
