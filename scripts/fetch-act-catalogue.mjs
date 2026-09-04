@@ -106,6 +106,27 @@ const FREE = /^(public domain|cc0|cc by(-sa)? [0-9.]+( [a-z]{2})?)$/i;
 /** Door 2 — the artist's own recorded non-commercial grant. */
 const ncPermitted = (a) => /non-?commercial/i.test(a.copyright_permission ?? "");
 const NC_LICENCE = "Used by permission of the artist (non-commercial, with attribution)";
+/**
+ * ACT's OWN recorded licence, when it is genuinely free.
+ *
+ * The Commons door above reads Wikimedia's LicenseShortName; this reads the
+ * `copyright_permission` ACT stores for everything else — mostly Flickr
+ * strings like "Attribution 2.0 Generic (CC BY 2.0)". Without it those were
+ * dropped as unlicensed while the MORE restrictive CC BY-NC records beside
+ * them were kept, because only "non-commercial" was being looked for: a free
+ * work rejected and a restricted one admitted, from the same field. Found on
+ * ACT's Civil Rights subject, where the National Memorial for Peace and
+ * Justice (CC BY 2.0) fell out for exactly this reason.
+ *
+ * NC never matches here — the negative lookahead keeps "CC BY-NC" and
+ * "CC BY-NC-ND" out, so they still take the non-commercial door below and
+ * carry its attribution wording rather than being labelled free.
+ */
+const FREE_PERMISSION = /\b(cc0|public domain)\b|\bcc[ -]by(?:[ -]sa)?\b(?![^)]*\bnc\b)/i;
+const freePermitted = (a) => {
+  const p = a.copyright_permission ?? "";
+  return !/non-?commercial/i.test(p) && FREE_PERMISSION.test(p);
+};
 
 async function actSearch(body) {
   const res = await fetch(ACT_SEARCH, {
@@ -213,6 +234,11 @@ const main = async () => {
         if (FREE.test(c)) clean = c;
         else if (!ncPermitted(a)) { dropped.notFree++; continue; }
       } else if (!ncPermitted(a)) { dropped.unresolved++; continue; }
+    }
+    if (!clean && freePermitted(a)) {
+      // ACT records a free licence of its own (CC BY / CC BY-SA / CC0 / PD).
+      clean = tidy(a.copyright_permission);
+      original = tidy(a.copyright_source) || "the artist";
     }
     if (!clean) {
       if (!ncPermitted(a)) { dropped.noRights++; continue; }
