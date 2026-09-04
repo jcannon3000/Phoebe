@@ -55,31 +55,32 @@ const PROMPTS = [
 ];
 
 /**
- * PROMPTS ONLY — the reading is the READER, not a slide.
+ * PROMPT, THEN THE TEXT — three of each, then the closing reflection.
  *
- * Owner: "there's no reason why there's a title slide for the reading. There
- * should be no title slides for the reading. There should just be the
- * prompts. And it needs to start with the first prompt, then show the text the
- * first time. Second prompt show the text the second time. Third prompt show
- * the text third time, and then the closing reflection."
+ * Owner, in three passes, and the last one settles it: "it needs to start with
+ * the first prompt, then show the text the first time. Second prompt show the
+ * text the second time. Third prompt show the text third time, and then the
+ * closing reflection" … "there should be three prompts and text slides".
  *
- * So the deck is PICK → three prompts → close, and each prompt's Next opens
- * the passage. A title card announcing a reading the person is about to be
- * shown says nothing the prompt hasn't already said, and it put a beat
- * between the instruction and the text it describes.
- *
- * (It briefly ran the other way — READ then REFLECT, three of each — because
- * the counter was said to be under-reporting the practice. The count is
- * honest either way; it is the beats that changed.)
+ * So a round is PROMPT then TEXT, and both are beats the counter names: seven
+ * in all. What went away is the TITLE card — the slide that announced a
+ * reading you were about to be shown, saying nothing the prompt hadn't said.
+ * A text beat IS the passage: on native it opens the reader with this deck's
+ * own bottom pill over it (see onNext), and on web, which has no chrome to
+ * build over someone else's tab, it is a single line and the button that
+ * opens it.
  */
 const PICK = 0;
-const PROMPT1 = 1, PROMPT2 = 2, PROMPT3 = 3, CLOSE = 4;
+const PROMPT1 = 1, TEXT1 = 2, PROMPT2 = 3, TEXT2 = 4, PROMPT3 = 5, TEXT3 = 6, CLOSE = 7;
 const LAST = CLOSE;
 const PROMPT_STEPS = [PROMPT1, PROMPT2, PROMPT3];
-/** Which round (0-2) a prompt belongs to — drives the prompt text. */
+const TEXT_STEPS = [TEXT1, TEXT2, TEXT3];
+/** Which round (0-2) a prompt or text beat belongs to. */
 function roundOf(step: number): number {
   const i = PROMPT_STEPS.indexOf(step);
-  return i >= 0 ? i : 0;
+  if (i >= 0) return i;
+  const t = TEXT_STEPS.indexOf(step);
+  return t >= 0 ? t : 0;
 }
 
 export default function LectioPage() {
@@ -153,7 +154,7 @@ export default function LectioPage() {
      * it falls back to a plain tab and the deck advances on the way out, as
      * before.
      */
-    if (PROMPT_STEPS.includes(step) && chosen) {
+    if (TEXT_STEPS.includes(step) && chosen) {
       const label = `${step} of ${LAST} · ${sectionLabelFor(step)}`;
       if (hasNativeBrowser()) {
         /**
@@ -214,7 +215,9 @@ export default function LectioPage() {
   // a function of the step because the reader needs the label for the slide it
   // was opened FROM, which is not always the one being rendered.
   const sectionLabelFor = (n: number): string =>
-    PROMPT_STEPS.includes(n) ? "Read" : n === CLOSE ? "Pray" : "";
+    PROMPT_STEPS.includes(n) ? "Reflect"
+      : TEXT_STEPS.includes(n) ? "Read"
+        : n === CLOSE ? "Pray" : "";
   const sectionLabel = sectionLabelFor(step);
   const stepLabel = atStart ? null : `${step} of ${LAST} · ${sectionLabel}`;
 
@@ -351,14 +354,26 @@ export default function LectioPage() {
               </>
             )}
 
-            {/* No reading slide: the passage IS the reader, opened from each
-                prompt's own Next (owner). The prompt names which time round
-                it is, so nothing is lost by not announcing it first. */}
+            {/* THE TEXT BEAT. Not a title card announcing a reading — the
+                passage itself, which on native means the reader opening over
+                this deck with its own pill. This slide is what the person
+                sees for the moment before it does, and what web (no native
+                chrome) leaves them on. */}
+            {TEXT_STEPS.includes(step) && (
+              <>
+                <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", margin: 0 }}>
+                  {chosen ? KIND_LABEL[chosen.kind] : ""}
+                  {roundOf(step) === 0 ? " · First reading" : roundOf(step) === 1 ? " · Second reading" : " · Third reading"}
+                </p>
+                <h2 className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>
+                  {chosen?.reference}
+                </h2>
+              </>
+            )}
             {PROMPT_STEPS.includes(step) && (
               <>
                 <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", margin: "0 0 14px" }}>
                   {chosen?.reference}
-                  {roundOf(step) === 0 ? " · First reading" : roundOf(step) === 1 ? " · Second reading" : " · Third reading"}
                 </p>
                 <p className="prompt-rise" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, margin: 0 }}>
                   {PROMPTS[roundOf(step)]}
