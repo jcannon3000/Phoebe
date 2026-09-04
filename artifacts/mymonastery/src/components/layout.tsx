@@ -1035,7 +1035,12 @@ function OpeningSplash() {
   // that window, so the home rendered underneath and then the splash appeared
   // over it: the "home flashes before the splash" on a cold open / fresh
   // install. Only bail once auth has RESOLVED to no user (web / logged out).
-  if (!native || phase === "gone" || (!user && !authLoading)) return null;
+  // Shown from the FIRST frame whenever it is in its beat (owner, 2026-09-04:
+  // "the splash glitched again"): the beat now starts on mount, so hiding
+  // the splash until auth produced a user let it pop up late over a home
+  // that had already painted. The user/authLoading guard only ever mattered
+  // while the beat waited on auth.
+  if (!native || phase === "gone") return null;
 
   return (
     <motion.div
