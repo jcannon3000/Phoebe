@@ -17,7 +17,7 @@ import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { apiRequest } from "@/lib/queryClient";
 import { markInboxRead, type InboxItem, type InboxSource } from "@/lib/taizeInbox";
 import { usePreviousIssues, usePreviousIssuesFor } from "@/hooks/usePreviousIssues";
-import { useWeeklies, useSetWeeklySubscription, weeklySourceId } from "@/lib/weeklies";
+import { useWeeklies, useWeeklyLatest, useSetWeeklySubscription, weeklySourceId } from "@/lib/weeklies";
 import {
   reflectionSourceUrl,
   markCacRead, markFddRead, markSsjeRead, markVtsRead,
@@ -148,6 +148,11 @@ export default function MenuNewslettersPage() {
   // The pasted-in Substack weeklies (lib/weeklies.ts): the list carries
   // `subscribed`, the hook carries each card's inbox state.
   const weeklySources = useWeeklies(group === "weekly");
+  // The newest post of EVERY publication, followed or not. useRhythmState only
+  // carries state for the ones this person follows, so on "All" an unfollowed
+  // row had no latest issue: Read opened the site's front page and could never
+  // mark anything read (audit 2026-09-04).
+  const weeklyLatestAll = useWeeklyLatest(group === "weekly");
   const setWeeklySubscription = useSetWeeklySubscription();
   const weeklyPrevious = usePreviousIssuesFor(weeklySources.map((w) => ({ source: weeklySourceId(w.slug), enabled: group === "weekly" })));
   const openWeekly = (source: InboxSource, item: InboxItem | null, fallbackUrl: string, reader: boolean) => () => {
@@ -194,12 +199,12 @@ export default function MenuNewslettersPage() {
       key: "andrews", emoji: "📰", title: "Andrew's Version", publisher: "Yale Divinity School", cadence: "weekly" as const,
       about: "A lectionary commentary from Yale Divinity School",
       followed: on("andrews"), done: rs.andrewsDone, latestTitle: andrewsLatest?.title,
-      open: openWeekly("andrews", andrewsLatest, andrewsLatest?.url ?? "https://andrewmcgowan.substack.com/", true),
+      open: openWeekly("andrews", andrewsLatest, andrewsLatest?.url ?? "https://abmcg.substack.com/", true),
     } satisfies Entry] : []),
     ...weeklySources.map((w): Entry => {
       const key = weeklySourceId(w.slug);
       const state = rs.weeklies.find((x) => x.slug === w.slug);
-      const latest = state?.latest ?? null;
+      const latest = state?.latest ?? weeklyLatestAll?.[w.slug] ?? null;
       const previous = weeklyPrevious[key] ?? [];
       return {
         key, emoji: w.emoji || "📰", title: w.title, publisher: w.subtitle || w.title, cadence: "weekly",

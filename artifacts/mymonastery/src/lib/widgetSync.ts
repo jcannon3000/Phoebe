@@ -320,6 +320,14 @@ export function useWidgetSync(): void {
       { active: r.iconsActive, done: r.iconsDone, slot: "anytime" as CustomSlot, key: "icons", emoji: "🪟", title: "Praying with Icons", eyebrow: "This week's icon", subtitle: "One icon for the week", cta: "Begin", kind: "office" },
       { active: r.spiritualsActive, done: r.spiritualsDone, slot: getPracticeSlot("spirituals"), key: "spirituals", emoji: "🎶", title: "Meditating on Spirituals", eyebrow: "Today's song", subtitle: "Sit with a song, one line at a time", cta: "Begin", kind: "office" },
       { active: r.taizeShown, done: r.taizeDone, slot: getPracticeSlot("taize"), key: "taize", emoji: "🕯️", title: "Taizé meditation", eyebrow: "Taizé", subtitle: "The newest meditation from Taizé", cta: "Read", kind: "reflect" },
+      // The other inbox practices, which this mirror had fallen behind on
+      // AGAIN (audit 2026-09-04): Andrew's Version and every pasted-in
+      // publication. Without them a day whose only outstanding practice was a
+      // publication read "The day is kept" on the widget while the home still
+      // listed it in Next — and the widget's dots disagreed with the hook's
+      // count, which includes them.
+      { active: r.andrewsShown, done: r.andrewsDone, slot: "anytime" as CustomSlot, key: "andrews", emoji: "📰", title: "Andrew's Version", eyebrow: "Yale Divinity School", subtitle: "A lectionary commentary", cta: "Read", kind: "reflect" as const },
+      ...r.weeklies.filter((w) => w.shown).map((w) => ({ active: true, done: w.done, slot: "anytime" as CustomSlot, key: w.key, emoji: w.emoji || "📰", title: w.title, eyebrow: w.subtitle || w.title, subtitle: "The newest issue", cta: "Read", kind: "reflect" as const })),
       // Compline rides the evening slot — same fixed placement the home card
       // and the header dot use (it IS the night office, so no slot picker).
       { active: r.complineActive, done: r.complineDone, slot: "evening", key: "compline", emoji: "🌙", title: "Compline", eyebrow: "The night office", subtitle: "The night office", cta: "Begin", kind: "office" },
@@ -436,6 +444,7 @@ export function useWidgetSync(): void {
       icons: "/icon-prayer",
       spirituals: "/spirituals",
       taize: "https://www.taize.fr/en/tag/meditations",
+      andrews: "https://abmcg.substack.com/",
     };
     const contemplationHref = (side: "morning" | "evening", kind: string): string => {
       if (kind === "walk") return "";
