@@ -467,6 +467,10 @@ router.get("/office/sunday", async (req, res) => {
   const track: 1 | 2 = String(req.query.track ?? "1") === "2" ? 2 : 1;
   try {
     const { slides, dayInfo } = await assembleSundayReading(track, parseScriptureParts(req.query.parts));
+    // Ten minutes, like /lectionary/sunday: identical for every viewer, but the
+    // body flips on ?track= and at the Sunday rollover — and with no header at
+    // all the WebView was left to guess (the trap 580e545d hit).
+    res.setHeader("Cache-Control", "public, max-age=600");
     return res.json({
       slides,
       officeDay: { ...(dayInfo as Record<string, unknown>), totalSlides: slides.length },

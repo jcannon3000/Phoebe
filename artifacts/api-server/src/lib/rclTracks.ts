@@ -33,12 +33,31 @@ function parseTracks(html: string): { track1: RclTrack; track2: RclTrack | null 
     if (links.length >= 3) cells.push(links);
   }
   if (cells.length === 0) return null;
+  /**
+   * A column is OT · Psalm · NT · Gospel — usually. When the psalm has an
+   * alternate, the page lists FIVE links: "Psalm 114 or", "Exodus 15:1b-11,
+   * 20-21", and reading positions left-to-right slid every lesson one place:
+   * the canticle became the Epistle, Romans became the Gospel, and Matthew
+   * fell off the end (Proper 19, 2026-09-13). The lessons are anchored from
+   * the END instead — the Gospel is always last, the Epistle just before it,
+   * the Old Testament first — and whatever sits between the OT and the
+   * Epistle is psalmody: the psalm plus any alternate.
+   */
+  const trimOr = (s: string) => s.replace(/\s+or$/i, "").trim();
+  const isPsalmody = (s: string) => /^(psalm|canticle)/i.test(s);
   const toTrack = (l: string[]): RclTrack => {
-    const isPsalm = (s: string) => /^psalm/i.test(s);
-    const psalm = l.find(isPsalm) ?? null;
-    const rest = l.filter((s) => !isPsalm(s));
-    // OT · (psalm) · NT · Gospel in the page's order.
-    return { ot: rest[0] ?? null, psalm, nt: rest[1] ?? null, gospel: rest[2] ?? null };
+    const links = l.map(trimOr).filter(Boolean);
+    if (links.length < 3) return { ot: null, psalm: null, nt: null, gospel: null };
+    const ot = links[0]!;
+    const gospel = links[links.length - 1]!;
+    const middle = links.slice(1, -1);
+    const psalm = middle.find(isPsalmody) ?? null;
+    const lessons = middle.filter((s) => !isPsalmody(s));
+    // The Epistle is the LAST non-psalmody link before the Gospel; anything
+    // earlier in the middle is the psalm's alternate (a canticle, or a
+    // second psalm the page didn't label as one).
+    const nt = lessons.length > 0 ? lessons[lessons.length - 1]! : null;
+    return { ot, psalm, nt, gospel };
   };
   return { track1: toTrack(cells[0]!), track2: cells[1] ? toTrack(cells[1]!) : null };
 }
@@ -46,9 +65,13 @@ function parseTracks(html: string): { track1: RclTrack; track2: RclTrack | null 
 function fallbackTracks(iso: string): { track1: RclTrack; track2: RclTrack | null } | null {
   const r = RCL_SUNDAYS[iso];
   if (!r) return null;
-  const isPsalm = (s: string) => /^psalm/i.test(s);
+  // Psalmody is anything that is a psalm, a canticle, or ends in " or" (an
+  // alternate's lead-in). Only a genuine second OT reading makes a track 2:
+  // Advent 4's "2 Samuel 7 · Canticle 3 or · Canticle 15" used to become a
+  // Track 2 whose Old Testament reading was "Canticle 15".
+  const isPsalm = (s: string) => /^(psalm|canticle)/i.test(s) || /\s+or$/i.test(s);
   const ots = r.ot.filter((s) => !isPsalm(s));
-  const psalms2 = r.ot.filter(isPsalm);
+  const psalms2 = r.ot.filter(isPsalm).map((s) => s.replace(/\s+or$/i, "").trim());
   const track1: RclTrack = { ot: ots[0] ?? null, psalm: r.psalm, nt: r.nt[0] ?? null, gospel: r.gospel };
   const ot2 = ots.length > 1 ? ots[ots.length - 1]! : null;
   const track2: RclTrack | null = ot2 ? { ot: ot2, psalm: psalms2[psalms2.length - 1] ?? null, nt: r.nt[0] ?? null, gospel: r.gospel } : null;
