@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -17,6 +17,7 @@ import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { apiRequest } from "@/lib/queryClient";
 import { markInboxRead, type InboxItem, type InboxSource } from "@/lib/taizeInbox";
 import { usePreviousIssues, usePreviousIssuesFor } from "@/hooks/usePreviousIssues";
+import { getReadProgress, READ_PROGRESS_EVENT } from "@/lib/readProgress";
 import { useWeeklies, useWeeklyLatest, useSetWeeklySubscription, weeklySourceId } from "@/lib/weeklies";
 import {
   reflectionSourceUrl,
@@ -67,6 +68,8 @@ type Entry = {
   about?: string;
   /** A pasted-in weekly follows through the subscription API, not the layout. */
   subscribe?: (on: boolean) => void;
+  /** The piece the card opens — for the partial-read bar (lib/readProgress). */
+  readUrl?: string;
   cadence: "daily" | "weekly";
   followed: boolean;
   done: boolean;
@@ -119,6 +122,14 @@ export default function MenuNewslettersPage() {
   // it returns the same one, so the switch showed the previous state until
   // the next tap. Bumping here re-reads the (dirty) cache at once.
   const [, bump] = useState(0);
+  // Partly-read pieces: the bar and "Continue" (lib/readProgress); re-render
+  // when the reader reports.
+  useEffect(() => {
+    const onProgress = () => bump((n) => n + 1);
+    window.addEventListener(READ_PROGRESS_EVENT, onProgress);
+    return () => window.removeEventListener(READ_PROGRESS_EVENT, onProgress);
+  }, []);
+  const readProgressFor = (url?: string) => (url ? getReadProgress(url) : null);
   const rs = useRhythmState();
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
@@ -183,22 +194,24 @@ export default function MenuNewslettersPage() {
       return {
         key: d.source, emoji: d.emoji, title: d.title, publisher: d.publisher, cadence: "daily",
         followed: on(d.source), done: !!r?.done,
+        // Read-gated like the home card (owner, 2026-09-04: a long piece counts
+        // only once scrolled through) — it used to mark read BEFORE opening.
         open: () => {
-          MARK_READ[d.source]();
-          if (d.source === "vts") { setLocation("/vts-reading"); return; }
-          openExternal(reflectionSourceUrl(d.source), { reader: true });
+          if (d.source === "vts") { MARK_READ[d.source](); setLocation("/vts-reading"); return; }
+          openExternalThenMarkRead(reflectionSourceUrl(d.source), () => MARK_READ[d.source](), { reader: true });
         },
+        readUrl: d.source === "vts" ? undefined : reflectionSourceUrl(d.source),
       };
     }),
     {
       key: "taize", emoji: "🕯️", title: "Taizé meditation", publisher: "Taizé", cadence: "weekly",
-      followed: on("taize"), done: rs.taizeDone, latestTitle: taizeLatest?.title,
+      followed: on("taize"), done: rs.taizeDone, latestTitle: taizeLatest?.title, readUrl: taizeLatest?.url,
       open: openWeekly("taize", taizeLatest, "https://www.taize.fr/en/tag/meditations", true),
     },
     ...(user?.isSuperAdmin ? [{
       key: "andrews", emoji: "📰", title: "Andrew's Version", publisher: "Yale Divinity School", cadence: "weekly" as const,
       about: "A lectionary commentary from Yale Divinity School",
-      followed: on("andrews"), done: rs.andrewsDone, latestTitle: andrewsLatest?.title,
+      followed: on("andrews"), done: rs.andrewsDone, latestTitle: andrewsLatest?.title, readUrl: andrewsLatest?.url,
       open: openWeekly("andrews", andrewsLatest, andrewsLatest?.url ?? "https://abmcg.substack.com/", true),
     } satisfies Entry] : []),
     ...weeklySources.map((w): Entry => {
@@ -209,7 +222,7 @@ export default function MenuNewslettersPage() {
       return {
         key, emoji: w.emoji || "📰", title: w.title, publisher: w.subtitle || w.title, cadence: "weekly",
         about: w.description || w.subtitle || undefined,
-        followed: w.subscribed, done: !!state?.done, latestTitle: latest?.title,
+        followed: w.subscribed, done: !!state?.done, latestTitle: latest?.title, readUrl: latest?.url,
         // Not a layout key: following is a subscription row on the server.
         subscribe: (on: boolean) => { void setWeeklySubscription(w.slug, on); },
         open: () => {
@@ -253,7 +266,8 @@ export default function MenuNewslettersPage() {
       emoji={e.emoji}
       title={e.title}
       blurb={blurbFor(e)}
-      cta={t("rhythm.read", { defaultValue: "Read" })}
+      cta={readProgressFor(e.readUrl) ? t("rhythm.continue", { defaultValue: "Continue" }) : t("rhythm.read", { defaultValue: "Read" })}
+      progress={readProgressFor(e.readUrl) ? { current: Math.round((readProgressFor(e.readUrl) ?? 0) * 100), goal: 100 } : undefined}
       done={e.done}
       doneCta={t("rhythm.read", { defaultValue: "Read" })}
       rgb={rhythmGradientRgb(i, n)}

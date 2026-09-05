@@ -164,8 +164,10 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
             // never fired before, which left openExternalThenMarkRead's JS
             // listener waiting forever and CAC/FDD/most links never marked
             // read on native.
-            let onDismiss: () -> Void = { [weak self] in
-                self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:browserfinished")
+            // Carries the reader's outcome ({url, words, progress, readToEnd})
+            // as the event's detail — openExternalThenMarkRead reads it.
+            let onDismiss: (String) -> Void = { [weak self] outcome in
+                self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:browserfinished", data: outcome)
             }
             // Options → the two hand-offs. The browser dismisses first, then
             // the app routes: the office intro chooser owns the formats, the

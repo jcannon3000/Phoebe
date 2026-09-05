@@ -1,3 +1,4 @@
+import { parseReaderOutcome, setReadProgress, clearReadProgress } from "@/lib/readProgress";
 // Open an outbound link. On the iOS Capacitor shell we call
 // PhoebeNative.openInAppBrowser directly (synchronously, from the user's
 // click handler), which calls Browser.open() under the hood and presents
@@ -191,9 +192,38 @@ export function openExternalThenMarkRead(
   // that was the "newsletter dot flips at tap time" bug.
   if (native?.isNative?.() && native?.openInAppBrowser) {
     void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back, ...(opts?.previous?.length ? { previous: opts.previous } : {}) });
-    const onDone = () => {
+    // The native reader reports how far they got. A long piece left partway is
+    // NOT marked read — its progress is kept for the card's bar and its
+    // "Continue" (owner, 2026-09-04). Short pieces and full reads mark as
+    // before.
+    //
+    // Capacitor's triggerWindowJSEvent builds the event the Cordova way: the
+    // data's fields are copied ONTO the event object, not into `detail`
+    // (native-bridge.js createEvent) — so both shapes are read. A close can
+    // also raise a data-less event alongside the real one; one of those alone
+    // waits a beat for the outcome, and only then falls back to the old
+    // mark-on-close, so an older shell still marks.
+    let settled = false;
+    let fallback: ReturnType<typeof setTimeout> | null = null;
+    const finish = (outcome: ReturnType<typeof parseReaderOutcome>) => {
+      if (settled) return;
+      settled = true;
+      if (fallback) clearTimeout(fallback);
       window.removeEventListener("phoebe:browserfinished", onDone);
+      console.info("[reader] finished", JSON.stringify(outcome ?? null));
+      if (outcome && outcome.readToEnd === false) {
+        setReadProgress(url, outcome.progress ?? 0);
+        return;
+      }
+      clearReadProgress(url);
       markRead();
+    };
+    const onDone = (ev: Event) => {
+      const e = ev as CustomEvent & { url?: string; words?: number; progress?: number; readToEnd?: boolean };
+      const raw = e.detail ?? (e.readToEnd !== undefined ? { url: e.url, words: e.words, progress: e.progress, readToEnd: e.readToEnd } : null);
+      const outcome = parseReaderOutcome(raw);
+      if (outcome && outcome.readToEnd !== undefined) { finish(outcome); return; }
+      if (!fallback) fallback = setTimeout(() => finish(null), 800);
     };
     window.addEventListener("phoebe:browserfinished", onDone);
     return;

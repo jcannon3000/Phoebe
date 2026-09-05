@@ -42,6 +42,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { waitingLabel, markTaizeRead, markAndrewsRead } from "@/lib/taizeInbox";
 import { usePreviousIssues, usePreviousIssuesFor } from "@/hooks/usePreviousIssues";
+import { getReadProgress, READ_PROGRESS_EVENT } from "@/lib/readProgress";
 
 /** The card's emoji per source — the same ones the Reflections menu uses, so
  *  a reflection looks like itself wherever it appears. */
@@ -1112,6 +1113,24 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // The last seven issues for the reader's "Previous" menu (owner). Fetched
   // only while the card can show, so a home without the weeklies asks for
   // nothing.
+  /**
+   * PARTLY READ — a long piece the reader closed before the end keeps its
+   * card in Next with a bar like the Contemplation card's and a "Continue"
+   * (owner, 2026-09-04). lib/readProgress holds the fraction per URL; the
+   * event re-renders here when the reader reports.
+   */
+  const [, setReadTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setReadTick((n) => n + 1);
+    window.addEventListener(READ_PROGRESS_EVENT, bump);
+    return () => window.removeEventListener(READ_PROGRESS_EVENT, bump);
+  }, []);
+  const readCta = (url: string | null | undefined) => {
+    const p = url ? getReadProgress(url) : null;
+    return p
+      ? { progress: { current: Math.round(p * 100), goal: 100 }, cta: t("rhythm.continue", { defaultValue: "Continue" }) }
+      : {};
+  };
   const taizePrevious = usePreviousIssues("taize", taizeShown);
   const andrewsPrevious = usePreviousIssues("andrews", andrewsShown);
   const weeklyPrevious = usePreviousIssuesFor(weeklies.map((w) => ({ source: w.key, enabled: w.shown })));
@@ -1138,6 +1157,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       ? [w.waiting.title, waitingLabel(w.waiting)].filter(Boolean).join(" · ")
       : t("rhythm.blurb_andrews_empty", { defaultValue: "Nothing new since the last one" }),
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
+    ...readCta(w.waiting?.url),
   }));
   const taizeCard = {
     key: "taize", emoji: "🕯️", rgb: "120,150,175",
@@ -1173,6 +1193,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       ? [taizeWaiting.title, waitingLabel(taizeWaiting)].filter(Boolean).join(" · ")
       : t("rhythm.blurb_taize_empty", { defaultValue: "Nothing new since the last one" }),
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
+    ...readCta(taizeWaiting?.url),
   };
 
   /**
@@ -1207,6 +1228,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       ? [andrewsWaiting.title, waitingLabel(andrewsWaiting)].filter(Boolean).join(" · ")
       : t("rhythm.blurb_andrews_empty", { defaultValue: "Nothing new since the last one" }),
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
+    ...readCta(andrewsWaiting?.url),
   };
 
   const groupReflectionCard = groupReflection ? {
@@ -1583,6 +1605,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         // actually stepped through (see vts-reading.tsx).
         ...(isVts ? {} : { onClick: () => openExternalThenMarkRead(url, () => { mark(); swellHaptic(); }, { reader: true }) }),
         cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
+        ...(isVts ? {} : readCta(url)),
       };
     }),
     // Per-side Contemplative Prayer — Morning / Evening Contemplation, each its

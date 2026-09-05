@@ -10,6 +10,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { usePreviousIssues } from "@/hooks/usePreviousIssues";
 import { markAndrewsRead, type InboxItem } from "@/lib/taizeInbox";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { getDay, readLesserFeastsPref } from "@/lib/liturgical/calendar";
 
 /**
  * /this-sunday — under Learn (owner, 2026-09-04): "a menu option that says
@@ -70,6 +71,16 @@ export default function ThisSundayPage() {
   const [track, setTrack] = useState<1 | 2>(1);
   const hasTrack2 = !!sunday?.track2;
   const chosen: Track | null = sunday ? (track === 2 && sunday.track2 ? sunday.track2 : sunday.track1) : null;
+  // The liturgical day as the home would name it on that Sunday, and the
+  // Proper (owner, 2026-09-04: "list the liturgical day like it would be on
+  // the home screen if it was Sunday, and what Proper").
+  const liturgicalLine = useMemo(() => {
+    if (!sunday) return null;
+    const [y, m, d] = sunday.sundayDate.split("-").map(Number);
+    const day = getDay(new Date(y!, (m ?? 1) - 1, d ?? 1), { observeLesserFeasts: readLesserFeastsPref() });
+    const proper = /Prop(\d+)/.exec(sunday.url ?? "")?.[1];
+    return [day.name, proper ? `Proper ${proper}` : null].filter(Boolean).join(" · ");
+  }, [sunday]);
   const readingsLine = chosen
     ? [chosen.ot, chosen.psalm, chosen.nt, chosen.gospel].filter(Boolean).join(" · ")
     : "";
@@ -125,7 +136,7 @@ export default function ThisSundayPage() {
           </h1>
           <p style={{ fontSize: 14, color: SAGE, margin: "0 0 20px", lineHeight: 1.5 }}>
             {sunday
-              ? t("this_sunday.sub", { defaultValue: "{{when}} — the readings, an image, and a word on them.", when: sundayLabel(sunday.sundayDate) })
+              ? [sundayLabel(sunday.sundayDate), liturgicalLine].filter(Boolean).join(" · ")
               : t("this_sunday.sub_loading", { defaultValue: "The coming Sunday — its readings, an image, and a word on them." })}
           </p>
           {hasTrack2 && (

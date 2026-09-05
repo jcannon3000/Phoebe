@@ -221,7 +221,24 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     // screen is gone now"; guarded with `dismissFired` since it's technically
     // allowed to be called more than once by UIKit in edge cases and this
     // must fire exactly once.
-    var onDismiss: (() -> Void)?
+    /** Fires when the browser closes, with the READER OUTCOME as JSON:
+     *  {url, words, progress, readToEnd}. The web marks a long piece read only
+     *  when readToEnd is true (owner, 2026-09-04: "don't have it finish and
+     *  count until they have scrolled through all the text"). */
+    var onDismiss: ((String) -> Void)?
+    /** How far down the page the reader has been, 0…1 (the furthest point). */
+    private var readMaxProgress: Double = 0
+    /** Words in the article's text, measured after load; 0 until then. */
+    private var readWordCount: Int = 0
+    private var scrollObservation: NSKeyValueObservation?
+    private var lastPositionSaveAt: CFTimeInterval = 0
+    /** Scroll samples count only once the page has finished loading. While it
+     *  loads the content is no taller than the viewport, so the first samples
+     *  read as "fully scrolled" and a long piece counted as read on close
+     *  after a glance (seen with Andrew's Version, 2026-09-05). */
+    private var readTrackingArmed = false
+    /** Long-read threshold — at or under this the piece counts as read on close. */
+    private let longReadWords = 300
     private var dismissFired = false
 
     // The persistent store below is supposed to keep a site's "accept" choice,
@@ -583,6 +600,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'article.post .subscribe-widget,article.post [data-component-name="SubscribeWidget"],',
         'article.post [data-component-name="ButtonCreateButton"],article.post .subscribe-btn,',
         'article.post form,article.post .subscription-widget,article.post .subscribe-footer{display:none!important;}',
+        /* Substack's pop-up panels — the subscribe / sign-in modals it raises
+           on scroll or after a delay, appended to <body> long after the
+           isolate ran (owner: "prevent the pop of panels from Substack"). */
+        '.modal,.modal-container,[role="dialog"],[data-testid*="modal"],div[class*="modal"],div[class*="Modal"],',
+        '.tw-fixed,body > div.fixed,.subscribe-dialog,.paywall-modal{display:none!important;}',
+        'html,body{overflow:auto!important;position:static!important;}',
         /* Our head: title, subtitle, the writer. */
         '.phoebe-substack-head{display:block!important;padding:18px 20px 6px!important;}',
         '.phoebe-substack-head h1{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
@@ -1302,6 +1325,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         if (isOremus) { tidy(); credit(); }
         else { isolate(); if (isFdd) fddTrim(); if (isSubstack) substackHead(); sourceNote(); }
         masthead();
+        /* Tells the native side the reader has taken the page — the loading
+           veil waits for this on reader hosts (hideVeilWhenReaderReady). */
+        document.documentElement.setAttribute('data-phoebe-reader-applied', '1');
       }
       if (document.readyState !== 'loading') run();
       document.addEventListener('DOMContentLoaded', run);
@@ -1444,7 +1470,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // side's return handler credited the office and navigated home, for an
         // office the person had just said they wanted to pray a different way.
         if handingOff { return }
-        onDismiss?()
+        onDismiss?(readerOutcomeJSON())
     }
 
     override func viewDidLoad() {
@@ -1628,6 +1654,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // one. Either way we own it, so we drive the nav delegate + load.
         webView = preloadedWebView ?? BibleWebViewController.makeWebView()
         webView.navigationDelegate = self
+        // Reading position, for the long-read gate and for resuming where they
+        // left off (owner: "let's track where they are").
+        scrollObservation = webView.scrollView.observe(\.contentOffset, options: [.new]) { [weak self] sv, _ in
+            self?.noteScroll(sv)
+        }
         // Any pan on the page marks it as the reader's — see readerMovedPage.
         webView.scrollView.panGestureRecognizer.addTarget(self, action: #selector(noteReaderMovedPage))
         // Owner: "we want all forward pages to open in light mode." The VC
@@ -1936,6 +1967,82 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      * Reveal the page. Idempotent — called by didFinish, by didFail, and by the
      * ceiling timer, and only the first of those does anything.
      */
+    /**
+     * The veil lifts only once Phoebe's reader has actually restyled the page
+     * on a reader host — readerJS stamps `data-phoebe-reader-applied` when its
+     * sheet is on and the isolate has run. Lifting on didFinish alone showed
+     * the publisher's own page for a beat before the reader took over
+     * (owner: "make sure Andrew's Version doesn't flash Standard before going
+     * to the reader"). Capped at 1.5 s so a page the script can't restyle
+     * never hangs behind the veil.
+     */
+    private func hideVeilWhenReaderReady(attempt: Int = 0) {
+        let host = (webView.url?.host ?? url.host ?? "")
+        guard readerViewOn, Self.isReaderHostName(host), attempt < 15 else { hideVeil(); return }
+        webView.evaluateJavaScript("document.documentElement.getAttribute('data-phoebe-reader-applied') === '1'") { [weak self] result, _ in
+            if (result as? Bool) == true { self?.hideVeil() }
+            else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self?.hideVeilWhenReaderReady(attempt: attempt + 1) } }
+        }
+    }
+
+    // ── Reading progress ────────────────────────────────────────────────────
+    private var readingPositionKey: String { "phoebe.reader.pos." + (webView.url?.absoluteString ?? url.absoluteString) }
+
+    private func noteScroll(_ sv: UIScrollView) {
+        guard isArticle, readTrackingArmed else { return }
+        let h = sv.contentSize.height
+        // Only a page taller than the viewport can be "partly read"; a short
+        // one is read on sight and never gates.
+        guard h > sv.bounds.height + 40 else { return }
+        let frac = min(1.0, max(0.0, Double((sv.contentOffset.y + sv.bounds.height) / h)))
+        readMaxProgress = max(readMaxProgress, frac)
+        let now = CACurrentMediaTime()
+        if now - lastPositionSaveAt > 0.5 {
+            lastPositionSaveAt = now
+            UserDefaults.standard.set(frac, forKey: readingPositionKey)
+        }
+    }
+
+    private func measureWords() {
+        // The WHOLE page's text, not an <article> that may be a sliver of it
+        // (taize.fr's is): overcounting only ever asks for the scroll.
+        let js = "(function(){return ((document.body&&document.body.innerText)||'').trim().split(/\\s+/).filter(Boolean).length;})()"
+        webView.evaluateJavaScript(js) { [weak self] result, _ in
+            if let n = result as? Int { self?.readWordCount = n }
+            else if let d = result as? Double { self?.readWordCount = Int(d) }
+        }
+    }
+
+    /** Back to where they left off — only when a partial read is on record. */
+    private func restoreReadingPosition() {
+        let saved = UserDefaults.standard.double(forKey: readingPositionKey)
+        guard saved > 0.03, saved < 0.97 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self = self else { return }
+            let sv = self.webView.scrollView
+            let h = sv.contentSize.height
+            guard h > 0 else { return }
+            let y = max(0, CGFloat(saved) * h - sv.bounds.height)
+            sv.setContentOffset(CGPoint(x: 0, y: y), animated: false)
+        }
+    }
+
+    private func readerOutcomeJSON() -> String {
+        // An UNKNOWN word count (0 — the measure failed or never ran) is
+        // treated as long: better to ask for the scroll than to mark a piece
+        // read that was only glanced at.
+        let readToEnd = !isArticle || (readWordCount > 0 && readWordCount <= longReadWords) || readMaxProgress >= 0.97
+        if readToEnd { UserDefaults.standard.removeObject(forKey: readingPositionKey) }
+        let payload: [String: Any] = [
+            "url": webView.url?.absoluteString ?? url.absoluteString,
+            "words": readWordCount,
+            "progress": readMaxProgress,
+            "readToEnd": readToEnd,
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: payload), let str = String(data: data, encoding: .utf8) { return str }
+        return "{\"readToEnd\":true}"
+    }
+
     private func hideVeil() {
         guard !veilDismissed else { return }
         let elapsed = CACurrentMediaTime() - veilShownAt
@@ -2666,7 +2773,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             self?.refreshReaderChrome()
         }
         scrollToDeepLinkedWork()
-        hideVeil()
+        if isArticle {
+            readMaxProgress = 0
+            readTrackingArmed = true
+            measureWords()
+            restoreReadingPosition()
+        }
+        hideVeilWhenReaderReady()
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -2967,7 +3080,7 @@ final class BibleBrowser: NSObject {
         url: URL,
         from presenter: UIViewController?,
         onJournal: (() -> Void)? = nil,
-        onDismiss: (() -> Void)? = nil,
+        onDismiss: ((String) -> Void)? = nil,
         onChangeFormat: (() -> Void)? = nil,
         onListen: (() -> Void)? = nil,
         isArticle: Bool = false,
