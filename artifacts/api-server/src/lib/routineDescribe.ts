@@ -89,6 +89,8 @@ const PRACTICE_LABEL: Record<string, string> = {
   compline: "Compline", icons: "Praying with Icons", taize: "Taizé meditation",
   andrews: "Andrew's Version",
   spirituals: "Meditating on Spirituals", podcasts: "Podcasts", lectio: "Lectio Divina",
+  // The Prayer List card had no row either (audit 2026-09-04).
+  "prayer-list": "Prayer List",
 };
 
 /**

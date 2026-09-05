@@ -57,7 +57,7 @@ const SLOTTED = ["cobreathe", "listening", "examen", "walk", "reading", "visio",
 // Every card the default may turn on — the home-layout keys, in the order the
 // home reads them. Kept in step with the server's HOME_MODULE_KEYS.
 const CARD_KEYS = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe",
-  "compline", "examen", "visio", "icons", "lectio", "taize", "spirituals",
+  "compline", "examen", "visio", "icons", "lectio", "taize", "andrews", "spirituals",
   "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests", "prayer-list"] as const;
 
 type Row = { slug: string; body: Record<string, unknown>; hidden?: boolean; sortOrder?: number | null };

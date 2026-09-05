@@ -65,10 +65,10 @@ const PROMPTS = [
  * So a round is PROMPT then TEXT, and both are beats the counter names: seven
  * in all. What went away is the TITLE card — the slide that announced a
  * reading you were about to be shown, saying nothing the prompt hadn't said.
- * A text beat IS the passage: on native it opens the reader with this deck's
- * own bottom pill over it (see onNext), and on web, which has no chrome to
- * build over someone else's tab, it is a single line and the button that
- * opens it.
+ * A text beat IS the passage: arriving on it opens the reader (the
+ * openedForStepRef effect below) — with this deck's own bottom pill over it on
+ * native, a plain tab on web — and the slide underneath is only the way back
+ * in.
  */
 const PICK = 0;
 const PROMPT1 = 1, TEXT1 = 2, PROMPT2 = 3, TEXT2 = 4, PROMPT3 = 5, TEXT3 = 6, CLOSE = 7;

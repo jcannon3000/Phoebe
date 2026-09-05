@@ -914,7 +914,8 @@ function DailyProgressPill() {
 // greeting, no "what's next" card, no faces, no quote, no routine nudge —
 // just the leaf backdrop and the Phoebe app icon, held for a beat, then
 // faded straight into the home. Native app only — never on web — and only
-// once per app launch, never for logged-out visitors.
+// once per app launch. Signed-out visitors see it too since 2026-09-04: the
+// beat starts on mount rather than after the sign-in check (see below).
 function OpeningSplash() {
   const { user, isLoading: authLoading } = useAuth();
   const native = isNativeShell();
