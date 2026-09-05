@@ -576,6 +576,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'article.post .image-link-expand,article.post [aria-label="Post UFI"],article.post .paywall,',
         'article.post .footer,article.post .publication-footer,article.post .embedded-publication-wrap,',
         'article.post .share-dialog,article.post .post-end-cta-full{display:none!important;}',
+        /* The subscribe blocks Substack drops INSIDE the body — a
+           SubscribeWidget (email field + button), its ButtonCreateButton
+           embeds, and any form (owner, 2026-09-04: "take out the Substack
+           subscribe fields"). */
+        'article.post .subscribe-widget,article.post [data-component-name="SubscribeWidget"],',
+        'article.post [data-component-name="ButtonCreateButton"],article.post .subscribe-btn,',
+        'article.post form,article.post .subscription-widget,article.post .subscribe-footer{display:none!important;}',
         /* Our head: title, subtitle, the writer. */
         '.phoebe-substack-head{display:block!important;padding:18px 20px 6px!important;}',
         '.phoebe-substack-head h1{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
