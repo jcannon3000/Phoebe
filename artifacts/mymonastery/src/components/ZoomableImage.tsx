@@ -65,6 +65,10 @@ export default function ZoomableImage({
 
   return (
     <div
+      // Lets the deck around this frame tell a tap on the PICTURE from a tap
+      // on the stage: the first tap of a double-tap-to-zoom was paging the
+      // deck (visio.tsx onTapNavigate) before the second one could zoom.
+      data-zoomable=""
       style={{
         // The frame clips the magnified picture instead of letting it cover
         // the title and the prompt around it.

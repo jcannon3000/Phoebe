@@ -809,6 +809,12 @@ export default function VisioPage() {
     // changes nothing now — it removes the trap for whoever enables gestures
     // on a slide with card surfaces later and finds every tap doing two things.
     if ((e.target as HTMLElement | null)?.closest('button, a, input, textarea, select, label, [role="button"]')) return;
+    // …and a tap on the picture belongs to the picture. ZoomableImage passes a
+    // single tap through so the stage can page, but the FIRST tap of a
+    // double-tap-to-zoom arrived here too: double-tapping the left of the
+    // painting jumped back a beat instead of zooming (audit 2026-09-04). The
+    // pill and the stage outside the frame still page.
+    if ((e.target as HTMLElement | null)?.closest("[data-zoomable]")) return;
     if (e.clientX < window.innerWidth / 2) prev(); else if (holdReady) next();
   };
 

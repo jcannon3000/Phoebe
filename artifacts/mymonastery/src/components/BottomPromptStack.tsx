@@ -20,6 +20,9 @@ import { NotificationReminderBanner } from "@/components/NotificationReminderBan
  */
 const IMMERSIVE_PRACTICE_ROUTES = new Set<string>([
   "/visio", "/psalms", "/contemplation", "/cobreathe", "/pray-breath",
+  // Two more OfficeViewer decks with the same bottom pill (audit 2026-09-04):
+  // the Daily Devotions and the public /pray page.
+  "/bcp/daily-devotions", "/pray",
   "/guided-prayer", "/examen", "/prayer-mode",
   // Audio Divina is a full-screen deck now too, with its own footer CTA — the
   // prompt card was landing squarely on its Begin button.

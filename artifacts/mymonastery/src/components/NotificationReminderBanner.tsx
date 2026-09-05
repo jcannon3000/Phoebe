@@ -120,6 +120,9 @@ export function NotificationReminderBanner() {
     // (audit 2026-09-03). Compline needs no entry: it runs at
     // /bcp/daily-office?mode=compline, covered above.
     "/creation-devotion", "/pray-breath",
+    // Two more OfficeViewer decks (audit 2026-09-04): the banner sat on the
+    // Daily Devotions deck's Back/Next; /pray is the public office.
+    "/bcp/daily-devotions", "/pray",
   ];
   const path = location.split("?")[0] ?? location;
   if (DECK_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) return null;

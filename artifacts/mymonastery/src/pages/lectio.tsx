@@ -148,7 +148,9 @@ export default function LectioPage() {
     if (hasNativeBrowser()) {
       openOfficeReading(chosen.readUrl, {
         officeTitle: "Lectio Divina",
-        slideLabel: `${n} of ${LAST} · ${sectionLabelFor(n)}`,
+        // "N of M" only — the native pill appends sectionLabel itself, so
+        // passing it here too read "2 OF 7 · READ · READ" (audit 2026-09-04).
+        slideLabel: `${n} of ${LAST}`,
         sectionLabel: sectionLabelFor(n),
       });
       return;
