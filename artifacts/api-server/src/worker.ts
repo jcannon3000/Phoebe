@@ -38,6 +38,7 @@ import { startGoalCleanupScheduler } from "./lib/goalCleanup";
 import { startPrayerHeldScanner } from "./lib/prayerHeldScanner";
 import { startMinistrySyncScheduler } from "./lib/ministryScraper";
 import { startOfficeAlignmentScheduler } from "./lib/officeAlignmentScheduler";
+import { startNewsletterIssueNotifier } from "./lib/newsletterIssueNotifier";
 
 // Sentry first so any boot-time scheduler failure (DB pool exhausted,
 // invalid env var, missing seed file) lands as a Sentry issue rather
@@ -62,6 +63,10 @@ startGoalCleanupScheduler();
 startPrayerHeldScanner();
 startMinistrySyncScheduler();
 startOfficeAlignmentScheduler();
+// "Fresh Off The Presses" ran only in the web process, so RUN_SCHEDULERS_IN_WEB=false
+// silently switched it off. Its claims are atomic, so running here beside the
+// web is safe either way.
+startNewsletterIssueNotifier();
 logger.info("[worker] schedulers running — process will stay alive on setIntervals");
 
 // We don't open an HTTP port — the worker is internal-only. Railway's

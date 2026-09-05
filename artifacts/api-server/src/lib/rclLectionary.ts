@@ -27,13 +27,29 @@ const SEED: Map<string, SeedReading> = new Map(
 // ─── Date helpers ───────────────────────────────────────────────────────────
 
 function ymd(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  // Local fields, not toISOString: these Dates are local midnights, and the
+  // UTC rendering of a local midnight is the previous day east of Greenwich.
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** Returns the date of the upcoming Sunday (or today, if today is Sunday). */
+/**
+ * "Today" as a calendar date in New York, as a local-midnight Date.
+ *
+ * Railway runs UTC. `new Date().getDay()` there is Monday from 8 PM ET on
+ * Sunday, so This Sunday flipped to NEXT week while it was still Sunday
+ * evening for everyone who uses it — the same class as the VTS todayStamp
+ * bug fixed this morning (16bee584). The owner's users are US-based; a
+ * per-user timezone would need the client to send one.
+ */
+function todayInNewYork(now: Date): Date {
+  const ymdStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(now); // YYYY-MM-DD
+  const [y, m, day] = ymdStr.split("-").map(Number);
+  return new Date(y!, (m ?? 1) - 1, day ?? 1);
+}
+
+/** Returns the date of the upcoming Sunday (or today, if today is Sunday) — by the New York calendar. */
 export function nextSundayDate(today = new Date()): Date {
-  const d = new Date(today);
-  d.setHours(0, 0, 0, 0);
+  const d = todayInNewYork(today);
   const dow = d.getDay(); // 0 = Sunday
   const add = dow === 0 ? 0 : 7 - dow;
   d.setDate(d.getDate() + add);
@@ -42,8 +58,7 @@ export function nextSundayDate(today = new Date()): Date {
 
 /** Returns the most recent past Sunday (or today, if today is Sunday). */
 export function mostRecentSundayDate(today = new Date()): Date {
-  const d = new Date(today);
-  d.setHours(0, 0, 0, 0);
+  const d = todayInNewYork(today);
   const dow = d.getDay();
   d.setDate(d.getDate() - dow);
   return d;
