@@ -159,9 +159,11 @@ import type { RoutineSpec } from "@/components/WayOfLoveRuleFlow";
 /** The default that ships in the app (guestSeed's seed v7), as data — what the
  *  editor opens on before an admin has ever saved one. */
 export const SEED_DEFAULT_FALLBACK: DefaultSeed = {
-  morning: "guided-prayer", evening: "ask", reflection: "cac",
-  cards: ["cac", "visio"], relational: ["gratitude"], silenceMin: 0,
-  slots: { visio: "evening" }, version: 0,
+  // v8 (owner, 2026-09-05): Simple Guided · Forward Day by Day · Express
+  // Gratitude · Visio Divina · the Examen in the evening.
+  morning: "guided-prayer", evening: "examen", reflection: "fdd",
+  cards: ["fdd", "visio"], relational: ["gratitude"], silenceMin: 0,
+  slots: { visio: "anytime" }, version: 0,
 };
 
 /** A side's stored LEVEL → the customizer's own word for it. */

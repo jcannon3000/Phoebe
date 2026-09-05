@@ -379,7 +379,7 @@ export default function MenuNewslettersPage() {
   if (group === null) {
     return (
       <MenuHub
-        title={t("menu.newsletters", { defaultValue: "Newsletters" })}
+        title={t("menu.newsletters", { defaultValue: "Reflections" })}
         emoji="🌅"
         subtitle={t("menu.newsletters_sub_long", { defaultValue: "Daily words and publications, from across the church." })}
         backLabel={t("menu.title", { defaultValue: "Menu" })}
@@ -414,7 +414,7 @@ export default function MenuNewslettersPage() {
             onClick={() => setLocation("/menu/newsletters")}
             style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6 }}
           >
-            ← {t("menu.newsletters", { defaultValue: "Newsletters" })}
+            ← {t("menu.newsletters", { defaultValue: "Reflections" })}
           </button>
 
           {/* Title row — MenuHub's h1, with the one thing this page adds: the

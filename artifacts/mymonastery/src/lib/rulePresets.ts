@@ -107,6 +107,9 @@ export type RulePreset = {
 // Each maps to a real school of prayer — the catechumen's first anchor,
 // prayer-book Anglicanism, the Keating/Centering stream, and one seminary's
 // own day.
+/** Monday–Friday, for practices a seminary keeps on the days it meets. */
+const WEEKDAYS = [1, 2, 3, 4, 5];
+
 export const RULE_PRESETS: RulePreset[] = [
   // A GENTLE START — the default rhythm, and the one a person with no rule
   // gets. Simple Guided Prayer opens the day (three minutes: praise,
@@ -147,17 +150,27 @@ export const RULE_PRESETS: RulePreset[] = [
   // Dean's word is the reflection; Express gratitude arrives through
   // `relational`, the same machinery the default seed uses for it.
   { id: "vts", emoji: "🦩", sides: { morning: true, evening: true },
+    // v3 (owner, 2026-09-05): "Morning: Simple · Chapel (Weekdays Only) ·
+    // Dean's Commentary · Creation Prayer · Visio Divina · Evening: Examen".
+    // Chapel comes back as the seminary's own practice — a custom anchor on
+    // weekdays, whose log popup still offers Morning Prayer as a way to keep
+    // it (`office`). Creation Prayer and Visio Divina are standing practices
+    // with their own cards; Express Gratitude is no longer named (adopting
+    // never removes a relational practice anyone already keeps).
     pray: "guidedPrayer", evening: "examen",
     silence: false, goalMin: 0,
     reflections: ["vts"],
-    practices: { visio: true },
+    customAnchors: [
+      { title: "Chapel", emoji: "⛪", slot: "morning", days: WEEKDAYS, office: "morning" as const },
+    ],
+    practices: { cobreathe: true, visio: true },
     practiceSlots: { visio: "anytime" },
-    relational: ["gratitude"],
-    title: "VTS", blurb: "Simple Guided Prayer in the morning, the VTS Dean's Commentary, Express gratitude, Visio Divina, and the Examen in the evening.",
+    title: "VTS", blurb: "Simple Guided Prayer in the morning, Chapel on weekdays, the VTS Dean's Commentary, Creation Prayer, Visio Divina, and the Examen in the evening.",
     rows: [
       { emoji: "🙌🏽", label: "Simple Guided Prayer in the morning" },
+      { emoji: "⛪", label: "Chapel, weekdays" },
       { emoji: "🦩", label: "The VTS Dean's Commentary" },
-      { emoji: "🙏🏽", label: "Express gratitude" },
+      { emoji: "🌍", label: "Creation Prayer" },
       { emoji: "🖼️", label: "Visio Divina" },
       { emoji: "🌗", label: "The Examen in the evening" },
     ] },

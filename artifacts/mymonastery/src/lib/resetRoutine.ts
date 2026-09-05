@@ -39,6 +39,9 @@ const DEFAULT_HIDDEN_MODULES = [
   "examen", "ssje", "vts", "prayer-list",
   "ncmp", "podcasts", "contemplation",
   "icons", "taize", "andrews", "nouwen", "sojo", "grist", "spirituals", "lectio",
+  // v8 (2026-09-05): Forward Day by Day is the default's newsletter now, so
+  // CAC joins the hidden list and "fdd" stays out of it.
+  "cac",
 ];
 
 /** Every module a rhythm may or may not carry — what an admin-set default is

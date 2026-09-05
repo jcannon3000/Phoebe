@@ -58,7 +58,9 @@ export const SEED_VERSION_KEY = "phoebe:guest-seed-version";
 export function predatesSeedStamp(): boolean {
   try { return !localStorage.getItem(SEED_VERSION_KEY); } catch { return false; }
 }
-const SEED_VERSION = "7";
+// v8 (owner, 2026-09-05): "Morning: Simple · Newsletter: Forward · Share
+// Gratitude · Visio Divina · Evening: Examen".
+const SEED_VERSION = "8";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never
 // remove: the whole point is recognizing rules we ourselves wrote.
@@ -130,8 +132,10 @@ function seedVisio(): void {
  * The reflection source was set correctly; the card that reads it was not.
  * Owner: "CAC Newsletter (Its not showing up)" — this is why.
  */
-function seedCac(): void {
-  const { layout, changed } = addHomeCard(readCachedHomeLayout(), "cac");
+function seedCac(): void { seedCard("cac"); }
+/** Put one newsletter card IN THE LAYOUT (see the note above seedCac). */
+function seedCard(key: "cac" | "fdd"): void {
+  const { layout, changed } = addHomeCard(readCachedHomeLayout(), key);
   if (changed) cacheHomeLayoutLocalOnly(layout);
 }
 
@@ -203,11 +207,10 @@ function migrateStaleSeed(): void {
     }
     if (untouched) {
       setSideLevel("morning", "guided-prayer");
-      // NO EVENING OFFICE (owner, v7): Visio Divina is the evening practice
-      // now, not the Examen — "ask" is a side's off state, so this is three
-      // cards, not four. A device on an untouched pair had no evening
-      // opinion of its own to preserve.
-      setSideLevel("evening", "ask");
+      // THE EXAMEN IN THE EVENING (owner, v8). v7 had left the evening off
+      // ("ask") with Visio riding that slot; a device on an untouched pair had
+      // no evening opinion of its own to preserve.
+      setSideLevel("evening", "examen");
       // The REFLECTION SOURCE is deliberately not migrated — a device can sit
       // on untouched levels and still have chosen its own daily word — but the
       // CARD is: CAC needs to be IN THE LAYOUT or the fallback that used to
@@ -219,7 +222,8 @@ function migrateStaleSeed(): void {
       // rather than the practice's own "anytime" default, because the ask was
       // specifically "Visio Divina as the evening practice."
       seedVisio();
-      setPracticeSlot("visio", "evening");
+      // Any time of day now that the Examen has the evening (v8).
+      setPracticeSlot("visio", "anytime");
       // The v6 default's 5-minute silence goal is gone — Visio replaces it as
       // the contemplative practice. Only cleared for a device still on that
       // OLD goal (or none); someone's own chosen goal is never overwritten.
@@ -314,21 +318,17 @@ export function seedGuestRule(): void {
       return;
     }
     setSideLevel("morning", "guided-prayer");
-    // NO EVENING OFFICE (owner, v7): "Simple guided prayer as the morning
-    // practice, the CAC newsletter, the Gratitude relational practice, and
-    // Visio Divina as the evening practice" — no Nouwen, and no Examen taking
-    // the evening anchor slot. "ask" is a side's off state, so this is three
-    // practices, not a fourth nobody asked for.
-    setSideLevel("evening", "ask");
-    setReflectionSource("cac");
-    setSideReflection("morning", "cac");
+    // THE DEFAULT, v8 (owner, 2026-09-05): "Morning: Simple · Newsletter:
+    // Forward · Share Gratitude · Visio Divina · Evening: Examen". The Examen
+    // takes the evening anchor again; Forward Day by Day is the day's word.
+    setSideLevel("evening", "examen");
+    setReflectionSource("fdd");
+    setSideReflection("morning", "fdd");
     setRelationalPractices(["gratitude"]);
-    seedCac();
-    // VISIO DIVINA, as the EVENING practice — not the "anytime" default the
-    // practice otherwise slots to, since the owner specifically asked for it
-    // in the evening.
+    seedCard("fdd");
+    // Visio Divina rides any time of day now that the Examen has the evening.
     seedVisio();
-    setPracticeSlot("visio", "evening");
+    setPracticeSlot("visio", "anytime");
     localStorage.setItem(SEED_KEY, todayYmd());
     // Freshly seeded devices are already current — stamp so migrateStaleSeed
     // never has anything to do for them.
