@@ -1343,6 +1343,50 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       var tries = 0;
       var limit = isOremus ? 6 : 20;
       var iv = setInterval(function () { run(); if (++tries > limit) clearInterval(iv); }, 350);
+      /**
+       * AND KEEP WATCHING <body> AFTER THE SETTLE ENDS. Substack raises its
+       * subscribe panel on scroll — often well past the seven seconds above —
+       * appended to <body> as two siblings: the dialog, which the stylesheet
+       * hides by class, and a full-screen BACKDROP with a generated class name,
+       * which nothing matched. So the page darkened with no panel in sight
+       * (owner: "even though the popup didn't show the screen darkened").
+       * A body-level childList observer is cheap (it fires only when body
+       * gains a child) and re-runs the isolate, which hides any late sibling
+       * of the kept block for as long as the reader is on.
+       */
+      if (!isOremus && window.MutationObserver) {
+        var lateObserver = new MutationObserver(function () { if (readerOn) run(); killOverlays(); });
+        var armLate = function () { if (document.body) lateObserver.observe(document.body, { childList: true }); };
+        if (document.body) armLate(); else document.addEventListener('DOMContentLoaded', armLate);
+      }
+      /**
+       * SUBSTACK'S FULL-SCREEN OVERLAYS, IN BOTH VIEWS. Standard means the
+       * page as published — but a modal that covers the whole viewport asking
+       * for an email is not the page, and the owner met it the moment he
+       * switched ("when I hit Standard there was a pop up"). Only elements
+       * that are position:fixed AND cover at least 90% of the viewport in
+       * both directions go: a sticky site header or a cookie strip is neither.
+       * Substack only — every other host keeps its own furniture.
+       */
+      function killOverlays() {
+        if (!isSubstack || !document.body) return;
+        var kids = document.body.children;
+        for (var i = 0; i < kids.length; i++) {
+          var el = kids[i];
+          if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE' || el.hasAttribute('data-phoebe-overlay-killed')) continue;
+          if (el.className && String(el.className).indexOf('phoebe-') === 0) continue;
+          var cs = window.getComputedStyle(el);
+          if (cs.position !== 'fixed') continue;
+          var r = el.getBoundingClientRect();
+          if (r.width >= window.innerWidth * 0.9 && r.height >= window.innerHeight * 0.9) {
+            el.setAttribute('data-phoebe-overlay-killed', '1');
+            el.style.setProperty('display', 'none', 'important');
+          }
+        }
+        // Substack locks the body while its panel is up; nothing is up now.
+        document.body.style.setProperty('overflow', 'auto', 'important');
+      }
+      killOverlays();
       // Landing the page on the right commentary is the NATIVE side's job
       // (scrollToDeepLinkedWork) — it already owns the retry ladder and the
       // "never move a page the reader has taken hold of" guard. Two scrollers
@@ -2889,6 +2933,19 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
         updateNavButtons()
+        /**
+         * PUSH THE NATIVE READER STATE INTO THE NEW DOCUMENT.
+         *
+         * Every page starts its script with `readerOn = true`; only the
+         * Standard/Reader button ever told it otherwise. So Standard → Previous
+         * loaded the next issue restyled — cream text, our rebuilt head — over
+         * the publisher's white ground, with the backdrop hidden (native said
+         * off) and the button reading "Reader". Cream on white (owner:
+         * "when I selected a previous version it came white"). The document
+         * exists at commit and the user script has already defined
+         * __phoebeReaderSet, so this lands before first paint.
+         */
+        applyReaderState()
     }
 
     // target=_blank / new-window links: load them in THIS view rather than
