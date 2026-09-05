@@ -119,6 +119,17 @@ export const groupsTable = pgTable("groups", {
   // went public).
   prayerRequestsEnabled: boolean("prayer_requests_enabled").notNull().default(false),
   /**
+   * EVENTS for this group — services, gatherings, plans. Owner (2026-09-05):
+   * "the admin of the group [should] be able to turn off the group prayer
+   * requests features and events, where the group would have none of that UI,
+   * and the users wouldn't then unlock those menu and home-screen features."
+   * Default TRUE (events have always been on); a group admin turns it off in
+   * settings. Off ⇒ the group page shows no Services tab or section, and a
+   * membership here no longer counts toward the Events menu row, the home's
+   * Events section or the /events page.
+   */
+  eventsEnabled: boolean("events_enabled").notNull().default(true),
+  /**
    * THE FULL CAC LIBRARY, for a pilot group (owner: "members of special pilot
    * groups would be able to see the full library" … "only super admins could
    * turn this on for groups").

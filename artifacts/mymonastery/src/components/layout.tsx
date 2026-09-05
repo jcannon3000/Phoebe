@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect, useRef, useMemo, type CSSProperties } from "react";
+import { useGroupFeatures } from "@/hooks/useGroupFeatures";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
@@ -166,6 +167,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   // 2026-07-23 — the 1:1 fellow graph, its request badge, and the 🙌
   // encouragement badge are gone; community membership is the only signal now.)
   const hasGroup = (groupsData?.groups?.length ?? 0) > 0;
+  // Per-feature unlocks: a community with events / prayer requests switched
+  // ON (owner, 2026-09-05) — not any community.
+  const { hasEventsGroup, hasPrayerGroup } = useGroupFeatures();
 
   function navigate(path: string) {
     onClose();
@@ -380,7 +384,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     you're in a community (a solo new user has none). Pilot always
                     gets it — it's their personal list. Gated behind the
                     prayer-requests feature (pilot-group-only, 2026-07-22). */}
-                {prayerRequestsEnabled && (hasGroup || isPilot) && (
+                {prayerRequestsEnabled && (hasPrayerGroup || isPilot) && (
                 <MenuRow
                   // Medium skin tone (owner) — the app's own convention for
                   // this emoji everywhere else; this row was the bare one.
@@ -391,7 +395,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 )}
                 {/* Events — the upcoming schedule. Hidden until you're in a
                     community (events come from your groups). Never in pilot. */}
-                {hasGroup && !isPilot && (
+                {hasEventsGroup && !isPilot && (
                 <MenuRow
                   emoji="📅"
                   label={t("menu.events", { defaultValue: "Events" })}

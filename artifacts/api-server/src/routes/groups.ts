@@ -1360,6 +1360,8 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
     state: z.string().max(100).optional().or(z.literal("")),
     // Owner: "a setting in groups to turn on and off prayer list."
     prayerRequestsEnabled: z.boolean().optional(),
+    // Owner (2026-09-05): "turn off … events" — see schema/groups.ts.
+    eventsEnabled: z.boolean().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
@@ -1372,6 +1374,7 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
   if (parsed.data.isPublic !== undefined) updates.isPublic = parsed.data.isPublic;
   if (parsed.data.city !== undefined) updates.city = parsed.data.city.trim() || null;
   if (parsed.data.state !== undefined) updates.state = parsed.data.state.trim() || null;
+  if (parsed.data.eventsEnabled !== undefined) updates.eventsEnabled = parsed.data.eventsEnabled;
   // Owner: "no publicly listed group can have shared prayer requests" — a
   // public group can never carry this flag true, regardless of what the
   // client sent. Effective-after-update isPublic (same pattern the circle

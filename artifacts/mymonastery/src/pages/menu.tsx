@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { useGroupFeatures } from "@/hooks/useGroupFeatures";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, useLogout } from "@/hooks/useAuth";
@@ -33,6 +34,7 @@ export default function MenuPage() {
   const officesOnly = user?.accessTier === "offices-only";
   const signedUp = !!user && !user.isAnonymous;
   const prayerListEnabled = usePrayerListEnabled();
+  const { hasEventsGroup } = useGroupFeatures();
 
   const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
     queryKey: ["/api/groups"],
@@ -131,7 +133,8 @@ export default function MenuPage() {
   // Community + Events — hidden in pilot AND guest (personal-only, no community).
   if (!officesOnly && !isPilot && !isGuest) {
     explore.items.push({ emoji: "🏘️", label: t("menu.communities"), sub: t("menu.communities_sub"), onClick: () => go("/communities") });
-    explore.items.push({ emoji: "📅", label: t("menu.events", { defaultValue: "Events" }), sub: t("menu.events_sub", { defaultValue: "Services, gatherings & practices" }), onClick: () => go("/events") });
+    // Events only when a community has them switched on (owner, 2026-09-05).
+    if (hasEventsGroup) explore.items.push({ emoji: "📅", label: t("menu.events", { defaultValue: "Events" }), sub: t("menu.events_sub", { defaultValue: "Services, gatherings & practices" }), onClick: () => go("/events") });
   }
   explore.items.push({ emoji: "📚", label: t("menu.resources"), sub: t("menu.resources_sub"), onClick: () => go("/menu/resources") });
   // Prayer Feeds — discover + subscribe to daily intercession feeds (e.g. the

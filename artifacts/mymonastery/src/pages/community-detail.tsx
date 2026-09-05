@@ -1241,6 +1241,8 @@ export default function CommunityDetailPage() {
   // only difference is that they're filtered from the roster for non-admin
   // viewers (server-side, so the list never even hits the client).
   const isAdmin = (myRole === "admin" || myRole === "hidden_admin") && communityAdminView;
+  // The admin switched events off for this community — none of that UI here.
+  const eventsOff = (groupData as { eventsEnabled?: boolean } | undefined)?.eventsEnabled === false;
 
   return (
     <Layout>
@@ -1707,7 +1709,8 @@ export default function CommunityDetailPage() {
                 // Members tile is open to all viewers now; admins additionally
                 // get the management controls inside it (see the section below).
                 { emoji: "👥", label: t("community_detail.tab_members"), go: () => setActiveTab("members") },
-                { emoji: "⛪", label: t("community_detail.tab_services", { defaultValue: "Services" }), go: () => setActiveTab("gatherings") },
+                // Events off for this community (owner, 2026-09-05) → no Services tile.
+                ...(eventsOff ? [] : [{ emoji: "⛪", label: t("community_detail.tab_services", { defaultValue: "Services" }), go: () => setActiveTab("gatherings") }]),
                 // EVERYONE, not the admin block — this is where a parishioner
                 // asks for prayer, and it spent its first hour behind the
                 // admin gate where only a leader could find it. The leader's
@@ -1771,7 +1774,7 @@ export default function CommunityDetailPage() {
         )}
 
         {/* ─── Gatherings ─── */}
-        {activeTab === "gatherings" && (
+        {activeTab === "gatherings" && !eventsOff && (
           <div>
             {/* A community is a followed feed: the schedule shows the read-only
                 church service times, not social meetups with attendee lists. */}

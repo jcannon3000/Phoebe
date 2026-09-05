@@ -32,6 +32,7 @@ type Group = {
   // (and un-editable) whenever isPublic is true — see the server route.
   prayerRequestsEnabled?: boolean;
   cacLibraryEnabled?: boolean;
+  eventsEnabled?: boolean;
 };
 
 type Intention = {
@@ -66,6 +67,7 @@ export default function CommunitySettingsPage() {
   // saving during that window would have turned the list on without them
   // ever asking for it.
   const [prayerRequestsEnabled, setPrayerRequestsEnabled] = useState(false);
+  const [eventsEnabled, setEventsEnabled] = useState(true);
   const [saved, setSaved] = useState(false);
 
   // Add-intention dialog state. Shape mirrors the intercession flow —
@@ -188,6 +190,7 @@ export default function CommunitySettingsPage() {
       // `?? false` — the column is NOT NULL so the server always sends a real
       // boolean, but the fallback must not contradict the column default.
       setPrayerRequestsEnabled(group.prayerRequestsEnabled ?? false);
+      setEventsEnabled(group.eventsEnabled ?? true);
     }
   }, [group]);
 
@@ -208,6 +211,7 @@ export default function CommunitySettingsPage() {
       // Forced off server-side whenever isPublic is true, regardless of
       // what we send — the checkbox below is also disabled in that case.
       prayerRequestsEnabled,
+      eventsEnabled,
     }),
     onSuccess: () => {
       setSaved(true);
@@ -657,6 +661,32 @@ export default function CommunitySettingsPage() {
                 {isPublic
                   ? t("community_settings.prayer_requests_public_locked", { defaultValue: "Not available for a community listed in the public directory. Turn off \"List in the community directory\" above to enable this." })
                   : t("community_settings.prayer_requests_desc", { defaultValue: "Members can share a prayer request with this community and see each other's requests." })}
+              </p>
+            </div>
+          </label>
+        </div>
+        {/* EVENTS — owner (2026-09-05): a group admin can switch off services,
+            gatherings and plans for this community; off, the group has none of
+            that UI and membership here no longer unlocks the Events row, the
+            home's Events section or the /events page. */}
+        <div
+          className="rounded-xl px-4 py-3.5 mb-4"
+          style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+        >
+          <label className="flex items-start gap-3 select-none" style={{ cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={eventsEnabled}
+              onChange={e => setEventsEnabled(e.target.checked)}
+              className="mt-1 w-4 h-4 flex-shrink-0 rounded"
+              style={{ accentColor: "#2D5E3F" }}
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
+                {t("community_settings.events", { defaultValue: "Events" })}
+              </p>
+              <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
+                {t("community_settings.events_desc", { defaultValue: "Services, gatherings and plans for this community. Off, members see no events here and this community doesn't add Events to their menu or home." })}
               </p>
             </div>
           </label>

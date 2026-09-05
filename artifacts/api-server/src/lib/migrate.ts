@@ -2541,6 +2541,8 @@ export async function migrate() {
     // Owner: "a setting in groups to turn on and off prayer list" — see
     // schema comment in groups.ts for the public-group hard-gate.
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS prayer_requests_enabled BOOLEAN NOT NULL DEFAULT false`);
+    // Owner (2026-09-05): group admins can switch events off — see schema/groups.ts eventsEnabled.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS events_enabled BOOLEAN NOT NULL DEFAULT true`);
     // The full CAC library for a pilot group — super-admin granted only.
     // See schema/groups.ts's cacLibraryEnabled for why it is per-group.
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS cac_library_enabled BOOLEAN NOT NULL DEFAULT false`);

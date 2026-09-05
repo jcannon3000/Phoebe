@@ -6288,7 +6288,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     enabled: !!user,
     staleTime: 60_000,
   });
-  const hasGroup = (dashGroupsData?.groups?.length ?? 0) > 0;
+  // Events come only from communities with events switched ON (owner,
+  // 2026-09-05); a community that turned them off adds nothing here.
+  const eventGroups = (dashGroupsData?.groups ?? []).filter((g: { eventsEnabled?: boolean }) => g.eventsEnabled !== false);
+  const hasGroup = eventGroups.length > 0;
+  const eventGroupIds = new Set(eventGroups.map((g: { id: number }) => g.id));
 
   // ── Daily prayer-slideshow invite ────────────────────────────────────────
   // Declared here, AFTER momentsData, because the effect's dep array reads
@@ -6476,7 +6480,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     queryFn: () => apiRequest("GET", "/api/me/service-schedules"),
     enabled: !!user,
   });
-  const serviceSchedules = serviceSchedulesData?.schedules ?? [];
+  // Only communities with events switched on (owner, 2026-09-05).
+  const serviceSchedules = (serviceSchedulesData?.schedules ?? []).filter((sch: { groupId?: number | null }) => sch.groupId == null || eventGroupIds.has(sch.groupId));
 
   // Subscribed prayer feeds. Each row carries the feed plus (optionally)
   // today's entry and whether I've already prayed today, so the
@@ -6645,7 +6650,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     queryFn: () => apiRequest("GET", `/api/rituals?ownerId=${user!.id}`),
     enabled: !!user,
   });
-  const rituals = ritualsData ?? [];
+  const rituals = (ritualsData ?? []).filter((r: { groupId?: number | null }) => r.groupId == null || eventGroupIds.has(r.groupId));
 
   // Fellows "How About" plans removed (1:1 social layer gone). Kept as an empty
   // list so the timeline builder below simply weaves in nothing.
@@ -6682,7 +6687,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // active prayers in groups they'd just joined.)
 
   const pendingPrayerCount = useMemo(() => {
-    const moments = momentsData?.moments ?? [];
+    const moments = (momentsData?.moments ?? []).filter((m: { groupId?: number | null }) => m.groupId == null || eventGroupIds.has(m.groupId));
     const circleIntentions = dashCircleIntentions?.intentions ?? [];
     const intentionCountByGroup = new Map<number, number>();
     for (const i of circleIntentions) {
