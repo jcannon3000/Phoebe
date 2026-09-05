@@ -5531,11 +5531,16 @@ export default function WayOfLoveRuleFlow({
                   const perSide = f === "prayer" || f === "creation";
                   if (perSide) {
                     if (!contemplationBySide[side]) toggleContemplationSide(side);
-                    // THIS side's kind — and the global stays in step for the
-                    // side-less surfaces (see setSideContemplationKind).
-                    setSideContemplationKind(side, f === "creation" ? "creation" : "silent");
+                    // The side's KIND is state here and storage at Save —
+                    // commit() writes it from contemplativeForm. It used to be
+                    // written on this tap, so looking at Lectio and pressing ✕
+                    // changed the live rule without ever saving (audit
+                    // 2026-09-04).
                     chooseContemplationStyle(f === "creation" ? "cobreathe" : "silent");
-                    if (f === "prayer") {
+                    // Ten minutes is the default for a NEW sit, not a reset:
+                    // re-tapping the already-chosen row left a seeded 20-minute
+                    // sit reading 10.
+                    if (f === "prayer" && contemplativeForm[side] !== "prayer") {
                       chooseSideMinutes(side, 10);
                       // No goal manufacture — see the way slide's note: a
                       // per-side sit never implies a daily quota.
@@ -5560,7 +5565,7 @@ export default function WayOfLoveRuleFlow({
                      */
                     choosePrayBySide(side, "none");
                     if (!contemplationBySide[side]) toggleContemplationSide(side);
-                    setSideContemplationKind(side, f);
+                    // Kind written at Save (see the branch above), not here.
                     setContemplativeForm((p2) => ({ ...p2, [side]: f }));
                     // …and NOT also a standing all-day card.
                     setContemplative((c) => (c[f] ? { ...c, [f]: false } : c));
@@ -6322,18 +6327,27 @@ export default function WayOfLoveRuleFlow({
               <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B_ACTIVE}`, borderRadius: 12, padding: "11px 14px" }}>
                 <span style={{ fontSize: 18, flexShrink: 0 }} aria-hidden>{a.emoji || "🤝"}</span>
                 <span style={{ flex: 1, minWidth: 0, color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT }}>{a.title}</span>
-                <button
-                  type="button"
-                  onClick={() => { touchedRef.current = true; removeCustomAnchor(a.id); setCustomList(getCustomAnchors()); }}
-                  aria-label={t("common.remove", { defaultValue: "Remove" })}
-                  style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", fontSize: 16, padding: "2px 6px" }}
-                >✕</button>
+                {/* Not while designing someone else's rule: this ✕ tombstones
+                    the anchor on the ADMIN'S account (customAnchors → PUT),
+                    which is not a routine key and so not restored by
+                    routineDesignGuard. */}
+                {!prescribe && (
+                  <button
+                    type="button"
+                    onClick={() => { touchedRef.current = true; removeCustomAnchor(a.id); setCustomList(getCustomAnchors()); }}
+                    aria-label={t("common.remove", { defaultValue: "Remove" })}
+                    style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", fontSize: 16, padding: "2px 6px" }}
+                  >✕</button>
+                )}
               </div>
             ))}
           {/* Add your own — a free-text relational practice beyond hug / gratitude
               / call. Owner asked for this on its own step and it had never been
               built; it's marked isRelational so it can never flatten into a
               plain custom practice on the Create-your-own page. */}
+          {/* Same reason as the ✕ above: Add writes the anchor to the
+              admin's own account, so a preset can't be given one from here. */}
+          {!prescribe && (
           <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
             <input
               value={customRelationalTitle}
@@ -6361,6 +6375,7 @@ export default function WayOfLoveRuleFlow({
               {t("common.add", { defaultValue: "Add" })}
             </button>
           </div>
+          )}
         </div>
         {/**
           * THE CAP, SAID OUT LOUD.

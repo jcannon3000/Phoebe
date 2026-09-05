@@ -171,6 +171,10 @@ export function useWidgetSync(): void {
         case "walk": return { title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray", emoji: "🚶🏽" };
         case "audio": return { title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music", emoji: "🎵" };
         case "visio": return { title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image", emoji: "🖼️" };
+        // The two kinds added 2026-09-04 — the href learned them, this face
+        // didn't, so the widget showed a silent sit for a Lectio side.
+        case "lectio": return { title: "Lectio Divina", eyebrow: "Lectio Divina", subtitle: "Read a passage slowly, three times", emoji: "📜" };
+        case "reading": return { title: "Reading", eyebrow: "Reading", subtitle: "A page a day", emoji: "📚" };
         default: return { title: `${cap} Contemplation`, eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", emoji: "🕯️" };
       }
     };
