@@ -1025,6 +1025,17 @@ function OpeningSplash() {
   // Tell the home it can start its card cascade only AFTER the splash has
   // faded down. Fires on every transition to "gone" (incl. never-shown —
   // harmless, the home only waits when the splash actually showed).
+  // If the splash is torn down before it reaches "gone" (a Layout remount
+  // while auth resolves), the home must not wait on an event that will never
+  // come: say done on the way out.
+  useEffect(() => () => {
+    try {
+      if (!sessionStorage.getItem("phoebe:splash-done-once")) {
+        sessionStorage.setItem("phoebe:splash-done-once", "1");
+        window.dispatchEvent(new CustomEvent("phoebe:splash-done"));
+      }
+    } catch { /* ignore */ }
+  }, []);
   useEffect(() => {
     if (phase === "gone") {
       // Stamp a DONE flag (distinct from "splash-shown", which is set at the

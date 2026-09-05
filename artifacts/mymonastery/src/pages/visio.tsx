@@ -731,6 +731,14 @@ export default function VisioPage() {
    * only.
    */
   const isLookingBeat = step === LOOK;
+  // The About pop-up's text — today only the Jesus Mafa note; empty means no pill.
+  const aboutText: string[] = view?.artist?.trim().toUpperCase() === "JESUS MAFA"
+    ? [
+        t("visio.jesus_mafa_line", { defaultValue: "JESUS MAFA is a response to the New Testament readings from the Lectionary by a Christian community in Cameroon, Africa." }),
+        t("visio.jesus_mafa_note", { defaultValue: "In the 1970s, the French Catholic priest François Vidil collaborated with the Mafa community to create a series of artwork known as Vie de Jesus Mafa (Life of Jesus Mafa, or simply Jesus Mafa), which depicts various events in the life of Jesus using Black depictions rather than White. These images were actually depictions of real-world recreations of biblical scenes by Mafa people." }),
+      ]
+    : [];
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   const atEnd = step >= TOTAL - 1;
   const goHome = () => setLocation("/dashboard");
@@ -1340,19 +1348,20 @@ export default function VisioPage() {
                 the description arrives with the work itself: not on the title
                 slide before it, and not on the second look after it. The
                 closing slide keeps the Vanderbilt attribution alone. */}
-            {view.artist?.trim().toUpperCase() === "JESUS MAFA" && (
-              <div style={{ maxWidth: 430, margin: "8px auto 0", display: "flex", flexDirection: "column", gap: 6 }}>
-                <p style={{ color: WARM, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.55, margin: 0 }}>
-                  {t("visio.jesus_mafa_line", {
-                    defaultValue: "JESUS MAFA is a response to the New Testament readings from the Lectionary by a Christian community in Cameroon, Africa.",
-                  })}
-                </p>
-                <p style={{ color: WARM, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.55, margin: 0 }}>
-                  {t("visio.jesus_mafa_note", {
-                    defaultValue: "In the 1970s, the French Catholic priest François Vidil collaborated with the Mafa community to create a series of artwork known as Vie de Jesus Mafa (Life of Jesus Mafa, or simply Jesus Mafa), which depicts various events in the life of Jesus using Black depictions rather than White. These images were actually depictions of real-world recreations of biblical scenes by Mafa people.",
-                  })}
-                </p>
-              </div>
+            {/* ABOUT — a pill under the picture that opens the description
+                (owner, 2026-09-05: "instead of having the Jesus Mafa
+                description just on the background, have an About pill under
+                the image, if there is such a description, that pulls up a
+                pop-up"). Only when there is something to say. */}
+            {aboutText.length > 0 && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setAboutOpen(true); }}
+                className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ margin: "12px auto 0", padding: "8px 18px", background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.5)", color: WARM, fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              >
+                {t("visio.about", { defaultValue: "About" })}
+              </button>
             )}
             {/* Who the work depicts, in ACT's own words — on the beat where the
                 picture is FIRST shown, not over the title (owner). It belongs
@@ -1576,6 +1585,33 @@ export default function VisioPage() {
         )}
           </motion.div>
       </div>
+
+      {/* ABOUT pop-up — the description, over the stage; tap the scrim or ✕ to close. */}
+      {aboutOpen && (
+        <div
+          onClick={(e) => { e.stopPropagation(); setAboutOpen(false); }}
+          style={{ position: "absolute", inset: 0, zIndex: 40, background: "rgba(6,16,10,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 22 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 440, width: "100%", maxHeight: "70vh", overflowY: "auto", borderRadius: 18, padding: "20px 20px 18px", background: "rgba(12,31,18,0.92)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(168,197,160,0.35)", boxShadow: "0 24px 60px rgba(0,0,0,0.5)" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <p style={{ color: SAGE, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: FONT, margin: 0, fontWeight: 600 }}>
+                {t("visio.about_title", { defaultValue: "About this work" })}
+              </p>
+              <button type="button" onClick={() => setAboutOpen(false)} aria-label={t("common.close", { defaultValue: "Close" })}
+                style={{ background: "rgba(200,212,192,0.1)", border: "1px solid rgba(200,212,192,0.25)", color: WARM, width: 30, height: 30, borderRadius: 999, cursor: "pointer", fontFamily: FONT, fontSize: 15, lineHeight: 1 }}>×</button>
+            </div>
+            {view?.artist && (
+              <p style={{ color: WARM, fontFamily: FONT, fontSize: 17, fontWeight: 700, margin: "0 0 10px" }}>{tidyArtist(view.artist)}</p>
+            )}
+            {aboutText.map((para, i) => (
+              <p key={i} style={{ color: WARM, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, margin: i === 0 ? 0 : "10px 0 0" }}>{para}</p>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* FLOATING, not a band below (owner: "any description under that
           scrolls under the continue"). Absolute over the stage with a scrim,

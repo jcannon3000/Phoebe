@@ -2132,13 +2132,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const clear = () => setSplashCleared(true);
     window.addEventListener("phoebe:splash-done", clear);
     window.addEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear);
-    // Fallback only if the event is somehow missed — must outlast the splash
-    // (~7.5s hold + ~1.4s fade). While the first-open intro is still up (a slow
-    // read), keep waiting rather than un-gating the cascade behind it.
+    // Fallback only if the event is somehow missed — must outlast the splash,
+    // which is now a 0.7s beat + 0.7s fade (2026-09-04), not the old ~9s. On
+    // the first TestFlight open of that build the cards sat hidden for the old
+    // 12s (owner: "the cards didn't load"). While the first-open intro is
+    // still up (a slow read), keep waiting rather than un-gating behind it.
     let id = window.setTimeout(function fb() {
       if (isFirstOpenOnboardingActive()) { id = window.setTimeout(fb, 4000); return; }
       clear();
-    }, 12000);
+    }, 3500);
     return () => { window.removeEventListener("phoebe:splash-done", clear); window.removeEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear); window.clearTimeout(id); };
   }, [splashCleared]);
 
