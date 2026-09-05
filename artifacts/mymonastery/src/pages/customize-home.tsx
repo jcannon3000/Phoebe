@@ -587,6 +587,11 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
       // can't see it; the key stays in HOME_MODULES so nothing that syncs
       // `order`/`hidden` drifts.
       && (k !== "spirituals" || spiritualsVisible(user?.isSuperAdmin))
+      // Andrew's Version is admin-only the same way (useRhythmState gates the
+      // card; the customizer gates its row). Without this it sat in a normal
+      // reader's add-list — they could switch it on, and nothing would ever
+      // appear, because andrewsActive is false for them.
+      && (k !== "andrews" || !!user?.isSuperAdmin)
       && (hidden.has(k) || !order.includes(k)),
   );
 

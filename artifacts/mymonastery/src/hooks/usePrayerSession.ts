@@ -48,7 +48,13 @@ export type PrayerSurface =
   // "prayer-list" — opening the manage prayer list page counts as a
   // prayer event for the metrics dashboard. Server exempts this
   // surface from the 5-second floor so a glance still records.
-  | "prayer-list";
+  | "prayer-list"
+  // "scripture" — the Daily Scripture Reading deck (and This Sunday, which is
+  // the same deck reading Sunday's lessons). It has been in the server's
+  // prayerSurfaces all along; this union had never been told, so the office
+  // viewer reached it only through a cast — which is also how "sunday", a
+  // surface the server rejects, got out the door.
+  | "scripture";
 
 export function usePrayerSession(
   surface: PrayerSurface | null | undefined,

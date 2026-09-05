@@ -1587,8 +1587,9 @@ export default function WayOfLoveRuleFlow({
         if (named?.key === "visio") return "visio";
         if (named?.key === "walk") return "walk";
         if (named?.key === "listening") return "audio";
-        if (named?.key === "lectio") return "lectio";
-        if (named?.key === "reading") return "reading";
+        // No lectio/reading line here: ANCHOR_PRACTICES has no such entry, so
+        // the comparison could never be true — TypeScript said as much. Those
+        // two are recovered from the KIND below, which is how they are stored.
       }
       const on = getSideContemplationExplicit(s) ?? (getSideLevel(s) === "reflect-sit");
       if (!on) return null;
@@ -1601,7 +1602,14 @@ export default function WayOfLoveRuleFlow({
         : kind === "walk" ? "walk"
           : kind === "audio" ? "audio"
             : kind === "visio" ? "visio"
-              : "prayer";
+              // Lectio and Reading are kinds too (2026-09-04). Without these
+              // two a side keeping Lectio Divina re-opened the customizer as
+              // Contemplative Prayer — and commit() then wrote "silent" back
+              // over it, which is the same losing-its-identity bug the block
+              // above exists to prevent.
+              : kind === "lectio" ? "lectio"
+                : kind === "reading" ? "reading"
+                  : "prayer";
     };
     return { morning: seed("morning"), evening: seed("evening") };
   });

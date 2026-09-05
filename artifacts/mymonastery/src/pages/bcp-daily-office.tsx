@@ -665,6 +665,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // The creation devotion counts as that half-day's office.
     : resolvedMode === "creation-morning" ? "morning-prayer"
     : resolvedMode === "creation-evening" ? "evening-prayer"
+    // The Sunday readings log as SCRIPTURE, the surface this same deck uses
+    // for the daily reading. "sunday" is not one of prayerSurfaces, so the
+    // POST came back 400 "Unknown surface" and was swallowed by the catch —
+    // every finished Sunday deck went unrecorded while the UI showed it done.
+    : resolvedMode === "sunday" ? "scripture"
     : (resolvedMode as PrayerSurface);
   usePrayerSession(officeSurface, slidesReachedRef, suppressSessionPostRef, completedRef);
   // The Daily Devotions are explicitly the personal short forms
@@ -713,10 +718,22 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    * because every branch above it names an evening mode.
    */
   const isReadingDeck = resolvedMode === "scripture" || resolvedMode === "sunday";
+  /**
+   * WHICH CARD A FINISHED READING ANIMATES — and for the Sunday readings,
+   * none.
+   *
+   * The daily deck animates the Scripture Reading card it just completed.
+   * The SUNDAY deck is opened from the menu ("This Sunday"), reads next
+   * Sunday's lessons, and completes nothing on the home: stamping the daily
+   * card's completion moment flashed "kept" over a card that either was
+   * already kept this morning or stayed undone after the flash. That is the
+   * complaint that put the comments below here, one practice further down.
+   */
+  const readingCompletionKey = resolvedMode === "sunday" ? "" : "scripture";
 
   const completedCardKey = (() => {
     // A reading has no office card to animate.
-    if (isReadingDeck) return "scripture";
+    if (isReadingDeck) return readingCompletionKey;
     const extra = getSideExtra(officeSide);
     if (!extra) return officeSide;
     return extraOfficeMode(officeSide, extra) === resolvedMode ? `extra-${officeSide}` : officeSide;
@@ -1892,7 +1909,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   // "morning", so finishing the scripture deck played the
                   // completion moment on Morning Prayer — a card the reader
                   // had already kept hours earlier, and had not just touched.
-                  markRecentCompletion(isReadingDeck ? "scripture"
+                  markRecentCompletion(isReadingDeck ? readingCompletionKey
                     : resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
       localStorage.removeItem(officeProgressKey(resolvedMode));
     } catch { /* non-fatal */ }
@@ -2460,7 +2477,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   // "morning", so finishing the scripture deck played the
                   // completion moment on Morning Prayer — a card the reader
                   // had already kept hours earlier, and had not just touched.
-                  markRecentCompletion(isReadingDeck ? "scripture"
+                  markRecentCompletion(isReadingDeck ? readingCompletionKey
                     : resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
       localStorage.removeItem(officeProgressKey(resolvedMode));
     } catch { /* non-fatal */ }
@@ -6075,7 +6092,11 @@ export default function BcpDailyOfficePage() {
         initialBook={showBook}
         initialSlide={startSlide}
         cameFromPicker={cameFromPicker}
-        onBack={() => { setShowMode(null); setShowBook(false); setCameFromPicker(false); setStartSlide(0); setLocation("/dashboard"); }}
+        // Back goes where they came FROM. Every other mode is entered from the
+        // home or this page's own chooser; ?mode=sunday is only ever opened by
+        // This Sunday, and dropping that reader on the dashboard stranded them
+        // a menu away from the page they started on.
+        onBack={() => { setShowMode(null); setShowBook(false); setCameFromPicker(false); setStartSlide(0); setLocation(showMode === "sunday" ? "/this-sunday" : "/dashboard"); }}
       />
     );
   }
