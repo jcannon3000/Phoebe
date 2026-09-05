@@ -1467,6 +1467,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         const cacheKey = {
           mode: resolvedMode, date: localDate, confession: confessionKey,
           ...(partsParam ? { parts: scriptureParts!.join(",") } : {}),
+          // The Sunday deck is one deck PER TRACK: without this a failed fetch
+          // for Track 2 served Track 1's cached slides (owner: "the first
+          // reading of the Sunday scripture sometimes wasn't loading … might
+          // have something to do with the track switching").
+          ...(trackParam ? { track: trackParam.slice("&track=".length) } : {}),
         };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: any;

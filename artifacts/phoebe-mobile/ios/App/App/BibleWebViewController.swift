@@ -579,24 +579,26 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         /* Our head: title, subtitle, the writer. */
         '.phoebe-substack-head{display:block!important;padding:18px 20px 6px!important;}',
         '.phoebe-substack-head h1{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
-        'font-size:30px!important;line-height:1.15!important;font-weight:700!important;color:#F0EDE6!important;margin:0 0 10px!important;}',
+        'font-size:32px!important;line-height:1.15!important;font-weight:700!important;color:#F0EDE6!important;margin:0 0 10px!important;}',
         '.phoebe-substack-head .phoebe-sub{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
-        'font-size:18px!important;line-height:1.45!important;color:rgba(200,212,192,0.82)!important;margin:0 0 10px!important;}',
+        'font-size:20px!important;line-height:1.45!important;color:rgba(200,212,192,0.82)!important;margin:0 0 10px!important;}',
         '.phoebe-substack-head .phoebe-by{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
-        'font-size:14px!important;letter-spacing:0.02em!important;color:#A8C5A0!important;margin:0 0 6px!important;}',
+        'font-size:16px!important;letter-spacing:0.02em!important;color:#A8C5A0!important;margin:0 0 6px!important;}',
         /* The text, with its own headings. */
         'article.post .body.markup{padding:0 20px 24px!important;}',
         'article.post .body.markup,article.post .body.markup *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
-        'article.post .body.markup h1,article.post .body.markup h2{font-size:24px!important;line-height:1.2!important;font-weight:700!important;color:#F0EDE6!important;margin:1.4em 0 0.5em!important;}',
-        'article.post .body.markup h3{font-size:21px!important;line-height:1.25!important;font-weight:700!important;color:#F0EDE6!important;margin:1.3em 0 0.45em!important;}',
-        'article.post .body.markup h4,article.post .body.markup h5,article.post .body.markup h6{font-size:18px!important;font-weight:700!important;color:#F0EDE6!important;margin:1.2em 0 0.4em!important;}',
-        'article.post .body.markup p,article.post .body.markup li{font-size:18px!important;line-height:1.72!important;color:#F0EDE6!important;margin:0 0 1.15em!important;}',
+        'article.post .body.markup h1,article.post .body.markup h2{font-size:26px!important;line-height:1.2!important;font-weight:700!important;color:#F0EDE6!important;margin:1.4em 0 0.5em!important;}',
+        'article.post .body.markup h3{font-size:23px!important;line-height:1.25!important;font-weight:700!important;color:#F0EDE6!important;margin:1.3em 0 0.45em!important;}',
+        'article.post .body.markup h4,article.post .body.markup h5,article.post .body.markup h6{font-size:20px!important;font-weight:700!important;color:#F0EDE6!important;margin:1.2em 0 0.4em!important;}',
+        'article.post .body.markup p,article.post .body.markup li{font-size:20px!important;line-height:1.7!important;color:#F0EDE6!important;margin:0 0 1.15em!important;}',
         'article.post .body.markup blockquote{border-left:3px solid rgba(168,197,160,0.5)!important;margin:0 0 1.15em!important;padding:0 0 0 14px!important;color:rgba(200,212,192,0.85)!important;}',
         'article.post .body.markup hr{border:none!important;border-top:1px solid rgba(200,212,192,0.18)!important;margin:1.4em 0!important;}',
         /* Pictures stay. */
-        'article.post .body.markup img{display:block!important;width:100%!important;max-width:100%!important;height:auto!important;border-radius:10px!important;margin:14px 0!important;}',
+        /* FULL WIDTH (owner): the picture bleeds past the 20px text gutter to the screen edges. */
+        'article.post .body.markup img{display:block!important;width:calc(100% + 40px)!important;max-width:none!important;height:auto!important;border-radius:0!important;margin:14px -20px!important;}',
+        'article.post .captioned-image-container img,article.post figure img{width:calc(100% + 40px)!important;max-width:none!important;margin:0 -20px!important;}',
         'article.post .captioned-image-container,article.post .captioned-image-container *{background:transparent!important;}',
-        'article.post .captioned-image-container{margin:0 0 1.15em!important;}',
+        'article.post .captioned-image-container,article.post figure{margin:14px 0 1.15em!important;padding:0!important;max-width:none!important;}',
         'article.post figcaption{font-size:13px!important;line-height:1.5!important;color:rgba(200,212,192,0.62)!important;text-align:center!important;}',
         'a,a:visited{color:#A8C5A0!important;}',
       ] : [
@@ -1596,14 +1598,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 // Titled from the state, not hardcoded: the reader can be off
                 // when this chrome is built, and a button labelled "Standard"
                 // over an already-standard page names the wrong action.
-                // CENTRED, with Previous at the right (owner, 2026-09-04: "have
-                // the Standard button centred and the Previous on the right").
-                // A title-slot button rather than a bar item: bar items can
-                // only sit at the edges.
-                let standardButton = makeStandardButton()
-                self.standardButton = standardButton
-                navigationItem.titleView = standardButton
-                navigationItem.rightBarButtonItem = previousItem
+                // TOP RIGHT, beside Previous (owner, 2026-09-04, final word:
+                // "move the Standard/Reader button to the right to be next to
+                // Previous"). Right-hand items render right-to-left, so
+                // Previous keeps the corner and Standard sits just inside it.
+                let standardItem = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
+                standardItem.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
+                self.standardItem = standardItem
+                navigationItem.rightBarButtonItems = (previousItem.map { [$0] } ?? []) + [standardItem]
             } else {
                 navigationItem.rightBarButtonItem = previousItem
             }
@@ -2377,12 +2379,18 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // mismatch toggleReaderView was patched to fix, re-entering through
         // the other door on the next didFinish.
         if readerViewOn { applyChrome(isLight: false) }
-        if standardItem == nil && standardButton == nil {
-            // CENTRED in the title slot (owner, 2026-09-04) — the right corner
-            // belongs to Previous on newsletter pages.
-            let button = makeStandardButton()
-            standardButton = button
-            navigationItem.titleView = button
+        if standardItem == nil {
+            let item = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
+            item.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
+            standardItem = item
+            // TOP RIGHT, just inside whatever already holds the corner
+            // (Previous on newsletter pages). Right-hand items render
+            // right-to-left.
+            if let existing = navigationItem.rightBarButtonItem, existing !== item {
+                navigationItem.rightBarButtonItems = [existing, item]
+            } else {
+                navigationItem.rightBarButtonItem = item
+            }
         }
     }
 
@@ -2516,21 +2524,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      */
     private var readerViewOn: Bool = true
     private weak var standardItem: UIBarButtonItem?
-    /** The centred Standard/Reader toggle (title slot) on article pages. */
-    private weak var standardButton: UIButton?
-
-    /** The Standard/Reader toggle as a capsule that sits in the title slot. */
-    private func makeStandardButton() -> UIButton {
-        var config: UIButton.Configuration
-        if #available(iOS 26.0, *) { config = .glass() } else { config = .gray() }
-        config.cornerStyle = .capsule
-        config.title = readerViewOn ? "Standard" : "Reader"
-        config.contentInsets = NSDirectionalEdgeInsets(top: 7, leading: 16, bottom: 7, trailing: 16)
-        let button = UIButton(configuration: config)
-        button.addTarget(self, action: #selector(toggleReaderView), for: .touchUpInside)
-        button.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
-        return button
-    }
     /**
      * THE READER'S FONT, REGISTERED WITH THE PROCESS — NOT FETCHED.
      *
@@ -2583,7 +2576,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private func applyReaderState() {
         webView?.evaluateJavaScript("window.__phoebeReaderSet && window.__phoebeReaderSet(\(readerViewOn))", completionHandler: nil)
         standardItem?.title = readerViewOn ? "Standard" : "Reader"
-        standardButton?.configuration?.title = readerViewOn ? "Standard" : "Reader"
         syncReaderBackdrop()
     }
 
@@ -2607,7 +2599,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // The item itself, not a slot: it lives in rightBarButtonItems now,
         // and reading the slot back would rename whatever else is there.
         standardItem?.title = readerViewOn ? "Standard" : "Reader"
-        standardButton?.configuration?.title = readerViewOn ? "Standard" : "Reader"
         /**
          * AND RE-DRESS THE CHROME, because WHICH VIEW WE ARE IN is half of
          * what decides the bar's colour.

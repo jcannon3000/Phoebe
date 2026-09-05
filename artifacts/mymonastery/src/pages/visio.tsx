@@ -615,6 +615,18 @@ export default function VisioPage() {
    *  instructions back to back and made the reader tap twice before seeing
    *  anything. The reading is offered under the work instead. */
   const showsImage = step === LOOK || step === LOOK_AGAIN;
+  // The stage's height, for the first look's centring band (see the image).
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stageHeight, setStageHeight] = useState(0);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = () => setStageHeight(el.clientHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     /**
@@ -1041,6 +1053,7 @@ export default function VisioPage() {
       </div>
 
       <div
+        ref={stageRef}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onClick={onTapNavigate}
@@ -1102,7 +1115,17 @@ export default function VisioPage() {
           /* PINCH, DOUBLE-TAP OR SCROLL TO GET CLOSER (owner: "we want people
              to be able to zoom in on the images"). The frame holds the same
              band the picture had; ZoomableImage magnifies INSIDE it and hands
-             a plain tap back to the deck. */
+             a plain tap back to the deck.
+             ON THE FIRST LOOK the picture gets a band the height of the stage
+             (measured — a percentage can't resolve against the auto-height
+             beat), so it is vertically CENTRED whatever the description below
+             runs to; the description follows under the fold and scrolls up
+             beneath the Continue (owner, 2026-09-04: "the first image still
+             wasn't vertically centred, pushing the description down"). */
+          <div style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto",
+            ...(step === LOOK && stageHeight > 0 ? { minHeight: Math.max(0, stageHeight - 150) } : {}),
+          }}>
           <ZoomableImage
             src={view.img}
             alt={`${view.title}${view.artist ? ` — ${view.artist}` : ""}`}
@@ -1124,6 +1147,7 @@ export default function VisioPage() {
               transition: "opacity 420ms ease-out",
             }}
           />
+          </div>
         )}
 
         {/* Resolving. A soft empty frame rather than a spinner: the practice
@@ -1229,7 +1253,7 @@ export default function VisioPage() {
             >
               {t("visio.notice_prompt", {
                 // The owner's own words, kept as dictated (2026-09-04).
-                defaultValue: "As you view this work related to this Sunday's scripture readings, consider what touches your heart.",
+                defaultValue: "As you view this work related to this Sunday's scripture readings, consider what touches your heart. You can return to this image once a day throughout the week to let it gradually speak to you.",
               })}
             </p>
 

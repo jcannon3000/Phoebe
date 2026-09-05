@@ -46,6 +46,8 @@ export type OfficeCacheKey = {
    * already cached is orphaned by this.
    */
   parts?: string;
+  /** The Sunday readings deck: "1" | "2" — one cached deck per track. */
+  track?: string;
 };
 
 function keyId(k: OfficeCacheKey): string {
