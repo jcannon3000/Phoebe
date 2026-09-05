@@ -272,7 +272,6 @@ export default function MenuNewslettersPage() {
       doneCta={t("rhythm.read", { defaultValue: "Read" })}
       rgb={rhythmGradientRgb(i, n)}
       onClick={e.open}
-      onOpen={e.open}
       pulseOnLoad={false}
     />
   );

@@ -165,7 +165,6 @@ export default function ThisSundayPage() {
                 doneCta={c.cta}
                 rgb={rhythmGradientRgb(i, cards.length)}
                 onClick={c.open}
-                onOpen={c.open}
                 pulseOnLoad={false}
               />
             ))}

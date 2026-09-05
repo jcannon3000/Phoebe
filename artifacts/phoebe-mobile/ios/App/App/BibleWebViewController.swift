@@ -237,6 +237,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      *  read as "fully scrolled" and a long piece counted as read on close
      *  after a glance (seen with Andrew's Version, 2026-09-05). */
     private var readTrackingArmed = false
+    /** Where the ARTICLE ends, in page coordinates — measured after load. The
+     *  scroll fraction is taken against this, not the whole page: sites that
+     *  run the next article on beneath (Grist) would otherwise never reach
+     *  the end. 0 = unknown, fall back to the page height. */
+    private var readEndY: CGFloat = 0
     /** Long-read threshold — at or under this the piece counts as read on close. */
     private let longReadWords = 300
     private var dismissFired = false
@@ -1990,7 +1995,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
     private func noteScroll(_ sv: UIScrollView) {
         guard isArticle, readTrackingArmed else { return }
-        let h = sv.contentSize.height
+        let page = sv.contentSize.height
+        // The article's own end when known, else the page's.
+        let h = (readEndY > sv.bounds.height && readEndY <= page + 1) ? readEndY : page
         // Only a page taller than the viewport can be "partly read"; a short
         // one is read on sight and never gates.
         guard h > sv.bounds.height + 40 else { return }
@@ -2000,6 +2007,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         if now - lastPositionSaveAt > 0.5 {
             lastPositionSaveAt = now
             UserDefaults.standard.set(frac, forKey: readingPositionKey)
+        }
+    }
+
+    private func measureArticleEnd() {
+        let js = "(function(){var a=document.querySelector('article.post .body.markup')||document.querySelector('article')||document.querySelector('main');if(!a)return 0;var r=a.getBoundingClientRect();return r.bottom+window.scrollY;})()"
+        webView.evaluateJavaScript(js) { [weak self] result, _ in
+            let y = (result as? Double) ?? Double(result as? Int ?? 0)
+            if y > 0 { self?.readEndY = CGFloat(y) }
         }
     }
 
@@ -2775,8 +2790,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         scrollToDeepLinkedWork()
         if isArticle {
             readMaxProgress = 0
+            readEndY = 0
             readTrackingArmed = true
             measureWords()
+            measureArticleEnd()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in self?.measureArticleEnd() }
             restoreReadingPosition()
         }
         hideVeilWhenReaderReady()
