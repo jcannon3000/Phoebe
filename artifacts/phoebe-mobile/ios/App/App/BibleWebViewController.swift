@@ -347,6 +347,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       var isFdd = (h === 'forwardmovement.org' || h.slice(-20) === '.forwardmovement.org');
       /* Sojourners' Verse and Voice — verse, voice and prayer of the day. */
       var isSojo = (h === 'sojo.net' || h.slice(-9) === '.sojo.net');
+      /* Substack — any *.substack.com publication (owner, 2026-09-04: "a
+         reader view for Substack … the title, the subtitle, the writer's
+         name, then the text … headers retained, any pictures"). Custom-domain
+         Substacks can't be told apart by hostname at document start, so they
+         still open as the publisher built them. */
+      var isSubstack = (h === 'substack.com' || h.slice(-13) === '.substack.com');
       /* GRIST IS DELIBERATELY NOT HERE. Owner: "Grist i dont want a reader
          just make sure its light mode and the header is light", and "take out
          the top grist the daily text too" — the masthead line goes with it.
@@ -356,7 +362,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          not. It opens with the ordinary light newsletter chrome instead,
          which is what openExternal's `reader: true` -> lightChrome already
          asks for. */
-      if (!isOremus && !isSsje && !isNouwen && !isFdd && !isSojo) return;
+      if (!isOremus && !isSsje && !isNouwen && !isFdd && !isSojo && !isSubstack) return;
 
       /**
        * KEEP ONE BLOCK, HIDE ITS SIBLINGS — the technique three of these five
@@ -382,6 +388,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       var ISOLATE_TARGET = isSsje ? '.fl-post-feed-post'
                          : isNouwen ? '.blog-item-inner-wrapper'
                          : isSojo ? 'article.node-versevoice'
+                         : isSubstack ? 'article.post'
                          : null;
 
       /**
@@ -551,6 +558,46 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            the page itself sets them. */
         '.fl-post-feed-content p:last-of-type{text-align:right!important;font-size:14px!important;',
         'line-height:1.6!important;color:rgba(200,212,192,0.72)!important;}',
+        'a,a:visited{color:#A8C5A0!important;}',
+      ] : isSubstack ? [
+        /* ---- Substack ----------------------------------------------------
+           The post is ONE `article.post` (isolated; the site chrome, nav and
+           footer are its siblings and go). Inside it the header is rebuilt
+           by substackHead() — title, subtitle, author — because Substack's
+           own header carries like/share/subscribe furniture in generated
+           pencraft classes; the body `.body.markup` is kept as written, with
+           its headings and images. Measured on abmcg.substack.com. */
+        'html,body{background:transparent!important;margin:0!important;padding:0!important;',
+        'padding-top:calc(env(safe-area-inset-top) + 8px)!important;color:#F0EDE6!important;}',
+        'article.post,article.post .available-content,article.post .body.markup,.single-post-section,.single-post{',
+        'background:transparent!important;max-width:none!important;width:auto!important;margin:0!important;padding:0!important;border:none!important;box-shadow:none!important;}',
+        'article.post .post-header,article.post .post-ufi,article.post .post-footer,article.post .comments-section,',
+        'article.post .subscription-widget-wrap,article.post .captioned-button-wrap,article.post .button-wrapper,',
+        'article.post .image-link-expand,article.post [aria-label="Post UFI"],article.post .paywall,',
+        'article.post .footer,article.post .publication-footer,article.post .embedded-publication-wrap,',
+        'article.post .share-dialog,article.post .post-end-cta-full{display:none!important;}',
+        /* Our head: title, subtitle, the writer. */
+        '.phoebe-substack-head{padding:18px 20px 6px!important;}',
+        '.phoebe-substack-head h1{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'font-size:30px!important;line-height:1.15!important;font-weight:700!important;color:#F0EDE6!important;margin:0 0 10px!important;}',
+        '.phoebe-substack-head .phoebe-sub{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'font-size:18px!important;line-height:1.45!important;color:rgba(200,212,192,0.82)!important;margin:0 0 10px!important;}',
+        '.phoebe-substack-head .phoebe-by{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'font-size:14px!important;letter-spacing:0.02em!important;color:#A8C5A0!important;margin:0 0 6px!important;}',
+        /* The text, with its own headings. */
+        'article.post .body.markup{padding:0 20px 24px!important;}',
+        'article.post .body.markup,article.post .body.markup *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
+        'article.post .body.markup h1,article.post .body.markup h2{font-size:24px!important;line-height:1.2!important;font-weight:700!important;color:#F0EDE6!important;margin:1.4em 0 0.5em!important;}',
+        'article.post .body.markup h3{font-size:21px!important;line-height:1.25!important;font-weight:700!important;color:#F0EDE6!important;margin:1.3em 0 0.45em!important;}',
+        'article.post .body.markup h4,article.post .body.markup h5,article.post .body.markup h6{font-size:18px!important;font-weight:700!important;color:#F0EDE6!important;margin:1.2em 0 0.4em!important;}',
+        'article.post .body.markup p,article.post .body.markup li{font-size:18px!important;line-height:1.72!important;color:#F0EDE6!important;margin:0 0 1.15em!important;}',
+        'article.post .body.markup blockquote{border-left:3px solid rgba(168,197,160,0.5)!important;margin:0 0 1.15em!important;padding:0 0 0 14px!important;color:rgba(200,212,192,0.85)!important;}',
+        'article.post .body.markup hr{border:none!important;border-top:1px solid rgba(200,212,192,0.18)!important;margin:1.4em 0!important;}',
+        /* Pictures stay. */
+        'article.post .body.markup img{display:block!important;width:100%!important;max-width:100%!important;height:auto!important;border-radius:10px!important;margin:14px 0!important;}',
+        'article.post .captioned-image-container,article.post .captioned-image-container *{background:transparent!important;}',
+        'article.post .captioned-image-container{margin:0 0 1.15em!important;}',
+        'article.post figcaption{font-size:13px!important;line-height:1.5!important;color:rgba(200,212,192,0.62)!important;text-align:center!important;}',
         'a,a:visited{color:#A8C5A0!important;}',
       ] : [
         /* ---- Henri Nouwen · Forward Day by Day ---------------------------
@@ -924,6 +971,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 : isNouwen ? 'the Henri Nouwen Society'
                 : isSojo   ? 'Sojourners'
                 : isFdd    ? 'Forward Movement'
+                : isSubstack ? (substackWho() || 'the author')
                            : 'Benetvision';
         var note = document.createElement('div');
         note.className = 'phoebe-reader-note';
@@ -931,6 +979,34 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
           '<a href="' + location.href + '">' + who + '</a>' +
           ' \\u2014 Phoebe only changes how it looks on this screen. Tap Standard for their page.';
         post.appendChild(note);
+      }
+
+      /** Substack's header, rebuilt: title, subtitle, the writer's name. */
+      function substackWho() {
+        var m = document.querySelector('meta[name="author"]');
+        if (m && m.content) return m.content;
+        var a = document.querySelector('.byline-wrapper a[href*="substack.com/@"]');
+        return a && a.textContent ? a.textContent.trim() : '';
+      }
+      function substackHead() {
+        if (!isSubstack) return;
+        if (document.querySelector('.phoebe-substack-head')) return;
+        var post = document.querySelector('article.post');
+        if (!post) return;
+        var title = document.querySelector('h1.post-title');
+        var sub = document.querySelector('h3.subtitle');
+        var who = substackWho();
+        var head = document.createElement('div');
+        head.className = 'phoebe-substack-head';
+        if (title && title.textContent) { var h = document.createElement('h1'); h.textContent = title.textContent.trim(); head.appendChild(h); }
+        if (sub && sub.textContent) { var ps = document.createElement('p'); ps.className = 'phoebe-sub'; ps.textContent = sub.textContent.trim(); head.appendChild(ps); }
+        if (who) { var pb = document.createElement('p'); pb.className = 'phoebe-by'; pb.textContent = who; head.appendChild(pb); }
+        /* Before the body block, wherever it nests — insertBefore needs the
+           block's OWN parent, and `.available-content` sits a level or two
+           below the article (the first run threw here and no head appeared). */
+        var body = post.querySelector('.available-content');
+        if (body && body.parentNode) body.parentNode.insertBefore(head, body);
+        else post.insertBefore(head, post.firstChild);
       }
 
       /** The site named at the top of the page — it stays in BOTH views. */
@@ -1212,7 +1288,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         }
         if (sheet) sheet.media = '';
         if (isOremus) { tidy(); credit(); }
-        else { isolate(); if (isFdd) fddTrim(); sourceNote(); }
+        else { isolate(); if (isFdd) fddTrim(); if (isSubstack) substackHead(); sourceNote(); }
         masthead();
       }
       if (document.readyState !== 'loading') run();
@@ -1517,14 +1593,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 // Titled from the state, not hardcoded: the reader can be off
                 // when this chrome is built, and a button labelled "Standard"
                 // over an already-standard page names the wrong action.
-                let standardItem = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
-                standardItem.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
-                self.standardItem = standardItem
-                // TOP RIGHT, per the owner's later and final word — the same
-                // corner as on the office chrome, so the control doesn't move
-                // between one reader and another. (An earlier "left side of
-                // the screen" is superseded; it read oddly beside Done.)
-                navigationItem.rightBarButtonItems = [standardItem] + (previousItem.map { [$0] } ?? [])
+                // CENTRED, with Previous at the right (owner, 2026-09-04: "have
+                // the Standard button centred and the Previous on the right").
+                // A title-slot button rather than a bar item: bar items can
+                // only sit at the edges.
+                let standardButton = makeStandardButton()
+                self.standardButton = standardButton
+                navigationItem.titleView = standardButton
+                navigationItem.rightBarButtonItem = previousItem
             } else {
                 navigationItem.rightBarButtonItem = previousItem
             }
@@ -2298,19 +2374,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // mismatch toggleReaderView was patched to fix, re-entering through
         // the other door on the next didFinish.
         if readerViewOn { applyChrome(isLight: false) }
-        if standardItem == nil {
-            let item = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
-            item.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
-            standardItem = item
-            // TOP RIGHT — the owner's word for every reader ("we need the
-            // standard button in the top right"). Right-hand items render
-            // right-to-left, so anything already there keeps the corner and
-            // Standard sits just inside it.
-            if let existing = navigationItem.rightBarButtonItem, existing !== item {
-                navigationItem.rightBarButtonItems = [existing, item]
-            } else {
-                navigationItem.rightBarButtonItem = item
-            }
+        if standardItem == nil && standardButton == nil {
+            // CENTRED in the title slot (owner, 2026-09-04) — the right corner
+            // belongs to Previous on newsletter pages.
+            let button = makeStandardButton()
+            standardButton = button
+            navigationItem.titleView = button
         }
     }
 
@@ -2341,7 +2410,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         func matches(_ domain: String) -> Bool { h == domain || h.hasSuffix("." + domain) }
         return matches("oremus.org") || matches("ssje.org")
             || matches("henrinouwen.org") || matches("forwardmovement.org")
-            || matches("sojo.net")
+            || matches("sojo.net") || matches("substack.com")
     }
 
     private func syncChromeToPage() {
@@ -2444,6 +2513,21 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      */
     private var readerViewOn: Bool = true
     private weak var standardItem: UIBarButtonItem?
+    /** The centred Standard/Reader toggle (title slot) on article pages. */
+    private weak var standardButton: UIButton?
+
+    /** The Standard/Reader toggle as a capsule that sits in the title slot. */
+    private func makeStandardButton() -> UIButton {
+        var config: UIButton.Configuration
+        if #available(iOS 26.0, *) { config = .glass() } else { config = .gray() }
+        config.cornerStyle = .capsule
+        config.title = readerViewOn ? "Standard" : "Reader"
+        config.contentInsets = NSDirectionalEdgeInsets(top: 7, leading: 16, bottom: 7, trailing: 16)
+        let button = UIButton(configuration: config)
+        button.addTarget(self, action: #selector(toggleReaderView), for: .touchUpInside)
+        button.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
+        return button
+    }
     /**
      * THE READER'S FONT, REGISTERED WITH THE PROCESS — NOT FETCHED.
      *
@@ -2496,6 +2580,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private func applyReaderState() {
         webView?.evaluateJavaScript("window.__phoebeReaderSet && window.__phoebeReaderSet(\(readerViewOn))", completionHandler: nil)
         standardItem?.title = readerViewOn ? "Standard" : "Reader"
+        standardButton?.configuration?.title = readerViewOn ? "Standard" : "Reader"
         syncReaderBackdrop()
     }
 
@@ -2519,6 +2604,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // The item itself, not a slot: it lives in rightBarButtonItems now,
         // and reading the slot back would rename whatever else is there.
         standardItem?.title = readerViewOn ? "Standard" : "Reader"
+        standardButton?.configuration?.title = readerViewOn ? "Standard" : "Reader"
         /**
          * AND RE-DRESS THE CHROME, because WHICH VIEW WE ARE IN is half of
          * what decides the bar's colour.
