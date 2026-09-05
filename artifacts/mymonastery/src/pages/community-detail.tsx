@@ -1243,6 +1243,7 @@ export default function CommunityDetailPage() {
   const isAdmin = (myRole === "admin" || myRole === "hidden_admin") && communityAdminView;
   // The admin switched events off for this community — none of that UI here.
   const eventsOff = (groupData as { eventsEnabled?: boolean } | undefined)?.eventsEnabled === false;
+  const prayersOn = !!(groupData as { prayerRequestsEnabled?: boolean; isPublic?: boolean } | undefined)?.prayerRequestsEnabled && !(groupData as { isPublic?: boolean } | undefined)?.isPublic;
 
   return (
     <Layout>
@@ -1683,8 +1684,11 @@ export default function CommunityDetailPage() {
             content lives on the home screen). */}
         {activeTab === "hub" ? (
           <div className="mb-5 flex flex-col" style={{ gap: 22 }}>
-            <CommunityPrayersSection slug={slug} />
-            <CommunityEventsSection slug={slug} />
+            {/* None of this UI when the admin has the feature off (owner,
+                2026-09-05): prayers only for a non-public community with
+                shared prayer requests on; events only when not switched off. */}
+            {prayersOn && <CommunityPrayersSection slug={slug} />}
+            {!eventsOff && <CommunityEventsSection slug={slug} />}
             {/**
               * THE GROUP'S RULE OF LIFE — the rhythm these people keep
               * together. Owner: "when someone goes to the group, they can
