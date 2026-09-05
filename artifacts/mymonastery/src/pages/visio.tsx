@@ -615,7 +615,8 @@ export default function VisioPage() {
    *  instructions back to back and made the reader tap twice before seeing
    *  anything. The reading is offered under the work instead. */
   const showsImage = step === LOOK || step === LOOK_AGAIN;
-  // The stage's height, for the first look's centring band (see the image).
+  // The stage's height and the picture's rendered height, for centring the
+  // first look's picture with the description right under it (see the image).
   const stageRef = useRef<HTMLDivElement>(null);
   const [stageHeight, setStageHeight] = useState(0);
   useEffect(() => {
@@ -627,6 +628,17 @@ export default function VisioPage() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  const [imageHeight, setImageHeight] = useState(0);
+  const imageBoxObserver = useRef<ResizeObserver | null>(null);
+  const imageBoxRef = (el: HTMLDivElement | null) => {
+    imageBoxObserver.current?.disconnect();
+    imageBoxObserver.current = null;
+    if (!el) { setImageHeight(0); return; }
+    setImageHeight(el.clientHeight);
+    const ro = new ResizeObserver(() => setImageHeight(el.clientHeight));
+    ro.observe(el);
+    imageBoxObserver.current = ro;
+  };
 
   useEffect(() => {
     /**
@@ -1071,10 +1083,13 @@ export default function VisioPage() {
            */
           justifyContent: "flex-start",
           padding: "0 20px", gap: 16,
-          overflowY: "auto",
+          // On the first look the picture is pinned and the TEXT scrolls in
+          // its own box (see isLookingBeat below); every other beat scrolls
+          // the stage as before.
+          overflowY: isLookingBeat ? "hidden" : "auto",
           // Room for the floating CTA, so the LAST line of a long description
           // can be scrolled clear of it rather than living underneath it.
-          paddingBottom: "calc(env(safe-area-inset-bottom) + 132px)",
+          paddingBottom: isLookingBeat ? 0 : "calc(env(safe-area-inset-bottom) + 132px)",
         }}
       >
         {/* Owner: "we also want each slide to fade into each other." A keyed
@@ -1100,7 +1115,7 @@ export default function VisioPage() {
             transition={{ duration: 0.34, ease: "easeOut" }}
             /* Auto margins: centred while the beat is short, top-anchored the
                moment it is taller than the stage. See the container above. */
-            style={{ margin: "auto 0", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}
+            style={{ margin: "auto 0", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, ...(isLookingBeat ? { flex: 1, minHeight: 0 } : {}) }}
           >
         {/* The painting, lit from behind by itself.
             Owner: "have it be on a blurred background and there's a drop
@@ -1116,16 +1131,22 @@ export default function VisioPage() {
              to be able to zoom in on the images"). The frame holds the same
              band the picture had; ZoomableImage magnifies INSIDE it and hands
              a plain tap back to the deck.
-             ON THE FIRST LOOK the picture gets a band the height of the stage
-             (measured — a percentage can't resolve against the auto-height
-             beat), so it is vertically CENTRED whatever the description below
-             runs to; the description follows under the fold and scrolls up
-             beneath the Continue (owner, 2026-09-04: "the first image still
-             wasn't vertically centred, pushing the description down"). */
+             ON THE FIRST LOOK the picture is vertically CENTRED in the stage
+             and the description sits RIGHT UNDER it (owner, 2026-09-04: "the
+             first image still wasn't vertically centred, pushing the
+             description down", then "no, have it right under the picture").
+             So: the column is padded above the picture by half the free
+             space — stage height less the picture's rendered height (both
+             measured; a percentage can't resolve against the auto-height
+             beat) — and nothing is padded below, so the words follow at once
+             and scroll up beneath the Continue when they run long. */
           <div style={{
             width: "100%", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto",
-            ...(step === LOOK && stageHeight > 0 ? { minHeight: Math.max(0, stageHeight - 150) } : {}),
+            ...(step === LOOK && stageHeight > 0 && imageHeight > 0
+              ? { paddingTop: Math.max(0, (stageHeight - 150 - imageHeight) / 2), marginBottom: -16 }
+              : {}),
           }}>
+          <div ref={imageBoxRef} style={{ maxWidth: "100%", display: "flex", justifyContent: "center" }}>
           <ZoomableImage
             src={view.img}
             alt={`${view.title}${view.artist ? ` — ${view.artist}` : ""}`}
@@ -1147,6 +1168,7 @@ export default function VisioPage() {
               transition: "opacity 420ms ease-out",
             }}
           />
+          </div>
           </div>
         )}
 
@@ -1291,10 +1313,20 @@ export default function VisioPage() {
         )}
 
         {isLookingBeat && view && (
-          <div style={{ textAlign: "center" }}>
-            <p style={{ color: WARM, fontFamily: SERIF, fontSize: 19, fontStyle: "italic", margin: 0 }}>{view.title}</p>
+          /* THE TEXT IS WHAT SCROLLS (owner, 2026-09-04: "the scroll is the
+             text moving — so it will fade under the image moving up and come
+             from below the Continue button"; "don't need the title"). The
+             picture above stays put; this block fills the rest of the stage,
+             scrolls on its own, is masked to fade out under the picture, and
+             runs beneath the Continue so its lines rise from under the pill. */
+          <div style={{
+            textAlign: "center", width: "100%", flex: 1, minHeight: 0, overflowY: "auto",
+            paddingTop: 22, paddingBottom: "calc(env(safe-area-inset-bottom) + 132px)",
+            WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0) 0px, #000 30px, #000 100%)",
+            maskImage: "linear-gradient(to bottom, rgba(0,0,0,0) 0px, #000 30px, #000 100%)",
+          }}>
             {view.artist && (
-              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>{t("visio.artist_label", { defaultValue: "Artist: {{name}}", name: tidyArtist(view.artist) })}</p>
+              <p style={{ color: WARM, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>{t("visio.artist_label", { defaultValue: "Artist: {{name}}", name: tidyArtist(view.artist) })}</p>
             )}
             {/* WHO JESUS MAFA ARE — UNDER THE FIRST IMAGE (owner: "we want the
                 description under the first image"). This block is
@@ -1304,12 +1336,12 @@ export default function VisioPage() {
                 closing slide keeps the Vanderbilt attribution alone. */}
             {view.artist?.trim().toUpperCase() === "JESUS MAFA" && (
               <div style={{ maxWidth: 430, margin: "8px auto 0", display: "flex", flexDirection: "column", gap: 6 }}>
-                <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.55, margin: 0 }}>
+                <p style={{ color: WARM, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.55, margin: 0 }}>
                   {t("visio.jesus_mafa_line", {
                     defaultValue: "JESUS MAFA is a response to the New Testament readings from the Lectionary by a Christian community in Cameroon, Africa.",
                   })}
                 </p>
-                <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.55, margin: 0 }}>
+                <p style={{ color: WARM, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.55, margin: 0 }}>
                   {t("visio.jesus_mafa_note", {
                     defaultValue: "In the 1970s, the French Catholic priest François Vidil collaborated with the Mafa community to create a series of artwork known as Vie de Jesus Mafa (Life of Jesus Mafa, or simply Jesus Mafa), which depicts various events in the life of Jesus using Black depictions rather than White. These images were actually depictions of real-world recreations of biblical scenes by Mafa people.",
                   })}
@@ -1321,7 +1353,7 @@ export default function VisioPage() {
                 with the looking: a museum label names the figures beside the
                 painting, not on the door. */}
             {view.people.length > 0 && (
-              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: "3px 0 0", lineHeight: 1.5 }}>
+              <p style={{ color: WARM, fontFamily: FONT, fontSize: 12.5, margin: "3px 0 0", lineHeight: 1.5 }}>
                 {view.people.join(" · ")}
               </p>
             )}
@@ -1333,7 +1365,7 @@ export default function VisioPage() {
                 cataloguing tags ("Culture: African"); only the former belong
                 on a museum-label line. */}
             {view.subjects.filter((s) => !/^(culture|community)\b/i.test(s)).length > 0 && (
-              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: "3px 0 0", lineHeight: 1.5 }}>
+              <p style={{ color: WARM, fontFamily: FONT, fontSize: 12.5, margin: "3px 0 0", lineHeight: 1.5 }}>
                 {view.subjects.filter((s) => !/^(culture|community)\b/i.test(s)).join(" · ")}
               </p>
             )}
@@ -1341,7 +1373,7 @@ export default function VisioPage() {
                 really is this week's reading. Missed on the first pass, which
                 is why an audit exists. */}
             {view.scriptureRef && view.followsToday && (
-              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "3px 0 0" }}>
+              <p style={{ color: WARM, fontFamily: FONT, fontSize: 13, margin: "3px 0 0" }}>
                 {canonicalRef(view.scriptureRef)}
                 {` · ${t("visio.follows_today", { defaultValue: "This week's reading" })}`}
               </p>

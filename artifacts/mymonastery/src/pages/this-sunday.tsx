@@ -96,9 +96,9 @@ export default function ThisSundayPage() {
     },
     ...(isAdmin ? [{
       key: "commentary", emoji: "📰",
-      // "Scripture commentary from Yale" truncated on the card; the second line
-      // still carries the owner's words.
-      title: t("this_sunday.commentary", { defaultValue: "Yale commentary" }),
+      // Owner (2026-09-04): "call Yale commentary on This Sunday Scripture
+      // Commentary"; the second line still names Dr. McGowan.
+      title: t("this_sunday.commentary", { defaultValue: "Scripture Commentary" }),
       blurb: t("this_sunday.commentary_sub", { defaultValue: "Dr. Andrew McGowan's commentary on the lectionary" }),
       cta: t("rhythm.read", { defaultValue: "Read" }),
       open: () => {

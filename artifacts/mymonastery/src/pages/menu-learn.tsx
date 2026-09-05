@@ -34,7 +34,7 @@ export default function MenuLearnPage() {
   const { enabled: cacLibraryGranted } = useCacLibrary();
   return (
     <MenuHub
-      title="Learn"
+      title="Courses"
       emoji="🎓"
       subtitle="Guided courses in the life of prayer."
       backLabel="Menu"

@@ -613,8 +613,13 @@ struct PhoebeWidgetView: View {
                 .lineLimit(1)
             HStack(spacing: 4) {
                 ForEach(0..<total, id: \.self) { i in
+                    // GREEN, not the warm white (owner, 2026-09-04: "the daily
+                    // progress dots on the widget should be green"). The same
+                    // green the weekly grid's kept days use.
                     Circle()
-                        .fill(i < stats.doneCount ? phoebeWarm : phoebeWarm.opacity(0.30))
+                        .fill(i < stats.doneCount
+                              ? Color(red: 0.431, green: 0.706, blue: 0.510)
+                              : Color(red: 0.431, green: 0.706, blue: 0.510).opacity(0.30))
                         .frame(width: 5, height: 5)
                 }
             }

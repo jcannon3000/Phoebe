@@ -110,7 +110,8 @@ export default function MenuPage() {
   // Courses belong to the LIGHT experience too — their routes are in the guest
   // allowlist and the home's Learn band starts the Way of Love for a fresh
   // guest — so there's no guest gating here, only the platform rule.
-  const learn: MenuHubGroup = { header: "Learn", items: [] };
+  // "Courses" (owner, 2026-09-04: "rename Learn as Courses"); the route stays /menu/learn.
+  const learn: MenuHubGroup = { header: "Courses", items: [] };
   // "This Sunday" — its own option right below Learn (owner, 2026-09-04:
   // "below Learn like the next option, not in it"). Its own group so it reads
   // as a sibling of Learn, not a course inside it.
@@ -122,8 +123,8 @@ export default function MenuPage() {
     learn.items.push({ emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") });
   }
   learn.items.push({ emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") });
-  groups.push(learn);
   groups.push(thisSunday);
+  groups.push(learn);
 
   // Explore — community + reference content.
   const explore: MenuHubGroup = { header: t("menu.hdr_explore"), items: [] };
