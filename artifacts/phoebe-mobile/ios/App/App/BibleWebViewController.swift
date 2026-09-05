@@ -577,7 +577,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'article.post .footer,article.post .publication-footer,article.post .embedded-publication-wrap,',
         'article.post .share-dialog,article.post .post-end-cta-full{display:none!important;}',
         /* Our head: title, subtitle, the writer. */
-        '.phoebe-substack-head{padding:18px 20px 6px!important;}',
+        '.phoebe-substack-head{display:block!important;padding:18px 20px 6px!important;}',
         '.phoebe-substack-head h1{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
         'font-size:30px!important;line-height:1.15!important;font-weight:700!important;color:#F0EDE6!important;margin:0 0 10px!important;}',
         '.phoebe-substack-head .phoebe-sub{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
@@ -998,6 +998,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         var who = substackWho();
         var head = document.createElement('div');
         head.className = 'phoebe-substack-head';
+        /* Hidden inline; the reader sheet shows it. Without this the rebuilt
+           head stayed on screen in Standard, under Substack's own header. */
+        head.style.display = 'none';
         if (title && title.textContent) { var h = document.createElement('h1'); h.textContent = title.textContent.trim(); head.appendChild(h); }
         if (sub && sub.textContent) { var ps = document.createElement('p'); ps.className = 'phoebe-sub'; ps.textContent = sub.textContent.trim(); head.appendChild(ps); }
         if (who) { var pb = document.createElement('p'); pb.className = 'phoebe-by'; pb.textContent = who; head.appendChild(pb); }
