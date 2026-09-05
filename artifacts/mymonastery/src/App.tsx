@@ -427,6 +427,7 @@ const AdminMinistriesPage = lazy(() => import("./pages/admin-ministries"));
 const AdminBreathPlacesPage = lazy(() => import("./pages/admin-breath-places"));
 const AdminPresetsPage = lazy(() => import("@/pages/admin-presets"));
 const AdminWeekliesPage = lazy(() => import("@/pages/admin-weeklies"));
+const AdminCacLibraryPage = lazy(() => import("@/pages/admin-cac-library"));
 const ThisSundayPage = lazy(() => import("@/pages/this-sunday"));
 
 function RoutinePresetRefresh(): null {
@@ -1088,6 +1089,7 @@ function Router() {
       {/* The starter rhythms + the default one, as data (owner). */}
       <Route path="/admin/presets" component={AdminPresetsPage} />
       <Route path="/admin/weeklies" component={AdminWeekliesPage} />
+      <Route path="/admin/cac-library" component={AdminCacLibraryPage} />
       <Route path="/admin/users" component={AdminUserMetricsPage} />
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />

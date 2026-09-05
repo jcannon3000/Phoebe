@@ -2,7 +2,9 @@ import { useLocation } from "wouter";
 import { MenuHub } from "@/components/MenuHub";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { useMemo } from "react";
 import { useCacLibrary } from "@/hooks/useCacLibrary";
+import { useCacCourses } from "@/lib/cacCourses";
 
 // Learn — the guided courses, as their own menu category (the drawer's Learn
 // row and /menu's Learn group both land here). Centering Prayer and the deeper
@@ -32,6 +34,17 @@ export default function MenuLearnPage() {
   // Pilot groups too — the SAME test the three CAC pages use to admit a
   // visitor, so this row is never offered to someone they turn away.
   const { enabled: cacLibraryGranted } = useCacLibrary();
+  // The CAC shows, one row each — the same grouping the CAC Courses page draws.
+  const { data: cacData } = useCacCourses();
+  const shows = useMemo(() => {
+    const byShow = new Map<string, { showSlug: string; showTitle: string; author: string; seasonCount: number }>();
+    for (const c of cacData?.courses ?? []) {
+      const existing = byShow.get(c.showSlug);
+      if (existing) { existing.seasonCount += 1; continue; }
+      byShow.set(c.showSlug, { showSlug: c.showSlug, showTitle: c.showTitle, author: c.author, seasonCount: 1 });
+    }
+    return [...byShow.values()];
+  }, [cacData]);
   return (
     <MenuHub
       title="Courses"
@@ -41,16 +54,21 @@ export default function MenuLearnPage() {
       backHref="/menu"
       groups={[{
         items: [
+          // Way of Love first (owner, 2026-09-05), then every CAC show as its
+          // own row — "bring them out of the folder of just CAC Courses" —
+          // then the web-only Keating courses.
+          { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") },
+          ...(isAdmin || cacLibraryGranted
+            ? shows.map((show) => ({
+                emoji: "🌵",
+                label: show.showTitle,
+                sub: [show.author, show.seasonCount > 1 ? `${show.seasonCount} seasons` : "1 season"].filter(Boolean).join(" · "),
+                onClick: () => go(`/cac-show/${show.showSlug}`),
+              }))
+            : []),
           ...(!isNativeShell() ? [
             { emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", onClick: () => go("/centering-prayer") },
             { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") },
-          ] : []),
-          { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") },
-          // The reading topics (/learn) had no row here at all — the page was
-          // reachable only from the features deck. Admin-only for now because
-          // the sermon it currently carries is.
-          ...(isAdmin || cacLibraryGranted ? [
-            { emoji: "🌵", label: "CAC Courses", sub: "Rohr, Finley and McLaren — a season at a time", onClick: () => go("/cac-courses") },
           ] : []),
         ],
       }]}

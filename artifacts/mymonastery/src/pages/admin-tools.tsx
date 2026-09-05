@@ -194,6 +194,12 @@ export default function AdminToolsPage() {
                     (owner: "an admin tool where I could edit the preset
                     routines including the default one"). */}
                 <LinkRow
+                  emoji="🌵"
+                  label="CAC audio library"
+                  description="Which communities can open the CAC shows"
+                  onClick={() => setLocation("/admin/cac-library")}
+                />
+                <LinkRow
                   emoji="📰"
                   label="Publications"
                   description="Paste a Substack link and it becomes a publication"
