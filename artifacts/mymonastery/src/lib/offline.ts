@@ -145,6 +145,28 @@ const EXTRA_OFFLINE_KEYS = ["silence", "prayer-list", "contemplation", "psalms",
 const OFFLINE_KEYS = new Set([...OFFLINE_PRACTICES.map((p) => p.key), ...EXTRA_OFFLINE_KEYS]);
 
 /**
+ * DOES THIS SCREEN WORK WITH NO CONNECTION?
+ *
+ * The app raises "You're offline — this needs a connection" whenever a query
+ * fails with nothing cached. That was written before there was an offline
+ * layer, and now it fires over practices that are working perfectly from the
+ * phone: the owner met it on Visio, mid-practice, with the saved picture on
+ * screen (2026-09-06), and over the office. A background query failing is not
+ * news to someone who is looking at the thing they asked for.
+ *
+ * The routes below are the practices the registry says work offline, plus the
+ * decks they open. A failing query on one of these says nothing.
+ */
+const OFFLINE_ROUTES = [
+  ...OFFLINE_PRACTICES.map((p) => p.href.split("?")[0] ?? p.href),
+  "/bcp/daily-office", "/offline", "/dashboard", "/daily-progress",
+];
+export function pathWorksOffline(path: string): boolean {
+  const p = (path.split("?")[0] ?? path).replace(/\/+$/, "") || "/";
+  return p === "/" || OFFLINE_ROUTES.some((r) => r === p || p.startsWith(`${r}/`));
+}
+
+/**
  * Is a HOME CARD one of the offline practices? Card keys are the rhythm's:
  * a side ("morning"/"evening" and their extra-/contemplation- forms) is an
  * office or a bundled practice; the rest are practice keys. Newsletters,

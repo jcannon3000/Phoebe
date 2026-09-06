@@ -2579,7 +2579,20 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // not-yet-prayed. Mirrors prayer-mode.tsx's own advance() fix for the
     // exact same race. The promise never rejects (fireAmenSideEffect's own
     // .catch reconciles failures), so no try/catch needed here.
+    /**
+     * OFFLINE, THE AMEN DOES NOT WAIT (owner, praying the office in Airplane
+     * Mode: "when it got to the intercessions it tried to load, didn't load,
+     * then closed the office").
+     *
+     * The await below exists to beat a refetch race when the POST is about to
+     * land. With no connection there is nothing to beat and nothing to land —
+     * and CapacitorHttp's fetch ignores an abort signal, so the promise sits
+     * on URLSession's own timeout, up to a minute, with the office frozen on
+     * the intercession. The side effect is still fired (its own catch queues
+     * or reconciles); we simply stop waiting for it.
+     */
     const amenPromise = currentSlide ? fireAmenSideEffect(currentSlide) : undefined;
+    const waitForAmen = isOnline();
     // Clear every office-reminder push from the lock screen the moment
     // the user prays — "bell" plus the parish-office-{morning,evening}
     // thread-ids the reminder cron actually sends under. Earlier this
@@ -2587,7 +2600,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // the lock screen for the rest of the day even after the user had
     // prayed the office — exactly the bug just reported.
     if (!isSecondPracticeRun) clearOfficeReminderNotifications();
-    if (amenPromise) await amenPromise;
+    if (amenPromise && waitForAmen) await amenPromise;
     if (!atEnd) {
       // Same chapel chime Next/tap/swipe play — the Amen button is just
       // another advance, so it shouldn't be the one silent path.

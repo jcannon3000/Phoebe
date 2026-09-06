@@ -1,5 +1,6 @@
 import { apiRequest, ApiError, getQueryClient } from "@/lib/queryClient";
 import { enqueueWrite, dropWrite } from "@/lib/writeOutbox";
+import { isOnline } from "@/lib/offline";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 import { creditAnchorPractice } from "@/lib/officeManualLog";
@@ -114,6 +115,15 @@ export function markPracticeDoneToday(section: OptionalPractice): void {
         // connection returns).
         enqueueWrite(`practice:${section}:${localDate}`, "POST", "/api/practice-completion", payload as Record<string, unknown>);
         console.error(`[practiceCompletion] sync failed for "${section}" after retry — queued:`, err);
+        /**
+         * QUEUED IS NOT FAILED. The toast this event raises says "couldn't
+         * save that — check your connection and try again", which the owner
+         * met on completing the office in Airplane Mode: the write WAS saved,
+         * on the phone, and goes out with the connection (lib/writeOutbox).
+         * Telling someone their prayer didn't save when it did is worse than
+         * saying nothing. Only a failure with a connection is worth a word.
+         */
+        if (!isOnline()) return;
         // Visible, not just logged — nobody's going to open dev tools to
         // notice a cross-device sync silently failed. A toast (wired up by
         // PracticeSyncFailedToast in App.tsx) is the only way this failure
@@ -219,6 +229,7 @@ export function unmarkPracticeDoneToday(section: OptionalPractice): void {
         // rather than the two racing each other out of the queue.
         enqueueWrite(`practice:${section}:${localDate}`, "DELETE", "/api/practice-completion", { section, localDate });
         console.error(`[practiceCompletion] un-sync failed for "${section}" after retry — queued:`, err);
+        if (!isOnline()) return;
         try {
           window.dispatchEvent(new CustomEvent(PRACTICE_SYNC_FAILED_EVENT, { detail: { section } }));
         } catch { /* non-fatal */ }

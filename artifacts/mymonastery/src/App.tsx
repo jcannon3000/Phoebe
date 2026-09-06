@@ -6,6 +6,7 @@ import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
 import { retryPendingReflectionReads } from "@/lib/cacReadState";
 import { installSessionOutboxFlush } from "@/lib/sessionOutbox";
 import { ApiError, apiRequest, registerQueryClient } from "@/lib/queryClient";
+import { pathWorksOffline } from "@/lib/offline";
 import { reportClientError } from "@/lib/reportClientError";
 import { getGuestStepGoal } from "@/lib/guestSeed";
 // Side-effect import: warms the server-clock offset on app load (re-syncs on
@@ -538,6 +539,14 @@ const queryClient = new QueryClient({
       // Nothing is actually observing this query (a background prefetch) — no
       // one is staring at a blank screen waiting for it.
       if (query.getObserversCount() === 0) return;
+      /**
+       * …AND NOT OVER A PRACTICE THAT IS WORKING. Offline, plenty of secondary
+       * queries fail on a screen that is drawing perfectly from the phone —
+       * the owner met this toast over Visio Divina with the saved picture in
+       * front of him, and over the office. lib/offline knows which routes are
+       * meant to work with no connection; on those, a failed query is not news.
+       */
+      if (typeof window !== "undefined" && pathWorksOffline(window.location.pathname)) return;
       const now = Date.now();
       if (now - lastOfflineToastAt < 8000) return;
       lastOfflineToastAt = now;
