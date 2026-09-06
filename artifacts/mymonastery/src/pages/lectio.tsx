@@ -7,7 +7,9 @@ import { cachedDayGet } from "@/lib/dayContentCache";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { openExternal, openOfficeReading, hasNativeBrowser } from "@/lib/openExternal";
-import { openOfflinePassageIfCached } from "@/lib/passageCache";
+import { openReadingPage } from "@/lib/openExternal";
+import { toast } from "@/hooks/use-toast";
+import { isOnline } from "@/lib/offline";
 import { X } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 
@@ -164,10 +166,24 @@ export default function LectioPage() {
    */
   const openPassage = (n: number) => {
     if (!chosen) return;
-    // Offline with the passage saved → the sheet, whose Continue steps this
-    // deck like the reader's pill would. Otherwise the reader, as before.
-    void openOfflinePassageIfCached(chosen.readUrl, "Lectio Divina", `${n} of ${LAST} · ${sectionLabelFor(n)}`).then((shown) => {
-      if (shown) return;
+    // The SAVED PAGE in the same reader first (see openReadingPage) — the
+    // offline reading is the online reading. Then the old sheet for a reading
+    // we never saved, then the live reader.
+    void openReadingPage(chosen.readUrl, {
+      officeTitle: "Lectio Divina",
+      slideLabel: `${n} of ${LAST}`,
+      sectionLabel: sectionLabelFor(n),
+    }).then((opened) => {
+      if (opened) return;
+      // Nothing saved and nothing to fetch — say so rather than render the
+      // text ourselves (owner: extracting it is a copyright issue).
+      if (!isOnline()) {
+        toast({
+          title: "This reading isn't saved yet",
+          description: "Open the app once with a connection and the coming weeks are kept for you.",
+        });
+        return;
+      }
       openPassageLive(n);
     });
   };

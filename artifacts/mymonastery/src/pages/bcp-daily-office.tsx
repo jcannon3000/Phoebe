@@ -13,7 +13,8 @@ import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal, openExternalThenMarkRead, openOfficeReading, preloadExternal, hasNativeBrowser } from "@/lib/openExternal";
-import { openOfflinePassageIfCached } from "@/lib/passageCache";
+import { openReadingPage } from "@/lib/openExternal";
+import { toast } from "@/hooks/use-toast";
 import { isOnline, useOnline } from "@/lib/offline";
 import { FDD_TODAY_URL, markFddRead } from "@/lib/cacReadState";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
@@ -2330,13 +2331,24 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (lessonReadUrl) {
       // On a deck that ENDS here, remember it — see finalLessonRead.
       if (atEnd) setFinalLessonRead(true);
-      // OFFLINE WITH THE PASSAGE SAVED: the sheet over the deck, whose
-      // Continue posts the same phoebe:office-next-slide the reader's pill
-      // does. Nothing saved → the browser, as before (a blank page beats a
-      // dead Next).
+      /**
+       * THE SAVED PAGE, IN THE SAME READER (owner, 2026-09-06: "have the page
+       * downloaded just like Safari's read later, then overlay the reader over
+       * the saved page, and get the same result").
+       */
+      /**
+       * NO EXTRACTED-TEXT FALLBACK ANY MORE (owner, 2026-09-06: "you should
+       * not be extracting text, that's a copyright issue"). If the page was
+       * never saved we say so, rather than rendering someone else's scripture
+       * in a surface of our own.
+       */
       if (!isOnline()) {
-        void openOfflinePassageIfCached(lessonReadUrl, officeTitle, `${slideIdx + 1} of ${slides.length} · ${sectionLabel}`).then((shown) => {
-          if (!shown) openOfficeReading(lessonReadUrl, { officeTitle, slideLabel: `${slideIdx + 1} of ${slides.length}`, sectionLabel });
+        void openReadingPage(lessonReadUrl, { officeTitle, slideLabel: `${slideIdx + 1} of ${slides.length}`, sectionLabel }).then((opened) => {
+          if (opened) return;
+          toast({
+            title: "This reading isn't saved yet",
+            description: "Open the app once with a connection and the coming weeks are kept for you.",
+          });
         });
         return;
       }

@@ -46,7 +46,17 @@ type PhoebeNative = {
  * which way to start so a cream article doesn't open behind a black bar for a
  * beat. Owner: "for the newsletters default to a white top bar."
  */
+import { getSavedPage } from "@/lib/pageCache";
+import { isOnline } from "@/lib/offline";
+
 type OpenOpts = {
+  /**
+   * A page saved for offline, loaded INSTEAD of fetching the url — Safari's
+   * Reading List, not a text extract (owner, 2026-09-06: "have the page
+   * downloaded just like how Safari mobile has a read later, then overlay the
+   * reader over the saved page, and get the same result").
+   */
+  savedHtml?: string;
   reader?: boolean;
   /**
    * Earlier issues of the thing being opened — the native reader shows them
@@ -165,7 +175,7 @@ export function openExternal(url: string, opts?: OpenOpts): boolean {
    */
   if (opts?.system) return openWebTab(url);
   if (native?.openInAppBrowser) {
-    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back, ...(opts?.previous?.length ? { previous: opts.previous } : {}) });
+    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back, ...(opts?.savedHtml ? { savedHtml: opts.savedHtml } : {}), ...(opts?.previous?.length ? { previous: opts.previous } : {}) });
     return true;
   }
   // Web fallback. noopener for security; noreferrer to keep the
@@ -190,7 +200,7 @@ export function openExternalThenMarkRead(
   // read the INSTANT the link opens rather than when the person comes back —
   // that was the "newsletter dot flips at tap time" bug.
   if (native?.isNative?.() && native?.openInAppBrowser) {
-    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back, ...(opts?.previous?.length ? { previous: opts.previous } : {}) });
+    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back, ...(opts?.savedHtml ? { savedHtml: opts.savedHtml } : {}), ...(opts?.previous?.length ? { previous: opts.previous } : {}) });
     // Marks read when the browser closes — the finished event. (The 2026-09-04
     // scroll-tracking outcome — "count only when scrolled to the end", a
     // Continue bar for a partial read — was removed 2026-09-05, owner: "take
@@ -245,7 +255,7 @@ export function hasNativeBrowser(): boolean {
 
 export function openOfficeReading(
   url: string,
-  ctx: { officeTitle: string; slideLabel: string; sectionLabel: string },
+  ctx: { officeTitle: string; slideLabel: string; sectionLabel: string; savedHtml?: string },
 ): boolean {
   if (!url) return false;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative }).PhoebeNative;
@@ -255,6 +265,7 @@ export function openOfficeReading(
       officeTitle: ctx.officeTitle,
       slideLabel: ctx.slideLabel,
       sectionLabel: ctx.sectionLabel,
+      ...(ctx.savedHtml ? { savedHtml: ctx.savedHtml } : {}),
     });
     return true;
   }
@@ -270,4 +281,27 @@ export function preloadExternal(url: string): void {
   if (!url) return;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative }).PhoebeNative;
   if (native?.preloadInAppBrowser) void native.preloadInAppBrowser(url);
+}
+
+/**
+ * OPEN A READING — the saved page when there is one, the live page otherwise.
+ *
+ * The one door for every practice that opens a publisher's page: the office
+ * deck's lessons, Lectio, Visio, the Scripture and Sunday decks. Offline it
+ * loads the page SAVED on the device into the same reader, so an offline
+ * reading IS the online reading rather than a second rendering of someone
+ * else's text (owner, 2026-09-06, on the copyright of extracting it).
+ *
+ * Returns false when nothing is saved and there is no connection — the caller
+ * decides what to say; there is nothing useful to open.
+ */
+export async function openReadingPage(
+  url: string,
+  ctx: { officeTitle: string; slideLabel: string; sectionLabel: string },
+): Promise<boolean> {
+  if (!url) return false;
+  const saved = await getSavedPage(url);
+  if (saved?.html) return openOfficeReading(url, { ...ctx, savedHtml: saved.html });
+  if (!isOnline()) return false;
+  return openOfficeReading(url, ctx);
 }

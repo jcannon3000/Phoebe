@@ -217,8 +217,8 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                     // in-app browser, same as the non-Bible path.
                     BibleBrowser.shared.present(
                         url: url,
-                        savedHTML: savedHtml,
                         from: self?.bridge?.viewController,
+                        savedHTML: savedHtml,
                         onJournal: onJournal,
                         onDismiss: onDismiss,
                         onChangeFormat: onChangeFormat,
@@ -242,8 +242,8 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
             }
             BibleBrowser.shared.present(
                 url: url,
-                savedHTML: savedHtml,
                 from: self?.bridge?.viewController,
+                savedHTML: savedHtml,
                 onJournal: onJournal,
                 onDismiss: onDismiss,
                 onChangeFormat: onChangeFormat,

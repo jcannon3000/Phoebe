@@ -41,7 +41,9 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { openExternal, openOfficeReading, preloadExternal } from "@/lib/openExternal";
-import { openOfflinePassageIfCached } from "@/lib/passageCache";
+import { openReadingPage } from "@/lib/openExternal";
+import { toast } from "@/hooks/use-toast";
+import { isOnline } from "@/lib/offline";
 import { cachedImageUrl } from "@/lib/imageCache";
 import { FROST_BLUR } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
@@ -983,8 +985,23 @@ export default function VisioPage() {
     if (!passageUrl) return;
     setReadPassage(true);
     handedOff.current = true;
-    void openOfflinePassageIfCached(passageUrl, t("visio.title", { defaultValue: "Visio Divina" }), `${step + 1} of ${TOTAL}`).then((shown) => {
-      if (!shown) openReadingLive();
+    // The SAVED PAGE in the same reader first (openReadingPage) — Visio's
+    // reading is an oremus page like the offices', and offline it should be
+    // that page, not a re-rendering of its text. Then the old sheet, then live.
+    void openReadingPage(passageUrl, {
+      officeTitle: t("visio.title", { defaultValue: "Visio Divina" }),
+      slideLabel: `${step + 1} of ${TOTAL}`,
+      sectionLabel: "",
+    }).then((opened) => {
+      if (opened) return;
+      if (!isOnline()) {
+        toast({
+          title: "This reading isn't saved yet",
+          description: "Open the app once with a connection and the coming weeks are kept for you.",
+        });
+        return;
+      }
+      openReadingLive();
     });
   };
   const openReadingLive = () => {
