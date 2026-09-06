@@ -14,7 +14,7 @@ import { useLocation } from "wouter";
 import { motion, useInView } from "framer-motion";
 import { Play } from "lucide-react";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { useCourseProgress, isCourseHiddenFromHome, COURSE_HIDDEN_EVENT } from "@/lib/courseProgress";
+import { useCourseProgress, isCourseHiddenFromHome, COURSE_HIDDEN_EVENT, snapshotProgress } from "@/lib/courseProgress";
 import {
   CENTERING_PRAYER,
   CENTERING_INDEX,
@@ -41,6 +41,9 @@ type LearnCard = {
   done: number;
   total: number;
   started: boolean;
+  /** When this course's progress was last touched — playing an episode
+   *  (setLast + markStarted) or finishing one. 0 = never. */
+  updatedAt: number;
 };
 
 // The next lesson of a VIDEO course: resume the last-opened video if it isn't
@@ -50,7 +53,7 @@ function videoCourseCard(
   index: CourseIndex,
   href: string,
   progress: { completed: Set<string>; completedCount: number; lastId?: string; started: boolean },
-): LearnCard {
+): Omit<LearnCard, "updatedAt"> {
   const { completed, completedCount, lastId } = progress;
   const resume = lastId && index.get(lastId) && !completed.has(lastId) ? index.get(lastId) : undefined;
   const nextVid = resume ?? index.videos.find((v) => !completed.has(v.id)) ?? index.videos[0];
@@ -96,8 +99,8 @@ export function HomeLearnSection() {
 
   const cards: LearnCard[] = [];
   if (!native) {
-    cards.push(videoCourseCard(CENTERING_PRAYER, CENTERING_INDEX, "/centering-prayer", centering));
-    cards.push(videoCourseCard(SPIRITUAL_JOURNEY, JOURNEY_INDEX, "/journey", journey));
+    cards.push({ ...videoCourseCard(CENTERING_PRAYER, CENTERING_INDEX, "/centering-prayer", centering), updatedAt: snapshotProgress(CENTERING_PRAYER.id).updatedAt ?? 0 });
+    cards.push({ ...videoCourseCard(SPIRITUAL_JOURNEY, JOURNEY_INDEX, "/journey", journey), updatedAt: snapshotProgress(SPIRITUAL_JOURNEY.id).updatedAt ?? 0 });
   }
   {
     const nextLesson = WOL_LESSONS.find((l) => !wol.completed.has(l.key)) ?? WOL_LESSONS[0];
@@ -110,6 +113,7 @@ export function HomeLearnSection() {
       done: wol.completedCount,
       total: WOL_TOTAL,
       started: wol.completedCount > 0 || wol.started,
+      updatedAt: snapshotProgress(WAY_OF_LOVE.id).updatedAt ?? 0,
     });
   }
 
@@ -124,7 +128,7 @@ export function HomeLearnSection() {
    * shared filter decides.
    */
   for (const c of cacData?.courses ?? []) {
-    const { completedCount, total, nextTitle, isStarted } = courseCompletion(c);
+    const { completedCount, total, nextTitle, isStarted, updatedAt } = courseCompletion(c);
     if (!isStarted) continue;
     cards.push({
       key: `cac-${c.id}`,
@@ -134,6 +138,7 @@ export function HomeLearnSection() {
       done: completedCount,
       total,
       started: true,
+      updatedAt,
     });
   }
 
@@ -172,7 +177,13 @@ export function HomeLearnSection() {
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { once: true, amount: 0.25 });
   const onHome = cards.filter((c) => !isCourseHiddenFromHome(c.key));
-  const active = onHome.filter((c) => c.started && c.done < c.total);
+  // MOST RECENTLY LISTENED FIRST (owner, 2026-09-05: "order the courses on
+  // the home screen based on which one was listened to last"). Playing an
+  // episode stamps the course's progress, so the one you had on last leads;
+  // ties (never played, or equal stamps) keep the list's own order.
+  const active = onHome
+    .filter((c) => c.started && c.done < c.total)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
   const wolCard = onHome.find((c) => c.key === WAY_OF_LOVE.id);
   const show = active.length > 0 ? active : wolCard && wolCard.done < wolCard.total ? [wolCard] : [];
   if (show.length === 0) return null;
