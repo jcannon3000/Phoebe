@@ -3,6 +3,8 @@ import { MenuHub, type MenuHubGroup } from "@/components/MenuHub";
 import { OFFLINE_PRACTICES, useOnline } from "@/lib/offline";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { useGuestMode } from "@/hooks/useGuestMode";
+import { useAuth } from "@/hooks/useAuth";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { getReadingsTodayUrl } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
 
@@ -15,6 +17,10 @@ export default function MenuPracticesPage() {
   // 2026-07-02), and Creation Prayer stays behind its own flag. See memory
   // "project_public_no_login".
   const { isGuest } = useGuestMode();
+  const { user } = useAuth();
+  // Signed in = a real account. A device-local guest has a provisioned
+  // anonymous user, which is not one.
+  const signedIn = !isDeviceLocalGuest(user);
   const go = (p: string) => setLocation(p);
   /**
    * OFFLINE, THE LIST SPLITS IN TWO (owner, 2026-09-06: "on the practices page
@@ -109,8 +115,19 @@ export default function MenuPracticesPage() {
           // spirituals from the practices ... both on the main practice page
           // and in the customizer"). The practice itself and /spirituals still
           // exist — see lib/spiritualsFlag.ts — but nothing links to it here.
-          // Audio Divina sits at the BOTTOM of Practices (owner).
-          ...(!isGuest ? [
+          /**
+           * EVERY SIGNED-IN PERSON SEES IT (owner, 2026-09-06: "I want all
+           * signed in users to see it"). The gate was `!isGuest`, and the
+           * public shape covers every ordinary account — so this row reached
+           * pilot-group members and super admins only, which is not what
+           * "not in the public version" was meant to mean. The no-login
+           * version still doesn't carry it (owner, 2026-07-02), and that is
+           * what `signedIn` now says: an anonymous device user is not an
+           * account. /listening itself was never gated.
+           *
+           * Audio Divina sits at the BOTTOM of Practices (owner).
+           */
+          ...(signedIn ? [
             { offlineKey: "listening", emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
           ] : []),
         ],
