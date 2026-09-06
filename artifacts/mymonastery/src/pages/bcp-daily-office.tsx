@@ -14,7 +14,7 @@ import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal, openExternalThenMarkRead, openOfficeReading, preloadExternal, hasNativeBrowser } from "@/lib/openExternal";
 import { openOfflinePassageIfCached } from "@/lib/passageCache";
-import { isOnline } from "@/lib/offline";
+import { isOnline, useOnline } from "@/lib/offline";
 import { FDD_TODAY_URL, markFddRead } from "@/lib/cacReadState";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
@@ -2703,6 +2703,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // Intercessions AND Psalms are on-screen only (no Listen / Physical book /
     // Watch), so the "How" row collapses to a single On-screen option for both.
     const screenOnly = wayIsScreenOnly;
+    // Offline, the three ways that need a connection are not offered at all
+    // (owner: "if they are offline make sure it is not showing the option to
+    // listen to it"). Read at render, not subscribed: this sheet is opened by
+    // a tap, so it re-reads every time it is put on screen.
+    const online = isOnline();
     const showWatch = officeSide === "morning" && isWeekday;
     // Venite covers Morning and Evening Prayer AND the short Daily Devotion —
     // owner: "make sure that we are integrating Venite for the devotions too."
@@ -2825,13 +2830,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 <>
                   <option value="book">Physical BCP</option>
                   <option value="screen">On screen</option>
+                  {/* Offline the three that need a connection are not offered —
+                      see OfficeMethodCard's note. */}
                   {/* Owner: "make it the third option in the dropdowns after
                       digital slideshow, call it Venite Digital." Hands the
                       office off to venite.app in the browser. Morning/Evening
                       only — Compline has no working Venite deep link. */}
-                  {showVenite && <option value="venite">Venite Digital</option>}
-                  <option value="listen">Listen</option>
-                  {showWatch && <option value="watch">Watch</option>}
+                  {showVenite && online && <option value="venite">Venite Digital</option>}
+                  {online && <option value="listen">Listen</option>}
+                  {showWatch && online && <option value="watch">Watch</option>}
                 </>
               )
             ))}
@@ -5837,13 +5844,24 @@ function OfficeMethodCard(props: {
   const { side, title, weekday, now, isDefault, onLaunch } = props;
   // Watch is Morning-only (the Cathedral streams morning prayer) and
   // weekday-only (no weekend broadcast). Everything else applies to both.
+  /**
+   * OFFLINE, ONLY THE WAYS THAT WORK (owner, 2026-09-06: "I don't need Venite
+   * to load offline, I need the digital slideshow … if they are offline make
+   * sure it is not showing the option to listen to it").
+   *
+   * The slideshow is saved and the physical book is page numbers; Venite is a
+   * website, Listen is a podcast and Watch is a live stream, and all three are
+   * a dead end with no connection. A saved preference for one of them falls
+   * back to the slideshow through the clamp below.
+   */
+  const online = useOnline();
   const methods: DefaultOfficeEntry[] = [
     "book",
     "read",
     // Third, right after the digital slideshow (owner).
-    ...(canPrayOnVenite(side) ? (["venite"] as const) : []),
-    "listen",
-    ...(side === "morning" && weekday ? (["watch"] as const) : []),
+    ...(canPrayOnVenite(side) && online ? (["venite"] as const) : []),
+    ...(online ? (["listen"] as const) : []),
+    ...(side === "morning" && weekday && online ? (["watch"] as const) : []),
   ];
   // Initialize from the saved preference, clamped to a method that's
   // actually offered here (e.g. a "watch" default on a weekend, or on the
@@ -6334,6 +6352,7 @@ export default function BcpDailyOfficePage() {
     </p>
   );
 
+  const chooserOnline = useOnline();
   // The "How" options valid for the chosen time + practice. read/book always;
   // Listen only for the full office; Watch only in the morning (Cathedral /
   // St John's stream). methodPick is clamped to a valid one for Begin.
@@ -6348,9 +6367,15 @@ export default function BcpDailyOfficePage() {
         "read",
         // Third, right after the digital slideshow (owner). Full office only —
         // this branch already excludes psalms above.
-        ...(canPrayOnVenite(todPick) ? (["venite"] as const) : []),
-        "listen",
-        ...(todPick === "morning" && weekday ? (["watch"] as const) : []),
+        //
+        // OFFLINE, ONLY WHAT WORKS (owner, 2026-09-06: "if they are offline
+        // make sure it is not showing the option to listen to it"). Venite is
+        // a website, Listen a podcast, Watch a live stream; the slideshow is
+        // saved and Physical BCP is page numbers. The clamp below turns a
+        // saved preference for one of the three into the slideshow.
+        ...(canPrayOnVenite(todPick) && chooserOnline ? (["venite"] as const) : []),
+        ...(chooserOnline ? (["listen"] as const) : []),
+        ...(todPick === "morning" && weekday && chooserOnline ? (["watch"] as const) : []),
       ];
   // Match the first-slide labels ("On screen", not "Digital Slideshow").
   const HOW_LABEL: Record<DefaultOfficeEntry, string> = {
