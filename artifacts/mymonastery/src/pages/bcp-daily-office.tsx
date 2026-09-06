@@ -1622,12 +1622,17 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
            * Reaching here with no connection means the cache had no entry for
            * this day — the deck already falls back to it — so the honest
            * sentence is that this office isn't saved on the device, not that a
-           * request failed. The saving runs on Wi-Fi, once a day, in the app;
-           * "Load failed" sends someone hunting for a bug in the office.
+           * request failed. "Load failed" sends someone hunting for a bug in
+           * the office.
+           *
+           * It says "with a connection", not "on Wi-Fi": since dceb318e the
+           * text — offices, passages, lectio, psalms — saves on any connection,
+           * and only the paintings wait for Wi-Fi. If that gate ever moves
+           * again, this sentence is the thing that goes stale.
            */
           setError(isOnline()
             ? `${officeTitle} couldn't load (${msg}).`
-            : `${officeTitle} isn't saved on this phone yet. Open the app once on Wi-Fi and the coming weeks are kept for you.`);
+            : `${officeTitle} isn't saved on this phone yet. Open the app once with a connection and the coming weeks are kept for you.`);
         }
       } finally {
         if (!cancelled) setLoading(false);
