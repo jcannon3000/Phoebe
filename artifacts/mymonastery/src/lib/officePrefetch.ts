@@ -22,6 +22,7 @@ import { getSideLevel, getSideExtra, getSideConfession, getScriptureParts, type 
 import { putOfficeCacheEntry, pruneOfficeCacheBefore, getOfficeCacheEntry, type OfficeCacheKey } from "@/lib/officeOfflineCache";
 import { cachePassage, passageRefFromUrl, prunePassages } from "@/lib/passageCache";
 import { cacheImage, pruneImages } from "@/lib/imageCache";
+import { cacheDay, pruneDays } from "@/lib/dayContentCache";
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
 import { artworkById } from "@/lib/visioSelect";
 import type { LiturgyMode } from "@/pages/bcp-daily-office";
@@ -230,6 +231,14 @@ export async function runOfficePrefetch(): Promise<void> {
  * picture and a reading for each day; keep both.
  */
 const READER_WINDOW_DAYS = 28;
+/** Which psalter the device asks for — the page reads it from the URL, so
+ *  save the one it defaults to and the other only if it has been used. */
+function psalmCycles(): string[] {
+  try {
+    const seen = localStorage.getItem("phoebe:psalm-cycle");
+    return seen && seen !== "daily" ? ["daily", seen] : ["daily"];
+  } catch { return ["daily"]; }
+}
 async function warmReadersAndPictures(...modes: Array<LiturgyMode | null>): Promise<void> {
   const refs = new Set<string>();
   const images = new Set<string>();
@@ -262,9 +271,26 @@ async function warmReadersAndPictures(...modes: Array<LiturgyMode | null>): Prom
   const jobs: Array<() => Promise<void>> = [];
   for (const ref of refs) jobs.push(async () => { await cachePassage(ref); });
   for (const img of images) jobs.push(async () => { await cacheImage(img); });
+  /**
+   * …AND THE LISTS THAT MAKE THE DAY. Lectio offers a choice of the day's
+   * three lessons and the Psalms page asks for the psalm appointed; both are
+   * server calls, so a device with every passage saved still opened Lectio on
+   * an empty picker. Kept for the same four weeks, and for both offices'
+   * psalms since either page can be opened.
+   */
+  for (let i = 0; i < READER_WINDOW_DAYS; i++) {
+    const date = ymdPlusDays(i);
+    jobs.push(async () => { await cacheDay(`/api/lectio/today?date=${date}`); });
+    for (const office of ["morning", "evening"] as const) {
+      for (const cycle of psalmCycles()) {
+        jobs.push(async () => { await cacheDay(`/api/psalms/today?cycle=${cycle}&office=${office}&date=${date}`); });
+      }
+    }
+  }
   if (jobs.length > 0) await runQueue(jobs);
   void prunePassages();
   void pruneImages();
+  void pruneDays();
 }
 
 /** Mounted once, app-wide (see App.tsx, alongside WidgetSync) — fires the

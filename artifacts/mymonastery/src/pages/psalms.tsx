@@ -3,6 +3,7 @@ import { Settings2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
+import { cachedDayGet } from "@/lib/dayContentCache";
 import { getPsalmCycle, setPsalmCycle, getSideLevel, type PsalmCycle } from "@/lib/officePrefs";
 import { markPsalmsPrayed } from "@/lib/cacReadState";
 import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
@@ -167,7 +168,10 @@ export default function PsalmsPage() {
 
   const { data, isLoading } = useQuery<{ psalms: Psalm[] }>({
     queryKey: ["/api/psalms/today", cycle, office, today],
-    queryFn: () => apiRequest("GET", `/api/psalms/today?cycle=${cycle}&office=${office}&date=${today}`),
+    // Saved as it is read, and served from the device when there is no
+    // connection (lib/dayContentCache) — the psalter is a practice the
+    // offline list promises.
+    queryFn: async () => (await cachedDayGet<{ psalms: Psalm[] }>(`/api/psalms/today?cycle=${cycle}&office=${office}&date=${today}`)) ?? { psalms: [] },
     staleTime: 30 * 60_000,
   });
 

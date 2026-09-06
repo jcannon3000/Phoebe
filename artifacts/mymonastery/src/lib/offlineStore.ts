@@ -20,9 +20,12 @@
  */
 
 const DB_NAME = "phoebe-offline-content";
-const DB_VERSION = 1;
+// v2 added `json` — whole day-payloads (a day's Lectio readings, a day's
+// psalms), which are neither a passage nor a picture.
+const DB_VERSION = 2;
 export const PASSAGES = "passages";
 export const IMAGES = "images";
+export const JSON_DAYS = "json";
 
 type Row<T> = { value: T; updatedAt: number };
 
@@ -34,7 +37,7 @@ function openDb(): Promise<IDBDatabase | null> {
       if (typeof indexedDB === "undefined") { resolve(null); return; }
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = () => {
-        for (const s of [PASSAGES, IMAGES]) {
+        for (const s of [PASSAGES, IMAGES, JSON_DAYS]) {
           if (!req.result.objectStoreNames.contains(s)) req.result.createObjectStore(s);
         }
       };

@@ -21,6 +21,8 @@ export type CachedPassage = {
   /** Verse-numbered paragraphs, plain text; one string per paragraph. */
   paragraphs: string[];
   version: string;
+  /** oremus's own copyright line, saved with the reading. */
+  credit?: string;
   fetchedAt: number;
 };
 
@@ -61,12 +63,13 @@ export async function cachePassage(ref: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/scripture/passage-text?ref=${encodeURIComponent(ref)}`);
     if (!res.ok) return false;
-    const data = (await res.json()) as { ref?: string; paragraphs?: unknown; version?: string } | null;
+    const data = (await res.json()) as { ref?: string; paragraphs?: unknown; version?: string; credit?: string } | null;
     if (!data || !Array.isArray(data.paragraphs) || data.paragraphs.length === 0) return false;
     const entry: CachedPassage = {
       ref: data.ref || ref,
       paragraphs: data.paragraphs.filter((p): p is string => typeof p === "string" && p.length > 0),
       version: data.version || "NRSV",
+      ...(typeof data.credit === "string" && data.credit ? { credit: data.credit } : {}),
       fetchedAt: Date.now(),
     };
     await storePut(PASSAGES, key, entry);

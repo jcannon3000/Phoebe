@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { cachedDayGet } from "@/lib/dayContentCache";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { openExternal, openOfficeReading, hasNativeBrowser } from "@/lib/openExternal";
@@ -97,7 +98,10 @@ export default function LectioPage() {
 
   const { data, isLoading } = useQuery<{ date: string | null; options: LessonOption[] }>({
     queryKey: ["/api/lectio/today"],
-    queryFn: () => apiRequest("GET", "/api/lectio/today") as Promise<{ date: string | null; options: LessonOption[] }>,
+    // Through the day cache: it keeps each day's readings as they are fetched
+    // and serves the saved copy when there's no connection, so the picker is
+    // never empty on a device that has been opened this month.
+    queryFn: () => cachedDayGet<{ date: string | null; options: LessonOption[] }>("/api/lectio/today") as Promise<{ date: string | null; options: LessonOption[] }>,
   });
   const options = data?.options ?? [];
 

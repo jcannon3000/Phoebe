@@ -63,6 +63,9 @@ export function OfflinePassageSheet({ passage, title, slideLabel, onClose, onPre
         {passage.paragraphs.map((p, i) => (
           <p key={i} style={{ fontSize: 21, lineHeight: 1.72, margin: "0 0 1.1em", color: WARM }}>{p}</p>
         ))}
+        {passage.credit && (
+          <p style={{ fontSize: 12, lineHeight: 1.6, color: "rgba(200,212,192,0.45)", margin: "24px 0 0" }}>{passage.credit}</p>
+        )}
         {/* A SPACER, never padding-bottom: iOS WKWebView drops a flex-column
             scroll container's bottom padding once a child overflows, and the
             last verses ended up behind the pill. */}

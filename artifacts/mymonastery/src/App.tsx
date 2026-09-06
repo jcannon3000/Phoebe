@@ -638,6 +638,10 @@ const PERSISTED_QUERY_KEYS = [
   "/api/rituals",
   "/api/me/service-schedules",
   "/api/groups/me/circle-intentions",
+  // The personal prayer list. The Available Offline page promises it "from
+  // the last copy on your phone", and without this the counts and the
+  // pray-through were empty with no connection.
+  "/api/prayer-intentions",
 ];
 const rqPersister = createSyncStoragePersister({
   storage: window.localStorage,

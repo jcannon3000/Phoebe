@@ -23,7 +23,7 @@ const TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_CACHE = 2000;
 const cache = new Map<string, { at: number; value: Passage }>();
 
-export type Passage = { ref: string; paragraphs: string[]; version: string };
+export type Passage = { ref: string; paragraphs: string[]; version: string; credit?: string };
 
 function decode(s: string): string {
   return s
@@ -50,7 +50,16 @@ export function parseOremus(html: string): { paragraphs: string[]; version: stri
     .filter((p) => p.length > 0);
   if (paragraphs.length === 0) return null;
   const cite = html.match(/<cite>([^<]+)<\/cite>/i);
-  return { paragraphs, version: cite ? decode(cite[1]!.trim()) : "New Revised Standard Version Bible: Anglicized Edition" };
+  // The page's own copyright line travels with the text — what is saved for
+  // offline should be the reading as oremus publishes it, credit included.
+  const copyStart = html.indexOf('class="copyright');
+  let credit = "";
+  if (copyStart >= 0) {
+    const seg = html.slice(copyStart, copyStart + 2000);
+    const p = seg.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+    if (p) credit = decode(p[1]!.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim().slice(0, 400);
+  }
+  return { paragraphs, version: cite ? decode(cite[1]!.trim()) : "New Revised Standard Version Bible: Anglicized Edition", ...(credit ? { credit } : {}) };
 }
 
 async function fetchPassage(ref: string): Promise<Passage | null> {
