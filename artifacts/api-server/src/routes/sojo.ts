@@ -39,7 +39,36 @@ const UA = "PhoebeBot/1.0 (+https://withphoebe.app)";
 /** Enough to ride out a long holiday gap without probing forever. */
 const MAX_LOOKBACK = 14;
 
-type Resolved = { url: string; ymd: string | null };
+type Resolved = {
+  url: string;
+  ymd: string | null;
+  /**
+   * HAVE THEY STOPPED? The lookback finds the newest issue that exists, which
+   * is the right answer for a holiday gap and the wrong one for a publication
+   * that has gone quiet: on 2026-09-06 the newest was 08-31, and the card
+   * offered a six-day-old devotion as today's (owner: "it seems like
+   * Sojourners stopped posting, don't show Sojourners until they have new
+   * content"). Stale when three WEEKDAYS have passed with nothing — a Friday
+   * issue read on Monday or Tuesday is still fresh, a real stop shows within
+   * a week — and the client hides the card while it is true.
+   */
+  stale: boolean;
+};
+
+/** Weekdays strictly after `from`, up to and including `to`. */
+function weekdaysSince(from: Date, to: Date): number {
+  let n = 0;
+  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+  d.setDate(d.getDate() + 1);
+  while (d <= end) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) n += 1;
+    d.setDate(d.getDate() + 1);
+  }
+  return n;
+}
+const STALE_AFTER_WEEKDAYS = 3;
 
 let cache: { at: number; value: Resolved } | null = null;
 // Longer than the other resolvers': this answer changes at most once a day and
@@ -90,7 +119,7 @@ export async function resolveTodaySojo(now: Date = new Date()): Promise<Resolved
       const url = sojoUrlForDate(d);
       if (await exists(url)) {
         const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        const value = { url, ymd };
+        const value: Resolved = { url, ymd, stale: weekdaysSince(d, now) >= STALE_AFTER_WEEKDAYS };
         cache = { at: Date.now(), value };
         return value;
       }
@@ -100,7 +129,7 @@ export async function resolveTodaySojo(now: Date = new Date()): Promise<Resolved
   // Nothing found in two weeks — send them to the real index rather than a
   // 404. Deliberately NOT cached: this is the failure path, and caching it
   // would keep serving the index for half an hour after they publish again.
-  return { url: INDEX_URL, ymd: null };
+  return { url: INDEX_URL, ymd: null, stale: true };
 }
 
 // GET /api/sojo/today → 302 to the newest issue that exists. Public, no auth.
@@ -114,9 +143,9 @@ router.get("/sojo/today", async (_req: Request, res: Response): Promise<void> =>
 // which is not always today — a card can say so honestly instead of implying
 // freshness we haven't got.
 router.get("/sojo/today-meta", async (_req: Request, res: Response): Promise<void> => {
-  const { url, ymd } = await resolveTodaySojo();
+  const { url, ymd, stale } = await resolveTodaySojo();
   res.setHeader("Cache-Control", "public, max-age=900");
-  res.json({ url, ymd });
+  res.json({ url, ymd, stale });
 });
 
 export default router;

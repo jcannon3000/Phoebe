@@ -1591,6 +1591,30 @@ export function useRhythmState(): RhythmState {
   // (otherwise the day could never read as complete).
   const vtsCountsToday = entitlements.vts && isVtsPublishingDay();
   /**
+   * …AND SOJOURNERS ONLY WHILE THEY ARE PUBLISHING.
+   *
+   * Their resolver looks back up to a fortnight for the newest issue that
+   * exists, which is right for a holiday and wrong for a publication that has
+   * stopped: on 2026-09-06 the newest was 08-31, and the card offered a
+   * six-day-old devotion as today's word (owner: "it seems like Sojourners
+   * stopped posting, don't show Sojourners until they have new content").
+   * The server says whether the newest issue is stale — three weekdays with
+   * nothing — and the card stands down until they publish again. Dropped at
+   * the same seam as VTS above so the card, the dot and the done-count agree,
+   * and the SUBSCRIPTION is untouched: nobody loses a source they chose, it
+   * simply returns the day there is something to read.
+   */
+  const { data: sojoMeta } = useQuery<{ url: string; ymd: string | null; stale?: boolean }>({
+    queryKey: ["/api/sojo/today-meta"],
+    queryFn: () => apiRequest("GET", "/api/sojo/today-meta") as Promise<{ url: string; ymd: string | null; stale?: boolean }>,
+    enabled: !guest && chosenReflections.includes("sojo"),
+    staleTime: 30 * 60_000,
+  });
+  // Undecided (still loading, or the request failed) reads as PUBLISHING —
+  // hiding a card because a check hasn't answered would be the same mistake
+  // as showing a stale one.
+  const sojoCountsToday = sojoMeta?.stale !== true;
+  /**
    * …and drop a source a SIDE'S ANCHOR already is.
    *
    * Reported: "I turned on Forward Day by Day for morning, but it then had it
@@ -1615,7 +1639,8 @@ export function useRhythmState(): RhythmState {
   const selectedReflections = (vtsCountsToday
     ? chosenReflections
     : chosenReflections.filter((s) => s !== "vts")
-  ).filter((s) => !anchorReflectionSources.has(s));
+  ).filter((s) => sojoCountsToday || s !== "sojo")
+    .filter((s) => !anchorReflectionSources.has(s));
   const reflections = selectedReflections.map((s) => ({ source: s, done: reflectDoneFor(s) }));
   const reflectActive = reflections.length > 0;
   // Count contemplation PER SIDE (Morning + Evening Contemplation), matching the
