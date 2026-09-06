@@ -44,6 +44,19 @@ export function setDebugOffline(on: boolean): void {
   } catch { /* ignore */ }
 }
 
+/**
+ * THE REAL CONNECTION, ignoring the simulate-offline switch.
+ *
+ * Everything the PERSON sees goes through isOnline() below, switch included —
+ * that is the point of it. But the prefetch must not: someone turns the
+ * switch on to walk the offline app, and from then on the daily save never
+ * runs, so the phone stays empty and the switch "proves" offline is broken.
+ * Saving asks the device, never the toggle.
+ */
+export function isReallyOnline(): boolean {
+  return typeof navigator === "undefined" ? true : navigator.onLine !== false;
+}
+
 export function isOnline(): boolean {
   if (debugOfflineForced()) return false;
   return typeof navigator === "undefined" ? true : navigator.onLine !== false;
