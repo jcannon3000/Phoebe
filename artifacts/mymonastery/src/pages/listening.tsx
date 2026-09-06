@@ -11,6 +11,7 @@ import DeckNavPill from "@/components/DeckNavPill";
 import { type ListeningMedium } from "@/lib/listeningLog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { enqueueWrite } from "@/lib/writeOutbox";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 import { openExternal } from "@/lib/openExternal";
 
@@ -205,7 +206,18 @@ export default function ListeningPage() {
   }
   // Audio Divina is private — a personal listening log, no sharing with fellows.
   const logMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, shared: false }),
+    mutationFn: async () => {
+      const body = { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, shared: false };
+      try {
+        return await apiRequest("POST", "/api/listening", body);
+      } catch (err) {
+        // A log that silently fails is worse than no log. Offline it waits in
+        // the outbox and goes out with the connection (lib/writeOutbox); the
+        // card is already kept locally either way.
+        enqueueWrite(`listening:${body.day}:${body.what}`, "POST", "/api/listening", body);
+        throw err;
+      }
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
   const deleteMutation = useMutation({

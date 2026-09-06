@@ -1,4 +1,5 @@
 import { apiRequest, ApiError, getQueryClient } from "@/lib/queryClient";
+import { enqueueWrite, dropWrite } from "@/lib/writeOutbox";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 import { creditAnchorPractice } from "@/lib/officeManualLog";
@@ -88,7 +89,8 @@ export function markPracticeDoneToday(section: OptionalPractice): void {
   // after a short delay covers a transient blip; if it still fails, at least
   // log it so a real failure is diagnosable instead of silently invisible.
   const payload = { section, localDate, weekStart: weekStartLocalISO() };
-  const post = () => apiRequest("POST", "/api/practice-completion", payload);
+  const post = () => apiRequest("POST", "/api/practice-completion", payload)
+    .then((r) => { dropWrite(`practice:${section}:${localDate}`); return r; });
   post().catch(() => {
     setTimeout(() => {
       post().catch((err) => {
@@ -107,7 +109,11 @@ export function markPracticeDoneToday(section: OptionalPractice): void {
         // which "Not authenticated" (space, not underscore) never matched, so
         // the guard was inert and guests still got the toast.
         if (err instanceof ApiError && err.status === 401) return;
-        console.error(`[practiceCompletion] sync failed for "${section}" after retry:`, err);
+        // The day is kept on this phone; the server hasn't heard. Wait in the
+        // outbox rather than dropping it (lib/writeOutbox flushes when the
+        // connection returns).
+        enqueueWrite(`practice:${section}:${localDate}`, "POST", "/api/practice-completion", payload as Record<string, unknown>);
+        console.error(`[practiceCompletion] sync failed for "${section}" after retry — queued:`, err);
         // Visible, not just logged — nobody's going to open dev tools to
         // notice a cross-device sync silently failed. A toast (wired up by
         // PracticeSyncFailedToast in App.tsx) is the only way this failure
@@ -202,14 +208,17 @@ export function unmarkPracticeDoneToday(section: OptionalPractice): void {
   // The tombstone is lifted the moment the server agrees — until then it is
   // what keeps the card out of Done.
   const del = () => apiRequest("DELETE", "/api/practice-completion", { section, localDate })
-    .then((r) => { clearUnlogged(section); return r; });
+    .then((r) => { clearUnlogged(section); dropWrite(`practice:${section}:${localDate}`); return r; });
   del().catch(() => {
     setTimeout(() => {
       del().catch((err) => {
         // Same as the mark path above: a signed-out guest has no server row to
         // delete, so a 401 here is expected, not a failure to report.
         if (err instanceof ApiError && err.status === 401) return;
-        console.error(`[practiceCompletion] un-sync failed for "${section}" after retry:`, err);
+        // Same key as the mark above, so an un-log REPLACES a queued keep
+        // rather than the two racing each other out of the queue.
+        enqueueWrite(`practice:${section}:${localDate}`, "DELETE", "/api/practice-completion", { section, localDate });
+        console.error(`[practiceCompletion] un-sync failed for "${section}" after retry — queued:`, err);
         try {
           window.dispatchEvent(new CustomEvent(PRACTICE_SYNC_FAILED_EVENT, { detail: { section } }));
         } catch { /* non-fatal */ }

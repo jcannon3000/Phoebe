@@ -11,7 +11,7 @@
  * falls back to that copy when the request can't be made. A page's queryFn
  * calls it instead of apiRequest and needs no other offline branch.
  */
-import { JSON_DAYS, storeGet, storePut, storeHas, storePrune } from "@/lib/offlineStore";
+import { JSON_DAYS, storeGet, storePut, storeHas, storePrune, storeKeys, storeDelete } from "@/lib/offlineStore";
 
 const MAX_AGE_MS = 45 * 24 * 60 * 60 * 1000;
 
@@ -49,4 +49,18 @@ export async function cacheDay(url: string): Promise<boolean> {
 
 export function pruneDays(): Promise<void> {
   return storePrune(JSON_DAYS, MAX_AGE_MS);
+}
+
+/**
+ * YESTERDAY'S DAY-LISTS GO (owner: "every day when the user is connected it
+ * deletes past content it has saved and downloads the future content 28 days
+ * out"). These keys carry their date in the query, so a past day can be named
+ * exactly rather than waited out by age.
+ */
+export async function pruneDaysBefore(todayYmd: string): Promise<void> {
+  const keys = await storeKeys(JSON_DAYS);
+  for (const key of keys) {
+    const m = key.match(/date=(\d{4}-\d{2}-\d{2})/);
+    if (m && m[1]! < todayYmd) await storeDelete(JSON_DAYS, key);
+  }
 }

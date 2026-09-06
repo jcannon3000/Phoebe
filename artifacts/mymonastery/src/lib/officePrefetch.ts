@@ -21,8 +21,8 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { getSideLevel, getSideExtra, getSideConfession, getScriptureParts, type OfficeSide } from "@/lib/officePrefs";
 import { putOfficeCacheEntry, pruneOfficeCacheBefore, getOfficeCacheEntry, type OfficeCacheKey } from "@/lib/officeOfflineCache";
 import { cachePassage, passageRefFromUrl, prunePassages } from "@/lib/passageCache";
-import { cacheImage, pruneImages } from "@/lib/imageCache";
-import { cacheDay, pruneDays } from "@/lib/dayContentCache";
+import { cacheImage, pruneImages, pruneImagesExcept } from "@/lib/imageCache";
+import { cacheDay, pruneDays, pruneDaysBefore } from "@/lib/dayContentCache";
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
 import { artworkById } from "@/lib/visioSelect";
 import type { LiturgyMode } from "@/pages/bcp-daily-office";
@@ -231,6 +231,12 @@ export async function runOfficePrefetch(): Promise<void> {
  * picture and a reading for each day; keep both.
  */
 const READER_WINDOW_DAYS = 28;
+/**
+ * VISIO LOOKS FURTHER AHEAD — the owner asked for "the next month of Visio
+ * pictures with the oremus readings behind them". The schedule holds one work
+ * per WEEK, so five weeks is five or six pictures, not thirty-five.
+ */
+const VISIO_WINDOW_DAYS = 35;
 /** Which psalter the device asks for — the page reads it from the URL, so
  *  save the one it defaults to and the other only if it has been used. */
 function psalmCycles(): string[] {
@@ -261,12 +267,14 @@ async function warmReadersAndPictures(...modes: Array<LiturgyMode | null>): Prom
         }
       }
     }
-    const v = VISIO_SCHEDULE[date];
-    if (v) {
-      if (v.ref) refs.add(v.ref);
-      const art = artworkById(v.id);
-      if (art?.img) images.add(art.img);
-    }
+  }
+  // Visio's own window — the month ahead, pictures and the readings behind them.
+  for (let i = 0; i < VISIO_WINDOW_DAYS; i++) {
+    const v = VISIO_SCHEDULE[ymdPlusDays(i)];
+    if (!v) continue;
+    if (v.ref) refs.add(v.ref);
+    const art = artworkById(v.id);
+    if (art?.img) images.add(art.img);
   }
   const jobs: Array<() => Promise<void>> = [];
   for (const ref of refs) jobs.push(async () => { await cachePassage(ref); });
@@ -288,6 +296,16 @@ async function warmReadersAndPictures(...modes: Array<LiturgyMode | null>): Prom
     }
   }
   if (jobs.length > 0) await runQueue(jobs);
+  /**
+   * THEN SWEEP WHAT IS BEHIND US. Once a day, connected: the past goes and the
+   * window rolls forward (the fetches above skip what is already here, so each
+   * run only adds the new far end). Day-lists and pictures are named exactly —
+   * a date in the key, a URL in the schedule. Passages are keyed by reference,
+   * not by date, and the same reading returns through the year, so those age
+   * out instead of being swept.
+   */
+  void pruneDaysBefore(todayYmd());
+  void pruneImagesExcept(images);
   void prunePassages();
   void pruneImages();
   void pruneDays();

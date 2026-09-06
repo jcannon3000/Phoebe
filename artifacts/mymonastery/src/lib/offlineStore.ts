@@ -99,6 +99,20 @@ export async function storeKeys(store: string): Promise<string[]> {
   });
 }
 
+export async function storeDelete(store: string, key: string): Promise<void> {
+  const db = await openDb();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(store, "readwrite");
+      tx.objectStore(store).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    } catch { resolve(); }
+  });
+}
+
 /** Drop rows not touched in `maxAgeMs` — keeps a month of content a month. */
 export async function storePrune(store: string, maxAgeMs: number): Promise<void> {
   const db = await openDb();

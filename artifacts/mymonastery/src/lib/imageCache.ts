@@ -6,7 +6,7 @@
  * coming weeks as blobs; the Visio page asks here for a local copy when the
  * device is offline (or the network copy failed) and gets an object URL.
  */
-import { IMAGES, storeGet, storePut, storeHas, storePrune } from "@/lib/offlineStore";
+import { IMAGES, storeGet, storePut, storeHas, storePrune, storeKeys, storeDelete } from "@/lib/offlineStore";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_AGE_MS = 45 * 24 * 60 * 60 * 1000;
@@ -46,4 +46,20 @@ export async function cachedImageUrl(url: string): Promise<string | null> {
 
 export function pruneImages(): Promise<void> {
   return storePrune(IMAGES, MAX_AGE_MS);
+}
+
+/**
+ * KEEP ONLY THE WINDOW'S PICTURES. Age alone would hold a work for six weeks
+ * after its week passed; the schedule says exactly which pictures the coming
+ * month needs, so everything else can go the moment it is no longer one of
+ * them (owner: delete the past, download the next 28 days).
+ */
+export async function pruneImagesExcept(keep: Set<string>): Promise<void> {
+  const keys = await storeKeys(IMAGES);
+  for (const key of keys) {
+    if (!keep.has(key)) {
+      objectUrls.delete(key);
+      await storeDelete(IMAGES, key);
+    }
+  }
 }

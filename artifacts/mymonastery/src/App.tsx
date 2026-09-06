@@ -35,6 +35,7 @@ import { PageFadeOverlay } from "@/components/PageFadeOverlay";
 import { WidgetSync } from "@/lib/widgetSync";
 import { OfficeOfflinePrefetch } from "@/lib/officePrefetch";
 import { OfflinePassageHost } from "@/components/OfflinePassageHost";
+import { installWriteOutboxFlush } from "@/lib/writeOutbox";
 import { PodcastPlayerProvider } from "@/components/PodcastPlayer";
 import { Component, useEffect, useRef, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
 import { syncCustomDoneFromServer, syncCustomAnchorsFromServer, type CustomAnchorSnapshot } from "@/lib/customAnchors";
@@ -695,6 +696,8 @@ void hydrateIdbCache(queryClient);
 // Retry any prayer-session write that failed while offline. Flushes now, and
 // again whenever the device reconnects or the app comes back to the foreground.
 installSessionOutboxFlush();
+// …and the practice writes that could not be sent (lib/writeOutbox).
+installWriteOutboxFlush();
 // A reflection read that never reached the server is the same class of loss
 // the outbox exists for — retry it on the same signals (start, reconnect,
 // app-active). The streak is computed from those rows server-side.
