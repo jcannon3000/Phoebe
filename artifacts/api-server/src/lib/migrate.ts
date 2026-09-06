@@ -2546,12 +2546,16 @@ export async function migrate() {
     // The full CAC library for a pilot group — super-admin granted only.
     // See schema/groups.ts's cacLibraryEnabled for why it is per-group.
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS cac_library_enabled BOOLEAN NOT NULL DEFAULT false`);
-    // Owner: "don't have list in community directly turned on inherently."
-    // The ADD COLUMN above is a no-op wherever the column already exists (it
-    // was originally created DEFAULT true), so flip the default explicitly.
-    // This only affects rows inserted from here on — every existing group
-    // keeps the value it already has, which is why there's no UPDATE.
-    await run(client, `ALTER TABLE groups ALTER COLUMN prayer_requests_enabled SET DEFAULT false`);
+    // ON by default again (2026-09-05) — see schema/groups.ts. The 2026-07
+    // opt-in default hid the Prayer list for every member once the unlock
+    // read this flag; the owner's rule is an admin OFF switch. The one-shot
+    // below turns it on for the groups that exist today (never for a public
+    // group — that gate is absolute); an admin's later "off" is kept because
+    // the backfill runs exactly once (schema_backfills).
+    await run(client, `ALTER TABLE groups ALTER COLUMN prayer_requests_enabled SET DEFAULT true`);
+    await runOnce(client, "groups_prayer_requests_on_by_default_2026_09_05", `
+      UPDATE groups SET prayer_requests_enabled = true WHERE is_public = false AND prayer_requests_enabled = false
+    `);
 
     // ── Beta Messages (beta-only) ────────────────────────────────────────
     // Unlimited 1:1 messaging between beta users (Letters-style UI, no
@@ -3810,6 +3814,20 @@ export async function migrate() {
       )
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS weekly_subscriptions_slug_idx ON weekly_subscriptions (slug)`);
+
+    // ── app_settings — app-wide switches an admin flips in Admin Tools ──────
+    // One row per key (routes/app-settings.ts names the keys). The first:
+    // "andrewsPublic" — whether Andrew's Version shows for everyone or only
+    // for super admins (owner, 2026-09-05: "build in admin tools where I could
+    // make Andrew's Version un-admin-gated … instead of having to do it here").
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
 
     // ── listening_entries (Audio Divina log — account-wide) ─────────────────
     // Append log of "sacred listening" sittings (what + how), one row per log.

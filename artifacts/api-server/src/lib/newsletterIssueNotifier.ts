@@ -4,6 +4,7 @@ import { taizeMeditations } from "../routes/taize";
 import { weeklyPosts } from "../routes/andrews";
 import { sendPushToUsers } from "./pushSender";
 import { isSuperAdminUser } from "./superAdmin";
+import { readAppSettings } from "../routes/app-settings";
 import { listWeeklySources, weeklySubscriberIds } from "../routes/weeklies";
 import { feedPosts } from "./weeklyFeed";
 import { getCurrentTimeInTz } from "./tz";
@@ -73,6 +74,9 @@ async function followerIds(source: Source): Promise<number[]> {
   `);
   const ids = rows.rows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
   if (source !== "andrews") return ids;
+  // The same switch the client's gates read (Admin Tools → Andrew's Version
+  // public): while it is on, everyone with the card gets the push.
+  if ((await readAppSettings()).andrewsPublic) return ids;
   const keep: number[] = [];
   for (const id of ids) if (await isSuperAdminUser(id)) keep.push(id);
   return keep;

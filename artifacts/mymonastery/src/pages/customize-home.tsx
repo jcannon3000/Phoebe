@@ -10,6 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { saveHomeLayout } from "@/lib/homeLayoutCache";
 import { getSideLevel, setSideLevel, type OfficeLevel, setSideContemplationKind } from "@/lib/officePrefs";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
+import { useAndrewsVisible } from "@/lib/appSettings";
 import { useEntitlements } from "@/hooks/useEntitlements";
 
 // Customize home screen — two pages:
@@ -557,6 +558,8 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
 // ── Add-a-card page ───────────────────────────────────────────────────────────
 
 function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
+  // The Admin Tools switch, read through the one hook every gate shares.
+  const andrewsVisible = useAndrewsVisible();
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const MODULE_META = useModuleMeta();
@@ -591,7 +594,7 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
       // card; the customizer gates its row). Without this it sat in a normal
       // reader's add-list — they could switch it on, and nothing would ever
       // appear, because andrewsActive is false for them.
-      && (k !== "andrews" || !!user?.isSuperAdmin)
+      && (k !== "andrews" || andrewsVisible)
       && (hidden.has(k) || !order.includes(k)),
   );
 

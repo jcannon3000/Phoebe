@@ -63,6 +63,7 @@ import routineInterviewRouter from "./routine-interview";
 import routinePresetsRouter from "./routine-presets";
 import andrewsRouter from "./andrews";
 import weekliesRouter from "./weeklies";
+import appSettingsRouter from "./app-settings";
 import routineAuditRouter from "./routine-audit";
 import routineSnapshotsRouter from "./routine-snapshots";
 
@@ -199,8 +200,10 @@ router.use("/rule-of-life", ruleOfLifeRouter);
 router.use(prescribedRoutinesRouter);
 // The editable starter rhythms + the default one (super-admin writes, public reads).
 router.use(routinePresetsRouter);
-// "Andrew's Version" — the weekly inbox practice (admin-only on the client).
+// "Andrew's Version" — the weekly inbox practice; who sees it is the
+// "andrewsPublic" switch in app-settings (Admin Tools).
 router.use(andrewsRouter);
+router.use(appSettingsRouter);
 router.use(weekliesRouter);
 router.use(routineInterviewRouter);
 router.use(routineAuditRouter);

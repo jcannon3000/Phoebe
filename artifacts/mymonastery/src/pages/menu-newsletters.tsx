@@ -17,8 +17,8 @@ import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { apiRequest } from "@/lib/queryClient";
 import { markInboxRead, type InboxItem, type InboxSource } from "@/lib/taizeInbox";
 import { usePreviousIssues, usePreviousIssuesFor } from "@/hooks/usePreviousIssues";
-import { getReadProgress, READ_PROGRESS_EVENT } from "@/lib/readProgress";
 import { useWeeklies, useWeeklyLatest, useSetWeeklySubscription, weeklySourceId } from "@/lib/weeklies";
+import { useAndrewsVisible } from "@/lib/appSettings";
 import {
   reflectionSourceUrl,
   markCacRead, markFddRead, markSsjeRead, markVtsRead,
@@ -68,8 +68,6 @@ type Entry = {
   about?: string;
   /** A pasted-in weekly follows through the subscription API, not the layout. */
   subscribe?: (on: boolean) => void;
-  /** The piece the card opens — for the partial-read bar (lib/readProgress). */
-  readUrl?: string;
   cadence: "daily" | "weekly";
   followed: boolean;
   done: boolean;
@@ -122,14 +120,6 @@ export default function MenuNewslettersPage() {
   // it returns the same one, so the switch showed the previous state until
   // the next tap. Bumping here re-reads the (dirty) cache at once.
   const [, bump] = useState(0);
-  // Partly-read pieces: the bar and "Continue" (lib/readProgress); re-render
-  // when the reader reports.
-  useEffect(() => {
-    const onProgress = () => bump((n) => n + 1);
-    window.addEventListener(READ_PROGRESS_EVENT, onProgress);
-    return () => window.removeEventListener(READ_PROGRESS_EVENT, onProgress);
-  }, []);
-  const readProgressFor = (url?: string) => (url ? getReadProgress(url) : null);
   const rs = useRhythmState();
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
@@ -143,7 +133,8 @@ export default function MenuNewslettersPage() {
     enabled,
   });
   const taizeQ = useQuery<InboxItem | null>(latestOpts("/api/taize/latest", group === "weekly"));
-  const andrewsQ = useQuery<InboxItem | null>(latestOpts("/api/andrews/latest", group === "weekly" && !!user?.isSuperAdmin));
+  const andrewsVisible = useAndrewsVisible();
+  const andrewsQ = useQuery<InboxItem | null>(latestOpts("/api/andrews/latest", group === "weekly" && andrewsVisible));
   const taizeLatest = rs.taizeLatest ?? taizeQ.data ?? null;
   const andrewsLatest = rs.andrewsLatest ?? andrewsQ.data ?? null;
 
@@ -155,7 +146,7 @@ export default function MenuNewslettersPage() {
   // Andrew's, which opened as a plain page. Both weeklies now open as
   // articles.
   const taizePrevious = usePreviousIssues("taize", group === "weekly");
-  const andrewsPrevious = usePreviousIssues("andrews", group === "weekly" && !!user?.isSuperAdmin);
+  const andrewsPrevious = usePreviousIssues("andrews", group === "weekly" && andrewsVisible);
   // The pasted-in Substack weeklies (lib/weeklies.ts): the list carries
   // `subscribed`, the hook carries each card's inbox state.
   const weeklySources = useWeeklies(group === "weekly");
@@ -200,18 +191,17 @@ export default function MenuNewslettersPage() {
           if (d.source === "vts") { MARK_READ[d.source](); setLocation("/vts-reading"); return; }
           openExternalThenMarkRead(reflectionSourceUrl(d.source), () => MARK_READ[d.source](), { reader: true });
         },
-        readUrl: d.source === "vts" ? undefined : reflectionSourceUrl(d.source),
       };
     }),
     {
       key: "taize", emoji: "🕯️", title: "Taizé meditation", publisher: "Taizé", cadence: "weekly",
-      followed: on("taize"), done: rs.taizeDone, latestTitle: taizeLatest?.title, readUrl: taizeLatest?.url,
+      followed: on("taize"), done: rs.taizeDone, latestTitle: taizeLatest?.title,
       open: openWeekly("taize", taizeLatest, "https://www.taize.fr/en/tag/meditations", true),
     },
-    ...(user?.isSuperAdmin ? [{
+    ...(andrewsVisible ? [{
       key: "andrews", emoji: "📰", title: "Andrew's Version", publisher: "Yale Divinity School", cadence: "weekly" as const,
       about: "A lectionary commentary from Yale Divinity School",
-      followed: on("andrews"), done: rs.andrewsDone, latestTitle: andrewsLatest?.title, readUrl: andrewsLatest?.url,
+      followed: on("andrews"), done: rs.andrewsDone, latestTitle: andrewsLatest?.title,
       open: openWeekly("andrews", andrewsLatest, andrewsLatest?.url ?? "https://abmcg.substack.com/", true),
     } satisfies Entry] : []),
     ...weeklySources.map((w): Entry => {
@@ -222,7 +212,7 @@ export default function MenuNewslettersPage() {
       return {
         key, emoji: w.emoji || "📰", title: w.title, publisher: w.subtitle || w.title, cadence: "weekly",
         about: w.description || w.subtitle || undefined,
-        followed: w.subscribed, done: !!state?.done, latestTitle: latest?.title, readUrl: latest?.url,
+        followed: w.subscribed, done: !!state?.done, latestTitle: latest?.title,
         // Not a layout key: following is a subscription row on the server.
         subscribe: (on: boolean) => { void setWeeklySubscription(w.slug, on); },
         open: () => {
@@ -266,8 +256,7 @@ export default function MenuNewslettersPage() {
       emoji={e.emoji}
       title={e.title}
       blurb={blurbFor(e)}
-      cta={readProgressFor(e.readUrl) ? t("rhythm.continue", { defaultValue: "Continue" }) : t("rhythm.read", { defaultValue: "Read" })}
-      progress={readProgressFor(e.readUrl) ? { current: Math.round((readProgressFor(e.readUrl) ?? 0) * 100), goal: 100 } : undefined}
+      cta={t("rhythm.read", { defaultValue: "Read" })}
       done={e.done}
       doneCta={t("rhythm.read", { defaultValue: "Read" })}
       rgb={rhythmGradientRgb(i, n)}

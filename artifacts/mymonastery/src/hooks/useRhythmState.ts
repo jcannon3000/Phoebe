@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useAndrewsVisible } from "@/lib/appSettings";
 import {
   hasReadCacToday, hasReadFddToday, hasReadSsjeToday, hasReadVtsToday, isVtsPublishingDay,
   CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT, VTS_READ_EVENT,
@@ -399,6 +400,7 @@ export function useRhythmState(): RhythmState {
   const day = localDay();
   const tzName = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
   const { user, isLoading: authLoading } = useAuth();
+  const andrewsVisible = useAndrewsVisible();
   // Feed-gated reflections (VTS) — see the selectedReflections filter below.
   const entitlements = useEntitlements();
   // PUBLIC no-login version: a guest (flag on, auth settled, signed out OR the
@@ -814,7 +816,9 @@ export function useRhythmState(): RhythmState {
   // …and the weekly one, gated on the layout AND on being an admin. Both
   // halves matter: the gate is what makes it admin-only, and the layout key is
   // what lets an admin turn it off like any other card.
-  const andrewsActive = !!user?.isSuperAdmin && homeCardActive(hl, "andrews");
+  // Who may see it is the Admin Tools switch (lib/appSettings) — one
+  // computation shared with every other gate, so none of them can disagree.
+  const andrewsActive = andrewsVisible && homeCardActive(hl, "andrews");
   // Compline — the night office, offered as a contemplative add-on card.
   // complineActive means "the user has this in their rhythm" (mirrors every
   // other *Active flag — never time-gated, so the card is reliably present

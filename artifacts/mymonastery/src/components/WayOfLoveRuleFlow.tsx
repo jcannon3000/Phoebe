@@ -92,6 +92,7 @@ import {
 } from "@/lib/officePrefs";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { useAndrewsVisible } from "@/lib/appSettings";
 import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
 import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
 
@@ -835,6 +836,7 @@ export default function WayOfLoveRuleFlow({
   // so a step list computed from it would flicker, and an initial `step`
   // computed from it would skip the slide entirely for the admin it's for.
   const { rawIsAdmin: isSuperAdmin } = useBetaStatus();
+  const andrewsVisible = useAndrewsVisible();
   // The pasted-in Substack weeklies (lib/weeklies.ts). Not layout keys, so
   // they aren't in onKeys/offKeys: a tap writes the subscription at once,
   // the way the Relational step writes, and the Newsletters page's Manage
@@ -6120,7 +6122,7 @@ export default function WayOfLoveRuleFlow({
               Taizé above it, same reason it isn't a NEWSLETTERS entry, and
               the same practice key either way. isSuperAdmin gates the row;
               useRhythmState gates the card, so neither can show it alone. */}
-          {isSuperAdmin && choiceRow(
+          {andrewsVisible && choiceRow(
             contemplative.andrews,
             `📰 ${t("wol_rule.learn_andrews", { defaultValue: "Andrew's Version" })}`,
             t("wol_rule.learn_andrews_sub", { defaultValue: "A lectionary commentary from Yale Divinity School — it waits until you read it." }),

@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { ChevronRight } from "lucide-react";
 import { DEBUG_STEPS_KEY } from "@/components/WayOfLoveRuleFlow";
 import { useState } from "react";
+import { useAppSettings, useSetAppSetting } from "@/lib/appSettings";
 
 
 function LinkRow({
@@ -51,6 +52,8 @@ export default function AdminToolsPage() {
     try { return localStorage.getItem(DEBUG_STEPS_KEY) === "1"; } catch { return false; }
   });
   const [communityAdminView, toggleCommunityAdminView] = useCommunityAdminToggle();
+  const appSettings = useAppSettings();
+  const setAppSetting = useSetAppSetting();
 
   const { data: groupsData } = useQuery<{
     groups: Array<{ id: number; name: string; slug: string; myRole: string }>;
@@ -190,6 +193,22 @@ export default function AdminToolsPage() {
                     } catch { /* private mode */ }
                   }}
                 />
+                {/* ANDREW'S VERSION, PUBLIC OR ADMINS-ONLY (owner, 2026-09-05:
+                    "build in admin tools where I could make Andrew's Version
+                    un-admin-gated … instead of having to do it here"). A
+                    server switch every gate reads — the home card, the
+                    Reflections page, This Sunday's commentary, the
+                    customizer's row, the add-list and the push. */}
+                {isAdmin && (
+                  <Toggle
+                    label={`Andrew's Version ${appSettings.andrewsPublic ? "public" : "admins only"}`}
+                    description={appSettings.andrewsPublic
+                      ? "Everyone can add it and gets the Fresh Off The Presses push."
+                      : "Only super admins see it anywhere in the app."}
+                    enabled={appSettings.andrewsPublic}
+                    onToggle={() => setAppSetting.mutate({ key: "andrewsPublic", value: !appSettings.andrewsPublic })}
+                  />
+                )}
                 {/* The starter rhythms, and the default a new device seeds
                     (owner: "an admin tool where I could edit the preset
                     routines including the default one"). */}

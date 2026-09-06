@@ -6,7 +6,7 @@ import { Layout } from "@/components/layout";
 import { PracticeCard, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { useBetaStatus } from "@/hooks/useDemo";
+import { useAndrewsVisible } from "@/lib/appSettings";
 import { usePreviousIssues } from "@/hooks/usePreviousIssues";
 import { markAndrewsRead, type InboxItem } from "@/lib/taizeInbox";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -46,7 +46,9 @@ function sundayLabel(iso: string): string {
 export default function ThisSundayPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
-  const { rawIsAdmin: isAdmin } = useBetaStatus();
+  // The commentary card: super admins always, everyone once the Admin Tools
+  // switch is on (lib/appSettings). Kept as `isAdmin` below.
+  const isAdmin = useAndrewsVisible();
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   const sundayQ = useQuery<Sunday | null>({
