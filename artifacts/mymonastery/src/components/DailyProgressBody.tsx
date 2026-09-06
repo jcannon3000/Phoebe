@@ -2462,7 +2462,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
 
       {!online && offlineUnavailable.length > 0 && (
         <div className="mt-8">
-          {sectionHeader(t("daily_progress.offline_heading", { defaultValue: "Not Available Offline" }))}
+          {/* Owner (2026-09-06): "have any practice not available offline in their
+              routine be in a section called Not available" — and only when they
+              actually are offline, which the `!online` gate above is. */}
+          {sectionHeader(t("daily_progress.offline_heading", { defaultValue: "Not available" }))}
           <div className="flex flex-col gap-2" style={{ opacity: 0.6 }}>
             {offlineUnavailable.map((c, i) => (
               <div key={c.key}>{renderCard(c, false, tintFor(i), undefined)}</div>
@@ -2474,7 +2477,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
             className="mt-3 w-full rounded-full text-[14px] font-semibold py-3"
             style={{ background: "rgba(200,212,192,0.10)", color: WARM, border: "1px solid rgba(200,212,192,0.18)", fontFamily: FONT }}
           >
-            {t("daily_progress.offline_see_all", { defaultValue: "See all available offline practices" })} →
+            {/* Owner: "under the cards of that section, there should be a wide
+                pill that says practices available offline ... that goes to a
+                special page where it lists all the practices they can do
+                offline" — /offline is that page. */}
+            {t("daily_progress.offline_see_all", { defaultValue: "Practices available offline" })} →
           </button>
         </div>
       )}

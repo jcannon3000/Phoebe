@@ -51,6 +51,7 @@ import { CompanionFaces, companionNamesLine } from "@/components/CompanionFaces"
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { getPracticeSlot, SLOT_RANK, EVENING_OPEN_HOUR, type CustomSlot } from "@/lib/customAnchors";
+import { isOnline } from "@/lib/offline";
 
 // Drive the NATIVE iOS status-bar color (Capacitor StatusBar plugin) so the
 // strip above the WebView matches the slide background. The app sets it once
@@ -2453,7 +2454,18 @@ export default function PrayerModePage() {
   });
 
   useEffect(() => {
-    if (!authLoading && !user) setLocation("/");
+    /**
+     * OFFLINE IS NOT SIGNED OUT (owner, 2026-09-06: "Morning Prayer is not
+     * loading offline at all — it would load before").
+     *
+     * /api/auth/me cannot be answered without a connection, so the query
+     * resolves to null and this gate read that as "no account" and sent the
+     * person home — every saved office, psalm and prayer became unreachable
+     * the moment they lost signal, which is the opposite of what the offline
+     * layer is for. A failed ask is not an answer: while offline, stay put and
+     * let the page paint from what is saved.
+     */
+    if (isOnline() && !authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
 
   // Force a fresh fetch of every data source the slideshow depends on

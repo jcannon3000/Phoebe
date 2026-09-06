@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { isOnline } from "@/lib/offline";
 
 function todayLocalISO(): string {
   return new Date().toLocaleDateString("en-CA");
@@ -1116,7 +1117,18 @@ export default function PrayerListPage() {
   );
 
   useEffect(() => {
-    if (!authLoading && !user) setLocation("/");
+    /**
+     * OFFLINE IS NOT SIGNED OUT (owner, 2026-09-06: "Morning Prayer is not
+     * loading offline at all — it would load before").
+     *
+     * /api/auth/me cannot be answered without a connection, so the query
+     * resolves to null and this gate read that as "no account" and sent the
+     * person home — every saved office, psalm and prayer became unreachable
+     * the moment they lost signal, which is the opposite of what the offline
+     * layer is for. A failed ask is not an answer: while offline, stay put and
+     * let the page paint from what is saved.
+     */
+    if (isOnline() && !authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
 
   // Auto-open the DetailModal when arrived here via a deep link that

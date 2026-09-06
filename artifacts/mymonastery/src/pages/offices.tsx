@@ -16,6 +16,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { MenuHub, type MenuHubGroup, type MenuHubItem, type MenuHubAction } from "@/components/MenuHub";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { openExternal } from "@/lib/openExternal";
+import { isOnline } from "@/lib/offline";
 
 const NCMP_LIVE_URL = "https://www.youtube.com/@WashingtonNationalCathedral/live";
 
@@ -37,10 +38,28 @@ export default function OfficesPage() {
   const { t } = useTranslation();
 
   useEffect(() => {
-    if (!isLoading && !user) setLocation("/");
+    /**
+     * OFFLINE IS NOT SIGNED OUT (owner, 2026-09-06: "Morning Prayer is not
+     * loading offline at all — it would load before").
+     *
+     * /api/auth/me cannot be answered without a connection, so the query
+     * resolves to null and this gate read that as "no account" and sent the
+     * person home — every saved office, psalm and prayer became unreachable
+     * the moment they lost signal, which is the opposite of what the offline
+     * layer is for. A failed ask is not an answer: while offline, stay put and
+     * let the page paint from what is saved.
+     */
+    if (isOnline() && !isLoading && !user) setLocation("/");
   }, [user, isLoading, setLocation]);
 
-  if (isLoading || !user) return null;
+  /**
+   * OFFLINE STILL RENDERS (owner, 2026-09-06: "there is no reason why those
+   * should not at least have the BCP content"). The prayer book is bundled
+   * with the app and the day's deck is saved ahead, so a page that cannot ask
+   * /auth/me must still paint — blanking it made every office, psalm and
+   * collect a white screen the moment the signal dropped.
+   */
+  if (isOnline() && (isLoading || !user)) return null;
 
   // Time-of-day highlight. Anything before 14:00 reads as morning,
   // 14:00–20:00 reads as evening, 20:00+ reads as night (Compline's

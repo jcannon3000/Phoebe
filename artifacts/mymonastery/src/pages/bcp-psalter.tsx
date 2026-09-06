@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
+import { isOnline } from "@/lib/offline";
 
 type Psalm = {
   number: number;
@@ -68,7 +69,18 @@ export default function BcpPsalterPage() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    if (!isLoading && !user) setLocation("/");
+    /**
+     * OFFLINE IS NOT SIGNED OUT (owner, 2026-09-06: "Morning Prayer is not
+     * loading offline at all — it would load before").
+     *
+     * /api/auth/me cannot be answered without a connection, so the query
+     * resolves to null and this gate read that as "no account" and sent the
+     * person home — every saved office, psalm and prayer became unreachable
+     * the moment they lost signal, which is the opposite of what the offline
+     * layer is for. A failed ask is not an answer: while offline, stay put and
+     * let the page paint from what is saved.
+     */
+    if (isOnline() && !isLoading && !user) setLocation("/");
   }, [user, isLoading, setLocation]);
 
   // Eager-fetch the full Psalter once. ~150 psalms; small enough to
@@ -110,7 +122,14 @@ export default function BcpPsalterPage() {
     );
   }, [psalms, query]);
 
-  if (isLoading || !user) return null;
+  /**
+   * OFFLINE STILL RENDERS (owner, 2026-09-06: "there is no reason why those
+   * should not at least have the BCP content"). The prayer book is bundled
+   * with the app and the day's deck is saved ahead, so a page that cannot ask
+   * /auth/me must still paint — blanking it made every office, psalm and
+   * collect a white screen the moment the signal dropped.
+   */
+  if (isOnline() && (isLoading || !user)) return null;
 
   return (
     <Layout>
