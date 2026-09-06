@@ -4,8 +4,13 @@
     {
       "name": "mymonastery",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "artifacts/mymonastery"],
-      "port": 5173
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "artifacts/mymonastery"
+      ],
+      "port": 23896
     }
   ]
 }

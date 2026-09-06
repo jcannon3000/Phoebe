@@ -665,7 +665,9 @@ export const en = {
     bcp_sub: "Daily Offices, Prayers, Psalter, Collects",
     practices_sub: "Contemplation, Gratitude, Journal, Examen",
     reflections_sub: "Forward Day by Day, CAC, SSJE",
-    newsletters: "Newsletters",
+    // "Reflections" again (owner, 2026-09-05) — this entry wins over the
+    // defaultValue in the code, which is why the rename there did not show.
+    newsletters: "Reflections",
     newsletters_sub: "Daily words and publications",
     audio_sub: "Offices read aloud + podcasts",
     communities_sub: "Your communities",
