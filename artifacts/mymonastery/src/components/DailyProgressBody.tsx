@@ -1813,11 +1813,30 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // where the owner's report lives (Contemplation and Dean's Commentary are
   // both morning-slotted). A card with no record keeps its slotted place,
   // after the ones that have one.
+  /**
+   * NEWSLETTERS ARE ALWAYS SECOND (owner, 2026-09-06: "make newsletters show
+   * up second after the morning practice").
+   *
+   * Their base position already was second — the reflection cards are built
+   * straight after the morning anchor — but yesterday's real order below could
+   * lift any other morning-slotted card above them (Visio sat second all
+   * morning because it ranked and the newsletter didn't). Pinning is deliberate
+   * and narrow: the morning anchor first, then every daily or weekly
+   * publication, then everything else in yesterday's order as before. The
+   * owner's earlier "Contemplation and Dean's Commentary show up 2nd and 4th
+   * the next day" still governs the cards this doesn't name.
+   */
+  const pinRank = (key: string): 0 | 1 | 2 =>
+    key === "morning" ? 0
+      : (key.startsWith("reflect-") || key.startsWith("w:") || key === "taize" || key === "andrews") ? 1
+      : 2;
   const sortedCards = rawCards
     .map((c, idx) => ({ c, idx }))
     .sort((a, b) => {
       const ga = cardGroup(a.c.slot), gb = cardGroup(b.c.slot);
       if (ga !== gb) return ga - gb;
+      const pa = pinRank(a.c.key), pb = pinRank(b.c.key);
+      if (pa !== pb) return pa - pb;
       const ra = yesterdayOrderRank.has(a.c.key) ? yesterdayOrderRank.get(a.c.key)! : Infinity;
       const rb = yesterdayOrderRank.has(b.c.key) ? yesterdayOrderRank.get(b.c.key)! : Infinity;
       if (ra !== rb) return ra - rb;
