@@ -3,7 +3,6 @@ import { useLocation, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
-import { MenuHub } from "@/components/MenuHub";
 import { ToggleRow } from "@/components/ToggleRow";
 import { useQueryClient } from "@tanstack/react-query";
 import { addHomeCard, applyCachedHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, isHomeCardOn, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
@@ -35,8 +34,9 @@ import type { TrackedReflection } from "@/lib/cacReadState";
  * have two options" — then "break it down into two sections … subscriptions
  * and all, just like Next and Done … show our cards like they're on the home
  * screen, and … top right, manage subscriptions" — then "I wanted the split
- * between daily and weekly first." So: /menu/newsletters is the hub with two
- * rows (MenuHub, the same page shape as Practices); /menu/newsletters/daily
+ * between daily and weekly first" — REVERSED 2026-09-06 ("let's just combine
+ * reflections into one page again"). /menu/newsletters is the whole list;
+ * /menu/newsletters/daily
  * and /weekly are the lists, each with the home's Subscriptions/All sections
  * (owner: "make sure you build all this consistent with other UIs").
  *
@@ -104,15 +104,23 @@ export default function MenuNewslettersPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  // /menu/newsletters/:group and /menu/newsletters/:group/manage — Manage is
-  // PER LIST (owner: "it should only show the ones on that page, either daily
-  // or the weeklies"), so it takes its cadence from the page it was opened
-  // from and returns there.
+  /**
+   * ONE PAGE AGAIN (owner, 2026-09-06: "let's just combine reflections into
+   * one page again, daily and weekly — but still Subscribed and other
+   * sections"). /menu/newsletters lists everything, daily and publications
+   * together, under the same Subscriptions / All headings; each card's own
+   * second line still says which it is.
+   *
+   * The two cadence URLs stay as deep links — the home's daily card points at
+   * /menu/newsletters/daily — and narrow the same list when used. `group` is
+   * the cadence to show, or null for all of them; Manage follows whatever the
+   * page it was opened from is showing (/menu/newsletters/manage for all).
+   */
   const [, params] = useRoute<{ group?: string }>("/menu/newsletters/:group");
   const [, manageParams] = useRoute<{ group?: string }>("/menu/newsletters/:group/manage");
   const rawGroup = manageParams?.group ?? params?.group;
   const group: "daily" | "weekly" | null = rawGroup === "daily" ? "daily" : rawGroup === "weekly" ? "weekly" : null;
-  const managing = !!manageParams && group !== null;
+  const managing = !!manageParams || rawGroup === "manage";
   const qc = useQueryClient();
   // Re-render after a layout write. saveHomeLayout caches the new layout
   // synchronously, but the page only re-rendered when the /api/auth/me refetch
@@ -132,9 +140,9 @@ export default function MenuNewslettersPage() {
     staleTime: 30 * 60_000,
     enabled,
   });
-  const taizeQ = useQuery<InboxItem | null>(latestOpts("/api/taize/latest", group === "weekly"));
+  const taizeQ = useQuery<InboxItem | null>(latestOpts("/api/taize/latest", group !== "daily"));
   const andrewsVisible = useAndrewsVisible();
-  const andrewsQ = useQuery<InboxItem | null>(latestOpts("/api/andrews/latest", group === "weekly" && andrewsVisible));
+  const andrewsQ = useQuery<InboxItem | null>(latestOpts("/api/andrews/latest", group !== "daily" && andrewsVisible));
   const taizeLatest = rs.taizeLatest ?? taizeQ.data ?? null;
   const andrewsLatest = rs.andrewsLatest ?? andrewsQ.data ?? null;
 
@@ -145,18 +153,18 @@ export default function MenuNewslettersPage() {
   // top right (owner) — where the office's Options menu used to appear on
   // Andrew's, which opened as a plain page. Both weeklies now open as
   // articles.
-  const taizePrevious = usePreviousIssues("taize", group === "weekly");
-  const andrewsPrevious = usePreviousIssues("andrews", group === "weekly" && andrewsVisible);
+  const taizePrevious = usePreviousIssues("taize", group !== "daily");
+  const andrewsPrevious = usePreviousIssues("andrews", group !== "daily" && andrewsVisible);
   // The pasted-in Substack weeklies (lib/weeklies.ts): the list carries
   // `subscribed`, the hook carries each card's inbox state.
-  const weeklySources = useWeeklies(group === "weekly");
+  const weeklySources = useWeeklies(group !== "daily");
   // The newest post of EVERY publication, followed or not. useRhythmState only
   // carries state for the ones this person follows, so on "All" an unfollowed
   // row had no latest issue: Read opened the site's front page and could never
   // mark anything read (audit 2026-09-04).
-  const weeklyLatestAll = useWeeklyLatest(group === "weekly");
+  const weeklyLatestAll = useWeeklyLatest(group !== "daily");
   const setWeeklySubscription = useSetWeeklySubscription();
-  const weeklyPrevious = usePreviousIssuesFor(weeklySources.map((w) => ({ source: weeklySourceId(w.slug), enabled: group === "weekly" })));
+  const weeklyPrevious = usePreviousIssuesFor(weeklySources.map((w) => ({ source: weeklySourceId(w.slug), enabled: group !== "daily" })));
   const openWeekly = (source: InboxSource, item: InboxItem | null, fallbackUrl: string, reader: boolean) => () => {
     const previous = source === "taize" ? taizePrevious : andrewsPrevious;
     const opts = { ...(reader ? { reader: true } : {}), ...(previous.length ? { previous } : {}) };
@@ -223,7 +231,7 @@ export default function MenuNewslettersPage() {
       };
     }),
   ];
-  const inGroup = entries.filter((e) => e.cadence === group);
+  const inGroup = group ? entries.filter((e) => e.cadence === group) : entries;
   const subscribed = inGroup.filter((e) => e.followed);
   const others = inGroup.filter((e) => !e.followed);
 
@@ -264,7 +272,7 @@ export default function MenuNewslettersPage() {
       pulseOnLoad={false}
     />
   );
-  const manage = () => setLocation(`/menu/newsletters/${group}/manage`);
+  const manage = () => setLocation(group ? `/menu/newsletters/${group}/manage` : "/menu/newsletters/manage");
 
   /**
    * FOLLOW / UNFOLLOW — the same writes the customizer makes, nothing new.
@@ -337,15 +345,15 @@ export default function MenuNewslettersPage() {
         onToggle={() => (e.subscribe ? e.subscribe(!e.followed) : setFollowed(e.key, !e.followed))}
       />
     );
-    const rows = entries.filter((e) => e.cadence === group);
-    const word = groupTitle(group as "daily" | "weekly");
+    const rows = inGroup;
+    const word = group ? groupTitle(group) : t("menu.newsletters", { defaultValue: "Reflections" });
     return (
       <Layout bgPhoto={bgPhoto}>
         <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
           <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", color: WARM, fontFamily: FONT, paddingBottom: 48 }}>
             <button
               type="button"
-              onClick={() => setLocation(`/menu/newsletters/${group}`)}
+              onClick={() => setLocation(group ? `/menu/newsletters/${group}` : "/menu/newsletters")}
               style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6 }}
             >
               ← {word}
@@ -356,7 +364,9 @@ export default function MenuNewslettersPage() {
             <p style={{ fontSize: 14, color: SAGE, margin: "0 0 20px", lineHeight: 1.5 }}>
               {group === "daily"
                 ? t("newsletters.manage_daily_sub", { defaultValue: "Switch a daily newsletter on and it gets a card on your home; off, and it comes off." })
-                : t("newsletters.manage_weekly_sub", { defaultValue: "Switch a publication on and its newest issue waits on your home until you've read it." })}
+                : group === "weekly"
+                  ? t("newsletters.manage_weekly_sub", { defaultValue: "Switch a publication on and its newest issue waits on your home until you've read it." })
+                  : t("newsletters.manage_all_sub", { defaultValue: "Switch one on and it gets a card on your home — a daily reading each morning, a publication whenever its newest issue arrives." })}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{rows.map(row)}</div>
           </div>
@@ -365,45 +375,17 @@ export default function MenuNewslettersPage() {
     );
   }
 
-  if (group === null) {
-    return (
-      <MenuHub
-        title={t("menu.newsletters", { defaultValue: "Reflections" })}
-        emoji="🌅"
-        subtitle={t("menu.newsletters_sub_long", { defaultValue: "Daily words and publications, from across the church." })}
-        backLabel={t("menu.title", { defaultValue: "Menu" })}
-        backHref="/menu"
-        groups={[{
-          items: [
-            {
-              emoji: "☀️", label: t("newsletters.daily_reflections", { defaultValue: "Daily Reflections" }),
-              // One line, not the roll of names (owner: "just have the daily vs
-              // weekly options have one line for the second line description").
-              sub: t("newsletters.daily_sub", { defaultValue: "A short reading for each day" }),
-              onClick: () => setLocation("/menu/newsletters/daily"),
-            },
-            {
-              emoji: "🗞️", label: t("newsletters.publications", { defaultValue: "Publications" }),
-              sub: t("newsletters.publications_sub", { defaultValue: "Letters that wait until you've read them" }),
-              onClick: () => setLocation("/menu/newsletters/weekly"),
-            },
-          ],
-        }]}
-      />
-    );
-  }
-
-  const groupLabel = groupTitle(group as "daily" | "weekly");
+  const groupLabel = group ? groupTitle(group) : t("menu.newsletters", { defaultValue: "Reflections" });
   return (
     <Layout bgPhoto={bgPhoto}>
       <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
         <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", color: WARM, fontFamily: FONT, paddingBottom: 48 }}>
           <button
             type="button"
-            onClick={() => setLocation("/menu/newsletters")}
+            onClick={() => setLocation(group ? "/menu/newsletters" : "/menu")}
             style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6 }}
           >
-            ← {t("menu.newsletters", { defaultValue: "Reflections" })}
+            ← {group ? t("menu.newsletters", { defaultValue: "Reflections" }) : t("menu.title", { defaultValue: "Menu" })}
           </button>
 
           {/* Title row — MenuHub's h1, with the one thing this page adds: the
@@ -411,7 +393,7 @@ export default function MenuNewslettersPage() {
               the top right, manage subscriptions"). */}
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
             <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em" }}>
-              {groupLabel} {group === "daily" ? "☀️" : "🗓️"}
+              {groupLabel} {group === "daily" ? "☀️" : group === "weekly" ? "🗓️" : "🌅"}
             </h1>
             <button
               type="button"
@@ -424,7 +406,9 @@ export default function MenuNewslettersPage() {
           <p style={{ fontSize: 14, color: SAGE, margin: "0 0 20px", lineHeight: 1.5 }}>
             {group === "daily"
               ? t("newsletters.daily_sub", { defaultValue: "A word for today, from across the church." })
-              : t("newsletters.weekly_sub", { defaultValue: "The newest issue waits until you've read it." })}
+              : group === "weekly"
+                ? t("newsletters.weekly_sub", { defaultValue: "The newest issue waits until you've read it." })
+                : t("menu.newsletters_sub_long", { defaultValue: "Daily words and publications, from across the church." })}
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>

@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
-import { MenuHub } from "@/components/MenuHub";
+import { MenuHub, type MenuHubGroup } from "@/components/MenuHub";
+import { OFFLINE_PRACTICES, useOnline } from "@/lib/offline";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { getReadingsTodayUrl } from "@/lib/cacReadState";
@@ -15,14 +16,33 @@ export default function MenuPracticesPage() {
   // "project_public_no_login".
   const { isGuest } = useGuestMode();
   const go = (p: string) => setLocation(p);
-  return (
-    <MenuHub
-      title="Practices"
-      emoji="🕯️"
-      subtitle="Contemplative practices to weave through your day."
-      backLabel="Menu"
-      backHref="/menu"
-      groups={[{
+  /**
+   * OFFLINE, THE LIST SPLITS IN TWO (owner, 2026-09-06: "on the practices page
+   * let's do two sections when it's offline, for available and not available").
+   *
+   * Which is which comes from lib/offline's registry — the same list the home's
+   * "Not available" section and /offline read — so the three surfaces cannot
+   * drift apart. A row whose practice the registry doesn't carry needs the
+   * network: the climate prayers and the icon catalogue are both fetched.
+   * Matching is by the row's own label, which is also the registry's title.
+   */
+  const online = useOnline();
+  const savedTitles = new Set(OFFLINE_PRACTICES.map((p) => p.title));
+  const OFFLINE_LABELS = new Set<string>([
+    ...savedTitles,
+    // The registry names these differently from the row that opens them.
+    "Daily Scripture Reading", // "Scripture Reading" — the same saved decks
+  ]);
+  const splitForOffline = (groups: MenuHubGroup[]): MenuHubGroup[] => {
+    const all = groups.flatMap((g) => g.items);
+    const available = all.filter((i) => OFFLINE_LABELS.has(i.label));
+    const missing = all.filter((i) => !OFFLINE_LABELS.has(i.label));
+    return [
+      ...(available.length ? [{ header: "Available", items: available }] : []),
+      ...(missing.length ? [{ header: "Not available", items: missing }] : []),
+    ];
+  };
+  const hubGroups: MenuHubGroup[] = [{
         header: "Daily Office",
         items: [
           // Daily Offices leads the list — also reachable from the BCP page
@@ -88,7 +108,15 @@ export default function MenuPracticesPage() {
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
           ] : []),
         ],
-      }]}
+      }];
+  return (
+    <MenuHub
+      title="Practices"
+      emoji="🕯️"
+      subtitle="Contemplative practices to weave through your day."
+      backLabel="Menu"
+      backHref="/menu"
+      groups={online ? hubGroups : splitForOffline(hubGroups)}
     />
   );
 }
