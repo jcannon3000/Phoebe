@@ -555,12 +555,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         /* The word, as the title it is. */
         'h2.fl-post-feed-title{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
         'font-size:32px!important;line-height:1.15!important;font-weight:700!important;',
-        /* Down off the masthead, and in the same 20px gutter as the text
+        /* Down off the masthead, and in the same gutter as the text
            (owner: "bring the title down and with left padding"). */
-        'margin:18px 0 16px!important;padding:0 20px!important;color:#F0EDE6!important;}',
+        'margin:18px 0 16px!important;padding:0 12px!important;color:#F0EDE6!important;}',
         'h2.fl-post-feed-title a{color:#F0EDE6!important;text-decoration:none!important;}',
         /* The reflection. */
-        '.fl-post-feed-content{padding:0 20px!important;}',
+        '.fl-post-feed-content{padding:0 12px!important;}',
         '.fl-post-feed-content,.fl-post-feed-content *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
         '.fl-post-feed-content p{font-size:20px!important;line-height:1.72!important;',
         'color:#F0EDE6!important;margin:0 0 1.15em!important;}',
@@ -601,7 +601,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.tw-fixed,body > div.fixed,.subscribe-dialog,.paywall-modal{display:none!important;}',
         'html,body{overflow:auto!important;position:static!important;}',
         /* Our head: title, subtitle, the writer. */
-        '.phoebe-substack-head{display:block!important;padding:18px 20px 6px!important;}',
+        '.phoebe-substack-head{display:block!important;padding:18px 12px 6px!important;}',
         '.phoebe-substack-head h1{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
         'font-size:34px!important;line-height:1.15!important;font-weight:700!important;color:#F0EDE6!important;margin:0 0 10px!important;}',
         '.phoebe-substack-head .phoebe-sub{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
@@ -609,7 +609,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.phoebe-substack-head .phoebe-by{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
         'font-size:16px!important;letter-spacing:0.02em!important;color:#A8C5A0!important;margin:0 0 6px!important;}',
         /* The text, with its own headings. */
-        'article.post .body.markup{padding:0 20px 24px!important;}',
+        'article.post .body.markup{padding:0 12px 24px!important;}',
         'article.post .body.markup,article.post .body.markup *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
         'article.post .body.markup h1,article.post .body.markup h2{font-size:28px!important;line-height:1.2!important;font-weight:700!important;color:#F0EDE6!important;margin:1.4em 0 0.5em!important;}',
         'article.post .body.markup h3{font-size:25px!important;line-height:1.25!important;font-weight:700!important;color:#F0EDE6!important;margin:1.3em 0 0.45em!important;}',
@@ -645,7 +645,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            deep; the isolate clears the surviving spine, this clears the rest. */
         '.blog-item-inner-wrapper *,article.fdd *,article.node-versevoice *{background-color:transparent!important;}',
         '.blog-item-inner-wrapper,article.fdd,article.node-versevoice{background:transparent!important;',
-        'max-width:none!important;width:auto!important;margin:0!important;padding:0 20px!important;}',
+        'max-width:none!important;width:auto!important;margin:0!important;padding:0 12px!important;}',
         /* SOJOURNERS keeps a newsletter signup INSIDE the block worth keeping,
            so the isolate can't reach it — measured: the kept article opens
            with a first-name field, an e-mail field and a fifty-state dropdown
@@ -782,7 +782,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            margins come down with them, or bigger text under the same gaps
            just reads as further apart. SCOPED to Sojourners: the shared
            `p,li` rule further down still sets 18px for everyone else. */
-        'article.node-versevoice{padding-left:20px!important;padding-right:20px!important;}',
+        'article.node-versevoice{padding-left:12px!important;padding-right:12px!important;}',
         /* ALL SPACE GROTESK. Owner: "Also why is that not all space grotesk?"
            — which settles an earlier line of his I read the wrong way round
            ("can it not be all space grotesk?", which I took as "don't make it
@@ -879,7 +879,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            hidden image still holds its wrapper's 34px because the padding is
            on the PARENT, not on the img we hide. That is the "too much space
            between elements", and no amount of margin tuning on p/h3 could
-           have reached it. The horizontal padding stays — the 20px gutter is
+           have reached it. The horizontal padding stays — the gutter is
            laid on the wrapper, not here. */
         '.blog-item-inner-wrapper .sqs-block{padding-top:0!important;',
         'padding-bottom:0!important;}',
@@ -888,7 +888,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.blog-item-inner-wrapper .sqs-spacer,',
         '.blog-item-inner-wrapper .sqs-block-horizontalrule{display:none!important;}',
       ]).concat([
-        '.phoebe-reader-note{max-width:none;margin:0!important;padding:10px 20px 40px!important;',
+        '.phoebe-reader-note{max-width:none;margin:0!important;padding:10px 12px 40px!important;',
         'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.45)!important;}',
         '.phoebe-reader-note a{color:rgba(168,197,160,0.75)!important;text-decoration:underline;}',
         /* The site's name at the very top (owner: "keep the oremus title at
@@ -897,7 +897,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            left — the shape the owner asked for. It sits at the very top with
            only enough room above it to clear the bar, because "there is too
            much padding above the day" was the complaint that preceded it. */
-        '.phoebe-reader-masthead{padding:2px 20px 0!important;margin:0!important;',
+        '.phoebe-reader-masthead{padding:2px 12px 0!important;margin:0!important;',
         'font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
         'font-size:15px!important;font-weight:700!important;letter-spacing:.02em;',
         'text-align:left!important;color:rgba(168,197,160,0.95)!important;}',
