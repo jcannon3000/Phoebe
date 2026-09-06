@@ -24,19 +24,18 @@ export default function MenuPracticesPage() {
    * "Not available" section and /offline read — so the three surfaces cannot
    * drift apart. A row whose practice the registry doesn't carry needs the
    * network: the climate prayers and the icon catalogue are both fetched.
-   * Matching is by the row's own label, which is also the registry's title.
+   *
+   * Matched on the registry KEY each row carries, never on its title: titles
+   * are copy the owner edits by feel, and a rename would silently empty this
+   * list with nothing failing anywhere.
    */
   const online = useOnline();
-  const savedTitles = new Set(OFFLINE_PRACTICES.map((p) => p.title));
-  const OFFLINE_LABELS = new Set<string>([
-    ...savedTitles,
-    // The registry names these differently from the row that opens them.
-    "Daily Scripture Reading", // "Scripture Reading" — the same saved decks
-  ]);
+  const savedKeys = new Set(OFFLINE_PRACTICES.map((p) => p.key));
   const splitForOffline = (groups: MenuHubGroup[]): MenuHubGroup[] => {
     const all = groups.flatMap((g) => g.items);
-    const available = all.filter((i) => OFFLINE_LABELS.has(i.label));
-    const missing = all.filter((i) => !OFFLINE_LABELS.has(i.label));
+    const saved = (i: { offlineKey?: string }) => !!i.offlineKey && savedKeys.has(i.offlineKey);
+    const available = all.filter(saved);
+    const missing = all.filter((i) => !saved(i));
     return [
       ...(available.length ? [{ header: "Available", items: available }] : []),
       ...(missing.length ? [{ header: "Not available", items: missing }] : []),
@@ -47,7 +46,7 @@ export default function MenuPracticesPage() {
         items: [
           // Daily Offices leads the list — also reachable from the BCP page
           // (menu.tsx → /menu/bcp), but Practices gets its own entry point too.
-          { emoji: "📖", label: "Daily Offices", sub: "Morning Prayer, Evening Prayer, Compline", onClick: () => go("/bcp/daily-office") },
+          { offlineKey: "office", emoji: "📖", label: "Daily Offices", sub: "Morning Prayer, Evening Prayer, Compline", onClick: () => go("/bcp/daily-office") },
           // Quick link straight to Forward Movement's daily-readings page (the
           // day's appointed psalm + lessons) — NOT Forward Day by Day (owner
           // correction: this was wired to FDD_TODAY_URL at first, but Daily
@@ -58,7 +57,7 @@ export default function MenuPracticesPage() {
           // full first, then the three lessons, each opening in the reader.
           // (It was a plain external open of Forward Movement's readings page;
           // that page is still what the lessons themselves open into.)
-          { emoji: "📰", label: "Daily Scripture Reading", sub: "Today's appointed psalm & lessons", onClick: () => go("/bcp/daily-office?mode=scripture") },
+          { offlineKey: "scripture", emoji: "📰", label: "Daily Scripture Reading", sub: "Today's appointed psalm & lessons", onClick: () => go("/bcp/daily-office?mode=scripture") },
           // Owner: put Lectio Divina under Scripture Reading — same
           // lectionary source (today's Old Testament / New Testament /
           // Gospel), a different, slower way to sit with one of them.
@@ -66,17 +65,17 @@ export default function MenuPracticesPage() {
       }, {
         items: [
           // Contemplation leads the rest of the list.
-          { emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", onClick: () => go("/contemplation") },
-          { emoji: "📜", label: "Lectio Divina", sub: "Meditate on today's readings", onClick: () => go("/lectio") },
+          { offlineKey: "contemplation", emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", onClick: () => go("/contemplation") },
+          { offlineKey: "lectio", emoji: "📜", label: "Lectio Divina", sub: "Meditate on today's readings", onClick: () => go("/lectio") },
           // Novenas hidden for all users per owner request (2026-08-07) — see
           // useRhythmState.ts's NOVENAS_ENABLED comment for why.
-          { emoji: "🌗", label: "The Examen", sub: "Review the day with God", onClick: () => go("/examen") },
+          { offlineKey: "examen", emoji: "🌗", label: "The Examen", sub: "Review the day with God", onClick: () => go("/examen") },
           // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no
           // ?side=), so it logs as a standalone practice rather than closing
           // out a morning/evening anchor.
-          { emoji: "🙏🏽", label: "Simple Guided Prayer", sub: "Praise, ask, confess, give thanks", onClick: () => go("/guided-prayer") },
+          { offlineKey: "guided-prayer", emoji: "🙏🏽", label: "Simple Guided Prayer", sub: "Praise, ask, confess, give thanks", onClick: () => go("/guided-prayer") },
           // Guided courses now live in their own "Learn" menu tab.
-          { emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation", onClick: () => go("/cobreathe") },
+          { offlineKey: "cobreathe", emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation", onClick: () => go("/cobreathe") },
           // Prayers for the Climate sits at the bottom (behind CREATION_PRAYER_ENABLED).
           // The standalone "Creation Prayer" devotion was removed per owner.
           ...(CREATION_PRAYER_ENABLED && !isGuest ? [
@@ -92,7 +91,7 @@ export default function MenuPracticesPage() {
           // sync to do". The gate was also far wider than it read — isGuest is
           // true for any signed-in non-beta account, so this row was hidden
           // from nearly everyone, not just visitors without an account.
-          { emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image, slowly", onClick: () => go("/visio") },
+          { offlineKey: "visio", emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image, slowly", onClick: () => go("/visio") },
           // Praying with Icons — beside Visio because they share the same
           // catalogue, with the choice inverted: there the day picks the
           // image, here the person searches it out by name and sits with it
@@ -105,7 +104,7 @@ export default function MenuPracticesPage() {
           // exist — see lib/spiritualsFlag.ts — but nothing links to it here.
           // Audio Divina sits at the BOTTOM of Practices (owner).
           ...(!isGuest ? [
-            { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
+            { offlineKey: "listening", emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
           ] : []),
         ],
       }];

@@ -49,6 +49,14 @@ export interface MenuHubItem {
    *  time of day yet but is still tappable (the offices page's "later"
    *  offices). Purely visual. */
   muted?: boolean;
+  /**
+   * This row's key in lib/offline's registry, when it opens a practice that
+   * registry knows. Pages that regroup themselves when the connection drops
+   * (Practices) read THIS, never the label: titles are copy the owner edits by
+   * feel, and a rename would quietly empty an "Available" list with nothing
+   * failing anywhere. Keys are treated as a contract between the two files.
+   */
+  offlineKey?: string;
   actions?: MenuHubAction[];
   onClick: () => void;
 }
