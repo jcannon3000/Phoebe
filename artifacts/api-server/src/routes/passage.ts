@@ -23,7 +23,18 @@ const TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_CACHE = 2000;
 const cache = new Map<string, { at: number; value: Passage }>();
 
-export type Passage = { ref: string; paragraphs: string[]; version: string; credit?: string };
+export type Passage = {
+  ref: string;
+  paragraphs: string[];
+  /** Which of those paragraphs oremus set as a section heading ("Salt and
+   *  Light"). The client styles them as the page does — and must not GUESS:
+   *  a heuristic read "he makes peace in his high heaven. 3 Is there any
+   *  number to his armies?" as a heading, because it is short and ends in a
+   *  question mark. The parser knows; it saw the <h2>. */
+  headingIndexes?: number[];
+  version: string;
+  credit?: string;
+};
 
 function decode(s: string): string {
   return s
@@ -33,6 +44,29 @@ function decode(s: string): string {
     .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
 }
+
+/**
+ * A TAG MATCHER THAT UNDERSTANDS QUOTED ATTRIBUTES.
+ *
+ * `<[^>]+>` ends at the first ">", and oremus hides its footnote text inside
+ * an anchor's handlers:
+ *
+ *   <a href="…" onmouseover="return overlib('Heb<span class=thinspace> </span>
+ *   <em>him</em>');" onmouseout="return nd();"><sup class="fnote">*</sup></a>
+ *
+ * That ">" ended the match early, so the rest of the tag survived as prose —
+ * the owner read it in Job 25 saved to his phone: "2 'Dominion and fear are
+ * with God; / him');" onmouseout="return nd();" / he makes peace in his high
+ * heaven." This walks quoted values, so a ">" inside "…" or '…' cannot end a
+ * tag. Every strip below uses it.
+ */
+const ATTRS = `(?:\\s+[^\\s"'=<>\`]+(?:\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s"'=<>\`]+))?)*`;
+const TAG = new RegExp(`<\\/?[A-Za-z][A-Za-z0-9-]*${ATTRS}\\s*\\/?>`, "g");
+const FOOTNOTE_ANCHOR = new RegExp(`<a${ATTRS}\\s*>\\s*<sup class="fnote">[^<]*<\\/sup>\\s*<\\/a>`, "gi");
+const BLOCK_TAG = new RegExp(`<\\/?(?:p|div|blockquote)${ATTRS}\\s*\\/?>`, "gi");
+/** Opening heading tags are marked, so the client can set them as the page does. */
+const HEADING_OPEN = new RegExp(`<h[1-6]${ATTRS}\\s*>`, "gi");
+const HEADING_CLOSE = /<\/h[1-6]\s*>/gi;
 
 /**
  * oremus's `.bibletext` → the reading, paragraph by paragraph.
@@ -56,18 +90,27 @@ export function parseOremus(html: string): { paragraphs: string[]; version: stri
   if (open < 0 || end < 0) return null;
   let body = html.slice(open + 1, end);
   body = body.replace(/<!--[\s\S]*?-->/g, "");
-  body = body.replace(/<a\b[^>]*>\s*<sup class="fnote">[^<]*<\/sup>\s*<\/a>/gi, "");
+  body = body.replace(FOOTNOTE_ANCHOR, "");
   body = body.replace(/<sup class="fnote">[^<]*<\/sup>/gi, "");
   // A marker, not a newline: oremus's own source carries line breaks BETWEEN
   // verses, so splitting on "\n" broke a paragraph into one line per verse.
   const BREAK = "\u0000";
-  body = body.replace(/<\/?(?:p|h[1-6]|div|blockquote)\b[^>]*>/gi, BREAK);
+  const HEAD = "\u0001";
+  body = body.replace(HEADING_OPEN, `${BREAK}${HEAD}`);
+  body = body.replace(HEADING_CLOSE, BREAK);
+  body = body.replace(BLOCK_TAG, BREAK);
   body = body.replace(/<br\s*\/?>/gi, BREAK);
-  const paragraphs = body
+  const marked = body
     .split(BREAK)
-    .map((line) => decode(line.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim())
-    .filter((line) => line.length > 0);
-  if (paragraphs.length === 0) return null;
+    .map((line) => {
+      const isHeading = line.startsWith(HEAD);
+      const text = decode(line.replace(new RegExp(HEAD, "g"), "").replace(TAG, "")).replace(/\s+/g, " ").trim();
+      return { isHeading, text };
+    })
+    .filter((l) => l.text.length > 0);
+  if (marked.length === 0) return null;
+  const paragraphs = marked.map((l) => l.text);
+  const headingIndexes = marked.map((l, i) => (l.isHeading ? i : -1)).filter((i) => i >= 0);
   const cite = html.match(/<cite>([^<]+)<\/cite>/i);
   // The page's own copyright line travels with the text — what is saved for
   // offline should be the reading as oremus publishes it, credit included.
@@ -76,9 +119,14 @@ export function parseOremus(html: string): { paragraphs: string[]; version: stri
   if (copyStart >= 0) {
     const seg = html.slice(copyStart, copyStart + 2000);
     const c = seg.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
-    if (c) credit = decode(c[1]!.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim().slice(0, 400);
+    if (c) credit = decode(c[1]!.replace(TAG, "")).replace(/\s+/g, " ").trim().slice(0, 400);
   }
-  return { paragraphs, version: cite ? decode(cite[1]!.trim()) : "New Revised Standard Version Bible: Anglicized Edition", ...(credit ? { credit } : {}) };
+  return {
+    paragraphs,
+    ...(headingIndexes.length > 0 ? { headingIndexes } : {}),
+    version: cite ? decode(cite[1]!.trim()) : "New Revised Standard Version Bible: Anglicized Edition",
+    ...(credit ? { credit } : {}),
+  };
 }
 
 async function fetchPassage(ref: string): Promise<Passage | null> {

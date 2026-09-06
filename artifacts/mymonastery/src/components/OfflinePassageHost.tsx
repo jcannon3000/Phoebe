@@ -30,7 +30,6 @@ export function OfflinePassageHost(): React.ReactElement | null {
   return (
     <OfflinePassageSheet
       passage={open.passage}
-      title={open.title}
       slideLabel={open.slideLabel}
       onClose={() => setOpen(null)}
       onPrev={() => step("phoebe:office-prev-slide")}

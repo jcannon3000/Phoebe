@@ -28,7 +28,11 @@ import { isOnline } from "@/lib/offline";
  * overwritten — while `getCachedPassage` still returns it in the meantime:
  * slightly mangled text offline beats a blank reader offline.
  */
-const PASSAGE_PARSER_VERSION = 2;
+// v3 (2026-09-06): oremus hides footnote text inside an anchor's handler
+// attributes, and the tag-strip ended at the first ">" inside them — the owner
+// read `him');" onmouseout="return nd();"` in the middle of Job 25 on his
+// phone. Entries saved before v3 carry that, so they are re-fetched.
+const PASSAGE_PARSER_VERSION = 3;
 
 export type CachedPassage = {
   ref: string;
@@ -36,6 +40,9 @@ export type CachedPassage = {
   pv?: number;
   /** Verse-numbered paragraphs, plain text; one string per paragraph. */
   paragraphs: string[];
+  /** Which of them oremus set as section headings — from the parser, which
+   *  saw the <h2>, rather than guessed at this end. */
+  headingIndexes?: number[];
   version: string;
   /** oremus's own copyright line, saved with the reading. */
   credit?: string;
@@ -82,12 +89,13 @@ export async function cachePassage(ref: string): Promise<boolean> {
   try {
     const res = await boundedFetch(`/api/scripture/passage-text?ref=${encodeURIComponent(ref)}`);
     if (!res.ok) return false;
-    const data = (await res.json()) as { ref?: string; paragraphs?: unknown; version?: string; credit?: string } | null;
+    const data = (await res.json()) as { ref?: string; paragraphs?: unknown; headingIndexes?: unknown; version?: string; credit?: string } | null;
     if (!data || !Array.isArray(data.paragraphs) || data.paragraphs.length === 0) return false;
     const entry: CachedPassage = {
       ref: data.ref || ref,
       paragraphs: data.paragraphs.filter((p): p is string => typeof p === "string" && p.length > 0),
       version: data.version || "NRSV",
+      ...(Array.isArray(data.headingIndexes) ? { headingIndexes: data.headingIndexes.filter((n): n is number => typeof n === "number") } : {}),
       pv: PASSAGE_PARSER_VERSION,
       ...(typeof data.credit === "string" && data.credit ? { credit: data.credit } : {}),
       fetchedAt: Date.now(),
