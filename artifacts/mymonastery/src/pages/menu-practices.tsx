@@ -41,8 +41,18 @@ export default function MenuPracticesPage() {
       ...(missing.length ? [{ header: "Not available", items: missing }] : []),
     ];
   };
+  /**
+   * ONE EVENLY SPACED LIST (owner, 2026-09-06: "on the practices page make
+   * sure everything is spaced properly … don't have gaps").
+   *
+   * This was two groups — "Daily Office" over the first two rows, then an
+   * UNLABELLED group holding everything else — and MenuHub puts 22px between
+   * groups against 10px between rows, so the page had a wide, unexplained gap
+   * in the middle under a header that named only part of what followed. The
+   * rows read as one list now. The only headings on this page are the ones
+   * that mean something: Available / Not available, when offline.
+   */
   const hubGroups: MenuHubGroup[] = [{
-        header: "Daily Office",
         items: [
           // Daily Offices leads the list — also reachable from the BCP page
           // (menu.tsx → /menu/bcp), but Practices gets its own entry point too.
@@ -61,9 +71,6 @@ export default function MenuPracticesPage() {
           // Owner: put Lectio Divina under Scripture Reading — same
           // lectionary source (today's Old Testament / New Testament /
           // Gospel), a different, slower way to sit with one of them.
-        ],
-      }, {
-        items: [
           // Contemplation leads the rest of the list.
           { offlineKey: "contemplation", emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", onClick: () => go("/contemplation") },
           { offlineKey: "lectio", emoji: "📜", label: "Lectio Divina", sub: "Meditate on today's readings", onClick: () => go("/lectio") },
