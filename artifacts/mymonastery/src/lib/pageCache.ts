@@ -13,6 +13,7 @@
  * is why the offline reading looks like the online one — it IS the online one.
  */
 import { PAGES, storeGet, storePut, storeKeys, storeDelete, storePrune } from "@/lib/offlineStore";
+import { boundedFetch } from "@/lib/boundedFetch";
 
 export type SavedPage = {
   /** The page's own URL — the base the reader loads it against. */
@@ -56,7 +57,12 @@ export async function cachePage(url: string): Promise<boolean> {
   if (!url) return false;
   if (await hasSavedPage(url)) return true;
   try {
-    const res = await fetch(`/api/reader/page?url=${encodeURIComponent(url)}`);
+    // Bounded like every other fetch in the walk: a page is bigger than a
+    // day-list and the proxy may be fetching four stylesheets behind it, so it
+    // gets 20s rather than the default 8 — but never forever. On device the
+    // CapacitorHttp bridge ignores an abort signal, which is why this is a
+    // raced timer rather than an AbortController.
+    const res = await boundedFetch(`/api/reader/page?url=${encodeURIComponent(url)}`, undefined, 20_000);
     if (!res.ok) return false;
     const data = (await res.json()) as { url?: string; html?: string } | null;
     if (!data || typeof data.html !== "string" || data.html.length === 0) return false;
