@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useOnline } from "@/lib/offline";
 import { useLocation, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -128,6 +129,7 @@ export default function MenuNewslettersPage() {
   // it returns the same one, so the switch showed the previous state until
   // the next tap. Bumping here re-reads the (dirty) cache at once.
   const [, bump] = useState(0);
+  const online = useOnline();
   const rs = useRhythmState();
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
@@ -264,6 +266,14 @@ export default function MenuNewslettersPage() {
       emoji={e.emoji}
       title={e.title}
       blurb={blurbFor(e)}
+      /**
+       * OFFLINE EVERY PUBLICATION IS OUT OF REACH (owner, 2026-09-06: "when
+       * offline the reflections page doesn't indicate that those are not
+       * available"). Each of these opens a web page — nothing here is saved to
+       * the phone — so with no connection they read as the home's own "Later"
+       * cards do: dimmed, labelled, and not tappable.
+       */
+      {...(online ? {} : { later: true, laterLabel: t("newsletters.offline", { defaultValue: "Offline" }) })}
       cta={t("rhythm.read", { defaultValue: "Read" })}
       done={e.done}
       doneCta={t("rhythm.read", { defaultValue: "Read" })}

@@ -1420,10 +1420,30 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     @objc private func noteReaderMovedPage() { readerMovedPage = true }
 
     private let preloadedWebView: WKWebView?
+    /**
+     * A PAGE SAVED FOR OFFLINE, loaded instead of fetching the URL.
+     *
+     * Owner (2026-09-06): "you should not be extracting text, that's a
+     * copyright issue … you should have the page downloaded just like how
+     * Safari mobile has a read later, then overlay the reader over the saved
+     * page, and get the same result."
+     *
+     * So this is Safari's Reading List, not a text extract: the reader loads
+     * the saved page and runs the SAME readerJS over it that it runs over the
+     * live one. Identical chrome, identical typography, because it is the same
+     * code over the same document — and nothing of the publisher's text is
+     * re-typeset into a surface of ours.
+     *
+     * The original URL is the base, so the page's own stylesheet and relative
+     * links resolve as they would have; offline those simply don't load, and
+     * the reader sheet supplies the typography exactly as it does online.
+     */
+    private let savedHTML: String?
 
-    init(url: URL, preloadedWebView: WKWebView? = nil) {
+    init(url: URL, preloadedWebView: WKWebView? = nil, savedHTML: String? = nil) {
         self.url = url
         self.preloadedWebView = preloadedWebView
+        self.savedHTML = savedHTML
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -1840,7 +1860,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // A preloaded web view is already loading/loaded — only kick off the
         // request for a freshly-built one.
         if preloadedWebView == nil {
-            webView.load(URLRequest(url: url))
+            if let html = savedHTML, !html.isEmpty {
+                webView.loadHTMLString(html, baseURL: url)
+            } else {
+                webView.load(URLRequest(url: url))
+            }
         }
         updateNavButtons()
         // Start in the chrome the caller expects, so the first frame is already
@@ -3061,6 +3085,8 @@ final class BibleBrowser: NSObject {
     func present(
         url: URL,
         from presenter: UIViewController?,
+        /// A page saved for offline — see BibleWebViewController.savedHTML.
+        savedHTML: String? = nil,
         onJournal: (() -> Void)? = nil,
         onDismiss: (() -> Void)? = nil,
         onChangeFormat: (() -> Void)? = nil,
@@ -3079,7 +3105,13 @@ final class BibleBrowser: NSObject {
         onOpenReaderView: ((URL) -> Void)? = nil
     ) {
         guard let presenter = presenter else { return }
-        let vc = BibleWebViewController(url: url, preloadedWebView: takeWarm(for: url))
+        // A warm view is already loading the LIVE url — never reuse it for a
+        // saved page, or the network copy wins the race we are trying to avoid.
+        let vc = BibleWebViewController(
+            url: url,
+            preloadedWebView: savedHTML == nil ? takeWarm(for: url) : nil,
+            savedHTML: savedHTML,
+        )
         // officeChrome is its OWN light-chrome page (bible.com / oremus are
         // light), so it gets the article-flavoured starting posture — no dark
         // flash before the page paints — on top of its own button set below.

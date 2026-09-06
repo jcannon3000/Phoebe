@@ -136,6 +136,9 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
         // One top-left button reading "Back" rather than "Done" — see
         // openExternal's OpenOpts. Only meaningful alongside lightChrome.
         let backChrome = call.getBool("backChrome") ?? false
+        /// A page saved for offline (Safari Reading List model) — the reader
+        /// loads this instead of fetching the URL. See BibleWebViewController.
+        let savedHtml = call.getString("savedHtml")
         let officeTitle = call.getString("officeTitle")
         let officeSlideLabel = call.getString("slideLabel")
         let officeSectionLabel = call.getString("sectionLabel")
@@ -214,6 +217,7 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                     // in-app browser, same as the non-Bible path.
                     BibleBrowser.shared.present(
                         url: url,
+                        savedHTML: savedHtml,
                         from: self?.bridge?.viewController,
                         onJournal: onJournal,
                         onDismiss: onDismiss,
@@ -238,6 +242,7 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
             }
             BibleBrowser.shared.present(
                 url: url,
+                savedHTML: savedHtml,
                 from: self?.bridge?.viewController,
                 onJournal: onJournal,
                 onDismiss: onDismiss,

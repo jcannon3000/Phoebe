@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { useOnline } from "@/lib/offline";
 import { MenuHub } from "@/components/MenuHub";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -45,6 +46,7 @@ export default function MenuLearnPage() {
     }
     return [...byShow.values()];
   }, [cacData]);
+  const online = useOnline();
   return (
     <MenuHub
       title="Courses"
@@ -53,22 +55,30 @@ export default function MenuLearnPage() {
       backLabel="Menu"
       backHref="/menu"
       groups={[{
+        /**
+         * OFFLINE THE WHOLE PAGE IS OUT OF REACH (owner, 2026-09-06: "same
+         * thing with courses"). Every course is streamed audio or video and
+         * none of it is saved to the phone, so with no connection the section
+         * says so once at the top rather than letting someone tap into a dead
+         * player.
+         */
+        ...(online ? {} : { header: "Not available offline" }),
         items: [
           // Way of Love first (owner, 2026-09-05), then every CAC show as its
           // own row — "bring them out of the folder of just CAC Courses" —
           // then the web-only Keating courses.
-          { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") },
+          { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", muted: !online, onClick: () => go("/way-of-love-course") },
           ...(isAdmin || cacLibraryGranted
             ? shows.map((show) => ({
                 emoji: "🌵",
                 label: show.showTitle,
                 sub: [show.author, show.seasonCount > 1 ? `${show.seasonCount} seasons` : "1 season"].filter(Boolean).join(" · "),
-                onClick: () => go(`/cac-show/${show.showSlug}`),
+                muted: !online, onClick: () => go(`/cac-show/${show.showSlug}`),
               }))
             : []),
           ...(!isNativeShell() ? [
-            { emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", onClick: () => go("/centering-prayer") },
-            { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") },
+            { emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", muted: !online, onClick: () => go("/centering-prayer") },
+            { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", muted: !online, onClick: () => go("/journey") },
           ] : []),
         ],
       }]}

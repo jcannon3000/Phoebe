@@ -118,7 +118,6 @@ export const OFFLINE_PRACTICES: OfflinePractice[] = [
   { key: "pray-breath", emoji: "🫁", title: "Pray the Breath", sub: "A breath prayer", href: "/pray-breath", how: "bundled" },
   { key: "prayer-list-card", emoji: "🕊️", title: "Prayer List", sub: "The people and things you hold — from the last copy on your phone", href: "/prayer-list", how: "saved" },
   { key: "compline", emoji: "🌙", title: "Compline", sub: "The night office, saved with the others", href: "/bcp/daily-office?mode=compline", how: "saved" },
-  { key: "listening", emoji: "🎵", title: "Audio Divina", sub: "Log what you listened to; the library needs a connection", href: "/listening", how: "bundled" },
   { key: "gratitude", emoji: "🙏🏽", title: "Express gratitude", sub: "Logged here, sent when you're back online", href: "/dashboard", how: "bundled" },
   { key: "walk", emoji: "🚶🏽", title: "Contemplative Walk", sub: "Logged here, sent when you're back online", href: "/dashboard", how: "bundled" },
   { key: "reading", emoji: "📚", title: "Reading", sub: "Logged here, sent when you're back online", href: "/reading-log", how: "bundled" },
@@ -134,6 +133,13 @@ export const OFFLINE_PRACTICES: OfflinePractice[] = [
  * reason: the daily silence card is keyed "silence", the prayer list card
  * "prayer-list-card", and Audio Divina — which is a LOG, not a stream —
  * was simply missing.
+ */
+/**
+ * AUDIO DIVINA IS NOT HERE, deliberately (owner, 2026-09-06: "audio divina
+ * should be in there" — meaning the Not available section). It was listed as
+ * available because its card is a Log and the log now queues; but the practice
+ * is listening to music, and the library is a stream. A card that cannot do
+ * the thing it names does not belong in the available list.
  */
 const EXTRA_OFFLINE_KEYS = ["silence", "prayer-list", "contemplation", "psalms", "guided-prayer", "novena"];
 const OFFLINE_KEYS = new Set([...OFFLINE_PRACTICES.map((p) => p.key), ...EXTRA_OFFLINE_KEYS]);

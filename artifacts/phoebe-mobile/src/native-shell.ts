@@ -1351,7 +1351,7 @@ declare global {
       // got blocked. Calling Browser.open directly from the click
       // handler keeps it within the gesture, so SFSafariViewController
       // is allowed to present.
-      openInAppBrowser?: (url: string, opts?: { lightChrome?: boolean; backChrome?: boolean; officeChrome?: boolean; officeTitle?: string; slideLabel?: string; sectionLabel?: string; previous?: { title: string; url: string }[] }) => Promise<void>;
+      openInAppBrowser?: (url: string, opts?: { savedHtml?: string; lightChrome?: boolean; backChrome?: boolean; officeChrome?: boolean; officeTitle?: string; slideLabel?: string; sectionLabel?: string; previous?: { title: string; url: string }[] }) => Promise<void>;
       // SFSafariViewController with entersReaderIfAvailable — shares Safari's
       // system-wide cookie jar (unlike openInAppBrowser's own WKWebView data
       // store). See lib/openExternal.ts's `reader` option on the web side.
@@ -1506,7 +1506,7 @@ function exposePublicApi() {
     isNative() {
       return Capacitor.isNativePlatform();
     },
-    async openInAppBrowser(url: string, opts?: { lightChrome?: boolean; backChrome?: boolean; officeChrome?: boolean; officeTitle?: string; slideLabel?: string; sectionLabel?: string; previous?: { title: string; url: string }[] }) {
+    async openInAppBrowser(url: string, opts?: { savedHtml?: string; lightChrome?: boolean; backChrome?: boolean; officeChrome?: boolean; officeTitle?: string; slideLabel?: string; sectionLabel?: string; previous?: { title: string; url: string }[] }) {
       if (!url) return;
       // Prefer the native BibleBrowser plugin (custom WKWebView wrapped
       // in a UINavigationController) — its Done button stays pinned at
@@ -1522,6 +1522,13 @@ function exposePublicApi() {
         if (biblePlugin?.open) {
           await biblePlugin.open({
             url,
+            // A page saved for offline — the reader loads THIS instead of
+            // fetching the url, so an offline reading is the same page under
+            // the same reader (owner, 2026-09-06: "have the page downloaded
+            // just like Safari's read later, then overlay the reader over the
+            // saved page"). Absent online, and absent for a page we never
+            // managed to save.
+            ...(opts?.savedHtml ? { savedHtml: opts.savedHtml } : {}),
             lightChrome: !!opts?.lightChrome,
             // Audit: this object is a HAND-COPIED mirror of the option list,
             // and a key missing here is silently dropped on the way to Swift —
