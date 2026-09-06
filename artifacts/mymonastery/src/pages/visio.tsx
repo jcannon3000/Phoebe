@@ -46,7 +46,6 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
 import { chooseArtwork, artworkById, alternatesForDay, readingUrl, canonicalRef, type Chosen } from "@/lib/visioSelect";
 import { isActHidden } from "@/lib/actOverrides";
-import { VisioHowToIntro, visioHowtoSeen, markVisioHowtoSeen } from "@/components/VisioHowToIntro";
 import { getVisioHistory, recordVisioSeen } from "@/lib/visioHistory";
 import { useVisioLessons } from "@/hooks/useVisioToday";
 import { apiRequest } from "@/lib/queryClient";
@@ -683,7 +682,7 @@ export default function VisioPage() {
    * do. The three beats that show the image are the ones worth sitting in; the
    * title, the prompts and the close all move when you do.
    */
-  const HOLD_MS = 12_000;
+  const HOLD_MS = 7_000; // owner (2026-09-05): "make the pause 7 seconds, not twelve"
   /**
    * NOT on the reflection beat. The two hand-off beats sit back to back, and a
    * second twelve-second lock between them would be twenty-four seconds of
@@ -858,16 +857,9 @@ export default function VisioPage() {
    * this deck already had once.
    */
   const [readPassage, setReadPassage] = useState(false);
-  /**
-   * The first-run tutorial (owner: "the first time someone does [Visio] ... a
-   * slide tutorial in a similar UI to the creation prayer tutorial"), and the
-   * pill on this deck's own front slide that reopens it ("and then have that
-   * tutorial available on the front page") — the same pair Co-Breathe has.
-   *
-   * Read ONCE, into state, rather than checked at render: marking it seen must
-   * not re-run the gate mid-practice.
-   */
-  const [showHowto, setShowHowto] = useState<boolean>(() => !visioHowtoSeen());
+  // The first-run tutorial + its "How this works" pill were REMOVED 2026-09-05
+  // (owner: "take out the tutorial from visio"); the opening slide's own
+  // sentence is the whole explanation now.
   /** True only while OUR hand-off is the thing on screen — see the listener below. */
   const handedOff = useRef(false);
   /**
@@ -995,23 +987,6 @@ export default function VisioPage() {
     // hand-off.)
     setStep(TITLE);
   };
-
-  /**
-   * The tutorial sits IN FRONT of the deck, not inside it — the deck's beat
-   * count, its holds and its hand-offs all stay exactly as they are, and
-   * dismissing this returns to a practice that hasn't started yet. Rendered
-   * before the deck rather than over it so the twelve-second hold on the first
-   * looking beat isn't quietly running behind a tutorial nobody has finished
-   * reading.
-   */
-  if (showHowto) {
-    return (
-      <VisioHowToIntro
-        photos={LEAF_PHOTOS}
-        onDone={() => { markVisioHowtoSeen(); setShowHowto(false); }}
-      />
-    );
-  }
 
   return (
     <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -1292,30 +1267,6 @@ export default function VisioPage() {
                 defaultValue: "As you view this work related to this Sunday's scripture readings, consider what touches your heart. You can return to this image once a day throughout the week to let it gradually speak to you.",
               })}
             </p>
-
-            {/**
-              * TUTORIAL — owner: "and then have that tutorial available on the
-              * front page." This slide is the practice's front page, and the
-              * pill is where Co-Breathe puts its own ("Tutorial" on the sync
-              * screen), so someone who wants the explanation back knows where
-              * to look without it being in the way of someone who doesn't.
-              *
-              * Quiet on purpose: a frosted outline, not a filled button. The
-              * one thing this slide should be asking for is Begin.
-              */}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setShowHowto(true); }}
-              className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-              style={{
-                padding: "7px 16px", background: "rgba(9,26,16,0.42)",
-                backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
-                border: "1px solid rgba(168,197,160,0.34)", color: FAINT,
-                fontFamily: FONT, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-              }}
-            >
-              {t("visio.tutorial_pill", { defaultValue: "How this works" })}
-            </button>
 
             {/* NO "MORE OPTIONS". Owner: "we dont want aditional options."
                 The practice is a parish looking at the SAME image for the
