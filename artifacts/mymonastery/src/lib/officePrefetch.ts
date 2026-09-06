@@ -43,7 +43,17 @@ const WINDOW_DAYS = 30;
  * gives every device exactly one more run today; tomorrow's date-check works
  * as it always did.
  */
-const LAST_RUN_KEY = "phoebe:office-prefetch:last-run-day:v2";
+/**
+ * THE DAY-STAMP CARRIES THE SAVING RULES, and moves when they do.
+ *
+ * v3: the page saver started inlining stylesheets (3e42d8d9) and pages saved
+ * before that stopped counting as saved (f83e996e) — so every device holding
+ * yesterday's pages needs a fresh walk, and the day-stamp would otherwise
+ * have refused one until tomorrow. That is the second time a correctness fix
+ * has been invisible for a day because THIS key said the work was done: bump
+ * it whenever what a run SAVES changes, not only when a run's plumbing does.
+ */
+const LAST_RUN_KEY = "phoebe:office-prefetch:last-run-day:v3";
 // Small concurrency, not one big Promise.all — 30 days × up to 3 modes
 // (morning/evening/compline) is up to 90 requests; firing them all at once
 // would be a thundering herd against the office-assembly endpoint for no
