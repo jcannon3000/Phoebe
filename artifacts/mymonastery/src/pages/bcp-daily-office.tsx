@@ -1509,9 +1509,39 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         ]);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: any;
-        const savedFirst = isOnline() ? null : await getOfficeCacheEntry(cacheKey);
+        /**
+         * THE SAVED DECK IS READ FIRST, FULL STOP (owner, 2026-09-06: "Morning
+         * Prayer is now loading but it's a blank page for a while before we get
+         * to the first slide").
+         *
+         * It used to consult the cache first only when isOnline() said we were
+         * offline — and that signal is the WebView's, which reports online in
+         * Airplane Mode often enough to matter. So the office went to the
+         * network, waited out the whole timeout, and only then read the copy
+         * sitting on the device: seconds of veil for a deck we already had.
+         *
+         * Today's entry is keyed by mode, date, confession, parts and track, so
+         * a hit is the same deck the server would build. We render it at once
+         * and, when there is a connection, refresh the stored copy in the
+         * background for tomorrow — without swapping the slides under someone
+         * mid-prayer.
+         */
+        const savedFirst = await getOfficeCacheEntry(cacheKey);
         if (savedFirst) {
           data = savedFirst;
+          if (isOnline()) {
+            void (async () => {
+              try {
+                const fresh = await withTimeout(
+                  fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}${creationSingleParam}${partsParam}${trackParam}`),
+                  OFFICE_FETCH_TIMEOUT_MS,
+                );
+                if (!fresh.ok) return;
+                const body = await fresh.json();
+                if (body?.slides?.length) void putOfficeCacheEntry(cacheKey, body);
+              } catch { /* the saved deck is already on screen */ }
+            })();
+          }
         } else {
           try {
             const res = await withTimeout(
@@ -1819,6 +1849,21 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   };
   const veilInner = (
     <>
+      {/* A LOADER, always (owner, 2026-09-06: "there should at least be a
+          loader"). The resume veil has carried one; this one — the first open
+          of the day — showed a photo and a versicle and nothing to say the
+          office was still coming, which reads as a blank page when the deck
+          takes a moment. */}
+      <div
+        aria-hidden
+        className="animate-spin"
+        style={{
+          position: "absolute", bottom: 64, left: "50%", marginLeft: -11,
+          width: 22, height: 22, borderRadius: "50%",
+          border: "2px solid rgba(var(--ot-sage, 143,175,150),0.25)",
+          borderTopColor: "rgba(var(--ot-sage, 143,175,150),0.85)",
+        }}
+      />
       {/* A calm photo under a darkened wash so the versicle reads clearly — a
           held breath into the office. Follows the backdrop (water for Water). */}
       <img

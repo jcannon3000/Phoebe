@@ -2184,11 +2184,28 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    */
   const sideKindFor = (key: string) => key.endsWith("morning") ? morningContemplationKind : key.endsWith("evening") ? eveningContemplationKind : null;
   const sideLevelFor = (key: string) => key.endsWith("morning") ? getSideLevel("morning") : key.endsWith("evening") ? getSideLevel("evening") : null;
-  const offlineUnavailable = online ? [] : upcomingDisplayAll.filter((c) => !cardAvailableOffline(c.key, sideLevelFor(c.key), sideKindFor(c.key)));
-  const upcomingDisplay = online ? upcomingDisplayAll : upcomingDisplayAll.filter((c) => cardAvailableOffline(c.key, sideLevelFor(c.key), sideKindFor(c.key)));
+  const worksOffline = (c: { key: string }) => cardAvailableOffline(c.key, sideLevelFor(c.key), sideKindFor(c.key));
+  const upcomingDisplay = online ? upcomingDisplayAll : upcomingDisplayAll.filter(worksOffline);
   // Everything kept today stays in the Done section all day — until the whole
   // day's rhythm is complete — so the home always reflects what's been prayed.
-  const completedDisplay = visibleCards.filter((c) => c.done && c.key !== pinnedKey);
+  /**
+   * KEPT TODAY — but offline, a practice that needs a connection leaves Done
+   * for "Not available" too (owner, 2026-09-06: "newsletters, even if they are
+   * in done they should move to not available, because they would not be able
+   * to be loaded").
+   *
+   * Reading this morning's reflection does not put it on the phone; tapping it
+   * again offline opens the same web page and fails. A ✓ that cannot be
+   * re-opened is a promise the app can't keep, so the card sits with the
+   * others it can't reach — and the section shows on a day when everything
+   * has already been kept, which is when he first looked for it and found
+   * nothing.
+   */
+  const completedAll = visibleCards.filter((c) => c.done && c.key !== pinnedKey);
+  const completedDisplay = online ? completedAll : completedAll.filter(worksOffline);
+  const offlineUnavailable = online
+    ? []
+    : [...upcomingDisplayAll, ...completedAll].filter((c) => !worksOffline(c));
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
   const showTomorrowSection = tomorrowDisplay.length > 0;
 
