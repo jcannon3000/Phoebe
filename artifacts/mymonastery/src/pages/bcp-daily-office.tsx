@@ -1614,7 +1614,20 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         if (!cancelled) {
           const msg = err instanceof Error ? err.message : String(err);
           console.error(`Failed to load ${resolvedMode}:`, err);
-          setError(`${officeTitle} couldn't load (${msg}).`);
+          /**
+           * OFFLINE, THE FETCH ERROR IS THE WRONG STORY (owner, 2026-09-06:
+           * "Morning Prayer is not loading offline"; his recording showed
+           * "Morning Prayer couldn't load (Load failed)" in Airplane Mode).
+           *
+           * Reaching here with no connection means the cache had no entry for
+           * this day — the deck already falls back to it — so the honest
+           * sentence is that this office isn't saved on the device, not that a
+           * request failed. The saving runs on Wi-Fi, once a day, in the app;
+           * "Load failed" sends someone hunting for a bug in the office.
+           */
+          setError(isOnline()
+            ? `${officeTitle} couldn't load (${msg}).`
+            : `${officeTitle} isn't saved on this phone yet. Open the app once on Wi-Fi and the coming weeks are kept for you.`);
         }
       } finally {
         if (!cancelled) setLoading(false);
