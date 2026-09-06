@@ -211,32 +211,26 @@ export const RULE_PRESETS: RulePreset[] = [
   // one question. The CAC meditation stays — a reflection is a different axis
   // from the anchors, and the owner's three lines didn't touch it.
   { id: "canterbury-downtown", emoji: "🏙️", sides: { morning: true, evening: true },
-    pray: "psalms",
-    /**
-     * "Creation Prayer for contemplation" is the STANDALONE practice — one 🌍
-     * card, available all day — so it's said with `practices`, the vocabulary
-     * for exactly that (as Contemplative Art says its walk and its artwork).
-     *
-     * It was said with `silence: true, contemplationStyle: "cobreathe",
-     * goalMin: 10` — and with no silenceSide that means a breath ANCHOR on
-     * BOTH sides plus a ten-minute silence goal: the adopted rule grew
-     * "Morning Creation Prayer", "Evening Creation Prayer" AND "Silence ·
-     * 10 min a day", three rows the card never promised (owner, with
-     * screenshots: "those extra practices shouldn't have been there in the
-     * first place"). silence/goalMin/contemplationStyle describe SITS; a
-     * standing practice is `practices`. The card's rows are the contract —
-     * if an encoding produces a row the card doesn't show, the encoding is
-     * wrong, not the card.
-     */
+    // v2 (owner, 2026-09-06): "the Canterbury Downtown routine should be
+    // Simple / Forward Day by Day / Gratitude / Visio / and the Examen." The
+    // Psalter morning and evening, Creation Prayer and the CAC are gone with
+    // it — a rule is what the owner says it is, and re-adopting sweeps the
+    // old shape away as any rule swap does.
+    pray: "guidedPrayer", evening: "examen",
     silence: false, goalMin: 0,
-    practices: { cobreathe: true },
-    practiceSlots: { cobreathe: "anytime" },
-    reflections: ["cac"],
-    title: "Canterbury Downtown", blurb: "The Psalter morning and evening, Creation Prayer as the day's contemplation, and Richard Rohr's meditation between them.",
+    reflections: ["fdd"],
+    // Visio Divina has its own card rather than replacing an office, so it is
+    // said with `practices` — see the note on RulePreset.practices.
+    practices: { visio: true },
+    practiceSlots: { visio: "anytime" },
+    // Adopting ADDS a relational practice and never removes one.
+    relational: ["gratitude"],
+    title: "Canterbury Downtown", blurb: "Simple Guided Prayer to open the day, Forward Day by Day to carry, gratitude expressed, Visio Divina, and the Examen to close it.",
     rows: [
-      { emoji: "📜", label: "Psalms in the morning" },
-      { emoji: "🌍", label: "Creation Prayer for contemplation" },
-      { emoji: "📖", label: "The CAC Daily Meditation" },
-      { emoji: "📜", label: "Psalms in the evening" },
+      { emoji: "🙌🏽", label: "Simple Guided Prayer in the morning" },
+      { emoji: "📖", label: "Forward Day by Day" },
+      { emoji: "🙏🏽", label: "Express gratitude" },
+      { emoji: "🖼️", label: "Visio Divina" },
+      { emoji: "🌗", label: "The Examen in the evening" },
     ] },
 ];
