@@ -490,7 +490,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            one however important the ancestor's is. Caught in testing — the
            background and the tidy both landed while the type stayed Verdana. */
         '.bible,.bibletext,.bibletext *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
-        '.bibletext{font-size:19px!important;line-height:1.72!important;color:#F0EDE6!important;}',
+        /* Reading text is 2pt larger across every reader (owner, 2026-09-05:
+           "increase the font on reader views by 2pts") — body and headings;
+           captions, eyebrows, by-lines and notes keep their size. */
+        '.bibletext{font-size:21px!important;line-height:1.72!important;color:#F0EDE6!important;}',
         /* Belt and braces on the descendants — the real constraint is on
            BODY (see the width:auto there). */
         '.bible p,.bible blockquote,.bibletext p,.bibletext blockquote,.bible h2,.bible div{width:auto!important;max-width:none!important;}',
@@ -551,7 +554,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'background:none!important;content:none!important;display:none!important;}',
         /* The word, as the title it is. */
         'h2.fl-post-feed-title{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
-        'font-size:30px!important;line-height:1.15!important;font-weight:700!important;',
+        'font-size:32px!important;line-height:1.15!important;font-weight:700!important;',
         /* Down off the masthead, and in the same 20px gutter as the text
            (owner: "bring the title down and with left padding"). */
         'margin:18px 0 16px!important;padding:0 20px!important;color:#F0EDE6!important;}',
@@ -559,7 +562,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         /* The reflection. */
         '.fl-post-feed-content{padding:0 20px!important;}',
         '.fl-post-feed-content,.fl-post-feed-content *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
-        '.fl-post-feed-content p{font-size:18px!important;line-height:1.72!important;',
+        '.fl-post-feed-content p{font-size:20px!important;line-height:1.72!important;',
         'color:#F0EDE6!important;margin:0 0 1.15em!important;}',
         /* The brother who wrote it, and the way back to the full post — the
            last paragraph of the block, set quieter and to the right, the way
@@ -600,18 +603,18 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         /* Our head: title, subtitle, the writer. */
         '.phoebe-substack-head{display:block!important;padding:18px 20px 6px!important;}',
         '.phoebe-substack-head h1{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
-        'font-size:32px!important;line-height:1.15!important;font-weight:700!important;color:#F0EDE6!important;margin:0 0 10px!important;}',
+        'font-size:34px!important;line-height:1.15!important;font-weight:700!important;color:#F0EDE6!important;margin:0 0 10px!important;}',
         '.phoebe-substack-head .phoebe-sub{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
-        'font-size:20px!important;line-height:1.45!important;color:rgba(200,212,192,0.82)!important;margin:0 0 10px!important;}',
+        'font-size:22px!important;line-height:1.45!important;color:rgba(200,212,192,0.82)!important;margin:0 0 10px!important;}',
         '.phoebe-substack-head .phoebe-by{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
         'font-size:16px!important;letter-spacing:0.02em!important;color:#A8C5A0!important;margin:0 0 6px!important;}',
         /* The text, with its own headings. */
         'article.post .body.markup{padding:0 20px 24px!important;}',
         'article.post .body.markup,article.post .body.markup *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
-        'article.post .body.markup h1,article.post .body.markup h2{font-size:26px!important;line-height:1.2!important;font-weight:700!important;color:#F0EDE6!important;margin:1.4em 0 0.5em!important;}',
-        'article.post .body.markup h3{font-size:23px!important;line-height:1.25!important;font-weight:700!important;color:#F0EDE6!important;margin:1.3em 0 0.45em!important;}',
-        'article.post .body.markup h4,article.post .body.markup h5,article.post .body.markup h6{font-size:20px!important;font-weight:700!important;color:#F0EDE6!important;margin:1.2em 0 0.4em!important;}',
-        'article.post .body.markup p,article.post .body.markup li{font-size:20px!important;line-height:1.7!important;color:#F0EDE6!important;margin:0 0 1.15em!important;}',
+        'article.post .body.markup h1,article.post .body.markup h2{font-size:28px!important;line-height:1.2!important;font-weight:700!important;color:#F0EDE6!important;margin:1.4em 0 0.5em!important;}',
+        'article.post .body.markup h3{font-size:25px!important;line-height:1.25!important;font-weight:700!important;color:#F0EDE6!important;margin:1.3em 0 0.45em!important;}',
+        'article.post .body.markup h4,article.post .body.markup h5,article.post .body.markup h6{font-size:22px!important;font-weight:700!important;color:#F0EDE6!important;margin:1.2em 0 0.4em!important;}',
+        'article.post .body.markup p,article.post .body.markup li{font-size:22px!important;line-height:1.7!important;color:#F0EDE6!important;margin:0 0 1.15em!important;}',
         'article.post .body.markup blockquote{border-left:3px solid rgba(168,197,160,0.5)!important;margin:0 0 1.15em!important;padding:0 0 0 14px!important;color:rgba(200,212,192,0.85)!important;}',
         'article.post .body.markup hr{border:none!important;border-top:1px solid rgba(200,212,192,0.18)!important;margin:1.4em 0!important;}',
         /* Pictures stay. */
@@ -696,7 +699,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'min-height:0!important;transform:none!important;}',
         'html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;}',
         'article.fdd{padding:0 20px!important;}',
-        'article.fdd p,article.fdd li{font-size:18px!important;line-height:1.72!important;',
+        'article.fdd p,article.fdd li{font-size:20px!important;line-height:1.72!important;',
         'color:#F0EDE6!important;margin:0 0 1.15em!important;}',
         /* The feast is a LINK inside the date heading; underlined and green it
            read as something to tap rather than as the day's title. */
@@ -737,7 +740,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            scaled with the font size — raising the type would have opened the
            gaps by a third at the same time. 30 above and 8 below sets the
            three sections apart and keeps each title with its own text. */
-        'article.node-versevoice h2{font-size:22px!important;letter-spacing:.04em;',
+        'article.node-versevoice h2{font-size:24px!important;letter-spacing:.04em;',
         'text-transform:uppercase;font-weight:700!important;',
         'font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
         'margin:0 0 10px!important;color:rgba(168,197,160,0.95)!important;}',
@@ -805,7 +808,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'article.node-versevoice p,article.node-versevoice li,',
         'article.node-versevoice blockquote{',
         'font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
-        'font-size:20px!important;line-height:1.6!important;}',
+        'font-size:22px!important;line-height:1.6!important;}',
         /* The margin only on the things that stack, so the field item doesn't
            add a second gap under a paragraph it already contains. */
         'article.node-versevoice .field-item p,article.node-versevoice p,',
@@ -847,13 +850,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         /* Nouwen's meditation title — SCOPED, not bare. Bare, it also set
            every h3 on the other four hosts at 27px; the Cathedral escaped
            only because `main.page .typography h3` happened to outrank it. */
-        SCOPE + ' h3{font-size:27px!important;line-height:1.18!important;font-weight:700!important;',
+        SCOPE + ' h3{font-size:29px!important;line-height:1.18!important;font-weight:700!important;',
         'margin:6px 0 16px!important;color:#F0EDE6!important;}',
         /* Body type, likewise scoped to the block being read. Bare `p,li`
            also painted cream on any part of the page isolate() had not
            reached — including, on a day a publisher hasn't posted, an error
            page with a white ground. */
-        SCOPE + ' p,' + SCOPE + ' li{font-size:18px!important;line-height:1.72!important;color:#F0EDE6!important;',
+        SCOPE + ' p,' + SCOPE + ' li{font-size:20px!important;line-height:1.72!important;color:#F0EDE6!important;',
         'margin:0 0 1.15em!important;}',
         /* FDD's scripture sits above the reflection — set apart, the way the
            office sets a lesson's reference. */
