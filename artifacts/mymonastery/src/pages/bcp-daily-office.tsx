@@ -2235,7 +2235,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       // does. Nothing saved → the browser, as before (a blank page beats a
       // dead Next).
       if (!isOnline()) {
-        void openOfflinePassageIfCached(lessonReadUrl, officeTitle).then((shown) => {
+        void openOfflinePassageIfCached(lessonReadUrl, officeTitle, `${slideIdx + 1} of ${slides.length} · ${sectionLabel}`).then((shown) => {
           if (!shown) openOfficeReading(lessonReadUrl, { officeTitle, slideLabel: `${slideIdx + 1} of ${slides.length}`, sectionLabel });
         });
         return;

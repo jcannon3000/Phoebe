@@ -148,7 +148,7 @@ export default function LectioPage() {
     if (!chosen) return;
     // Offline with the passage saved → the sheet, whose Continue steps this
     // deck like the reader's pill would. Otherwise the reader, as before.
-    void openOfflinePassageIfCached(chosen.readUrl, "Lectio Divina").then((shown) => {
+    void openOfflinePassageIfCached(chosen.readUrl, "Lectio Divina", `${n} of ${LAST} · ${sectionLabelFor(n)}`).then((shown) => {
       if (shown) return;
       openPassageLive(n);
     });

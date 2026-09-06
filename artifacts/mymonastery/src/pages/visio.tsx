@@ -983,7 +983,7 @@ export default function VisioPage() {
     if (!passageUrl) return;
     setReadPassage(true);
     handedOff.current = true;
-    void openOfflinePassageIfCached(passageUrl, t("visio.title", { defaultValue: "Visio Divina" })).then((shown) => {
+    void openOfflinePassageIfCached(passageUrl, t("visio.title", { defaultValue: "Visio Divina" }), `${step + 1} of ${TOTAL}`).then((shown) => {
       if (!shown) openReadingLive();
     });
   };

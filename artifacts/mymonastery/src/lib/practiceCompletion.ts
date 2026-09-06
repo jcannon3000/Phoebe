@@ -58,6 +58,8 @@ export function hasPracticeDoneToday(section: OptionalPractice): boolean {
  *  Idempotent: the server's unique (user, section, local_date) index makes a
  *  repeat call a no-op. */
 export function markPracticeDoneToday(section: OptionalPractice): void {
+  // Keeping it again lifts any un-log tombstone from earlier today.
+  clearUnlogged(section);
   const localDate = todayLocalISO();
   const wasAlreadyDone = hasPracticeDoneToday(section);
   try {
@@ -129,9 +131,46 @@ export const PRACTICE_SYNC_FAILED_EVENT = "phoebe:practice-sync-failed";
  *  then best-effort DELETE the server row with the same one-retry +
  *  visible-failure pattern. Idempotent — deleting a row that's already
  *  gone is a no-op server-side. */
+/**
+ * THE UNLOG TOMBSTONE — what makes an undo hold with no connection.
+ *
+ * A card is done when the local flag says so OR the cached server rows do.
+ * Un-logging clears the flag and DELETEs the row; offline that DELETE can't
+ * be sent, and the cached row still said "kept", so the card sat in Done as
+ * though nothing had been tapped (found on the simulator, 2026-09-05). The
+ * tombstone records "this practice was un-logged today on this device", and
+ * every reader of the server rows honours it until the delete lands and the
+ * rows come back without it.
+ */
+const UNLOG_KEY = "phoebe:practice-unlogged";
+function readUnlogged(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(UNLOG_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {};
+  } catch { return {}; }
+}
+function writeUnlogged(map: Record<string, string>): void {
+  try { localStorage.setItem(UNLOG_KEY, JSON.stringify(map)); } catch { /* private mode */ }
+}
+/** Was this practice un-logged today on this device? */
+export function isPracticeUnloggedToday(section: string): boolean {
+  return readUnlogged()[section] === todayLocalISO();
+}
+function setUnloggedToday(section: OptionalPractice): void {
+  const map = readUnlogged();
+  map[section] = todayLocalISO();
+  writeUnlogged(map);
+}
+function clearUnlogged(section: OptionalPractice): void {
+  const map = readUnlogged();
+  if (map[section]) { delete map[section]; writeUnlogged(map); }
+}
+
 export function unmarkPracticeDoneToday(section: OptionalPractice): void {
   try {
     localStorage.removeItem(storageKey(section));
+    setUnloggedToday(section);
     window.dispatchEvent(new Event(PRACTICE_DONE_EVENT));
   } catch {
     /* private mode / quota — non-fatal */
@@ -160,7 +199,10 @@ export function unmarkPracticeDoneToday(section: OptionalPractice): void {
     );
     void qc?.invalidateQueries({ queryKey: ["/api/practice-completion"] });
   } catch { /* non-fatal — the refetch on next focus still reconciles */ }
-  const del = () => apiRequest("DELETE", "/api/practice-completion", { section, localDate });
+  // The tombstone is lifted the moment the server agrees — until then it is
+  // what keeps the card out of Done.
+  const del = () => apiRequest("DELETE", "/api/practice-completion", { section, localDate })
+    .then((r) => { clearUnlogged(section); return r; });
   del().catch(() => {
     setTimeout(() => {
       del().catch((err) => {

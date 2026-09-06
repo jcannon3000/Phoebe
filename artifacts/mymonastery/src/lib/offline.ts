@@ -97,13 +97,27 @@ export const OFFLINE_PRACTICES: OfflinePractice[] = [
   { key: "psalms", emoji: "🎼", title: "The Psalms", sub: "The Psalter, from the prayer book", href: "/psalms", how: "bundled" },
   { key: "contemplation", emoji: "🕯️", title: "Contemplation", sub: "The silent sit and its timer", href: "/contemplation", how: "bundled" },
   { key: "pray-breath", emoji: "🫁", title: "Pray the Breath", sub: "A breath prayer", href: "/pray-breath", how: "bundled" },
-  { key: "prayer-list", emoji: "🕊️", title: "Prayer List", sub: "The people and things you hold — from the last copy on your phone", href: "/prayer-list", how: "saved" },
+  { key: "prayer-list-card", emoji: "🕊️", title: "Prayer List", sub: "The people and things you hold — from the last copy on your phone", href: "/prayer-list", how: "saved" },
+  { key: "compline", emoji: "🌙", title: "Compline", sub: "The night office, saved with the others", href: "/bcp/daily-office?mode=compline", how: "saved" },
+  { key: "listening", emoji: "🎵", title: "Audio Divina", sub: "Log what you listened to; the library needs a connection", href: "/listening", how: "bundled" },
   { key: "gratitude", emoji: "🙏🏽", title: "Express gratitude", sub: "Logged here, sent when you're back online", href: "/dashboard", how: "bundled" },
   { key: "walk", emoji: "🚶🏽", title: "Contemplative Walk", sub: "Logged here, sent when you're back online", href: "/dashboard", how: "bundled" },
   { key: "reading", emoji: "📚", title: "Reading", sub: "Logged here, sent when you're back online", href: "/reading-log", how: "bundled" },
 ];
 
-const OFFLINE_KEYS = new Set(OFFLINE_PRACTICES.map((p) => p.key));
+/**
+ * THE KEYS THE HOME ACTUALLY USES, beside the registry's own.
+ *
+ * The registry above is also the /offline menu, so its keys read as practice
+ * names; the home's card keys are not always the same word, and every key
+ * this set doesn't know falls to "Not Available Offline". A simulator walk
+ * (2026-09-05) found three cards wrongly parked there for exactly that
+ * reason: the daily silence card is keyed "silence", the prayer list card
+ * "prayer-list-card", and Audio Divina — which is a LOG, not a stream —
+ * was simply missing.
+ */
+const EXTRA_OFFLINE_KEYS = ["silence", "prayer-list", "contemplation", "psalms", "guided-prayer", "novena"];
+const OFFLINE_KEYS = new Set([...OFFLINE_PRACTICES.map((p) => p.key), ...EXTRA_OFFLINE_KEYS]);
 
 /**
  * Is a HOME CARD one of the offline practices? Card keys are the rhythm's:
@@ -124,6 +138,7 @@ export function cardAvailableOffline(cardKey: string, sideLevel?: string | null,
     // at a saved picture, or a saved passage.
     return sideKind !== "audio";
   }
+  // A practice of the reader's own is kept with a tap — nothing to fetch.
   if (cardKey.startsWith("custom-") || cardKey.startsWith("anchor-")) return true;
   return false;
 }

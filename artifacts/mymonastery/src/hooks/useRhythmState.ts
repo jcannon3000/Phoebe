@@ -16,7 +16,7 @@ import {
   hasReadGristToday,
   type TrackedReflection,
 } from "@/lib/cacReadState";
-import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
+import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT, isPracticeUnloggedToday } from "@/lib/practiceCompletion";
 import { waitingMeditation, waitingItem, TAIZE_READ_EVENT, type InboxItem, inboxReadToday } from "@/lib/taizeInbox";
 import { useWeeklies, useWeeklyLatest, weeklySourceId } from "@/lib/weeklies";
 
@@ -872,7 +872,11 @@ export function useRhythmState(): RhythmState {
     enabled: anyExtraActive && !guest,
   });
   const serverDone = (section: string) =>
-    !!completions?.completions?.some((c) => c.section === section && c.localDate === day);
+    // …unless this device un-logged it today and the DELETE hasn't landed
+    // yet (offline). Without this the cached row kept the card in Done after
+    // an undo, with nothing to say why.
+    !isPracticeUnloggedToday(section)
+    && !!completions?.completions?.some((c) => c.section === section && c.localDate === day);
 
   // Personal prayer list ("intentions") — the Prayer List routine card
   // reads real counts here (owner: "if someone has at least one prayer in

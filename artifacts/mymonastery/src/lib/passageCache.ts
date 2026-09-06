@@ -75,6 +75,7 @@ export async function cachePassage(ref: string): Promise<boolean> {
 }
 
 export const OFFLINE_PASSAGE_EVENT = "phoebe:open-offline-passage";
+export type OfflinePassageDetail = { passage: CachedPassage; title: string; slideLabel?: string };
 
 /**
  * THE ONE DOOR. A deck about to open a reading calls this first: offline and
@@ -82,11 +83,17 @@ export const OFFLINE_PASSAGE_EVENT = "phoebe:open-offline-passage";
  * true, so the caller does nothing more; otherwise false, and the caller
  * hands off to the browser as it always did.
  */
-export async function openOfflinePassageIfCached(url: string | null | undefined, title: string): Promise<boolean> {
+export async function openOfflinePassageIfCached(
+  url: string | null | undefined,
+  title: string,
+  /** "18 of 38 · Lesson" — the deck's own counter, so the sheet's pill reads
+   *  exactly as the deck's does. */
+  slideLabel?: string,
+): Promise<boolean> {
   if (isOnline()) return false;
   const passage = await getCachedPassageForUrl(url);
   if (!passage) return false;
-  window.dispatchEvent(new CustomEvent(OFFLINE_PASSAGE_EVENT, { detail: { passage, title } }));
+  window.dispatchEvent(new CustomEvent<OfflinePassageDetail>(OFFLINE_PASSAGE_EVENT, { detail: { passage, title, slideLabel } }));
   return true;
 }
 
