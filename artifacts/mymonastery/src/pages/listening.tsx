@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useOnline } from "@/lib/offline";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Trash2 } from "lucide-react";
@@ -129,6 +130,7 @@ export default function ListeningPage() {
   // catalog title and is only ever set by tapping a result or a recent — you
   // can't log free-typed text. This keeps the log to structured Apple Music
   // catalog references (search-only; there's no playback or library link).
+  const online = useOnline();
   const [query, setQuery] = useState("");
   const [what, setWhat] = useState("");
   // Apple Music catalog suggestions for the search field: artists, songs,
@@ -144,7 +146,8 @@ export default function ListeningPage() {
   const [artworkUrl, setArtworkUrl] = useState("");
   useEffect(() => {
     const q = query.trim();
-    if (picked || q.length < 2) { setResults([]); setSearching(false); return; }
+    // No catalogue lookup with no connection — see the note by the field.
+    if (!online || picked || q.length < 2) { setResults([]); setSearching(false); return; }
     let cancelled = false;
     setSearching(true);
     const h = window.setTimeout(async () => {
@@ -811,12 +814,32 @@ export default function ListeningPage() {
                   <h1 className="text-[26px] font-bold leading-tight mb-4" style={{ color: WARM, fontFamily: SPACE_GROTESK, letterSpacing: "-0.02em" }}>
                     What did you listen to?
                   </h1>
+                  {/**
+                    * OFFLINE THE SEARCH CANNOT ANSWER, BUT THE LOG STILL CAN
+                    * (owner, 2026-09-06: "on the logging page, if they are
+                    * offline say we can't search the Apple Music library
+                    * currently, but you can still enter the name of what you
+                    * listened to to log").
+                    *
+                    * The catalogue lookup is a network call, and normally what
+                    * you log has to be a tapped result — free-typed text is
+                    * refused so the log stays structured. With no connection
+                    * that rule would mean no logging at all, for a practice
+                    * whose whole point is that you listened to something. So
+                    * offline the field says what it can and can't do, and what
+                    * you type IS what gets logged.
+                    */}
+                  {!online && (
+                    <p className="text-[13.5px] mb-3" style={{ color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.5 }}>
+                      We can't search the Apple Music library while you're offline — but type what you listened to and you can still log it.
+                    </p>
+                  )}
                   <input
                     value={query}
                     onChange={(e) => { setQuery(e.target.value); setPicked(false); setWhat(e.target.value); setArtworkUrl(""); }}
                     onFocus={() => setSearchFocused(true)}
                     onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
-                    placeholder="Search a song, album, or artist…"
+                    placeholder={online ? "Search a song, album, or artist…" : "What did you listen to?"}
                     className="w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
                     style={glassField}
                   />
