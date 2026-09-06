@@ -13,6 +13,8 @@ import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal, openExternalThenMarkRead, openOfficeReading, preloadExternal, hasNativeBrowser } from "@/lib/openExternal";
+import { openOfflinePassageIfCached } from "@/lib/passageCache";
+import { isOnline } from "@/lib/offline";
 import { FDD_TODAY_URL, markFddRead } from "@/lib/cacReadState";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
@@ -643,7 +645,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // the intercessions_portal slide is dropped and the handoff is dead — and the
   // office offers a contemplative pause in its place (see the pause slide below).
   const prayerRequestsEnabled = usePrayerRequestsEnabled();
-  const noCommunityHandoff = isPilot || isGuest || !prayerRequestsEnabled;
+  // …and OFFLINE: the community intercessions are fetched live, so the
+  // hand-off opened on a blank page (owner, 2026-09-05). With no connection
+  // the office offers the contemplative pause in their place instead.
+  const noCommunityHandoff = isPilot || isGuest || !prayerRequestsEnabled || !isOnline();
   const parishOnly = viewerUser?.accessTier === "parish-only";
   // Offices-only accounts (public /pray sign-ups) have no parish
   // celebration and no /prayer-mode access — they finish back on
@@ -2225,6 +2230,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (lessonReadUrl) {
       // On a deck that ENDS here, remember it — see finalLessonRead.
       if (atEnd) setFinalLessonRead(true);
+      // OFFLINE WITH THE PASSAGE SAVED: the sheet over the deck, whose
+      // Continue posts the same phoebe:office-next-slide the reader's pill
+      // does. Nothing saved → the browser, as before (a blank page beats a
+      // dead Next).
+      if (!isOnline()) {
+        void openOfflinePassageIfCached(lessonReadUrl, officeTitle).then((shown) => {
+          if (!shown) openOfficeReading(lessonReadUrl, { officeTitle, slideLabel: `${slideIdx + 1} of ${slides.length}`, sectionLabel });
+        });
+        return;
+      }
       const opened = openOfficeReading(lessonReadUrl, {
         officeTitle,
         slideLabel: `${slideIdx + 1} of ${slides.length}`,

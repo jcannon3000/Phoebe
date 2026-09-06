@@ -95,6 +95,7 @@ export default function MenuPage() {
        */
       { emoji: "📖", label: t("menu.bcp"), sub: t("menu.bcp_sub"), onClick: () => go("/menu/bcp") },
       { emoji: "🕯️", label: t("menu.practices"), sub: t("menu.practices_sub"), onClick: () => go("/menu/practices") },
+      { emoji: "📴", label: t("menu.offline", { defaultValue: "Available offline" }), sub: t("menu.offline_sub", { defaultValue: "Everything you can keep with no connection" }), onClick: () => go("/offline") },
       { emoji: "🌅", label: t("menu.newsletters", { defaultValue: "Reflections" }), sub: t("menu.newsletters_sub", { defaultValue: "Daily words and publications" }), onClick: () => go("/menu/newsletters") },
       // Prayer List — a private list of who & what you're holding in prayer,
       // prayed through in a quiet slideshow; optionally shareable to a

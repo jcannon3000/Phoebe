@@ -19,7 +19,11 @@
 import { useEffect } from "react";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { getSideLevel, getSideExtra, getSideConfession, getScriptureParts, type OfficeSide } from "@/lib/officePrefs";
-import { putOfficeCacheEntry, pruneOfficeCacheBefore, type OfficeCacheKey } from "@/lib/officeOfflineCache";
+import { putOfficeCacheEntry, pruneOfficeCacheBefore, getOfficeCacheEntry, type OfficeCacheKey } from "@/lib/officeOfflineCache";
+import { cachePassage, passageRefFromUrl, prunePassages } from "@/lib/passageCache";
+import { cacheImage, pruneImages } from "@/lib/imageCache";
+import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
+import { artworkById } from "@/lib/visioSelect";
 import type { LiturgyMode } from "@/pages/bcp-daily-office";
 
 const WINDOW_DAYS = 30;
@@ -109,7 +113,7 @@ function confessionFor(mode: LiturgyMode, side: OfficeSide): "" | "0" | "1" {
   return c === null ? "" : (c ? "1" : "0");
 }
 
-async function fetchAndCacheOne(mode: LiturgyMode, date: string, confession: "" | "0" | "1"): Promise<void> {
+async function fetchAndCacheOne(mode: LiturgyMode, date: string, confession: "" | "0" | "1", track?: "1" | "2"): Promise<void> {
   /**
    * The scripture deck is warmed for the READINGS THE PERSON KEEPS.
    *
@@ -120,13 +124,14 @@ async function fetchAndCacheOne(mode: LiturgyMode, date: string, confession: "" 
    */
   const parts = mode === "scripture" ? getScriptureParts() : null;
   const partsValue = parts && parts.length < 4 ? parts.join(",") : "";
-  const key: OfficeCacheKey = { mode, date, confession, ...(partsValue ? { parts: partsValue } : {}) };
+  const key: OfficeCacheKey = { mode, date, confession, ...(partsValue ? { parts: partsValue } : {}), ...(track ? { track } : {}) };
   try {
     const endpoint = MODE_ENDPOINT[mode];
     const sep = endpoint.includes("?") ? "&" : "?";
     const confParam = confession ? `&confession=${confession}` : "";
     const partsParam = partsValue ? `&parts=${partsValue}` : "";
-    const res = await fetch(`${endpoint}${sep}date=${date}&locale=en${confParam}${partsParam}`);
+    const trackParam = track ? `&track=${track}` : "";
+    const res = await fetch(`${endpoint}${sep}date=${date}&locale=en${confParam}${partsParam}${trackParam}`);
     if (!res.ok) return;
     const data = await res.json();
     if (!data || !Array.isArray(data.slides) || data.slides.length === 0) return;
@@ -197,8 +202,69 @@ export async function runOfficePrefetch(): Promise<void> {
        */
       jobs.push(() => fetchAndCacheOne("scripture", date, ""));
     }
+    /**
+     * THE SUNDAY READINGS, for the next four Sundays, both tracks — the This
+     * Sunday deck reads them by track, and its key carries the track.
+     */
+    for (let i = 0; i < WINDOW_DAYS; i++) {
+      const d = new Date(); d.setDate(d.getDate() + i);
+      if (d.getDay() !== 0 || i > 28) continue;
+      const date = ymdPlusDays(i);
+      jobs.push(() => fetchAndCacheOne("sunday", date, "", "1"));
+      jobs.push(() => fetchAndCacheOne("sunday", date, "", "2"));
+    }
     if (jobs.length > 0) await runQueue(jobs);
+    await warmReadersAndPictures(morningMode, eveningMode, morningExtraMode, eveningExtraMode);
   } catch { /* best-effort — never surface a prefetch failure to the user */ }
+}
+
+/**
+ * THE READERS AND THE PICTURES (owner, 2026-09-05: "have oremus pages saved
+ * for the future as well just like it saves the offices … make sure future
+ * pictures are saved for the next 4 weeks, and future scriptures").
+ *
+ * Every lesson in the decks just cached is a title card whose readUrl opens
+ * bible.oremus.org — so the office was "saved" while its readings were not.
+ * Walk the cached decks for the coming four weeks, collect every passage they
+ * open, and keep the text (lib/passageCache). Visio's schedule names a
+ * picture and a reading for each day; keep both.
+ */
+const READER_WINDOW_DAYS = 28;
+async function warmReadersAndPictures(...modes: Array<LiturgyMode | null>): Promise<void> {
+  const refs = new Set<string>();
+  const images = new Set<string>();
+  for (let i = 0; i < READER_WINDOW_DAYS; i++) {
+    const date = ymdPlusDays(i);
+    const entries: OfficeCacheKey[] = [];
+    for (const m of modes) if (m) entries.push({ mode: m, date, confession: confessionFor(m, m.startsWith("evening") || m === "early-evening-devotion" || m === "creation-evening" ? "evening" : "morning") });
+    entries.push({ mode: "compline", date, confession: "" });
+    const parts = getScriptureParts();
+    const partsValue = parts && parts.length < 4 ? parts.join(",") : "";
+    entries.push({ mode: "scripture", date, confession: "", ...(partsValue ? { parts: partsValue } : {}) });
+    entries.push({ mode: "sunday", date, confession: "", track: "1" } as OfficeCacheKey);
+    entries.push({ mode: "sunday", date, confession: "", track: "2" } as OfficeCacheKey);
+    for (const key of entries) {
+      const data = (await getOfficeCacheEntry(key)) as { slides?: Array<{ metadata?: { readUrl?: unknown; gospelReadUrl?: unknown } }> } | null;
+      for (const s of data?.slides ?? []) {
+        for (const u of [s?.metadata?.readUrl, s?.metadata?.gospelReadUrl]) {
+          const ref = typeof u === "string" ? passageRefFromUrl(u) : null;
+          if (ref) refs.add(ref);
+        }
+      }
+    }
+    const v = VISIO_SCHEDULE[date];
+    if (v) {
+      if (v.ref) refs.add(v.ref);
+      const art = artworkById(v.id);
+      if (art?.img) images.add(art.img);
+    }
+  }
+  const jobs: Array<() => Promise<void>> = [];
+  for (const ref of refs) jobs.push(async () => { await cachePassage(ref); });
+  for (const img of images) jobs.push(async () => { await cacheImage(img); });
+  if (jobs.length > 0) await runQueue(jobs);
+  void prunePassages();
+  void pruneImages();
 }
 
 /** Mounted once, app-wide (see App.tsx, alongside WidgetSync) — fires the

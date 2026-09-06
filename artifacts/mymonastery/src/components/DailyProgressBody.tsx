@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { getQueryClient, apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, sideOfficeTitle, extraPracticeTitle, extraOfficeMode, type OfficeLevel, type ReflectionSource } from "@/lib/officePrefs";
+import { useOnline, cardAvailableOffline } from "@/lib/offline";
 import { daySwapNote } from "@/components/PracticeSwitcher";
 import { rowIdToCardKeys } from "@/lib/routineOrder";
 import { recordPracticeOpen, sortCardsByLearnedOrder } from "@/lib/practiceOrderLearning";
@@ -720,6 +721,9 @@ const SENTINEL_PRACTICES: Partial<Record<string, { title: (t: (k: string, o?: Re
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming, onRemainingCount, mountTag = "unlabeled" }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number; onRemainingCount?: (count: number) => void; /** Diagnostic only — see lib/celebrationDebugLog.ts. Identifies which of dashboard.tsx's mutually-exclusive render branches mounted this instance. */ mountTag?: string }) {
   const { t } = useTranslation();
   const [, navigate] = useLocation();
+  // Offline → the routine splits into what the phone can do and what it
+  // can't (the third section below). lib/offline is the one registry.
+  const online = useOnline();
   // Today's Visio artwork, so its card can name the image. Called here at the
   // top with the other hooks — never after an early return (this repo's
   // recurring crash class).
@@ -2087,13 +2091,24 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     sweptRef.current = true;
     playRoutineCompleteSwell();
   }, [ready, celebrateKey, remainingCount]);
-  const upcomingDisplay = (() => {
+  const upcomingDisplayAll = (() => {
     const all = visibleCards.filter((c) => (!c.done || c.key === pinnedKey) && !(guestMorningTomorrow && c.key === morningAnchorKey));
     if (maxUpcoming == null) return all;
     // Cap the Next section: never show more than `maxUpcoming` cards (the office
     // hero counts as one). The rest stay on /daily-progress.
     return all.slice(0, Math.max(0, maxUpcoming - (heroLeads ? 1 : 0)));
   })();
+  /**
+   * NOT AVAILABLE OFFLINE (owner, 2026-09-05): with no connection, anything in
+   * the routine that needs one leaves Next for its own section after Done.
+   * A side card is judged by what its practice IS (a newsletter-as-prayer
+   * or Audio Divina need the network; an office, a sit, a saved reading do
+   * not); everything else by its practice key.
+   */
+  const sideKindFor = (key: string) => key.endsWith("morning") ? morningContemplationKind : key.endsWith("evening") ? eveningContemplationKind : null;
+  const sideLevelFor = (key: string) => key.endsWith("morning") ? getSideLevel("morning") : key.endsWith("evening") ? getSideLevel("evening") : null;
+  const offlineUnavailable = online ? [] : upcomingDisplayAll.filter((c) => !cardAvailableOffline(c.key, sideLevelFor(c.key), sideKindFor(c.key)));
+  const upcomingDisplay = online ? upcomingDisplayAll : upcomingDisplayAll.filter((c) => cardAvailableOffline(c.key, sideLevelFor(c.key), sideKindFor(c.key)));
   // Everything kept today stays in the Done section all day — until the whole
   // day's rhythm is complete — so the home always reflects what's been prayed.
   const completedDisplay = visibleCards.filter((c) => c.done && c.key !== pinnedKey);
@@ -2396,6 +2411,25 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
               );
             })}
           </div>
+        </div>
+      )}
+
+      {!online && offlineUnavailable.length > 0 && (
+        <div className="mt-8">
+          {sectionHeader(t("daily_progress.offline_heading", { defaultValue: "Not Available Offline" }))}
+          <div className="flex flex-col gap-2" style={{ opacity: 0.6 }}>
+            {offlineUnavailable.map((c, i) => (
+              <div key={c.key}>{renderCard(c, false, tintFor(i), undefined)}</div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/offline")}
+            className="mt-3 w-full rounded-full text-[14px] font-semibold py-3"
+            style={{ background: "rgba(200,212,192,0.10)", color: WARM, border: "1px solid rgba(200,212,192,0.18)", fontFamily: FONT }}
+          >
+            {t("daily_progress.offline_see_all", { defaultValue: "See all available offline practices" })} →
+          </button>
         </div>
       )}
 

@@ -1,0 +1,121 @@
+/**
+ * offlineStore — the device's copy of content that otherwise needs the network.
+ *
+ * Owner (2026-09-05): "audit what features can be offered offline by saving
+ * content to their phone and build as much as possible … have oremus pages
+ * saved for the future just like it saves the offices … make sure future
+ * pictures are saved for the next 4 weeks, and future scriptures."
+ *
+ * The offices already have their own IndexedDB store (officeOfflineCache);
+ * this one holds the OTHER two things a practice needs and a phone can carry:
+ *   • passages — the scripture text the readers open on bible.oremus.org,
+ *     keyed by the passage reference, fetched through /api/scripture/passage;
+ *   • images  — the Visio Divina pictures, as blobs, keyed by their URL.
+ *
+ * IndexedDB, not the Cache API: the native shell deliberately deletes every
+ * Cache-Storage bucket on launch (a stale service-worker cleanup in main.tsx),
+ * and localStorage's ~5 MB could not hold a month of pictures. Every call is
+ * best-effort and silent — no IndexedDB (private mode, an old WebView) means
+ * "nothing saved", never an error.
+ */
+
+const DB_NAME = "phoebe-offline-content";
+const DB_VERSION = 1;
+export const PASSAGES = "passages";
+export const IMAGES = "images";
+
+type Row<T> = { value: T; updatedAt: number };
+
+let dbPromise: Promise<IDBDatabase | null> | null = null;
+function openDb(): Promise<IDBDatabase | null> {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve) => {
+    try {
+      if (typeof indexedDB === "undefined") { resolve(null); return; }
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        for (const s of [PASSAGES, IMAGES]) {
+          if (!req.result.objectStoreNames.contains(s)) req.result.createObjectStore(s);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+      req.onblocked = () => resolve(null);
+    } catch { resolve(null); }
+  });
+  return dbPromise;
+}
+
+export async function storeGet<T>(store: string, key: string): Promise<T | null> {
+  const db = await openDb();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const req = db.transaction(store, "readonly").objectStore(store).get(key);
+      req.onsuccess = () => resolve(((req.result as Row<T> | undefined)?.value) ?? null);
+      req.onerror = () => resolve(null);
+    } catch { resolve(null); }
+  });
+}
+
+export async function storePut<T>(store: string, key: string, value: T): Promise<void> {
+  const db = await openDb();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(store, "readwrite");
+      tx.objectStore(store).put({ value, updatedAt: Date.now() } as Row<T>, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    } catch { resolve(); }
+  });
+}
+
+export async function storeHas(store: string, key: string): Promise<boolean> {
+  const db = await openDb();
+  if (!db) return false;
+  return new Promise((resolve) => {
+    try {
+      const req = db.transaction(store, "readonly").objectStore(store).getKey(key);
+      req.onsuccess = () => resolve(req.result != null);
+      req.onerror = () => resolve(false);
+    } catch { resolve(false); }
+  });
+}
+
+export async function storeKeys(store: string): Promise<string[]> {
+  const db = await openDb();
+  if (!db) return [];
+  return new Promise((resolve) => {
+    try {
+      const req = db.transaction(store, "readonly").objectStore(store).getAllKeys();
+      req.onsuccess = () => resolve((req.result as IDBValidKey[]).map(String));
+      req.onerror = () => resolve([]);
+    } catch { resolve([]); }
+  });
+}
+
+/** Drop rows not touched in `maxAgeMs` — keeps a month of content a month. */
+export async function storePrune(store: string, maxAgeMs: number): Promise<void> {
+  const db = await openDb();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(store, "readwrite");
+      const os = tx.objectStore(store);
+      const cutoff = Date.now() - maxAgeMs;
+      const req = os.openCursor();
+      req.onsuccess = () => {
+        const cur = req.result;
+        if (!cur) return;
+        const row = cur.value as Row<unknown>;
+        if (typeof row?.updatedAt === "number" && row.updatedAt < cutoff) cur.delete();
+        cur.continue();
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    } catch { resolve(); }
+  });
+}

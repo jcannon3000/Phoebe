@@ -64,6 +64,7 @@ import routinePresetsRouter from "./routine-presets";
 import andrewsRouter from "./andrews";
 import weekliesRouter from "./weeklies";
 import appSettingsRouter from "./app-settings";
+import passageRouter from "./passage";
 import routineAuditRouter from "./routine-audit";
 import routineSnapshotsRouter from "./routine-snapshots";
 
@@ -204,6 +205,8 @@ router.use(routinePresetsRouter);
 // "andrewsPublic" switch in app-settings (Admin Tools).
 router.use(andrewsRouter);
 router.use(appSettingsRouter);
+// The passage text the readers open on oremus, for the device to keep offline.
+router.use(passageRouter);
 router.use(weekliesRouter);
 router.use(routineInterviewRouter);
 router.use(routineAuditRouter);

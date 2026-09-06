@@ -41,6 +41,8 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { openExternal, openOfficeReading, preloadExternal } from "@/lib/openExternal";
+import { openOfflinePassageIfCached } from "@/lib/passageCache";
+import { cachedImageUrl } from "@/lib/imageCache";
 import { FROST_BLUR } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
@@ -435,6 +437,25 @@ export default function VisioPage() {
       : null;
 
   /**
+   * THE SAVED PICTURE. The prefetch keeps the coming weeks' artwork on the
+   * device (lib/imageCache); offline — or when the network copy failed — the
+   * picture is served from there. `imgSrc` is what the <img> is given and what
+   * the fade-in compares against, so a local copy is "loaded" exactly as a
+   * network one would be.
+   */
+  const [localImg, setLocalImg] = useState<{ forUrl: string; url: string } | null>(null);
+  useEffect(() => {
+    const url = view?.img;
+    if (!url) return;
+    const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+    if (!offline && !imageFailed) return;
+    let cancelled = false;
+    void cachedImageUrl(url).then((local) => { if (!cancelled && local) setLocalImg({ forUrl: url, url: local }); });
+    return () => { cancelled = true; };
+  }, [view?.img, imageFailed]);
+  const imgSrc = view?.img && localImg?.forUrl === view.img ? localImg.url : (view?.img ?? "");
+
+  /**
    * FIVE beats: title · prompt · the picture-with-its-background ·
    * contemplation · completion.
    *
@@ -660,8 +681,8 @@ export default function VisioPage() {
      * show the picture.
      */
     if (!showsImage) return;
-    if (!view?.img || imageFailed) return;
-    if (loadedSrc === view.img) return;
+    if (!view?.img || (imageFailed && !localImg)) return;
+    if (loadedSrc === imgSrc) return;
     const t = window.setTimeout(() => setImageFailed(true), 8000);
     return () => window.clearTimeout(t);
   }, [showsImage, view?.img, loadedSrc, imageFailed]);
@@ -962,6 +983,12 @@ export default function VisioPage() {
     if (!passageUrl) return;
     setReadPassage(true);
     handedOff.current = true;
+    void openOfflinePassageIfCached(passageUrl, t("visio.title", { defaultValue: "Visio Divina" })).then((shown) => {
+      if (!shown) openReadingLive();
+    });
+  };
+  const openReadingLive = () => {
+    if (!passageUrl) return;
     const opened = openOfficeReading(passageUrl, {
       officeTitle: t("visio.title", { defaultValue: "Visio Divina" }),
       slideLabel: `${step + 1} of ${TOTAL}`,
@@ -1137,11 +1164,11 @@ export default function VisioPage() {
           }}>
           <div ref={imageBoxRef} style={{ maxWidth: "100%", display: "flex", justifyContent: "center" }}>
           <ZoomableImage
-            src={view.img}
+            src={imgSrc}
             alt={`${view.title}${view.artist ? ` — ${view.artist}` : ""}`}
             style={{ flex: "0 0 auto", maxWidth: "100%", maxHeight: "62vh", borderRadius: 10 }}
-            imgRef={(el) => { if (el?.complete && el.naturalWidth > 0) setLoadedSrc(view.img); }}
-            onLoad={() => setLoadedSrc(view.img)}
+            imgRef={(el) => { if (el?.complete && el.naturalWidth > 0) setLoadedSrc(imgSrc); }}
+            onLoad={() => setLoadedSrc(imgSrc)}
             onError={() => setImageFailed(true)}
             imgStyle={{
               maxWidth: "100%",
@@ -1153,7 +1180,7 @@ export default function VisioPage() {
               boxShadow: "0 26px 74px rgba(0,0,0,0.66), 0 4px 14px rgba(0,0,0,0.45)",
               // Fades in rather than snapping: these load over the network,
               // and a hard pop is the wrong first movement here.
-              opacity: loadedSrc === view.img ? 1 : 0,
+              opacity: loadedSrc === imgSrc ? 1 : 0,
               transition: "opacity 420ms ease-out",
             }}
           />

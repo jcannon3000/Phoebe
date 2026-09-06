@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { openExternal, openOfficeReading, hasNativeBrowser } from "@/lib/openExternal";
+import { openOfflinePassageIfCached } from "@/lib/passageCache";
 import { X } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 
@@ -144,6 +145,15 @@ export default function LectioPage() {
    * chrome to build over someone else's page.
    */
   const openPassage = (n: number) => {
+    if (!chosen) return;
+    // Offline with the passage saved → the sheet, whose Continue steps this
+    // deck like the reader's pill would. Otherwise the reader, as before.
+    void openOfflinePassageIfCached(chosen.readUrl, "Lectio Divina").then((shown) => {
+      if (shown) return;
+      openPassageLive(n);
+    });
+  };
+  const openPassageLive = (n: number) => {
     if (!chosen) return;
     if (hasNativeBrowser()) {
       openOfficeReading(chosen.readUrl, {

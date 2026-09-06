@@ -34,6 +34,7 @@ import { PullToRefresh } from "@/components/PullToRefresh";
 import { PageFadeOverlay } from "@/components/PageFadeOverlay";
 import { WidgetSync } from "@/lib/widgetSync";
 import { OfficeOfflinePrefetch } from "@/lib/officePrefetch";
+import { OfflinePassageHost } from "@/components/OfflinePassageHost";
 import { PodcastPlayerProvider } from "@/components/PodcastPlayer";
 import { Component, useEffect, useRef, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
 import { syncCustomDoneFromServer, syncCustomAnchorsFromServer, type CustomAnchorSnapshot } from "@/lib/customAnchors";
@@ -429,6 +430,7 @@ const AdminPresetsPage = lazy(() => import("@/pages/admin-presets"));
 const AdminWeekliesPage = lazy(() => import("@/pages/admin-weeklies"));
 const AdminCacLibraryPage = lazy(() => import("@/pages/admin-cac-library"));
 const ThisSundayPage = lazy(() => import("@/pages/this-sunday"));
+const OfflinePracticesPage = lazy(() => import("@/pages/offline-practices"));
 
 function RoutinePresetRefresh(): null {
   useEffect(() => { void refreshRoutinePresets(); }, []);
@@ -816,6 +818,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   "/", "/dashboard", "/daily-progress",
   "/menu", "/menu/bcp", "/menu/practices", "/menu/learn", "/menu/reflections", "/menu/newsletters", "/menu/resources",
   "/this-sunday",
+  "/offline",
   // Practices that need no account to pray — the Examen and the Simple Guided
   // Prayer (PACT) sit alongside /contemplation and /cobreathe here. Signing in
   // only adds the server-side session log.
@@ -1006,6 +1009,7 @@ function Router() {
           is the old name; it keeps routing here so nothing that linked to it
           404s. The per-source read page below is unchanged. */}
       <Route path="/this-sunday" component={ThisSundayPage} />
+      <Route path="/offline" component={OfflinePracticesPage} />
       <Route path="/menu/newsletters" component={MenuNewslettersPage} />
       <Route path="/menu/newsletters/:group" component={MenuNewslettersPage} />
       <Route path="/menu/newsletters/:group/manage" component={MenuNewslettersPage} />
@@ -1429,6 +1433,7 @@ function App() {
               presets that ship in the app. */}
           <RoutinePresetRefresh />
           <OfficeOfflinePrefetch />
+          <OfflinePassageHost />
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />
           <ForegroundPushToast />
