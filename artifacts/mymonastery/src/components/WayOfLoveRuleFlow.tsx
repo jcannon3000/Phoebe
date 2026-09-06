@@ -4766,6 +4766,9 @@ export default function WayOfLoveRuleFlow({
           {!complineAlreadyPrimary && choiceRow(contemplative.compline, `🌙 ${t("wol_rule.cp_compline", { defaultValue: "Compline" })}`, t("wol_rule.cp_compline_sub", { defaultValue: "The night office — available from 7pm." }), () => toggleContemplative("compline"))}
           {!anchoredAsForm("audio") && choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Connecting with God through music." }), () => toggleContemplative("audio"))}
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
+          {/* Lectio sits right after the Examen (owner, 2026-09-05: "move
+              Lectio Divina up to be after the Examen"); it was last but one. */}
+          {choiceRow(contemplative.lectio, `📜 ${t("wol_rule.cp_lectio", { defaultValue: "Lectio Divina" })}`, t("wol_rule.cp_lectio_sub", { defaultValue: "Read a passage slowly, three times — listen, reflect, pray." }), () => toggleContemplative("lectio"))}
           {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
           {!anchoredAsForm("walk") && choiceRow(contemplative.walk, `🚶🏽 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
           {!anchoredAsForm("visio") && choiceRow(contemplative.visio, `🖼️ ${t("wol_rule.cp_visio", { defaultValue: "Visio Divina" })}`, t("wol_rule.cp_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }), () => toggleContemplative("visio"))}
@@ -4784,15 +4787,12 @@ export default function WayOfLoveRuleFlow({
               it toggles the same `contemplative.taize` state, and both onKeys
               copies still read it. */}
           {choiceRow(contemplative.icons, `🪟 ${t("wol_rule.cp_icons", { defaultValue: "Praying with Icons" })}`, t("wol_rule.cp_icons_sub", { defaultValue: "Sit with an icon — return to it daily." }), () => toggleContemplative("icons"))}
-          {choiceRow(contemplative.reading, `📚 ${t("wol_rule.cp_reading", { defaultValue: "Reading" })}`, t("wol_rule.cp_reading_sub", { defaultValue: "A book, a page a day — with a bar showing how far in you are." }), () => toggleContemplative("reading"))}
-          {/* No time-of-day picker for Reading (owner, 2026-09-04: "reading
-              shouldn't have the times of day like this") — it is an all-day card,
-              like Audio Divina and the walk; getPracticeSlot("reading") says so. */}
-          {/* Spirituals and Lectio — in the options array, in both onKeys copies,
-              on the server, and (until now) not on this step. See the note
-              above: ADD IT HERE TOO. */}
-          {choiceRow(contemplative.spirituals, `🎶 ${t("wol_rule.cp_spirituals", { defaultValue: "Meditating on Spirituals" })}`, t("wol_rule.cp_spirituals_sub", { defaultValue: "A spiritual for the day, sung as prayer." }), () => toggleContemplative("spirituals"))}
-          {choiceRow(contemplative.lectio, `📜 ${t("wol_rule.cp_lectio", { defaultValue: "Lectio Divina" })}`, t("wol_rule.cp_lectio_sub", { defaultValue: "Read a passage slowly, three times — listen, reflect, pray." }), () => toggleContemplative("lectio"))}
+          {/* NO READING and NO SPIRITUALS rows (owner, 2026-09-05: "take out
+              reading and spirituals from the practices ... both on the main
+              practice page and in the customizer"). Their `contemplative.reading`
+              / `.spirituals` state, both onKeys copies and the server keys stay
+              as they are, so a rule that already carries one keeps its card;
+              there is simply no longer a place to switch them ON. */}
           {/* Last, because it's the answer when none of the named ones is. */}
           {choiceRow(
             customPracticeOn,

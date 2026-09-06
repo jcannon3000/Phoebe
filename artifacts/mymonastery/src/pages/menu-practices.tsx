@@ -1,8 +1,6 @@
 import { useLocation } from "wouter";
 import { MenuHub } from "@/components/MenuHub";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
-import { spiritualsVisible } from "@/lib/spiritualsFlag";
-import { useAuth } from "@/hooks/useAuth";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { getReadingsTodayUrl } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
@@ -16,8 +14,6 @@ export default function MenuPracticesPage() {
   // 2026-07-02), and Creation Prayer stays behind its own flag. See memory
   // "project_public_no_login".
   const { isGuest } = useGuestMode();
-  // Spirituals is admin-only — see lib/spiritualsFlag.ts.
-  const { user } = useAuth();
   const go = (p: string) => setLocation(p);
   return (
     <MenuHub
@@ -83,13 +79,10 @@ export default function MenuPracticesPage() {
           // on a timer. Same guest posture as Visio for the same reasons —
           // the artworks and licences are public and completion is device-local.
           { emoji: "🪟", label: "Praying with Icons", sub: "Choose an icon and sit with it", onClick: () => go("/icon-prayer") },
-          // Meditating on Spirituals — the day appoints a song from Slave Songs
-          // of the United States (1867) and "Choose another" opens the
-          // collection. ADMIN ONLY, not public: this row is the only entry
-          // point into the practice. See lib/spiritualsFlag.ts.
-          ...(spiritualsVisible(user?.isSuperAdmin) ? [
-            { emoji: "🎶", label: "Meditating on Spirituals", sub: "Read a spiritual, then sit with it", onClick: () => go("/spirituals") },
-          ] : []),
+          // NO SPIRITUALS ROW (owner, 2026-09-05: "take out reading and
+          // spirituals from the practices ... both on the main practice page
+          // and in the customizer"). The practice itself and /spirituals still
+          // exist — see lib/spiritualsFlag.ts — but nothing links to it here.
           // Audio Divina sits at the BOTTOM of Practices (owner).
           ...(!isGuest ? [
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
