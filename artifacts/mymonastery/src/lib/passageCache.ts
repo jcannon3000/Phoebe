@@ -16,6 +16,8 @@
 import { PASSAGES, storeGet, storePut, storePrune, storeKeys, storeDelete } from "@/lib/offlineStore";
 import { boundedFetch } from "@/lib/boundedFetch";
 import { isOnline } from "@/lib/offline";
+import { getSavedPage } from "@/lib/pageCache";
+import { openOfficeReading } from "@/lib/openExternal";
 
 /**
  * THE PARSER THAT WROTE THE ENTRY.
@@ -120,23 +122,35 @@ export const OFFLINE_PASSAGE_EVENT = "phoebe:open-offline-passage";
 export type OfflinePassageDetail = { passage: CachedPassage; title: string; slideLabel?: string };
 
 /**
- * THE ONE DOOR. A deck about to open a reading calls this first: offline and
- * saved → the sheet opens over the deck (OfflinePassageHost) and this returns
- * true, so the caller does nothing more; otherwise false, and the caller
- * hands off to the browser as it always did.
+ * THE DOOR, and it no longer opens on extracted text.
+ *
+ * Owner, three times over: "you should not be extracting text, that's a
+ * copyright issue", "it needs to be EXACTLY the same", and — of the sheet
+ * this used to raise — "when I hit Standard it's not showing the actual
+ * oremus page". It wasn't: it was our own typesetting of the passage, and on
+ * his phone it still carried the parser bug fixed in 067f43f9.
+ *
+ * So the saved PAGE is the only thing this opens. The reader loads it with
+ * the page's own URL as base and runs the same readerJS over it, which is
+ * what makes offline identical to online rather than a good imitation.
+ * Nothing saved → false, and the caller says the reading isn't on the phone
+ * yet. A page we never managed to save is not a reason to invent one.
  */
 export async function openOfflinePassageIfCached(
   url: string | null | undefined,
   title: string,
-  /** "18 of 38 · Lesson" — the deck's own counter, so the sheet's pill reads
-   *  exactly as the deck's does. */
+  /** "18 of 38 · Lesson" — the deck's own counter, for the reader's pill. */
   slideLabel?: string,
 ): Promise<boolean> {
-  if (isOnline()) return false;
-  const passage = await getCachedPassageForUrl(url);
-  if (!passage) return false;
-  window.dispatchEvent(new CustomEvent<OfflinePassageDetail>(OFFLINE_PASSAGE_EVENT, { detail: { passage, title, slideLabel } }));
-  return true;
+  if (!url || isOnline()) return false;
+  const saved = await getSavedPage(url);
+  if (!saved?.html) return false;
+  return openOfficeReading(url, {
+    officeTitle: title,
+    slideLabel: slideLabel ?? "",
+    sectionLabel: "",
+    savedHtml: saved.html,
+  });
 }
 
 export function prunePassages(): Promise<void> {
