@@ -34,7 +34,6 @@ import { PullToRefresh } from "@/components/PullToRefresh";
 import { PageFadeOverlay } from "@/components/PageFadeOverlay";
 import { WidgetSync } from "@/lib/widgetSync";
 import { OfficeOfflinePrefetch } from "@/lib/officePrefetch";
-import { OfflinePassageHost } from "@/components/OfflinePassageHost";
 import { installWriteOutboxFlush } from "@/lib/writeOutbox";
 import { PodcastPlayerProvider } from "@/components/PodcastPlayer";
 import { Component, useEffect, useRef, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
@@ -1440,7 +1439,6 @@ function App() {
               presets that ship in the app. */}
           <RoutinePresetRefresh />
           <OfficeOfflinePrefetch />
-          <OfflinePassageHost />
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />
           <ForegroundPushToast />

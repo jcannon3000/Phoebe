@@ -19,7 +19,21 @@ export type SavedPage = {
   url: string;
   html: string;
   savedAt: number;
+  /** Which saver wrote it — see SAVE_VERSION. */
+  sv?: number;
 };
+
+/**
+ * THE SAVER THAT WROTE THE PAGE.
+ *
+ * v1 saved the HTML alone, so offline Standard showed unstyled markup —
+ * oremus keeps its whole appearance in linked stylesheets. v2 inlines them
+ * (3e42d8d9). A phone holding v1 pages would look "saved" and read wrong, so
+ * an older page answers FALSE to "is this saved?" and the daily walk fetches
+ * it again — while getSavedPage still returns it in the meantime, because a
+ * plain-looking page beats no reading at all.
+ */
+const SAVE_VERSION = 2;
 
 const MAX_AGE_MS = 45 * 24 * 60 * 60 * 1000;
 
@@ -30,8 +44,11 @@ export async function getSavedPage(url: string | null | undefined): Promise<Save
   return page && typeof page.html === "string" && page.html.length > 0 ? page : null;
 }
 
+/** Is a CURRENT page here? One from an older saver answers false, so the walk
+ *  replaces it. */
 export async function hasSavedPage(url: string): Promise<boolean> {
-  return !!(await getSavedPage(url));
+  const page = await getSavedPage(url);
+  return !!page && (page.sv ?? 1) >= SAVE_VERSION;
 }
 
 /** Fetch and keep one page. Best-effort; false when it could not be saved. */
@@ -43,7 +60,7 @@ export async function cachePage(url: string): Promise<boolean> {
     if (!res.ok) return false;
     const data = (await res.json()) as { url?: string; html?: string } | null;
     if (!data || typeof data.html !== "string" || data.html.length === 0) return false;
-    return storePut<SavedPage>(PAGES, url, { url: data.url || url, html: data.html, savedAt: Date.now() });
+    return storePut<SavedPage>(PAGES, url, { url: data.url || url, html: data.html, savedAt: Date.now(), sv: SAVE_VERSION });
   } catch { return false; }
 }
 
