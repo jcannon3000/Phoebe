@@ -10,7 +10,7 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import DeckNavPill from "@/components/DeckNavPill";
 import { type ListeningMedium } from "@/lib/listeningLog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, ApiError } from "@/lib/queryClient";
 import { enqueueWrite } from "@/lib/writeOutbox";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 import { openExternal } from "@/lib/openExternal";
@@ -211,10 +211,20 @@ export default function ListeningPage() {
       try {
         return await apiRequest("POST", "/api/listening", body);
       } catch (err) {
-        // A log that silently fails is worse than no log. Offline it waits in
-        // the outbox and goes out with the connection (lib/writeOutbox); the
-        // card is already kept locally either way.
-        enqueueWrite(`listening:${body.day}:${body.what}`, "POST", "/api/listening", body);
+        /**
+         * A log that silently fails is worse than no log, so offline it waits
+         * in the outbox and goes out with the connection (lib/writeOutbox);
+         * the card is kept locally either way.
+         *
+         * EXCEPT WITH NO ACCOUNT. A signed-out device has no row to write, so
+         * queueing would park an entry that looks like it will send and is
+         * dropped by the first flush — the confusing failure rather than the
+         * honest one. The completion paths already refuse on the same status
+         * (practiceCompletion); this is the last writer that didn't.
+         */
+        if (!(err instanceof ApiError && (err.status === 401 || err.status === 403))) {
+          enqueueWrite(`listening:${body.day}:${body.what}`, "POST", "/api/listening", body);
+        }
         throw err;
       }
     },
