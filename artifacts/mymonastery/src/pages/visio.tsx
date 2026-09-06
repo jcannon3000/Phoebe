@@ -1260,7 +1260,7 @@ export default function VisioPage() {
               */}
             <p
               className="prompt-rise"
-              style={{ color: "rgba(200,212,192,0.86)", fontFamily: FONT, fontSize: 16.5, lineHeight: 1.6, margin: "4px 0 0", maxWidth: 430 }}
+              style={{ color: "rgba(200,212,192,0.86)", fontFamily: FONT, fontSize: 18.5 /* owner 2026-09-05: "2 bigger" (was 16.5) */, lineHeight: 1.6, margin: "4px 0 0", maxWidth: 430 }}
             >
               {t("visio.notice_prompt", {
                 // The owner's own words, kept as dictated (2026-09-04).

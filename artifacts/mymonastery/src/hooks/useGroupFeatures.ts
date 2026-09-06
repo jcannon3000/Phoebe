@@ -24,7 +24,14 @@ export function useGroupFeatures() {
   });
   const groups = data?.groups ?? [];
   const eventGroups = groups.filter((g) => g.eventsEnabled !== false);
-  const prayerGroups = groups.filter((g) => g.prayerRequestsEnabled === true && !g.isPublic);
+  // A member gets the Prayer list unless the group's admin switched prayer
+  // requests OFF. A PUBLIC group's flag is forced false by the server (a
+  // browseable group can't host a shared list), which is the public rule, not
+  // an admin's choice — so its members keep the feature (owner, 2026-09-05:
+  // "I asked for the prayer list menu option to come back"; VTS Pilot is
+  // public). The group's OWN list still needs the flag AND not-public
+  // (community-detail prayersOn, server listIsOpen).
+  const prayerGroups = groups.filter((g) => g.isPublic || g.prayerRequestsEnabled !== false);
   return {
     hasGroup: groups.length > 0,
     hasEventsGroup: eventGroups.length > 0,
