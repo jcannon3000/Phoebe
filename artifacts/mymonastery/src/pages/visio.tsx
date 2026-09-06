@@ -1040,13 +1040,16 @@ export default function VisioPage() {
       )}
       <style>{`
         @keyframes visio-breathe { 0%,100% { opacity: .5 } 50% { opacity: .85 } }
-        /* The hold's own progress wash. Kept in sync with HOLD_MS above — if
-           one changes the other must, or the wash finishes before or after the
-           button actually enables. Restarts each beat: the element is keyed by
-           the step, so it remounts. (No backticks in here — this is inside a
-           template literal and one would end it.) */
+        /* The hold's own progress wash, TAKEN FROM HOLD_MS rather than typed
+           beside it. The note here used to say "keep the two in sync" and they
+           promptly drifted: the hold went to seven seconds and this wash stayed
+           at twelve, so Continue arrived while the bar was still filling
+           (owner, 2026-09-05). Interpolated, they cannot disagree again.
+           Restarts each beat: the element is keyed by the step, so it
+           remounts. (No backticks in here — this is inside a template literal
+           and one would end it.) */
         @keyframes visio-hold-grow { from { width: 0%; } to { width: 100%; } }
-        .visio-hold-fill { width: 0%; animation: visio-hold-grow 12s linear forwards; }
+        .visio-hold-fill { width: 0%; animation: visio-hold-grow ${HOLD_MS}ms linear forwards; }
         /* Continue arriving once the hold is up — the same 6px rise the app's
            illuminated titles use (title-glow-fade-in), so the word lands the
            way they do rather than blinking into place. */
