@@ -306,7 +306,7 @@ export function useWidgetSync(): void {
       { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), key: "listening", emoji: "🎵", title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music", cta: "Log", kind: "reflect" },
       { active: r.podcastsActive, done: r.podcastsDone, slot: "afternoon" as CustomSlot, key: "podcasts", emoji: "🎙️", title: "Podcasts", eyebrow: "A podcast episode", subtitle: "Log what you listened to", cta: "Log", kind: "reflect" },
       { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), key: "walk", emoji: "🚶🏽", title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "A walk as prayer", cta: "Log", kind: "office" },
-      { active: r.visioActive, done: r.visioDone, slot: getPracticeSlot("visio"), key: "visio", emoji: "🖼️", title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image", cta: "Begin", kind: "office" },
+      { active: r.visioActive, done: r.visioDone, slot: getPracticeSlot("visio"), key: "visio", emoji: "🖼️", title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image", cta: "View", kind: "office" },
       /**
        * THE THREE INBOX PRACTICES AND THE ICON, which this mirror was missing.
        *

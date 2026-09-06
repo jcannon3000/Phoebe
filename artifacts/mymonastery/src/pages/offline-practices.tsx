@@ -104,7 +104,7 @@ export default function OfflinePracticesPage() {
                 emoji={p.emoji}
                 title={p.title}
                 blurb={status[p.key] ?? p.sub}
-                cta={t("rhythm.begin", { defaultValue: "Begin" })}
+                cta={p.key === "visio" ? t("rhythm.view", { defaultValue: "View" }) : t("rhythm.begin", { defaultValue: "Begin" })}
                 done={false}
                 rgb="120,150,125"
                 tint={0.35}

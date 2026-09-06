@@ -41,6 +41,7 @@ import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 import { waitingLabel, markTaizeRead, markAndrewsRead } from "@/lib/taizeInbox";
 import { usePreviousIssues, usePreviousIssuesFor } from "@/hooks/usePreviousIssues";
 
@@ -806,6 +807,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // returns the guest goal/minutes as contemplationGoalMin/contemplationMin),
   // and past noon an un-prayed morning office parks under "Tomorrow".
   const guest = isDeviceLocalGuest(user);
+  const prayerListSurfaced = usePrayerListEnabled();
   const hour = new Date().getHours();
   /**
    * Minutes since midnight — the evening HERO needs a half hour, and `hour`
@@ -1104,7 +1106,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         // sent you to it.
         ? [visioToday.chosen.art.title, visioToday.chosen.followsToday ? visioToday.chosen.ref : ""].filter(Boolean).join(" · ")
         : t("rhythm.blurb_visio", { defaultValue: "Pray with today's image" })),
-    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+    // "View", not "Begin" (owner, 2026-09-05) — the practice is looking at a
+    // picture. The pill keeps every other card's width: the compact CTA has a
+    // minWidth of 84 (see PracticeCard), so a shorter word centres inside the
+    // same pill rather than shrinking it.
+    cta: t("rhythm.view", { defaultValue: "View" }), later: false,
   };
   /**
    * The inbox card — Taizé's meditation.
@@ -1299,7 +1305,17 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // done once every one of them has been walked past in PrayThrough today
   // (intentionsPrayedCount from useRhythmState, itself backed by
   // prayer_intention_prayed_days — see lib/intentionsPrayed.ts).
-  const prayerListActiveCard = intentionsTotalCount > 0;
+  /**
+   * NEVER FOR A SIGNED-OUT DEVICE (owner, 2026-09-06: "for some reason prayer
+   * list showed up on this logged out account ... make sure that does not
+   * happen"). The card used to ask only "are there intentions?", and a
+   * device-local guest is provisioned as an anonymous user whose intentions
+   * endpoint can answer with rows — so the private list surfaced on a home
+   * that has no account behind it. It now follows the same gate as every
+   * other prayer-list surface (usePrayerListEnabled: pilot group or super
+   * admin — see hooks/usePrayerRequests.ts), and a guest is excluded outright.
+   */
+  const prayerListActiveCard = !guest && prayerListSurfaced && intentionsTotalCount > 0;
   /**
    * Kept by WALKING the list, not by counting it off.
    *
