@@ -19,7 +19,7 @@
 import { useEffect } from "react";
 import { boundedFetch } from "@/lib/boundedFetch";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { isOnline } from "@/lib/offline";
+import { isReallyOnline } from "@/lib/offline";
 import { getSideLevel, getSideExtra, getSideConfession, getScriptureParts, type OfficeSide } from "@/lib/officePrefs";
 import { putOfficeCacheEntry, pruneOfficeCacheBefore, getOfficeCacheEntry, type OfficeCacheKey } from "@/lib/officeOfflineCache";
 import { cachePassage, passageRefFromUrl, prunePassages } from "@/lib/passageCache";
@@ -30,7 +30,19 @@ import { artworkById } from "@/lib/visioSelect";
 import type { LiturgyMode } from "@/pages/bcp-daily-office";
 
 const WINDOW_DAYS = 30;
-const LAST_RUN_KEY = "phoebe:office-prefetch:last-run-day";
+/**
+ * The day-stamp is VERSIONED, and the version is bumped whenever a bug kept a
+ * run from saving anything.
+ *
+ * The original code wrote this stamp BEFORE the first fetch and refused to run
+ * off Wi-Fi, so on 2026-09-06 every device stamped the day and saved nothing —
+ * and then skipped the rest of the day, including after both bugs were fixed.
+ * The owner rebuilt three times and saw no change, because the fixed code was
+ * being asked to do work the old code had already marked done. A new key name
+ * gives every device exactly one more run today; tomorrow's date-check works
+ * as it always did.
+ */
+const LAST_RUN_KEY = "phoebe:office-prefetch:last-run-day:v2";
 // Small concurrency, not one big Promise.all — 30 days × up to 3 modes
 // (morning/evening/compline) is up to 90 requests; firing them all at once
 // would be a thundering herd against the office-assembly endpoint for no
@@ -161,12 +173,22 @@ async function runQueue(jobs: Array<() => Promise<void>>): Promise<void> {
  *  call on every app open — no-ops instantly unless it's a new local day and
  *  the shell is native. TEXT saves on any connection; only the pictures wait
  *  for Wi-Fi (see the note inside). */
-export async function runOfficePrefetch(): Promise<void> {
+export async function runOfficePrefetch(opts?: { force?: boolean }): Promise<void> {
   try {
-    if (!isNativeShell()) return;
+    // `force` is the Admin Tools button — save now, on this device, whatever
+    // the day stamp says and wherever the app is running.
+    if (!isNativeShell() && !opts?.force) return;
     const today = todayYmd();
-    if (localStorage.getItem(LAST_RUN_KEY) === today) return;
-    if (!isOnline()) return;
+    if (!opts?.force && localStorage.getItem(LAST_RUN_KEY) === today) return;
+    /**
+     * THE REAL CONNECTION, not the simulate-offline switch.
+     *
+     * isOnline() honours that switch, which is right for every surface a
+     * person sees and wrong here: turn the switch on to walk the offline app
+     * and the daily save stops running, so the phone stays empty and the tool
+     * built to test offline is what breaks it. Saving asks the device.
+     */
+    if (!isReallyOnline()) return;
     /**
      * WI-FI GATES THE PICTURES, NOT THE WHOLE LAYER.
      *

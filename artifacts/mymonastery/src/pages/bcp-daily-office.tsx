@@ -6352,7 +6352,13 @@ export default function BcpDailyOfficePage() {
     </p>
   );
 
-  const chooserOnline = useOnline();
+  // Read, not subscribed: this sits AFTER the page's early returns (the null
+  // while loading, and the `showMode` viewer), so a hook here is a conditional
+  // hook — React throws "rendered more hooks than during the previous render"
+  // the moment showMode flips, which is the error boundary the owner filmed at
+  // 14:28. isOnline() is a plain read and the chooser re-renders on every
+  // interaction anyway.
+  const chooserOnline = isOnline();
   // The "How" options valid for the chosen time + practice. read/book always;
   // Listen only for the full office; Watch only in the morning (Cathedral /
   // St John's stream). methodPick is clamped to a valid one for Begin.
