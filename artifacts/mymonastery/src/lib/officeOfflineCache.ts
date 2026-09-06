@@ -51,7 +51,13 @@ export type OfficeCacheKey = {
 };
 
 function keyId(k: OfficeCacheKey): string {
-  return `${k.mode}:${k.date}:${k.confession}${k.parts ? `:${k.parts}` : ""}`;
+  // The TRACK is part of the identity of a Sunday deck — Track 1 and Track 2
+  // are different readings. It was in the key OBJECT (both the deck and the
+  // prefetch set it) and dropped here, so the two tracks overwrote one entry
+  // and which survived was a race between prefetch workers. The deck's own
+  // note says this key is what fixed "the first Sunday reading sometimes
+  // wasn't loading"; it was half-fixed until now.
+  return `${k.mode}:${k.date}:${k.confession}${k.parts ? `:${k.parts}` : ""}${k.track ? `:t${k.track}` : ""}`;
 }
 
 type Entry = { data: unknown; updatedAt: number };

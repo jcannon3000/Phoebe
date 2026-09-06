@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { boundedFetch } from "@/lib/boundedFetch";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
@@ -87,7 +88,12 @@ export default function BcpPsalterPage() {
   // hold in memory and lets search run instantly across all verses.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/office/psalter")
+    // Bounded, or an offline open sits on the native HTTP timeout with the
+    // page's chrome over an empty psalter (audit, 2026-09-06). The saved-psalms
+    // deck at /psalms is the one the offline registry points at and it caches
+    // properly; this is the searchable full Psalter, which is online-only —
+    // failing fast at least lets its error state show.
+    boundedFetch("/api/office/psalter")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data: { psalms: Psalm[] }) => {
         if (!cancelled) setPsalms(data.psalms);

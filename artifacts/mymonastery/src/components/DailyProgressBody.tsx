@@ -2020,7 +2020,22 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     : (eveningActive && !eveningDone && minutesNow >= EVENING_HERO_AFTER) ? "evening"
     : (morningActive && !morningDone) ? "morning"
     : null;
-  const showOfficeHero = !!renderOfficeHero && heroSide !== null;
+  // The same two lookups the offline split uses further down, defined here so
+  // the hero can be judged by them too.
+  const sideKindForKey = (key: string) => key.endsWith("morning") ? morningContemplationKind : key.endsWith("evening") ? eveningContemplationKind : null;
+  const sideLevelForKey = (key: string) => key.endsWith("morning") ? getSideLevel("morning") : key.endsWith("evening") ? getSideLevel("evening") : null;
+  /**
+   * THE HERO IS TESTED FOR OFFLINE AVAILABILITY LIKE EVERY OTHER CARD (audit,
+   * 2026-09-06). The hero is pulled OUT of visibleCards before the offline
+   * split runs, so the one practice at the top of the screen — the biggest
+   * card on the home — was never asked whether it works with no connection.
+   * A side whose prayer is a newsletter, or the readings, would sit there
+   * offline looking like the thing to do next. Refusing it the hero seat puts
+   * it back in the ordinary list, where the split moves it to "Not available".
+   */
+  const heroSideUnavailableOffline = !online && heroSide !== null
+    && !cardAvailableOffline(heroSide, sideLevelForKey(heroSide), sideKindForKey(heroSide));
+  const showOfficeHero = !!renderOfficeHero && heroSide !== null && !heroSideUnavailableOffline;
   const officeHero = showOfficeHero ? renderOfficeHero!(heroSide!) : null;
   // Shade each card along the green→purple ramp by its position in the FULL day
   // order (so a card keeps its colour whether it's Next or Done, and the ramp
@@ -2051,7 +2066,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // The hero seat when no office leads: the side's own contemplation, which IS
   // that side's anchor. A notification target never lands here any more — it
   // pins to the top of the list instead (see notifyHero).
-  const cardHero = notifyHero?.kind === "top" ? undefined : contemplationHero;
+  // Same test for the contemplation hero: an Audio Divina sit cannot be the
+  // hero with no connection (its library is a stream).
+  const cardHero = notifyHero?.kind === "top" ? undefined
+    : (contemplationHero && !online
+        && !cardAvailableOffline(contemplationHero.key, sideLevelForKey(contemplationHero.key), sideKindForKey(contemplationHero.key)))
+      ? undefined
+      : contemplationHero;
   // Whether SOME card leads the Next list as a hero (office, target, or contemplation).
   const heroLeads = !!officeHero || !!cardHero;
   const unpinnedCards = showOfficeHero
@@ -2460,15 +2481,27 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         </div>
       )}
 
+      {/* The HERO is tested too — see heroUnavailableOffline above. */}
       {!online && offlineUnavailable.length > 0 && (
         <div className="mt-8">
           {/* Owner (2026-09-06): "have any practice not available offline in their
               routine be in a section called Not available" — and only when they
               actually are offline, which the `!online` gate above is. */}
           {sectionHeader(t("daily_progress.offline_heading", { defaultValue: "Not available" }))}
+          {/* Inert, not merely dim (audit, 2026-09-06): these were fully
+              tappable, so a person could tap a card the app had just told them
+              needs a connection and land on a page that cannot load. `later`
+              is the existing treatment for a card that is present but not
+              actionable, and it carries the aria-disabled and the not-allowed
+              cursor with it. */}
           <div className="flex flex-col gap-2" style={{ opacity: 0.6 }}>
             {offlineUnavailable.map((c, i) => (
-              <div key={c.key}>{renderCard(c, false, tintFor(i), undefined)}</div>
+              <div key={c.key}>{renderCard(
+                // The union of card shapes doesn't carry laterLabel on every
+                // member; the renderer reads it off whatever it is given.
+                { ...c, later: true, laterLabel: t("daily_progress.offline_later", { defaultValue: "Offline" }) } as Parameters<typeof renderCard>[0],
+                false, tintFor(i), undefined,
+              )}</div>
             ))}
           </div>
           <button

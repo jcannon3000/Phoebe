@@ -291,6 +291,19 @@ export default function BeginPrayerPage() {
       // dashboard for that side — a lot of conditions between a tap and a
       // lectionary. The tap that got us here is the user gesture, so opening
       // directly is both simpler and more reliable.
+      /**
+       * OFFLINE THE READINGS ARE THE SAVED DECK, not the website (audit,
+       * 2026-09-06). "readings" is the built-in default for the EVENING side,
+       * so anyone who never chose an evening practice had a card the home
+       * called available offline that opened prayer.forwardmovement.org and
+       * died there. The app's own Daily Scripture Reading deck carries the
+       * same day's lessons and is saved ahead, so with no connection we open
+       * that instead; online the hand-off is unchanged.
+       */
+      if (!isOnline()) {
+        setLocation("/bcp/daily-office?mode=scripture", { replace: true });
+        return;
+      }
       openExternalThenMarkRead(
         getReadingsTodayUrl(),
         () => recordReadingsOpened({ side }),

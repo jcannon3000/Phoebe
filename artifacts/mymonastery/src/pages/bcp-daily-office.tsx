@@ -1389,6 +1389,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // on their default (Physical BCP / Listen / Watch / On screen), not always
     // "On screen". The full office and the short devotion both carry a per-side
     // method; the devotion just has fewer of them to offer.
+    //
+    // OFFLINE THE THREE THAT NEED A CONNECTION ARE NOT SEEDED (audit,
+    // 2026-09-06). The pickers hide Venite / Listen / Watch with no connection,
+    // but hiding an option does not change the STATE behind it: the label still
+    // read "Venite Digital" and Begin still handed off to the website. Venite is
+    // the built-in default for anyone who never chose a way (officePrefs
+    // getDefaultOfficeEntry), so this was most people's offline office.
+    if (!isOnline()) return "screen";
     if (resolvedMode === "morning" || resolvedMode === "evening") {
       const e = getSideEntry(officeSide);
       if (e === "book") return "book";
@@ -2655,9 +2663,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // psalms "before you begin" intro (begin=1) — book → the page-number guide.
     if (way === "psalms") { setViewerLocation(`/psalms?office=${officeSide}${method === "book" ? "&book=1" : ""}&begin=1`); return; }
     if (way === "intercessions") { setViewerLocation("/prayer-mode"); return; }
-    if (method === "listen") { setViewerLocation(`/podcast/${officeSide}-office`); return; }
-    if (method === "watch") { goToWatch(); return; }
-    if (method === "venite") { goToVenite(way === "devotion" ? "devotion" : "office"); return; }
+    // The same three, guarded at the point of departure too: a state seeded
+    // while online and launched after the signal dropped would otherwise still
+    // leave for a website, a podcast or a livestream (audit, 2026-09-06).
+    if (method === "listen" && isOnline()) { setViewerLocation(`/podcast/${officeSide}-office`); return; }
+    if (method === "watch" && isOnline()) { goToWatch(); return; }
+    if (method === "venite" && isOnline()) { goToVenite(way === "devotion" ? "devotion" : "office"); return; }
     const onThisSurface = (way === "devotion" && isDevotion) || (way === "office" && !isDevotion);
     if (onThisSurface) {
       if (method === "book") { setBookOpen(true); return; }

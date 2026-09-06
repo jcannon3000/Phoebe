@@ -102,10 +102,22 @@ async function fetchMe(): Promise<AuthUser | null> {
   // left the recovery path (token exchange + retry GET) able to hang forever
   // — and because every route gate blocks on this query's loading state, a
   // hang there blanks the entire app rather than just delaying it.
+  //
+  // AND THE DEADLINE IS A RACED TIMER, not the abort alone. CapacitorHttp is
+  // enabled, and its bridge replaces window.fetch with an implementation that
+  // never reads options.signal — so on the phone this abort fired into nothing
+  // and the "bound" above was decorative: the promise sat on URLSession, up to
+  // a minute, and the app stayed blank exactly as this comment warns. The
+  // signal is kept for the web build, where it works and frees the socket.
+  // (Found by an audit of 2026-09-06, after the same inert bound was fixed in
+  // apiRequest and lib/boundedFetch.)
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timeoutId = controller ? setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS) : null;
+  const deadline = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("auth timed out")), AUTH_TIMEOUT_MS));
+  const race = <T,>(p: Promise<T>): Promise<T> => Promise.race([p, deadline]);
   try {
-    const res = await fetch("/api/auth/me", { credentials: "include", signal: controller?.signal });
+    const res = await race(fetch("/api/auth/me", { credentials: "include", signal: controller?.signal }));
     // 401 → session cookie is missing or expired. Before declaring the
     // user logged-out, try the durable persistent token: on iOS upgrades
     // the WKWebView cookie jar can lose state while the localStorage
@@ -114,16 +126,16 @@ async function fetchMe(): Promise<AuthUser | null> {
     // a fresh /auth/me will land authenticated.
     if (res.status === 401) {
       if (!getPersistentToken()) return null;
-      const recovered = await tryExchangePersistentToken(controller?.signal);
+      const recovered = await race(tryExchangePersistentToken(controller?.signal));
       if (!recovered) return null;
-      const retry = await fetch("/api/auth/me", { credentials: "include", signal: controller?.signal });
+      const retry = await race(fetch("/api/auth/me", { credentials: "include", signal: controller?.signal }));
       if (retry.status === 401) return null;
       if (!retry.ok) throw new Error("Failed to fetch user");
       const user = (await retry.json()) as AuthUser;
       sawAuthedUser = true;
       return applyCachedHomeLayout(user);
     }
-    return await finishFetchMe(res);
+    return await race(finishFetchMe(res));
   } finally {
     if (timeoutId !== null) clearTimeout(timeoutId);
   }

@@ -92,8 +92,7 @@ export async function cachePassage(ref: string): Promise<boolean> {
       ...(typeof data.credit === "string" && data.credit ? { credit: data.credit } : {}),
       fetchedAt: Date.now(),
     };
-    await storePut(PASSAGES, key, entry);
-    return true;
+    return storePut(PASSAGES, key, entry);
   } catch { return false; }
 }
 

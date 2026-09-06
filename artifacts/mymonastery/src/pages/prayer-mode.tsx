@@ -4103,7 +4103,17 @@ export default function PrayerModePage() {
   // While auth is still resolving, hold a dark field (NOT a blank white frame)
   // so arriving on the web fades dark → dark into the loading screen and the
   // first slide, instead of flashing white first.
-  if (authLoading) return <div style={{ background: "var(--oh-bg, #0C1F12)", minHeight: "100dvh" }} />;
+  /**
+   * OFFLINE THESE TWO WOULD BLANK THE PAGE FOREVER (audit, 2026-09-06). The
+   * redirect above is already gated on isOnline() — but with no connection and
+   * no persisted /auth/me (a fresh install, cleared storage, private mode) the
+   * query settles to null and never recovers, so `!user` rendered nothing at
+   * all. This is where every office ENDS (bcp-daily-office sends its finish to
+   * /prayer-mode?closingOnly=1) and where the intercessions hand-off lands, so
+   * a blank here reads as the app dying mid-prayer. Offline we render on and
+   * let the page show what it has.
+   */
+  if (isOnline() && authLoading) return <div style={{ background: "var(--oh-bg, #0C1F12)", minHeight: "100dvh" }} />;
   if (!user) return null;
 
   // Hold a calm loading screen until the slide list is captured into

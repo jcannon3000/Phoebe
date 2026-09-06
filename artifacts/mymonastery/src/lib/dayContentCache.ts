@@ -28,7 +28,7 @@ export async function cachedDayGet<T>(url: string): Promise<T | null> {
     const res = await boundedFetch(url, { headers: { Accept: "application/json" } });
     if (res.ok) {
       const data = (await res.json()) as T;
-      if (data) { await storePut(JSON_DAYS, key, data); return data; }
+      if (data) { void storePut(JSON_DAYS, key, data); return data; }
     }
   } catch { /* offline / blocked — fall through to the saved copy */ }
   return storeGet<T>(JSON_DAYS, key);
@@ -43,8 +43,7 @@ export async function cacheDay(url: string): Promise<boolean> {
     if (!res.ok) return false;
     const data = await res.json();
     if (!data) return false;
-    await storePut(JSON_DAYS, key, data);
-    return true;
+    return storePut(JSON_DAYS, key, data);
   } catch { return false; }
 }
 

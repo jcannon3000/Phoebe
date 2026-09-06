@@ -289,14 +289,17 @@ const READER_WINDOW_DAYS = 28;
  * per WEEK, so five weeks is five or six pictures, not thirty-five.
  */
 const VISIO_WINDOW_DAYS = 35;
-/** Which psalter the device asks for — the page reads it from the URL, so
- *  save the one it defaults to and the other only if it has been used. */
-function psalmCycles(): string[] {
-  try {
-    const seen = localStorage.getItem("phoebe:psalm-cycle");
-    return seen && seen !== "daily" ? ["daily", seen] : ["daily"];
-  } catch { return ["daily"]; }
-}
+/**
+ * THE TWO PSALTERS THAT EXIST — "office" and "monthly" (officePrefs
+ * getPsalmCycle). This asked for "daily", which is not one of them; the server
+ * coerces an unknown cycle to "office" so the fetch SUCCEEDED, stamped the day
+ * and saved 56 day-lists under a key the page would never ask for. Offline the
+ * Psalms read "No psalms found for today".
+ *
+ * Both are saved rather than just the current one: the page carries a picker,
+ * and switching psalter with no connection should not empty the screen.
+ */
+const PSALM_CYCLES = ["office", "monthly"] as const;
 async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => void }, ...modes: Array<LiturgyMode | null>): Promise<void> {
   const refs = new Set<string>();
   const images = new Set<string>();
@@ -308,8 +311,12 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
     const parts = getScriptureParts();
     const partsValue = parts && parts.length < 4 ? parts.join(",") : "";
     entries.push({ mode: "scripture", date, confession: "", ...(partsValue ? { parts: partsValue } : {}) });
-    entries.push({ mode: "sunday", date, confession: "", track: "1" } as OfficeCacheKey);
-    entries.push({ mode: "sunday", date, confession: "", track: "2" } as OfficeCacheKey);
+    // Only Sundays hold a Sunday deck — asking for the other six days was 168
+    // reads that could never hit.
+    if (new Date(`${date}T12:00:00`).getDay() === 0) {
+      entries.push({ mode: "sunday", date, confession: "", track: "1" } as OfficeCacheKey);
+      entries.push({ mode: "sunday", date, confession: "", track: "2" } as OfficeCacheKey);
+    }
     for (const key of entries) {
       const data = (await getOfficeCacheEntry(key)) as { slides?: Array<{ metadata?: { readUrl?: unknown; gospelReadUrl?: unknown } }> } | null;
       for (const s of data?.slides ?? []) {
@@ -345,7 +352,7 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
     const date = ymdPlusDays(i);
     jobs.push(async () => { if (await cacheDay(`/api/lectio/today?date=${date}`)) ctx.noteSaved(); });
     for (const office of ["morning", "evening"] as const) {
-      for (const cycle of psalmCycles()) {
+      for (const cycle of PSALM_CYCLES) {
         jobs.push(async () => { if (await cacheDay(`/api/psalms/today?cycle=${cycle}&office=${office}&date=${date}`)) ctx.noteSaved(); });
       }
     }
@@ -374,6 +381,22 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
 export function OfficeOfflinePrefetch(): null {
   useEffect(() => {
     void runOfficePrefetch();
+    /**
+     * …AND ON EVERY RETURN TO THE APP. This ran once per MOUNT, which on a
+     * phone that is never force-quit means once per install: the WebView
+     * stays alive across midnight, so the day rolls over and nothing is ever
+     * saved again. The shell already announces every foreground as
+     * phoebe:appactive (eight other components listen); the day-stamp guard
+     * inside makes each extra call a no-op until the date actually changes.
+     */
+    const again = () => { void runOfficePrefetch(); };
+    const onVisible = () => { if (document.visibilityState === "visible") again(); };
+    window.addEventListener("phoebe:appactive", again);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("phoebe:appactive", again);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
   return null;
 }

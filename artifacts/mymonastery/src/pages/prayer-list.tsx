@@ -1171,7 +1171,12 @@ export default function PrayerListPage() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  if (authLoading || !user) return null;
+  // Offline, "still asking" must not read as "no account": with no connection
+  // /auth/me cannot answer, and this rendered nothing at all while lib/offline
+  // advertises the prayer list as available "from the last copy on your phone"
+  // (audit, 2026-09-06). The !user arm stays ungated — with no account there is
+  // no list to show, and everything below dereferences it.
+  if ((isOnline() && authLoading) || !user) return null;
 
   const intercessions = (momentsData?.moments ?? []).filter(
     (m) => m.templateType === "intercession"

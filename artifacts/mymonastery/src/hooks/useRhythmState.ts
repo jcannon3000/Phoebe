@@ -1788,7 +1788,19 @@ export function useRhythmState(): RhythmState {
   const offline = !isOnline();
   // A GUEST has no server queries to settle — the rhythm is device-local, so
   // the first paint is ready immediately.
-  const ready = guest || (
+  /**
+   * COLD START OFFLINE MUST STILL PAINT (audit, 2026-09-06).
+   *
+   * These four had no `|| offline` escape, unlike the inboxes below — so a
+   * launch with no connection and no persisted copy of them left `ready` false
+   * for ever and the home showed its pulsing skeleton and nothing else. Toggling
+   * Airplane Mode with the app already open hid it (the queries had resolved);
+   * opening the app cold on a plane did not. The rhythm's own local state — the
+   * levels, the layout, the day's flags — is on the device and can be drawn
+   * without any of these; what they add is history and server-side completion,
+   * which is exactly what a person offline can do without.
+   */
+  const ready = guest || offline || (
     officeHistory !== undefined &&
     contStats !== undefined &&
     reflRead !== undefined &&

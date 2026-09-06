@@ -96,12 +96,26 @@ export default function LectioPage() {
     [],
   );
 
+  /**
+   * WITH THE DATE, because that is the key the day was SAVED under.
+   *
+   * The prefetch writes `/api/lectio/today?date=YYYY-MM-DD` and the day cache
+   * keys on the path and query verbatim, so asking bare read nothing that had
+   * been saved — 28 entries a run, written and never read. Worse, the bare key
+   * was then written by this page when it opened online, and the date-based
+   * prune could never match it, so offline Lectio served whatever day it last
+   * saw online as today's lessons.
+   */
+  const lectioDate = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
   const { data, isLoading } = useQuery<{ date: string | null; options: LessonOption[] }>({
-    queryKey: ["/api/lectio/today"],
+    queryKey: ["/api/lectio/today", lectioDate],
     // Through the day cache: it keeps each day's readings as they are fetched
     // and serves the saved copy when there's no connection, so the picker is
     // never empty on a device that has been opened this month.
-    queryFn: () => cachedDayGet<{ date: string | null; options: LessonOption[] }>("/api/lectio/today") as Promise<{ date: string | null; options: LessonOption[] }>,
+    queryFn: () => cachedDayGet<{ date: string | null; options: LessonOption[] }>(`/api/lectio/today?date=${lectioDate}`) as Promise<{ date: string | null; options: LessonOption[] }>,
   });
   const options = data?.options ?? [];
 

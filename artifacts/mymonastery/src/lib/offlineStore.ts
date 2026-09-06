@@ -30,21 +30,32 @@ export const JSON_DAYS = "json";
 type Row<T> = { value: T; updatedAt: number };
 
 let dbPromise: Promise<IDBDatabase | null> | null = null;
+/**
+ * The open is BOUNDED. It settled only on success, error or blocked — and if
+ * none of the three fires (an upgrade behind another tab, a wedged store) the
+ * memoised promise never resolves and every read after it awaits forever. On
+ * the office's offline path that is a veil that never lifts, with no error to
+ * show: exactly the symptom we spent today chasing for a different cause.
+ */
+const OPEN_TIMEOUT_MS = 4000;
 function openDb(): Promise<IDBDatabase | null> {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve) => {
+    let settled = false;
+    const done = (db: IDBDatabase | null) => { if (!settled) { settled = true; resolve(db); } };
+    setTimeout(() => done(null), OPEN_TIMEOUT_MS);
     try {
-      if (typeof indexedDB === "undefined") { resolve(null); return; }
+      if (typeof indexedDB === "undefined") { done(null); return; }
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = () => {
         for (const s of [PASSAGES, IMAGES, JSON_DAYS]) {
           if (!req.result.objectStoreNames.contains(s)) req.result.createObjectStore(s);
         }
       };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => resolve(null);
-      req.onblocked = () => resolve(null);
-    } catch { resolve(null); }
+      req.onsuccess = () => done(req.result);
+      req.onerror = () => done(null);
+      req.onblocked = () => done(null);
+    } catch { done(null); }
   });
   return dbPromise;
 }
@@ -61,17 +72,25 @@ export async function storeGet<T>(store: string, key: string): Promise<T | null>
   });
 }
 
-export async function storePut<T>(store: string, key: string, value: T): Promise<void> {
+/**
+ * Returns whether the row is ACTUALLY stored.
+ *
+ * It resolved the same way on complete, error and abort — and a full device
+ * aborts the transaction with QuotaExceededError. So every caller was told
+ * "saved", the run stamped the day, and nothing was on the phone. A write
+ * that did not land must say so.
+ */
+export async function storePut<T>(store: string, key: string, value: T): Promise<boolean> {
   const db = await openDb();
-  if (!db) return;
+  if (!db) return false;
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(store, "readwrite");
       tx.objectStore(store).put({ value, updatedAt: Date.now() } as Row<T>, key);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-      tx.onabort = () => resolve();
-    } catch { resolve(); }
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+      tx.onabort = () => resolve(false);
+    } catch { resolve(false); }
   });
 }
 
