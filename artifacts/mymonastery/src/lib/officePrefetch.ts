@@ -18,6 +18,7 @@
 
 import { useEffect } from "react";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { isOnline } from "@/lib/offline";
 import { getSideLevel, getSideExtra, getSideConfession, getScriptureParts, type OfficeSide } from "@/lib/officePrefs";
 import { putOfficeCacheEntry, pruneOfficeCacheBefore, getOfficeCacheEntry, type OfficeCacheKey } from "@/lib/officeOfflineCache";
 import { cachePassage, passageRefFromUrl, prunePassages } from "@/lib/passageCache";
@@ -114,7 +115,7 @@ function confessionFor(mode: LiturgyMode, side: OfficeSide): "" | "0" | "1" {
   return c === null ? "" : (c ? "1" : "0");
 }
 
-async function fetchAndCacheOne(mode: LiturgyMode, date: string, confession: "" | "0" | "1", track?: "1" | "2"): Promise<void> {
+async function fetchAndCacheOne(mode: LiturgyMode, date: string, confession: "" | "0" | "1", track?: "1" | "2"): Promise<boolean> {
   /**
    * The scripture deck is warmed for the READINGS THE PERSON KEEPS.
    *
@@ -133,11 +134,13 @@ async function fetchAndCacheOne(mode: LiturgyMode, date: string, confession: "" 
     const partsParam = partsValue ? `&parts=${partsValue}` : "";
     const trackParam = track ? `&track=${track}` : "";
     const res = await fetch(`${endpoint}${sep}date=${date}&locale=en${confParam}${partsParam}${trackParam}`);
-    if (!res.ok) return;
+    if (!res.ok) return false;
     const data = await res.json();
-    if (!data || !Array.isArray(data.slides) || data.slides.length === 0) return;
+    if (!data || !Array.isArray(data.slides) || data.slides.length === 0) return false;
     await putOfficeCacheEntry(key, data);
+    return true;
   } catch { /* best-effort — offline/slow/blocked, just skip this one day */ }
+  return false;
 }
 
 async function runQueue(jobs: Array<() => Promise<void>>): Promise<void> {
@@ -152,27 +155,51 @@ async function runQueue(jobs: Array<() => Promise<void>>): Promise<void> {
 }
 
 /** Warm the offline office cache for the next WINDOW_DAYS, if due. Safe to
- *  call on every app open — no-ops instantly unless it's a new local day, the
- *  shell is native, and the device is on Wi-Fi. */
+ *  call on every app open — no-ops instantly unless it's a new local day and
+ *  the shell is native. TEXT saves on any connection; only the pictures wait
+ *  for Wi-Fi (see the note inside). */
 export async function runOfficePrefetch(): Promise<void> {
   try {
     if (!isNativeShell()) return;
     const today = todayYmd();
     if (localStorage.getItem(LAST_RUN_KEY) === today) return;
-    // mymonastery never imports Capacitor plugins directly (it also runs as
-    // a plain web build) — window.PhoebeNative is the one bridge every
-    // native-only capability goes through. isOnWifi is absent on web and on
-    // an app build older than this feature; either way, treat "can't tell"
-    // as "don't risk cellular data" and skip.
+    if (!isOnline()) return;
+    /**
+     * WI-FI GATES THE PICTURES, NOT THE WHOLE LAYER.
+     *
+     * This used to return unless the device was on Wi-Fi, so a person on
+     * cellular all day — or whose Wi-Fi was asleep at the moment the app
+     * opened — saved nothing, ever, and found out in Airplane Mode. The owner
+     * did: his phone had no office at all on the day this was meant to hold
+     * thirty. The intent was "never cost them data they didn't expect", and
+     * that is about the BLOBS: a day of decks and passages is a few dozen KB,
+     * one painting is megabytes. So the text saves on any connection and the
+     * pictures wait for Wi-Fi.
+     *
+     * mymonastery never imports Capacitor plugins directly (it also runs as a
+     * plain web build) — window.PhoebeNative is the one bridge. When it can't
+     * answer, treat that as "not Wi-Fi": the text still saves, the pictures
+     * wait for a launch where we can tell.
+     */
     const isOnWifi = (window as unknown as { PhoebeNative?: { isOnWifi?: () => Promise<boolean> } }).PhoebeNative?.isOnWifi;
-    if (!isOnWifi) return;
-    const onWifi = await isOnWifi().catch(() => false);
-    if (!onWifi) return;
+    const onWifi = isOnWifi ? await isOnWifi().catch(() => false) : false;
 
-    // Mark as run for today FIRST — a slow/partial prefetch (device walked
-    // away, backgrounded, lost Wi-Fi mid-run) shouldn't retry the whole
-    // window every single app open for the rest of the day.
-    try { localStorage.setItem(LAST_RUN_KEY, today); } catch { /* ignore */ }
+    /**
+     * THE DAY IS STAMPED ON THE FIRST THING SAVED, not before the first fetch.
+     *
+     * It was stamped up front so a slow or interrupted run wouldn't re-walk
+     * the window on every app open — but that meant a run which started and
+     * then failed (connection dropped a second later, app backgrounded, a 500)
+     * marked the day done with an empty cache and no retry until tomorrow.
+     * Stamping on the first success keeps the original intent — one full walk
+     * a day — while a run that saves nothing simply tries again next open.
+     */
+    let stamped = false;
+    const noteSaved = () => {
+      if (stamped) return;
+      stamped = true;
+      try { localStorage.setItem(LAST_RUN_KEY, today); } catch { /* ignore */ }
+    };
 
     void pruneOfficeCacheBefore(today);
 
@@ -183,14 +210,14 @@ export async function runOfficePrefetch(): Promise<void> {
     const jobs: Array<() => Promise<void>> = [];
     for (let i = 0; i < WINDOW_DAYS; i++) {
       const date = ymdPlusDays(i);
-      if (morningMode) jobs.push(() => fetchAndCacheOne(morningMode, date, confessionFor(morningMode, "morning")));
-      if (eveningMode) jobs.push(() => fetchAndCacheOne(eveningMode, date, confessionFor(eveningMode, "evening")));
+      if (morningMode) jobs.push(async () => { if (await fetchAndCacheOne(morningMode, date, confessionFor(morningMode, "morning"))) noteSaved(); });
+      if (eveningMode) jobs.push(async () => { if (await fetchAndCacheOne(eveningMode, date, confessionFor(eveningMode, "evening"))) noteSaved(); });
       // A side's SECOND practice gets the same offline treatment as its anchor.
-      if (morningExtraMode) jobs.push(() => fetchAndCacheOne(morningExtraMode, date, confessionFor(morningExtraMode, "morning")));
-      if (eveningExtraMode) jobs.push(() => fetchAndCacheOne(eveningExtraMode, date, confessionFor(eveningExtraMode, "evening")));
+      if (morningExtraMode) jobs.push(async () => { if (await fetchAndCacheOne(morningExtraMode, date, confessionFor(morningExtraMode, "morning"))) noteSaved(); });
+      if (eveningExtraMode) jobs.push(async () => { if (await fetchAndCacheOne(eveningExtraMode, date, confessionFor(eveningExtraMode, "evening"))) noteSaved(); });
       // Compline has no side/level of its own — always available every
       // evening, so always warmed regardless of either side's rule.
-      jobs.push(() => fetchAndCacheOne("compline", date, ""));
+      jobs.push(async () => { if (await fetchAndCacheOne("compline", date, "")) noteSaved(); });
       /**
        * The Daily Scripture Reading, on the same footing as Compline.
        *
@@ -201,7 +228,7 @@ export async function runOfficePrefetch(): Promise<void> {
        * unconditionally here for the same reason Compline is: it has no side of
        * its own and is available every day.
        */
-      jobs.push(() => fetchAndCacheOne("scripture", date, ""));
+      jobs.push(async () => { if (await fetchAndCacheOne("scripture", date, "")) noteSaved(); });
     }
     /**
      * THE SUNDAY READINGS, for the next four Sundays, both tracks — the This
@@ -211,11 +238,11 @@ export async function runOfficePrefetch(): Promise<void> {
       const d = new Date(); d.setDate(d.getDate() + i);
       if (d.getDay() !== 0 || i > 28) continue;
       const date = ymdPlusDays(i);
-      jobs.push(() => fetchAndCacheOne("sunday", date, "", "1"));
-      jobs.push(() => fetchAndCacheOne("sunday", date, "", "2"));
+      jobs.push(async () => { if (await fetchAndCacheOne("sunday", date, "", "1")) noteSaved(); });
+      jobs.push(async () => { if (await fetchAndCacheOne("sunday", date, "", "2")) noteSaved(); });
     }
     if (jobs.length > 0) await runQueue(jobs);
-    await warmReadersAndPictures(morningMode, eveningMode, morningExtraMode, eveningExtraMode);
+    await warmReadersAndPictures({ onWifi, noteSaved }, morningMode, eveningMode, morningExtraMode, eveningExtraMode);
   } catch { /* best-effort — never surface a prefetch failure to the user */ }
 }
 
@@ -245,7 +272,7 @@ function psalmCycles(): string[] {
     return seen && seen !== "daily" ? ["daily", seen] : ["daily"];
   } catch { return ["daily"]; }
 }
-async function warmReadersAndPictures(...modes: Array<LiturgyMode | null>): Promise<void> {
+async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => void }, ...modes: Array<LiturgyMode | null>): Promise<void> {
   const refs = new Set<string>();
   const images = new Set<string>();
   for (let i = 0; i < READER_WINDOW_DAYS; i++) {
@@ -277,8 +304,11 @@ async function warmReadersAndPictures(...modes: Array<LiturgyMode | null>): Prom
     if (art?.img) images.add(art.img);
   }
   const jobs: Array<() => Promise<void>> = [];
-  for (const ref of refs) jobs.push(async () => { await cachePassage(ref); });
-  for (const img of images) jobs.push(async () => { await cacheImage(img); });
+  for (const ref of refs) jobs.push(async () => { if (await cachePassage(ref)) ctx.noteSaved(); });
+  // THE PICTURES ARE THE ONLY THING THAT WAITS FOR WI-FI — megabytes each,
+  // where a day of text is a few dozen KB. On cellular the rest still saves
+  // and the paintings arrive at the next launch on Wi-Fi.
+  if (ctx.onWifi) for (const img of images) jobs.push(async () => { if (await cacheImage(img)) ctx.noteSaved(); });
   /**
    * …AND THE LISTS THAT MAKE THE DAY. Lectio offers a choice of the day's
    * three lessons and the Psalms page asks for the psalm appointed; both are
@@ -288,10 +318,10 @@ async function warmReadersAndPictures(...modes: Array<LiturgyMode | null>): Prom
    */
   for (let i = 0; i < READER_WINDOW_DAYS; i++) {
     const date = ymdPlusDays(i);
-    jobs.push(async () => { await cacheDay(`/api/lectio/today?date=${date}`); });
+    jobs.push(async () => { if (await cacheDay(`/api/lectio/today?date=${date}`)) ctx.noteSaved(); });
     for (const office of ["morning", "evening"] as const) {
       for (const cycle of psalmCycles()) {
-        jobs.push(async () => { await cacheDay(`/api/psalms/today?cycle=${cycle}&office=${office}&date=${date}`); });
+        jobs.push(async () => { if (await cacheDay(`/api/psalms/today?cycle=${cycle}&office=${office}&date=${date}`)) ctx.noteSaved(); });
       }
     }
   }
@@ -305,7 +335,9 @@ async function warmReadersAndPictures(...modes: Array<LiturgyMode | null>): Prom
    * out instead of being swept.
    */
   void pruneDaysBefore(todayYmd());
-  void pruneImagesExcept(images);
+  // Only when we actually fetched pictures this run — on cellular `images`
+  // was never filled, and sweeping to it would delete every saved painting.
+  if (ctx.onWifi) void pruneImagesExcept(images);
   void prunePassages();
   void pruneImages();
   void pruneDays();
