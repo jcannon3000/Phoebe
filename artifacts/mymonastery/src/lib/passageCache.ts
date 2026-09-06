@@ -14,6 +14,7 @@
  * lesson share one entry.
  */
 import { PASSAGES, storeGet, storePut, storeHas, storePrune } from "@/lib/offlineStore";
+import { isOnline } from "@/lib/offline";
 
 export type CachedPassage = {
   ref: string;
@@ -82,7 +83,7 @@ export const OFFLINE_PASSAGE_EVENT = "phoebe:open-offline-passage";
  * hands off to the browser as it always did.
  */
 export async function openOfflinePassageIfCached(url: string | null | undefined, title: string): Promise<boolean> {
-  if (typeof navigator !== "undefined" && navigator.onLine !== false) return false;
+  if (isOnline()) return false;
   const passage = await getCachedPassageForUrl(url);
   if (!passage) return false;
   window.dispatchEvent(new CustomEvent(OFFLINE_PASSAGE_EVENT, { detail: { passage, title } }));

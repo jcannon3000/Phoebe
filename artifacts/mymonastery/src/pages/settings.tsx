@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { checkPushPermission, enablePushNotifications, type PermState } from "@/lib/pushPermission";
+import { HIDE_COMMUNITY_KEY } from "@/lib/displayPrefs";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { useGuestMode } from "@/hooks/useGuestMode";
@@ -1199,6 +1200,8 @@ export const HIDE_DONE_KEY = "phoebe:hide-home-done";
 // haptic in the app arrives. Stored "off" rather than "on" so the absent key
 // means haptics work, which is the shipped default.
 export const HAPTICS_OFF_KEY = "phoebe:haptics-off";
+// "Hide community features" lives in lib/displayPrefs — the drawer reads it
+// too, and it must not import this page.
 
 // ── Muted people ─────────────────────────────────────────────────────────
 // The read side (filtering a muter's garden + push fan-out) lives in
@@ -1279,6 +1282,15 @@ function HomeDisplaySettings() {
   // never been written), matching "on, but you can turn them off".
   const [doneHidden, setDoneHidden] = useState<boolean>(() => readLsBool(HIDE_DONE_KEY));
   const [hapticsOff, setHapticsOff] = useState<boolean>(() => readLsBool(HAPTICS_OFF_KEY));
+  // Community, Prayer list and Events out of the drawer, for someone keeping
+  // a rhythm alone (owner, 2026-09-05).
+  const [communityHidden, setCommunityHidden] = useState<boolean>(() => readLsBool(HIDE_COMMUNITY_KEY));
+  const toggleCommunity = () => {
+    const next = !communityHidden;
+    setCommunityHidden(next);
+    writeLsBool(HIDE_COMMUNITY_KEY, next);
+    try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
+  };
   const hapticsOn = !hapticsOff;
   const toggleHaptics = () => {
     const nextOff = hapticsOn;
@@ -1341,6 +1353,34 @@ function HomeDisplaySettings() {
           >
             <div
               className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${doneShown ? "left-[21px]" : "left-[3px]"}`}
+              style={{ background: "#F0EDE6" }}
+            />
+          </div>
+        </button>
+
+        <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
+
+        {/* HIDE COMMUNITY FEATURES (owner, 2026-09-05): "a toggle that says
+            hide community features, which would hide the three community menu
+            options from the drawer" — Community, Prayer list and Events. The
+            switch reads ON when they are SHOWN, like every other row here. */}
+        <button
+          onClick={toggleCommunity}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="text-left">
+            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+              Hide community features
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+              Takes Community, Prayer list and Events out of the menu, for a rhythm you keep on your own.
+            </p>
+          </div>
+          <div
+            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${communityHidden ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+          >
+            <div
+              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${communityHidden ? "left-[21px]" : "left-[3px]"}`}
               style={{ background: "#F0EDE6" }}
             />
           </div>

@@ -1,5 +1,6 @@
 import { ReactNode, useState, useEffect, useRef, useMemo, type CSSProperties } from "react";
 import { useGroupFeatures } from "@/hooks/useGroupFeatures";
+import { HIDE_COMMUNITY_KEY } from "@/lib/displayPrefs";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
@@ -170,6 +171,22 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   // Per-feature unlocks: a community with events / prayer requests switched
   // ON (owner, 2026-09-05) — not any community.
   const { hasEventsGroup, hasPrayerGroup } = useGroupFeatures();
+  /**
+   * "Hide community features" (Settings → Home display, owner 2026-09-05):
+   * one switch that takes Community, Prayer list and Events out of this
+   * drawer for someone who keeps a rhythm alone. Device-local like the other
+   * display prefs, and live — the same phoebe:prefs-changed the header pill
+   * listens for, so flipping it updates the drawer with no reload.
+   */
+  const [communityHidden, setCommunityHidden] = useState<boolean>(() => {
+    try { return localStorage.getItem(HIDE_COMMUNITY_KEY) === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    const sync = () => { try { setCommunityHidden(localStorage.getItem(HIDE_COMMUNITY_KEY) === "1"); } catch { /* ignore */ } };
+    window.addEventListener("phoebe:prefs-changed", sync);
+    window.addEventListener("storage", sync);
+    return () => { window.removeEventListener("phoebe:prefs-changed", sync); window.removeEventListener("storage", sync); };
+  }, []);
 
   function navigate(path: string) {
     onClose();
@@ -369,7 +386,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 multi-community case. */}
             {/* GUESTS have no social section at all — no Community/Fellows, no
                 Prayer list, no Events (the public version carries none). */}
-            {!officesOnly && !isGuest && (
+            {!officesOnly && !isGuest && !communityHidden && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 {/* Community — the communities you're in. Hidden entirely in
                     pilot (personal-only) and until you've joined one. */}

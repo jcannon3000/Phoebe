@@ -32,6 +32,7 @@ import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay,
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday, isOfficeLoggedToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { anchorModesFor, getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, getSideReflectionExplicit, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT, getSideContemplationKind, getContemplationStyleGlobal, type ContemplationKind as SideContemplationKind } from "@/lib/officePrefs";
+import { isOnline } from "@/lib/offline";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
 import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
 
@@ -1753,7 +1754,9 @@ export function useRhythmState(): RhythmState {
   // on a cold boot), so don't let it block the routine from painting — the
   // structure still comes from the persisted office history / prefs / layout.
   // The extras just read "not done yet" until the connection returns.
-  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+  // isOnline(), not navigator directly — it also honours the forced offline
+  // Admin Tools can set (there is no Airplane Mode on the Simulator).
+  const offline = !isOnline();
   // A GUEST has no server queries to settle — the rhythm is device-local, so
   // the first paint is ready immediately.
   const ready = guest || (

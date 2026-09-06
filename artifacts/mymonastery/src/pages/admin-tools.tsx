@@ -9,6 +9,7 @@ import { ChevronRight } from "lucide-react";
 import { DEBUG_STEPS_KEY } from "@/components/WayOfLoveRuleFlow";
 import { useState } from "react";
 import { useAppSettings, useSetAppSetting } from "@/lib/appSettings";
+import { debugOfflineForced, setDebugOffline } from "@/lib/offline";
 
 
 function LinkRow({
@@ -54,6 +55,7 @@ export default function AdminToolsPage() {
   const [communityAdminView, toggleCommunityAdminView] = useCommunityAdminToggle();
   const appSettings = useAppSettings();
   const setAppSetting = useSetAppSetting();
+  const [forcedOffline, setForcedOffline] = useState<boolean>(() => debugOfflineForced());
 
   const { data: groupsData } = useQuery<{
     groups: Array<{ id: number; name: string; slug: string; myRole: string }>;
@@ -180,6 +182,20 @@ export default function AdminToolsPage() {
                     order) under each slide. For a stuck Continue on a device
                     with no console and no address bar: the state that would
                     have been a console.log, in a screenshot. */}
+                {/* SIMULATE OFFLINE. The Simulator has no Airplane Mode of
+                    its own — it uses the Mac's network — so this is the only
+                    way to walk the offline app on a device: the saved
+                    readings, the passage sheet, and the home's "Not Available
+                    Offline" section. Everything that asks about the
+                    connection goes through lib/offline's isOnline(). */}
+                <Toggle
+                  label={`Simulate offline ${forcedOffline ? "on" : "off"}`}
+                  description={forcedOffline
+                    ? "The app behaves as though there were no connection. Requests still go out — this is for walking the offline screens."
+                    : "Force the offline experience: saved readings, the passage sheet, and the home's Not Available Offline section."}
+                  enabled={forcedOffline}
+                  onToggle={() => { const next = !forcedOffline; setForcedOffline(next); setDebugOffline(next); }}
+                />
                 <Toggle
                   label="Step debug in the customizer"
                   description="Show which step the flow is on, and what it thinks comes next"

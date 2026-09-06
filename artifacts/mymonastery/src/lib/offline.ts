@@ -14,7 +14,38 @@
  */
 import { useEffect, useState } from "react";
 
+/**
+ * A FORCED OFFLINE, for testing on a device.
+ *
+ * The iOS Simulator has no Airplane Mode of its own — it uses the Mac's
+ * network stack — so there is no way to see the offline app without taking
+ * the whole machine off the network. Admin Tools carries a switch that writes
+ * this key ("Simulate offline"), and every reader of the connection honours
+ * it. Off by default and only reachable from an admin screen; nothing writes
+ * it on its own.
+ */
+export const DEBUG_OFFLINE_KEY = "phoebe:debug:offline";
+export const DEBUG_OFFLINE_EVENT = "phoebe:debug-offline-changed";
+
+export function debugOfflineForced(): boolean {
+  try { return localStorage.getItem(DEBUG_OFFLINE_KEY) === "1"; } catch { return false; }
+}
+
+/** Flip the forced offline and tell everything listening — the same
+ *  online/offline events the browser fires, so no listener needs to know. */
+export function setDebugOffline(on: boolean): void {
+  try {
+    if (on) localStorage.setItem(DEBUG_OFFLINE_KEY, "1");
+    else localStorage.removeItem(DEBUG_OFFLINE_KEY);
+  } catch { /* private mode */ }
+  try {
+    window.dispatchEvent(new Event(DEBUG_OFFLINE_EVENT));
+    window.dispatchEvent(new Event(on ? "offline" : "online"));
+  } catch { /* ignore */ }
+}
+
 export function isOnline(): boolean {
+  if (debugOfflineForced()) return false;
   return typeof navigator === "undefined" ? true : navigator.onLine !== false;
 }
 
@@ -23,13 +54,18 @@ export function isOnline(): boolean {
 export function useOnline(): boolean {
   const [online, setOnline] = useState<boolean>(isOnline);
   useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener("online", on);
-    window.addEventListener("offline", off);
+    // Always re-read isOnline() rather than trusting the event's direction —
+    // the forced offline above has to win over a real "online" event.
+    const sync = () => setOnline(isOnline());
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    window.addEventListener(DEBUG_OFFLINE_EVENT, sync);
+    window.addEventListener("storage", sync);
     return () => {
-      window.removeEventListener("online", on);
-      window.removeEventListener("offline", off);
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+      window.removeEventListener(DEBUG_OFFLINE_EVENT, sync);
+      window.removeEventListener("storage", sync);
     };
   }, []);
   return online;
