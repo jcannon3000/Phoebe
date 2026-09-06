@@ -391,7 +391,11 @@ export function useWidgetSync(): void {
     // rule rather than a saved order the home no longer reads.
     // The widget follows the SAME learned order the home does — it must lead
     // with whatever the home leads with, morning anchor pinned first.
-    const ordered = sortCardsByLearnedOrder(slotOrdered)
+    // Second-renderer rule: the learned order sorts WITHIN the slot ordering
+    // above, exactly as the home does — otherwise a practice the log has seen
+    // outranks the newsletter (and an evening card escapes last place) here
+    // but not on screen.
+    const ordered = sortCardsByLearnedOrder(slotOrdered, (c) => SLOT_RANK[c.slot] ?? 1)
       .map((it, i, arr) => ({ ...it, rgb: rhythmGradientRgb(i, arr.length) }));
     // "Next" = the first not-done practice whose slot HASN'T already passed
     // today (a passed slot is "tomorrow", not next). Falls back to summary.

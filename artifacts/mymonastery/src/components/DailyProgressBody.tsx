@@ -25,7 +25,7 @@ import { recordPracticeOpen, sortCardsByLearnedOrder } from "@/lib/practiceOrder
 import { reflectionSourceUrl, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markInboxRead, unmarkInboxRead } from "@/lib/taizeInbox";
-import { markCustomDoneToday, setCustomNotToday, unmarkCustomDoneToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
+import { markCustomDoneToday, setCustomNotToday, unmarkCustomDoneToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig , curatedPromptFor } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
 import { useVisioToday } from "@/hooks/useVisioToday";
 import { undoOfficeToday } from "@/lib/officeManualLog";
@@ -1904,7 +1904,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * the slot ranks already encode. The saved order is still WRITTEN (the flat
    * list's drag), it is simply no longer what the surfaces read.
    */
-  const coloredCards = sortCardsByLearnedOrder(cards)
+  // The learned order runs INSIDE the day's shape, never over it: slot group
+  // first (so evening stays last), then the helper's own tiers — morning
+  // anchor, newsletters, then the habit. Before this it re-sorted the whole
+  // list and put any practice the log had seen above every one it hadn't.
+  const coloredCards = sortCardsByLearnedOrder(cards, (c) => cardGroup(c.slot))
     .map((c, i, arr) => ({ ...c, rgb: rhythmGradientRgb(i, arr.length) }));
   /**
    * THE NOTIFICATION'S PRACTICE IS THE HERO (owner: "the ones they set as
@@ -2712,12 +2716,12 @@ function LogSheet({
                 practice is something you either did with another person today
                 or didn't, and asking it plainly reads truer than a checkbox
                 labelled with the practice's own name. */}
-            {anchor.prompt && (
+            {curatedPromptFor(anchor) && (
               <p
                 className="text-[15px] text-center mb-3"
                 style={{ color: "rgba(240,237,230,0.92)", fontFamily: FONT, lineHeight: 1.5 }}
               >
-                {anchor.prompt}
+                {curatedPromptFor(anchor)}
               </p>
             )}
           <button
@@ -2726,7 +2730,7 @@ function LogSheet({
             className="w-full rounded-2xl py-3.5 text-[15px] font-semibold active:scale-[0.99]"
             style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
           >
-            ✓ {anchor.prompt
+            ✓ {curatedPromptFor(anchor)
               ? t("rhythm.log_yes", { defaultValue: "Yes" })
               : t("rhythm.log_done", { defaultValue: "Done" })}
           </button>

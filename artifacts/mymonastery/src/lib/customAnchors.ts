@@ -167,8 +167,8 @@ export type CustomAnchor = {
    * A yes/no QUESTION to ask instead of a bare "Done".
    *
    * The relational practices are things you either did or didn't do with
-   * someone today — "Did you tell someone, or send someone a message, saying
-   * what you are grateful for?" — and asking that reads truer than a checkbox
+   * someone today — "Did you tell someone, or send someone a message,
+   * expressing gratitude today?" — and asking that reads truer than a checkbox
    * labelled "Express gratitude". Owner: "on the pop up for the log it will
    * say, did you tell someone or send someone a message today expressing
    * gratitude? Yes. Not today."
@@ -336,7 +336,10 @@ export const RELATIONAL_PRACTICES = [
     id: "gratitude",
     title: "Express gratitude",
     emoji: "🙏🏽",
-    prompt: "Did you tell someone, or send someone a message, saying what you are grateful for?",
+    // Owner (2026-09-06): the log copy "is a little off" — this was one long
+    // clause that trailed off ("saying what you are grateful for"). Back to the
+    // owner's own dictation, and the same short shape the sibling prompts have.
+    prompt: "Did you tell someone, or send someone a message, expressing gratitude today?",
   },
   {
     id: "call",
@@ -1456,4 +1459,19 @@ if (typeof window !== "undefined") {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flushPendingPush();
   });
+}
+
+/**
+ * The curated wording for a relational practice the person already has.
+ *
+ * An anchor stores the prompt it was seeded with, so editing the copy above
+ * would otherwise only reach devices that add the practice afterwards. The log
+ * sheet asks here first and falls back to the stored text, which means a copy
+ * fix lands for everyone (owner, 2026-09-06, on the Express gratitude log).
+ */
+export function curatedPromptFor(a: { title: string; prompt?: string }): string | undefined {
+  const match = RELATIONAL_PRACTICES.find(
+    (r) => r.title.trim().toLowerCase() === a.title.trim().toLowerCase(),
+  );
+  return match?.prompt ?? a.prompt;
 }

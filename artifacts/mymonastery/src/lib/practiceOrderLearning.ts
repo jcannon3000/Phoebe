@@ -97,18 +97,37 @@ export function learnedRanks(): Map<string, number> {
 /**
  * Order cards by the habit, with the morning anchor pinned first.
  *
- * Stable in three tiers: the morning anchor, then everything the log has an
- * opinion about (by mean position), then everything it doesn't — each tier
- * keeping the built-in order among equals, so a day the log knows nothing
- * about looks exactly as it did before.
+ * Stable in tiers: the morning anchor, then the newsletters, then everything
+ * the log has an opinion about (by mean position), then everything it doesn't
+ * — each tier keeping the built-in order among equals, so a day the log knows
+ * nothing about looks exactly as it did before.
+ *
+ * THE NEWSLETTER TIER (owner, 2026-09-06: "make newsletters show up second
+ * after the morning practice", then "forward should be second"). This sort
+ * runs AFTER the caller's own ordering and used to override it completely:
+ * anything the log had seen (Visio, opened once) outranked anything it hadn't
+ * (Forward Day by Day, never opened), so the newsletter fell to third however
+ * the caller had ordered it. The habit still orders everything below.
+ *
+ * `groupOf` keeps the caller's coarse ordering — the home passes its slot
+ * group, so an evening practice cannot be lifted out of last place by having
+ * been opened (owner: "examen — any evening should be last"). Callers that
+ * pass nothing get one flat group, exactly as before.
  */
-export function sortCardsByLearnedOrder<T extends { key: string }>(cards: T[]): T[] {
+export const isPublicationKey = (key: string): boolean =>
+  key.startsWith("reflect-") || key.startsWith("w:") || key === "taize" || key === "andrews";
+
+export function sortCardsByLearnedOrder<T extends { key: string }>(
+  cards: T[],
+  groupOf?: (c: T) => number,
+): T[] {
   const ranks = learnedRanks();
-  if (ranks.size === 0) return cards;
-  const tier = (c: T): number => (c.key === "morning" ? -1 : ranks.has(c.key) ? 0 : 1);
+  if (ranks.size === 0 && !groupOf) return cards;
+  const tier = (c: T): number =>
+    c.key === "morning" ? -2 : isPublicationKey(c.key) ? -1 : ranks.has(c.key) ? 0 : 1;
   return cards
-    .map((c, i) => ({ c, i, t: tier(c), r: ranks.get(c.key) ?? 0 }))
-    .sort((a, b) => (a.t - b.t) || (a.t === 0 ? a.r - b.r : 0) || (a.i - b.i))
+    .map((c, i) => ({ c, i, g: groupOf ? groupOf(c) : 0, t: tier(c), r: ranks.get(c.key) ?? 0 }))
+    .sort((a, b) => (a.g - b.g) || (a.t - b.t) || (a.t === 0 ? a.r - b.r : 0) || (a.i - b.i))
     .map((x) => x.c);
 }
 
@@ -133,4 +152,18 @@ export function pushPracticeOpenLog(): void {
     if (days.length === 0) return;
     void apiRequest("PUT", "/api/me/practice-open-log", { days }).catch(() => { /* best-effort */ });
   }, 1500);
+}
+
+/**
+ * Has this person actually used a practice yet?
+ *
+ * The open log is the broadest record of "they did something" the device
+ * keeps — every rhythm card records its open here. The guest welcome card
+ * used to ask the server's prayer-DAYS instead, which counts completed
+ * offices only, so someone who read the day's newsletter or sat with the
+ * picture still saw "Begin here" (owner, 2026-09-06: switch to the second
+ * card "after they practice").
+ */
+export function hasUsedAPractice(): boolean {
+  return read().some((d) => d.keys.length > 0);
 }

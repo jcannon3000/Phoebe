@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { hasUsedAPractice } from "@/lib/practiceOrderLearning";
 
 const FONT = "'Space Grotesk', sans-serif";
 const SEEN_KEY = "phoebe:guest-welcome-dismissed";
@@ -29,7 +30,17 @@ export function GuestWelcomeCard() {
     queryFn: () => apiRequest("GET", `/api/me/prayer-days?tz=${encodeURIComponent(tz)}`),
     staleTime: 60_000,
   });
-  const hasPrayed = !!prayerDays && (prayerDays.keptToday || prayerDays.last7 > 0 || prayerDays.streak > 0);
+  /**
+   * ANY practice counts, not just a completed office (owner, 2026-09-06:
+   * switch to the second card "after they practice"). prayer-days only knows
+   * about offices, so reading the day's newsletter or sitting with the
+   * picture left the newcomer on "Begin here" indefinitely. The device's own
+   * open log answers for everything else, and is read once at mount — the
+   * home remounts on the way back from a practice.
+   */
+  const [usedAPractice] = useState<boolean>(() => hasUsedAPractice());
+  const hasPrayed = usedAPractice
+    || (!!prayerDays && (prayerDays.keptToday || prayerDays.last7 > 0 || prayerDays.streak > 0));
   if (dismissed) return null;
   const dismiss = () => {
     try { localStorage.setItem(SEEN_KEY, "1"); } catch { /* private mode — hides for the session */ }
