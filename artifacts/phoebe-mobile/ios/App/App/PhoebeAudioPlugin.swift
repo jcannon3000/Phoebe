@@ -52,11 +52,99 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "scheduleBellNotification", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cancelBellNotification", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "smoothSwell", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "playPad", returnType: CAPPluginReturnPromise),
     ]
 
     private let bellNotificationId = "phoebe-contemplation-bell"
     // Core Haptics engine for the Cobreathe completion swell (lazy; reused).
     private var hapticEngine: CHHapticEngine?
+
+    // ─── Chapel pad (the slide-turn chime), rendered natively ────────────────
+    // A replica of lib/amenFeedback.ts playBreathTone: an open fifth (root,
+    // fifth as a triangle, octave) at 110 Hz × 2^octaveStep, 2.5 s swell,
+    // 0.8 s hold, 3.7 s exponential fade, through a one-pole low-pass whose
+    // cutoff opens with the swell. Rendered into a buffer and played on one of
+    // a small pool of player nodes so consecutive pads may overlap (the
+    // routine-complete swell fires three 1.1 s apart). Plays under our own
+    // .playback + .mixWithOthers session, so another app's music keeps going —
+    // WebAudio in the WebView made WebKit take an exclusive session and
+    // stopped it (owner, 2026-09-05).
+    private var padEngine: AVAudioEngine?
+    private var padPlayers: [AVAudioPlayerNode] = []
+    private var padNext = 0
+
+    @objc func playPad(_ call: CAPPluginCall) {
+        let step = max(0, min(4, Int(call.getDouble("octaveStep") ?? 0)))
+        do {
+            try ensureSessionActive()
+            let sr = 44100.0
+            let swellIn = 2.5, hold = 0.8, fadeOut = 3.7
+            let total = swellIn + hold + fadeOut
+            let frames = AVAudioFrameCount(total * sr)
+            guard let fmt = AVAudioFormat(standardFormatWithSampleRate: sr, channels: 1),
+                  let buf = AVAudioPCMBuffer(pcmFormat: fmt, frameCapacity: frames),
+                  let out = buf.floatChannelData?[0] else {
+                call.reject("pad buffer"); return
+            }
+            buf.frameLength = frames
+            let octMult = pow(2.0, Double(step))
+            let root = 110.0 * octMult
+            let masterPeak = step >= 2 ? 0.18 : step >= 1 ? 0.20 : 0.22
+            let voices: [(freq: Double, gain: Double, triangle: Bool)] = [
+                (root, 0.55, false), (root * 1.5, 0.28, true), (root * 2.0, 0.22, false)
+            ]
+            var phase = [Double](repeating: 0, count: voices.count)
+            let lpStart = 380.0 * octMult, lpPeak = 1800.0 * octMult
+            var lpY = 0.0
+            let n = Int(frames)
+            for i in 0..<n {
+                let t = Double(i) / sr
+                // Master envelope: linear swell, hold, exponential fade to -80 dB.
+                let env: Double
+                if t < swellIn { env = masterPeak * (t / swellIn) }
+                else if t < swellIn + hold { env = masterPeak }
+                else { env = masterPeak * pow(0.0001 / masterPeak, (t - swellIn - hold) / fadeOut) }
+                // ~0.3% upward drift over the swell, back to pitch by the end.
+                let drift = t < swellIn ? 1.0 + 0.003 * (t / swellIn) : 1.0 + 0.003 * max(0.0, 1.0 - (t - swellIn) / (total - swellIn))
+                var x = 0.0
+                for (vi, v) in voices.enumerated() {
+                    phase[vi] += v.freq * drift / sr
+                    if phase[vi] >= 1.0 { phase[vi] -= 1.0 }
+                    let ph = phase[vi]
+                    let sample = v.triangle ? (2.0 * abs(2.0 * (ph - floor(ph + 0.5))) - 1.0) : sin(2.0 * Double.pi * ph)
+                    x += sample * v.gain
+                }
+                // Low-pass sweep lpStart → lpPeak over the swell → 2×lpStart by the end.
+                let fc = t < swellIn ? lpStart + (lpPeak - lpStart) * (t / swellIn)
+                    : lpPeak + (lpStart * 2.0 - lpPeak) * ((t - swellIn) / (total - swellIn))
+                let a = 1.0 - exp(-2.0 * Double.pi * fc / sr)
+                lpY += a * (x - lpY)
+                out[i] = Float(lpY * env)
+            }
+            if padEngine == nil {
+                let engine = AVAudioEngine()
+                var players: [AVAudioPlayerNode] = []
+                for _ in 0..<3 {
+                    let p = AVAudioPlayerNode()
+                    engine.attach(p)
+                    engine.connect(p, to: engine.mainMixerNode, format: fmt)
+                    players.append(p)
+                }
+                padEngine = engine
+                padPlayers = players
+            }
+            guard let engine = padEngine, !padPlayers.isEmpty else { call.reject("pad engine"); return }
+            if !engine.isRunning { try engine.start() }
+            let player = padPlayers[padNext % padPlayers.count]
+            padNext += 1
+            player.stop()
+            player.scheduleBuffer(buf, completionHandler: nil)
+            player.play()
+            call.resolve(["ok": true])
+        } catch {
+            call.reject("playPad failed: \(error.localizedDescription)")
+        }
+    }
 
     // ─── Smooth completion haptic (Core Haptics) ─────────────────────────────
     // ONE continuous vibration whose intensity follows a parabola — rising from

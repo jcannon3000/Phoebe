@@ -660,7 +660,7 @@ export default function CommunitySettingsPage() {
               <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
                 {isPublic
                   ? t("community_settings.prayer_requests_public_locked", { defaultValue: "Not available for a community listed in the public directory. Turn off \"List in the community directory\" above to enable this." })
-                  : t("community_settings.prayer_requests_desc", { defaultValue: "Members can share a prayer request with this community and see each other's requests." })}
+                  : t("community_settings.prayer_requests_desc", { defaultValue: "Members can share a prayer request with this community and see each other's requests. Off, this community has no prayer list and doesn't add Prayer list to its members' menu." })}
               </p>
             </div>
           </label>

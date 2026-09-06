@@ -1348,21 +1348,6 @@ export default function VisioPage() {
                 the description arrives with the work itself: not on the title
                 slide before it, and not on the second look after it. The
                 closing slide keeps the Vanderbilt attribution alone. */}
-            {/* ABOUT — a pill under the picture that opens the description
-                (owner, 2026-09-05: "instead of having the Jesus Mafa
-                description just on the background, have an About pill under
-                the image, if there is such a description, that pulls up a
-                pop-up"). Only when there is something to say. */}
-            {aboutText.length > 0 && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setAboutOpen(true); }}
-                className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-                style={{ margin: "12px auto 0", padding: "8px 18px", background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.5)", color: WARM, fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-              >
-                {t("visio.about", { defaultValue: "About" })}
-              </button>
-            )}
             {/* Who the work depicts, in ACT's own words — on the beat where the
                 picture is FIRST shown, not over the title (owner). It belongs
                 with the looking: a museum label names the figures beside the
@@ -1392,6 +1377,21 @@ export default function VisioPage() {
                 {canonicalRef(view.scriptureRef)}
                 {` · ${t("visio.follows_today", { defaultValue: "This week's reading" })}`}
               </p>
+            )}
+            {/* ABOUT — a pill under the passage line, nothing beneath it (owner, 2026-09-05), that opens the description
+                (owner, 2026-09-05: "instead of having the Jesus Mafa
+                description just on the background, have an About pill under
+                the image, if there is such a description, that pulls up a
+                pop-up"). Only when there is something to say. */}
+            {aboutText.length > 0 && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setAboutOpen(true); }}
+                className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ margin: "12px auto 0", padding: "8px 18px", background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.5)", color: WARM, fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              >
+                {t("visio.about", { defaultValue: "About" })}
+              </button>
             )}
           </div>
         )}

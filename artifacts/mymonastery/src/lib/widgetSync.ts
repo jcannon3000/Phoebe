@@ -18,6 +18,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { getSideLevel, getSideCustomName, getSideReflectionExplicit, extraPracticeTitle } from "@/lib/officePrefs";
 import { getPracticeSlot, SLOT_RANK, isSlotPast, anchorOnDay, EVENING_OPEN_HOUR, type CustomSlot } from "@/lib/customAnchors";
+// The evening SIDE cards that read "Later" before EVENING_OPEN_HOUR (see DailyProgressBody eveningLater).
+const EVENING_SIDE_KEYS = new Set(["evening", "contemplation-evening", "extra-evening"]);
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { getRoutineOrder } from "@/lib/routineOrder";
 import { sortCardsByLearnedOrder } from "@/lib/practiceOrderLearning";
@@ -480,7 +482,9 @@ export function useWidgetSync(): void {
       cta: i.cta,
       rgb: i.rgb,
       tint: upNext.length <= 1 ? 0.4 : idx / (upNext.length - 1),
-      later: false,
+      // Mirrors DailyProgressBody's eveningLater (2026-09-05): the evening
+      // SIDE cards read "Later" before 4 PM; anchors in the evening slot don't.
+      later: EVENING_SIDE_KEYS.has(i.key) && new Date().getHours() < EVENING_OPEN_HOUR,
       href: (() => { const h = cardHref(i.key); return h ? `https://withphoebe.app${h}` : ""; })(),
     }));
 

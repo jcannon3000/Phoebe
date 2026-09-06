@@ -117,7 +117,16 @@ export const groupsTable = pgTable("groups", {
   // again at prayer-request creation (a public group is never a valid
   // scoping target even if this flag is stale-true from before the group
   // went public).
-  prayerRequestsEnabled: boolean("prayer_requests_enabled").notNull().default(false),
+  // ON by default since 2026-09-05. The 2026-07 rule was opt-in ("don't have
+  // list in community directly turned on inherently"), but the group page
+  // showed "What we're praying for" for every group regardless, and when the
+  // member-side unlock started reading this flag (ecdfc54e) the Prayer list
+  // vanished for everyone whose groups had never opted in. Owner: "I didn't
+  // mean take out prayer list for all users — if a user is in a group that
+  // doesn't have prayer lists turned on it shouldn't show the features." So
+  // the switch is an admin's OFF switch, like eventsEnabled. Public groups
+  // stay hard-false (PATCH forces it; listIsOpen checks it).
+  prayerRequestsEnabled: boolean("prayer_requests_enabled").notNull().default(true),
   /**
    * EVENTS for this group — services, gatherings, plans. Owner (2026-09-05):
    * "the admin of the group [should] be able to turn off the group prayer

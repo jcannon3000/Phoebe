@@ -26,9 +26,9 @@ const router: IRouter = Router();
  * (routes/prayer.ts and the PATCH /groups/:slug route), and this list is the
  * same kind of thing:
  *
- *   • `prayerRequestsEnabled` — owner: "don't have list in community directly
- *     turned on inherently." A new community has no prayer list until an
- *     admin asks for one.
+ *   • `prayerRequestsEnabled` — an admin's switch. (2026-07: opt-in, "don't
+ *     have list in community directly turned on inherently"; 2026-09-05: ON
+ *     by default and an admin turns it OFF — see schema/groups.ts for why.)
  *   • NOT `isPublic` — owner: "no publicly listed group can have shared
  *     prayer requests." A browseable group is one anyone can walk into, and
  *     these bodies name real people's illnesses.

@@ -381,6 +381,17 @@ export function triggerSubmitFeedback() {
   }
 }
 
+type NativePad = (o: { octaveStep: number }) => Promise<unknown>;
+function nativePad(): NativePad | null {
+  try {
+    return (window as unknown as {
+      Capacitor?: { Plugins?: { PhoebeAudio?: { playPad?: NativePad } } };
+    }).Capacitor?.Plugins?.PhoebeAudio?.playPad ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Rising ambient swell — a single open-fifth pad (root, fifth, octave)
  * with a gentle crescendo and fade. Total runtime ≈ 2.4s.
@@ -404,6 +415,17 @@ export function triggerSubmitFeedback() {
  * AudioContext resumes on the user gesture that triggered it).
  */
 export function playBreathTone(octaveStep: number = 0) {
+  // On device the pad is rendered NATIVELY (PhoebeAudio.playPad), under the
+  // app's own AVAudioSession (.playback + mixWithOthers), so a slide turn
+  // rides over whatever the person is listening to in another app. WebAudio
+  // inside WKWebView makes WebKit claim an exclusive playback session — the
+  // deck's chime was stopping their music (owner, 2026-09-05). Older shells
+  // without the method fall through to the WebAudio pad below.
+  const pad = nativePad();
+  if (pad) {
+    void pad({ octaveStep }).catch(() => { /* silent fallback */ });
+    return;
+  }
   try {
     // Build (or revive) the context up front so we can detect a locked
     // state even before any oscillators are scheduled. If we're locked,

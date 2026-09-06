@@ -42,7 +42,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { waitingLabel, markTaizeRead, markAndrewsRead } from "@/lib/taizeInbox";
 import { usePreviousIssues, usePreviousIssuesFor } from "@/hooks/usePreviousIssues";
-import { getReadProgress, READ_PROGRESS_EVENT } from "@/lib/readProgress";
 
 /** The card's emoji per source — the same ones the Reflections menu uses, so
  *  a reflection looks like itself wherever it appears. */
@@ -816,6 +815,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    */
   const minutesNow = (() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); })();
   const EVENING_HERO_AFTER = EVENING_OPEN_HOUR * 60 + 30;
+  // The evening side cards' "Later" state before the slot opens (4 PM). Spread
+  // into the card; `later` is what renders the faded, inert pill.
+  const eveningLater = hour < EVENING_OPEN_HOUR
+    ? { later: true, laterLabel: t("rhythm.later", { defaultValue: "Later" }) }
+    : { later: false };
   /**
    * A tick that lands ON the boundary, so 4:30 actually happens.
    *
@@ -987,7 +991,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       // NEVER later (owner: "we don't want any cards to be later and faded
       // anymore — all available"): every practice opens whenever it's tapped.
-      later: false,
+      ...(side === "evening" ? eveningLater : { later: false }),
     };
   };
 
@@ -1113,24 +1117,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // The last seven issues for the reader's "Previous" menu (owner). Fetched
   // only while the card can show, so a home without the weeklies asks for
   // nothing.
-  /**
-   * PARTLY READ — a long piece the reader closed before the end keeps its
-   * card in Next with a bar like the Contemplation card's and a "Continue"
-   * (owner, 2026-09-04). lib/readProgress holds the fraction per URL; the
-   * event re-renders here when the reader reports.
-   */
-  const [, setReadTick] = useState(0);
-  useEffect(() => {
-    const bump = () => setReadTick((n) => n + 1);
-    window.addEventListener(READ_PROGRESS_EVENT, bump);
-    return () => window.removeEventListener(READ_PROGRESS_EVENT, bump);
-  }, []);
-  const readCta = (url: string | null | undefined) => {
-    const p = url ? getReadProgress(url) : null;
-    return p
-      ? { progress: { current: Math.round(p * 100), goal: 100 }, cta: t("rhythm.continue", { defaultValue: "Continue" }) }
-      : {};
-  };
   const taizePrevious = usePreviousIssues("taize", taizeShown);
   const andrewsPrevious = usePreviousIssues("andrews", andrewsShown);
   const weeklyPrevious = usePreviousIssuesFor(weeklies.map((w) => ({ source: w.key, enabled: w.shown })));
@@ -1157,7 +1143,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       ? [w.waiting.title, waitingLabel(w.waiting)].filter(Boolean).join(" · ")
       : t("rhythm.blurb_andrews_empty", { defaultValue: "Nothing new since the last one" }),
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
-    ...readCta(w.waiting?.url),
   }));
   const taizeCard = {
     key: "taize", emoji: "🕯️", rgb: "120,150,175",
@@ -1193,7 +1178,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       ? [taizeWaiting.title, waitingLabel(taizeWaiting)].filter(Boolean).join(" · ")
       : t("rhythm.blurb_taize_empty", { defaultValue: "Nothing new since the last one" }),
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
-    ...readCta(taizeWaiting?.url),
   };
 
   /**
@@ -1228,7 +1212,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       ? [andrewsWaiting.title, waitingLabel(andrewsWaiting)].filter(Boolean).join(" · ")
       : t("rhythm.blurb_andrews_empty", { defaultValue: "Nothing new since the last one" }),
     cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
-    ...readCta(andrewsWaiting?.url),
   };
 
   const groupReflectionCard = groupReflection ? {
@@ -1555,7 +1538,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         : (daySwapNote("evening") ?? eveningBlurb),
       blurbCycle: (eveningDone || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycle],
       cta: getSideLevel("evening") === "custom" ? t("rhythm.log", { defaultValue: "Log" }) : t("rhythm.begin", { defaultValue: "Begin" }),
-      later: false, // never later (owner: all available)
+      /**
+       * "Later" until the evening opens (owner, 2026-09-05: "let's bring
+       * back having the evening practice saying later and becoming available
+       * at 4pm" — reversing the earlier "all available"). The three evening
+       * SIDE cards (this, Evening Contemplation, the evening extra) wear it;
+       * the evening-slot custom anchors don't — they were never the "evening
+       * practice". Mirrored for the widget in lib/widgetSync.ts.
+       */
+      ...eveningLater,
     }] : []),
     ...(eveningExtraLevel ? [extraCard("evening", eveningExtraLevel, eveningExtraDone)] : []),
     // Reflection cards lead the morning (default second, right after Morning).
@@ -1605,7 +1596,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         // actually stepped through (see vts-reading.tsx).
         ...(isVts ? {} : { onClick: () => openExternalThenMarkRead(url, () => { mark(); swellHaptic(); }, { reader: true }) }),
         cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
-        ...(isVts ? {} : readCta(url)),
       };
     }),
     // Per-side Contemplative Prayer — Morning / Evening Contemplation, each its
@@ -1644,7 +1634,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       ...(!sideIsCreation("evening") && contemplationLogMethod === "manual" ? { onClick: () => markContemplationSideDone("evening", "silent") } : {}),
       title: namedSide("evening")?.title ?? (sideIsCreation("evening") ? creationTitle("evening") : t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" })),
       blurb: namedSide("evening")?.blurb ?? (sideIsCreation("evening") ? creationBlurb(eveningContemplationDone) : contemplationBlurbFor(eveningContemplationDone, sideSitMin("evening"))),
-      cta: !sideIsCreation("evening") && contemplationLogMethod === "manual" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+      cta: !sideIsCreation("evening") && contemplationLogMethod === "manual" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), ...eveningLater,
       // See the morning card above — the ✓ is the whole done state.
     }] : []),
     // SOLO "Silence" goal card — ONE card with a PROGRESS BAR of today's

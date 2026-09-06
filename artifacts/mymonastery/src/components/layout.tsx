@@ -381,9 +381,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 />
                 )}
                 {/* Prayer list — others' requests to pray through. Hidden until
-                    you're in a community (a solo new user has none). Pilot always
-                    gets it — it's their personal list. Gated behind the
-                    prayer-requests feature (pilot-group-only, 2026-07-22). */}
+                    you're in a community (a solo new user has none) whose admin
+                    has NOT switched prayer requests off (the flag is on by
+                    default since 2026-09-05 — owner: "if a user is in a group
+                    that doesn't have prayer lists turned on it shouldn't show
+                    the features", after "I didn't mean take out prayer list for
+                    all users"). Pilot always gets it — it's their personal
+                    list. Gated behind the prayer-requests feature
+                    (pilot-group-only, 2026-07-22). */}
                 {prayerRequestsEnabled && (hasPrayerGroup || isPilot) && (
                 <MenuRow
                   // Medium skin tone (owner) — the app's own convention for
