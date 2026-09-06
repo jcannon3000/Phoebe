@@ -6282,7 +6282,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
 
   // Community membership. A brand-new user not in any group sees NO home
   // events — the upcoming schedule comes from the communities you belong to.
-  const { data: dashGroupsData } = useQuery<{ groups: Array<{ id: number }> }>({
+  const { data: dashGroupsData } = useQuery<{ groups: Array<{ id: number; eventsEnabled?: boolean }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
     enabled: !!user,
@@ -6290,9 +6290,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   });
   // Events come only from communities with events switched ON (owner,
   // 2026-09-05); a community that turned them off adds nothing here.
-  const eventGroups = (dashGroupsData?.groups ?? []).filter((g: { eventsEnabled?: boolean }) => g.eventsEnabled !== false);
+  const eventGroups = (dashGroupsData?.groups ?? []).filter((g) => g.eventsEnabled !== false);
   const hasGroup = eventGroups.length > 0;
-  const eventGroupIds = new Set(eventGroups.map((g: { id: number }) => g.id));
+  const eventGroupIds = new Set(eventGroups.map((g) => g.id));
 
   // ── Daily prayer-slideshow invite ────────────────────────────────────────
   // Declared here, AFTER momentsData, because the effect's dep array reads
@@ -6687,7 +6687,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // active prayers in groups they'd just joined.)
 
   const pendingPrayerCount = useMemo(() => {
-    const moments = (momentsData?.moments ?? []).filter((m: { groupId?: number | null }) => m.groupId == null || eventGroupIds.has(m.groupId));
+    // A Moment carries `group`, not a flat groupId. Ungrouped ones (feed or
+    // personal) always count; a group's only when its events are switched on.
+    const moments = (momentsData?.moments ?? []).filter((m) => m.group?.id == null || eventGroupIds.has(m.group.id));
     const circleIntentions = dashCircleIntentions?.intentions ?? [];
     const intentionCountByGroup = new Map<number, number>();
     for (const i of circleIntentions) {

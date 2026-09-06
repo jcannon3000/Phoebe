@@ -115,7 +115,26 @@ export function learnedRanks(): Map<string, number> {
  * pass nothing get one flat group, exactly as before.
  */
 export const isPublicationKey = (key: string): boolean =>
-  key.startsWith("reflect-") || key.startsWith("w:") || key === "taize" || key === "andrews";
+  key.startsWith("reflect-") || key.startsWith("w:") || key === "taize" || key === "andrews"
+  // "reflect" (no source) is the progress pill's single aggregate dot for all
+  // of them — same tier as the cards it stands for.
+  || key === "reflect";
+
+/**
+ * Which third of the day a card key belongs to, for surfaces that carry keys
+ * but no slot (the header's progress dots).
+ *
+ * The home sorts by the card's real slot; this reads the side out of the key
+ * instead, so the pill keeps the same shape the list has — and, in particular,
+ * so an evening practice stays last there too (owner, 2026-09-06: "make sure
+ * the evening practice is always last"). Compline and the Examen are
+ * evening-slotted in DailyProgressBody, so they belong to the evening here.
+ */
+export function dayGroupForKey(key: string): number {
+  if (key === "evening" || key.endsWith("-evening") || key === "compline" || key === "examen") return 2;
+  if (key === "morning" || key.endsWith("-morning") || isPublicationKey(key)) return 0;
+  return 1;
+}
 
 export function sortCardsByLearnedOrder<T extends { key: string }>(
   cards: T[],
