@@ -81,11 +81,14 @@ async function inlineAssets(html: string, pageUrl: string, signal: AbortSignal):
   }
 
   // Scripts the page loads for itself (oremus's dark-mode toggle lives in one).
-  const scripts = Array.from(html.matchAll(/<script\b[^>]*src\s*=\s*["']([^"']+)["'][^>]*>\s*<\/script>/gi));
+  // The closing tag may sit far from the opening one (oremus's overlib script
+  // has a newline and a comment between), so match the OPENING tag and swap
+  // just that, leaving the </script> where it is.
+  const scripts = Array.from(html.matchAll(/<script\b[^>]*\ssrc\s*=\s*["']([^"']+)["'][^>]*>/gi));
   for (const [tag, src] of scripts) {
     const asset = await get(src!);
     if (!asset) continue;
-    html = html.replace(tag, `<script>\n${asset.text}\n</script>`);
+    html = html.replace(tag, `<script>\n${asset.text}\n//`);
   }
 
   // Images, as data URIs — oremus has none today, but SSJE and Nouwen do.
