@@ -8,7 +8,13 @@
  *
  * ONE registry, read by the home (the third section), the Available Offline
  * page, and anything else that has to answer "can this be done with no
- * connection". A practice is offline-capable when everything it needs is
+ * connection".
+ *
+ * SCREENS ASK THE SWITCH, SAVING ASKS THE DEVICE. isOnline() honours the Admin
+ * Tools "Simulate offline" toggle so the offline surfaces can be walked on a
+ * device with no Airplane Mode; isReallyOnline() ignores it, because the daily
+ * save must not stop the moment someone turns the toggle on to test — that
+ * guarantees the empty phone it was meant to diagnose. A practice is offline-capable when everything it needs is
  * either bundled in the app or saved on the device by the prefetch
  * (officePrefetch: the offices, the readers' passages, Visio's pictures).
  */

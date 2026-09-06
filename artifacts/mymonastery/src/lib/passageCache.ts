@@ -13,12 +13,27 @@
  * client), so an office slide's readUrl and Lectio's readUrl for the same
  * lesson share one entry.
  */
-import { PASSAGES, storeGet, storePut, storeHas, storePrune } from "@/lib/offlineStore";
+import { PASSAGES, storeGet, storePut, storePrune } from "@/lib/offlineStore";
 import { boundedFetch } from "@/lib/boundedFetch";
 import { isOnline } from "@/lib/offline";
 
+/**
+ * THE PARSER THAT WROTE THE ENTRY.
+ *
+ * v1 saved oremus's section headings glued to the verse with the tail of an
+ * HTML comment — "13 -->Salt and Light13 'You are the salt of the earth"
+ * (fixed server-side 2026-09-06). A device that saved a day of readings under
+ * v1 would have read that for the six weeks until they aged out. Bumping this
+ * makes every v1 entry look UNSAVED to the daily walk, so it is re-fetched and
+ * overwritten — while `getCachedPassage` still returns it in the meantime:
+ * slightly mangled text offline beats a blank reader offline.
+ */
+const PASSAGE_PARSER_VERSION = 2;
+
 export type CachedPassage = {
   ref: string;
+  /** Which parser wrote this — see PASSAGE_PARSER_VERSION. */
+  pv?: number;
   /** Verse-numbered paragraphs, plain text; one string per paragraph. */
   paragraphs: string[];
   version: string;
@@ -53,14 +68,17 @@ export async function getCachedPassageForUrl(url: string | null | undefined): Pr
   return ref ? getCachedPassage(ref) : null;
 }
 
+/** Is a CURRENT copy here? An entry from an older parser answers false, so
+ *  the next walk replaces it. */
 export async function hasCachedPassage(ref: string): Promise<boolean> {
-  return storeHas(PASSAGES, passageKey(ref));
+  const entry = await storeGet<CachedPassage>(PASSAGES, passageKey(ref));
+  return !!entry && (entry.pv ?? 1) >= PASSAGE_PARSER_VERSION;
 }
 
 /** Fetch one passage from the server and keep it. Best-effort. */
 export async function cachePassage(ref: string): Promise<boolean> {
   const key = passageKey(ref);
-  if (await storeHas(PASSAGES, key)) return true;
+  if (await hasCachedPassage(ref)) return true;
   try {
     const res = await boundedFetch(`/api/scripture/passage-text?ref=${encodeURIComponent(ref)}`);
     if (!res.ok) return false;
@@ -70,6 +88,7 @@ export async function cachePassage(ref: string): Promise<boolean> {
       ref: data.ref || ref,
       paragraphs: data.paragraphs.filter((p): p is string => typeof p === "string" && p.length > 0),
       version: data.version || "NRSV",
+      pv: PASSAGE_PARSER_VERSION,
       ...(typeof data.credit === "string" && data.credit ? { credit: data.credit } : {}),
       fetchedAt: Date.now(),
     };
