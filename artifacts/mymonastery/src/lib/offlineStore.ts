@@ -22,10 +22,14 @@
 const DB_NAME = "phoebe-offline-content";
 // v2 added `json` — whole day-payloads (a day's Lectio readings, a day's
 // psalms), which are neither a passage nor a picture.
-const DB_VERSION = 2;
+// v3 added `pages` — the readings' own PAGES, saved whole (owner: keep the
+// page like Safari's read-later, don't extract the text). `passages` is kept
+// only so the extracted text already on devices can be DELETED.
+const DB_VERSION = 3;
 export const PASSAGES = "passages";
 export const IMAGES = "images";
 export const JSON_DAYS = "json";
+export const PAGES = "pages";
 
 type Row<T> = { value: T; updatedAt: number };
 
@@ -48,7 +52,7 @@ function openDb(): Promise<IDBDatabase | null> {
       if (typeof indexedDB === "undefined") { done(null); return; }
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = () => {
-        for (const s of [PASSAGES, IMAGES, JSON_DAYS]) {
+        for (const s of [PASSAGES, IMAGES, JSON_DAYS, PAGES]) {
           if (!req.result.objectStoreNames.contains(s)) req.result.createObjectStore(s);
         }
       };

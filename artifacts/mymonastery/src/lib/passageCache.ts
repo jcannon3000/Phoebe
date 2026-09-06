@@ -13,7 +13,7 @@
  * client), so an office slide's readUrl and Lectio's readUrl for the same
  * lesson share one entry.
  */
-import { PASSAGES, storeGet, storePut, storePrune } from "@/lib/offlineStore";
+import { PASSAGES, storeGet, storePut, storePrune, storeKeys, storeDelete } from "@/lib/offlineStore";
 import { boundedFetch } from "@/lib/boundedFetch";
 import { isOnline } from "@/lib/offline";
 
@@ -83,6 +83,18 @@ export async function hasCachedPassage(ref: string): Promise<boolean> {
 }
 
 /** Fetch one passage from the server and keep it. Best-effort. */
+/**
+ * DELETE THE EXTRACTED TEXT. Owner, 2026-09-06: "you should not be extracting
+ * text, that's a copyright issue." Every device that ran today's builds holds
+ * paragraphs of the NRSV; this empties that store on the next walk. The page
+ * itself is what we keep now (lib/pageCache).
+ */
+export async function purgeExtractedPassages(): Promise<void> {
+  for (const key of await storeKeys(PASSAGES)) await storeDelete(PASSAGES, key);
+}
+
+/** @deprecated Superseded by lib/pageCache — kept only until the native
+ *  saved-page reader is wired everywhere. Nothing should call it. */
 export async function cachePassage(ref: string): Promise<boolean> {
   const key = passageKey(ref);
   if (await hasCachedPassage(ref)) return true;

@@ -22,11 +22,12 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { isReallyOnline } from "@/lib/offline";
 import { getSideLevel, getSideExtra, getSideConfession, getScriptureParts, type OfficeSide } from "@/lib/officePrefs";
 import { putOfficeCacheEntry, pruneOfficeCacheBefore, getOfficeCacheEntry, type OfficeCacheKey } from "@/lib/officeOfflineCache";
-import { cachePassage, passageRefFromUrl, prunePassages } from "@/lib/passageCache";
+import { passageRefFromUrl, purgeExtractedPassages } from "@/lib/passageCache";
+import { cachePage, prunePagesExcept, prunePages } from "@/lib/pageCache";
 import { cacheImage, pruneImages, pruneImagesExcept } from "@/lib/imageCache";
 import { cacheDay, pruneDays, pruneDaysBefore } from "@/lib/dayContentCache";
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
-import { artworkById } from "@/lib/visioSelect";
+import { artworkById, readingUrl } from "@/lib/visioSelect";
 import type { LiturgyMode } from "@/pages/bcp-daily-office";
 
 const WINDOW_DAYS = 30;
@@ -301,7 +302,15 @@ const VISIO_WINDOW_DAYS = 35;
  */
 const PSALM_CYCLES = ["office", "monthly"] as const;
 async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => void }, ...modes: Array<LiturgyMode | null>): Promise<void> {
-  const refs = new Set<string>();
+  /**
+   * THE PAGES THEMSELVES, not their text (owner, 2026-09-06: "you should not
+   * be extracting text, that's a copyright issue … have the page downloaded
+   * just like how Safari mobile has a read later"). We collect the reading
+   * URLs the cached decks open and save each page whole; the native reader
+   * loads the saved page and runs its own chrome over it, so the offline
+   * reading is the online reading.
+   */
+  const pageUrls = new Set<string>();
   const images = new Set<string>();
   for (let i = 0; i < READER_WINDOW_DAYS; i++) {
     const date = ymdPlusDays(i);
@@ -321,8 +330,9 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
       const data = (await getOfficeCacheEntry(key)) as { slides?: Array<{ metadata?: { readUrl?: unknown; gospelReadUrl?: unknown } }> } | null;
       for (const s of data?.slides ?? []) {
         for (const u of [s?.metadata?.readUrl, s?.metadata?.gospelReadUrl]) {
-          const ref = typeof u === "string" ? passageRefFromUrl(u) : null;
-          if (ref) refs.add(ref);
+          // passageRefFromUrl is only the test for "is this a reading link";
+          // what we save is the URL itself.
+          if (typeof u === "string" && passageRefFromUrl(u)) pageUrls.add(u);
         }
       }
     }
@@ -331,12 +341,12 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
   for (let i = 0; i < VISIO_WINDOW_DAYS; i++) {
     const v = VISIO_SCHEDULE[ymdPlusDays(i)];
     if (!v) continue;
-    if (v.ref) refs.add(v.ref);
+    if (v.ref) { const u = readingUrl(v.ref); if (u) pageUrls.add(u); }
     const art = artworkById(v.id);
     if (art?.img) images.add(art.img);
   }
   const jobs: Array<() => Promise<void>> = [];
-  for (const ref of refs) jobs.push(async () => { if (await cachePassage(ref)) ctx.noteSaved(); });
+  for (const url of pageUrls) jobs.push(async () => { if (await cachePage(url)) ctx.noteSaved(); });
   // THE PICTURES ARE THE ONLY THING THAT WAITS FOR WI-FI — megabytes each,
   // where a day of text is a few dozen KB. On cellular the rest still saves
   // and the paintings arrive at the next launch on Wi-Fi.
@@ -367,10 +377,14 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
    * out instead of being swept.
    */
   void pruneDaysBefore(todayYmd());
+  void prunePagesExcept(pageUrls);
+  // The extracted text every device saved earlier today goes — it should not
+  // have been stored at all.
+  void purgeExtractedPassages();
   // Only when we actually fetched pictures this run — on cellular `images`
   // was never filled, and sweeping to it would delete every saved painting.
   if (ctx.onWifi) void pruneImagesExcept(images);
-  void prunePassages();
+  void prunePages();
   void pruneImages();
   void pruneDays();
 }
