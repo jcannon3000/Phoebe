@@ -12,6 +12,7 @@
  * calls it instead of apiRequest and needs no other offline branch.
  */
 import { JSON_DAYS, storeGet, storePut, storeHas, storePrune, storeKeys, storeDelete } from "@/lib/offlineStore";
+import { boundedFetch } from "@/lib/boundedFetch";
 
 const MAX_AGE_MS = 45 * 24 * 60 * 60 * 1000;
 
@@ -24,7 +25,7 @@ export function dayKey(url: string): string {
 export async function cachedDayGet<T>(url: string): Promise<T | null> {
   const key = dayKey(url);
   try {
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    const res = await boundedFetch(url, { headers: { Accept: "application/json" } });
     if (res.ok) {
       const data = (await res.json()) as T;
       if (data) { await storePut(JSON_DAYS, key, data); return data; }
@@ -38,7 +39,7 @@ export async function cacheDay(url: string): Promise<boolean> {
   const key = dayKey(url);
   if (await storeHas(JSON_DAYS, key)) return true;
   try {
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    const res = await boundedFetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) return false;
     const data = await res.json();
     if (!data) return false;

@@ -14,6 +14,7 @@
  * lesson share one entry.
  */
 import { PASSAGES, storeGet, storePut, storeHas, storePrune } from "@/lib/offlineStore";
+import { boundedFetch } from "@/lib/boundedFetch";
 import { isOnline } from "@/lib/offline";
 
 export type CachedPassage = {
@@ -61,7 +62,7 @@ export async function cachePassage(ref: string): Promise<boolean> {
   const key = passageKey(ref);
   if (await storeHas(PASSAGES, key)) return true;
   try {
-    const res = await fetch(`/api/scripture/passage-text?ref=${encodeURIComponent(ref)}`);
+    const res = await boundedFetch(`/api/scripture/passage-text?ref=${encodeURIComponent(ref)}`);
     if (!res.ok) return false;
     const data = (await res.json()) as { ref?: string; paragraphs?: unknown; version?: string; credit?: string } | null;
     if (!data || !Array.isArray(data.paragraphs) || data.paragraphs.length === 0) return false;

@@ -17,6 +17,7 @@
 // means fewer days are available offline, never an error the user sees.
 
 import { useEffect } from "react";
+import { boundedFetch } from "@/lib/boundedFetch";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isOnline } from "@/lib/offline";
 import { getSideLevel, getSideExtra, getSideConfession, getScriptureParts, type OfficeSide } from "@/lib/officePrefs";
@@ -133,7 +134,9 @@ async function fetchAndCacheOne(mode: LiturgyMode, date: string, confession: "" 
     const confParam = confession ? `&confession=${confession}` : "";
     const partsParam = partsValue ? `&parts=${partsValue}` : "";
     const trackParam = track ? `&track=${track}` : "";
-    const res = await fetch(`${endpoint}${sep}date=${date}&locale=en${confParam}${partsParam}${trackParam}`);
+    // Bounded: an unbounded call here stalls the whole sequential walk for up
+    // to a minute per day on a dead-but-"connected" network (see boundedFetch).
+    const res = await boundedFetch(`${endpoint}${sep}date=${date}&locale=en${confParam}${partsParam}${trackParam}`);
     if (!res.ok) return false;
     const data = await res.json();
     if (!data || !Array.isArray(data.slides) || data.slides.length === 0) return false;
