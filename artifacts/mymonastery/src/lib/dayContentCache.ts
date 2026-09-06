@@ -34,6 +34,12 @@ export async function cachedDayGet<T>(url: string): Promise<T | null> {
   return storeGet<T>(JSON_DAYS, key);
 }
 
+/** Read a saved day without touching the network — what the prefetch uses to
+ *  find the readings a saved day-list points at. */
+export function getCachedDay<T>(url: string): Promise<T | null> {
+  return storeGet<T>(JSON_DAYS, dayKey(url));
+}
+
 /** Save one day ahead of time, unless it is already here. */
 export async function cacheDay(url: string): Promise<boolean> {
   const key = dayKey(url);

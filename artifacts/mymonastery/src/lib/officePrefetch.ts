@@ -25,7 +25,7 @@ import { putOfficeCacheEntry, pruneOfficeCacheBefore, getOfficeCacheEntry, type 
 import { passageRefFromUrl, purgeExtractedPassages } from "@/lib/passageCache";
 import { cachePage, prunePagesExcept, prunePages } from "@/lib/pageCache";
 import { cacheImage, pruneImages, pruneImagesExcept } from "@/lib/imageCache";
-import { cacheDay, pruneDays, pruneDaysBefore } from "@/lib/dayContentCache";
+import { cacheDay, getCachedDay, pruneDays, pruneDaysBefore } from "@/lib/dayContentCache";
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
 import { artworkById, readingUrl } from "@/lib/visioSelect";
 import type { LiturgyMode } from "@/pages/bcp-daily-office";
@@ -345,8 +345,12 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
     const art = artworkById(v.id);
     if (art?.img) images.add(art.img);
   }
+  /**
+   * TWO PASSES, because the second depends on the first: the day-lists must be
+   * saved before Lectio's reading URLs are known, and those URLs are pages to
+   * save. Everything that does not depend on a day-list runs in the first.
+   */
   const jobs: Array<() => Promise<void>> = [];
-  for (const url of pageUrls) jobs.push(async () => { if (await cachePage(url)) ctx.noteSaved(); });
   // THE PICTURES ARE THE ONLY THING THAT WAITS FOR WI-FI — megabytes each,
   // where a day of text is a few dozen KB. On cellular the rest still saves
   // and the paintings arrive at the next launch on Wi-Fi.
@@ -360,7 +364,21 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
    */
   for (let i = 0; i < READER_WINDOW_DAYS; i++) {
     const date = ymdPlusDays(i);
-    jobs.push(async () => { if (await cacheDay(`/api/lectio/today?date=${date}`)) ctx.noteSaved(); });
+    /**
+     * LECTIO'S OWN READINGS. Its three lessons come from a day-list, not from
+     * a cached deck, so the loop above — which harvests readUrls out of the
+     * decks — never saw them: the picker was saved and the readings behind it
+     * were not ("lectio divina is not loading readings offline"). Read the
+     * day back after saving it and add its pages to the set.
+     */
+    jobs.push(async () => {
+      const url = `/api/lectio/today?date=${date}`;
+      if (await cacheDay(url)) ctx.noteSaved();
+      const day = await getCachedDay<{ options?: Array<{ readUrl?: unknown }> }>(url);
+      for (const o of day?.options ?? []) {
+        if (typeof o?.readUrl === "string" && passageRefFromUrl(o.readUrl)) pageUrls.add(o.readUrl);
+      }
+    });
     for (const office of ["morning", "evening"] as const) {
       for (const cycle of PSALM_CYCLES) {
         jobs.push(async () => { if (await cacheDay(`/api/psalms/today?cycle=${cycle}&office=${office}&date=${date}`)) ctx.noteSaved(); });
@@ -368,6 +386,9 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
     }
   }
   if (jobs.length > 0) await runQueue(jobs);
+  // …now the day-lists are here, so their readings can be saved too.
+  const pageJobs = Array.from(pageUrls).map((url) => async () => { if (await cachePage(url)) ctx.noteSaved(); });
+  if (pageJobs.length > 0) await runQueue(pageJobs);
   /**
    * THEN SWEEP WHAT IS BEHIND US. Once a day, connected: the past goes and the
    * window rolls forward (the fetches above skip what is already here, so each
