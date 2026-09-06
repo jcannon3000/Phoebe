@@ -13,6 +13,7 @@ import { PracticeIntro } from "@/components/PracticeIntro";
 import { PracticeSwitcher } from "@/components/PracticeSwitcher";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
 import { PointedLine } from "@/components/PointedLine";
+import DeckNavPill from "@/components/DeckNavPill";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 
@@ -398,8 +399,15 @@ export default function PsalmsPage() {
   // Leaf backdrop, matching the office — a little brighter than before (owner).
   const Backdrop = leaf ? (
     <>
-      <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.8, filter: "blur(3px)", transform: "scale(1.02)", zIndex: -2 }} />
-      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash3, 12,31,18),0.85) 0%, rgba(var(--ot-wash3, 12,31,18),0.7) 45%, rgba(var(--ot-wash3, 12,31,18),0.9) 100%)" }} />
+      {/* THE OFFICE'S OWN WEIGHT, number for number (owner: "the backgrounds
+          are not as dark", of the psalms beside Morning Prayer). This carried
+          the picture at 0.8 with a 3px blur under a lighter wash, so the same
+          leaf read pale here and deep there. The office shows it at 0.3, sharp,
+          under a heavier gradient (bcp-daily-office: officeBgOpacity + the
+          dark wash beneath the slides) — copied exactly, so a reader moving
+          between the two sees one room. */}
+      <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.3, zIndex: -2 }} />
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash, 8,22,15),0.62) 0%, rgba(var(--ot-wash, 8,22,15),0.80) 52%, rgba(var(--ot-wash, 8,22,15),0.90) 100%)" }} />
     </>
   ) : null;
   const header = (onBack: () => void) => (
@@ -671,16 +679,22 @@ export default function PsalmsPage() {
           </div>
         )}
         </div>
+        {/* Clearance for the floating pill — a SPACER, never padding-bottom:
+            iOS drops a flex-column scroller's bottom padding once a child
+            overflows, and the last verses would sit behind the pill. */}
+        <div aria-hidden style={{ flexShrink: 0, height: "calc(env(safe-area-inset-bottom) + 96px)" }} />
       </div>
 
-      {/* Footer — Back · section label · Next/Done. */}
-      <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", padding: "10px 0 max(1.25rem, env(safe-area-inset-bottom))" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(var(--ot-deep, 9,26,16),0.55)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.22)", borderRadius: 999, padding: "8px 10px 8px 18px" }}>
-          <button onClick={back} style={{ background: "none", border: "none", color: SOFT_GREEN, fontFamily: FONT, fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "6px 10px" }}>Back</button>
-          <span style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)", fontFamily: FONT, fontSize: 12, letterSpacing: "0.08em" }}>PSALM {index + 1} / {total}</span>
-          <button onClick={advance} style={{ background: "rgba(var(--ot-green, 46,107,64),0.6)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.4)", color: WARM, fontFamily: FONT, fontSize: 15, fontWeight: 600, borderRadius: 999, padding: "8px 20px", cursor: "pointer" }}>{atEnd ? "Done" : "Next"}</button>
-        </div>
-      </div>
+      {/* THE DECK'S OWN PILL (owner: "the bottom bar is different… it should
+          be the same"). This was a footer of its own making — in the flow, its
+          own colours, "PSALM 1 / 2" where every other deck says "N of M ·
+          SECTION". DeckNavPill is the shared chrome the office, Lectio and
+          Visio all wear: floating, blurred, Back · counter · Next. */}
+      <DeckNavPill
+        label={`${index + 1} of ${total} · Psalms`}
+        back={{ onClick: back }}
+        primary={{ label: atEnd ? "Done" : "Next", onClick: advance }}
+      />
     </div>
   );
 }
