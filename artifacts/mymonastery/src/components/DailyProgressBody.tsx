@@ -2340,7 +2340,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
                 skips the animation on a celebrateKey mount and plays it
                 otherwise — that per-child value is what should differ, not
                 this wrapper. */}
-            <AnimatePresence>
+            {/* KEYED ON THE CONNECTION. When it drops, cards move from Next
+                into "Not Available Offline" — and AnimatePresence held the
+                leaving card mounted at full opacity, so the reflection showed
+                in BOTH lists at once (seen on the dev server, 2026-09-05).
+                Re-keying discards the exiting children instead of waiting on
+                an exit that never completed; the cards that remain simply
+                play their entrance again. */}
+            <AnimatePresence key={online ? "online" : "offline"}>
               {upcomingDisplay.map((c, i) => {
                 const enter = enterUp(i + (heroLeads ? 1 : 0));
                 return (
