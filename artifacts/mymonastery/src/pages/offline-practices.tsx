@@ -16,10 +16,11 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { OFFLINE_PRACTICES, useOnline } from "@/lib/offline";
 import { getOfficeCacheEntry } from "@/lib/officeOfflineCache";
 import { getScriptureParts } from "@/lib/officePrefs";
-import { hasCachedPassage, passageRefFromUrl } from "@/lib/passageCache";
+import { passageRefFromUrl } from "@/lib/passageCache";
+import { hasSavedPage } from "@/lib/pageCache";
 import { hasCachedImage } from "@/lib/imageCache";
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
-import { artworkById } from "@/lib/visioSelect";
+import { artworkById, readingUrl } from "@/lib/visioSelect";
 import { isNativeShell } from "@/lib/isNativeShell";
 
 const WARM = "#F0EDE6";
@@ -46,17 +47,21 @@ async function savedStatus(key: string): Promise<string | null> {
     const partsValue = parts && parts.length < 4 ? parts.join(",") : "";
     const deck = (await getOfficeCacheEntry({ mode: "scripture", date, confession: "", ...(partsValue ? { parts: partsValue } : {}) })) as { slides?: Array<{ metadata?: { readUrl?: unknown } }> } | null;
     if (!deck) return "Not saved yet — opens the app on Wi-Fi to save the month";
-    const refs = (deck.slides ?? []).map((s) => (typeof s.metadata?.readUrl === "string" ? passageRefFromUrl(s.metadata.readUrl) : null)).filter((r): r is string => !!r);
+    // The PAGES, now, not extracted text — what the reader actually opens.
+    const urls = (deck.slides ?? [])
+      .map((s) => (typeof s.metadata?.readUrl === "string" && passageRefFromUrl(s.metadata.readUrl) ? s.metadata.readUrl : null))
+      .filter((u): u is string => !!u);
     let n = 0;
-    for (const r of refs) if (await hasCachedPassage(r)) n++;
-    return refs.length === 0 ? "Today's readings are on your phone" : n === refs.length ? "Today's readings are on your phone" : `${n} of ${refs.length} passages saved`;
+    for (const u of urls) if (await hasSavedPage(u)) n++;
+    return urls.length === 0 || n === urls.length ? "Today's readings are on your phone" : `${n} of ${urls.length} readings saved`;
   }
   if (key === "visio") {
     const v = VISIO_SCHEDULE[date];
     const art = v ? artworkById(v.id) : null;
     if (!art?.img) return null;
     const img = await hasCachedImage(art.img);
-    const txt = v?.ref ? await hasCachedPassage(v.ref) : true;
+    const readingUrl2 = v?.ref ? readingUrl(v.ref) : null;
+    const txt = readingUrl2 ? await hasSavedPage(readingUrl2) : true;
     return img && txt ? "This week's picture and reading are on your phone" : img ? "Picture saved; reading not yet" : "Not saved yet — opens the app on Wi-Fi to save the month";
   }
   return null;

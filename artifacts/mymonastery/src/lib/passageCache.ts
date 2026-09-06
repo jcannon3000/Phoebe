@@ -5,7 +5,7 @@
  * the Daily Scripture Reading and Sunday decks, Lectio Divina, Visio Divina's
  * reading. Offline, that hand-off was a blank page (owner: "right now the
  * readers are just black"). The server now serves the passage TEXT through
- * /api/scripture/passage-text, and this keeps a copy keyed by the reference so a
+ * the extracted text it once kept.
  * reader can open it from the device.
  *
  * Passages are keyed by their oremus `passage=` query, which is how every
@@ -34,21 +34,6 @@ import { isOnline } from "@/lib/offline";
 // phone. Entries saved before v3 carry that, so they are re-fetched.
 const PASSAGE_PARSER_VERSION = 3;
 
-export type CachedPassage = {
-  ref: string;
-  /** Which parser wrote this — see PASSAGE_PARSER_VERSION. */
-  pv?: number;
-  /** Verse-numbered paragraphs, plain text; one string per paragraph. */
-  paragraphs: string[];
-  /** Which of them oremus set as section headings — from the parser, which
-   *  saw the <h2>, rather than guessed at this end. */
-  headingIndexes?: number[];
-  version: string;
-  /** oremus's own copyright line, saved with the reading. */
-  credit?: string;
-  fetchedAt: number;
-};
-
 const MAX_AGE_MS = 45 * 24 * 60 * 60 * 1000;
 
 /** The passage a reader URL names, or null when it isn't an oremus link. */
@@ -66,22 +51,8 @@ export function passageKey(ref: string): string {
   return ref.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-export async function getCachedPassage(ref: string): Promise<CachedPassage | null> {
-  return storeGet<CachedPassage>(PASSAGES, passageKey(ref));
-}
-
-export async function getCachedPassageForUrl(url: string | null | undefined): Promise<CachedPassage | null> {
-  const ref = passageRefFromUrl(url);
-  return ref ? getCachedPassage(ref) : null;
-}
-
 /** Is a CURRENT copy here? An entry from an older parser answers false, so
  *  the next walk replaces it. */
-export async function hasCachedPassage(ref: string): Promise<boolean> {
-  const entry = await storeGet<CachedPassage>(PASSAGES, passageKey(ref));
-  return !!entry && (entry.pv ?? 1) >= PASSAGE_PARSER_VERSION;
-}
-
 /** Fetch one passage from the server and keep it. Best-effort. */
 /**
  * DELETE THE EXTRACTED TEXT. Owner, 2026-09-06: "you should not be extracting
@@ -92,38 +63,6 @@ export async function hasCachedPassage(ref: string): Promise<boolean> {
 export async function purgeExtractedPassages(): Promise<void> {
   for (const key of await storeKeys(PASSAGES)) await storeDelete(PASSAGES, key);
 }
-
-/** @deprecated Superseded by lib/pageCache — kept only until the native
- *  saved-page reader is wired everywhere. Nothing should call it. */
-export async function cachePassage(ref: string): Promise<boolean> {
-  const key = passageKey(ref);
-  if (await hasCachedPassage(ref)) return true;
-  try {
-    const res = await boundedFetch(`/api/scripture/passage-text?ref=${encodeURIComponent(ref)}`);
-    if (!res.ok) return false;
-    const data = (await res.json()) as { ref?: string; paragraphs?: unknown; headingIndexes?: unknown; version?: string; credit?: string } | null;
-    if (!data || !Array.isArray(data.paragraphs) || data.paragraphs.length === 0) return false;
-    const entry: CachedPassage = {
-      ref: data.ref || ref,
-      paragraphs: data.paragraphs.filter((p): p is string => typeof p === "string" && p.length > 0),
-      version: data.version || "NRSV",
-      ...(Array.isArray(data.headingIndexes) ? { headingIndexes: data.headingIndexes.filter((n): n is number => typeof n === "number") } : {}),
-      pv: PASSAGE_PARSER_VERSION,
-      ...(typeof data.credit === "string" && data.credit ? { credit: data.credit } : {}),
-      fetchedAt: Date.now(),
-    };
-    return storePut(PASSAGES, key, entry);
-  } catch { return false; }
-}
-
-/**
- * THE DOOR IS GONE. Every deck routes through openReadingPage (lib/
- * openExternal, dd4e3a60), which asks getSavedPage and opens the saved page
- * through the native plumbing — one place deciding what opens, and it sits
- * with the code that opens it. What lived here decided the same thing from
- * the other end, and two deciders is how a deck ends up showing something
- * nobody chose.
- */
 
 export function prunePassages(): Promise<void> {
   return storePrune(PASSAGES, MAX_AGE_MS);
