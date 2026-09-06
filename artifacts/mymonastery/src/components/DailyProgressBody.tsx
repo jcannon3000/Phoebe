@@ -21,7 +21,7 @@ import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCust
 import { useOnline, cardAvailableOffline } from "@/lib/offline";
 import { daySwapNote } from "@/components/PracticeSwitcher";
 import { rowIdToCardKeys } from "@/lib/routineOrder";
-import { recordPracticeOpen, sortCardsByLearnedOrder } from "@/lib/practiceOrderLearning";
+import { recordPracticeOpen, sortCardsByLearnedOrder, dayGroupFor, isMorningAnchorKey } from "@/lib/practiceOrderLearning";
 import { reflectionSourceUrl, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markInboxRead, unmarkInboxRead } from "@/lib/taizeInbox";
@@ -42,6 +42,7 @@ import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
+import { useGroupFeatures } from "@/hooks/useGroupFeatures";
 import { waitingLabel, markTaizeRead, markAndrewsRead } from "@/lib/taizeInbox";
 import { usePreviousIssues, usePreviousIssuesFor } from "@/hooks/usePreviousIssues";
 
@@ -808,6 +809,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // and past noon an un-prayed morning office parks under "Tomorrow".
   const guest = isDeviceLocalGuest(user);
   const prayerListSurfaced = usePrayerListEnabled();
+  const { hasPrayerGroup } = useGroupFeatures();
   const hour = new Date().getHours();
   /**
    * Minutes since midnight — the evening HERO needs a half hour, and `hour`
@@ -1312,10 +1314,18 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * device-local guest is provisioned as an anonymous user whose intentions
    * endpoint can answer with rows — so the private list surfaced on a home
    * that has no account behind it. It now follows the same gate as every
-   * other prayer-list surface (usePrayerListEnabled: pilot group or super
-   * admin — see hooks/usePrayerRequests.ts), and a guest is excluded outright.
+   * other prayer-list surface, and a guest is excluded outright.
+   *
+   * AND IT MATCHES THE DRAWER ROW (audit, 2026-09-06). usePrayerListEnabled
+   * alone is "pilot group or super admin", which is NARROWER than the menu row
+   * the owner asked to bring back that same morning ("I asked for the prayer
+   * list menu option to come back") — components/layout.tsx shows that row to
+   * a member of any community whose prayer requests are on. A public-group
+   * member was getting the row and no card. The row and the card answer the
+   * same question now; the guest exclusion, which is what he actually reported,
+   * is untouched.
    */
-  const prayerListActiveCard = !guest && prayerListSurfaced && intentionsTotalCount > 0;
+  const prayerListActiveCard = !guest && (prayerListSurfaced || hasPrayerGroup) && intentionsTotalCount > 0;
   /**
    * Kept by WALKING the list, not by counting it off.
    *
@@ -1807,7 +1817,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     staleTime: 5 * 60_000,
   });
   const yesterdayOrderRank = new Map((yesterdayOrderData?.order ?? []).map((key, i) => [key, i]));
-  const cardGroup = (slot: CustomSlot): 0 | 1 | 2 => slot === "morning" ? 0 : slot === "evening" ? 2 : 1;
+  // One shared definition with the header dots and the widget (see
+  // lib/practiceOrderLearning dayGroupFor): a publication counts as morning
+  // however it is slotted, so "newsletters second" reaches Taizé, Andrew's and
+  // the weeklies too — all three are slotted "anytime" and could never rise out
+  // of the middle group before (audit, 2026-09-06).
+  const cardGroup = (c: { key: string; slot: CustomSlot }): number => dayGroupFor(c.key, c.slot);
   // Yesterday's real order applies WITHIN every slot group, not only the
   // anytime/midday/afternoon middle one.
   //
@@ -1843,13 +1858,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * the next day" still governs the cards this doesn't name.
    */
   const pinRank = (key: string): 0 | 1 | 2 =>
-    key === "morning" ? 0
+    // The morning anchor by any of its keys — a no-office rhythm is led by its
+    // contemplation, and the newsletter must not outrank it (audit).
+    isMorningAnchorKey(key) ? 0
       : (key.startsWith("reflect-") || key.startsWith("w:") || key === "taize" || key === "andrews") ? 1
       : 2;
   const sortedCards = rawCards
     .map((c, idx) => ({ c, idx }))
     .sort((a, b) => {
-      const ga = cardGroup(a.c.slot), gb = cardGroup(b.c.slot);
+      const ga = cardGroup(a.c), gb = cardGroup(b.c);
       if (ga !== gb) return ga - gb;
       const pa = pinRank(a.c.key), pb = pinRank(b.c.key);
       if (pa !== pb) return pa - pb;
@@ -1908,7 +1925,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // first (so evening stays last), then the helper's own tiers — morning
   // anchor, newsletters, then the habit. Before this it re-sorted the whole
   // list and put any practice the log had seen above every one it hadn't.
-  const coloredCards = sortCardsByLearnedOrder(cards, (c) => cardGroup(c.slot))
+  const coloredCards = sortCardsByLearnedOrder(cards, (c) => cardGroup(c))
     .map((c, i, arr) => ({ ...c, rgb: rhythmGradientRgb(i, arr.length) }));
   /**
    * THE NOTIFICATION'S PRACTICE IS THE HERO (owner: "the ones they set as

@@ -23,7 +23,7 @@ import splashForestPath from "@/assets/splash/forest-path.jpg";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
-import { sortCardsByLearnedOrder, dayGroupForKey } from "@/lib/practiceOrderLearning";
+import { sortCardsByLearnedOrder, dayGroupFor } from "@/lib/practiceOrderLearning";
 import { useRhythmState } from "@/hooks/useRhythmState";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
@@ -829,7 +829,7 @@ function DailyProgressPill() {
   // list disagree about the shape of the day — INCLUDING its coarse shape:
   // these defs carry no slot, so the group comes from the key (morning and the
   // newsletters first, evening last), mirroring the home's slot groups.
-  const dotDefs = sortCardsByLearnedOrder(dotDefsBuilt, (d) => dayGroupForKey(d.key));
+  const dotDefs = sortCardsByLearnedOrder(dotDefsBuilt, (d) => dayGroupFor(d.key));
 
   // Per-dot "just completed" pulse: when an activity flips done, its dot glows
   // for ~2 minutes — then settles. We stamp the completion time per local day in

@@ -130,6 +130,29 @@ export const isPublicationKey = (key: string): boolean =>
  * the evening practice is always last"). Compline and the Examen are
  * evening-slotted in DailyProgressBody, so they belong to the evening here.
  */
+/** The morning anchor, by any of the keys it can wear. */
+export const isMorningAnchorKey = (key: string): boolean =>
+  key === "morning" || key === "contemplation-morning" || key === "novena-morning";
+
+/**
+ * WHICH THIRD OF THE DAY A CARD BELONGS TO — the one definition, so the home,
+ * the header dots and the widget cannot disagree (they had three).
+ *
+ * A PUBLICATION counts as morning wherever its slot says otherwise: Taizé,
+ * Andrew's Version and the pasted-in weeklies are all slotted "anytime", which
+ * put them in the middle group where the owner's "newsletters second" could
+ * never reach them (audit, 2026-09-06). The daily reflections were already
+ * morning-slotted, which is why the rule appeared to work.
+ */
+export function dayGroupFor(key: string, slot?: string | null): number {
+  if (isPublicationKey(key) || isMorningAnchorKey(key)) return 0;
+  if (key === "evening" || key.endsWith("-evening") || key === "compline" || key === "examen") return 2;
+  if (slot === "morning") return 0;
+  if (slot === "evening") return 2;
+  if (slot) return 1;
+  return dayGroupForKey(key);
+}
+
 export function dayGroupForKey(key: string): number {
   if (key === "evening" || key.endsWith("-evening") || key === "compline" || key === "examen") return 2;
   if (key === "morning" || key.endsWith("-morning") || isPublicationKey(key)) return 0;
@@ -142,8 +165,12 @@ export function sortCardsByLearnedOrder<T extends { key: string }>(
 ): T[] {
   const ranks = learnedRanks();
   if (ranks.size === 0 && !groupOf) return cards;
+  // The morning ANCHOR leads, whatever it is. A rhythm with no office is led by
+  // its morning contemplation (DailyProgressBody's contemplationHero), and a
+  // novena in replace-mode takes the anchor's place — neither was named here,
+  // so on those days the newsletter led the whole list (audit, 2026-09-06).
   const tier = (c: T): number =>
-    c.key === "morning" ? -2 : isPublicationKey(c.key) ? -1 : ranks.has(c.key) ? 0 : 1;
+    isMorningAnchorKey(c.key) ? -2 : isPublicationKey(c.key) ? -1 : ranks.has(c.key) ? 0 : 1;
   return cards
     .map((c, i) => ({ c, i, g: groupOf ? groupOf(c) : 0, t: tier(c), r: ranks.get(c.key) ?? 0 }))
     .sort((a, b) => (a.g - b.g) || (a.t - b.t) || (a.t === 0 ? a.r - b.r : 0) || (a.i - b.i))

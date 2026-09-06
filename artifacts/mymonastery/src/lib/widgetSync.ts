@@ -22,7 +22,7 @@ import { getPracticeSlot, SLOT_RANK, isSlotPast, anchorOnDay, EVENING_OPEN_HOUR,
 const EVENING_SIDE_KEYS = new Set(["evening", "contemplation-evening", "extra-evening"]);
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { getRoutineOrder } from "@/lib/routineOrder";
-import { sortCardsByLearnedOrder } from "@/lib/practiceOrderLearning";
+import { sortCardsByLearnedOrder, dayGroupFor } from "@/lib/practiceOrderLearning";
 import { rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { useRhythmState } from "@/hooks/useRhythmState";
 
@@ -343,7 +343,7 @@ export function useWidgetSync(): void {
       // Suppressed when a side's own anchor IS the Examen (already rendered
       // above via officeTitle's "The Examen" rename) — same gate as
       // rawCards' standalone Examen card, else the widget could show it twice.
-      { active: r.examenActive && getSideLevel("morning") !== "examen" && getSideLevel("evening") !== "examen", done: r.examenDone, slot: getPracticeSlot("examen"), key: "examen", emoji: "🌗", title: "The Examen", eyebrow: "Review the day", subtitle: "Review the day with God", cta: "Begin", kind: "office" },
+      { active: r.examenActive && getSideLevel("morning") !== "examen" && getSideLevel("evening") !== "examen", done: r.examenDone, slot: "evening" as CustomSlot /* the home hardcodes examenSlot="evening"; getPracticeSlot returns "anytime" and put it mid-day here (audit, 2026-09-06) */, key: "examen", emoji: "🌗", title: "The Examen", eyebrow: "Review the day", subtitle: "Review the day with God", cta: "Begin", kind: "office" },
       // The active novena — same novenaActive/Done DailyProgressBody's card
       // and the header pill's dot use, so the widget can't drift from either.
       { active: !!(r.novenaActive && !r.novenaReplacesMorning && !r.novenaReplacesEvening), done: r.novenaDone, slot: "anytime", key: "novena", emoji: "🕊️", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
@@ -395,7 +395,9 @@ export function useWidgetSync(): void {
     // above, exactly as the home does — otherwise a practice the log has seen
     // outranks the newsletter (and an evening card escapes last place) here
     // but not on screen.
-    const ordered = sortCardsByLearnedOrder(slotOrdered, (c) => SLOT_RANK[c.slot] ?? 1)
+    // The same three-part day the home and the dots use, so a publication
+    // counts as morning here too (audit, 2026-09-06).
+    const ordered = sortCardsByLearnedOrder(slotOrdered, (c) => dayGroupFor(c.key, c.slot))
       .map((it, i, arr) => ({ ...it, rgb: rhythmGradientRgb(i, arr.length) }));
     // "Next" = the first not-done practice whose slot HASN'T already passed
     // today (a passed slot is "tomorrow", not next). Falls back to summary.
