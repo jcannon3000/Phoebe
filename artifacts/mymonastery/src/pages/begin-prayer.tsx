@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { isOnline } from "@/lib/offline";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -268,7 +269,12 @@ export default function BeginPrayerPage() {
      * OPENS the readings rather than just landing on the home.
      */
     if (defaultPrayerLevel === "readings") {
-      if (getSideEntry(side) === "venite") {
+      // OFFLINE, VENITE IS A WEBSITE (owner, 2026-09-06: "Morning Prayer did
+      // not load", filmed in Airplane Mode). Handing them to venite.app with no
+      // connection is a blank browser over a deck they cannot see; the app's
+      // own office IS saved, so open that instead and let the site have them
+      // back when they're online.
+      if (getSideEntry(side) === "venite" && isOnline()) {
         // Computed inline: the shared officeModeForLink/reset are declared
         // further down, and this branch returns long before them.
         const mode = isMorning ? "morning" : "evening";
@@ -400,7 +406,7 @@ export default function BeginPrayerPage() {
      *
      * `entry` is read below, so this is a function rather than a value.
      */
-    const devotionHrefFor = (e: string | null) => (e === "venite"
+    const devotionHrefFor = (e: string | null) => (e === "venite" && isOnline()
       ? `/bcp/daily-devotions?mode=${devotionMode}${reset}&picked=1&venite=1`
       : `/bcp/daily-devotions?mode=${devotionMode}${reset}`);
     // Route straight into the reader's saved "way to pray" for this side —
@@ -429,7 +435,9 @@ export default function BeginPrayerPage() {
       // menu, so stopping at a chooser they already answered in Settings is a
       // tap that buys nothing. The deck still mounts (venite=1), which is what
       // keeps the dwell test, the credit-on-return and Options working.
-      : entry === "venite" ? `/bcp/daily-office?mode=${officeModeForLink}${reset}&venite=1`
+      // Same as the readings branch above: offline we keep them in the saved
+      // deck rather than opening a site that cannot answer.
+      : (entry === "venite" && isOnline()) ? `/bcp/daily-office?mode=${officeModeForLink}${reset}&venite=1`
       : `/bcp/daily-office?mode=${officeModeForLink}${reset}`;
     const intercessionsHref = prayedToday ? "/prayer-mode?reset=1" : "/prayer-mode";
 

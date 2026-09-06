@@ -1478,17 +1478,46 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           // have something to do with the track switching").
           ...(trackParam ? { track: trackParam.slice("&track=".length) } : {}),
         };
+        /**
+         * THE SAVED DECK COMES FIRST WHEN WE KNOW WE ARE OFFLINE, and a
+         * request never holds the screen (owner, 2026-09-06, filming Airplane
+         * Mode: "Morning Prayer did not load … something is not adding up").
+         *
+         * The fallback below was right and never ran. `CapacitorHttp` is
+         * enabled for this app, which PATCHES window.fetch to route through
+         * the native HTTP plugin — so with no connection the call does not
+         * reject the way a WebView fetch does; it sits on URLSession's own
+         * timeout, up to a minute. The deck stayed on its veil the whole time,
+         * which is the blank screen he filmed: not a failure, a hang. The
+         * cache read never got its turn because the catch had not happened yet.
+         *
+         * So: offline, read the cache and never open a socket. Online, race
+         * the request against a few seconds and fall back to whatever is
+         * saved — a slow network should cost a beat, not the practice.
+         */
+        const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T> => Promise.race([
+          p,
+          new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Timed out")), ms)),
+        ]);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: any;
-        try {
-          const res = await fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}${creationSingleParam}${partsParam}${trackParam}`);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          data = await res.json();
-          void putOfficeCacheEntry(cacheKey, data);
-        } catch (fetchErr) {
-          const cached = await getOfficeCacheEntry(cacheKey);
-          if (!cached) throw fetchErr;
-          data = cached;
+        const savedFirst = isOnline() ? null : await getOfficeCacheEntry(cacheKey);
+        if (savedFirst) {
+          data = savedFirst;
+        } else {
+          try {
+            const res = await withTimeout(
+              fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}${creationSingleParam}${partsParam}${trackParam}`),
+              OFFICE_FETCH_TIMEOUT_MS,
+            );
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            data = await withTimeout(res.json(), OFFICE_FETCH_TIMEOUT_MS);
+            void putOfficeCacheEntry(cacheKey, data);
+          } catch (fetchErr) {
+            const cached = await getOfficeCacheEntry(cacheKey);
+            if (!cached) throw fetchErr;
+            data = cached;
+          }
         }
         if (cancelled) return;
         let fetched: Slide[] = reorderIntercessionsBeforeThanksgiving(data?.slides ?? []);
@@ -5986,6 +6015,13 @@ function DevotionMethodCard(props: {
     </div>
   );
 }
+
+/**
+ * How long a deck request may hold the screen before we serve what is saved.
+ * Deliberately short: the alternative is the native HTTP plugin's own timeout,
+ * which is up to a minute of veil (see the note in load()).
+ */
+const OFFICE_FETCH_TIMEOUT_MS = 6000;
 
 export default function BcpDailyOfficePage() {
   const { user, isLoading } = useAuth();

@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { isOnline } from "@/lib/offline";
 
 /**
  * The app's QueryClient, registered by App.tsx at creation so plain libs
@@ -32,7 +33,11 @@ export class ApiError extends Error {
 // of spinning for the OS default (60s+). We bound only GETs: writes
 // (POST/PATCH/DELETE) may legitimately run long — uploads, large letters — and
 // must never be aborted mid-flight, which could drop the user's data.
+//
+// See the note in apiRequest: on device this bound has to be a raced timer,
+// because the native fetch patch ignores AbortSignal entirely.
 const GET_TIMEOUT_MS = 12_000;
+const OFFLINE_GET_TIMEOUT_MS = 2_500;
 
 export async function apiRequest<T = unknown>(
   method: string,
@@ -47,13 +52,44 @@ export async function apiRequest<T = unknown>(
 
   let res: Response;
   try {
-    res = await fetch(url, {
+    /**
+     * THE TIMEOUT CANNOT BE AN ABORT ALONE ON THE PHONE.
+     *
+     * `CapacitorHttp` is enabled for the app (capacitor.config.ts), and its
+     * bridge REPLACES window.fetch with `async (resource, options)` that never
+     * reads `options.signal` — there is not one mention of it in the whole
+     * native-bridge bundle. So on device the abort above fires into nothing:
+     * the promise stays pending until URLSession's own timeout, up to a
+     * minute, and every "fail fast so we can fall back to what's saved" path
+     * in the app waits that long instead. It is why the owner's Airplane Mode
+     * recording (2026-09-06) showed a blank office rather than the saved one —
+     * the fallback was correct and simply had not been reached yet.
+     *
+     * Racing a timer is what actually bounds it. The request is left running
+     * (we cannot cancel it natively; nothing depends on it once we reject),
+     * and the signal stays on for the web build, where abort does work and
+     * does free the socket.
+     */
+    const req = fetch(url, {
       method,
       credentials: "include",
       headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: controller?.signal,
     });
+    // Offline, the wait is shorter still: twelve seconds of spinner before a
+    // page shows what it has saved is most of a practice. Not zero — the OS
+    // has been wrong about this before (a WKWebView can report offline while
+    // a request would have gone through), so a working connection still gets
+    // a couple of seconds to answer.
+    const budget = isOnline() ? GET_TIMEOUT_MS : OFFLINE_GET_TIMEOUT_MS;
+    res = isGet
+      ? await Promise.race([
+          req,
+          new Promise<Response>((_, reject) =>
+            setTimeout(() => reject(new Error(`Timed out: ${method} ${url}`)), budget)),
+        ])
+      : await req;
   } finally {
     if (timeoutId !== null) clearTimeout(timeoutId);
   }

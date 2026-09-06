@@ -4047,8 +4047,19 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   // Programmed office → the routing brain (/begin-prayer → their office).
   // Otherwise "Pray Together" opens the community prayer slideshow; re-tapping
   // after a completed pass starts fresh via ?reset=1.
+  /**
+   * THE CARD'S OWN SIDE GOES WITH IT (owner, 2026-09-06: "Morning Prayer did
+   * not load", filmed in the afternoon).
+   *
+   * /begin-prayer without a ?side= picks by the clock — before noon morning,
+   * after noon evening — so tapping a hero that says "Morning Prayer" at 1 PM
+   * opened the EVENING practice instead: this routine's Examen on a fresh
+   * device, the evening office on his. The card already knows which side it is
+   * drawing (isMorning, honouring forceSide); it simply never said so. Every
+   * other route in begin-prayer already reads this param.
+   */
   const ctaHref = programmedOffice
-    ? "/begin-prayer"
+    ? `/begin-prayer?side=${isMorning ? "morning" : "evening"}`
     : (prayedToday ? "/prayer-mode?reset=1" : "/prayer-mode");
   // Started-but-not-finished today's office on this side → "Continue" (not
   // "Begin"). Mirrors the completed-key check above, reading the office

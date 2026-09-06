@@ -56,7 +56,9 @@ export function TodaysRhythm() {
   const anchors: Anchor[] = [
     {
       key: "morning", label: t("rhythm.morning", { defaultValue: "Morning" }), icon: "🌅",
-      done: morningDone, href: "/begin-prayer",
+      // The row's own side, not the hour — see the note on ctaHref in
+      // dashboard.tsx: bare /begin-prayer routes by the clock.
+      done: morningDone, href: "/begin-prayer?side=morning",
       cta: prayerKind === "community"
         ? t("rhythm.cta_community", { defaultValue: "Pray with your community" })
         : t("rhythm.cta_morning", { word: prayWord, defaultValue: `Pray Morning ${prayWord}` }),
@@ -84,7 +86,7 @@ export function TodaysRhythm() {
     {
       key: "evening", label: t("rhythm.evening", { defaultValue: "Evening" }), icon: "🌙",
       // Always the user's SET evening form — never override to examen/compline.
-      done: eveningDone, href: "/begin-prayer",
+      done: eveningDone, href: "/begin-prayer?side=evening",
       cta: prayerKind === "community"
         ? t("rhythm.cta_community", { defaultValue: "Pray with your community" })
         : t("rhythm.cta_evening", { word: prayWord, defaultValue: `Pray Evening ${prayWord}` }),
