@@ -145,6 +145,21 @@ export function pruneOfficeCacheBefore(todayYmd: string): Promise<void> {
 /** Wipe the whole offline office cache — called on logout so one account's
  *  personalized office (it carries that user's own community intercessions)
  *  never leaks to the next person on a shared device. */
+/** How many days are saved — what Admin Tools reports, so "is it working?"
+ *  can be answered with a number instead of an Airplane Mode walk. */
+export function countOfficeCacheEntries(): Promise<number> {
+  return getDB().then((db) => {
+    if (!db) return 0;
+    return new Promise<number>((resolve) => {
+      try {
+        const req = db.transaction(STORE, "readonly").objectStore(STORE).count();
+        req.onsuccess = () => resolve(req.result ?? 0);
+        req.onerror = () => resolve(0);
+      } catch { resolve(0); }
+    });
+  }).catch(() => 0);
+}
+
 export function clearOfficeOfflineCache(): Promise<void> {
   return getDB().then((db) => {
     if (!db) {

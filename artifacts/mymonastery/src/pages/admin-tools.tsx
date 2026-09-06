@@ -7,9 +7,12 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { ChevronRight } from "lucide-react";
 import { DEBUG_STEPS_KEY } from "@/components/WayOfLoveRuleFlow";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppSettings, useSetAppSetting } from "@/lib/appSettings";
 import { debugOfflineForced, setDebugOffline } from "@/lib/offline";
+import { runOfficePrefetch } from "@/lib/officePrefetch";
+import { countOfficeCacheEntries } from "@/lib/officeOfflineCache";
+import { PASSAGES, IMAGES, JSON_DAYS, storeKeys } from "@/lib/offlineStore";
 
 
 function LinkRow({
@@ -56,6 +59,26 @@ export default function AdminToolsPage() {
   const appSettings = useAppSettings();
   const setAppSetting = useSetAppSetting();
   const [forcedOffline, setForcedOffline] = useState<boolean>(() => debugOfflineForced());
+  /**
+   * WHAT IS ACTUALLY ON THIS DEVICE.
+   *
+   * "Offline isn't working" cost several rounds of guessing between two
+   * sessions and the owner's own phone, because nothing could SAY whether the
+   * daily save had run. These four numbers answer it in a glance, and the
+   * button runs the save now rather than waiting for tomorrow's first open.
+   */
+  const [saved, setSaved] = useState<{ offices: number; passages: number; pictures: number; days: number } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const readSaved = async () => {
+    const [offices, passages, pictures, days] = await Promise.all([
+      countOfficeCacheEntries(),
+      storeKeys(PASSAGES).then((k) => k.length).catch(() => 0),
+      storeKeys(IMAGES).then((k) => k.length).catch(() => 0),
+      storeKeys(JSON_DAYS).then((k) => k.length).catch(() => 0),
+    ]);
+    setSaved({ offices, passages, pictures, days });
+  };
+  useEffect(() => { void readSaved(); }, []);
 
   const { data: groupsData } = useQuery<{
     groups: Array<{ id: number; name: string; slug: string; myRole: string }>;
@@ -182,6 +205,24 @@ export default function AdminToolsPage() {
                     order) under each slide. For a stuck Continue on a device
                     with no console and no address bar: the state that would
                     have been a console.log, in a screenshot. */}
+                {/* WHAT IS SAVED, and a way to save it now. The daily walk
+                    runs once a day on its own; this is for a device that has
+                    just been built, or when the question is simply "did it
+                    save anything?" */}
+                <LinkRow
+                  emoji="📥"
+                  label={saving ? "Saving…" : "Save offline content now"}
+                  description={saved
+                    ? `${saved.offices} office days · ${saved.passages} passages · ${saved.pictures} pictures · ${saved.days} day lists`
+                    : "Reading what's on this device…"}
+                  onClick={() => {
+                    if (saving) return;
+                    setSaving(true);
+                    void runOfficePrefetch({ force: true })
+                      .then(readSaved)
+                      .finally(() => setSaving(false));
+                  }}
+                />
                 {/* SIMULATE OFFLINE. The Simulator has no Airplane Mode of
                     its own — it uses the Mac's network — so this is the only
                     way to walk the offline app on a device: the saved

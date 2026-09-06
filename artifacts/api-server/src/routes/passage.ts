@@ -34,8 +34,20 @@ function decode(s: string): string {
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
 }
 
-/** oremus's `.bibletext` → paragraphs of "18 The Jews did not…" — verse
- *  numbers kept inline, footnote markers dropped, tags stripped. */
+/**
+ * oremus's `.bibletext` → the reading, paragraph by paragraph.
+ *
+ * Verse numbers stay inline where oremus puts them; footnote markers go; its
+ * section headings ("Salt and Light") become paragraphs of their own.
+ *
+ * NOT a <p>…</p> match. oremus nests and leaves paragraphs unclosed, and it
+ * puts an HTML COMMENT carrying the verse number before each heading:
+ *   <p> <!-- <VN>13</VN> --><h2>Salt and Light</h2><p><span>13 </span>'You are…
+ * Stripping tags across that left "13 -->Salt and Light13 'You are the salt"
+ * in what we saved — a doubled number and the tail of a comment (caught
+ * against the live page, 2026-09-06). So: drop comments first, turn every
+ * block boundary into a line break, then strip what's left.
+ */
 export function parseOremus(html: string): { paragraphs: string[]; version: string } | null {
   const start = html.indexOf('class="bibletext"');
   if (start < 0) return null;
@@ -43,11 +55,18 @@ export function parseOremus(html: string): { paragraphs: string[]; version: stri
   const end = html.indexOf('<!-- class="bibletext" -->', open);
   if (open < 0 || end < 0) return null;
   let body = html.slice(open + 1, end);
+  body = body.replace(/<!--[\s\S]*?-->/g, "");
   body = body.replace(/<a\b[^>]*>\s*<sup class="fnote">[^<]*<\/sup>\s*<\/a>/gi, "");
   body = body.replace(/<sup class="fnote">[^<]*<\/sup>/gi, "");
-  const paragraphs = Array.from(body.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
-    .map((m) => decode(m[1]!.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim())
-    .filter((p) => p.length > 0);
+  // A marker, not a newline: oremus's own source carries line breaks BETWEEN
+  // verses, so splitting on "\n" broke a paragraph into one line per verse.
+  const BREAK = "\u0000";
+  body = body.replace(/<\/?(?:p|h[1-6]|div|blockquote)\b[^>]*>/gi, BREAK);
+  body = body.replace(/<br\s*\/?>/gi, BREAK);
+  const paragraphs = body
+    .split(BREAK)
+    .map((line) => decode(line.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim())
+    .filter((line) => line.length > 0);
   if (paragraphs.length === 0) return null;
   const cite = html.match(/<cite>([^<]+)<\/cite>/i);
   // The page's own copyright line travels with the text — what is saved for
@@ -56,8 +75,8 @@ export function parseOremus(html: string): { paragraphs: string[]; version: stri
   let credit = "";
   if (copyStart >= 0) {
     const seg = html.slice(copyStart, copyStart + 2000);
-    const p = seg.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
-    if (p) credit = decode(p[1]!.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim().slice(0, 400);
+    const c = seg.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+    if (c) credit = decode(c[1]!.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim().slice(0, 400);
   }
   return { paragraphs, version: cite ? decode(cite[1]!.trim()) : "New Revised Standard Version Bible: Anglicized Edition", ...(credit ? { credit } : {}) };
 }
