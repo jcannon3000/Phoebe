@@ -78,6 +78,7 @@ import { markOfficeBookComplete } from "@/lib/officeManualLog";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { canPrayOnVenite, veniteOfficeUrl } from "@/lib/venite";
 import { PointedLine } from "@/components/PointedLine";
+import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
 // Visual chrome mirrors Lectio: dark forest background, top-bar with
@@ -2529,6 +2530,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     }
     setSlideIdx(prevIdx);
   }
+
+  /**
+   * ANDROID'S BACK STEPS THE DECK. Without this, one Back press — the button
+   * or the edge swipe — closed the office mid-prayer and landed on the
+   * dashboard, because the deck's slides are state and push no history.
+   * Inert where there is no Back gesture.
+   */
+  useDeckBackGuard({ active: !loading && slides.length > 0, atStart, onBack: prev });
 
   /**
    * Land on the real next section after a lesson-reading hand-off returns.
