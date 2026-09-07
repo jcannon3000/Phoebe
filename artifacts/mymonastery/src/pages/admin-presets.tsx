@@ -227,13 +227,18 @@ export default function AdminPresetsPage() {
   };
 
   // ── The default rhythm ─────────────────────────────────────────────────────
-  const DEFAULT_FALLBACK: DefaultSeed = {
-    // What guestSeed writes today (seed v7), shown so the editor opens on the
-    // real default rather than an empty form.
-    morning: "guided-prayer", evening: "ask", reflection: "cac",
-    cards: ["cac", "visio"], relational: ["gratitude"], silenceMin: 0,
-    slots: { visio: "evening" }, version: 1,
-  };
+  /**
+   * WHAT ACTUALLY SHIPS — one copy, from rulePresetsStore.
+   *
+   * This used to be a second, hand-maintained object, and it had gone stale
+   * at v7 while the app shipped v8. So the card said "the default rhythm ·
+   * as it ships", the admin opened Quick fields, changed nothing, saved —
+   * and published v7 as the default: evening Examen gone, Forward Day by Day
+   * swapped back to CAC, Visio moved to the evening. The Edit button (the
+   * full customizer) read the right one the whole time, so the same page held
+   * two different ideas of what ships.
+   */
+  const DEFAULT_FALLBACK: DefaultSeed = SEED_DEFAULT_FALLBACK;
   const [draftDefault, setDraftDefault] = useState<DefaultSeed>(DEFAULT_FALLBACK);
   useEffect(() => { setDraftDefault(storedDefault ?? DEFAULT_FALLBACK); /* eslint-disable-next-line */ }, [storedDefault]);
 

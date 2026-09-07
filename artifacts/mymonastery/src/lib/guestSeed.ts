@@ -150,8 +150,29 @@ function seedCard(key: "cac" | "fdd"): void {
  * hardcoded default stands, which is why this returns false rather than
  * writing a half-rhythm.
  */
-function applyDefaultSeed(d: DefaultSeed | null): boolean {
+/**
+ * `mode` decides how much of the person's own rhythm this is allowed to
+ * replace.
+ *
+ * "fresh" — a device with no rule at all. The admin's default IS the rhythm,
+ * so it is written whole.
+ *
+ * "migrate" — a device that has been used. `untouched` upstream is decided by
+ * the TWO SIDE LEVELS ALONE, and STALE_SEEDS includes the pair that ships
+ * today, so someone who kept the default morning and evening but chose their
+ * own relational practices, their own silence goal, or removed a card still
+ * reads as untouched. Written whole, this deleted all three the first time an
+ * admin ever saved a default — while /admin/presets promised the opposite:
+ * "A person who has customized their own rhythm is never touched by this."
+ *
+ * So a migration is ADDITIVE, exactly as the hardcoded branch below already
+ * is: relational practices are unioned, never removed; a silence goal the
+ * person chose is left alone; and a card they deliberately took off their
+ * home stays off.
+ */
+function applyDefaultSeed(d: DefaultSeed | null, mode: "fresh" | "migrate" = "fresh"): boolean {
   if (!d) return false;
+  const migrating = mode === "migrate";
   setSideLevel("morning", d.morning as Parameters<typeof setSideLevel>[1]);
   setSideLevel("evening", d.evening as Parameters<typeof setSideLevel>[1]);
   if (d.reflection && d.reflection !== "none") {
@@ -161,15 +182,26 @@ function applyDefaultSeed(d: DefaultSeed | null): boolean {
   let layout: ReturnType<typeof addHomeCard>["layout"] | null = readCachedHomeLayout();
   let changed = false;
   for (const key of d.cards ?? []) {
-    const r = addHomeCard(layout, key);
+    const r = addHomeCard(layout, key, migrating ? { respectRemoval: true } : undefined);
     layout = r.layout; changed = changed || r.changed;
   }
   if (changed && layout) cacheHomeLayoutLocalOnly(layout);
   for (const [key, slot] of Object.entries(d.slots ?? {})) {
     setPracticeSlot(key as Parameters<typeof setPracticeSlot>[0], slot as Parameters<typeof setPracticeSlot>[1]);
   }
-  setRelationalPractices(d.relational ?? []);
-  setGuestSilenceGoalMin(d.silenceMin ?? 0);
+  if (migrating) {
+    // Union — a curated anchor the admin's default omits is not evidence the
+    // person wanted it gone, and removing it here tombstones and pushes it.
+    const have = activeRelationalPractices();
+    const add = (d.relational ?? []).filter((r) => !have.includes(r));
+    if (add.length > 0) setRelationalPractices([...have, ...add]);
+    // Only a device with no goal of its own, or still on the retired 5.
+    const currentGoal = localStorage.getItem(GUEST_GOAL_KEY);
+    if (currentGoal == null || currentGoal === "5") setGuestSilenceGoalMin(d.silenceMin ?? 0);
+  } else {
+    setRelationalPractices(d.relational ?? []);
+    setGuestSilenceGoalMin(d.silenceMin ?? 0);
+  }
   // What version of the admin's default this device is standing on, so a later
   // edit can reach an untouched device (SEED_VERSION does the same job for
   // changes made in code).
@@ -197,7 +229,7 @@ function migrateStaleSeed(): void {
     const morning = getExplicitSideLevel("morning");
     const evening = getExplicitSideLevel("evening");
     const untouched = STALE_SEEDS.some(([m, e]) => m === morning && e === evening);
-    if (untouched && applyDefaultSeed(stored)) {
+    if (untouched && applyDefaultSeed(stored, "migrate")) {
       // The admin's default replaced the code one wholesale; nothing below
       // applies (it would re-add practices their rhythm leaves out).
       try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
