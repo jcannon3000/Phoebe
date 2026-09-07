@@ -124,10 +124,10 @@ export default function AdminVisioCalendarPage() {
   const thisSunday = sundayEnding(ymd(new Date()));
 
   if (whoLoading) {
-    return <div style={{ minHeight: "100dvh", background: BG, color: FAINT, fontFamily: FONT, padding: 40 }}>Checking…</div>;
+    return <div style={{ minHeight: "var(--app-dvh)", background: BG, color: FAINT, fontFamily: FONT, padding: 40 }}>Checking…</div>;
   }
   if (!who?.isSuperAdmin) {
-    return <div style={{ minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT, padding: 40 }}>Not available.</div>;
+    return <div style={{ minHeight: "var(--app-dvh)", background: BG, color: WARM, fontFamily: FONT, padding: 40 }}>Not available.</div>;
   }
 
   const cell: React.CSSProperties = { padding: "10px 12px", verticalAlign: "top", borderBottom: `1px solid ${BORDER}` };
@@ -139,7 +139,7 @@ export default function AdminVisioCalendarPage() {
   });
 
   return (
-    <div style={{ minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT, padding: "calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 40px)" }}>
+    <div style={{ minHeight: "var(--app-dvh)", background: BG, color: WARM, fontFamily: FONT, padding: "calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 40px)" }}>
       <div style={{ maxWidth: 1000, margin: "0 auto" }}>
         <button
           type="button" onClick={() => setLocation("/admin/tools")}

@@ -418,7 +418,7 @@ export default function CommunityJoinPage() {
       style={{
         background: "#091A10",
         fontFamily: "'Space Grotesk', sans-serif",
-        minHeight: "100dvh",
+        minHeight: "var(--app-dvh)",
         // Page backdrop pattern: an isolated stacking context so the leaf
         // photo + wash below can sit at z-index -1 behind everything without
         // escaping the page. NEVER position:fixed — that flashes on iOS.

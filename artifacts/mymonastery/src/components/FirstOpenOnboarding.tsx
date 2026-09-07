@@ -283,7 +283,7 @@ export function FirstOpenOnboarding() {
 
       <div
         className="relative w-full max-w-md mx-auto flex flex-col"
-        style={{ zIndex: 1, minHeight: "100dvh", padding: "clamp(28px,6dvh,56px) 20px calc(env(safe-area-inset-bottom,0px) + 24px)" }}
+        style={{ zIndex: 1, minHeight: "var(--app-dvh)", padding: "clamp(28px,6dvh,56px) 20px calc(env(safe-area-inset-bottom,0px) + 24px)" }}
       >
         <AnimatePresence mode="wait">
           {step === "welcome" ? (

@@ -105,7 +105,7 @@ export default function ContemplationLogPage() {
 
   return (
     <Layout>
-      <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
+      <div style={{ position: "relative", isolation: "isolate", minHeight: "var(--app-dvh)" }}>
         <AnimatedBackground base={BG} variant="subtle" fadeTop />
         <div className="max-w-xl mx-auto w-full" style={{ /* Safe-area insets, not flat numbers: this is a full-height layer, so its
            padding measures from the very top of the display — notch included —

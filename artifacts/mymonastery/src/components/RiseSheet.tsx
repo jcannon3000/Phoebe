@@ -30,7 +30,7 @@ export function RiseSheet({
       animate={{ y: closing ? "100%" : 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       onAnimationComplete={() => { if (closing) setLocation(closing); }}
-      style={{ position: "fixed", inset: 0, zIndex: 60, isolation: "isolate", minHeight: "100dvh", overflowY: "auto", overflowX: "hidden", background: SHEET_BG }}
+      style={{ position: "fixed", inset: 0, zIndex: 60, isolation: "isolate", minHeight: "var(--app-dvh)", overflowY: "auto", overflowX: "hidden", background: SHEET_BG }}
     >
       {bgPhoto && (
         <div

@@ -215,7 +215,7 @@ export function MorningPrayerSlideshow({
     return (
       <div
         style={{
-          minHeight: "100vh",
+          minHeight: "var(--app-dvh)",
           background: CREAM,
           display: "flex",
           flexDirection: "column",
@@ -270,7 +270,7 @@ export function MorningPrayerSlideshow({
     return (
       <div
         style={{
-          minHeight: "100vh",
+          minHeight: "var(--app-dvh)",
           background: CREAM,
           display: "flex",
           flexDirection: "column",

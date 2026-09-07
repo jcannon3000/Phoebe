@@ -223,7 +223,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
           style={{
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
             textAlign: "center", padding: 32, gap: 16,
-            background: "#091A10", minHeight: "100vh",
+            background: "#091A10", minHeight: "var(--app-dvh)",
             fontFamily: "'Space Grotesk', system-ui, sans-serif",
           }}
         >
@@ -242,7 +242,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
           style={{
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
             textAlign: "center", padding: 32, gap: 16,
-            background: "#091A10", minHeight: "100vh",
+            background: "#091A10", minHeight: "var(--app-dvh)",
             fontFamily: "'Space Grotesk', system-ui, sans-serif",
           }}
         >
@@ -961,7 +961,7 @@ function GuestGate({ children }: { children: ReactNode }) {
 // reads as "still loading" rather than a white flash.
 function RouteFallback() {
   return (
-    <div style={{ minHeight: "100vh", background: "#091A10" }} aria-hidden />
+    <div style={{ minHeight: "var(--app-dvh)", background: "#091A10" }} aria-hidden />
   );
 }
 

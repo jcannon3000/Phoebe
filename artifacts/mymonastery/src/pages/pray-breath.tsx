@@ -168,7 +168,7 @@ export default function PrayBreathPage() {
 
   return (
     <Layout bgPhoto={introBgPhoto}>
-      <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+      <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "var(--app-dvh)" }}>
         <div className="max-w-xl mx-auto w-full flex flex-col flex-1 justify-start">
           <div className="flex flex-col items-center text-center pt-8">
             <p className="text-[11px] uppercase tracking-[0.22em] font-semibold mb-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>

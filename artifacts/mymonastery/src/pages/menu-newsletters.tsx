@@ -359,7 +359,7 @@ export default function MenuNewslettersPage() {
     const word = group ? groupTitle(group) : t("menu.newsletters", { defaultValue: "Reflections" });
     return (
       <Layout bgPhoto={bgPhoto}>
-        <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
+        <div style={{ position: "relative", isolation: "isolate", minHeight: "var(--app-dvh)" }}>
           <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", color: WARM, fontFamily: FONT, paddingBottom: 48 }}>
             <button
               type="button"
@@ -388,7 +388,7 @@ export default function MenuNewslettersPage() {
   const groupLabel = group ? groupTitle(group) : t("menu.newsletters", { defaultValue: "Reflections" });
   return (
     <Layout bgPhoto={bgPhoto}>
-      <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
+      <div style={{ position: "relative", isolation: "isolate", minHeight: "var(--app-dvh)" }}>
         <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", color: WARM, fontFamily: FONT, paddingBottom: 48 }}>
           <button
             type="button"

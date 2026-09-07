@@ -209,7 +209,7 @@ export default function OfficePrayAlongPage() {
   const glowKey = complete ? "__done" : active ? `${activeIdx}` : "__title";
 
   return (
-    <div style={{ position: "relative", minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "relative", minHeight: "var(--app-dvh)", background: BG, color: WARM, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
       <AnimatedBackground base={BG} variant="pronounced" fadeTop />
 
       {/* Header */}

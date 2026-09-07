@@ -145,7 +145,7 @@ export default function CommunityRuleSetPage() {
   }
 
   const wrap: React.CSSProperties = {
-    minHeight: "100dvh", display: "flex", flexDirection: "column", justifyContent: "center",
+    minHeight: "var(--app-dvh)", display: "flex", flexDirection: "column", justifyContent: "center",
     alignItems: "stretch", gap: 18, maxWidth: 460, margin: "0 auto",
     // The status bar and the home indicator own the top and bottom of the
     // screen. A flat 24px sat the whole panel too high — reported as "the

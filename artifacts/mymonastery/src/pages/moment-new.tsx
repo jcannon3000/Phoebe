@@ -1260,7 +1260,7 @@ export default function MomentNew() {
 
   return (
     <Layout bgPhoto={bgPhoto}>
-      <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
+      <div style={{ position: "relative", isolation: "isolate", minHeight: "var(--app-dvh)" }}>
       <div className="max-w-2xl mx-auto w-full pt-6 pb-16">
 
         {/* Header + progress */}

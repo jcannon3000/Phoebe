@@ -127,7 +127,7 @@ export default function CommunityPostsPage() {
   };
 
   return (
-    <div style={{ minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT, padding: "calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 40px)" }}>
+    <div style={{ minHeight: "var(--app-dvh)", background: BG, color: WARM, fontFamily: FONT, padding: "calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 40px)" }}>
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
         <button
           type="button" onClick={() => setLocation(`/communities/${slug}`)}

@@ -344,7 +344,7 @@ export default function GuidedPrayerPage() {
   return (
     <div
       className="relative"
-      style={{ minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT, isolation: "isolate", overflow: "hidden" }}
+      style={{ minHeight: "var(--app-dvh)", background: BG, color: WARM, fontFamily: FONT, isolation: "isolate", overflow: "hidden" }}
     >
       {/* Backdrop — the Kearns / office treatment: one still landscape held at
           0.22 (CobreatheHowToIntro.tsx:127) under the shared multi-stop dark
@@ -426,7 +426,7 @@ export default function GuidedPrayerPage() {
       <main
         className="flex flex-col items-center text-center px-6 w-full"
         style={{
-          maxWidth: 560, margin: "0 auto", minHeight: "100dvh", justifyContent: "center",
+          maxWidth: 560, margin: "0 auto", minHeight: "var(--app-dvh)", justifyContent: "center",
           paddingTop: "clamp(24px, 6dvh, 72px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 168px)",
           position: "relative", zIndex: 1,

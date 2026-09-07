@@ -347,7 +347,7 @@ export default function PrayerRequestNew() {
       animate={{ y: closing ? "100%" : 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       onAnimationComplete={() => { if (closing) setLocation(closing); }}
-      style={{ position: "fixed", inset: 0, zIndex: 60, isolation: "isolate", minHeight: "100dvh", overflowY: "auto", background: BG, overflowX: "hidden" }}
+      style={{ position: "fixed", inset: 0, zIndex: 60, isolation: "isolate", minHeight: "var(--app-dvh)", overflowY: "auto", background: BG, overflowX: "hidden" }}
     >
       {/* A still landscape behind the page, faded gently up under a dark wash. */}
       {bgPhoto && (

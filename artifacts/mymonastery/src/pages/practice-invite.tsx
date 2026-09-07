@@ -99,7 +99,7 @@ export default function PracticeInvitePage() {
   };
 
   return (
-    <div style={{ minHeight: "100dvh", position: "relative", isolation: "isolate", background: "#091A10", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
+    <div style={{ minHeight: "var(--app-dvh)", position: "relative", isolation: "isolate", background: "#091A10", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
       {leaf && <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.22, zIndex: -1 }} />}
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.6) 0%, rgba(8,22,15,0.85) 100%)" }} />
       <div style={{ width: "100%", maxWidth: 420 }}>

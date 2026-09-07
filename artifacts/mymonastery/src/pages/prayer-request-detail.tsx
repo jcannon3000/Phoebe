@@ -401,7 +401,7 @@ export default function PrayerRequestDetailPage() {
     <div
       style={{
         background: SLIDE_BG,
-        minHeight: "100dvh",
+        minHeight: "var(--app-dvh)",
         position: "relative",
         overflow: "hidden",
         // Center the request vertically in the screen, with the gradient behind.
@@ -473,7 +473,7 @@ export default function PrayerRequestDetailPage() {
           zIndex: 1,
           maxWidth: 560,
           margin: "0 auto",
-          minHeight: "100dvh",
+          minHeight: "var(--app-dvh)",
           // Truly vertically centered (a single slide-shaped column) with
           // SYMMETRIC top/bottom padding so the content sits at the real centre
           // rather than skewed low. The minHeight grows with content, so a long

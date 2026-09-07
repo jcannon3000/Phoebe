@@ -49,7 +49,7 @@ export default function ReportUserPage() {
 
   return (
     <Layout>
-      <div className="max-w-md mx-auto px-5 pt-6 pb-12" style={{ minHeight: "100dvh" }}>
+      <div className="max-w-md mx-auto px-5 pt-6 pb-12" style={{ minHeight: "var(--app-dvh)" }}>
         {/* Back-to-profile chevron — same chrome as other detail pages. */}
         <Link href={profileHref}>
           <a

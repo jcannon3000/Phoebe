@@ -165,7 +165,7 @@ export default function NewsPage() {
 
   if (betaLoading) {
     return (
-      <div style={{ minHeight: "100dvh", background: PALETTE.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "var(--app-dvh)", background: PALETTE.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <p style={{ color: PALETTE.faint, fontSize: 13, fontFamily: FONT }}>Loading…</p>
       </div>
     );

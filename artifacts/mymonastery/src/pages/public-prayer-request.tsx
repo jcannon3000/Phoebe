@@ -323,7 +323,7 @@ function CenteredFrame({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        minHeight: "100dvh",
+        minHeight: "var(--app-dvh)",
         background: BG,
         display: "flex",
         alignItems: "center",

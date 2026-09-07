@@ -113,7 +113,7 @@ function FddMeditationSlide({ slide, theme }: { slide: SlideData; theme: "mornin
       style={{
         position: "relative",
         width: "100%",
-        height: "100vh",
+        height: "var(--app-dvh)",
         background: bg,
         boxSizing: "border-box",
         display: "flex",
@@ -255,7 +255,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
     const containerStyle: React.CSSProperties = {
       position: "relative",
       width: "100%",
-      height: "100vh",
+      height: "var(--app-dvh)",
       background: bg,
       boxSizing: "border-box",
       display: "flex",

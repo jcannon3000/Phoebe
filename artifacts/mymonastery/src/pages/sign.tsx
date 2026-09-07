@@ -61,7 +61,7 @@ export default function SignPage() {
 
   if (!valid || isError) {
     return (
-      <div style={{ minHeight: "100dvh", background: "#091A10", color: "#F0EDE6", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 24, fontFamily: FONT, textAlign: "center" }}>
+      <div style={{ minHeight: "var(--app-dvh)", background: "#091A10", color: "#F0EDE6", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 24, fontFamily: FONT, textAlign: "center" }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>This sign link isn't valid</h1>
         <p style={{ fontSize: 14, color: "#8FAF96", margin: 0 }}>Double-check the routine link, or set your community's rule of life first.</p>
       </div>
@@ -69,7 +69,7 @@ export default function SignPage() {
   }
 
   return (
-    <div className="sign-root" style={{ minHeight: "100dvh", background: "#EDE7D8", color: "#14241A" }}>
+    <div className="sign-root" style={{ minHeight: "var(--app-dvh)", background: "#EDE7D8", color: "#14241A" }}>
       <style>{`
         /* Screen toolbar only — hidden when printing. The sheet prints clean on
            the letter-writing beige (light ink) with dark text. */

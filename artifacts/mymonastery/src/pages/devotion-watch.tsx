@@ -124,7 +124,7 @@ export default function DevotionWatchPage() {
   return (
     <div
       style={{
-        minHeight: "100dvh",
+        minHeight: "var(--app-dvh)",
         background: PALETTE.bg,
         color: PALETTE.warm,
         fontFamily: FONT,

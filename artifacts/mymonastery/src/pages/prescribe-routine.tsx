@@ -154,7 +154,7 @@ export default function PrescribeRoutinePage() {
 
   // ── Name + share ─────────────────────────────────────────────────────────
   const wrap: React.CSSProperties = {
-    minHeight: "100dvh", display: "flex", flexDirection: "column", justifyContent: "center",
+    minHeight: "var(--app-dvh)", display: "flex", flexDirection: "column", justifyContent: "center",
     alignItems: "stretch", gap: 18, /* Safe-area insets, not flat numbers: this is a full-height layer, so its
            padding measures from the very top of the display — notch included —
            and a flat value sits the panel under the status bar. Reported on the

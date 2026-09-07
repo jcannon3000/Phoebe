@@ -157,7 +157,7 @@ export default function RoutinePrintPage() {
   };
 
   return (
-    <div className="routine-print-root" style={{ minHeight: "100dvh", background: "#FFFFFF", color: "#14241A" }}>
+    <div className="routine-print-root" style={{ minHeight: "var(--app-dvh)", background: "#FFFFFF", color: "#14241A" }}>
       <style>{`
         /* Screen toolbar only — hidden when printing. The sheet itself prints
            clean black-on-white at any size. */

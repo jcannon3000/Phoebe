@@ -71,7 +71,7 @@ export function RhythmWhyIntro({ onDone }: { onDone: () => void }) {
   return (
     <div
       onClick={advance}
-      style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "0 26px", cursor: "pointer", isolation: "isolate" }}
+      style={{ position: "relative", minHeight: "var(--app-dvh)", display: "flex", flexDirection: "column", padding: "0 26px", cursor: "pointer", isolation: "isolate" }}
     >
       <AnimatedBackground base={BG} variant="subtle" />
 

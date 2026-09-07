@@ -487,7 +487,7 @@ export default function RuleOfLifePage() {
 
   if (phase === "mode") {
     return (
-      <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "var(--app-dvh)", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", /* Safe-area insets, not flat numbers: this is a full-height layer, so its
            padding measures from the very top of the display — notch included —
@@ -552,7 +552,7 @@ export default function RuleOfLifePage() {
 
   if (phase === "name") {
     return (
-      <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "var(--app-dvh)", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "calc(var(--safe-top, 0px) + 24px) 20px 40px" }}>
           <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
@@ -616,7 +616,7 @@ export default function RuleOfLifePage() {
     const isLast = slideIndex === totalSlides - 1;
 
     return (
-      <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "var(--app-dvh)", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         {customizerBgPhoto && (
           <>
@@ -718,7 +718,7 @@ export default function RuleOfLifePage() {
   if (phase === "loading") {
     const errored = recommendMutation.isError;
     return (
-      <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "var(--app-dvh)", background: EP_BG, position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, textAlign: "center", padding: 24, maxWidth: 420 }}>
           {errored ? (
@@ -775,7 +775,7 @@ export default function RuleOfLifePage() {
     }
 
     return (
-      <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "var(--app-dvh)", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "calc(var(--safe-top, 0px) + 24px) 20px 40px" }}>
           <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
@@ -810,7 +810,7 @@ export default function RuleOfLifePage() {
 
   if (phase === "email" && result) {
     return (
-      <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "var(--app-dvh)", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "calc(var(--safe-top, 0px) + 24px) 20px 40px" }}>
           <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
@@ -915,7 +915,7 @@ export default function RuleOfLifePage() {
 
   if (phase === "result" && result) {
     return (
-      <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative" }}>
+      <div style={{ minHeight: "var(--app-dvh)", background: EP_BG, position: "relative" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, padding: "calc(var(--safe-top, 0px) + 24px) 20px 60px", maxWidth: 560, margin: "0 auto" }}>
           {/* Header */}

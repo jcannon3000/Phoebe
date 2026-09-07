@@ -237,7 +237,7 @@ export function WeeklyPlanDeck({
         style={{
           ...fontScaleWrapStyle(display.fontScale, 560),
           margin: "0 auto",
-          minHeight: "100dvh",
+          minHeight: "var(--app-dvh)",
           justifyContent: "center",
           paddingTop: "clamp(24px, 6dvh, 72px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 168px)",

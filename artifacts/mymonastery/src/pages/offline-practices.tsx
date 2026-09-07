@@ -134,7 +134,7 @@ export default function OfflinePracticesPage() {
 
   return (
     <Layout bgPhoto={bg}>
-      <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
+      <div style={{ position: "relative", isolation: "isolate", minHeight: "var(--app-dvh)" }}>
         <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", color: WARM, fontFamily: FONT, paddingBottom: 48 }}>
           <button type="button" onClick={() => setLocation("/menu")} style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 14 }}>
             ← {t("menu.title", { defaultValue: "Menu" })}

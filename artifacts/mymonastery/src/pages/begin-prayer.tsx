@@ -468,5 +468,5 @@ export default function BeginPrayerPage() {
   // snapped to their real cream/blue backdrop the instant the veil arrived,
   // which read as a flash. Tapping the home card now fades dark/paper/water
   // → the SAME dark/paper/water into the office's own fade-up entrance.
-  return <div style={{ minHeight: "100dvh", background: officeVeilBg(getOfficeBackdrop()) }} />;
+  return <div style={{ minHeight: "var(--app-dvh)", background: officeVeilBg(getOfficeBackdrop()) }} />;
 }

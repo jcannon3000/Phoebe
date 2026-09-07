@@ -118,7 +118,7 @@ export default function CreationPrayersPage() {
       {/* Leaf backdrop — the canonical in-Layout pattern: an isolated host with
           an absolute, z-index:-1 photo layer (never position:fixed, which
           flashes in the iOS WebView). The frosted cards below blur it. */}
-      <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
+      <div style={{ position: "relative", isolation: "isolate", minHeight: "var(--app-dvh)" }}>
         {bgPhoto && (
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1 }}>
             <img src={bgPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.3 }} />

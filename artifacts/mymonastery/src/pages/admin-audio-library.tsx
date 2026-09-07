@@ -176,17 +176,17 @@ export default function AdminAudioLibraryPage() {
     await qc.invalidateQueries({ queryKey: ["/api/curated-audio"] });
   };
 
-  if (whoLoading) return <div style={{ minHeight: "100dvh", background: BG }} />;
+  if (whoLoading) return <div style={{ minHeight: "var(--app-dvh)", background: BG }} />;
   if (!who?.isSuperAdmin) {
     return (
-      <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ minHeight: "var(--app-dvh)", background: BG, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15 }}>This page is for app administrators.</p>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100dvh", background: BG, padding: "calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 24px)" }}>
+    <div style={{ minHeight: "var(--app-dvh)", background: BG, padding: "calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 24px)" }}>
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
           <button type="button" onClick={() => setLocation("/admin/tools")}

@@ -255,13 +255,13 @@ export default function SpiritualsPage() {
   };
 
   const shell = (children: ReactNode, footer?: ReactNode) => (
-    <div style={{ position: "relative", minHeight: "100dvh", background: BG, isolation: "isolate" }}>
+    <div style={{ position: "relative", minHeight: "var(--app-dvh)", background: BG, isolation: "isolate" }}>
       <AnimatedBackground base={BG} variant="subtle" />
       <div
         {...(stage === "choose" || stage === "close" ? {} : deckNav)}
         style={{
         position: "relative", maxWidth: 620, margin: "0 auto",
-        display: "flex", flexDirection: "column", minHeight: "100dvh",
+        display: "flex", flexDirection: "column", minHeight: "var(--app-dvh)",
         padding: "calc(env(safe-area-inset-top) + 16px) 18px calc(env(safe-area-inset-bottom) + 24px)",
         boxSizing: "border-box",
       }}>
