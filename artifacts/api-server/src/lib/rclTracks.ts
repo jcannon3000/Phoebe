@@ -72,9 +72,47 @@ function fallbackTracks(iso: string): { track1: RclTrack; track2: RclTrack | nul
   const isPsalm = (s: string) => /^(psalm|canticle)/i.test(s) || /\s+or$/i.test(s);
   const ots = r.ot.filter((s) => !isPsalm(s));
   const psalms2 = r.ot.filter(isPsalm).map((s) => s.replace(/\s+or$/i, "").trim());
-  const track1: RclTrack = { ot: ots[0] ?? null, psalm: r.psalm, nt: r.nt[0] ?? null, gospel: r.gospel };
-  const ot2 = ots.length > 1 ? ots[ots.length - 1]! : null;
-  const track2: RclTrack | null = ot2 ? { ot: ot2, psalm: psalms2[psalms2.length - 1] ?? null, nt: r.nt[0] ?? null, gospel: r.gospel } : null;
+
+  /**
+   * THROUGH EASTERTIDE THE RCL APPOINTS ACTS IN PLACE OF THE OLD TESTAMENT.
+   *
+   * The table records it where every other reading goes, in `nt` — so `nt[0]`
+   * was Acts on nine Sundays and the deck showed "Acts 2:14a, 22-32" on the
+   * Epistle card while the actual epistle (1 Peter 1:3-9) was never shown at
+   * all. On seven of those Sundays there is no OT entry either, so the deck
+   * simply had no first reading. Acts fills the first slot it was appointed
+   * for, and the epistle is the next reading that is not Acts.
+   */
+  const nts = r.nt ?? [];
+  const isActs = (x: string) => /^acts\b/i.test(x);
+  const actsEntry = nts.find(isActs) ?? null;
+  const nonActs = nts.filter((x) => !isActs(x));
+  // Acts fills the FIRST slot only when there is no Old Testament reading to
+  // put there; the epistle is the first reading that isn't Acts, falling back
+  // to Acts itself on the days it is the only second reading appointed
+  // (the Baptism of our Lord).
+  const firstReading = ots[0] ?? actsEntry;
+  const epistle = nonActs[0] ?? (ots[0] ? actsEntry : null);
+
+  const track1: RclTrack = { ot: firstReading, psalm: r.psalm, nt: epistle, gospel: r.gospel };
+
+  /**
+   * A SECOND TRACK IS A SECOND OLD TESTAMENT READING — never a gospel.
+   *
+   * "The last non-psalmody entry" made a Track 2 out of whatever else sat in
+   * the row, so Palm Sunday offered a track whose Old Testament reading was
+   * the Passion (Matthew 27:11-54), Easter Day's was Matthew 28:1-10 and
+   * Pentecost's was John 7:37-39. The RCL's two tracks belong to the Sundays
+   * after Pentecost; a New Testament book in that slot means the row held
+   * something else, not a track.
+   */
+  const NT_BOOKS = /^(matthew|mark|luke|john|acts|romans|1 corinthians|2 corinthians|galatians|ephesians|philippians|colossians|1 thessalonians|2 thessalonians|1 timothy|2 timothy|titus|philemon|hebrews|james|1 peter|2 peter|1 john|2 john|3 john|jude|revelation)\b/i;
+  const ot2 = ots.length > 1 && !NT_BOOKS.test(ots[ots.length - 1]!) ? ots[ots.length - 1]! : null;
+  const track2: RclTrack | null = ot2
+    // Its own appointed psalm when the row carries one; otherwise the day's,
+    // rather than null — a track with no psalm at all dropped the psalm slides.
+    ? { ot: ot2, psalm: psalms2[psalms2.length - 1] ?? r.psalm, nt: epistle, gospel: r.gospel }
+    : null;
   return { track1, track2 };
 }
 
@@ -88,7 +126,17 @@ export async function getSundayTracks(today = new Date()): Promise<SundayTracks 
   let parsed: { track1: RclTrack; track2: RclTrack | null } | null = null;
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000);
+    /**
+     * SHORTER THAN THE CLIENTS' OWN BOUNDS. The deck gives a deck fetch 6
+     * seconds and the background walk 8; a 10-second scrape here meant that on
+     * the first request after a deploy — the one that fills this cache — both
+     * gave up before the server could answer, and the reader saw nothing while
+     * we waited on a page that is very likely blocked anyway (Railway's
+     * outbound IP is refused by lectionarypage's mod_security; see the note in
+     * rclLectionary). Falling back to the bundled table fast beats answering
+     * late.
+     */
+    const timeout = setTimeout(() => controller.abort(), 4_000);
     const res = await fetch(row.url, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: controller.signal }).finally(() => clearTimeout(timeout));
     if (res.ok) parsed = parseTracks(await res.text());
   } catch (err) {

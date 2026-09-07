@@ -64,8 +64,15 @@ export async function cachePage(url: string): Promise<boolean> {
     // raced timer rather than an AbortController.
     const res = await boundedFetch(`/api/reader/page?url=${encodeURIComponent(url)}`, undefined, 20_000);
     if (!res.ok) return false;
-    const data = (await res.json()) as { url?: string; html?: string } | null;
+    const data = (await res.json()) as { url?: string; html?: string; partial?: boolean } | null;
     if (!data || typeof data.html !== "string" || data.html.length === 0) return false;
+    /**
+     * A PAGE MISSING ITS STYLESHEETS IS NOT SAVED. The proxy says so when an
+     * asset timed out mid-inline; storing it would leave this reading
+     * permanently half-styled on the device, which is exactly what "Standard"
+     * must never show. Not saved means the walk tries again on its next pass.
+     */
+    if (data.partial) return false;
     return storePut<SavedPage>(PAGES, url, { url: data.url || url, html: data.html, savedAt: Date.now(), sv: SAVE_VERSION });
   } catch { return false; }
 }

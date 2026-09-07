@@ -51,7 +51,7 @@ function allowedHost(host: string): boolean {
  * saved page. Budgeted, and best-effort per asset: one that can't be fetched
  * simply stays a link, which is no worse than before.
  */
-async function inlineAssets(html: string, pageUrl: string, signal: AbortSignal): Promise<string> {
+async function inlineAssets(html: string, pageUrl: string, signal: AbortSignal): Promise<{ html: string; missed: number }> {
   let budget = MAX_INLINE_TOTAL;
   const get = async (rawHref: string): Promise<{ text: string; bytes: number; type: string } | null> => {
     if (budget <= 0) return null;
@@ -68,6 +68,15 @@ async function inlineAssets(html: string, pageUrl: string, signal: AbortSignal):
     } catch { return null; }
   };
 
+  /**
+   * HOW MANY ASSETS WE COULD NOT INLINE. A page whose stylesheets timed out
+   * still LOOKS like a page: it was cached for a day and every phone that
+   * saved that reading in the next 24 hours got a permanently half-styled
+   * copy — and "Standard" showing unstyled markup is precisely what the owner
+   * called out. The caller refuses to cache a page with misses.
+   */
+  let missed = 0;
+
   // Stylesheets → <style>, in place, so the cascade keeps its order.
   const links = Array.from(html.matchAll(/<link\b[^>]*>/gi)).map((m) => m[0]);
   for (const tag of links) {
@@ -76,8 +85,12 @@ async function inlineAssets(html: string, pageUrl: string, signal: AbortSignal):
     if (!href) continue;
     const media = tag.match(/media\s*=\s*["']([^"']+)["']/i)?.[1];
     const asset = await get(href);
-    if (!asset) continue;
-    html = html.replace(tag, `<style${media ? ` media="${media}"` : ""}>\n${asset.text}\n</style>`);
+    if (!asset) { missed++; continue; }
+    // A FUNCTION, not a string: `$&`, "$`" and `$'` inside fetched CSS/JS are
+    // substitution patterns to String.replace and would corrupt the asset.
+    // oremus has no `$` today; the allowlist also carries jQuery-era pages
+    // where `$(…)` is on every line.
+    html = html.replace(tag, () => `<style${media ? ` media="${media}"` : ""}>\n${asset.text}\n</style>`);
   }
 
   // Scripts the page loads for itself (oremus's dark-mode toggle lives in one).
@@ -87,8 +100,8 @@ async function inlineAssets(html: string, pageUrl: string, signal: AbortSignal):
   const scripts = Array.from(html.matchAll(/<script\b[^>]*\ssrc\s*=\s*["']([^"']+)["'][^>]*>/gi));
   for (const [tag, src] of scripts) {
     const asset = await get(src!);
-    if (!asset) continue;
-    html = html.replace(tag, `<script>\n${asset.text}\n//`);
+    if (!asset) { missed++; continue; }
+    html = html.replace(tag, () => `<script>\n${asset.text}\n//`);
   }
 
   // Images, as data URIs — oremus has none today, but SSJE and Nouwen do.
@@ -109,7 +122,7 @@ async function inlineAssets(html: string, pageUrl: string, signal: AbortSignal):
       html = html.replace(tag, tag.replace(src, `data:${type};base64,${buf.toString("base64")}`));
     } catch { /* leave the link */ }
   }
-  return html;
+  return { html, missed };
 }
 
 router.get("/reader/page", async (req: Request, res: Response): Promise<void> => {
@@ -132,13 +145,25 @@ router.get("/reader/page", async (req: Request, res: Response): Promise<void> =>
   try {
     const upstream = await fetch(key, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: controller.signal });
     if (!upstream.ok) { res.status(502).json({ error: "That page could not be read right now." }); return; }
-    const html = await inlineAssets(await upstream.text(), key, controller.signal);
+    const { html, missed } = await inlineAssets(await upstream.text(), key, controller.signal);
     // A page, not a download: anything this large is not a reading.
     if (!html || html.length > MAX_BYTES) { res.status(502).json({ error: "That page could not be read right now." }); return; }
-    if (cache.size >= MAX_CACHE) cache.delete(cache.keys().next().value as string);
-    cache.set(key, { at: Date.now(), html });
-    res.setHeader("Cache-Control", "public, max-age=86400");
-    res.json({ url: key, html });
+    /**
+     * A HALF-INLINED PAGE IS NOT SAVED — not here for a day, and not on the
+     * phone. One slow moment mid-inline used to be baked into the day cache
+     * and handed to every device that saved that reading, permanently
+     * half-styled, and nothing on either side ever checked. `partial` tells
+     * the client not to store it; the page is still returned, because a
+     * reader who is on the network right now can perfectly well read it.
+     */
+    if (missed === 0) {
+      if (cache.size >= MAX_CACHE) cache.delete(cache.keys().next().value as string);
+      cache.set(key, { at: Date.now(), html });
+      res.setHeader("Cache-Control", "public, max-age=86400");
+    } else {
+      res.setHeader("Cache-Control", "no-store");
+    }
+    res.json({ url: key, html, ...(missed > 0 ? { partial: true } : {}) });
   } catch {
     if (hit) { res.setHeader("Cache-Control", "public, max-age=300"); res.json({ url: key, html: hit.html }); return; }
     res.status(502).json({ error: "That page could not be read right now." });

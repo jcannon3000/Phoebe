@@ -234,6 +234,16 @@ async function fetchAndCacheOne(mode: LiturgyMode, date: string, confession: "" 
     if (res.status === 401 || res.status === 403) return "present";
     if (!res.ok) return "failed";
     const data = await res.json();
+    /**
+     * A SUNDAY THE LECTIONARY TABLE DOES NOT REACH IS NOT A FAILURE.
+     *
+     * RCL_SUNDAYS runs out at the end of 2027, and /office/sunday answers 200
+     * with no slides and a null sundayDate past it. Counted as a failure, the
+     * four-Sundays-ahead walk would start asking past the end in late 2027,
+     * never record the day complete, and re-walk the entire window on every
+     * app open from then on. There is nothing to save; say so.
+     */
+    if (mode === "sunday" && data?.officeDay?.sundayDate == null) return "present";
     if (!data || !Array.isArray(data.slides) || data.slides.length === 0) return "failed";
     return (await putOfficeCacheEntry(key, data)) ? "saved" : "failed";
   } catch { /* best-effort — offline/slow/blocked, just skip this one day */ }
