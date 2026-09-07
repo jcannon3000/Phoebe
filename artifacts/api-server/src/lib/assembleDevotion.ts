@@ -27,6 +27,7 @@ import {
   parsePsalmRef,
   splitPsalmIntoChunks,
   sliceVersesByRange,
+  slicePsalmToRef,
   psalmEyebrow,
 } from "./psalmRange";
 import { buildIntercessionSlides } from "./assembleIntercessions";
@@ -167,6 +168,7 @@ export async function assembleDevotion(
     appointedPsalms.push({
       number: kind === "morning" ? 51 : 134,
       range: null,
+      ranges: null,
       raw: fallbackRaw,
     });
   }
@@ -293,10 +295,7 @@ export async function assembleDevotion(
   const allChunks: DevotionChunk[] = [];
   for (const psalmRef of appointedPsalms) {
     const row = psalmRowsByKey[`psalm_${psalmRef.number}`] ?? null;
-    const sliced =
-      row && psalmRef.range
-        ? sliceVersesByRange(row.content, psalmRef.range)
-        : row?.content;
+    const sliced = row ? slicePsalmToRef(row.content, psalmRef) : undefined;
     if (sliced) {
       const chunks = splitPsalmIntoChunks(sliced, 4);
       chunks.forEach((chunk) => allChunks.push({ content: chunk, psalmRef }));

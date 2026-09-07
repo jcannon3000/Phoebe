@@ -12,7 +12,18 @@
 
 export interface PsalmRef {
   number: number;            // The psalm number, e.g. 119
-  range: [number, number] | null;  // Inclusive verse range, or null = whole psalm
+  /** The FIRST appointed range — what every caller written before the
+   *  lectionary's comma showed up reads. Null means the whole psalm. */
+  range: [number, number] | null;
+  /**
+   * EVERY appointed range, in order. The RCL appoints split selections far
+   * more often than the Daily Office does — "Psalm 78:1-4, 12-16",
+   * "118:1-2, 19-29" (Palm Sunday and Easter Day both), "112:1-9, (10)" —
+   * and a parser that understood one bare `N-M` dropped the selection
+   * entirely on 33 of 98 Sundays in the table, praying all 71 verses of
+   * Psalm 78 where four were appointed. Null means the whole psalm.
+   */
+  ranges: Array<[number, number]> | null;
   raw: string;               // Original reference, e.g. "119:1-24"
 }
 
@@ -61,25 +72,62 @@ export function parsePsalmRef(ref: string): PsalmRef | null {
    */
   const starred = /^\s*95\s*\*\s*&\s*(.+)$/.exec(trimmed);
   const forOffice = starred ? starred[1]!.trim() : trimmed;
-  // Take the first numeric/range token, ignoring any remaining "*" suffix.
-  const head = forOffice.split(/\s+/)[0].replace(/[*]+$/, "");
-  const [numStr, rangeStr] = head.split(":");
-  const number = parseInt(numStr, 10);
+  /**
+   * Only the FIRST psalm of a combined reference belongs to this ref — the
+   * callers split "42 & 43" into two. Cutting here also keeps the ampersand
+   * out of the verse part below.
+   */
+  const firstPsalm = forOffice.split(/[&;]/)[0]!.trim().replace(/[*]+$/, "");
+  const colon = firstPsalm.indexOf(":");
+  const number = parseInt(colon === -1 ? firstPsalm : firstPsalm.slice(0, colon), 10);
   if (!Number.isFinite(number)) return null;
-  if (!rangeStr) return { number, range: null, raw: forOffice };
+  if (colon === -1) return { number, range: null, ranges: null, raw: forOffice };
 
-  const rangeMatch = rangeStr.match(/^(\d+)\s*-\s*(\d+)$/);
-  if (rangeMatch) {
-    const from = parseInt(rangeMatch[1], 10);
-    const to = parseInt(rangeMatch[2], 10);
-    return { number, range: [from, to], raw: forOffice };
+  /**
+   * THE WHOLE VERSE PART, NOT ITS FIRST TOKEN.
+   *
+   * This used to take `split(/\s+/)[0]`, so "78:1-4, 12-16" became "1-4,"
+   * — which matched no pattern, fell through to null, and the deck prayed
+   * all 71 verses over 18 slides where 3 were appointed. "45: 11-18" lost
+   * its selection to the space alone. The This Sunday card printed the right
+   * reference while the deck prayed something else.
+   *
+   * Parentheses mark verses the RCL leaves optional ("1-9, (10)",
+   * "1-17(18-23)"); they are appointed, so they are treated as another
+   * segment rather than dropped — praying ten verses where nine were
+   * required is far closer to the appointment than praying all 150.
+   */
+  const versePart = firstPsalm.slice(colon + 1)
+    .replace(/[\u2010-\u2015]/g, "-")   // en/em dashes from pasted lectionaries
+    .replace(/[()[\]]/g, ",");
+  const ranges: Array<[number, number]> = [];
+  for (const seg of versePart.split(",")) {
+    // Verse-letter suffixes ("45b", "22a") name half a verse; the seeded
+    // psalms are whole verses, so the letter is dropped and the verse kept.
+    const s = seg.replace(/\s+/g, "").replace(/(\d+)[a-z]+/gi, "$1");
+    if (!s) continue;
+    const m = /^(\d+)-(\d+)$/.exec(s);
+    if (m) ranges.push([parseInt(m[1], 10), parseInt(m[2], 10)]);
+    else if (/^\d+$/.test(s)) ranges.push([parseInt(s, 10), parseInt(s, 10)]);
   }
-  const single = rangeStr.match(/^(\d+)$/);
-  if (single) {
-    const n = parseInt(single[1], 10);
-    return { number, range: [n, n], raw: forOffice };
-  }
-  return { number, range: null, raw: forOffice };
+  if (ranges.length === 0) return { number, range: null, ranges: null, raw: forOffice };
+  return { number, range: ranges[0]!, ranges, raw: forOffice };
+}
+
+/**
+ * A psalm's content cut to what the day appoints — every range, in order.
+ *
+ * ONE place, because the six assemblers each did `ref.range ? slice(...) :
+ * content` and would each have had to learn about the second range. Creation
+ * Prayer had already grown its own private multi-range parser
+ * (assembleCreationDevotion's parseRef) precisely because this one couldn't
+ * do it; that is the drift this closes.
+ */
+export function slicePsalmToRef(content: string, ref: Pick<PsalmRef, "range" | "ranges">): string {
+  const ranges = ref.ranges ?? (ref.range ? [ref.range] : null);
+  if (!ranges) return content;
+  const parts = ranges.map((r) => sliceVersesByRange(content, r)).filter((x) => x.trim().length > 0);
+  return parts.length > 0 ? parts.join("\n") : content;
 }
 
 /**

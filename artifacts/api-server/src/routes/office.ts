@@ -19,7 +19,7 @@ import { assembleCompline } from "../lib/assembleCompline";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { getLectionaryReadings } from "../lib/lectionary";
 import { buildOfficeOrdoDay, getOrdoCommonTexts } from "../lib/officeOrdo";
-import { parsePsalmRef, sliceVersesByRange, displayPsalmRef, displayLessonRef } from "../lib/psalmRange";
+import { parsePsalmRef, sliceVersesByRange, slicePsalmToRef, displayPsalmRef, displayLessonRef } from "../lib/psalmRange";
 import { isUserBeta } from "../lib/parishGate";
 import { resolveLocale } from "../lib/officeI18n";
 import { seedBcpTexts } from "../seeds/bcpTexts";
@@ -733,7 +733,7 @@ router.get("/psalms/today", (req, res) => {
     .map((ref) => {
       const entry = PSALTER[ref.number];
       if (!entry) return null;
-      const content = ref.range ? sliceVersesByRange(entry.content, ref.range) : entry.content;
+      const content = slicePsalmToRef(entry.content, ref);
       return {
         number: ref.number,
         title: entry.title,

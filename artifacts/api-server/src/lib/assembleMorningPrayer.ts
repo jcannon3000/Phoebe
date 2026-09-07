@@ -22,6 +22,7 @@ import { bibleGatewayUrl } from "./bibleGatewayUrl";
 import {
   parsePsalmRef,
   sliceVersesByRange,
+  slicePsalmToRef,
   psalmEyebrow,
   splitPsalmIntoChunks,
   splitCanticleIntoChunks,
@@ -887,10 +888,7 @@ export async function assembleMorningPrayer(
     const allChunks: Chunk[] = [];
     for (const psalmRef of appointedPsalms) {
       const psalmData = texts[`psalm_${psalmRef.number}`];
-      const sliced =
-        psalmData && psalmRef.range
-          ? sliceVersesByRange(psalmData.content, psalmRef.range)
-          : psalmData?.content;
+      const sliced = psalmData ? slicePsalmToRef(psalmData.content, psalmRef) : undefined;
       if (sliced) {
         const chunks = splitPsalmIntoChunks(sliced, 4);
         chunks.forEach((chunk) => allChunks.push({ content: chunk, psalmRef }));

@@ -45,6 +45,7 @@ import {
   parsePsalmRef,
   splitPsalmIntoChunks,
   sliceVersesByRange,
+  slicePsalmToRef,
   psalmEyebrow,
 } from "./psalmRange";
 import { applyConfessionPref } from "./assembleMorningPrayer";
@@ -196,6 +197,7 @@ export async function assembleCompline(
   const psalmRef = parsePsalmRef(today.psalmRef) ?? {
     number: 4,
     range: null,
+    ranges: null,
     raw: "4",
   };
 
@@ -336,11 +338,7 @@ export async function assembleCompline(
   //    block shape the full Office uses, so the renderer behaves
   //    identically. Verse-range psalms (e.g. 31:1-5) get sliced.
   const psalmEyebrowText = psalmEyebrow(psalmRef);
-  const psalmBody = psalmRow?.content
-    ? (psalmRef.range
-        ? sliceVersesByRange(psalmRow.content, psalmRef.range)
-        : psalmRow.content)
-    : null;
+  const psalmBody = psalmRow?.content ? slicePsalmToRef(psalmRow.content, psalmRef) : null;
 
   slides.push(
     slide(id(), "psalm_title", "📖", psalmEyebrowText, "", {

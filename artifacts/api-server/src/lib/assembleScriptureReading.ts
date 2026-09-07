@@ -23,7 +23,7 @@ import { getOfficeDay } from "./liturgicalCalendar";
 import { getLectionaryReadings } from "./lectionary";
 import { getSundayTracks } from "./rclTracks";
 import { buildLessonSlides } from "./assembleLesson";
-import { parsePsalmRef, sliceVersesByRange, splitPsalmIntoChunks, psalmEyebrow } from "./psalmRange";
+import { parsePsalmRef, sliceVersesByRange, slicePsalmToRef, splitPsalmIntoChunks, psalmEyebrow } from "./psalmRange";
 import type { Slide, SlideType } from "./assembleMorningPrayer";
 
 function slide(
@@ -202,7 +202,7 @@ async function buildScriptureSlides(
       const allChunks: Chunk[] = [];
       for (const psalmRef of appointedPsalms) {
         const data = psalmTexts[`psalm_${psalmRef.number}`];
-        const sliced = data && psalmRef.range ? sliceVersesByRange(data.content, psalmRef.range) : data?.content;
+        const sliced = data ? slicePsalmToRef(data.content, psalmRef) : undefined;
         if (sliced) {
           for (const chunk of splitPsalmIntoChunks(sliced, 4)) allChunks.push({ content: chunk, psalmRef });
         } else {
