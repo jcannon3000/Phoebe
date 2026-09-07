@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
+import { useGroupFeatures } from "@/hooks/useGroupFeatures";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAndrewsVisible } from "@/lib/appSettings";
@@ -293,6 +295,8 @@ export type RhythmState = {
   complineActive: boolean;
   cobreatheActive: boolean;
   prayerListActive: boolean;
+  /** The card/dot/count gate — see where it is computed. */
+  prayerListCardActive: boolean;
   examenDone: boolean;
   listeningDone: boolean;
   readingDone: boolean;
@@ -419,6 +423,8 @@ export function useRhythmState(): RhythmState {
   // until auth settles. Once auth resolves it's the anonymous device user, so
   // `guest` stays true; a real signed-in account is impossible on a first open.
   const guest = (!authLoading || isFirstOpen()) && isDeviceLocalGuest(user);
+  const prayerListSurfaced = usePrayerListEnabled();
+  const { hasPrayerGroup } = useGroupFeatures();
   // The layout that decides which optional cards are active: the signed-in
   // user's server layout, or — for a guest — the device-local cache.
   const hl = guest ? readCachedHomeLayout() : user?.homeLayout;
@@ -947,6 +953,19 @@ export function useRhythmState(): RhythmState {
     communityIntercessions.filter((m) => m.myPrayedToday).length;
 
   const intentionsTotalCount = activeIntentions.length + communityTotalCount;
+  /**
+   * THE PRAYER-LIST GATE — ONE COMPUTATION (completion-signal invariant).
+   *
+   * The card required !guest AND (surfaced || a group with prayer requests on)
+   * AND a non-empty list; the pill dot and the anchor count required only the
+   * non-empty list. So a signed-in person in no group, not a pilot member, who
+   * merely FOLLOWED a prayer feed got a dot and an anchor with no card behind
+   * them — nothing could ever fill them, allHabitsDone never flipped, and the
+   * "day is kept" home never arrived for them at all.
+   *
+   * Everything reads this now: the card, the dot, the count.
+   */
+  const prayerListCardActive = !guest && (prayerListSurfaced || hasPrayerGroup) && intentionsTotalCount > 0;
   const intentionsPrayedCount = activeIntentions.filter((it) => it.prayedToday).length + communityPrayedCount;
 
   // Local midnight of `day` (which is recomputed from the wall clock on every
@@ -1746,7 +1765,7 @@ export function useRhythmState(): RhythmState {
     // Matches the CARD's own gate (prayerListActiveCard = intentionsTotalCount
     // > 0) so the pill can't count a different number of practices than the
     // home shows. Guests, whose intentions query never runs, stay excluded.
-    ...(intentionsTotalCount > 0 ? [prayerListDone] : []),
+    ...(prayerListCardActive ? [prayerListDone] : []),
     ...(examenActive ? [examenDone] : []),
     /**
      * THE THREE INBOXES COUNT — they draw a card, so they get a dot.
@@ -1877,6 +1896,7 @@ export function useRhythmState(): RhythmState {
     complineActive,
     cobreatheActive,
     prayerListActive,
+    prayerListCardActive,
     examenDone,
     listeningDone,
     readingDone,

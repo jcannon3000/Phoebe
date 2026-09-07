@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket } from "ws";
+import { allowedOrigins } from "./origins";
 import type { Server as HttpServer } from "http";
 import type { IncomingMessage } from "http";
 import { inArray } from "drizzle-orm";
@@ -253,7 +254,31 @@ async function recomputeBreathNotifications() {
 // ── Setup ────────────────────────────────────────────────────────────────────
 
 export function attachWebSocketServer(server: HttpServer) {
-  const wss = new WebSocketServer({ server, path: "/ws" });
+  /**
+   * THE UPGRADE IS ORIGIN-CHECKED (security audit, 2026-09-06).
+   *
+   * A WebSocket handshake is exempt from CORS and never passes through the
+   * Express stack, so neither the CORS allowlist nor the CSRF guard saw it —
+   * and the socket authenticates purely from the session cookie, which is
+   * SameSite=None in production. Any page on any site could therefore open
+   * wss://withphoebe.app/ws, have the browser attach the victim's cookie, and
+   * be authenticated AS them: reading presence for the whole instance and
+   * sending as them (a "join the breath" push fans out to their fellows).
+   *
+   * Same allowlist the HTTP side uses, so the two cannot drift. A handshake
+   * with no Origin is a native or server client, not a browser page, and is
+   * allowed exactly as CORS allows an Origin-less request.
+   */
+  const wss = new WebSocketServer({
+    server,
+    path: "/ws",
+    verifyClient: ({ origin }, done) => {
+      if (!origin) { done(true); return; }
+      if (allowedOrigins.has(origin)) { done(true); return; }
+      logger.warn({ origin }, "[ws] refused a cross-origin upgrade");
+      done(false, 403, "Forbidden");
+    },
+  });
 
   // Run the express-session middleware on the upgrade request so we can read the
   // authenticated user id (passport stores it at session.passport.user).

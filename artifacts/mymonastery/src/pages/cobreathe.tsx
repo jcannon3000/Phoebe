@@ -423,7 +423,26 @@ export default function CobreathePage() {
     onError: (_err, seconds) => {
       // Offline the count is kept and sent later — the same outbox every other
       // completion uses. Without this the breath was simply gone.
-      if (!isOnline()) enqueueWrite(`breath_${Date.now()}`, "POST", "/api/breath/today", { seconds });
+      if (!isOnline()) {
+        /**
+         * THE SAME BODY THE LIVE CALL SENDS.
+         *
+         * This used to queue `{ seconds }` alone. The server requires `day`
+         * (routes/breath.ts) and 400s without it — and flushWrites stops at
+         * the first entry it cannot send, so one breath taken in Airplane Mode
+         * jammed the whole outbox behind it for the seven days it took to age
+         * out: practice completions, anchor keeps, listening logs, sits. The
+         * device looked fine (local flags still held) while nothing reached
+         * the account. Keep this object in step with mutationFn's.
+         */
+        enqueueWrite(`breath_${Date.now()}`, "POST", "/api/breath/today", {
+          day,
+          seconds,
+          placeId: place && place.id > 0 ? place.id : null,
+          placeSlug: place?.slug ?? null,
+          placeVerified,
+        });
+      }
     },
     mutationFn: async (seconds: number) => {
       /**

@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect, useRef, useMemo, type CSSProperties } from "react";
+import { anchorOnDay } from "@/lib/customAnchors";
 import { useGroupFeatures } from "@/hooks/useGroupFeatures";
 import { HIDE_COMMUNITY_KEY } from "@/lib/displayPrefs";
 import { Link, useLocation } from "wouter";
@@ -710,7 +711,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // queries only fire when the pill is actually rendered (signed-in).
 function DailyProgressPill() {
   const { t } = useTranslation();
-  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, visioActive, visioDone, prayerListDone, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, visioActive, visioDone, prayerListDone, prayerListCardActive, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -733,12 +734,19 @@ function DailyProgressPill() {
   // a morning custom rides next to Morning, etc. — and a "not today" custom drops
   // out entirely, matching the cards + the reduced count.
   const cDots = (slot: string) =>
-    customAnchors.filter((a) => a.slot === slot && !a.skipped).map((a) => ({ key: `custom-${a.id}`, done: a.done }));
+    // anchorOnDay, like the home cards and the widget. Without it a weekday-only
+    // anchor (Chapel, a community meal) drew a dot in this pill on a Saturday
+    // that nothing could ever fill — the pill said 5, the home showed 3. The
+    // widget was fixed for this; the pill was left behind.
+    customAnchors.filter((a) => a.slot === slot && !a.skipped && anchorOnDay(a))
+      .map((a) => ({ key: `custom-${a.id}`, done: a.done }));
   // The prayer-list dot — always "anytime", like the card: the list left the
   // morning/evening sides (owner, 2026-08-26).
   const prayerListSlot = "anytime";
   const plDot = (slot: string) =>
-    intentionsTotalCount > 0 && prayerListSlot === slot
+    // The same gate the card uses — a dot with no card behind it could never
+    // be filled, and the day could never read as kept.
+    prayerListCardActive && prayerListSlot === slot
       // Same signal the card uses — walking the slideshow, not a per-prayer
       // tally. Counting here would have re-created the disagreement the card
       // just lost: a dot stuck at "not yet" after a complete walk that skipped

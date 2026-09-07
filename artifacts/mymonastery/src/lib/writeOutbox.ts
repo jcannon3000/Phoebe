@@ -80,9 +80,20 @@ export async function flushWrites(): Promise<void> {
         await apiRequest(entry.method, entry.url, entry.body);
         dropWrite(entry.id);
       } catch (err) {
-        // A signed-out device has no row to write; the local flag is the whole
-        // truth for a guest, so drop it rather than retrying forever.
-        if (err instanceof ApiError && (err.status === 401 || err.status === 403 || err.status === 404)) {
+        /**
+         * A 4xx means THIS ENTRY will never be accepted — a signed-out device
+         * with no row to write, a deleted target, or a body the server rejects.
+         * Drop it and keep going.
+         *
+         * This used to drop only on 401/403/404, so a malformed body (a 400)
+         * sat at the head of the queue and blocked every write behind it until
+         * it aged out a week later. One bad entry must not cost the person
+         * their whole offline day, so the rule is now "permanent means drop".
+         *
+         * 408 and 429 are the exceptions: both are explicitly "try again".
+         */
+        if (err instanceof ApiError && err.status >= 400 && err.status < 500
+            && err.status !== 408 && err.status !== 429) {
           dropWrite(entry.id);
           continue;
         }
@@ -102,11 +113,15 @@ export function installWriteOutboxFlush(): () => void {
   const flush = () => { void flushWrites(); };
   window.addEventListener("online", flush);
   window.addEventListener("phoebe:appactive", flush);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") flush(); });
+  // Named, so the teardown below can actually remove it — an inline arrow
+  // here leaked a listener on every remount.
+  const onVisible = () => { if (document.visibilityState === "visible") flush(); };
+  document.addEventListener("visibilitychange", onVisible);
   const boot = window.setTimeout(flush, 4000);
   return () => {
     window.clearTimeout(boot);
     window.removeEventListener("online", flush);
     window.removeEventListener("phoebe:appactive", flush);
+    document.removeEventListener("visibilitychange", onVisible);
   };
 }
