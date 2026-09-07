@@ -22,7 +22,7 @@ export const IMMERSIVE_PRACTICE_PREFIXES: readonly string[] = [
   "/bcp/daily-office", "/bcp/daily-devotions", "/pray",
   "/prayer-mode", "/begin-prayer", "/guided-prayer", "/examen",
   "/psalms", "/contemplation", "/cobreathe", "/pray-breath",
-  "/lectio", "/visio", "/listening", "/icon-prayer", "/spirituals",
+  "/lectio", "/visio", "/listening", "/icon-prayer", "/spirituals", "/rosary",
   "/creation-devotion", "/vts-reading", "/morning-prayer",
   // Designing your rule is also a sitting you shouldn't be interrupted during;
   // its Continue hovers at the bottom of the screen.

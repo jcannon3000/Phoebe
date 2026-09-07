@@ -357,6 +357,7 @@ const BcpPage = lazy(() => import("./pages/bcp"));
 const ExamenPage = lazy(() => import("./pages/examen"));
 const VtsReadingPage = lazy(() => import("./pages/vts-reading"));
 const GuidedPrayerPage = lazy(() => import("./pages/guided-prayer"));
+const RosaryPage = lazy(() => import("./pages/rosary"));
 const NovenaPage = lazy(() => import("./pages/novena"));
 const NovenaDetailPage = lazy(() => import("./pages/novena-detail"));
 const NovenaLibraryPage = lazy(() => import("./pages/novena-library"));
@@ -872,7 +873,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // the day's appointment is a local lookup, and completion is a local record —
   // so it needs no account, and leaving it out of this set would bounce the
   // practice to the dashboard for every signed-in non-beta account.
-  "/psalms", "/contemplation", "/contemplation-log", "/examen", "/guided-prayer", "/visio", "/icon-prayer", "/spirituals", "/reflect/fdd", "/customize",
+  "/psalms", "/contemplation", "/contemplation-log", "/examen", "/guided-prayer", "/rosary", "/visio", "/icon-prayer", "/spirituals", "/reflect/fdd", "/customize",
   // The Morning/Evening Prayer + Compline picker — reached from the new
   // "Daily Offices" row in Practices (a guest-visible menu), so the target
   // must be guest-allowed too or the tap just bounces back to the dashboard.
@@ -1176,6 +1177,9 @@ function Router() {
       <Route path="/examen" component={ExamenPage} />
       <Route path="/vts-reading" component={VtsReadingPage} />
       <Route path="/guided-prayer" component={GuidedPrayerPage} />
+      {/* Admin-only for now — the page gates itself as well, so typing the
+          route lands on the dashboard rather than the deck. */}
+      <Route path="/rosary" component={RosaryPage} />
       <Route path="/novena" component={NovenaPage} />
       <Route path="/novena/:id" component={NovenaDetailPage} />
       <Route path="/novena-library" component={NovenaLibraryPage} />

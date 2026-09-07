@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { getReadingsTodayUrl } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
+import { useBetaStatus } from "@/hooks/useDemo";
 
 // The core contemplative practices. (Gratitude is still reachable via its own
 // surface; it's just not listed here.)
@@ -17,6 +18,7 @@ export default function MenuPracticesPage() {
   // 2026-07-02), and Creation Prayer stays behind its own flag. See memory
   // "project_public_no_login".
   const { isGuest } = useGuestMode();
+  const { rawIsAdmin: isSuperAdmin } = useBetaStatus();
   const { user } = useAuth();
   // Signed in = a real account. A device-local guest has a provisioned
   // anonymous user, which is not one.
@@ -87,6 +89,14 @@ export default function MenuPracticesPage() {
           // ?side=), so it logs as a standalone practice rather than closing
           // out a morning/evening anchor.
           { offlineKey: "guided-prayer", emoji: "🙏🏽", label: "Simple Guided Prayer", sub: "Praise, ask, confess, give thanks", onClick: () => go("/guided-prayer") },
+          // The Rosary — a guided walk through a set of mysteries, on Simple
+          // Guided Prayer's own recipe. ADMIN ONLY while it is being tried
+          // (owner); the route gates itself too, so this row and the page
+          // agree. Sits beside PACT because it is the same kind of thing: a
+          // shaped prayer you are walked through rather than a reading.
+          ...(isSuperAdmin ? [
+            { emoji: "📿", label: "The Rosary", sub: "Pray the mysteries, a decade at a time", onClick: () => go("/rosary") },
+          ] : []),
           // Guided courses now live in their own "Learn" menu tab.
           { offlineKey: "cobreathe", emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation", onClick: () => go("/cobreathe") },
           // Prayers for the Climate sits at the bottom (behind CREATION_PRAYER_ENABLED).
