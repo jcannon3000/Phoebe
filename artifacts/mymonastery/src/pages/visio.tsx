@@ -40,7 +40,7 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { openExternal, openOfficeReading, preloadExternal } from "@/lib/openExternal";
+import { openExternal, openOfficeReading, preloadExternal, hasNativeBrowser } from "@/lib/openExternal";
 import { openReadingPage } from "@/lib/openExternal";
 import { getSavedPage } from "@/lib/pageCache";
 import { toast } from "@/hooks/use-toast";
@@ -1061,6 +1061,19 @@ export default function VisioPage() {
         toast({
           title: "This reading isn't saved yet",
           description: "Open the app once with a connection and the coming weeks are kept for you.",
+        });
+        return;
+      }
+      /**
+       * Online and it still didn't open: on web that means the browser refused
+       * the tab, and trying again from here cannot help — this callback is a
+       * later task, so the tap is over and the second attempt is refused too.
+       * Say what actually happened instead of retrying into the same wall.
+       */
+      if (!hasNativeBrowser()) {
+        toast({
+          title: "Your browser blocked the reading",
+          description: "Allow pop-ups for Phoebe, and the passage will open in a new tab.",
         });
         return;
       }

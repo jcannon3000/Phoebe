@@ -2462,10 +2462,21 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
          * and stopping left the pill re-toasting forever mid-deck. The reading
          * is missing; the office is not.
          */
-        toast({
-          title: "This reading isn't saved yet",
-          description: "Open the app once with a connection and the coming weeks are kept for you.",
-        });
+        /**
+         * SAY WHICH FAILURE IT WAS. Online, the open didn't fail for want of a
+         * saved copy — the browser refused the tab. Telling someone their
+         * reading "isn't saved yet" when it is sitting one pop-up permission
+         * away sends them to the wrong fix entirely.
+         */
+        toast(isOnline()
+          ? {
+              title: "Your browser blocked the reading",
+              description: "Allow pop-ups for Phoebe, and the passage will open in a new tab.",
+            }
+          : {
+              title: "This reading isn't saved yet",
+              description: "Open the app once with a connection and the coming weeks are kept for you.",
+            });
         advanceAfterReading();
       });
       return;
@@ -4867,10 +4878,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     officeTitle,
                     slideLabel: `${slideIdx + 1} of ${slides.length}`,
                     sectionLabel,
-                  }).then((opened) => { if (!opened) toast({
-                    title: "This reading isn't saved yet",
-                    description: "Open the app once with a connection and the coming weeks are kept for you.",
-                  }); }); }}
+                  }).then((opened) => { if (!opened) toast(isOnline()
+                    ? { title: "Your browser blocked the reading", description: "Allow pop-ups for Phoebe, and the passage will open in a new tab." }
+                    : { title: "This reading isn't saved yet", description: "Open the app once with a connection and the coming weeks are kept for you." }); }); }}
                   style={{
                     padding: "10px 18px", borderRadius: 999,
                     background: "rgba(var(--ot-green, 46,107,64),0.18)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
