@@ -29,6 +29,7 @@ import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
 import { FROST_BLUR } from "@/lib/frost";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 import { apiRequest } from "@/lib/queryClient";
+import { enqueueSession } from "@/lib/sessionOutbox";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RequestWordField } from "@/components/RequestWordField";
@@ -2052,20 +2053,31 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     suppressSessionPostRef.current = true;
     completedRef.current = true;
     creditPrayerListIfIncluded();
-    apiRequest("POST", "/api/prayer-sessions", {
+    const bookSessionBody = {
       surface: officeSurface,
       durationSeconds,
       slidesCompleted: slides.length,
       completed: true,
       startedAt: new Date(openedAt).toISOString(),
       endedAt: endedAt.toISOString(),
-    })
+    };
+    apiRequest("POST", "/api/prayer-sessions", bookSessionBody)
       .then(() => {
         // The prayer-rhythm habit grid + daily-practice "prayed today"
         // checks read this — refetch so they flip without an app restart.
         queryClient.invalidateQueries({ queryKey: ["/api/me/office-history-week"] });
       })
-      .catch(() => { /* best-effort — the localStorage flag below still flips the local UI */ });
+      .catch(() => {
+        /**
+         * QUEUE IT. This was best-effort with a note that "the localStorage
+         * flag still flips the local UI" — but suppressSessionPostRef above
+         * also switches OFF usePrayerSession's outbox-backed commit, so an
+         * office prayed from the book with no connection left no server row at
+         * all, ever: credited on that phone and nowhere else, missing from the
+         * history and from every other device.
+         */
+        enqueueSession(bookSessionBody);
+      });
     try {
       if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1"); // Stamp the home card this office completes, so returning home plays its
                   // completion moment (the side anchor card is keyed "morning"/"evening").

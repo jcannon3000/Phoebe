@@ -18,6 +18,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
+import { enqueueWrite } from "@/lib/writeOutbox";
+import { isOnline } from "@/lib/offline";
 import { attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { getSideContemplationExplicit } from "@/lib/officePrefs";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -48,10 +50,22 @@ export default function ContemplationLogPage() {
     mutationFn: async () => {
       const now = new Date();
       const occurredAt = when === "yesterday" ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
-      await apiRequest("POST", "/api/me/contemplation-sessions", {
-        durationSeconds: minutes * 60,
-        occurredAt: occurredAt.toISOString(),
-      });
+      const body = { durationSeconds: minutes * 60, occurredAt: occurredAt.toISOString() };
+      /**
+       * OFFLINE, REMEMBER IT INSTEAD OF LOSING IT (owner: "make sure
+       * contemplation sessions are saving offline").
+       *
+       * This POSTed raw, so with no connection the mutation rejected, onSuccess
+       * never ran, no minutes were counted, no side flag was stamped — and
+       * nothing was shown either. The button simply went back to "Add time"
+       * and the sit was gone. The endpoint isn't /api/prayer-sessions, so the
+       * session outbox can't carry it; the generic write outbox can.
+       */
+      if (!isOnline()) {
+        enqueueWrite(`contemplation_${Date.now()}`, "POST", "/api/me/contemplation-sessions", body);
+        return;
+      }
+      await apiRequest("POST", "/api/me/contemplation-sessions", body);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });

@@ -11,6 +11,8 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { apiRequest } from "@/lib/queryClient";
+import { enqueueWrite } from "@/lib/writeOutbox";
+import { isOnline } from "@/lib/offline";
 import { ContemplationTimer, CONTEMPLATION_PRESENCE_ENABLED } from "@/components/ContemplationTimer";
 import { PracticeIntro } from "@/components/PracticeIntro";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
@@ -641,10 +643,13 @@ export default function ContemplationPage() {
       const start = new Date(logWhen);
       const secs = Math.round(mins * 60);
       // (No longer mirrored into Apple Health — keeps the Health ask simple.)
-      const res = await apiRequest("POST", "/api/me/contemplation-sessions", {
-        durationSeconds: secs,
-        occurredAt: start.toISOString(),
-      });
+      const body = { durationSeconds: secs, occurredAt: start.toISOString() };
+      // Offline: queue rather than drop — see the note in contemplation-log.
+      if (!isOnline()) {
+        enqueueWrite(`contemplation_${Date.now()}`, "POST", "/api/me/contemplation-sessions", body);
+        return { res: null, start, secs };
+      }
+      const res = await apiRequest("POST", "/api/me/contemplation-sessions", body);
       return { res, start, secs };
     },
     // Optimistically reflect the sit in the caches the page reads from, so it

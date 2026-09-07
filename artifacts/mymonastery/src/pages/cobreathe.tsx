@@ -6,6 +6,10 @@ import { motion } from "framer-motion";
 import { Layout } from "@/components/layout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
+import { enqueueSession } from "@/lib/sessionOutbox";
+import { recordPendingSit } from "@/lib/contemplationPending";
+import { enqueueWrite } from "@/lib/writeOutbox";
+import { isOnline } from "@/lib/offline";
 import { CobreatheBreath, DEFAULT_TOTAL_BREATHS, CYCLE_MS } from "@/components/CobreatheBreath";
 import { CobreatheSummary } from "@/components/CobreatheSummary";
 import { CobreatheHowToIntro } from "@/components/CobreatheHowToIntro";
@@ -416,6 +420,11 @@ export default function CobreathePage() {
   });
 
   const record = useMutation({
+    onError: (_err, seconds) => {
+      // Offline the count is kept and sent later — the same outbox every other
+      // completion uses. Without this the breath was simply gone.
+      if (!isOnline()) enqueueWrite(`breath_${Date.now()}`, "POST", "/api/breath/today", { seconds });
+    },
     mutationFn: async (seconds: number) => {
       /**
        * A signed-out guest has no account to record against. /breath/today 401s,
@@ -560,7 +569,7 @@ export default function CobreathePage() {
     }
     const endedAt = new Date();
     const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
-    void apiRequest<{ id: number | null }>("POST", "/api/prayer-sessions", {
+    const sessionBody = {
       surface: "contemplation",
       source: "cobreathe",
       durationSeconds: secondsKept,
@@ -568,12 +577,28 @@ export default function CobreathePage() {
       endedAt: endedAt.toISOString(),
       isPrivate: false,
       ...(sideParam ? { contemplationSide: sideParam } : {}),
-    })
+    };
+    void apiRequest<{ id: number | null }>("POST", "/api/prayer-sessions", sessionBody)
       .then((resp) => {
         loggedRef.current = { seconds: secondsKept, id: resp?.id ?? null };
         invalidate();
       })
-      .catch(() => { /* best-effort */ });
+      .catch(() => {
+        /**
+         * QUEUE IT — a sit taken with no connection is still a sit.
+         *
+         * This was a bare best-effort catch, so the breath's minutes never
+         * reached the server and were never retried: the card said kept, the
+         * history had nothing, and the owner's ask was explicit that
+         * contemplation must save offline. Same two lines the silent timer
+         * uses — queue durably, and count it meanwhile so today's minutes
+         * don't read as if nothing happened.
+         */
+        const queuedId = `s_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        enqueueSession(sessionBody, queuedId);
+        recordPendingSit(queuedId, secondsKept);
+        loggedRef.current = { seconds: secondsKept, id: null };
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -915,7 +940,17 @@ export default function CobreathePage() {
       if (user?.id != null) byId.delete(user.id);
       return Array.from(byId.values());
     })();
-    if (!doneState && record.isError) {
+    /**
+     * NOT WHEN WE ARE SIMPLY OFFLINE (owner, 2026-09-06: "don't have this show
+     * when I complete the office offline" … "I am still getting it didn't sync
+     * on both office and Visio completions").
+     *
+     * This full-screen panel replaced the summary with "Your breath didn't
+     * save" and a Try again that cannot succeed — on a practice the app itself
+     * lists as available offline. The breath is queued below and syncs on its
+     * own; there is nothing for the person to do and nothing to apologise for.
+     */
+    if (!doneState && record.isError && isOnline()) {
       return (
         <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center text-center px-6"
           style={{ background: "radial-gradient(120% 80% at 50% 30%, #122E20 0%, #0A1C14 65%)", paddingTop: "var(--safe-top)", paddingBottom: "env(safe-area-inset-bottom)" }}>
