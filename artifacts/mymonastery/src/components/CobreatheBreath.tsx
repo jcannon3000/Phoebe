@@ -759,6 +759,24 @@ export function CobreatheBreath({
     return () => {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("phoebe:appactive", onVis);
+      /**
+       * LEAVING IS ALSO AN ENDING — the breaths already breathed are received.
+       *
+       * The only commit paths were the summary button and coming BACK from
+       * being hidden. Android's Back unmounts the route instead, so it never
+       * reached either: the breaths were simply gone — no session, no daily
+       * card, no communal tally. iOS has no system Back, which is why nothing
+       * caught it.
+       *
+       * Same rule the backgrounding branch uses: end at the breaths kept, and
+       * `endedRef` still guards a single onEnd, so a normal finish through the
+       * summary is untouched.
+       */
+      if (!endedRef.current) {
+        endedRef.current = true;
+        const kept = Math.round((syncedNow() - startRef.current) / 1000);
+        if (kept > 0) onEnd(kept, reachedRef.current);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

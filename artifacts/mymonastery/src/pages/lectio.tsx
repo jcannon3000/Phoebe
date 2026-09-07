@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { isOnline } from "@/lib/offline";
 import { X } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 
 // Lectio Divina — sit with one of today's three lessons (Old Testament,
 // New Testament, Gospel). Owner's corrected order: pick a lesson → the
@@ -129,6 +130,15 @@ export default function LectioPage() {
   // can deliver — walked past PICK to -1: no content branch matches, and the
   // person got a blank screen counting "-1 of 7".
   const prev = () => setStep((s) => (s > PICK ? s - 1 : s));
+
+  /**
+   * ANDROID'S BACK WALKS THE BEATS. Lectio holds its step in plain state and
+   * pushes no history, so Back left the practice outright — and unlike the
+   * office it keeps no resume, so the place was simply lost. Inert where there
+   * is no Back gesture. (This component has no early returns, so the hook is
+   * safe here; the office deck needed its copy hoisted above several.)
+   */
+  useDeckBackGuard({ active: !!chosen, atStart: step <= PICK, onBack: prev });
 
   /**
    * The current beat, readable SYNCHRONOUSLY. The reader-pill nav below used a

@@ -58,6 +58,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import ZoomableImage from "@/components/ZoomableImage";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -821,6 +822,13 @@ export default function VisioPage() {
   // "0 / 5" in the counter. Caught by double-tapping while testing More
   // options. The other two back paths (556, 589) already clamp this way.
   const prev = () => setStep((s) => Math.max(0, s - 1));
+
+  /**
+   * ANDROID'S BACK WALKS THE BEATS — see the note in lectio. Visio keeps no
+   * resume either, so Back restarted the practice from the title, losing the
+   * seven-second hold the whole thing is built around.
+   */
+  useDeckBackGuard({ active: step > 0, atStart: step <= 0, onBack: prev });
 
   /**
    * Tap and swipe, the same way the office deck pages.

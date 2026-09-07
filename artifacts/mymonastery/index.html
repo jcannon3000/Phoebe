@@ -2,7 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
+    <!-- No maximum-scale: iOS Safari has ignored it since iOS 10, so it never did
+         anything on the platform this was tuned for — but Android Chrome honours
+         it, which left an Android user with low vision no way to pinch-zoom the
+         app at all. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Phoebe</title>
 
     <!-- Android web zoom-out. Android Chrome renders Phoebe's tuned-for-iOS
