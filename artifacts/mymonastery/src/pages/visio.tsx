@@ -450,11 +450,23 @@ export default function VisioPage() {
   useEffect(() => {
     const url = view?.img;
     if (!url) return;
-    // isOnline(), not navigator: the WebView reports online in Airplane Mode,
-    // which is what made the picture fall back to the bundled one instead of
-    // the saved blob (peer, 2026-09-06).
-    const offline = !isOnline();
-    if (!offline && !imageFailed) return;
+    /**
+     * ASK THE STORE FIRST, ALWAYS — no connection test at all.
+     *
+     * This ran only when `!isOnline()` or after the image had already failed,
+     * and both halves of that were wrong. isOnline() is navigator.onLine plus
+     * a 20-second memory of our own failures, and navigator reports online in
+     * Airplane Mode — so at t=0 this returned early. Then the <img> errored,
+     * `imageFailed` flipped, and by that point `view` had ALREADY swapped to
+     * the bundled Rublev — so the effect re-ran asking the store for the
+     * bundled asset, which the walk never saves (it saves chooseArtwork's
+     * img). The week's painting sat in IndexedDB and was never once asked
+     * for: Visio opened on the Trinity instead.
+     *
+     * Reading it unconditionally is also simply faster online — a local blob
+     * instead of a few hundred KB over the network — which is how lectio.tsx
+     * has always warmed its saved page.
+     */
     let cancelled = false;
     void cachedImageUrl(url).then((local) => { if (!cancelled && local) setLocalImg({ forUrl: url, url: local }); });
     return () => { cancelled = true; };
