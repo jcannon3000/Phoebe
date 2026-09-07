@@ -347,11 +347,54 @@ export function ContemplationTimer({
   // can't prevent those) still delivers the bell at the end time. The
   // in-app Web Audio swell remains the primary close when foregrounded;
   // we cancel the notification on an in-app finish to avoid a double.
+  /**
+   * THE WEB HAS NO ONE LISTENING TO THAT EVENT.
+   *
+   * `phoebe:contemplation-schedule-end` is handled by the native shell only,
+   * so on Android web — the platform whose browser actually delivers
+   * notifications — a twenty-minute sit rang nothing at all. You put the phone
+   * down and it never called you back; the practice only worked with the
+   * screen on and the tab in front. The web fallback is a one-shot
+   * notification from the service worker (Android Chrome does not support
+   * `new Notification()`; it must come from the registration), armed only when
+   * permission has already been granted, and cancelled the moment the sit
+   * closes in-app so there is never a double bell.
+   */
+  const webBellTimer = useRef<number | null>(null);
+  // A sit the person walked away from must not ring later. Unmount clears the
+  // pending web bell (the native one is cancelled through its own event).
+  useEffect(() => () => {
+    if (webBellTimer.current) { window.clearTimeout(webBellTimer.current); webBellTimer.current = null; }
+  }, []);
   function scheduleEndBell(atMs: number) {
     nativeEvent("phoebe:contemplation-schedule-end", { at: new Date(atMs).toISOString() });
+    if (isNativeShell()) return;
+    try {
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+      if (webBellTimer.current) window.clearTimeout(webBellTimer.current);
+      webBellTimer.current = window.setTimeout(() => {
+        webBellTimer.current = null;
+        void navigator.serviceWorker?.getRegistration()
+          .then((reg) => reg?.showNotification("Your sit is complete", {
+            body: "Come back when you're ready.",
+            tag: "contemplation-end",
+            icon: "/icon-192.png",
+          }))
+          .catch(() => { /* permission revoked, or no worker — silent */ });
+      }, Math.max(0, atMs - Date.now()));
+    } catch { /* notifications unavailable — the in-app swell still closes it */ }
   }
   function cancelEndBell() {
     nativeEvent("phoebe:contemplation-cancel-end");
+    if (webBellTimer.current) { window.clearTimeout(webBellTimer.current); webBellTimer.current = null; }
+    // …and take down one already showing, so a sit closed in-app doesn't leave
+    // a stale bell in the shade.
+    try {
+      void navigator.serviceWorker?.getRegistration()
+        .then((reg) => reg?.getNotifications({ tag: "contemplation-end" }))
+        .then((ns) => ns?.forEach((n) => n.close()))
+        .catch(() => { /* ignore */ });
+    } catch { /* ignore */ }
   }
   useEffect(() => {
     if (phase !== "running") return;
