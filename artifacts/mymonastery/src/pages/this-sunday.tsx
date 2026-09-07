@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -11,6 +11,8 @@ import { usePreviousIssues } from "@/hooks/usePreviousIssues";
 import { markAndrewsRead, type InboxItem } from "@/lib/taizeInbox";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { getDay, readLesserFeastsPref } from "@/lib/liturgical/calendar";
+import { getOfficeCacheEntry } from "@/lib/officeOfflineCache";
+import { nextSundayYmdNY } from "@/lib/sundayDate";
 
 /**
  * /this-sunday — under Learn (owner, 2026-09-04): "a menu option that says
@@ -71,7 +73,6 @@ export default function ThisSundayPage() {
   // would affect what readings are in the deck"). Only offered when the RCL
   // appoints two; the deck reads ?track=.
   const [track, setTrack] = useState<1 | 2>(1);
-  const hasTrack2 = !!sunday?.track2;
   const chosen: Track | null = sunday ? (track === 2 && sunday.track2 ? sunday.track2 : sunday.track1) : null;
   // The liturgical day as the home would name it on that Sunday, and the
   // Proper (owner, 2026-09-04: "list the liturgical day like it would be on
@@ -83,12 +84,49 @@ export default function ThisSundayPage() {
     const proper = /prop(\d+)/i.exec(sunday.url ?? "")?.[1];
     return [day.name, proper ? `Proper ${proper}` : null].filter(Boolean).join(" · ");
   }, [sunday]);
+  /**
+   * WHAT THE SAVED DECK KNOWS, when the lectionary call can't be made.
+   *
+   * The page always rendered its cards, so Begin worked offline and the deck
+   * read its saved copy — but the blurb sat on "Finding the readings…" for
+   * good, and hasTrack2 comes from this query, so a reader with BOTH tracks on
+   * the phone was only ever offered Track 1. The decks carry everything needed
+   * to say it: their officeDay names the Sunday and whether a second track
+   * exists, and their title slides name the readings.
+   */
+  const [savedSunday, setSavedSunday] = useState<{ date: string; readings: string; hasTrack2: boolean } | null>(null);
+  useEffect(() => {
+    if (sunday) return;
+    let cancelled = false;
+    void (async () => {
+      const date = nextSundayYmdNY();
+      const read = (t: "1" | "2") => getOfficeCacheEntry({ mode: "sunday", date, confession: "", track: t }) as Promise<{
+        slides?: Array<{ type?: string; title?: string }>;
+        officeDay?: { sundayDate?: string | null; hasTrack2?: boolean };
+      } | null>;
+      const [t1, t2] = await Promise.all([read("1"), read("2")]);
+      const deck = t1 ?? t2;
+      if (cancelled || !deck) return;
+      const readings = (deck.slides ?? [])
+        .filter((sl) => typeof sl.type === "string" && sl.type.includes("title") && sl.title)
+        .map((sl) => sl.title!)
+        .join(" · ");
+      setSavedSunday({ date: deck.officeDay?.sundayDate ?? date, readings, hasTrack2: !!t2 || !!deck.officeDay?.hasTrack2 });
+    })();
+    return () => { cancelled = true; };
+  }, [sunday]);
+
+  // The toggle is offered when EITHER the live answer or the saved decks say
+  // there are two tracks.
+  const hasTrack2 = !!sunday?.track2 || !!savedSunday?.hasTrack2;
   const readingsLine = chosen
     ? [chosen.ot, chosen.psalm, chosen.nt, chosen.gospel].filter(Boolean).join(" · ")
-    : "";
+    : (savedSunday?.readings ?? "");
   const sundayLine = sunday
     ? [sunday.name ?? sundayLabel(sunday.sundayDate), readingsLine].filter(Boolean).join(" · ")
-    : t("this_sunday.loading", { defaultValue: "Finding the readings…" });
+    : savedSunday
+      ? [sundayLabel(savedSunday.date), readingsLine].filter(Boolean).join(" · ")
+      : t("this_sunday.loading", { defaultValue: "Finding the readings…" });
 
   const cards = [
     {
