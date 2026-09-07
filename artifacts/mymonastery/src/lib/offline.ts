@@ -162,6 +162,9 @@ export const OFFLINE_PRACTICES: OfflinePractice[] = [
   { key: "examen", emoji: "🌗", title: "The Examen", sub: "Review the day with God", href: "/examen", how: "bundled" },
   { key: "cobreathe", emoji: "🌍", title: "Creation Prayer", sub: "Breathing with creation", href: "/cobreathe", how: "bundled" },
   { key: "visio", emoji: "🖼️", title: "Visio Divina", sub: "The coming weeks' pictures and readings, saved ahead", href: "/visio", how: "saved" },
+  // The phone holds four Sundays, both tracks, with their readings — and this
+  // list, which is where people go to ask what works offline, never said so.
+  { key: "sunday", emoji: "⛪", title: "This Sunday", sub: "The coming Sundays' readings, both tracks, saved four weeks ahead", href: "/this-sunday", how: "saved" },
   { key: "psalms", emoji: "🎼", title: "The Psalms", sub: "The Psalter, from the prayer book", href: "/psalms", how: "bundled" },
   { key: "contemplation", emoji: "🕯️", title: "Contemplation", sub: "The silent sit and its timer", href: "/contemplation", how: "bundled" },
   { key: "pray-breath", emoji: "🫁", title: "Pray the Breath", sub: "A breath prayer", href: "/pray-breath", how: "bundled" },

@@ -52,6 +52,7 @@ import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { getPracticeSlot, SLOT_RANK, EVENING_OPEN_HOUR, type CustomSlot } from "@/lib/customAnchors";
 import { isOnline } from "@/lib/offline";
+import { enqueueWrite } from "@/lib/writeOutbox";
 
 // Drive the NATIVE iOS status-bar color (Capacitor StatusBar plugin) so the
 // strip above the WebView matches the slide background. The app sets it once
@@ -3755,9 +3756,14 @@ export default function PrayerModePage() {
         // both for back-compat with older server builds and so the
         // existing posts/check-ins shape stays the system of record
         // while the new endpoint rolls out.
-        intercessionAmenPromise = (current.myUserToken
-          ? apiRequest("POST", `/api/moment/${mt}/${current.myUserToken}/post`, { isCheckin: true })
-          : apiRequest("POST", `/api/moment/${mt}/amen`, {}))
+        // An amen prayed with no connection is still an amen: queue it rather
+        // than lose it (the outbox flushes on app start, `online`, and
+        // app-active). Nothing is shown either way — this is a record, not a
+        // task the person has to redo.
+        const amenUrl = current.myUserToken ? `/api/moment/${mt}/${current.myUserToken}/post` : `/api/moment/${mt}/amen`;
+        const amenBody = current.myUserToken ? { isCheckin: true } : {};
+        intercessionAmenPromise = apiRequest("POST", amenUrl, amenBody)
+          .catch((err) => { enqueueWrite(`amen_${mt}_${Date.now()}`, "POST", amenUrl, amenBody); throw err; })
           .then(() => {
             // Keep the detail page + dashboard fresh so the new amen shows
             // up the moment the viewer lands there. The feed-subscribed
@@ -3971,13 +3977,13 @@ export default function PrayerModePage() {
      * broken. The requests carry on either way; allSettled never rejects.
      */
     const logging = Promise.allSettled(
-      toLog.map((s) =>
-        s.myUserToken
-          ? apiRequest("POST", `/api/moment/${s.momentToken}/${s.myUserToken}/post`, {
-              isCheckin: true,
-            })
-          : apiRequest("POST", `/api/moment/${s.momentToken}/amen`, {}),
-      ),
+      toLog.map((s) => {
+        const url = s.myUserToken ? `/api/moment/${s.momentToken}/${s.myUserToken}/post` : `/api/moment/${s.momentToken}/amen`;
+        const body = s.myUserToken ? { isCheckin: true } : {};
+        // Same as the single amen above: queued when it can't be sent now.
+        return apiRequest("POST", url, body)
+          .catch(() => { enqueueWrite(`amen_${s.momentToken}_${Date.now()}`, "POST", url, body); });
+      }),
     );
     await Promise.race([logging, new Promise((r) => setTimeout(r, 1500))]);
     queryClient.invalidateQueries({ queryKey: ["/api/moments"] });

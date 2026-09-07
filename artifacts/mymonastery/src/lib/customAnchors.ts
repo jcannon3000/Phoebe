@@ -15,6 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { markRecentCompletion } from "@/lib/recentCompletion";
+import { enqueueWrite } from "@/lib/writeOutbox";
 
 // Where in the day this practice belongs — drives where its card slots into the
 // daily rhythm (a morning walk near Morning Prayer, an evening stretch near the
@@ -832,7 +833,17 @@ function pushCustomDone(id: string, ymd: string, done: boolean): void {
     ? { section: customSection(id), localDate: ymd, weekStart: weekStartOf(ymd) }
     : { section: customSection(id), localDate: ymd };
   void apiRequest(done ? "POST" : "DELETE", "/api/practice-completion", body)
-    .catch(() => { /* best effort — the day is already kept locally */ });
+    .catch(() => {
+      /**
+       * QUEUE IT, don't shrug. "The day is already kept locally" was true and
+       * not enough: syncCustomAnchorsFromServer only re-pushes when the local
+       * set of anchors differs, which a keep never changes — so a custom
+       * practice kept with no connection stayed on that phone forever, absent
+       * from the history and from every other device, unless the person later
+       * happened to add or rename an anchor.
+       */
+      enqueueWrite(`custom_${done ? "keep" : "unkeep"}_${customSection(id)}_${ymd}`, done ? "POST" : "DELETE", "/api/practice-completion", body);
+    });
 }
 
 /**

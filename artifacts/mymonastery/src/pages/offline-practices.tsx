@@ -22,6 +22,7 @@ import { hasCachedImage } from "@/lib/imageCache";
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
 import { chooseArtwork, readingUrl } from "@/lib/visioSelect";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { sundayYmdsNY } from "@/lib/sundayDate";
 
 const WARM = "#F0EDE6";
 const SAGE = "#A8C5A0";
@@ -73,6 +74,16 @@ async function savedStatus(key: string): Promise<string | null> {
     let n = 0;
     for (const u of urls) if (await hasSavedPage(u)) n++;
     return urls.length === 0 || n === urls.length ? "Today's readings are on your phone" : `${n} of ${urls.length} readings saved`;
+  }
+  if (key === "sunday") {
+    // Both tracks of the coming Sunday, and how many of the four are held.
+    const sundays = sundayYmdsNY(4);
+    let held = 0;
+    for (const d of sundays) {
+      if ((await has({ mode: "sunday", date: d, confession: "", track: "1" })) || (await has({ mode: "sunday", date: d, confession: "", track: "2" }))) held++;
+    }
+    if (held === 0) return "Not saved yet — opens the app on Wi-Fi to save the month";
+    return held === sundays.length ? "The next four Sundays are on your phone" : `${held} of ${sundays.length} Sundays saved`;
   }
   if (key === "visio") {
     // The SAME question the walk asks (chooseArtwork), not the schedule's raw
