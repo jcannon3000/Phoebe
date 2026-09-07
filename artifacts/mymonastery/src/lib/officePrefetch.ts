@@ -178,11 +178,17 @@ async function fetchAndCacheOne(mode: LiturgyMode, date: string, confession: "" 
     // Bounded: an unbounded call here stalls the whole sequential walk for up
     // to a minute per day on a dead-but-"connected" network (see boundedFetch).
     const res = await boundedFetch(`${endpoint}${sep}date=${date}&locale=en${confParam}${partsParam}${trackParam}`);
+    /**
+     * A DECK THIS ACCOUNT MAY NOT HAVE IS NOT A FAILURE. Compline is
+     * beta-gated and answers 401/403 for most people — counted as failed, it
+     * meant every pass "fetched something", so the window was never recorded
+     * complete and every phone re-walked all thirty days on every open.
+     */
+    if (res.status === 401 || res.status === 403) return "present";
     if (!res.ok) return "failed";
     const data = await res.json();
     if (!data || !Array.isArray(data.slides) || data.slides.length === 0) return "failed";
-    await putOfficeCacheEntry(key, data);
-    return "saved";
+    return (await putOfficeCacheEntry(key, data)) ? "saved" : "failed";
   } catch { /* best-effort — offline/slow/blocked, just skip this one day */ }
   return "failed";
 }
@@ -314,8 +320,10 @@ export async function runOfficePrefetch(opts?: { force?: boolean }): Promise<voi
       const d = new Date(); d.setDate(d.getDate() + i);
       if (d.getDay() !== 0 || i > 28) continue;
       const date = ymdPlusDays(i);
-      jobs.push(async () => { if (await fetchAndCacheOneCounting("sunday", date, "", { noteFetched }, "1")) noteSaved(); });
-      jobs.push(async () => { if (await fetchAndCacheOneCounting("sunday", date, "", { noteFetched }, "2")) noteSaved(); });
+      // "next", not a date: the endpoint always returns the coming Sunday, and
+      // the deck reads it under that same key (see its own note).
+      jobs.push(async () => { if (await fetchAndCacheOneCounting("sunday", "next", "", { noteFetched }, "1")) noteSaved(); });
+      jobs.push(async () => { if (await fetchAndCacheOneCounting("sunday", "next", "", { noteFetched }, "2")) noteSaved(); });
     }
     if (jobs.length > 0) await runQueue(jobs);
     await warmReadersAndPictures({ onWifi, noteSaved, noteFetched }, morningMode, eveningMode, morningExtraMode, eveningExtraMode);
@@ -325,7 +333,10 @@ export async function runOfficePrefetch(opts?: { force?: boolean }): Promise<voi
      * something might still have gaps (a failure, a page that timed out), so
      * it deliberately does NOT record completeness: the next open looks again.
      */
-    if (fetchedCount === 0) {
+    // …and not while the pictures are still waiting for Wi-Fi: a cellular pass
+    // fetches no images, so "nothing fetched" would freeze the day complete
+    // with the paintings missing.
+    if (fetchedCount === 0 && onWifi) {
       try { localStorage.setItem(COMPLETE_KEY, today); } catch { /* ignore */ }
     }
   } catch { /* best-effort — never surface a prefetch failure to the user */ }
@@ -382,8 +393,8 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
     // Only Sundays hold a Sunday deck — asking for the other six days was 168
     // reads that could never hit.
     if (new Date(`${date}T12:00:00`).getDay() === 0) {
-      entries.push({ mode: "sunday", date, confession: "", track: "1" } as OfficeCacheKey);
-      entries.push({ mode: "sunday", date, confession: "", track: "2" } as OfficeCacheKey);
+      entries.push({ mode: "sunday", date: "next", confession: "", track: "1" } as OfficeCacheKey);
+      entries.push({ mode: "sunday", date: "next", confession: "", track: "2" } as OfficeCacheKey);
     }
     for (const key of entries) {
       const data = (await getOfficeCacheEntry(key)) as { slides?: Array<{ metadata?: { readUrl?: unknown; gospelReadUrl?: unknown } }> } | null;
@@ -470,7 +481,10 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
    * out instead of being swept.
    */
   void pruneDaysBefore(todayYmd());
-  void prunePagesExcept(pageUrls);
+  // …only when this pass actually saw the window. A pass that found no decks
+  // (a captive portal, a level just changed) would otherwise sweep every saved
+  // page away — the prune-and-fetch rule again, from the other side.
+  if (pageUrls.size >= 8) void prunePagesExcept(pageUrls);
   // The extracted text every device saved earlier today goes — it should not
   // have been stored at all.
   void purgeExtractedPassages();

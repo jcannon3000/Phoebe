@@ -112,6 +112,24 @@ router.post("/me/routine-audit/apply", perUserRateLimit("routine_audit_apply", {
        */
       const practiceKey = key.slice("phoebe:slot:".length);
       const layout = (row?.homeLayout as { order?: string[]; hidden?: string[] } | null) ?? null;
+      /**
+       * NEVER MATERIALISE A LAYOUT FOR SOMEONE WHO HAS NONE.
+       *
+       * A null home_layout is not "no cards" — it is "never customised", and
+       * four defaults hang off it (the Creation Prayer card, the five-minute
+       * silence, the office sides, Forward Day by Day). Writing
+       * {order:[thisPractice], hidden:[]} would turn one card on and silently
+       * take those four away; homeLayoutCache carries a note about the last
+       * time that happened. The slot still gets written, so the practice is
+       * still recorded; the card follows when they next customise.
+       */
+      if (!layout) {
+        await db.update(usersTable)
+          .set({ ruleConfig: { values, updatedAt: Date.now() } })
+          .where(eq(usersTable.id, userId));
+        res.json({ ok: true, layoutUnchanged: true });
+        return;
+      }
       const order = [...(layout?.order ?? [])];
       const hidden = [...(layout?.hidden ?? [])];
       if (value === "") {

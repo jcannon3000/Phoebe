@@ -1478,8 +1478,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // this is offline SUPPORT, not a performance cache-first path.
         // The parts ride the offline key too: a deck fetched with three
         // readings must never be served from a cache entry that holds four.
+        /**
+         * THE SUNDAY DECK IS NOT KEYED BY DAY. /api/office/sunday ignores
+         * ?date= entirely — it always builds the COMING Sunday — so a key
+         * carrying today's date could never match what the walk saved under a
+         * future Sunday's date, and This Sunday was blank offline from Monday
+         * to Saturday. One entry per track, rewritten each week.
+         */
         const cacheKey = {
-          mode: resolvedMode, date: localDate, confession: confessionKey,
+          mode: resolvedMode, date: resolvedMode === "sunday" ? "next" : localDate, confession: confessionKey,
           ...(partsParam ? { parts: scriptureParts!.join(",") } : {}),
           // The Sunday deck is one deck PER TRACK: without this a failed fetch
           // for Track 2 served Track 1's cached slides (owner: "the first
@@ -2366,6 +2373,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             title: "This reading isn't saved yet",
             description: "Open the app once with a connection and the coming weeks are kept for you.",
           });
+          /**
+           * …AND CARRY ON. Saying it and returning left the pill re-toasting
+           * forever on a lesson whose page we never saved — no way through the
+           * office, mid-deck. The reading is missing; the office is not.
+           */
+          if (!atEnd) setSlideIdx((n) => Math.min(n + 1, slides.length - 1));
+          else handleEnd();
         });
         return;
       }

@@ -85,16 +85,36 @@ function recentlyFailed(): boolean {
 }
 /** A fetch failed for a network reason — a refused connection, a timeout. */
 export function noteNetworkFailure(): void {
+  const was = recentlyFailed();
   lastNetworkFailureAt = Date.now();
+  // Tell the screens: useOnline() holds this in state, so without an event a
+  // component that mounted while "online" never learns otherwise.
+  if (!was) emitConnectionChanged();
 }
 /** Something reached the server — whatever it answered, we have a connection. */
 export function noteNetworkSuccess(): void {
+  const was = recentlyFailed();
   lastNetworkFailureAt = 0;
+  if (was) emitConnectionChanged();
 }
 
+function emitConnectionChanged(): void {
+  try { window.dispatchEvent(new Event(DEBUG_OFFLINE_EVENT)); } catch { /* ignore */ }
+}
+
+/**
+ * THE ONE EVERY SCREEN ASKS — and it must include the failure signal, or the
+ * whole point of that signal is lost.
+ *
+ * It read navigator alone while isReallyOnline() did the real work, and the
+ * prefetch was its only caller: so the sync toast, the Amen wait and the
+ * office's fast close all still trusted a navigator that lies in Airplane
+ * Mode. An audit caught it minutes after it shipped. The difference between
+ * the two functions is the DEBUG SWITCH and nothing else.
+ */
 export function isOnline(): boolean {
   if (debugOfflineForced()) return false;
-  return typeof navigator === "undefined" ? true : navigator.onLine !== false;
+  return isReallyOnline();
 }
 
 /** The OS's own word — airplane mode, Wi-Fi off. (A captive portal or a

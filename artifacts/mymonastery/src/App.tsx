@@ -6,6 +6,7 @@ import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
 import { retryPendingReflectionReads } from "@/lib/cacReadState";
 import { installSessionOutboxFlush } from "@/lib/sessionOutbox";
 import { ApiError, apiRequest, registerQueryClient } from "@/lib/queryClient";
+import { isOnline } from "@/lib/offline";
 import { reportClientError } from "@/lib/reportClientError";
 import { getGuestStepGoal } from "@/lib/guestSeed";
 // Side-effect import: warms the server-clock offset on app load (re-syncs on
@@ -543,7 +544,8 @@ const queryClient = new QueryClient({
        * failed is noise. Genuine server errors are ApiErrors and returned
        * above; they were never this branch.
        */
-      if (typeof navigator !== "undefined" && !navigator.onLine) return;
+      // isOnline(), not navigator — which lies in Airplane Mode on the phone.
+      if (!isOnline()) return;
       if (query.state.data !== undefined) return;
       if (query.getObserversCount() === 0) return;
       const now = Date.now();

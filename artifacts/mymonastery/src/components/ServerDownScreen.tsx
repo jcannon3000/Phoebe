@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { isReallyOnline } from "@/lib/offline";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/queryClient";
 
@@ -80,7 +81,10 @@ export function ServerDownScreen() {
 
   const runProbe = useCallback(async () => {
     if (probingRef.current === false) return; // someone called stop
-    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    // isReallyOnline, not navigator: it lies in Airplane Mode on the phone,
+    // and this screen covers EVERYTHING at z-100000 — an offline office
+    // vanishing behind "We'll be right back" is the worst way to be wrong.
+    if (!isReallyOnline()) {
       // Offline — pause the loop. The 'online' listener below will
       // restart it the moment we're back.
       probingRef.current = false;
@@ -103,7 +107,7 @@ export function ServerDownScreen() {
 
   const startProbing = useCallback(() => {
     if (probingRef.current) return;
-    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+    if (!isReallyOnline()) return;
     probingRef.current = true;
     // Small initial delay so a single 500 that's about to retry doesn't
     // race the probe.

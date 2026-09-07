@@ -7,6 +7,7 @@
  * device is offline (or the network copy failed) and gets an object URL.
  */
 import { IMAGES, storeGet, storePut, storeHas, storePrune, storeKeys, storeDelete } from "@/lib/offlineStore";
+import { boundedFetch } from "@/lib/boundedFetch";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_AGE_MS = 45 * 24 * 60 * 60 * 1000;
@@ -28,10 +29,16 @@ function looksLikeImage(bytes: Uint8Array): boolean {
 export async function cacheImage(url: string): Promise<boolean> {
   if (!url) return false;
   if (await storeHas(IMAGES, url)) return true;
-  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-  const timeout = controller ? setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS) : null;
   try {
-    const res = await fetch(url, { mode: "cors", ...(controller ? { signal: controller.signal } : {}) });
+    /**
+     * boundedFetch, not AbortController: the bridge on device ignores the
+     * signal, so the "timeout" here never fired and one unreachable painting
+     * held the walk for a minute. And encodeURI, because 132 catalogue URLs
+     * carry raw spaces ("Jesus in Benares-Frank Wesley.jpg") — an <img> tag
+     * encodes those itself, so they load on screen and were silently never
+     * saved. The KEY stays the raw URL the page will ask for.
+     */
+    const res = await boundedFetch(encodeURI(url), { mode: "cors" }, FETCH_TIMEOUT_MS);
     if (!res.ok) return false;
     /**
      * arrayBuffer, NOT blob() — and then the bytes are CHECKED.
@@ -64,7 +71,6 @@ export async function cacheImage(url: string): Promise<boolean> {
     // generic Uint8Array, and the underlying buffer is what we mean anyway.
     return storePut(IMAGES, url, new Blob([bytes.buffer as ArrayBuffer], { type: type.startsWith("image/") ? type : "image/jpeg" }));
   } catch { return false; }
-  finally { if (timeout) clearTimeout(timeout); }
 }
 
 export async function hasCachedImage(url: string): Promise<boolean> {

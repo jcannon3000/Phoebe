@@ -63,10 +63,16 @@ function keyId(k: OfficeCacheKey): string {
 type Entry = { data: unknown; updatedAt: number };
 
 let dbPromise: Promise<IDBDatabase | null> | null = null;
+/** Bounded like offlineStore's: the office load AWAITS this as its first step,
+ *  so a blocked upgrade would hang the deck with no error at all. */
+const OPEN_TIMEOUT_MS = 4000;
 function getDB(): Promise<IDBDatabase | null> {
   if (typeof indexedDB === "undefined") return Promise.resolve(null);
   if (!dbPromise) {
     dbPromise = new Promise((resolve) => {
+      let settled = false;
+      const done = (db: IDBDatabase | null) => { if (!settled) { settled = true; resolve(db); } };
+      setTimeout(() => done(null), OPEN_TIMEOUT_MS);
       try {
         const req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = () => {
@@ -74,10 +80,10 @@ function getDB(): Promise<IDBDatabase | null> {
             if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE);
           } catch { /* ignore */ }
         };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => resolve(null);
-        req.onblocked = () => resolve(null);
-      } catch { resolve(null); }
+        req.onsuccess = () => done(req.result);
+        req.onerror = () => done(null);
+        req.onblocked = () => done(null);
+      } catch { done(null); }
     });
   }
   return dbPromise;
@@ -102,20 +108,22 @@ export function getOfficeCacheEntry(key: OfficeCacheKey): Promise<unknown | null
   }).catch(() => null);
 }
 
-/** Write one office day's already-assembled slides into the cache. Best-effort. */
-export function putOfficeCacheEntry(key: OfficeCacheKey, data: unknown): Promise<void> {
+/** Write one office day's already-assembled slides into the cache. Returns whether the day is actually stored — a QuotaExceededError ABORTS
+ *  the transaction, and reporting that as success is how a phone ends up
+ *  stamped "saved" with nothing on it. */
+export function putOfficeCacheEntry(key: OfficeCacheKey, data: unknown): Promise<boolean> {
   return getDB().then((db) => {
-    if (!db) return;
-    return new Promise<void>((resolve) => {
+    if (!db) return false;
+    return new Promise<boolean>((resolve) => {
       try {
         const tx = db.transaction(STORE, "readwrite");
         tx.objectStore(STORE).put({ data, updatedAt: Date.now() } as Entry, keyId(key));
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => resolve();
-        tx.onabort = () => resolve();
-      } catch { resolve(); }
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+        tx.onabort = () => resolve(false);
+      } catch { resolve(false); }
     });
-  }).catch(() => { /* ignore */ });
+  }).catch(() => false);
 }
 
 /** Drop every entry keyed to a date before `todayYmd` — the prefetch window
