@@ -112,7 +112,9 @@ export default function PrayerStartPage() {
       <div
         className="flex flex-col items-center w-full max-w-xl mx-auto"
         style={{
-          minHeight: "calc(100vh - 80px)",
+          // dvh, not vh: on iOS Safari 100vh is the LARGE viewport, so the last
+          // 80-odd px sit under the toolbar until you scroll.
+          minHeight: "calc(var(--app-dvh) - 80px)",
           paddingTop: "clamp(48px, 12vh, 120px)",
           paddingBottom: "calc(env(safe-area-inset-bottom) + 32px)",
           gap: 24,
