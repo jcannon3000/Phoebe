@@ -2005,6 +2005,22 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // A hand-off in flight paints nothing but the backdrop — see veniteHandingOff.
   // Placed above the loading branch so it wins in both states: the deck must not
   // show its face on the way OUT to the browser or on the way back.
+  /**
+   * ANDROID'S BACK STEPS THE DECK. Without this, one Back press — the button
+   * or the edge swipe — closed the office mid-prayer and landed on the
+   * dashboard, because the deck's slides are state and push no history.
+   * Inert where there is no Back gesture.
+   *
+   * ABOVE THE EARLY RETURNS, and it must stay there. The deck returns early
+   * while loading and on error; a hook below those runs on some renders and
+   * not others, which is React error #310 — "rendered more hooks than during
+   * the previous render" — and it took the whole office down to the error
+   * screen. `atStart` is computed inline because its own const is declared
+   * further down, past those returns; `prev` is a function declaration, so it
+   * is hoisted and safe to reference here.
+   */
+  useDeckBackGuard({ active: !loading && !error && slides.length > 0, atStart: slideIdx === 0, onBack: prev });
+
   if (veniteHandingOff) {
     return (
       <div style={{ ...officeThemeStyle(display.backdrop, display.font), minHeight: "var(--app-dvh)", background: BG }} />
@@ -2531,13 +2547,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     setSlideIdx(prevIdx);
   }
 
-  /**
-   * ANDROID'S BACK STEPS THE DECK. Without this, one Back press — the button
-   * or the edge swipe — closed the office mid-prayer and landed on the
-   * dashboard, because the deck's slides are state and push no history.
-   * Inert where there is no Back gesture.
-   */
-  useDeckBackGuard({ active: !loading && slides.length > 0, atStart, onBack: prev });
 
   /**
    * Land on the real next section after a lesson-reading hand-off returns.
