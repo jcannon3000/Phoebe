@@ -203,8 +203,30 @@ export default function LectioPage() {
     return () => { cancelled = true; };
   }, [chosen]);
 
+  /**
+   * WHILE THE READER IS COMING UP, THE BEAT SHOWS NOTHING (owner, 2026-09-06,
+   * twice: "the prompt flashes while the scripture loads").
+   *
+   * Warming the saved page removed the wait for the store, but the beat still
+   * paints before the native reader can animate over it — and it paints with a
+   * 0.5s fade-in, so its content is visibly arriving underneath. There is no
+   * event for "the reader is on screen", so this clears on the dismiss the
+   * reader already sends, and on a short timer for the case where it never
+   * opened at all (a blocked popup on the web).
+   */
+  const [handingOff, setHandingOff] = useState(false);
+  useEffect(() => {
+    if (!handingOff) return;
+    const done = () => setHandingOff(false);
+    window.addEventListener("phoebe:browserfinished", done);
+    const t = window.setTimeout(done, 2500);
+    return () => { window.removeEventListener("phoebe:browserfinished", done); window.clearTimeout(t); };
+  }, [handingOff]);
+  useEffect(() => { setHandingOff(false); }, [step]);
+
   const openPassage = (n: number) => {
     if (!chosen) return;
+    setHandingOff(true);
     // Warm: open in the same tick, no await between the beat and the reader.
     const warm = savedPageRef.current;
     if (warm) {
@@ -485,7 +507,16 @@ export default function LectioPage() {
                 arrival; this is the fallback a person meets only if they
                 dismissed the reader, so it offers the way back in rather than
                 announcing a reading they have already been shown. */}
-            {TEXT_STEPS.includes(step) && (
+            {TEXT_STEPS.includes(step) && handingOff && (
+              <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}>
+                <div className="lectio-spin" style={{
+                  width: 24, height: 24, borderRadius: "50%",
+                  border: `2px solid ${DECK_BORDER}`, borderTopColor: SAGE,
+                }} />
+                <style>{"@keyframes lectio-spin { to { transform: rotate(360deg); } } .lectio-spin { animation: lectio-spin 0.8s linear infinite; }"}</style>
+              </div>
+            )}
+            {TEXT_STEPS.includes(step) && !handingOff && (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); openPassage(step); }}
