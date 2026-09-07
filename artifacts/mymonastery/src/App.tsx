@@ -1,4 +1,5 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { hasPrayerSurface } from "@/lib/prayerSurface";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
@@ -481,7 +482,7 @@ function RedirectTo({ to }: { to: string }) {
 // member's deep link isn't bounced during the auth round-trip.
 function PrayerGate({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuthForGate();
-  const enabled = !!user?.inPilotGroup || !!user?.isSuperAdmin;
+  const enabled = hasPrayerSurface(user);
   // A bare `return null` here reads as a dead app if /auth/me is slow to
   // settle — which is exactly what a notification tap hits when iOS wakes the
   // WebView with the network still coming back. Show the same quiet loading

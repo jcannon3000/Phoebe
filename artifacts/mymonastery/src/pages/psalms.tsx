@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { hasPrayerSurface } from "@/lib/prayerSurface";
 import { Settings2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -141,6 +143,7 @@ function buildSlides(psalms: Psalm[]): PsalmSlide[] {
 }
 
 export default function PsalmsPage() {
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const office: "morning" | "evening" = params.get("office") === "evening" ? "evening" : "morning";
@@ -309,7 +312,9 @@ export default function PsalmsPage() {
   const depart = () => {
     setLeaving(true);
     window.setTimeout(() => {
-      if (isDailyPrayer) setLocation(`/prayer-mode?closingOnly=1&side=${office}`);
+      // /prayer-mode is gated (PrayerGate) — for everyone outside the pilot
+      // this was a bounce to the dashboard, so go there directly.
+      if (isDailyPrayer && hasPrayerSurface(user)) setLocation(`/prayer-mode?closingOnly=1&side=${office}`);
       else goHome();
     }, 240);
   };

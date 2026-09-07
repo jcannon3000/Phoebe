@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { hasPrayerSurface } from "@/lib/prayerSurface";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { playBreathTone } from "@/lib/amenFeedback";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
@@ -642,6 +643,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // off this; otherwise the historical exit path is unchanged for
   // beta + community users.
   const { user: viewerUser } = useAuth();
+  /**
+   * Where an office ENDS. /prayer-mode is gated (PrayerGate), so for everyone
+   * outside the pilot the closing handoff was a pause on three requests they
+   * cannot read, followed by a bounce to the dashboard. Send them straight
+   * there instead — the completion flags are already written by this point.
+   */
+  const closingHref = (side: string, extra = "") =>
+    hasPrayerSurface(viewerUser) ? `/prayer-mode?closingOnly=1&side=${side}${extra}` : "/dashboard";
+  const closingIsPrayerMode = () => hasPrayerSurface(viewerUser);
   // A real signed-up account (not a guest / anonymous device session) — gates
   // the private prayer-list slide below. Mirrors menu.tsx's signedUp check.
   const signedUp = !!viewerUser && !viewerUser.isAnonymous;
@@ -2082,13 +2092,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1"); // Stamp the home card this office completes, so returning home plays its
                   // completion moment (the side anchor card is keyed "morning"/"evening").
                   //
-                  // A READING ANIMATES ITS OWN CARD, or none. This ternary
-                  // names every evening mode and lets everything else fall to
-                  // "morning", so finishing the scripture deck played the
-                  // completion moment on Morning Prayer — a card the reader
-                  // had already kept hours earlier, and had not just touched.
-                  markRecentCompletion(isReadingDeck ? readingCompletionKey
-                    : resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
+                  // completedCardKey — the ONE definition. Two copies of this
+                  // ternary survived here, and neither knew about a side
+                  // carrying a SECOND practice: finishing it animated the
+                  // anchor's card instead of the one just prayed.
+                  markRecentCompletion(completedCardKey); }
       localStorage.removeItem(officeProgressKey(resolvedMode, officeTodayKey(), trackVariant));
     } catch { /* non-fatal */ }
     if (!isSecondPracticeRun) clearOfficeReminderNotifications();
@@ -2103,7 +2111,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // prayer list, so this shouldn't credit that streak. Owner: "make sure
     // physical/audio completions don't count the prayer list."
     void prefetchIntercessions().finally(() => {
-      setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}&skipListCredit=1`);
+      setViewerLocation(closingHref(officeSide, "&skipListCredit=1"));
     });
   }
 
@@ -2335,12 +2343,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
        * became a dead pause at the very end of the office — the last thing
        * that should feel broken.
        */
-      if (!isOnline()) {
-        setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+      // No connection, or no prayer surface — nothing to gather either way.
+      if (!isOnline() || !closingIsPrayerMode()) {
+        setViewerLocation(closingHref(officeSide));
         return;
       }
       void prefetchIntercessions().finally(() => {
-        setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+        setViewerLocation(closingHref(officeSide));
       });
     }
   }
@@ -2726,13 +2735,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1"); // Stamp the home card this office completes, so returning home plays its
                   // completion moment (the side anchor card is keyed "morning"/"evening").
                   //
-                  // A READING ANIMATES ITS OWN CARD, or none. This ternary
-                  // names every evening mode and lets everything else fall to
-                  // "morning", so finishing the scripture deck played the
-                  // completion moment on Morning Prayer — a card the reader
-                  // had already kept hours earlier, and had not just touched.
-                  markRecentCompletion(isReadingDeck ? readingCompletionKey
-                    : resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
+                  // completedCardKey — the ONE definition. Two copies of this
+                  // ternary survived here, and neither knew about a side
+                  // carrying a SECOND practice: finishing it animated the
+                  // anchor's card instead of the one just prayed.
+                  markRecentCompletion(completedCardKey); }
       localStorage.removeItem(officeProgressKey(resolvedMode, officeTodayKey(), trackVariant));
     } catch { /* non-fatal */ }
     // The public /pray page handles its own close (a sign-up invite)
@@ -2749,8 +2756,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // queries prefetchIntercessions() warms resolve (frozenSlides is
     // phase-independent) — the last-three-slides effect above already
     // started this, so by now it should resolve near-instantly.
+    if (!closingIsPrayerMode()) { setViewerLocation(closingHref(officeSide)); return; }
     void prefetchIntercessions().finally(() => {
-      setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+      setViewerLocation(closingHref(officeSide));
     });
   }
 
