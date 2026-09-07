@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { checkPushPermission, enablePushNotifications, type PermState } from "@/lib/pushPermission";
+import { isImmersivePracticeRoute } from "@/lib/immersiveRoutes";
 
 // A standing (not one-shot) bottom reminder: whenever notifications are
 // currently OFF — never asked, or previously declined — this stays up as an
@@ -110,22 +111,9 @@ export function NotificationReminderBanner() {
    * ask — the person is mid-practice. Suppressed on every deck route; the
    * banner is standing, so it's there again on the home.
    */
-  const DECK_PREFIXES = [
-    "/bcp/daily-office", "/prayer-mode", "/begin-prayer", "/guided-prayer", "/psalms",
-    "/examen", "/vts-reading", "/contemplation", "/cobreathe",
-    "/lectio", "/visio", "/listening", "/icon-prayer", "/spirituals",
-    // The Creation Prayer OFFICE deck (creation-devotion.tsx mounts OfficeViewer
-    // and its fixed pill). It was listed as "/creation", which this exact-or-
-    // slash check never matched, so the banner still covered that deck's nav
-    // (audit 2026-09-03). Compline needs no entry: it runs at
-    // /bcp/daily-office?mode=compline, covered above.
-    "/creation-devotion", "/pray-breath",
-    // Two more OfficeViewer decks (audit 2026-09-04): the banner sat on the
-    // Daily Devotions deck's Back/Next; /pray is the public office.
-    "/bcp/daily-devotions", "/pray",
-  ];
-  const path = location.split("?")[0] ?? location;
-  if (DECK_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) return null;
+  // The same shared list the prompt stack uses — they drifted when each kept
+  // its own copy (see lib/immersiveRoutes).
+  if (isImmersivePracticeRoute(location)) return null;
 
   return (
     <div

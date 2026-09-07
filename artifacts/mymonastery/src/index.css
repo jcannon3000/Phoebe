@@ -355,6 +355,30 @@ textarea:focus {
     min-height: calc(100vh / 0.9);
   }
 
+  /**
+   * NO ZOOM WHEN A FIELD IS FOCUSED ON IPHONE.
+   *
+   * iOS Safari zooms the whole layout viewport whenever a focused input's
+   * computed font-size is under 16px — and then leaves it zoomed after blur
+   * until the reader pinches back out. (Android does not; `maximum-scale`
+   * never suppressed it either, because iOS has ignored that since iOS 10.)
+   * 145 fields across the app sit at 14–15px, including all three on /signin,
+   * which is the very first thing a Safari visitor touches.
+   *
+   * `min(...)` rather than a flat 16px so a deliberately LARGER field keeps
+   * its size — this only ever raises a small one to the platform floor. It
+   * needs `!important` to beat both Tailwind's text-sm utility and the inline
+   * styles several of these fields use; scoped to phone widths so nothing on
+   * a desktop layout moves. Excludes the controls that have no text to zoom.
+   */
+  @media (max-width: 767px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+    textarea,
+    select {
+      font-size: max(16px, 1rem) !important;
+    }
+  }
+
   body {
     @apply font-sans antialiased text-foreground;
     background-color: #091A10;

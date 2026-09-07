@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { IOSAppDownloadPrompt } from "@/components/IOSAppDownloadPrompt";
 import { NotificationReminderBanner } from "@/components/NotificationReminderBanner";
+import { isImmersivePracticeRoute } from "@/lib/immersiveRoutes";
 
 /**
  * Immersive practice decks — full-screen, their own chrome, and a bottom CTA
@@ -18,43 +19,6 @@ import { NotificationReminderBanner } from "@/components/NotificationReminderBan
  * interrupt with a standing ask about notification permissions. The banner is
  * not urgent — it is waiting on the home screen when they come back.
  */
-const IMMERSIVE_PRACTICE_ROUTES = new Set<string>([
-  "/visio", "/psalms", "/contemplation", "/cobreathe", "/pray-breath",
-  // Two more OfficeViewer decks with the same bottom pill (audit 2026-09-04):
-  // the Daily Devotions and the public /pray page.
-  "/bcp/daily-devotions", "/pray",
-  "/guided-prayer", "/examen", "/prayer-mode",
-  // Audio Divina is a full-screen deck now too, with its own footer CTA — the
-  // prompt card was landing squarely on its Begin button.
-  "/listening",
-  // Lectio Divina — same deck shape, same collision (found the same way:
-  // the notice banner sat squarely on top of Continue during a live test).
-  "/lectio",
-  // Meditating on Spirituals — same deck shape, same collision. Its CTA moved
-  // to the bottom of the viewport (owner: "the continue button is midway on
-  // the page, it should be at the bottom") and the prompt card then covered it
-  // OUTRIGHT: on the notice beat the button was not merely crowded, it was
-  // completely hidden and the deck could not be advanced at all. Found by
-  // walking the deck on device after moving the CTA, which is the only way
-  // this class of bug shows up — the code is correct on both sides of it.
-  "/spirituals",
-  // The customizer belongs here too. Its Continue now hovers at the bottom of
-  // the screen, so a standing prompt card lands squarely on top of it — and on
-  // the Back link beneath it, which is how it was found. Designing your rule is
-  // also a sitting you shouldn't be interrupted during.
-  "/rule-of-life", "/customize",
-  // …and the PRESET EDITOR, which mounts that same customizer to edit a rule
-  // (admin-presets.tsx). Same screen, same hovering Continue — the banner sat
-  // squarely on it while designing, found on the simulator. Listed as a route
-  // rather than gated on "is the wizard open", so it can't drift out of step
-  // with a page that mounts the flow tomorrow.
-  "/admin/presets",
-  // A brand-new visitor sees the overview deck before ever reaching home —
-  // don't compete for their attention with a notifications ask until they've
-  // actually landed on the app. (Moved up from NotificationReminderBanner so
-  // both prompts in this stack respect it, not just the one.)
-  "/overview-deck",
-]);
 
 // Single bottom-anchored stack for the screen-bottom prompt cards so they
 // sit one above the other instead of overlapping when more than one
@@ -76,8 +40,9 @@ export function BottomPromptStack() {
   // while a preset is being edited) would miss every entry and put a standing
   // prompt back over a practice — a silent failure, since the prompt looks
   // like it belongs.
-  const path = location.split("?")[0] ?? location;
-  if (IMMERSIVE_PRACTICE_ROUTES.has(path)) return null;
+  // One shared list, prefix-matched — see lib/immersiveRoutes for why this
+  // stopped being a local Set.
+  if (isImmersivePracticeRoute(location)) return null;
   return (
     <div
       className="fixed left-0 right-0 z-50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-2"
