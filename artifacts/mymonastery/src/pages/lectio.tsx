@@ -130,6 +130,16 @@ export default function LectioPage() {
   // person got a blank screen counting "-1 of 7".
   const prev = () => setStep((s) => (s > PICK ? s - 1 : s));
 
+  /**
+   * The current beat, readable SYNCHRONOUSLY. The reader-pill nav below used a
+   * relative updater (`s => s + 1`) precisely because its ref can hold a stale
+   * `step`; goToStep needs to know the target BEFORE React does, to open the
+   * reading inside the tap, so the value it reads has to be this rather than
+   * the closure's.
+   */
+  const stepRef = useRef(step);
+  useEffect(() => { stepRef.current = step; }, [step]);
+
   // A ref, not state — must be readable/settable synchronously within the
   // SAME event so a second tap arriving before the next render (a fast
   // double-tap) is caught. Guards against opening the passage twice AND
@@ -289,12 +299,35 @@ export default function LectioPage() {
     }
   };
 
+  /**
+   * MOVE TO A BEAT — AND ON WEB, OPEN ITS READING IN THIS SAME TICK.
+   *
+   * The passage opens on ARRIVAL, from the openedForStepRef effect below. On
+   * native that is exactly right. On web it is why the reading never appeared:
+   * a passive effect runs after the commit, in a later task, and by then the
+   * browser no longer counts us as inside the user's tap — so window.open is
+   * refused. The deck even had a toast apologising for it and a button asking
+   * the person to tap again, which is the blocked popup wearing a hat.
+   *
+   * So on web the open happens HERE, in the handler, before React is told
+   * anything. openedForStepRef is stamped first so the arrival effect sees the
+   * beat as already opened and doesn't ask twice.
+   */
+  const goToStep = (target: number) => {
+    if (TEXT_STEPS.includes(target) && chosen && !hasNativeBrowser() && openedForStepRef.current !== target) {
+      openedForStepRef.current = target;
+      openPassage(target);
+    }
+    stepRef.current = target;
+    setStep(target);
+  };
+
   const onNext = () => guardedAdvance(() => {
     if (step === LAST) { finish(); return; }
-    // The passage opens on ARRIVAL now (see openedForStepRef), so Next from a
+    // The passage opens on ARRIVAL (see openedForStepRef), so Next from a
     // text beat simply moves on — the reader's own pill does the same thing
     // from over the page.
-    setStep((s) => (s < LAST ? s + 1 : s));
+    goToStep(Math.min(step + 1, LAST));
   });
 
   /**
@@ -346,7 +379,7 @@ export default function LectioPage() {
     // reader's ~300ms dismiss stepped TWO beats, dropping the prompt between
     // them. The prompts are the practice, so that is a real loss.
     prev: () => guardedAdvance(prev),
-    next: () => guardedAdvance(() => setStep((n) => (n < LAST ? n + 1 : n))),
+    next: () => guardedAdvance(() => goToStep(Math.min(stepRef.current + 1, LAST))),
   };
   useEffect(() => {
     const onPrev = () => readerNavRef.current.prev();

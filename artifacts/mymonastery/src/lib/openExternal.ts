@@ -300,6 +300,22 @@ export async function openReadingPage(
   ctx: { officeTitle: string; slideLabel: string; sectionLabel: string },
 ): Promise<boolean> {
   if (!url) return false;
+  /**
+   * ON WEB, OPEN IN THE SAME TICK AS THE TAP — before any await.
+   *
+   * This function's whole job is "saved page first", and it did that by
+   * awaiting IndexedDB. On the native shell that is free: the in-app browser
+   * has no popup-blocker concept. On the web build it is fatal — window.open
+   * is only allowed while the browser still considers itself inside the user's
+   * click, and one await of an IndexedDB read is enough to lose that. The
+   * reading silently didn't open (owner, 2026-09-06: "it's getting pop up
+   * blocked"), which is exactly the trap this file's header warns about.
+   *
+   * Nothing is given up by skipping the lookup here: saved pages are written
+   * only by the background walk, and the walk is native-only, so on web
+   * getSavedPage has never had anything to return.
+   */
+  if (!hasNativeBrowser()) return openOfficeReading(url, ctx);
   const saved = await getSavedPage(url);
   if (saved?.html) return openOfficeReading(url, { ...ctx, savedHtml: saved.html });
   if (!isOnline()) return false;
