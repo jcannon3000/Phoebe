@@ -15,6 +15,7 @@
  * so the same practice on the same day is only ever queued once.
  */
 import { apiRequest, ApiError } from "./queryClient";
+import { isReallyOnline } from "@/lib/offline";
 
 const KEY = "phoebe:write-outbox";
 const MAX_PENDING = 60;
@@ -66,7 +67,10 @@ let flushing = false;
 /** Send what is waiting, oldest first. Safe to call often; no-ops offline. */
 export async function flushWrites(): Promise<void> {
   if (flushing) return;
-  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+  // The app's own truth, not the WebView's: navigator.onLine reports true
+  // in Airplane Mode, and it also meant the Simulate-offline switch could not
+  // hold a queued write back for testing.
+  if (!isReallyOnline()) return;
   const list = read();
   if (list.length === 0) return;
   flushing = true;

@@ -1522,6 +1522,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
          */
         const cacheKey = {
           mode: resolvedMode, date: requestDate, confession: confessionKey,
+          /**
+           * CREATION PRAYER'S `single` CHANGES THE DECK, so it changes the key.
+           * A once-a-day pray-er asks for the four-week combined psalter and a
+           * different appointed lesson (server: creationPsalmRefsFor /
+           * creationReadingRefFor). It rode the URL and not the key, so the
+           * walk's both-sides deck and the page's single deck collided on one
+           * entry: cache-first served the wrong psalms, the refresh overwrote
+           * them, and the right psalms' reading had never been saved.
+           */
+          ...(creationSingleParam ? { single: "1" } : {}),
           ...(partsParam ? { parts: scriptureParts!.join(",") } : {}),
           // The Sunday deck is one deck PER TRACK: without this a failed fetch
           // for Track 2 served Track 1's cached slides (owner: "the first
@@ -2401,42 +2411,52 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
        * never saved we say so, rather than rendering someone else's scripture
        * in a surface of our own.
        */
-      if (!isOnline()) {
-        void openReadingPage(lessonReadUrl, { officeTitle, slideLabel: `${slideIdx + 1} of ${slides.length}`, sectionLabel }).then((opened) => {
-          if (opened) return;
-          toast({
-            title: "This reading isn't saved yet",
-            description: "Open the app once with a connection and the coming weeks are kept for you.",
-          });
-          /**
-           * …AND CARRY ON. Saying it and returning left the pill re-toasting
-           * forever on a lesson whose page we never saved — no way through the
-           * office, mid-deck. The reading is missing; the office is not.
-           */
-          if (!atEnd) setSlideIdx((n) => Math.min(n + 1, slides.length - 1));
-          else handleEnd();
-        });
-        return;
-      }
-      const opened = openOfficeReading(lessonReadUrl, {
-        officeTitle,
-        slideLabel: `${slideIdx + 1} of ${slides.length}`,
-        sectionLabel,
-      });
       /**
-       * Only NATIVE holds the deck still. There the browser's own bottom bar
-       * steps the office on the way out (phoebe:office-next-slide), so
-       * returning here would be stepping it twice.
+       * THE SAVED PAGE IS PREFERRED WHETHER OR NOT WE THINK WE ARE ONLINE.
        *
-       * On web that bar cannot exist — no listener ever fires — so returning
-       * left the office parked on the lesson slide with no way forward but
-       * tapping Next a second time. Reported as scripture readings "not
-       * marking it as done": an office that can't pass its lesson slide can
-       * never reach the end, and completion is the end of the deck. Fall
-       * through to the ordinary advance instead. Same if the hand-off didn't
-       * happen at all — a deck that goes nowhere is the worse failure.
+       * This branch used to be gated on `!isOnline()`, and isOnline() is the
+       * WebView's guess plus a 20-second memory of our own failures — in
+       * Airplane Mode navigator.onLine keeps saying true, and 20 seconds after
+       * a failure we believe it again. So a reader who opened the deck a
+       * minute ago tapped into the lesson, we went to the network because we
+       * "were online", and iOS showed "Couldn't load bible.oremus.org" with
+       * the page sitting in IndexedDB unread. Lectio and Visio never asked the
+       * question; the office was the only deck that did.
+       *
+       * openReadingPage answers it properly: saved page first, live only if
+       * nothing is saved. Online that is also simply faster — no round trip
+       * for a page we already hold.
        */
-      if (hasNativeBrowser() && opened) return;
+      const advanceAfterReading = () => {
+        if (atEnd) { handleEnd(); return; }
+        let nextIdx = slideIdx + 1;
+        while (nextIdx < slides.length - 1 && slides[nextIdx]?.type === "intercessions_portal" && portalHandedOffRef.current) nextIdx += 1;
+        setSlideIdx(nextIdx);
+      };
+      void openReadingPage(lessonReadUrl, { officeTitle, slideLabel: `${slideIdx + 1} of ${slides.length}`, sectionLabel }).then((opened) => {
+        /**
+         * Only NATIVE holds the deck still. There the browser's own bottom bar
+         * steps the office on the way out (phoebe:office-next-slide), so
+         * advancing here would step it twice. On web that bar cannot exist —
+         * no listener ever fires — so the office would park on the lesson
+         * slide with no way forward but tapping Next again. Reported as
+         * scripture readings "not marking it as done": a deck that can't pass
+         * its lesson slide can never reach the end, and completion IS the end.
+         */
+        if (opened) { if (!hasNativeBrowser()) advanceAfterReading(); return; }
+        /**
+         * NO EXTRACTED-TEXT FALLBACK (owner: "you should not be extracting
+         * text, that's a copyright issue"). Say it, and carry on — saying it
+         * and stopping left the pill re-toasting forever mid-deck. The reading
+         * is missing; the office is not.
+         */
+        toast({
+          title: "This reading isn't saved yet",
+          description: "Open the app once with a connection and the coming weeks are kept for you.",
+        });
+        advanceAfterReading();
+      });
+      return;
     }
     // Tapping "Next" on the intercessions portal should mean "take me
     // into the slideshow now" — not "skip past it". Without this
@@ -4827,11 +4847,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
                 <button
                   type="button"
-                  onClick={() => openOfficeReading(gospelUrl, {
+                  // The saved page first, like every other reading — this
+                  // called openOfficeReading directly, so the one reading with
+                  // a button of its own was the one that went to the network
+                  // and failed offline, on a page the walk had saved.
+                  onClick={() => { void openReadingPage(gospelUrl, {
                     officeTitle,
                     slideLabel: `${slideIdx + 1} of ${slides.length}`,
                     sectionLabel,
-                  })}
+                  }).then((opened) => { if (!opened) toast({
+                    title: "This reading isn't saved yet",
+                    description: "Open the app once with a connection and the coming weeks are kept for you.",
+                  }); }); }}
                   style={{
                     padding: "10px 18px", borderRadius: 999,
                     background: "rgba(var(--ot-green, 46,107,64),0.18)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
@@ -5871,7 +5898,10 @@ function PhysicalBookGuide(props: {
                   {sec.readUrl && (
                     <button
                       type="button"
-                      onClick={() => openExternal(sec.readUrl as string)}
+                      // Saved page first here too (openExternal goes straight
+                      // to the network): the book guide lists the very lessons
+                      // whose pages the walk keeps for four weeks.
+                      onClick={() => { void openReadingPage(sec.readUrl as string, { officeTitle, slideLabel: "", sectionLabel: sec.label }); }}
                       style={{
                         marginTop: 6,
                         background: "none",

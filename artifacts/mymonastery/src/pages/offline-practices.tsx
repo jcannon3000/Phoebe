@@ -20,7 +20,7 @@ import { passageRefFromUrl } from "@/lib/passageCache";
 import { hasSavedPage } from "@/lib/pageCache";
 import { hasCachedImage } from "@/lib/imageCache";
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
-import { artworkById, readingUrl } from "@/lib/visioSelect";
+import { chooseArtwork, readingUrl } from "@/lib/visioSelect";
 import { isNativeShell } from "@/lib/isNativeShell";
 
 const WARM = "#F0EDE6";
@@ -37,9 +37,28 @@ async function savedStatus(key: string): Promise<string | null> {
   const date = todayYmd();
   const has = async (k: Parameters<typeof getOfficeCacheEntry>[0]) => !!(await getOfficeCacheEntry(k));
   if (key === "office") {
-    const any = (await has({ mode: "morning", date, confession: "" })) || (await has({ mode: "morning", date, confession: "1" })) || (await has({ mode: "morning", date, confession: "0" }))
-      || (await has({ mode: "evening", date, confession: "" })) || (await has({ mode: "compline", date, confession: "" }))
-      || (await has({ mode: "morning-devotion", date, confession: "" })) || (await has({ mode: "early-evening-devotion", date, confession: "" }));
+    /**
+     * ASK FOR EVERY KEY THE WALK CAN WRITE.
+     *
+     * This screen exists to answer "is it working?", so a key it forgets reads
+     * as a failure on a working phone. It asked morning with all three
+     * confessions but evening with only one — the walk writes evening:1 / :0
+     * once that side's confession has been touched — and never asked for the
+     * Creation Prayer devotions at all, so a reader whose rule is Creation on
+     * both sides was told nothing was saved with thirty days on the device.
+     */
+    const confessions = ["", "1", "0"] as const;
+    const modes = ["morning", "evening", "compline", "morning-devotion", "early-evening-devotion", "creation-morning", "creation-evening"] as const;
+    let any = false;
+    outer: for (const mode of modes) {
+      for (const confession of confessions) {
+        // Creation Prayer's deck differs when it is prayed on one side only,
+        // and the walk keys that with `single` — ask both ways.
+        for (const single of [undefined, "1"] as const) {
+          if (await has({ mode, date, confession, ...(single ? { single } : {}) })) { any = true; break outer; }
+        }
+      }
+    }
     return any ? "Today's office is on your phone" : "Not saved yet — opens the app on Wi-Fi to save the month";
   }
   if (key === "scripture" || key === "lectio") {
@@ -56,11 +75,16 @@ async function savedStatus(key: string): Promise<string | null> {
     return urls.length === 0 || n === urls.length ? "Today's readings are on your phone" : `${n} of ${urls.length} readings saved`;
   }
   if (key === "visio") {
+    // The SAME question the walk asks (chooseArtwork), not the schedule's raw
+    // id: when a work is hidden at /admin/art-library the walk saves the
+    // week's substitute, while artworkById returns null here and this row went
+    // blank — reporting nothing saved for a picture that is on the phone.
     const v = VISIO_SCHEDULE[date];
-    const art = v ? artworkById(v.id) : null;
+    const chosen = v ? chooseArtwork(date, []) : null;
+    const art = chosen?.art ?? null;
     if (!art?.img) return null;
     const img = await hasCachedImage(art.img);
-    const readingUrl2 = v?.ref ? readingUrl(v.ref) : null;
+    const readingUrl2 = chosen?.ref ? readingUrl(chosen.ref) : null;
     const txt = readingUrl2 ? await hasSavedPage(readingUrl2) : true;
     return img && txt ? "This week's picture and reading are on your phone" : img ? "Picture saved; reading not yet" : "Not saved yet — opens the app on Wi-Fi to save the month";
   }

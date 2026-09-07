@@ -48,6 +48,9 @@ export type OfficeCacheKey = {
   parts?: string;
   /** The Sunday readings deck: "1" | "2" — one cached deck per track. */
   track?: string;
+  /** Creation Prayer prayed on ONE side only ("1"), which changes both the
+   *  psalter and the appointed lesson. Undefined for every other deck. */
+  single?: string;
 };
 
 function keyId(k: OfficeCacheKey): string {
@@ -57,7 +60,7 @@ function keyId(k: OfficeCacheKey): string {
   // and which survived was a race between prefetch workers. The deck's own
   // note says this key is what fixed "the first Sunday reading sometimes
   // wasn't loading"; it was half-fixed until now.
-  return `${k.mode}:${k.date}:${k.confession}${k.parts ? `:${k.parts}` : ""}${k.track ? `:t${k.track}` : ""}`;
+  return `${k.mode}:${k.date}:${k.confession}${k.parts ? `:${k.parts}` : ""}${k.track ? `:t${k.track}` : ""}${k.single ? ":s1" : ""}`;
 }
 
 type Entry = { data: unknown; updatedAt: number };
@@ -69,9 +72,18 @@ const OPEN_TIMEOUT_MS = 4000;
 function getDB(): Promise<IDBDatabase | null> {
   if (typeof indexedDB === "undefined") return Promise.resolve(null);
   if (!dbPromise) {
-    dbPromise = new Promise((resolve) => {
+    // A FAILED OPEN IS NOT REMEMBERED — see the note in offlineStore.openDb.
+    // Memoising a null here meant one slow launch reported every saved office
+    // as missing until the app was force-quit.
+    let attempt: Promise<IDBDatabase | null>;
+    attempt = new Promise((resolve) => {
       let settled = false;
-      const done = (db: IDBDatabase | null) => { if (!settled) { settled = true; resolve(db); } };
+      const done = (db: IDBDatabase | null) => {
+        if (settled) return;
+        settled = true;
+        if (!db && dbPromise === attempt) dbPromise = null;
+        resolve(db);
+      };
       setTimeout(() => done(null), OPEN_TIMEOUT_MS);
       try {
         const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -85,6 +97,8 @@ function getDB(): Promise<IDBDatabase | null> {
         req.onblocked = () => done(null);
       } catch { done(null); }
     });
+    dbPromise = attempt;
+    return attempt;
   }
   return dbPromise;
 }
@@ -112,6 +126,17 @@ export function getOfficeCacheEntry(key: OfficeCacheKey): Promise<unknown | null
  *  the transaction, and reporting that as success is how a phone ends up
  *  stamped "saved" with nothing on it. */
 export function putOfficeCacheEntry(key: OfficeCacheKey, data: unknown): Promise<boolean> {
+  /**
+   * AN EMPTY DECK IS NOT A SAVED DECK. Both /office/sunday and
+   * /office/scripture answer 200 with `{slides: []}` when assembly fails, so
+   * one bad moment could store an empty deck under a good key — and since the
+   * deck now reads saved-first, every later open would render nothing and
+   * never reach the network. The prefetch and the background refresh each
+   * checked this themselves; the deck's own first write did not. Guarding
+   * here covers all three and anything written later.
+   */
+  const slides = (data as { slides?: unknown } | null)?.slides;
+  if (Array.isArray(slides) && slides.length === 0) return Promise.resolve(false);
   return getDB().then((db) => {
     if (!db) return false;
     return new Promise<boolean>((resolve) => {

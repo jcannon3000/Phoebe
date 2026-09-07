@@ -1,3 +1,5 @@
+import { noteNetworkFailure, noteNetworkSuccess } from "@/lib/offline";
+
 /**
  * fetch with a bound that actually holds on the phone.
  *
@@ -22,5 +24,19 @@ export function boundedFetch(input: string, init?: RequestInit, ms: number = FET
     fetch(input, init),
     new Promise<Response>((_, reject) =>
       setTimeout(() => reject(new Error(`Timed out: ${input}`)), ms)),
-  ]);
+  ]).then(
+    /**
+     * …AND IT REPORTS WHAT IT LEARNED.
+     *
+     * The whole offline layer fetches through here — the walk, the pages, the
+     * pictures, the day-lists — and none of it fed lib/offline's record of
+     * whether this app can actually reach anything. Only apiRequest did. So
+     * dozens of failures in Airplane Mode taught the app nothing, and
+     * isOnline()'s 20-second memory could lapse mid-practice and go back to
+     * believing navigator.onLine, which lies. That is the exact bug this
+     * mechanism exists to prevent, one call site away from returning.
+     */
+    (res) => { noteNetworkSuccess(); return res; },
+    (err) => { noteNetworkFailure(); throw err; },
+  );
 }

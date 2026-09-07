@@ -17,8 +17,10 @@
 // pruneOfficeCacheBefore could not sweep it: offline on the 13th you'd have
 // been served the 6th's readings, up to five weeks stale.
 
-/** Today's date in New York, as YYYY-MM-DD. */
-function todayYmdNY(now: Date): string {
+/** Today's date in New York, as YYYY-MM-DD. Exported because the office
+ *  cache's daily sweep has to compare against the calendar the Sunday keys
+ *  live in, not the viewer's — see officePrefetch's sweepBefore. */
+export function todayYmdNY(now: Date = new Date()): string {
   // en-CA formats as YYYY-MM-DD, which is the whole reason it's used here.
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/New_York",

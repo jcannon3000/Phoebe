@@ -44,9 +44,22 @@ let dbPromise: Promise<IDBDatabase | null> | null = null;
 const OPEN_TIMEOUT_MS = 4000;
 function openDb(): Promise<IDBDatabase | null> {
   if (dbPromise) return dbPromise;
-  dbPromise = new Promise((resolve) => {
+  const attempt: Promise<IDBDatabase | null> = new Promise((resolve) => {
     let settled = false;
-    const done = (db: IDBDatabase | null) => { if (!settled) { settled = true; resolve(db); } };
+    /**
+     * A FAILED OPEN IS NOT REMEMBERED. The promise was memoised before it
+     * resolved, so one slow first open — a cold start, another tab mid-upgrade
+     * — left `dbPromise` permanently resolved to null and EVERY read for the
+     * life of the WebView answered "nothing saved". The office, the readings
+     * and the pictures were all on the device; a four-second wait at launch
+     * hid them until the app was force-quit. Only a real database is kept.
+     */
+    const done = (db: IDBDatabase | null) => {
+      if (settled) return;
+      settled = true;
+      if (!db && dbPromise === attempt) dbPromise = null;
+      resolve(db);
+    };
     setTimeout(() => done(null), OPEN_TIMEOUT_MS);
     try {
       if (typeof indexedDB === "undefined") { done(null); return; }
@@ -61,7 +74,8 @@ function openDb(): Promise<IDBDatabase | null> {
       req.onblocked = () => done(null);
     } catch { done(null); }
   });
-  return dbPromise;
+  dbPromise = attempt;
+  return attempt;
 }
 
 export async function storeGet<T>(store: string, key: string): Promise<T | null> {

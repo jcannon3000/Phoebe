@@ -22,7 +22,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { isReallyOnline } from "@/lib/offline";
 import { getSideLevel, getSideExtra, getSideConfession, getScriptureParts, type OfficeSide } from "@/lib/officePrefs";
 import { putOfficeCacheEntry, pruneOfficeCacheBefore, getOfficeCacheEntry, type OfficeCacheKey } from "@/lib/officeOfflineCache";
-import { sundayYmdsNY } from "@/lib/sundayDate";
+import { sundayYmdsNY, todayYmdNY } from "@/lib/sundayDate";
 import { passageRefFromUrl, purgeExtractedPassages } from "@/lib/passageCache";
 import { cachePage, hasSavedPage, prunePagesExcept, prunePages } from "@/lib/pageCache";
 import { cacheImage, hasCachedImage, pruneImages, pruneImagesExcept } from "@/lib/imageCache";
@@ -107,6 +107,35 @@ function ymdPlusDays(n: number): string {
 // Compline") — every other level (psalms, fdd, readings, examen,
 // guided-prayer, reflect-sit, creation, community, custom, ask) already
 // has its own offline story or isn't a BCP office at all, so it's skipped.
+/** Pages this device could not save today, so the walk stops re-trying them
+ *  (and stops re-walking the window because of them). Cleared by the date in
+ *  the key: tomorrow is a fresh attempt. */
+const FAILED_PAGES_KEY = "phoebe:office-prefetch:failed-pages";
+function failedPagesToday(): Set<string> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(FAILED_PAGES_KEY) ?? "null") as { day?: string; urls?: string[] } | null;
+    if (!raw || raw.day !== todayYmd()) return new Set();
+    return new Set(raw.urls ?? []);
+  } catch { return new Set(); }
+}
+function notePageFailedToday(url: string): void {
+  try {
+    const cur = failedPagesToday();
+    cur.add(url);
+    localStorage.setItem(FAILED_PAGES_KEY, JSON.stringify({ day: todayYmd(), urls: [...cur] }));
+  } catch { /* ignore */ }
+}
+
+/** Today in New York — the calendar the Sunday keys live in. */
+function nextSundayYmdNYToday(): string { return todayYmdNY(); }
+
+/** Creation Prayer prayed on ONE side only — the deck's own condition,
+ *  verbatim, so the URL and the key agree with what the page will ask for. */
+function isSingleSidedCreation(mode: LiturgyMode): boolean {
+  if (mode !== "creation-morning" && mode !== "creation-evening") return false;
+  return !(getSideLevel("morning") === "creation" && getSideLevel("evening") === "creation");
+}
+
 function modeForSide(side: OfficeSide): LiturgyMode | null {
   const level = getSideLevel(side);
   return modeForLevel(side, level);
@@ -174,7 +203,16 @@ async function fetchAndCacheOne(mode: LiturgyMode, date: string, confession: "" 
    */
   const parts = mode === "scripture" ? getScriptureParts() : null;
   const partsValue = parts && parts.length < 4 ? parts.join(",") : "";
-  const key: OfficeCacheKey = { mode, date, confession, ...(partsValue ? { parts: partsValue } : {}), ...(track ? { track } : {}) };
+  /**
+   * CREATION PRAYER ON ONE SIDE ONLY asks the server for the four-week
+   * combined psalter and a different appointed lesson. The deck has always
+   * sent `&single=1`; this didn't, and neither put it in the key — so the two
+   * wrote and read ONE entry holding the other's deck. Derived from the rule
+   * on both sides now (same expression the deck uses) rather than passed in,
+   * so they cannot drift apart again.
+   */
+  const single = isSingleSidedCreation(mode);
+  const key: OfficeCacheKey = { mode, date, confession, ...(partsValue ? { parts: partsValue } : {}), ...(track ? { track } : {}), ...(single ? { single: "1" } : {}) };
   // Already here — the open costs one read and no network.
   if (await getOfficeCacheEntry(key)) return "present";
   try {
@@ -183,9 +221,10 @@ async function fetchAndCacheOne(mode: LiturgyMode, date: string, confession: "" 
     const confParam = confession ? `&confession=${confession}` : "";
     const partsParam = partsValue ? `&parts=${partsValue}` : "";
     const trackParam = track ? `&track=${track}` : "";
+    const singleParam = single ? "&single=1" : "";
     // Bounded: an unbounded call here stalls the whole sequential walk for up
     // to a minute per day on a dead-but-"connected" network (see boundedFetch).
-    const res = await boundedFetch(`${endpoint}${sep}date=${date}&locale=en${confParam}${partsParam}${trackParam}`);
+    const res = await boundedFetch(`${endpoint}${sep}date=${date}&locale=en${confParam}${partsParam}${trackParam}${singleParam}`);
     /**
      * A DECK THIS ACCOUNT MAY NOT HAVE IS NOT A FAILURE. Compline is
      * beta-gated and answers 401/403 for most people — counted as failed, it
@@ -291,7 +330,19 @@ export async function runOfficePrefetch(opts?: { force?: boolean }): Promise<voi
       try { localStorage.setItem(LAST_RUN_KEY, today); } catch { /* ignore */ }
     };
 
-    void pruneOfficeCacheBefore(today);
+    /**
+     * SWEEP BY THE EARLIER OF THE TWO CALENDARS, and finish before fetching.
+     *
+     * Sunday decks are keyed in New York; everything else in the viewer's own
+     * day. East of New York those disagree for a few hours — Monday 00:00 in
+     * London is still Sunday in New York — and a local-date sweep deleted the
+     * Sunday deck the walk had just decided was current. Un-awaited, it could
+     * even land after the re-read that concluded "present", so the pass
+     * stamped the day complete over a deck it had just deleted, and This
+     * Sunday stayed blank until tomorrow.
+     */
+    const sweepBefore = today < nextSundayYmdNYToday() ? today : nextSundayYmdNYToday();
+    await pruneOfficeCacheBefore(sweepBefore);
 
     const morningMode = modeForSide("morning");
     const eveningMode = modeForSide("evening");
@@ -339,7 +390,7 @@ export async function runOfficePrefetch(opts?: { force?: boolean }): Promise<voi
       jobs.push(async () => { if (await fetchAndCacheOneCounting("sunday", sundayYmd, "", { noteFetched }, "2")) noteSaved(); });
     }
     if (jobs.length > 0) await runQueue(jobs);
-    await warmReadersAndPictures({ onWifi, noteSaved, noteFetched }, morningMode, eveningMode, morningExtraMode, eveningExtraMode);
+    const { picturesComplete } = await warmReadersAndPictures({ onWifi, noteSaved, noteFetched }, morningMode, eveningMode, morningExtraMode, eveningExtraMode);
     /**
      * A PASS THAT FETCHED NOTHING found everything already here — record the
      * day, and the next open returns immediately. A pass that fetched
@@ -349,7 +400,7 @@ export async function runOfficePrefetch(opts?: { force?: boolean }): Promise<voi
     // …and not while the pictures are still waiting for Wi-Fi: a cellular pass
     // fetches no images, so "nothing fetched" would freeze the day complete
     // with the paintings missing.
-    if (fetchedCount === 0 && onWifi) {
+    if (fetchedCount === 0 && (onWifi || picturesComplete)) {
       try { localStorage.setItem(COMPLETE_KEY, today); } catch { /* ignore */ }
     }
   } catch { /* best-effort — never surface a prefetch failure to the user */ }
@@ -384,7 +435,7 @@ const VISIO_WINDOW_DAYS = 35;
  * and switching psalter with no connection should not empty the screen.
  */
 const PSALM_CYCLES = ["office", "monthly"] as const;
-async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => void; noteFetched: () => void }, ...modes: Array<LiturgyMode | null>): Promise<void> {
+async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => void; noteFetched: () => void }, ...modes: Array<LiturgyMode | null>): Promise<{ picturesComplete: boolean }> {
   /**
    * THE PAGES THEMSELVES, not their text (owner, 2026-09-06: "you should not
    * be extracting text, that's a copyright issue … have the page downloaded
@@ -395,10 +446,13 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
    */
   const pageUrls = new Set<string>();
   const images = new Set<string>();
+  /** Whether the sources that fill `pageUrls` actually reported — see the
+   *  prune at the end of this function. */
+  const harvest = { officeStoreAnswered: false, dayListsComplete: true };
   for (let i = 0; i < READER_WINDOW_DAYS; i++) {
     const date = ymdPlusDays(i);
     const entries: OfficeCacheKey[] = [];
-    for (const m of modes) if (m) entries.push({ mode: m, date, confession: confessionFor(m, m.startsWith("evening") || m === "early-evening-devotion" || m === "creation-evening" ? "evening" : "morning") });
+    for (const m of modes) if (m) entries.push({ mode: m, date, confession: confessionFor(m, m.startsWith("evening") || m === "early-evening-devotion" || m === "creation-evening" ? "evening" : "morning"), ...(isSingleSidedCreation(m) ? { single: "1" } : {}) });
     entries.push({ mode: "compline", date, confession: "" });
     const parts = getScriptureParts();
     const partsValue = parts && parts.length < 4 ? parts.join(",") : "";
@@ -414,6 +468,10 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
     }
     for (const key of entries) {
       const data = (await getOfficeCacheEntry(key)) as { slides?: Array<{ metadata?: { readUrl?: unknown; gospelReadUrl?: unknown } }> } | null;
+      // One real answer proves the office database is open and readable; a
+      // store that timed out returns null for every key and would otherwise
+      // look exactly like "no decks are saved".
+      if (data) harvest.officeStoreAnswered = true;
       for (const s of data?.slides ?? []) {
         for (const u of [s?.metadata?.readUrl, s?.metadata?.gospelReadUrl]) {
           // passageRefFromUrl is only the test for "is this a reading link";
@@ -462,6 +520,18 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
     if (await cacheImage(img)) ctx.noteSaved();
   });
   /**
+   * ON CELLULAR, ASK WHETHER THEY ARE ALREADY HERE.
+   *
+   * Completeness required Wi-Fi outright, so a phone that only ever sees
+   * cellular could never record the day complete — and re-walked the whole
+   * window every five minutes of foreground, forever, for pictures it had
+   * already saved weeks ago on someone's Wi-Fi. The paintings still WAIT for
+   * Wi-Fi to download; this only asks whether there is anything left to wait
+   * for.
+   */
+  let picturesComplete = true;
+  if (!ctx.onWifi) for (const img of images) if (!(await hasCachedImage(img))) { picturesComplete = false; break; }
+  /**
    * …AND THE LISTS THAT MAKE THE DAY. Lectio offers a choice of the day's
    * three lessons and the Psalms page asks for the psalm appointed; both are
    * server calls, so a device with every passage saved still opened Lectio on
@@ -481,6 +551,10 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
       const url = `/api/lectio/today?date=${date}`;
       if (!(await getCachedDay(url))) { ctx.noteFetched(); if (await cacheDay(url)) ctx.noteSaved(); }
       const day = await getCachedDay<{ options?: Array<{ readUrl?: unknown }> }>(url);
+      // A day-list we could neither read nor fetch means this pass does not
+      // know Lectio's pages for that date — so it must not sweep to a set
+      // that is missing them.
+      if (!day) harvest.dayListsComplete = false;
       for (const o of day?.options ?? []) {
         if (typeof o?.readUrl === "string" && passageRefFromUrl(o.readUrl)) pageUrls.add(o.readUrl);
       }
@@ -498,10 +572,22 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
   }
   if (jobs.length > 0) await runQueue(jobs);
   // …now the day-lists are here, so their readings can be saved too.
-  const pageJobs = Array.from(pageUrls).map((url) => async () => {
+  /**
+   * A PAGE THAT CANNOT BE SAVED IS TRIED A FEW TIMES, THEN LEFT FOR TOMORROW.
+   *
+   * noteFetched fires on the ATTEMPT, so a single permanently-failing URL (a
+   * reading whose oremus reference 404s) kept fetchedCount above zero on every
+   * pass. The day was therefore never recorded complete, and the walk re-ran
+   * the entire window — and re-tried that dead URL on its 20-second bound —
+   * every five minutes of foreground, for as long as the app was installed.
+   * The window is a day: whatever is wrong may be fixed by tomorrow.
+   */
+  const givenUp = failedPagesToday();
+  const pageJobs = Array.from(pageUrls).filter((u) => !givenUp.has(u)).map((url) => async () => {
     if (await hasSavedPage(url)) return;
     ctx.noteFetched();
     if (await cachePage(url)) ctx.noteSaved();
+    else notePageFailedToday(url);
   });
   if (pageJobs.length > 0) await runQueue(pageJobs);
   /**
@@ -513,10 +599,20 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
    * out instead of being swept.
    */
   void pruneDaysBefore(todayYmd());
-  // …only when this pass actually saw the window. A pass that found no decks
-  // (a captive portal, a level just changed) would otherwise sweep every saved
-  // page away — the prune-and-fetch rule again, from the other side.
-  if (pageUrls.size >= 8) void prunePagesExcept(pageUrls);
+  /**
+   * …ONLY WHEN EVERY SOURCE THAT FILLS THE SET ACTUALLY ANSWERED.
+   *
+   * This was `pageUrls.size >= 8`, and a count cannot tell whose URLs those
+   * are. The set is filled from three independent places — the office store,
+   * Visio's schedule (pure, local), and Lectio's day-lists in a SECOND
+   * IndexedDB database with its own open promise and its own 4-second
+   * timeout. If the office database times out, Lectio's ~84 URLs clear a
+   * threshold of 8 on their own and the sweep deletes every office, scripture
+   * and Sunday reading page on the phone. Which is the prune-and-fetch
+   * invariant again: sweep to a set only under the same condition that filled
+   * it.
+   */
+  if (harvest.officeStoreAnswered && harvest.dayListsComplete && pageUrls.size >= 8) void prunePagesExcept(pageUrls);
   // The extracted text every device saved earlier today goes — it should not
   // have been stored at all.
   void purgeExtractedPassages();
@@ -526,6 +622,7 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
   void prunePages();
   void pruneImages();
   void pruneDays();
+  return { picturesComplete };
 }
 
 /** Mounted once, app-wide (see App.tsx, alongside WidgetSync) — fires the
