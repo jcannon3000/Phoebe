@@ -36,6 +36,20 @@ function todayYmd(): string {
 /** "Today's copy is on your phone" / "Not saved yet" — per saved practice. */
 async function savedStatus(key: string): Promise<string | null> {
   const date = todayYmd();
+  /**
+   * ON THE WEB, "OPEN THE APP ON WI-FI" IS AN INSTRUCTION THAT CANNOT WORK.
+   *
+   * The background walk refuses to run outside the native shell
+   * (officePrefetch's own first line), so nothing is ever saved ahead on
+   * Android or desktop web — no reading pages, no pictures, no day-lists.
+   * Every "saved" card here therefore rendered "Not saved yet — opens the app
+   * on Wi-Fi to save the month" to people for whom no amount of Wi-Fi will
+   * ever change it. What IS true on the web is that a deck stays available
+   * once opened, because the deck writes its own cache entry.
+   */
+  const webNotSaved = !isNativeShell()
+    ? "Kept once you've opened it — saving weeks ahead happens in the app"
+    : null;
   const has = async (k: Parameters<typeof getOfficeCacheEntry>[0]) => !!(await getOfficeCacheEntry(k));
   if (key === "office") {
     /**
@@ -60,13 +74,13 @@ async function savedStatus(key: string): Promise<string | null> {
         }
       }
     }
-    return any ? "Today's office is on your phone" : "Not saved yet — opens the app on Wi-Fi to save the month";
+    return any ? "Today's office is on your phone" : (webNotSaved ?? "Not saved yet — opens the app on Wi-Fi to save the month");
   }
   if (key === "scripture" || key === "lectio") {
     const parts = getScriptureParts();
     const partsValue = parts && parts.length < 4 ? parts.join(",") : "";
     const deck = (await getOfficeCacheEntry({ mode: "scripture", date, confession: "", ...(partsValue ? { parts: partsValue } : {}) })) as { slides?: Array<{ metadata?: { readUrl?: unknown } }> } | null;
-    if (!deck) return "Not saved yet — opens the app on Wi-Fi to save the month";
+    if (!deck) return webNotSaved ?? "Not saved yet — opens the app on Wi-Fi to save the month";
     // The PAGES, now, not extracted text — what the reader actually opens.
     const urls = (deck.slides ?? [])
       .map((s) => (typeof s.metadata?.readUrl === "string" && passageRefFromUrl(s.metadata.readUrl) ? s.metadata.readUrl : null))
@@ -82,7 +96,7 @@ async function savedStatus(key: string): Promise<string | null> {
     for (const d of sundays) {
       if ((await has({ mode: "sunday", date: d, confession: "", track: "1" })) || (await has({ mode: "sunday", date: d, confession: "", track: "2" }))) held++;
     }
-    if (held === 0) return "Not saved yet — opens the app on Wi-Fi to save the month";
+    if (held === 0) return webNotSaved ?? "Not saved yet — opens the app on Wi-Fi to save the month";
     return held === sundays.length ? "The next four Sundays are on your phone" : `${held} of ${sundays.length} Sundays saved`;
   }
   if (key === "visio") {
@@ -97,7 +111,7 @@ async function savedStatus(key: string): Promise<string | null> {
     const img = await hasCachedImage(art.img);
     const readingUrl2 = chosen?.ref ? readingUrl(chosen.ref) : null;
     const txt = readingUrl2 ? await hasSavedPage(readingUrl2) : true;
-    return img && txt ? "This week's picture and reading are on your phone" : img ? "Picture saved; reading not yet" : "Not saved yet — opens the app on Wi-Fi to save the month";
+    return img && txt ? "This week's picture and reading are on your phone" : img ? "Picture saved; reading not yet" : (webNotSaved ?? "Not saved yet — opens the app on Wi-Fi to save the month");
   }
   return null;
 }
@@ -128,7 +142,9 @@ export default function OfflinePracticesPage() {
           <h1 style={{ fontSize: 28, fontWeight: 700, margin: "0 0 6px", letterSpacing: "-0.01em" }}>{t("offline.title", { defaultValue: "Available offline" })}</h1>
           <p style={{ color: "rgba(200,212,192,0.8)", fontSize: 15, lineHeight: 1.5, margin: "0 0 18px" }}>
             {online
-              ? t("offline.intro_online", { defaultValue: "Everything here works with no connection. The offices, the readings and the coming weeks' pictures are saved to your phone whenever the app opens on Wi-Fi." })
+              ? (isNativeShell()
+                  ? t("offline.intro_online", { defaultValue: "Everything here works with no connection. The offices, the readings and the coming weeks' pictures are saved to your phone whenever the app opens on Wi-Fi." })
+                  : t("offline.intro_online_web", { defaultValue: "These practices keep working with no connection once you have opened them here. Saving the coming weeks ahead of time happens in the app." }))
               : t("offline.intro_offline", { defaultValue: "You're offline. Everything here still works; anything else in your routine waits until you're back." })}
             {!isNativeShell() && (
               <span style={{ display: "block", marginTop: 6, color: "rgba(143,175,150,0.8)", fontSize: 13 }}>

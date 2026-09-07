@@ -3328,7 +3328,7 @@ export default function PrayerModePage() {
         // Feed walks (and seamless office handoffs) never show the
         // friends/community closing recap — if the deck is empty,
         // just return to where the user came from.
-        setLocation(finishHref);
+        setLocation(finishHref, { replace: true });
       } else {
         toClosing();
       }
@@ -3348,7 +3348,7 @@ export default function PrayerModePage() {
     (queueMode === "feed" && (feedMetaQuery.isError || feedIntercessionsQuery.isError)) ||
     (queueMode === "feed-digest" && feedDigestQuery.isError);
   useEffect(() => {
-    if (focusedQueueErrored) setLocation(finishHref);
+    if (focusedQueueErrored) setLocation(finishHref, { replace: true });
   }, [focusedQueueErrored, finishHref, setLocation]);
 
   // When the user lands on the closing slide, log the prayer-list streak.
@@ -3479,7 +3479,7 @@ export default function PrayerModePage() {
     setSlideVisible(false);
     setTimeout(() => {
       setVisible(false);
-      setTimeout(() => setLocation(finishHref), 500);
+      setTimeout(() => setLocation(finishHref, { replace: true }), 500);
     }, 300);
   };
   // The "anything to lift up?" prompts slide now lives INSIDE the intercession
@@ -3560,7 +3560,7 @@ export default function PrayerModePage() {
         // friends/community recap too. Otherwise show the streak /
         // "you've prayed for X people" closing as usual.
         if (seamlessFlow) {
-          setLocation(finishHref);
+          setLocation(finishHref, { replace: true });
         } else if (queueMode === "feed") {
           exitToFinish();
         } else {
@@ -3852,7 +3852,7 @@ export default function PrayerModePage() {
           localStorage.removeItem(progressStorageKey);
         } catch { /* non-fatal */ }
         if (seamlessFlow) {
-          setLocation(finishHref);
+          setLocation(finishHref, { replace: true });
         } else if (queueMode === "feed") {
           // Feed walks skip the friends/community closing recap.
           exitToFinish();
@@ -3909,7 +3909,7 @@ export default function PrayerModePage() {
     ]) {
       queryClient.invalidateQueries({ queryKey });
     }
-    setLocation(finishHref);
+    setLocation(finishHref, { replace: true });
   };
 
   const handleDone = async (opts?: { skipBless?: boolean; skipReminderClear?: boolean }) => {
@@ -4048,7 +4048,7 @@ export default function PrayerModePage() {
         return;
       }
       setVisible(false);
-      setTimeout(() => setLocation(finishHref), 500);
+      setTimeout(() => setLocation(finishHref, { replace: true }), 500);
     }, 300);
   };
 
@@ -4119,7 +4119,7 @@ export default function PrayerModePage() {
    * a blank here reads as the app dying mid-prayer. Offline we render on and
    * let the page show what it has.
    */
-  if (isOnline() && authLoading) return <div style={{ background: "var(--oh-bg, #0C1F12)", minHeight: "100dvh" }} />;
+  if (isOnline() && authLoading) return <div style={{ background: "var(--oh-bg, #0C1F12)", minHeight: "var(--app-dvh)" }} />;
   if (!user) return null;
 
   // Hold a calm loading screen until the slide list is captured into
@@ -4136,7 +4136,7 @@ export default function PrayerModePage() {
     // orb here — just hold a plain dark field (matching the office) until the
     // first intercession is ready and fades up. No "loading circle."
     if (seamlessFlow) {
-      return <div style={{ background: "var(--oh-bg, #0C1F12)", minHeight: "100dvh" }} />;
+      return <div style={{ background: "var(--oh-bg, #0C1F12)", minHeight: "var(--app-dvh)" }} />;
     }
     // A calm "gathering" screen while the community intercession slideshow is
     // assembled — a slow breathing glow + a reverent line, over the same
@@ -4146,7 +4146,7 @@ export default function PrayerModePage() {
       <div
         style={{
           background: "var(--oh-bg, #0C1F12)",
-          minHeight: "100dvh",
+          minHeight: "var(--app-dvh)",
           position: "relative",
           display: "flex",
           alignItems: "center",
@@ -4211,7 +4211,7 @@ export default function PrayerModePage() {
       style={{
         ...officeThemeStyle(display.backdrop, display.font),
         background: "var(--oh-bg, #0C1F12)",
-        minHeight: "100dvh",
+        minHeight: "var(--app-dvh)",
         opacity: visible ? 1 : 0,
         transition: "opacity 0.5s ease",
         position: "relative",
@@ -4273,7 +4273,7 @@ export default function PrayerModePage() {
           // the Daily Office deck).
           ...fontScaleWrapStyle(display.fontScale, 560),
           margin: "0 auto",
-          minHeight: "100dvh",
+          minHeight: "var(--app-dvh)",
           justifyContent: "center",
           paddingTop: "clamp(24px, 6dvh, 72px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 160px)",

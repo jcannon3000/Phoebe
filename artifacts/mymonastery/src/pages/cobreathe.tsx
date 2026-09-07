@@ -736,7 +736,7 @@ export default function CobreathePage() {
   if (mode === "location") {
     return (
       <Layout bgPhoto={introBgPhoto}>
-        <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+        <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "var(--app-dvh)" }}>
           <div className="max-w-xl mx-auto w-full flex flex-col flex-1 justify-start">
             <div className="flex flex-col items-center text-center pt-8">
               <p className="text-[11px] uppercase tracking-[0.22em] font-semibold mb-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
@@ -835,7 +835,7 @@ export default function CobreathePage() {
   if (mode === "placeStats") {
     return (
       <Layout bgPhoto={introBgPhoto}>
-        <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+        <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "var(--app-dvh)" }}>
           <div className="max-w-xl mx-auto w-full flex flex-col flex-1 justify-start">
             <div className="flex flex-col items-center text-center pt-8">
               <p className="text-[11px] uppercase tracking-[0.22em] font-semibold mb-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
@@ -1013,7 +1013,7 @@ export default function CobreathePage() {
 
   return (
     <Layout bgPhoto={introBgPhoto}>
-      <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+      <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "var(--app-dvh)" }}>
       <div className="max-w-xl mx-auto w-full flex flex-col flex-1 justify-start">
         {/* "Before you begin" intro — same shape as a devotion's opening slide
             (centered eyebrow + big title + a few lines + setting rows + Begin).

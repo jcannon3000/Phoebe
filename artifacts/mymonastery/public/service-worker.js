@@ -82,8 +82,14 @@ self.addEventListener("fetch", (event) => {
       (async () => {
         try {
           const net = await fetch(req);
-          const copy = net.clone();
-          caches.open(SHELL_CACHE).then((c) => c.put("/", copy).catch(() => undefined));
+          // ONLY A REAL PAGE BECOMES THE SHELL. Cache.put accepts any
+          // response, so a Railway 502 interstitial was being stored as "/"
+          // and then served as the offline app on the next launch — the
+          // deploy-window error page, frozen in, with no way to shift it.
+          if (net.ok) {
+            const copy = net.clone();
+            caches.open(SHELL_CACHE).then((c) => c.put("/", copy).catch(() => undefined));
+          }
           return net;
         } catch {
           const cache = await caches.open(SHELL_CACHE);

@@ -93,7 +93,22 @@ export function fontScaleWrapStyle(scale: number, maxWidthPx = 672): React.CSSPr
     return { width: "100%", maxWidth: maxWidthPx, WebkitTextSizeAdjust: `${Math.round(scale * 100)}%` };
   }
   if (scale === 1) return { width: "100%", maxWidth: maxWidthPx };
-  return { zoom: scale, width: `${100 / scale}%`, maxWidth: `${maxWidthPx / scale}px` };
+  /**
+   * NO WIDTH COMPENSATION ON BLINK — it double-corrects.
+   *
+   * Chrome standardized `zoom` in 128: the zoomed element's containing block
+   * is already expressed in its own scaled space, so dividing the width by the
+   * scale a second time overshoots. Measured on Android Chrome 148, A− (0.85)
+   * on a 375px screen: with the division the column paints 397px and runs off
+   * the right edge, mid-word, and <main> becomes horizontally scrollable
+   * inside a swipe-to-page surface; with plain width:100% it lands at 338px,
+   * inside the column, which is right. A+ had the mirror fault — the LARGEST
+   * text setting gave the NARROWEST measure.
+   *
+   * The comment above attributes that overflow to iOS; it moved to Android
+   * when Chrome changed, and the iOS branch above no longer takes this path.
+   */
+  return { zoom: scale, width: "100%", maxWidth: maxWidthPx };
 }
 
 export function OfficeDisplaySheet({

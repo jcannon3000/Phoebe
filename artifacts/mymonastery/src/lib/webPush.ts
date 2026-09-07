@@ -11,8 +11,21 @@ import { apiRequest } from "@/lib/queryClient";
  * twice with the same browser is a server-side upsert.
  */
 export async function ensureWebPushSubscription(): Promise<void> {
-  // Service worker must be active before we can subscribe.
-  const reg = await navigator.serviceWorker.ready;
+  /**
+   * BOUNDED, because `ready` NEVER REJECTS.
+   *
+   * If the service worker failed to register — main.tsx only warns — this
+   * promise simply never settles, and both callers (the permission card and
+   * Settings) await straight through it with their spinner on. The button
+   * sits on "Turning on…" for the life of the page and the card cannot be
+   * dismissed. Android web is where this bites: it is the platform that
+   * actually uses web push, where iOS users get the native one.
+   */
+  const reg = await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("The notification service didn't start. Reload and try again.")), 10_000)),
+  ]);
 
   let sub = await reg.pushManager.getSubscription();
   if (!sub) {

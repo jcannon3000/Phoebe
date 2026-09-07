@@ -471,7 +471,12 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 // working.
 function RedirectTo({ to }: { to: string }) {
   const [, setLocation] = useLocation();
-  useEffect(() => { setLocation(to); }, [to, setLocation]);
+  /**
+   * REPLACE, don't push. A redirect that pushes leaves the gated route in the
+   * history, so Android's Back returns to it and it redirects again — Back is
+   * dead on that screen. Invisible on iOS, which has no system Back.
+   */
+  useEffect(() => { setLocation(to, { replace: true }); }, [to, setLocation]);
   return null;
 }
 

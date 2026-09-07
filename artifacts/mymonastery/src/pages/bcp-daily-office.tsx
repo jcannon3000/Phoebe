@@ -2007,14 +2007,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // show its face on the way OUT to the browser or on the way back.
   if (veniteHandingOff) {
     return (
-      <div style={{ ...officeThemeStyle(display.backdrop, display.font), minHeight: "100dvh", background: BG }} />
+      <div style={{ ...officeThemeStyle(display.backdrop, display.font), minHeight: "var(--app-dvh)", background: BG }} />
     );
   }
 
   if (loading) {
     if (alreadyOpenedToday) {
       return (
-        <div style={{ ...officeThemeStyle(display.backdrop, display.font), minHeight: "100dvh", background: BG, position: "relative", isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ ...officeThemeStyle(display.backdrop, display.font), minHeight: "var(--app-dvh)", background: BG, position: "relative", isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <img
             src={veilPhoto}
             alt=""
@@ -3118,7 +3118,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // Typeface + (for Paper) the light letter-paper theme — CSS custom
         // properties every swept color var() in this deck resolves against.
         ...officeThemeStyle(display.backdrop, display.font),
-        height: "100dvh",
+        height: "var(--app-dvh)",
         overflow: "hidden",
         overscrollBehavior: "none",
         background: BG,
@@ -5778,7 +5778,7 @@ function PhysicalBookGuide(props: {
         // Typeface + (for Paper) the light letter-paper theme — CSS custom
         // properties every swept color var() in this deck resolves against.
         ...officeThemeStyle(display.backdrop, display.font),
-        height: "100dvh",
+        height: "var(--app-dvh)",
         overflow: "hidden",
         overscrollBehavior: "none",
         background: BG,
@@ -6636,7 +6636,7 @@ export default function BcpDailyOfficePage() {
 
   return (
     <Layout bgPhoto={landingLeaf}>
-      <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
+      <div style={{ position: "relative", isolation: "isolate", minHeight: "var(--app-dvh)" }}>
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
         <Link href="/bcp" className="text-sm mb-3 inline-block" style={{ color: "var(--oh-sage, #8FAF96)" }}>
           ← Book of Common Prayer

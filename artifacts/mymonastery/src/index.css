@@ -329,6 +329,20 @@ textarea:focus {
     background-color: #091A10;
     min-height: 100%;
   }
+  /**
+   * THE FULL-HEIGHT UNIT, compensated for the Android zoom.
+   *
+   * `zoom: 0.9` scales what `dvh` resolves to, so a deck sized `100dvh`
+   * paints 731px on an 812px screen — measured on Android Chrome 148 — and
+   * body's own `#091A10` shows through the 81px band beneath it, with the
+   * fixed nav pill (correctly at the true bottom) floating in it. On the
+   * Paper backdrop that band is a hard dark stripe across the bottom tenth.
+   * `position: fixed; inset: 0` roots (Lectio, Visio) are immune and are the
+   * better pattern; this is for the ones sized in viewport units.
+   */
+  :root { --app-dvh: 100dvh; }
+  html.android-web { --app-dvh: calc(100dvh / 0.9); }
+
   html.android-web body {
     zoom: 0.9;
     /* `zoom` shrinks body's RENDERED/layout height to 90% of whatever its
