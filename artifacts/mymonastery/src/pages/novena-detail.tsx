@@ -58,7 +58,22 @@ function splitSlideText(text: string, maxChars = 420): string[] {
   for (const para of paragraphs) {
     if (para.length > maxChars) {
       // A single overlong paragraph — break on sentence boundaries instead.
-      const sentences = para.split(/(?<=[.!?])\s+/);
+      /**
+       * NO LOOKBEHIND. Safari gained it in 16.4 and the build targets
+       * safari16, so esbuild ships this as `new RegExp("(?<=…")` — which
+       * throws SyntaxError at RUNTIME on iOS 16.0–16.3 and drops the whole app
+       * to the error boundary, on any novena with a paragraph past the limit.
+       * Splitting on the punctuation and rejoining it does the same work with
+       * no lookbehind at all.
+       */
+      const sentences = para
+        .split(/([.!?])\s+/)
+        .reduce<string[]>((acc, part, i) => {
+          if (i % 2 === 1) acc[acc.length - 1] = (acc[acc.length - 1] ?? "") + part;
+          else acc.push(part);
+          return acc;
+        }, [])
+        .filter((x) => x.trim().length > 0);
       for (const sentence of sentences) {
         if (current.length + sentence.length + 1 > maxChars) flush();
         current += (current ? " " : "") + sentence;

@@ -194,7 +194,7 @@ function LessonPlayer({
         onClick={toggleFullscreen}
         aria-label={isFs ? "Exit fullscreen" : "Fullscreen"}
         className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg opacity-70 transition-opacity hover:opacity-100"
-        style={{ background: "rgba(9,26,16,0.72)", color: C.text, backdropFilter: "blur(4px)" }}
+        style={{ background: "rgba(9,26,16,0.72)", color: C.text, backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
       >
         <Maximize2 size={15} />
       </button>

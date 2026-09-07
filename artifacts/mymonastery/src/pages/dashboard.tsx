@@ -753,7 +753,7 @@ function ProfilePicturePrompt({ onDone }: { onDone: () => void }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center px-6"
-      style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
       onClick={onDone}
     >
       <motion.div
@@ -5773,7 +5773,7 @@ function GoalReachedModal({
     return (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center"
-        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
         onClick={(e) => { if (e.target === e.currentTarget) onDismiss(); }}
       >
         <motion.div
@@ -6013,7 +6013,7 @@ function GoalReachedModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onDismiss(); }}
     >
       <motion.div
@@ -7294,7 +7294,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center px-6"
-            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
             onClick={dismissBetaWelcome}
           >
             <motion.div
@@ -7922,7 +7922,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-5 pb-8 sm:pb-0"
-            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
             onClick={() => setShowNewPrayerChoice(false)}
           >
             <motion.div

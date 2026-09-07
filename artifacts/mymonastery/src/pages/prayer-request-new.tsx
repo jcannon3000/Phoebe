@@ -570,7 +570,7 @@ export default function PrayerRequestNew() {
     {postCreateNotice && (
       <div
         className="fixed inset-0 z-[70] flex items-end justify-center"
-        style={{ background: "rgba(6,18,11,0.72)", backdropFilter: "blur(3px)" }}
+        style={{ background: "rgba(6,18,11,0.72)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)" }}
       >
         <div
           className="w-full"

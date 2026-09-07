@@ -1435,7 +1435,7 @@ export default function CommunityDetailPage() {
           return (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center px-4"
-              style={{ background: "rgba(9,26,16, 0.935)", backdropFilter: "blur(4px)" }}
+              style={{ background: "rgba(9,26,16, 0.935)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
               onClick={dismiss}
             >
               <div

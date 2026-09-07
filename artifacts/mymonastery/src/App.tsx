@@ -629,8 +629,39 @@ const PERSISTED_QUERY_KEYS = [
   // pray-through were empty with no connection.
   "/api/prayer-intentions",
 ];
+/**
+ * A STORAGE HANDLE THAT CANNOT THROW ON THE WAY IN.
+ *
+ * With Safari's "Block All Cookies" (Settings → Safari → Advanced), merely
+ * READING the `window.localStorage` property throws SecurityError — not just
+ * get/set. This line is top-level in the app's entry module, so it runs before
+ * createRoot().render() and before the ErrorBoundary exists: the throw was a
+ * blank white page with nothing on it and no way to report itself. Every other
+ * storage access in the app is already inside a function and a try/catch; this
+ * was the one exception, and it happened to be the earliest.
+ *
+ * Falling back to an in-memory store means the day-scoped query cache simply
+ * doesn't persist for that reader — the app runs.
+ */
+function safeLocalStorage(): Storage {
+  try {
+    const ls = window.localStorage;
+    ls.getItem("phoebe:probe");
+    return ls;
+  } catch {
+    const mem = new Map<string, string>();
+    return {
+      get length() { return mem.size; },
+      clear: () => mem.clear(),
+      getItem: (k: string) => mem.get(k) ?? null,
+      key: (i: number) => [...mem.keys()][i] ?? null,
+      removeItem: (k: string) => { mem.delete(k); },
+      setItem: (k: string, v: string) => { mem.set(k, String(v)); },
+    } as Storage;
+  }
+}
 const rqPersister = createSyncStoragePersister({
-  storage: window.localStorage,
+  storage: safeLocalStorage(),
   key: "phoebe:rq-daily",
   throttleTime: 1000,
 });

@@ -2646,7 +2646,7 @@ function UnlogSheet({
   return (
     <div
       className="fixed inset-0 z-[120] flex items-end justify-center"
-      style={{ background: "rgba(6,18,11,0.6)", backdropFilter: "blur(2px)" }}
+      style={{ background: "rgba(6,18,11,0.6)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)" }}
       onClick={onClose}
     >
       <div
@@ -2725,7 +2725,7 @@ function LogSheet({
   return (
     <div
       className="fixed inset-0 z-[120] flex items-end justify-center"
-      style={{ background: "rgba(6,18,11,0.6)", backdropFilter: "blur(2px)" }}
+      style={{ background: "rgba(6,18,11,0.6)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)" }}
       onClick={onClose}
     >
       <div

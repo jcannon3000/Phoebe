@@ -247,7 +247,7 @@ export default function BcpIntercessionsPage() {
           onClick={() => setSelectedPrayer(null)}
         >
           {/* Backdrop */}
-          <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} />
+          <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
 
           {/* Modal */}
           <div

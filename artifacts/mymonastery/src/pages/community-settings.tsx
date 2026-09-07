@@ -763,7 +763,7 @@ export default function CommunitySettingsPage() {
         {addOpen && (
           <div
             className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-            style={{ background: "rgba(10,20,15,0.65)", backdropFilter: "blur(6px)" }}
+            style={{ background: "rgba(10,20,15,0.65)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}
             onClick={() => setAddOpen(false)}
           >
             <div

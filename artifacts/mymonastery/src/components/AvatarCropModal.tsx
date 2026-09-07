@@ -121,7 +121,7 @@ export function AvatarCropModal({
       // touch-action:none across the whole overlay so dragging the slider (or
       // anything in the modal) can't be hijacked as a page pinch-zoom — that was
       // making the popup "grow and shrink" on Android.
-      style={{ background: "rgba(4,10,7,0.86)", backdropFilter: "blur(4px)", touchAction: "none", overscrollBehavior: "contain" }}
+      style={{ background: "rgba(4,10,7,0.86)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", touchAction: "none", overscrollBehavior: "contain" }}
       onTouchMove={(e) => { if (e.touches.length > 1) e.preventDefault(); }}
     >
       <motion.div

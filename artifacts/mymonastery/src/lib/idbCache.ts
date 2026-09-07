@@ -42,10 +42,25 @@ function keyId(queryKey: readonly unknown[]): string {
 type Entry = { key: readonly unknown[]; data: unknown; updatedAt: number };
 
 let dbPromise: Promise<IDBDatabase | null> | null = null;
+/** Bounded, and a failure is never remembered — the same two fixes
+ *  offlineStore and officeOfflineCache each carry, with the same reasons: a
+ *  wedged open (Safari private mode, a blocked upgrade) otherwise leaves this
+ *  promise pending for the life of the page, and one bad open at launch
+ *  memoises null so every later read reports "nothing cached". */
+const OPEN_TIMEOUT_MS = 4000;
 function getDB(): Promise<IDBDatabase | null> {
   if (typeof indexedDB === "undefined") return Promise.resolve(null);
   if (!dbPromise) {
-    dbPromise = new Promise((resolve) => {
+    let attempt: Promise<IDBDatabase | null>;
+    attempt = new Promise((resolve) => {
+      let settled = false;
+      const done = (db: IDBDatabase | null) => {
+        if (settled) return;
+        settled = true;
+        if (!db && dbPromise === attempt) dbPromise = null;
+        resolve(db);
+      };
+      setTimeout(() => done(null), OPEN_TIMEOUT_MS);
       try {
         const req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = () => {
@@ -53,11 +68,13 @@ function getDB(): Promise<IDBDatabase | null> {
             if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE);
           } catch { /* ignore */ }
         };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => resolve(null);
-        req.onblocked = () => resolve(null);
-      } catch { resolve(null); }
+        req.onsuccess = () => done(req.result);
+        req.onerror = () => done(null);
+        req.onblocked = () => done(null);
+      } catch { done(null); }
     });
+    dbPromise = attempt;
+    return attempt;
   }
   return dbPromise;
 }

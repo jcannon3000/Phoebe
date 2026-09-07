@@ -92,7 +92,7 @@ export function ReadingBookSheet({
       style={{
         position: "fixed", inset: 0, zIndex: 120, display: "flex",
         alignItems: "flex-end", justifyContent: "center",
-        background: "rgba(4,13,6,0.62)", backdropFilter: "blur(3px)",
+        background: "rgba(4,13,6,0.62)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)",
       }}
     >
       <div
