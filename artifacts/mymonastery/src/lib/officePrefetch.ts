@@ -22,6 +22,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { isReallyOnline } from "@/lib/offline";
 import { getSideLevel, getSideExtra, getSideConfession, getScriptureParts, type OfficeSide } from "@/lib/officePrefs";
 import { putOfficeCacheEntry, pruneOfficeCacheBefore, getOfficeCacheEntry, type OfficeCacheKey } from "@/lib/officeOfflineCache";
+import { sundayYmdsNY } from "@/lib/sundayDate";
 import { passageRefFromUrl, purgeExtractedPassages } from "@/lib/passageCache";
 import { cachePage, hasSavedPage, prunePagesExcept, prunePages } from "@/lib/pageCache";
 import { cacheImage, hasCachedImage, pruneImages, pruneImagesExcept } from "@/lib/imageCache";
@@ -31,6 +32,8 @@ import { artworkById, readingUrl } from "@/lib/visioSelect";
 import type { LiturgyMode } from "@/pages/bcp-daily-office";
 
 const WINDOW_DAYS = 30;
+/** How many Sundays of readings the phone holds — the owner asked for four. */
+const SUNDAYS_AHEAD = 4;
 /**
  * The day-stamp is VERSIONED, and the version is bumped whenever a bug kept a
  * run from saving anything.
@@ -53,10 +56,15 @@ const WINDOW_DAYS = 30;
  * has been invisible for a day because THIS key said the work was done: bump
  * it whenever what a run SAVES changes, not only when a run's plumbing does.
  */
-const LAST_RUN_KEY = "phoebe:office-prefetch:last-run-day:v3";
+const LAST_RUN_KEY = "phoebe:office-prefetch:last-run-day:v4";
 /** The day a pass found the whole window already on the device. While this is
  *  today, an open costs nothing at all. */
-const COMPLETE_KEY = "phoebe:office-prefetch:complete-day:v3";
+// v4: the Sunday decks moved from the key "next" to their own dates, so a
+// phone stamped complete under v3 holds three empty Sundays and would not
+// look again today. THE RULE: change WHAT is saved or HOW it is keyed and
+// these stamps move with it, or the day-stamp blocks the very re-fetch the
+// change needs.
+const COMPLETE_KEY = "phoebe:office-prefetch:complete-day:v4";
 /** …and while it is NOT complete, don't re-walk more often than this. */
 const LAST_CHECK_KEY = "phoebe:office-prefetch:last-check";
 const RECHECK_MS = 5 * 60 * 1000;
@@ -313,17 +321,22 @@ export async function runOfficePrefetch(opts?: { force?: boolean }): Promise<voi
       jobs.push(async () => { if (await fetchAndCacheOneCounting("scripture", date, "", { noteFetched })) noteSaved(); });
     }
     /**
-     * THE SUNDAY READINGS, for the next four Sundays, both tracks — the This
+     * THE SUNDAY READINGS, for the next FOUR Sundays, both tracks — the This
      * Sunday deck reads them by track, and its key carries the track.
+     *
+     * It said "four Sundays" and saved one. The loop walked the window's
+     * Sundays but passed the literal "next" every time, because the endpoint
+     * ignored ?date= and had a single answer — so this fetched the coming
+     * Sunday four times over and the other three were blank offline. The
+     * endpoint takes a date now; each Sunday is saved under its own.
+     *
+     * The dates come from sundayYmdsNY, the same helper the deck asks with:
+     * the RCL rolls over on New York's clock, and a viewer whose own Sunday
+     * starts hours earlier must not key a deck the server would never build.
      */
-    for (let i = 0; i < WINDOW_DAYS; i++) {
-      const d = new Date(); d.setDate(d.getDate() + i);
-      if (d.getDay() !== 0 || i > 28) continue;
-      const date = ymdPlusDays(i);
-      // "next", not a date: the endpoint always returns the coming Sunday, and
-      // the deck reads it under that same key (see its own note).
-      jobs.push(async () => { if (await fetchAndCacheOneCounting("sunday", "next", "", { noteFetched }, "1")) noteSaved(); });
-      jobs.push(async () => { if (await fetchAndCacheOneCounting("sunday", "next", "", { noteFetched }, "2")) noteSaved(); });
+    for (const sundayYmd of sundayYmdsNY(SUNDAYS_AHEAD)) {
+      jobs.push(async () => { if (await fetchAndCacheOneCounting("sunday", sundayYmd, "", { noteFetched }, "1")) noteSaved(); });
+      jobs.push(async () => { if (await fetchAndCacheOneCounting("sunday", sundayYmd, "", { noteFetched }, "2")) noteSaved(); });
     }
     if (jobs.length > 0) await runQueue(jobs);
     await warmReadersAndPictures({ onWifi, noteSaved, noteFetched }, morningMode, eveningMode, morningExtraMode, eveningExtraMode);
@@ -390,11 +403,14 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
     const parts = getScriptureParts();
     const partsValue = parts && parts.length < 4 ? parts.join(",") : "";
     entries.push({ mode: "scripture", date, confession: "", ...(partsValue ? { parts: partsValue } : {}) });
-    // Only Sundays hold a Sunday deck — asking for the other six days was 168
-    // reads that could never hit.
-    if (new Date(`${date}T12:00:00`).getDay() === 0) {
-      entries.push({ mode: "sunday", date: "next", confession: "", track: "1" } as OfficeCacheKey);
-      entries.push({ mode: "sunday", date: "next", confession: "", track: "2" } as OfficeCacheKey);
+    // The four Sunday decks are keyed by THEIR Sunday, not by the day being
+    // walked, so they are read once for the whole window rather than on each
+    // of its Sundays — the same eight entries, four times over.
+    if (i === 0) {
+      for (const sundayYmd of sundayYmdsNY(SUNDAYS_AHEAD)) {
+        entries.push({ mode: "sunday", date: sundayYmd, confession: "", track: "1" } as OfficeCacheKey);
+        entries.push({ mode: "sunday", date: sundayYmd, confession: "", track: "2" } as OfficeCacheKey);
+      }
     }
     for (const key of entries) {
       const data = (await getOfficeCacheEntry(key)) as { slides?: Array<{ metadata?: { readUrl?: unknown; gospelReadUrl?: unknown } }> } | null;

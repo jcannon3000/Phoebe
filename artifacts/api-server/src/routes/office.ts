@@ -460,13 +460,21 @@ router.get("/devotion/:kind", async (req, res) => {
  * points at this endpoint and everything downstream — progress, resume, the
  * chime, read-aloud — works because it is the same deck.
  */
-// GET /api/office/sunday?track=1|2 — the coming Sunday's RCL readings as the
-// scripture deck: psalm in the office UI, then OT / NT / Gospel title cards.
-// One track at a time; the This Sunday page carries the toggle.
+// GET /api/office/sunday?track=1|2[&date=YYYY-MM-DD] — a Sunday's RCL readings
+// as the scripture deck: psalm in the office UI, then OT / NT / Gospel title
+// cards. One track at a time; the This Sunday page carries the toggle.
+//
+// ?date= names WHICH Sunday (default: the coming one). The phone sends it so
+// it can save four Sundays ahead — and so the deck's offline key is a real
+// date that prunes when the day passes, instead of the literal "next", which
+// sorted after every date and so could never be swept.
 router.get("/office/sunday", async (req, res) => {
   const track: 1 | 2 = String(req.query.track ?? "1") === "2" ? 2 : 1;
+  const dateParam = typeof req.query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
+    ? req.query.date
+    : undefined;
   try {
-    const { slides, dayInfo } = await assembleSundayReading(track, parseScriptureParts(req.query.parts));
+    const { slides, dayInfo } = await assembleSundayReading(track, parseScriptureParts(req.query.parts), dateParam);
     // Ten minutes, like /lectionary/sunday: identical for every viewer, but the
     // body flips on ?track= and at the Sunday rollover — and with no header at
     // all the WebView was left to guess (the trap 580e545d hit).

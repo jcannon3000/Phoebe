@@ -145,7 +145,11 @@ export function pruneOfficeCacheBefore(todayYmd: string): Promise<void> {
           // second colon-separated field regardless of mode's own dashes.
           const parts = id.split(":");
           const date = parts[1];
-          if (date && date < todayYmd) cursor.delete();
+          // "next" was the Sunday deck's key before the endpoint took a date.
+          // It sorts AFTER every YYYY-MM-DD, so this sweep could never reach
+          // it — a leftover would sit for the full 35 days, unread.
+          if (date === "next") cursor.delete();
+          else if (date && date < todayYmd) cursor.delete();
           cursor.continue();
         };
         tx.oncomplete = () => resolve();

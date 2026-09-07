@@ -16,6 +16,7 @@ import { openExternal, openExternalThenMarkRead, openOfficeReading, preloadExter
 import { openReadingPage } from "@/lib/openExternal";
 import { toast } from "@/hooks/use-toast";
 import { isOnline, useOnline } from "@/lib/offline";
+import { nextSundayYmdNY } from "@/lib/sundayDate";
 import { FDD_TODAY_URL, markFddRead } from "@/lib/cacReadState";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
@@ -1470,6 +1471,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           : "";
         // Sunday readings: which RCL track (This Sunday's toggle) — only that deck reads it.
         const trackParam = resolvedMode === "sunday" ? `&track=${new URLSearchParams(window.location.search).get("track") === "2" ? "2" : "1"}` : "";
+        /**
+         * THE DATE THIS DECK IS ASKING FOR. Every mode but Sunday means today;
+         * the Sunday deck means the coming Sunday in New York, which is the day
+         * the server resolves to and the day the background walk saved under.
+         * Sent AND keyed, so online and offline are the same deck.
+         */
+        const requestDate = resolvedMode === "sunday" ? nextSundayYmdNY() : localDate;
         // Offline support: bcp-daily-office.tsx's own reads/writes into
         // lib/officeOfflineCache.ts, the store lib/officePrefetch.ts warms
         // for the next 30 days in the background (Wi-Fi only). A live fetch
@@ -1479,14 +1487,19 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // The parts ride the offline key too: a deck fetched with three
         // readings must never be served from a cache entry that holds four.
         /**
-         * THE SUNDAY DECK IS NOT KEYED BY DAY. /api/office/sunday ignores
-         * ?date= entirely — it always builds the COMING Sunday — so a key
-         * carrying today's date could never match what the walk saved under a
-         * future Sunday's date, and This Sunday was blank offline from Monday
-         * to Saturday. One entry per track, rewritten each week.
+         * THE SUNDAY DECK IS KEYED BY ITS SUNDAY, not by today — a Wednesday
+         * reader is looking at Sunday's readings, so a key carrying Wednesday
+         * could never match what the walk saved.
+         *
+         * It was the literal string "next" while /api/office/sunday ignored
+         * ?date= and had exactly one answer. The endpoint takes a date now, so
+         * the phone holds four Sundays instead of one — and the key is a real
+         * date, which matters twice over: "next" sorted AFTER every YYYY-MM-DD,
+         * so pruneOfficeCacheBefore never swept it and last Sunday's readings
+         * would still have been served this Sunday, offline, for five weeks.
          */
         const cacheKey = {
-          mode: resolvedMode, date: resolvedMode === "sunday" ? "next" : localDate, confession: confessionKey,
+          mode: resolvedMode, date: requestDate, confession: confessionKey,
           ...(partsParam ? { parts: scriptureParts!.join(",") } : {}),
           // The Sunday deck is one deck PER TRACK: without this a failed fetch
           // for Track 2 served Track 1's cached slides (owner: "the first
@@ -1541,7 +1554,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             void (async () => {
               try {
                 const fresh = await withTimeout(
-                  fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}${creationSingleParam}${partsParam}${trackParam}`),
+                  fetch(`${endpoint}${sep}date=${requestDate}&locale=${locale}${confParam}${creationSingleParam}${partsParam}${trackParam}`),
                   OFFICE_FETCH_TIMEOUT_MS,
                 );
                 if (!fresh.ok) return;
@@ -1553,7 +1566,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         } else {
           try {
             const res = await withTimeout(
-              fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}${creationSingleParam}${partsParam}${trackParam}`),
+              fetch(`${endpoint}${sep}date=${requestDate}&locale=${locale}${confParam}${creationSingleParam}${partsParam}${trackParam}`),
               OFFICE_FETCH_TIMEOUT_MS,
             );
             if (!res.ok) throw new Error(`HTTP ${res.status}`);

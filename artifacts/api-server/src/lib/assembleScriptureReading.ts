@@ -96,8 +96,25 @@ export async function assembleScriptureReading(
 export async function assembleSundayReading(
   track: 1 | 2,
   parts: ScripturePart[] = ALL_PARTS,
+  /**
+   * WHICH Sunday, as YYYY-MM-DD — any day in the week works; the RCL helper
+   * rolls it forward to that week's Sunday (and leaves a Sunday alone).
+   * Omitted means the coming one, which is what This Sunday always asks for.
+   *
+   * It exists so the phone can hold FOUR Sundays offline (owner, 2026-09-06:
+   * "make sure it has content for the next 4 sundays for the scripture slide
+   * show"). Without it the endpoint had exactly one answer, so the background
+   * walk saved the same deck four times and every Sunday but the coming one
+   * was blank with no connection.
+   */
+  date?: string,
 ): Promise<{ slides: Slide[]; dayInfo: unknown }> {
-  const tracks = await getSundayTracks();
+  // Noon UTC is morning in New York on the SAME date year-round (UTC-4/-5),
+  // so the anchor never lands on the day before once todayInNewYork runs.
+  const anchor = date && /^\d{4}-\d{2}-\d{2}$/.test(date)
+    ? new Date(`${date}T12:00:00Z`)
+    : undefined;
+  const tracks = await getSundayTracks(anchor ?? new Date());
   if (!tracks) return { slides: [], dayInfo: { sundayDate: null, track } };
   const t = track === 2 && tracks.track2 ? tracks.track2 : tracks.track1;
   // The RCL page says "Psalm 119:33-40"; the office lectionary (and so
