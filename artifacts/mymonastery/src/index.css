@@ -304,6 +304,20 @@ textarea:focus {
        and makes the layout read as cramped/scrunched. iOS ignores it. */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    /**
+     * NO PULL-TO-REFRESH. On Android Chrome, a downward drag while the root
+     * scroller is at the top reloads the page — and a prayer deck is a
+     * full-screen surface that does not scroll at all, so nothing consumes
+     * that drag: one stray downward swipe mid-office and the app reloads,
+     * losing the deck you were in. The office's own swipe handlers listen on
+     * touchstart/touchend only, so they never prevent it either.
+     *
+     * `contain` keeps overscroll from escaping to the browser (no refresh, no
+     * glow) while leaving every inner scroller free to scroll normally. Not
+     * needed on the native shell, harmless there, and it does the same good
+     * on iOS Safari's own pull-to-refresh.
+     */
+    overscroll-behavior-y: contain;
   }
 
   /* Android web only (tagged in index.html): zoom the page out to ~90% so the
@@ -330,6 +344,10 @@ textarea:focus {
   body {
     @apply font-sans antialiased text-foreground;
     background-color: #091A10;
+    /* Chrome consults the BODY's overscroll-behavior too when html's is not
+       the propagating element — set on both so the refresh is off whichever
+       one the engine picks up. */
+    overscroll-behavior-y: contain;
     /* Guard against a single overflowing element widening the layout
        viewport: Android Chrome reacts by zooming the WHOLE page out to fit
        (the "everything is scrunched" report), where iOS Safari just clips.
