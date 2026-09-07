@@ -75,16 +75,18 @@ export default function WelcomePublicPage() {
     if (isLoading && !firstOpenGuest) return;
     if (isRealUser) { setLocation("/dashboard"); return; }
     if (PHOEBE_GUEST_ENABLED) {
-      // A brand-new WEB visitor sees the overview deck first, instead of
-      // seeding + landing on home immediately — native has its own (retired)
-      // first-open path and isn't part of this. Its persistent/closing
-      // "Start praying" button runs the exact seed+land-on-home sequence
-      // below itself (see overview-deck.tsx's ?intro=1 mode), so this is a
-      // detour in front of the normal flow, not a second path to maintain.
-      if (firstOpenGuest && !isNativeShell()) {
-        setLocation("/overview-deck?intro=1", { replace: true });
-        return;
-      }
+      /**
+       * NO INTRO DECK ON THE WEB (owner, 2026-09-06: "take out the intro deck
+       * on the web version so it just goes straight to the home with
+       * practices").
+       *
+       * A brand-new web visitor used to meet /overview-deck?intro=1 — twelve
+       * slides about the app — before anything of the app itself. Both
+       * platforms now do the same thing on a first open: seed the rule and
+       * land on the home, already going. The deck is still there for anyone
+       * who wants it, from About and from Admin Tools; it is simply no longer
+       * in front of the door.
+       */
       seedGuestRule();
       // Silently provision the anonymous DEVICE user (no credentials, normal
       // session cookie) so push tokens + reminders + prefs sync work — the UX

@@ -36,7 +36,6 @@ import { ACT_COMMENTARY_CATALOGUE } from "@/lib/visioCommentaryCatalogue";
 import { openExternal } from "@/lib/openExternal";
 import { isActHidden, actIconOn, actIconOff, ACT_OVERRIDES_EVENT } from "@/lib/actOverrides";
 import { weekIconId, setWeekIcon, suggestedForWeek, suggestionReason } from "@/lib/iconWeek";
-import { IconHowToIntro, iconHowtoSeen, markIconHowtoSeen } from "@/components/IconHowToIntro";
 import { getIconHistory, recordIconPrayed, getPhysicalIconLogs, recordPhysicalIcon, lastIconPrayed, mostFrequentIcon } from "@/lib/iconHistory";
 import { FROST_BLUR } from "@/lib/frost";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -208,9 +207,9 @@ export default function IconsPage() {
      */
     try { return getIconHistory().length > 0 ? "open" : "week"; } catch { return "week"; }
   });
-  const [showHowto, setShowHowto] = useState<boolean>(() => {
-    try { return !iconHowtoSeen(); } catch { return false; }
-  });
+  // The first-run tutorial and its "How this works" pill were REMOVED
+  // 2026-09-06 (owner: "take out the tutorial for icons"), the same as Visio's
+  // the day before. The chooser and the icon's own page are the explanation.
   const [query, setQuery] = useState("");
   const [chosen, setChosen] = useState<IconArtwork | null>(null);
   /** Minutes, 1–5 — or null for "no timer". */
@@ -605,20 +604,6 @@ export default function IconsPage() {
     border: `1px solid ${BORDER}`,
   };
 
-  /**
-   * The tutorial, in FRONT of the practice on a first visit — the same shape
-   * Visio uses. Rendered before the screen rather than over it, so nothing
-   * behind it is running while it is being read.
-   */
-  if (showHowto) {
-    return (
-      <IconHowToIntro
-        photos={LEAF_PHOTOS}
-        onDone={() => { markIconHowtoSeen(); setShowHowto(false); }}
-      />
-    );
-  }
-
 
   return (
     <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -715,17 +700,6 @@ export default function IconsPage() {
                   }}
                 >
                   {t("icons.week_new", { defaultValue: "Choose a new one →" })}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowHowto(true)}
-                  style={{
-                    userSelect: "none", WebkitTapHighlightColor: "transparent", background: "transparent",
-                    border: "none", color: SAGE, fontFamily: FONT, fontSize: 12.5, fontWeight: 600,
-                    padding: "6px 8px", marginTop: 2,
-                  }}
-                >
-                  {t("icons.tutorial_pill", { defaultValue: "How this works" })}
                 </button>
               </div>
             </>
