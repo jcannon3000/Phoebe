@@ -28,7 +28,7 @@ import { cachePage, hasSavedPage, prunePagesExcept, prunePages } from "@/lib/pag
 import { cacheImage, hasCachedImage, pruneImages, pruneImagesExcept } from "@/lib/imageCache";
 import { cacheDay, getCachedDay, pruneDays, pruneDaysBefore } from "@/lib/dayContentCache";
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
-import { artworkById, readingUrl } from "@/lib/visioSelect";
+import { chooseArtwork, readingUrl } from "@/lib/visioSelect";
 import type { LiturgyMode } from "@/pages/bcp-daily-office";
 
 const WINDOW_DAYS = 30;
@@ -423,13 +423,29 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
       }
     }
   }
-  // Visio's own window — the month ahead, pictures and the readings behind them.
+  /**
+   * Visio's own window — the month ahead, pictures and the readings behind them.
+   *
+   * ASK THE SAME QUESTION THE PAGE ASKS. This read the schedule's id straight,
+   * while visio.tsx resolves the day through chooseArtwork — and those two
+   * answers part company exactly when a work is deleted at /admin/art-library:
+   * artworkById refuses it (rightly — a deleted work must be unreachable), the
+   * page substitutes one for the whole week, and this saved nothing at all. A
+   * deletion would have quietly emptied a week of the offline practice.
+   *
+   * Empty lessons are the honest argument: for a scheduled day chooseArtwork
+   * decides on the schedule and its week-level substitute, neither of which
+   * reads them. Every one of the 1096 scheduled days resolves today, so this
+   * changes nothing now; it is what keeps it true after a deletion.
+   */
   for (let i = 0; i < VISIO_WINDOW_DAYS; i++) {
-    const v = VISIO_SCHEDULE[ymdPlusDays(i)];
-    if (!v) continue;
-    if (v.ref) { const u = readingUrl(v.ref); if (u) pageUrls.add(u); }
-    const art = artworkById(v.id);
-    if (art?.img) images.add(art.img);
+    const ymd = ymdPlusDays(i);
+    if (!VISIO_SCHEDULE[ymd]) continue; // unscheduled days match on the day's lessons, which we don't have
+    const chosen = chooseArtwork(ymd, []);
+    // The substitute brings its OWN reading — saving the scheduled ref would
+    // have paired next week's picture with a passage no one will open.
+    if (chosen?.ref) { const u = readingUrl(chosen.ref); if (u) pageUrls.add(u); }
+    if (chosen?.art?.img) images.add(chosen.art.img);
   }
   /**
    * TWO PASSES, because the second depends on the first: the day-lists must be
