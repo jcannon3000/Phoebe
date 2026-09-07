@@ -4590,10 +4590,29 @@ export default function WayOfLoveRuleFlow({
           t("wol_rule.entry_eyebrow", { defaultValue: "Your daily rhythm of prayer" }),
           t("wol_rule.entry_title", { defaultValue: "How would you like to build it?" }),
         )}
+        {/**
+          * THE LINE DESCRIBES THE ROWS THAT ARE ACTUALLY THERE.
+          *
+          * It said "Shape it yourself, or describe the practice you already
+          * keep and let Phoebe set it up to match" — but "describe" is the
+          * interview, which is behind `interviewOnOffer` (super admins only).
+          * For everyone else it offered a way in that wasn't on the slide, and
+          * read as a description of nothing (owner, 2026-09-06: "doesn't make
+          * sense without the questionnaire there"). Same for restoring a past
+          * routine, which only appears once there is history to restore.
+          */}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
-          {t("wol_rule.entry_body", {
-            defaultValue: "Shape it yourself, or describe the practice you already keep and let Phoebe set it up to match.",
-          })}
+          {interviewOnOffer
+            ? t("wol_rule.entry_body", {
+                defaultValue: "Shape it yourself, or describe the practice you already keep and let Phoebe set it up to match.",
+              })
+            : canRevert
+              ? t("wol_rule.entry_body_manual_revert", {
+                  defaultValue: "Walk through it step by step, begin from one of Phoebe's presets, or bring back a rhythm you kept before.",
+                })
+              : t("wol_rule.entry_body_manual", {
+                  defaultValue: "Walk through it step by step, or begin from one of Phoebe's presets.",
+                })}
         </p>
         {/* Owner: "have being asked be the default." So it's PRE-SELECTED and
             listed first, and the slide gained a Continue — without one, a
