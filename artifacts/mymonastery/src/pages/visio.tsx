@@ -59,6 +59,7 @@ import ZoomableImage from "@/components/ZoomableImage";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
+import { DeckAnnouncer } from "@/components/DeckAnnouncer";
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -1118,6 +1119,8 @@ export default function VisioPage() {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* Says the beat out loud when it changes — see DeckAnnouncer. */}
+      <DeckAnnouncer label={`${step + 1} of ${TOTAL}${view?.title ? `. ${view.title}` : ""}`} />
       {/* Backdrop — the shared treatment: one still landscape held at 0.22
           under the multi-stop dark wash, both on zIndex -1 inside the isolated
           stacking context. ABSOLUTE, never position:fixed (iOS flash — see the

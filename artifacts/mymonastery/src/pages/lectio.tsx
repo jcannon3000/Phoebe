@@ -14,6 +14,7 @@ import { isOnline } from "@/lib/offline";
 import { X } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
+import { DeckAnnouncer } from "@/components/DeckAnnouncer";
 
 // Lectio Divina — sit with one of today's three lessons (Old Testament,
 // New Testament, Gospel). Owner's corrected order: pick a lesson → the
@@ -421,6 +422,8 @@ export default function LectioPage() {
           leaf pool is the owner's choice for this deck specifically, so it
           stays the first option; before this the else-branch was a flat
           #091A10, the one screen in the app with a dead-still ground. */}
+      {/* Says the beat out loud when it changes — see DeckAnnouncer. */}
+      <DeckAnnouncer label={`${sectionLabelFor(step)}, ${step + 1} of ${LAST}`} />
       {deckBackdrop ? (
         <>
           <img src={deckBackdrop} alt="" aria-hidden style={{

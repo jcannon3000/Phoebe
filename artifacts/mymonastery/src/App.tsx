@@ -628,6 +628,24 @@ const PERSISTED_QUERY_KEYS = [
   // the last copy on your phone", and without this the counts and the
   // pray-through were empty with no connection.
   "/api/prayer-intentions",
+  /**
+   * THE THREE THE HOME ACTUALLY WAITS ON.
+   *
+   * useRhythmState's first-paint gate holds the skeleton until taizeLatest,
+   * andrewsLatest and weeklyLatest have resolved — and none of them was
+   * persisted, so for anyone with Taizé, Andrew's or a weekly in their rhythm
+   * the "instant home" waited on a live round-trip on every cold open. The
+   * offline escape in that gate doesn't fire on flaky-but-connected cellular,
+   * where a GET has twelve seconds to answer. This is the whole point of the
+   * persister, and these were the keys outside it.
+   */
+  "/api/taize/latest",
+  "/api/andrews/latest",
+  "/api/me/group-reflection/latest",
+  // Read by the home's own cards on the same paint.
+  "/api/me/contemplation-sides-today",
+  "/api/me/novena",
+  "/api/vts/today-meta",
 ];
 /**
  * A STORAGE HANDLE THAT CANNOT THROW ON THE WAY IN.

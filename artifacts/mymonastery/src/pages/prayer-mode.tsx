@@ -324,8 +324,17 @@ function AmenButton({ slideKey, onAdvance }: {
         try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "medium" } })); } catch { /* non-fatal */ }
         onAdvance();
       }}
-      disabled={!ready}
-      aria-label="Amen"
+      /**
+       * aria-disabled, NOT disabled — the rule this repo already states twice
+       * (DeckNavPill, visio's hold button) and this one screen missed.
+       * `disabled` removes the button from VoiceOver's swipe order entirely,
+       * so for the three seconds of the Amen hold the ONLY way forward off an
+       * intercession slide did not exist: a blind reader swiped the whole
+       * screen, found nothing, and the button then appeared with no
+       * announcement. The onClick below already no-ops while !ready.
+       */
+      aria-disabled={!ready}
+      aria-label={ready ? "Amen" : "Amen — stay with this prayer a moment longer"}
       className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide active:scale-[0.98] relative overflow-hidden"
       style={{
         background: ready ? "var(--oh-cta, #2D5E3F)" : "rgba(var(--ot-green, 46,107,64),0.18)",

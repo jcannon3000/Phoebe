@@ -79,6 +79,7 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { canPrayOnVenite, veniteOfficeUrl } from "@/lib/venite";
 import { PointedLine } from "@/components/PointedLine";
 import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
+import { DeckAnnouncer } from "@/components/DeckAnnouncer";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
 // Visual chrome mirrors Lectio: dark forest background, top-bar with
@@ -3152,6 +3153,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         animation: "office-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) backwards",
       }}
     >
+      {/* Says the slide out loud when it changes — see DeckAnnouncer. Without
+          it, Next changed the whole screen and announced nothing. */}
+      <DeckAnnouncer label={`${sectionLabel}, ${slideIdx + 1} of ${slides.length}${currentSlide.title ? `. ${currentSlide.title}` : ""}`} />
       {/* Creation Prayer: the intercession's Co-Breathe breath (fixed overlay,
           on top). Closing it advances the office to the collect. */}
       {showCreationBreath && (

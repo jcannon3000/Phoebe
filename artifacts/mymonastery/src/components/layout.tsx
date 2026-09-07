@@ -253,8 +253,12 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               className="flex justify-end px-4 pb-2"
               style={{ paddingTop: "var(--top-chrome)" }}
             >
-              <button onClick={onClose} className="p-2 rounded-xl transition-colors" style={{ color: "#8FAF96" }}>
-                <X size={20} />
+              {/* Named, like every other drawer close in this file. Lucide
+                  renders a bare <svg>, so without this VoiceOver announced
+                  only "button" — on the one control that appears on every
+                  screen. */}
+              <button onClick={onClose} aria-label={t("common.close", { defaultValue: "Close menu" })} className="p-2 rounded-xl transition-colors" style={{ color: "#8FAF96" }}>
+                <X size={20} aria-hidden="true" />
               </button>
             </div>
 
@@ -903,7 +907,11 @@ function DailyProgressPill() {
         color: "#C8D4C0",
         border: "1px solid rgba(200,212,192,0.18)",
       }}
-      aria-label={t("header.daily_progress", { defaultValue: "Daily Progress" })}
+      /* The dots themselves are aria-hidden, so without the count in here the
+         app's headline completion signal was invisible to VoiceOver. */
+      aria-label={dotDefs.length > 0
+        ? `${t("header.daily_progress", { defaultValue: "Daily Progress" })} — ${dotDefs.filter((d) => d.done).length} of ${dotDefs.length} kept today`
+        : t("header.daily_progress", { defaultValue: "Daily Progress" })}
     >
       <span className="whitespace-nowrap">{t("header.daily_progress", { defaultValue: "Daily Progress" })}</span>
       {(() => {
