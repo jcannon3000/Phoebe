@@ -414,6 +414,8 @@ export function CobreatheBreath({
   const startRef = useRef(syncedNow());
   const countStartRef = useRef(Math.ceil(startRef.current / CYCLE_MS) * CYCLE_MS);
   const reachedRef = useRef(false);
+  /** Elapsed seconds at the moment the twelfth breath landed. */
+  const reachedElapsedRef = useRef(0);
   // Presence gate: a breath only counts if the page/app stayed open and
   // visible the whole time. If the tab is backgrounded / the app is
   // sent to the background long enough that you couldn't have been
@@ -699,6 +701,10 @@ export function CobreatheBreath({
       // time — a backgrounded tab/app that "completed" the count doesn't count.
       if (!reachedRef.current && !invalidRef.current && completed >= totalBreaths) {
         reachedRef.current = true;
+        // The seconds the SET took. Everything after this is the summary
+        // screen, not breathing, and must never be added to it — see the
+        // unmount commit below.
+        reachedElapsedRef.current = Math.round((syncedNow() - startRef.current) / 1000);
         // The payoff when all twelve breaths are kept: a GENTLE swell haptic
         // (soft rise-and-fall, no jolts) paired with Phoebe's swell tone — a calm
         // exhale of a moment, not a buzz. See `breath-complete` in native-shell.
@@ -774,7 +780,26 @@ export function CobreatheBreath({
        */
       if (!endedRef.current) {
         endedRef.current = true;
-        const kept = Math.round((syncedNow() - startRef.current) / 1000);
+        /**
+         * END AT THE BREATHS KEPT — never at "now".
+         *
+         * I wrote this commit earlier today so Android's Back wouldn't throw
+         * the breaths away, and measured it from startRef to the moment of
+         * unmount. That is right only while the set is still running. Once the
+         * twelfth breath has landed, the clock keeps running through the
+         * summary screen: breathe the set (~2.4 min), lock the phone, come
+         * back three hours later and press Back, and it billed 10,944 seconds
+         * — clamped by the server to a SIXTY-MINUTE contemplation sit, and
+         * floor(10944/12) = 912 breaths added to the place's public tally
+         * (clamped to 500). One set of twelve.
+         *
+         * So: the reached time if it was reached, the pre-background time if
+         * it was backgrounded, and only otherwise the live elapsed.
+         */
+        const live = Math.round((syncedNow() - startRef.current) / 1000);
+        const kept = reachedRef.current
+          ? reachedElapsedRef.current
+          : (hiddenElapsed > 0 ? hiddenElapsed : live);
         if (kept > 0) onEnd(kept, reachedRef.current);
       }
     };

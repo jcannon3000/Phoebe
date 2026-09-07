@@ -255,6 +255,9 @@ export function ContemplationTimer({
   const [recordedSessionId, setRecordedSessionId] = useState<number | null>(null);
 
   const endAtRef = useRef<number>(0);
+  /** Overtime as an ACCUMULATOR (seconds), and when it last advanced. */
+  const overtimeRef = useRef(0);
+  const lastOvertimeTickRef = useRef(0);
   const startedAtRef = useRef<Date | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const recordedRef = useRef(false);
@@ -418,7 +421,8 @@ export function ContemplationTimer({
         begin(startMinutes);
       } else {
         setReachedGoal(false);
-        setOvertime(0);
+        overtimeRef.current = 0; lastOvertimeTickRef.current = 0;
+    setOvertime(0);
         setPhase("picker");
         phaseRef.current = "picker";
         setCustomMode(false);
@@ -437,22 +441,48 @@ export function ContemplationTimer({
   // ── Countdown loop. Remaining is derived from an absolute end time so
   // a backgrounded tab resyncs correctly on return rather than drifting.
   // Reaching the end time doesn't stop the sit — it rings the bell and
-  // flips into a count-up (overtime), which keeps accruing until the
-  // user ends. Overtime is measured from the goal time, not from when
-  // the JS catches up, so a locked/backgrounded sit credits correctly.
+  /**
+   * OVERTIME ACCRUES ONLY WHILE YOU ARE ACTUALLY HERE.
+   *
+   * It used to be `now - endAt`, with a comment saying that made a
+   * locked/backgrounded sit "credit correctly". It did the opposite, and on
+   * the app's OWN advice: the sit schedules a bell precisely so you can put
+   * the phone down. Set 20 minutes, put it down, come back an hour later and
+   * tap End — the client posted 4,800 seconds and the server clamped it to a
+   * SIXTY-MINUTE sit. One sit completing a 20-minute goal three times over,
+   * and the history, the averages and the weekly grid all wrong.
+   *
+   * The countdown itself still reads the clock (a frozen tab wakes with the
+   * right time remaining) — it is only the count-UP that is now an
+   * accumulator, advanced per tick and only while the page is visible. Each
+   * step is clamped so a throttled tab still counts its real seconds while a
+   * long freeze credits nothing. usePrayerSession excludes background time
+   * from an office for the same reason; this brings the sit into line.
+   */
   useEffect(() => {
     if (phase !== "running") return;
+    const MAX_STEP_MS = 1500; // 6 ticks — throttling counts, a freeze does not
     const tick = () => {
       const now = Date.now();
       if (reachedRef.current) {
-        setOvertime(Math.max(0, (now - endAtRef.current) / 1000));
+        const since = now - lastOvertimeTickRef.current;
+        lastOvertimeTickRef.current = now;
+        const visible = typeof document === "undefined" || !document.hidden;
+        if (visible && since > 0) overtimeRef.current += Math.min(since, MAX_STEP_MS) / 1000;
+        setOvertime(overtimeRef.current);
         return;
       }
       const left = Math.max(0, (endAtRef.current - now) / 1000);
       setRemaining(left);
       if (left <= 0) {
         reachGoal();
-        setOvertime(Math.max(0, (now - endAtRef.current) / 1000));
+        // Start the count-up from the goal instant, not from whenever the JS
+        // caught up — that part of the old behaviour was right.
+        lastOvertimeTickRef.current = Math.max(endAtRef.current, now - MAX_STEP_MS);
+        const since = now - lastOvertimeTickRef.current;
+        overtimeRef.current = Math.max(0, Math.min(since, MAX_STEP_MS) / 1000);
+        lastOvertimeTickRef.current = now;
+        setOvertime(overtimeRef.current);
       }
     };
     tick();
@@ -626,6 +656,7 @@ export function ContemplationTimer({
     primeAudio();
     setSatSeconds(0);
     setReachedGoal(false);
+    overtimeRef.current = 0; lastOvertimeTickRef.current = 0;
     setOvertime(0);
     // Clear last sit's companion data so it doesn't flash on the new
     // summary screen before the fetch for THIS sit returns.
@@ -706,6 +737,7 @@ export function ContemplationTimer({
     reachedRef.current = false;
     finishedRef.current = false;
     setReachedGoal(false);
+    overtimeRef.current = 0; lastOvertimeTickRef.current = 0;
     setOvertime(0);
     setPhase("running");
     phaseRef.current = "running";
@@ -790,7 +822,8 @@ export function ContemplationTimer({
   function endSit() {
     const now = Date.now();
     if (reachedRef.current) {
-      const over = Math.max(0, (now - endAtRef.current) / 1000);
+      // The accrued overtime, not the wall clock since the goal.
+      const over = Math.max(0, overtimeRef.current);
       finish(totalSeconds + over, false);
     } else {
       const left = Math.max(0, (endAtRef.current - now) / 1000);
