@@ -3130,6 +3130,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         height: "var(--app-dvh)",
         overflow: "hidden",
         overscrollBehavior: "none",
+        /**
+         * NO SELECTION LOUPE OVER THE OFFICE. On iOS a long press on the psalm
+         * or the lesson raises the selection handles and the Copy / Look Up
+         * bar across the slide, and it stays until you tap the page — which
+         * this deck reads as "advance". Nothing here is meant to be selected;
+         * the reading itself opens in the reader, where selection belongs.
+         */
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        WebkitTouchCallout: "none",
         background: BG,
         color: WARM_TEXT,
         display: "flex",

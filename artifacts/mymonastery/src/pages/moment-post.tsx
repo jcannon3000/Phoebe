@@ -193,7 +193,7 @@ function BcpPracticeView({
 
       {/* Fixed bottom: "I prayed" button */}
       {!alreadyPosted && !posted && (
-        <div className="fixed bottom-0 left-0 right-0 px-5 pb-[env(safe-area-inset-bottom)] z-50" style={{ background: bgColor, borderTop: `1px solid rgba(232,228,216,0.1)` }}>
+        <div className="fixed bottom-0 left-0 right-0 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] z-50" style={{ background: bgColor, borderTop: `1px solid rgba(232,228,216,0.1)` }}>
           <div className="max-w-md mx-auto py-4">
             <button
               onClick={() => postMutation.mutate({ isCheckin: true })}
@@ -635,7 +635,7 @@ function IntercessionPrayerPage({
 
       {/* Floating bottom Amen button — always visible when on prayer screen */}
       {confirmStep === "prayer" && (
-        <div className="fixed bottom-0 left-0 right-0 px-5 pb-[env(safe-area-inset-bottom)] z-50" style={{ background: "linear-gradient(to top, #0C1F12 60%, transparent)" }}>
+        <div className="fixed bottom-0 left-0 right-0 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] z-50" style={{ background: "linear-gradient(to top, #0C1F12 60%, transparent)" }}>
           <div className="max-w-md mx-auto py-4">
             {postFailed && (
               <p className="text-center text-sm text-red-400 mb-2">
@@ -1285,7 +1285,7 @@ export default function MomentPostPage() {
 
         {/* Fixed bottom check-in button */}
         {!fastingConfirmed && (
-          <div className="fixed bottom-0 left-0 right-0 px-6 pb-[env(safe-area-inset-bottom)] z-50" style={{ background: "#091A10", borderTop: "1px solid rgba(46,107,64,0.15)" }}>
+          <div className="fixed bottom-0 left-0 right-0 px-6 pb-[max(1rem,env(safe-area-inset-bottom))] z-50" style={{ background: "#091A10", borderTop: "1px solid rgba(46,107,64,0.15)" }}>
             <div className="max-w-md mx-auto py-4">
               {postMutation.isError && (
                 <p className="text-center text-sm mb-2" style={{ color: "#C17F24" }}>{t("moment_post.couldnt_save_tap")}</p>
@@ -1450,7 +1450,7 @@ export default function MomentPostPage() {
 
       {/* Fixed bottom submit button */}
       {!alreadyPosted && effectiveWindowOpen && !posted && (
-        <div className="fixed bottom-0 left-0 right-0 bg-[#F5EDD8] border-t border-[#c9b99a]/30 px-4 pb-[env(safe-area-inset-bottom)] z-50">
+        <div className="fixed bottom-0 left-0 right-0 bg-[#F5EDD8] border-t border-[#c9b99a]/30 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] z-50">
           <div className="max-w-md mx-auto py-4">
             {postMutation.isError && (
               <p className="text-center text-sm text-red-600 mb-2">{t("moment_post.couldnt_save_tap")}</p>

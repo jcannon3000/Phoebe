@@ -332,7 +332,10 @@ export function MorningPrayerSlideshow({
         <div
           style={{
             position: "fixed",
-            top: 12,
+            // …below the status bar, not under it. With viewport-fit=cover and
+            // black-translucent, an installed Home-Screen PWA runs content
+            // under the clock; a bare top:12 put the slide counter on it.
+            top: "calc(var(--safe-top, 0px) + 12px)",
             right: 16,
             fontSize: 12,
             color: "rgba(44,24,16,0.4)",

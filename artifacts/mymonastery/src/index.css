@@ -248,10 +248,17 @@ textarea:focus {
   animation: btn-pulse 4s ease-in-out infinite;
   transform: translateZ(0);
 }
-.btn-sage:hover {
-  animation: none;
-  box-shadow: 0 6px 24px rgba(45,94,63,0.5);
-  transform: translateY(-1px);
+/* Hover only where a pointer can actually hover. On a touchscreen Safari
+   applies :hover on tap and leaves it applied: the sign-in button kept the
+   lifted state and its invitation pulse stayed stopped, indefinitely, after
+   you pressed it. (Tailwind v4 wraps its own hover: utilities this way; these
+   hand-written rules were the ones that missed out.) */
+@media (hover: hover) {
+  .btn-sage:hover {
+    animation: none;
+    box-shadow: 0 6px 24px rgba(45,94,63,0.5);
+    transform: translateY(-1px);
+  }
 }
 .btn-sage:active {
   transform: translateY(0px);
@@ -287,9 +294,11 @@ textarea:focus {
   box-shadow: 0 2px 12px rgba(0,0,0,0.3);
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
-.card-elevated:hover {
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-  transform: translateY(-2px);
+@media (hover: hover) {
+  .card-elevated:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    transform: translateY(-2px);
+  }
 }
 
 @layer base {
@@ -818,3 +827,23 @@ a:active,
 }
 .phoebe-card-outline-pulse { animation: phoebeCardOutlinePulse 0.425s ease-out 1 both; }
 @media (prefers-reduced-motion: reduce) { .phoebe-card-outline-pulse { animation: none; } }
+
+
+/**
+ * TAILWIND'S SCREEN-HEIGHT UTILITIES ARE `100vh`, WHICH IS THE LARGE VIEWPORT.
+ *
+ * The --app-dvh migration caught every inline style and missed the class:
+ * `min-h-screen` compiles to `min-height: 100vh` and wraps EVERY Layout page
+ * (components/layout.tsx), while #root is 100dvh. On iPhone Safari that makes
+ * the shell taller than the root by the height of the toolbars, so every page
+ * scrolls by that much even when its content fits — the last home card sits
+ * under the tab bar, and the toolbars minimize on a page with nothing to
+ * scroll. Roughly fifty sites, including the sign-in and public pages.
+ *
+ * Unlayered on purpose: Tailwind v4 emits its utilities inside @layer, and
+ * unlayered rules win over layered ones regardless of order, so this overrides
+ * the utility without an !important and without touching fifty call sites.
+ */
+.min-h-screen { min-height: var(--app-dvh); }
+.h-screen     { height:     var(--app-dvh); }
+.max-h-screen { max-height: var(--app-dvh); }

@@ -4212,6 +4212,11 @@ export default function PrayerModePage() {
         ...officeThemeStyle(display.backdrop, display.font),
         background: "var(--oh-bg, #0C1F12)",
         minHeight: "var(--app-dvh)",
+        // Same as the office: a long press on someone's prayer request raised
+        // the iOS selection loupe over the slide.
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        WebkitTouchCallout: "none",
         opacity: visible ? 1 : 0,
         transition: "opacity 0.5s ease",
         position: "relative",

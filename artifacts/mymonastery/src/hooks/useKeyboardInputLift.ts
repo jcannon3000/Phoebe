@@ -15,7 +15,20 @@ export function useKeyboardInputLift(): void {
     if (!vv) return undefined;
     let raf = 0;
     let paddedEl: HTMLElement | null = null;
-    const inset = () => Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    /**
+     * NO offsetTop IN THE KEYBOARD HEIGHT.
+     *
+     * The keyboard's height is innerHeight − visualViewport.height. Subtracting
+     * offsetTop as well is wrong on iOS specifically: when Safari scrolls a
+     * focused field into view it shifts the visual viewport inside the layout
+     * viewport, so offsetTop goes positive — and it goes most positive for a
+     * field near the BOTTOM, which is exactly the case this hook exists to
+     * rescue. The measured height then collapses toward zero, the `kb <= 0`
+     * guard below returns, and the lift silently never happens. (The hook's
+     * header describes Capacitor's KeyboardResize.None; on the web build the
+     * premise differs, and this is where it showed.)
+     */
+    const inset = () => Math.max(0, window.innerHeight - vv.height);
     const clearPadding = () => {
       if (paddedEl) { paddedEl.style.paddingBottom = ""; paddedEl = null; }
     };

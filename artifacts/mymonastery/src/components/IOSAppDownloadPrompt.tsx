@@ -32,8 +32,21 @@ import { isNativeShell } from "@/lib/isNativeShell";
 const APP_STORE_URL = "https://apps.apple.com/us/app/phoebe-prayer-together/id6763552921";
 const DISMISS_KEY = "phoebe:ios-app-prompt-dismissed";
 
+/** Already installed to the Home Screen — both siblings check this and this
+ *  one didn't, so a PWA user was nagged to install the App Store app from
+ *  inside the app they had just installed. */
+function isStandalone(): boolean {
+  try {
+    return (
+      window.matchMedia?.("(display-mode: standalone)")?.matches === true ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true
+    );
+  } catch { return false; }
+}
+
 function isIOSWeb(): boolean {
   if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  if (isStandalone()) return false;
   // iOS UA detection — both iPhone/iPad and iPad-on-desktop-mode
   // (which reports Macintosh + touch). The latter is rare on modern
   // iPads but cheap to detect.
