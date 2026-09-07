@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, inArray, and, isNull, ne, gt } from "drizzle-orm";
-import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerRequestAmensTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable } from "@workspace/db";
+import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerRequestGroupsTable, prayerRequestAmensTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
+import { getGardenUserIds, getUserGroupIds } from "../lib/garden";
 
 const router: IRouter = Router();
 
@@ -729,7 +730,25 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     avatarUrl = personData?.avatarUrl ?? null;
   }
 
-  if (personUser) {
+  /**
+   * THE PRAYER-REQUEST BODY IS GATED BY THE GARDEN, NOT BY CO-MEMBERSHIP.
+   *
+   * `sharedGroups` above is raw group_members co-membership: no joinedAt
+   * check, no exclusion of large PUBLIC communities, no hidden-admin veto.
+   * getGardenUserIds applies all three, and its comment names this exact
+   * leak — "his public 'Compline Nightly' community, 400 followers, prayer
+   * requests never switched on, shows it to all of them". That is what this
+   * route was still doing, and a single shared PRACTICE opened it too.
+   *
+   * The list route also scopes by prayer_request_groups and drops muted
+   * owners; neither filter was applied here, so a request the person had
+   * deliberately narrowed to one private community was readable by anyone
+   * who shared any other community — or one practice — with them.
+   */
+  const gardenIds = personUser ? new Set(await getGardenUserIds(ownerId)) : new Set<number>();
+  const mayReadRequest = !!personUser && !isMuted && gardenIds.has(personUser.id);
+
+  if (personUser && mayReadRequest) {
     const [req] = await db.select({
       id: prayerRequestsTable.id,
       body: prayerRequestsTable.body,
@@ -751,7 +770,22 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         eq(prayerRequestsTable.directOnly, false),
       )
     ).orderBy(desc(prayerRequestsTable.createdAt)).limit(1);
+    // Community scoping, mirrored from the list route: a request narrowed to
+    // specific communities is visible only to someone who shares one of them
+    // (and only where a group admin has not muted it there). No scoping row
+    // means legacy/unscoped, and the garden rule above stands alone.
+    let scopedOut = false;
     if (req) {
+      const scopeRows = await db
+        .select({ groupId: prayerRequestGroupsTable.groupId, mutedAt: prayerRequestGroupsTable.mutedAt })
+        .from(prayerRequestGroupsTable)
+        .where(eq(prayerRequestGroupsTable.requestId, req.id));
+      if (scopeRows.length > 0) {
+        const viewerGroupSet = new Set(await getUserGroupIds(ownerId));
+        scopedOut = !scopeRows.some(r => viewerGroupSet.has(r.groupId) && r.mutedAt == null);
+      }
+    }
+    if (req && !scopedOut) {
       // Check if the viewing user already left a word
       let myWord: string | null = null;
       if (owner) {
