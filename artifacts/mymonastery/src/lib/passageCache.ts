@@ -15,7 +15,6 @@
  */
 import { PASSAGES, storeGet, storePut, storePrune, storeKeys, storeDelete } from "@/lib/offlineStore";
 import { boundedFetch } from "@/lib/boundedFetch";
-import { isOnline } from "@/lib/offline";
 
 /**
  * THE PARSER THAT WROTE THE ENTRY.
@@ -32,7 +31,6 @@ import { isOnline } from "@/lib/offline";
 // attributes, and the tag-strip ended at the first ">" inside them — the owner
 // read `him');" onmouseout="return nd();"` in the middle of Job 25 on his
 // phone. Entries saved before v3 carry that, so they are re-fetched.
-const PASSAGE_PARSER_VERSION = 3;
 
 const MAX_AGE_MS = 45 * 24 * 60 * 60 * 1000;
 
@@ -64,6 +62,3 @@ export async function purgeExtractedPassages(): Promise<void> {
   for (const key of await storeKeys(PASSAGES)) await storeDelete(PASSAGES, key);
 }
 
-export function prunePassages(): Promise<void> {
-  return storePrune(PASSAGES, MAX_AGE_MS);
-}

@@ -217,10 +217,6 @@ const OFFLINE_ROUTES = [
   ...OFFLINE_PRACTICES.map((p) => p.href.split("?")[0] ?? p.href),
   "/bcp/daily-office", "/offline", "/dashboard", "/daily-progress",
 ];
-export function pathWorksOffline(path: string): boolean {
-  const p = (path.split("?")[0] ?? path).replace(/\/+$/, "") || "/";
-  return p === "/" || OFFLINE_ROUTES.some((r) => r === p || p.startsWith(`${r}/`));
-}
 
 /**
  * Is a HOME CARD one of the offline practices? Card keys are the rhythm's:
