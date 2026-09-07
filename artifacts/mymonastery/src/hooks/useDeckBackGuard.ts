@@ -29,9 +29,15 @@ export function useDeckBackGuard(opts: {
   onBack: () => void;
 }): void {
   const { active, atStart } = opts;
-  // Read through a ref so re-arming doesn't depend on the callback's identity.
+  // Read through refs so re-arming doesn't depend on the callback's identity,
+  // and so the popstate handler can see the CURRENT slide position rather than
+  // the one captured when it was registered.
   const onBackRef = useRef(opts.onBack);
   onBackRef.current = opts.onBack;
+  const atStartRef = useRef(atStart);
+  atStartRef.current = atStart;
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const armed = useRef(false);
 
   useEffect(() => {
@@ -54,9 +60,23 @@ export function useDeckBackGuard(opts: {
     const onPop = () => {
       if (!armed.current) return;
       armed.current = false;
-      // Step the deck; the effect re-runs and lays a fresh spare unless this
-      // took us to the first slide, where Back should be free to leave.
       onBackRef.current();
+      /**
+       * LAY A FRESH SPARE, HERE — not by waiting for the effect.
+       *
+       * The effect's deps are [active, atStart], and stepping from slide 5 to
+       * 4 changes neither, so it does not re-run and nothing re-arms: the
+       * FIRST Back stepped the deck and the second left the office. Verified
+       * on the live Android build. Re-arming after the step has been applied
+       * (hence the timeout, so atStartRef is current) means Back keeps
+       * walking the deck back, and stops guarding once the first slide is
+       * reached — where Back should be free to leave.
+       */
+      setTimeout(() => {
+        if (!activeRef.current || atStartRef.current || armed.current) return;
+        window.history.pushState({ phoebeDeckGuard: true }, "");
+        armed.current = true;
+      }, 0);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
