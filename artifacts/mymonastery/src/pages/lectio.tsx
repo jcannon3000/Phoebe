@@ -8,6 +8,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { openExternal, openOfficeReading, hasNativeBrowser } from "@/lib/openExternal";
 import { openReadingPage } from "@/lib/openExternal";
+import { getSavedPage } from "@/lib/pageCache";
 import { toast } from "@/hooks/use-toast";
 import { isOnline } from "@/lib/offline";
 import { X } from "lucide-react";
@@ -164,8 +165,39 @@ export default function LectioPage() {
    * phoebe:office-{prev,next}-slide), a plain tab on web, where there is no
    * chrome to build over someone else's page.
    */
+  /**
+   * THE SAVED PAGE IS WARMED AHEAD, so arriving at a text beat opens the
+   * reader at once (owner, 2026-09-06: "the prompt flashes while the scripture
+   * loads").
+   *
+   * The deck advances to the beat FIRST and an effect opens the passage after
+   * — which was instant while the open was synchronous. Asking the page store
+   * on the way in put an await between the two, and the beat's prompt showed
+   * for that gap. The lookup now happens when the reading is chosen, so the
+   * tap itself has nothing to wait for.
+   */
+  const savedPageRef = useRef<string | null>(null);
+  useEffect(() => {
+    savedPageRef.current = null;
+    if (!chosen?.readUrl) return;
+    let cancelled = false;
+    void getSavedPage(chosen.readUrl).then((page) => { if (!cancelled) savedPageRef.current = page?.html ?? null; });
+    return () => { cancelled = true; };
+  }, [chosen]);
+
   const openPassage = (n: number) => {
     if (!chosen) return;
+    // Warm: open in the same tick, no await between the beat and the reader.
+    const warm = savedPageRef.current;
+    if (warm) {
+      openOfficeReading(chosen.readUrl, {
+        officeTitle: "Lectio Divina",
+        slideLabel: `${n} of ${LAST}`,
+        sectionLabel: sectionLabelFor(n),
+        savedHtml: warm,
+      });
+      return;
+    }
     // The SAVED PAGE in the same reader first (see openReadingPage) — the
     // offline reading is the online reading. Then the old sheet for a reading
     // we never saved, then the live reader.

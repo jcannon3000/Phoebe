@@ -42,6 +42,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { openExternal, openOfficeReading, preloadExternal } from "@/lib/openExternal";
 import { openReadingPage } from "@/lib/openExternal";
+import { getSavedPage } from "@/lib/pageCache";
 import { toast } from "@/hooks/use-toast";
 import { isOnline } from "@/lib/offline";
 import { cachedImageUrl } from "@/lib/imageCache";
@@ -981,10 +982,31 @@ export default function VisioPage() {
    * over oremus's own page. Coming back through Next lands on the
    * contemplation beat, which is where the looking resumes.
    */
+  // Warmed when the passage is known, so the reader opens in the same tick as
+  // the tap — see the note in lectio.tsx on the prompt flashing.
+  const savedPageRef = useRef<string | null>(null);
+  useEffect(() => {
+    savedPageRef.current = null;
+    if (!passageUrl) return;
+    let cancelled = false;
+    void getSavedPage(passageUrl).then((page) => { if (!cancelled) savedPageRef.current = page?.html ?? null; });
+    return () => { cancelled = true; };
+  }, [passageUrl]);
+
   const openReading = () => {
     if (!passageUrl) return;
     setReadPassage(true);
     handedOff.current = true;
+    const warm = savedPageRef.current;
+    if (warm) {
+      openOfficeReading(passageUrl, {
+        officeTitle: t("visio.title", { defaultValue: "Visio Divina" }),
+        slideLabel: `${step + 1} of ${TOTAL}`,
+        sectionLabel: "",
+        savedHtml: warm,
+      });
+      return;
+    }
     // The SAVED PAGE in the same reader first (openReadingPage) — Visio's
     // reading is an oremus page like the offices', and offline it should be
     // that page, not a re-rendering of its text. Then the old sheet, then live.
