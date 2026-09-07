@@ -11,6 +11,7 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable, betaUsersTable } from "@workspace/db";
 import { buildRoutineAudit } from "../lib/routineAudit";
+import { sendRoutineAuditPush } from "../lib/pushSender";
 import { perUserRateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
@@ -156,6 +157,41 @@ router.post("/me/routine-audit/apply", perUserRateLimit("routine_audit_apply", {
   } catch (err) {
     console.error("[routine-audit] apply failed:", err);
     res.status(500).json({ error: "apply_failed" });
+  }
+});
+
+/**
+ * POST /api/me/routine-audit/fire-now — send MYSELF the audit push, now.
+ *
+ * The owner reported the Sunday push arriving on desktop and not on their
+ * iPhone (2026-09-06), and there was no way to check it without waiting a week
+ * and then reading Railway. This runs the audit for the caller, sends the real
+ * push through the real sender, and RETURNS THE DELIVERY COUNTS — so
+ * "did it even try my phone?" has a number instead of a guess.
+ *
+ * Admin-only like the rest of the feature, and it deliberately does not touch
+ * routineAuditNudgeSentDate, so Sunday's send is unaffected and this can be
+ * run as many times as it takes.
+ */
+router.post("/me/routine-audit/fire-now", async (req, res): Promise<void> => {
+  const userId = getUserId(req);
+  if (!userId) { res.status(401).json({ error: "not_authenticated" }); return; }
+  if (!(await isSuperAdmin(userId))) { res.status(403).json({ error: "admin_only" }); return; }
+  try {
+    const findings = await buildRoutineAudit(userId);
+    const result = await sendRoutineAuditPush(userId, { count: Math.max(findings.length, 1) });
+    res.json({
+      ok: true,
+      findings: findings.length,
+      // What the sender actually managed, per surface.
+      deviceAttempted: result.deviceAttempted,
+      deviceSucceeded: result.deviceSucceeded,
+      webSucceeded: result.webSucceeded,
+      invalidated: result.invalidated,
+    });
+  } catch (err) {
+    console.error("[routine-audit] fire-now failed:", err);
+    res.status(500).json({ error: "fire_failed" });
   }
 });
 

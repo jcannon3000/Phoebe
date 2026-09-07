@@ -402,6 +402,27 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
     result.invalidated += invalidWebSubIds.length;
   }
 
+  /**
+   * "IT CAME TO MY DESKTOP BUT NOT MY PHONE" IS NOW VISIBLE.
+   *
+   * Per-device failures never threw — they were counted and returned, and
+   * every caller ignored the counts. So a push that reached the browser and
+   * failed at APNs looked, in the logs, exactly like a push that went
+   * everywhere; the owner reported this for the routine audit (2026-09-06)
+   * and there was nothing on the server to check it against. One line here
+   * covers every sender rather than the one that happened to be noticed.
+   */
+  if (result.deviceAttempted > 0 && result.deviceSucceeded === 0) {
+    logger.warn({
+      userId,
+      path: payload.path,
+      threadId: payload.threadId,
+      deviceAttempted: result.deviceAttempted,
+      webSucceeded: result.webSucceeded,
+      invalidated: result.invalidated,
+    }, "[push] every device token failed for this user — web only");
+  }
+
   return result;
 }
 
