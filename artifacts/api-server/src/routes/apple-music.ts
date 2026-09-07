@@ -19,9 +19,19 @@
 // client falls back to Spotify / paste-a-link.
 
 import { Router, type Request, type Response } from "express";
+import { rateLimit } from "../lib/rate-limit";
 import { SignJWT, importPKCS8 } from "jose";
 
 const router = Router();
+
+// 60 searches a minute per person is far above real use and far below
+// anything that would get our developer key throttled.
+const catalogSearchLimit = rateLimit({
+  name: "catalog-search",
+  max: 60,
+  windowMs: 60_000,
+  keyFn: (req) => (req.user ? String((req.user as { id: number }).id) : null),
+});
 
 // Apple developer tokens are long-lived; sign once and reuse (re-sign well
 // before expiry). Module-scoped cache.
@@ -85,7 +95,17 @@ function map(kind: "artist" | "song" | "album" | "playlist", rows: AppleData[]):
 }
 
 // GET /api/apple-music/search?term=...&storefront=us
-router.get("/apple-music/search", async (req: Request, res: Response): Promise<void> => {
+router.get("/apple-music/search", catalogSearchLimit, async (req: Request, res: Response): Promise<void> => {
+  /**
+   * SIGNED IN, AND RATE-LIMITED.
+   *
+   * This forwards to Apple/Spotify signed with OUR developer token. Left
+   * open, anyone on the internet could use it as a free catalogue-search
+   * proxy on our key — and the only ceiling was the global 1000/min/IP
+   * backstop. A session is the right bar rather than admin-only: Audio
+   * Divina's own search runs through here for every signed-in person.
+   */
+  if (!req.user) { res.status(401).json({ error: "Unauthorized" }); return; }
   const term = String(req.query.term ?? "").trim();
   if (!term) { res.json({ results: [] }); return; }
   const storefront = String(req.query.storefront ?? "us").replace(/[^a-z]/gi, "").slice(0, 2).toLowerCase() || "us";
@@ -139,7 +159,17 @@ type AppleAlbumRow = {
 // audio-library tool's preview screen (search only returns summary rows).
 // Apple includes the `tracks` relationship on a single-album fetch by
 // default — no ?include= needed.
-router.get("/apple-music/album/:id", async (req: Request, res: Response): Promise<void> => {
+router.get("/apple-music/album/:id", catalogSearchLimit, async (req: Request, res: Response): Promise<void> => {
+  /**
+   * SIGNED IN, AND RATE-LIMITED.
+   *
+   * This forwards to Apple/Spotify signed with OUR developer token. Left
+   * open, anyone on the internet could use it as a free catalogue-search
+   * proxy on our key — and the only ceiling was the global 1000/min/IP
+   * backstop. A session is the right bar rather than admin-only: Audio
+   * Divina's own search runs through here for every signed-in person.
+   */
+  if (!req.user) { res.status(401).json({ error: "Unauthorized" }); return; }
   const id = String(req.params.id ?? "").trim();
   if (!id) { res.status(400).json({ error: "bad_id" }); return; }
   const storefront = String(req.query.storefront ?? "us").replace(/[^a-z]/gi, "").slice(0, 2).toLowerCase() || "us";

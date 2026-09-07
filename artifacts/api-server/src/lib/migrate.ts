@@ -2057,12 +2057,32 @@ export async function migrate() {
     // both "deleted account" and "never-signed-up invitee" rows; we
     // narrow to rows that had real activity (calendar connected OR
     // posts logged) so pending email invites stay alive.
+    /**
+     * NARROWED TO THE ROWS THE NEXT STATEMENT ACTUALLY DELETES.
+     *
+     * This used to delete a post whenever its token's email was absent from
+     * `users` — full stop. But an ACCOUNT-LESS GUEST is a supported case:
+     * POST /moments/:momentToken/join creates a moment_user_tokens row for an
+     * arbitrary email with no users row, and lib/ws.ts describes those guests
+     * as first-class. migrate() runs on EVERY boot, so this was not a
+     * one-time cleanup — it deleted every reflection and photo those guests
+     * had ever posted, again, on each deploy.
+     *
+     * The token sweep below is narrowed to rows with real activity so pending
+     * invites stay alive; the posts sweep carries the SAME conditions now, so
+     * the two can only ever remove the same people.
+     */
     await run(client, `
       DELETE FROM moment_posts mp
       WHERE EXISTS (
         SELECT 1 FROM moment_user_tokens mut
         WHERE mut.user_token = mp.user_token
           AND LOWER(mut.email) NOT IN (SELECT LOWER(email) FROM users)
+          AND (
+            mut.calendar_connected = true
+            OR mut.personal_time IS NOT NULL
+            OR mut.google_calendar_event_id IS NOT NULL
+          )
       )
     `);
     await run(client, `

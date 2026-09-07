@@ -13,8 +13,18 @@
 // Until those are set, catalogue lookups return { configured: false } and
 // the admin tool falls back to pasting a Spotify link by hand.
 import { Router, type Request, type Response } from "express";
+import { rateLimit } from "../lib/rate-limit";
 
 const router = Router();
+
+// 60 searches a minute per person is far above real use and far below
+// anything that would get our developer key throttled.
+const catalogSearchLimit = rateLimit({
+  name: "catalog-search",
+  max: 60,
+  windowMs: 60_000,
+  keyFn: (req) => (req.user ? String((req.user as { id: number }).id) : null),
+});
 
 let cached: { token: string; expMs: number } | null = null;
 
@@ -65,7 +75,17 @@ router.get("/spotify-catalog/status", async (_req: Request, res: Response): Prom
 // { album: null } rather than an error when nothing matches or Spotify
 // isn't configured — this is a convenience, not a required step, since the
 // admin can always paste a Spotify link by hand.
-router.get("/spotify-catalog/match-album", async (req: Request, res: Response): Promise<void> => {
+router.get("/spotify-catalog/match-album", catalogSearchLimit, async (req: Request, res: Response): Promise<void> => {
+  /**
+   * SIGNED IN, AND RATE-LIMITED.
+   *
+   * This forwards to Apple/Spotify signed with OUR developer token. Left
+   * open, anyone on the internet could use it as a free catalogue-search
+   * proxy on our key — and the only ceiling was the global 1000/min/IP
+   * backstop. A session is the right bar rather than admin-only: Audio
+   * Divina's own search runs through here for every signed-in person.
+   */
+  if (!req.user) { res.status(401).json({ error: "Unauthorized" }); return; }
   const title = String(req.query.title ?? "").trim();
   const artist = String(req.query.artist ?? "").trim();
   if (!title) { res.json({ album: null, reason: "no-title" }); return; }
