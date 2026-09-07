@@ -812,61 +812,9 @@ function OfficeReminderSettings() {
         )}
       </SettingsCard>
 
-      {/**
-        * WEEKLY REVIEW REMINDER — the toggle that was described elsewhere in
-        * this file as living "in the office customizer," which turned out to
-        * be nowhere at all. The server has read/written weeklyReviewReminder
-        * on this same /me/office-prefs endpoint the whole time (it defaults
-        * to on), and the Sunday-evening sender itself was separately
-        * commented out of the cron — so there was no notification AND no way
-        * to change whether there should be one. Owner: "I didn't get the
-        * week review notification on my phone, and when I implemented what
-        * it changed it didn't hold." Both halves are fixed: the sender is
-        * back on the schedule, and this is the toggle that was missing.
-        */}
-      <SettingsCard>
-        <p className="text-[12px] font-semibold mb-2" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
-          {t("settings.weekly_review_label", { defaultValue: "Weekly review" })}
-        </p>
-        {([
-          { value: true, label: t("settings.weekly_review_on", { defaultValue: "Remind me Sunday evening" }), sub: t("settings.weekly_review_on_sub", { defaultValue: "A nudge to look back on the week you kept" }) },
-          { value: false, label: t("settings.weekly_review_off", { defaultValue: "No reminder" }), sub: "" },
-        ]).map((opt, i) => {
-          const isSelected = (data?.weeklyReviewReminder ?? true) === opt.value;
-          return (
-            <button
-              key={String(opt.value)}
-              type="button"
-              onClick={() => save.mutate({ weeklyReviewReminder: opt.value })}
-              className="w-full flex items-center gap-3 py-2.5 text-left"
-              style={{
-                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
-                background: "transparent",
-                cursor: "pointer",
-              }}
-            >
-              <div
-                style={{
-                  width: 18, height: 18, borderRadius: "50%",
-                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
-                  background: isSelected ? "#A8C5A0" : "transparent",
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-                  {opt.label}
-                </p>
-                {opt.sub && (
-                  <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
-                    {opt.sub}
-                  </p>
-                )}
-              </div>
-            </button>
-          );
-        })}
-      </SettingsCard>
+      {/* The weekly-review reminder's toggle is gone with the reminder
+          itself (owner, 2026-09-06). A switch for a notification nothing
+          sends is the exact trap this card was added to fix. */}
 
       <SettingsCard>
         <p className="text-[12px] font-semibold mb-2" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>

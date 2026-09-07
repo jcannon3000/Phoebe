@@ -64,6 +64,10 @@ export default function RoutineAuditPage() {
       // home and the customizer don't keep showing the old rhythm.
       qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
       qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
+      // The card list too — the change now moves the home LAYOUT, and the
+      // home reads that from its own query and its local cache.
+      qc.invalidateQueries({ queryKey: ["/api/me/home-layout"] });
+      try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
     } catch {
       setDone((d) => ({ ...d, [i]: "dismissed" }));
     } finally {

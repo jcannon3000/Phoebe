@@ -356,15 +356,9 @@ export default function WayOfLoveWeekPage() {
             {range} · {t("week.status", { defaultValue: "{{done}} of {{total}} practices this week", done: doneCount, total: WEEKLY_KEYS.length })}
           </p>
 
-          {/* Guided weekly review — the Sunday examen. Reachable any time, not
-              just from the push. */}
-          <button
-            type="button"
-            onClick={() => setLocation("/this-week/review")}
-            style={{ width: "100%", background: "#2D5E3F", border: "1px solid rgba(168,197,160,0.4)", color: WARM, borderRadius: 12, padding: "12px 16px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer", marginBottom: 18 }}
-          >
-            {t("week.begin_review", { defaultValue: "Review the week & set the next →" })}
-          </button>
+          {/* The guided weekly review is gone (owner, 2026-09-06: "I don't
+              want this Way of Love review"). Its ROUTE stays so an older push
+              or a bookmark doesn't land on a 404; nothing offers it. */}
 
           {/* The 8-week devotional journey (EDOW) — the formation on-ramp. */}
           <button

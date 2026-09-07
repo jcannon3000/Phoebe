@@ -1324,7 +1324,20 @@ export async function runContemplationGoalSender(opts: { forceNow?: boolean } = 
 // weekStart). Deduped per Sunday via weekly_review_nudge_sent_date.
 const WEEKLY_REVIEW_TIME = "20:00";
 
+/**
+ * OFF (owner, 2026-09-06: "I don't want this Way of Love review … turn
+ * notifications off for it").
+ *
+ * The sender stays on the schedule and returns immediately rather than being
+ * unhooked from the cron: the last time this feature was half-removed, the
+ * sender was commented out of the schedule while the preference stayed on the
+ * account, and the result was a setting that promised a notification nothing
+ * would ever send. One switch, here, where the sending happens.
+ */
+const WEEKLY_REVIEW_NUDGE_ENABLED = false;
+
 export async function runWeeklyReviewSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  if (!WEEKLY_REVIEW_NUDGE_ENABLED) return;
   try {
     const rows = await db
       .select({

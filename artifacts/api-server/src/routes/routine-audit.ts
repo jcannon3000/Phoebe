@@ -93,11 +93,37 @@ router.post("/me/routine-audit/apply", perUserRateLimit("routine_audit_apply", {
       // has to be a real slot.
       if (value !== "" && !SLOT_VALUES.has(value)) { res.status(400).json({ error: "invalid" }); return; }
 
-      const [row] = await db.select({ ruleConfig: usersTable.ruleConfig })
+      const [row] = await db.select({ ruleConfig: usersTable.ruleConfig, homeLayout: usersTable.homeLayout })
         .from(usersTable).where(eq(usersTable.id, userId));
       const cfg = (row?.ruleConfig as { values?: Record<string, string>; updatedAt?: number } | null) ?? {};
       const values = { ...(cfg.values ?? {}) };
       if (value === "") delete values[key]; else values[key] = value;
+
+      /**
+       * AND THE CARD ITSELF. Owner, tapping "Yes, change it" on "you've kept
+       * Creation Prayer 6 times but it isn't part of your rhythm — add it?":
+       * "nothing happened."
+       *
+       * Nothing did. A slot says WHEN a practice rides, and the home reads
+       * whether a practice is on from the LAYOUT (order ∋ key, hidden ∌ key —
+       * homeCardActive). Writing the slot alone added a time of day for a card
+       * that was never turned on, and the same in reverse: dropping the slot
+       * left the card on the home. The layout moves with it now.
+       */
+      const practiceKey = key.slice("phoebe:slot:".length);
+      const layout = (row?.homeLayout as { order?: string[]; hidden?: string[] } | null) ?? null;
+      const order = [...(layout?.order ?? [])];
+      const hidden = [...(layout?.hidden ?? [])];
+      if (value === "") {
+        // Take it off: hidden governs, so naming it there is what turns it off.
+        if (!hidden.includes(practiceKey)) hidden.push(practiceKey);
+      } else {
+        if (!order.includes(practiceKey)) order.push(practiceKey);
+        const at = hidden.indexOf(practiceKey);
+        if (at >= 0) hidden.splice(at, 1);
+      }
+
+      await db.update(usersTable).set({ homeLayout: { order, hidden } }).where(eq(usersTable.id, userId));
       await db.update(usersTable)
         // Bump updatedAt so the device-sync LWW clock treats this as newer than
         // whatever the phone last pushed — without it the next reconcile would
