@@ -80,7 +80,7 @@ export default function ThisSundayPage() {
     if (!sunday) return null;
     const [y, m, d] = sunday.sundayDate.split("-").map(Number);
     const day = getDay(new Date(y!, (m ?? 1) - 1, d ?? 1), { observeLesserFeasts: readLesserFeastsPref() });
-    const proper = /Prop(\d+)/.exec(sunday.url ?? "")?.[1];
+    const proper = /prop(\d+)/i.exec(sunday.url ?? "")?.[1];
     return [day.name, proper ? `Proper ${proper}` : null].filter(Boolean).join(" · ");
   }, [sunday]);
   const readingsLine = chosen

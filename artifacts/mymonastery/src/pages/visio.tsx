@@ -450,7 +450,10 @@ export default function VisioPage() {
   useEffect(() => {
     const url = view?.img;
     if (!url) return;
-    const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+    // isOnline(), not navigator: the WebView reports online in Airplane Mode,
+    // which is what made the picture fall back to the bundled one instead of
+    // the saved blob (peer, 2026-09-06).
+    const offline = !isOnline();
     if (!offline && !imageFailed) return;
     let cancelled = false;
     void cachedImageUrl(url).then((local) => { if (!cancelled && local) setLocalImg({ forUrl: url, url: local }); });
@@ -765,7 +768,19 @@ export default function VisioPage() {
 
   const atEnd = step >= TOTAL - 1;
   const goHome = () => setLocation("/dashboard");
+  /**
+   * ONE ADVANCE PER GESTURE (audit, 2026-09-06). setStep's updater is
+   * relative and `holdReady` is lowered by a passive effect, so a fast
+   * double-tap on Begin applied twice and landed past the pinned-picture beat
+   * — skipping the 7-second hold the practice is built around. Three
+   * handlers call next() (the button, the tap, the swipe) and none of them
+   * shared a guard.
+   */
+  const advancing = useRef(false);
   const next = () => {
+    if (advancing.current) return;
+    advancing.current = true;
+    window.setTimeout(() => { advancing.current = false; }, 500);
     // The middle beat hands off to the Sunday's reading rather than paging;
     // coming back lands on the second look, which is the point of the shape.
     if (readingOpens) { openReading(); return; }
@@ -908,7 +923,21 @@ export default function VisioPage() {
       // Belt and braces: see the step-change reset below for why this can't
       // already be a stale flag from an earlier beat.
       handedOff.current = false;
-      setStep((n) => Math.max(0, n - 1));
+      /**
+       * LEAVING THE READING GOES FORWARD, NOT BACK (audit, 2026-09-06).
+       *
+       * Stepping back put the person on the LOOK beat with `readPassage`
+       * cleared — so sitting the 7-second hold and continuing opened the
+       * reader again, and every forward affordance on the reading beat did
+       * the same. The only ways out were the reader's own Next or abandoning
+       * the practice. iOS gives officeChrome no close button precisely
+       * because the edge swipe IS the way out, so that swipe must leave the
+       * deck somewhere it can be left.
+       *
+       * From the reading beat, a dismiss means "I have read it" — the same
+       * place the reader's Next lands. Anywhere else, keep the old step-back.
+       */
+      setStep((n) => (n === READING ? Math.min(DONE, n + 1) : Math.max(0, n - 1)));
     };
     window.addEventListener("phoebe:browserfinished", onFinished);
     return () => window.removeEventListener("phoebe:browserfinished", onFinished);

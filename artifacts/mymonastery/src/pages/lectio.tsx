@@ -123,7 +123,12 @@ export default function LectioPage() {
   const options = data?.options ?? [];
 
   const atStart = step === PICK;
-  const prev = () => { if (step > PICK) setStep((s) => s - 1); };
+  // CLAMPED in the updater, not by the closure's `step` (audit, 2026-09-06).
+  // The guard read the value from the render it was created in while the update
+  // was relative, so two Backs before a re-render — which the reader's own pill
+  // can deliver — walked past PICK to -1: no content branch matches, and the
+  // person got a blank screen counting "-1 of 7".
+  const prev = () => setStep((s) => (s > PICK ? s - 1 : s));
 
   // A ref, not state — must be readable/settable synchronously within the
   // SAME event so a second tap arriving before the next render (a fast
@@ -158,6 +163,19 @@ export default function LectioPage() {
     markPracticeDoneToday("lectio");
     setLocation("/dashboard");
   };
+
+  /**
+   * KEPT ON REACHING THE CLOSING SLIDE, not on leaving it (audit, 2026-09-06;
+   * Visio already does this — visio.tsx's own note says why).
+   *
+   * The last slide asks the person to stay and pray. Marking only from the
+   * Done button meant that anyone who did what it asks and then left by the ✕,
+   * by Back, or by the home gesture had the whole practice go unrecorded —
+   * exactly the people who read the most.
+   */
+  useEffect(() => {
+    if (step === LAST) markPracticeDoneToday("lectio");
+  }, [step]);
 
   /**
    * Open the passage for one beat — the reader with this deck's own bottom
@@ -231,7 +249,22 @@ export default function LectioPage() {
       });
       return;
     }
-    void openExternal(chosen.readUrl);
+    /**
+     * THE RETURN VALUE IS THE POINT (audit, 2026-09-06). On the web a popup
+     * blocker can refuse this — the passage opens from an EFFECT on arrival,
+     * outside the tap's gesture, which is exactly what Safari blocks — and
+     * every call site here discarded the boolean, so a blocked open looked
+     * like a beat that simply does nothing. Visio checks it; this now does
+     * too, and the slide's own "Open the reading" button (a real tap, inside
+     * the gesture) is the way through.
+     */
+    const opened = openExternal(chosen.readUrl);
+    if (!opened) {
+      toast({
+        title: "Your browser blocked the reading",
+        description: "Tap “Open the reading” on this slide and it will open.",
+      });
+    }
   };
 
   const onNext = () => guardedAdvance(() => {
@@ -285,8 +318,13 @@ export default function LectioPage() {
    */
   const readerNavRef = useRef({ prev: () => {}, next: () => {} });
   readerNavRef.current = {
-    prev,
-    next: () => setStep((n) => (n < LAST ? n + 1 : n)),
+    // GUARDED like the deck's own buttons (audit, 2026-09-06). Three native
+    // inputs raise office-next-slide — the bar button, the pill's Next, and a
+    // left-swipe anywhere on the page — and a second delivery during the
+    // reader's ~300ms dismiss stepped TWO beats, dropping the prompt between
+    // them. The prompts are the practice, so that is a real loss.
+    prev: () => guardedAdvance(prev),
+    next: () => guardedAdvance(() => setStep((n) => (n < LAST ? n + 1 : n))),
   };
   useEffect(() => {
     const onPrev = () => readerNavRef.current.prev();

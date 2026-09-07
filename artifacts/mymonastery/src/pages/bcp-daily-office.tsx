@@ -141,11 +141,19 @@ function officeTodayKey(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-export function officeProgressKey(mode: LiturgyMode, todayKey: string = officeTodayKey()): string {
-  return `phoebe:office-progress:${mode}:${todayKey}`;
+/**
+ * `variant` separates two decks that share a mode — today only the RCL track
+ * (audit, 2026-09-06). Track 1 and Track 2 are different readings, and they
+ * shared one resume point and one completion flag: reading Track 1 to slide 5
+ * and flipping the toggle dropped you at slide 5 of the other track's
+ * readings, and finishing one marked the other done. Flipping between them is
+ * the toggle's whole purpose, so this is reachable on purpose.
+ */
+export function officeProgressKey(mode: LiturgyMode, todayKey: string = officeTodayKey(), variant?: string): string {
+  return `phoebe:office-progress:${mode}${variant ? `:t${variant}` : ""}:${todayKey}`;
 }
-export function officeCompletedKey(mode: LiturgyMode, todayKey: string = officeTodayKey()): string {
-  return `phoebe:office-completed:${mode}:${todayKey}`;
+export function officeCompletedKey(mode: LiturgyMode, todayKey: string = officeTodayKey(), variant?: string): string {
+  return `phoebe:office-completed:${mode}${variant ? `:t${variant}` : ""}:${todayKey}`;
 }
 
 /** Read today's progress for a single office mode. Safe in SSR-ish contexts
@@ -760,6 +768,20 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const veniteDirect = useMemo(() => {
     try { return new URLSearchParams(window.location.search).get("venite") === "1"; } catch { return false; }
   }, []);
+  /**
+   * WHICH RCL TRACK, read ONCE at mount (audit, 2026-09-06).
+   *
+   * It was read from window.location.search at fetch time — but the deck
+   * strips its own query once loaded, and the load effect re-runs when
+   * /auth/me resolves. The second run saw no track and quietly re-fetched
+   * Track 1 over the Track 2 the person had chosen.
+   */
+  /** Passed to the progress/completion keys so the two tracks don't share one. */
+  const sundayTrack: "1" | "2" = useMemo(() => {
+    try { return new URLSearchParams(window.location.search).get("track") === "2" ? "2" : "1"; } catch { return "1"; }
+  }, []);
+  /** Only the Sunday deck has two variants; every other mode keys as before. */
+  const trackVariant = resolvedMode === "sunday" ? sundayTrack : undefined;
 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
@@ -1271,7 +1293,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (slideIdx <= 0) return;
     try {
       localStorage.setItem(
-        officeProgressKey(resolvedMode),
+        officeProgressKey(resolvedMode, officeTodayKey(), trackVariant),
         JSON.stringify({ slideIdx, total: slides.length }),
       );
     } catch { /* non-fatal */ }
@@ -1470,7 +1492,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           ? `&parts=${scriptureParts.join(",")}`
           : "";
         // Sunday readings: which RCL track (This Sunday's toggle) — only that deck reads it.
-        const trackParam = resolvedMode === "sunday" ? `&track=${new URLSearchParams(window.location.search).get("track") === "2" ? "2" : "1"}` : "";
+        const trackParam = resolvedMode === "sunday" ? `&track=${sundayTrack}` : "";
         /**
          * THE DATE THIS DECK IS ASKING FOR. Every mode but Sunday means today;
          * the Sunday deck means the coming Sunday in New York, which is the day
@@ -1645,7 +1667,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         if (Number.isFinite(slideParam) && slideParam >= 0 && slideParam < fetched.length) {
           initialIdx = slideParam;
         } else if (resetFlow) {
-          try { localStorage.removeItem(officeProgressKey(resolvedMode)); } catch { /* non-fatal */ }
+          try { localStorage.removeItem(officeProgressKey(resolvedMode, officeTodayKey(), trackVariant)); } catch { /* non-fatal */ }
           initialIdx = freshStart;
         } else {
           const state = readOfficeProgress(resolvedMode);
@@ -2035,7 +2057,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       })
       .catch(() => { /* best-effort — the localStorage flag below still flips the local UI */ });
     try {
-      if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode), "1"); // Stamp the home card this office completes, so returning home plays its
+      if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1"); // Stamp the home card this office completes, so returning home plays its
                   // completion moment (the side anchor card is keyed "morning"/"evening").
                   //
                   // A READING ANIMATES ITS OWN CARD, or none. This ternary
@@ -2045,7 +2067,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   // had already kept hours earlier, and had not just touched.
                   markRecentCompletion(isReadingDeck ? readingCompletionKey
                     : resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
-      localStorage.removeItem(officeProgressKey(resolvedMode));
+      localStorage.removeItem(officeProgressKey(resolvedMode, officeTodayKey(), trackVariant));
     } catch { /* non-fatal */ }
     if (!isSecondPracticeRun) clearOfficeReminderNotifications();
     if (onComplete) { onComplete(); return; }
@@ -2229,7 +2251,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // for prayer-shaped closings, Done for non-prayer ones).
     completedRef.current = true;
     try {
-      if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode), "1"); // Stamp the home card this office completes, so returning home plays its
+      if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1"); // Stamp the home card this office completes, so returning home plays its
         // completion moment (the side anchor card is keyed "morning"/"evening").
         // completedCardKey, NOT a third hand-written copy of this ternary.
         // Owner: "STILL … ANIMATES MORNING PRAYER". The reading deck's last
@@ -2240,7 +2262,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // completedCardKey already returns "scripture" for a reading deck (see
         // its definition) and is what line ~2438 uses.
         markRecentCompletion(completedCardKey); }
-      localStorage.removeItem(officeProgressKey(resolvedMode));
+      localStorage.removeItem(officeProgressKey(resolvedMode, officeTodayKey(), trackVariant));
     } catch { /* non-fatal */ }
     // Clear the daily reminder pushes — the "Done" path is the
     // other way an office can finish (a non-prayer closing
@@ -2658,7 +2680,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // still see the completed flag and decide what copy to show.
     completedRef.current = true;
     try {
-      if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode), "1"); // Stamp the home card this office completes, so returning home plays its
+      if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1"); // Stamp the home card this office completes, so returning home plays its
                   // completion moment (the side anchor card is keyed "morning"/"evening").
                   //
                   // A READING ANIMATES ITS OWN CARD, or none. This ternary
@@ -2668,7 +2690,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   // had already kept hours earlier, and had not just touched.
                   markRecentCompletion(isReadingDeck ? readingCompletionKey
                     : resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
-      localStorage.removeItem(officeProgressKey(resolvedMode));
+      localStorage.removeItem(officeProgressKey(resolvedMode, officeTodayKey(), trackVariant));
     } catch { /* non-fatal */ }
     // The public /pray page handles its own close (a sign-up invite)
     // rather than the auth-only /prayer-mode recap.
@@ -2726,7 +2748,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         const endedAt = new Date();
         try {
           if (viewerUser) {
-            localStorage.setItem(officeCompletedKey(resolvedMode), "1");
+            localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1");
             markRecentCompletion(completedCardKey);
           }
         } catch { /* private mode — non-fatal */ }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { LISTENING_LOG_EVENT, listeningHistory, saveListeningEntry } from "@/lib/listeningLog";
 import { useOnline } from "@/lib/offline";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
@@ -126,10 +127,10 @@ export default function ListeningPage() {
   // Kept today already? The form collapses behind a "Log another" button, so
   // the page reads as the practice rather than an empty form. This re-opens it.
   const [logAnother, setLogAnother] = useState(false);
-  // `query` is the transient search text (never stored); `what` is the SELECTED
-  // catalog title and is only ever set by tapping a result or a recent — you
-  // can't log free-typed text. This keeps the log to structured Apple Music
-  // catalog references (search-only; there's no playback or library link).
+  // `query` is the search text; `what` is what will be logged. Tapping a result
+  // or a recent fills both and remembers the artwork; TYPING fills both too —
+  // free text is logged as typed (it always was, despite what this comment used
+  // to claim, and offline it is the only way in). No playback, no library link.
   const online = useOnline();
   const [query, setQuery] = useState("");
   const [what, setWhat] = useState("");
@@ -155,7 +156,7 @@ export default function ListeningPage() {
       if (!cancelled) { setResults(r); setSearching(false); }
     }, 350);
     return () => { cancelled = true; window.clearTimeout(h); };
-  }, [query, picked]);
+  }, [query, picked, online]);
   function chooseResult(r: SearchResult) {
     const title = r.subtitle ? `${r.title} — ${r.subtitle}` : r.title;
     setWhat(title);
@@ -183,7 +184,42 @@ export default function ListeningPage() {
     queryFn: () => apiRequest("GET", "/api/listening"),
     staleTime: 60_000,
   });
-  const entries = logData?.entries ?? [];
+  /**
+   * WHAT THE PERSON LOGGED IS SHOWN EVEN WHEN THE SERVER HASN'T HEARD (audit,
+   * 2026-09-06).
+   *
+   * The offline write is correct — it queues and sends on reconnect — but the
+   * list on screen came only from the server query, so logging offline left
+   * "Lately" empty and the closing slide saying "Your listening will gather
+   * here", over a song just logged. It also left the field empty on the way
+   * back in, inviting a second log under a different spelling, which is a
+   * different queue key and a genuine duplicate row.
+   *
+   * lib/listeningLog is a local day-log that already existed for exactly this
+   * and was never wired up. Local entries are merged over the server's and
+   * deduped by day+title, so a log looks the same whether it has landed yet or
+   * not, and the server's copy simply takes over once it does.
+   */
+  const [localTick, setLocalTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setLocalTick((n) => n + 1);
+    window.addEventListener(LISTENING_LOG_EVENT, bump);
+    return () => window.removeEventListener(LISTENING_LOG_EVENT, bump);
+  }, []);
+  const entries = useMemo(() => {
+    const server = logData?.entries ?? [];
+    const seen = new Set(server.map((e) => `${e.day}|${e.what.trim().toLowerCase()}`));
+    const localOnly: ServerEntry[] = listeningHistory()
+      .filter((e) => e.what?.trim() && !seen.has(`${e.ymd}|${e.what.trim().toLowerCase()}`))
+      .map((e, i) => ({
+        // Negative ids mark an entry the server has not confirmed — nothing
+        // deletes by id until it has, and the row renders the same.
+        id: -1 - i, day: e.ymd, medium: e.medium, what: e.what,
+        artworkUrl: e.artworkUrl, createdAt: `${e.ymd}T23:59:59`,
+      }));
+    return [...server, ...localOnly];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logData, localTick]);
   // Your recent listens, deduped by title (newest first) — shown at the top of
   // the search the moment you focus it, so re-logging a favourite is one tap.
   const recents = useMemo(() => {
@@ -254,8 +290,13 @@ export default function ListeningPage() {
    */
   function logToday() {
     if (!what.trim()) return;
+    // Never log the same title twice in a day — the prefill puts today's entry
+    // back in the field, and the table has no unique day+title index.
+    if (alreadyLoggedThis) return;
     logMutation.mutate();
     markPracticeDoneToday("listening");
+    // The local day-log, so the entry is visible before the server has it.
+    saveListeningEntry({ minutes: 0, songs: 1, medium, what: what.trim(), artworkUrl });
     setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false);
     setLogAnother(false);
     /**
@@ -282,6 +323,9 @@ export default function ListeningPage() {
   const todayYmd = new Date().toLocaleDateString("en-CA");
   const todayEntry = sortedEntries.find((e) => e.day === todayYmd) ?? null;
   const keptToday = todayEntry !== null;
+  /** The field holds a title already logged today (the prefill, or a re-type). */
+  const alreadyLoggedThis = !!what.trim()
+    && entries.some((e) => e.day === todayYmd && e.what.trim().toLowerCase() === what.trim().toLowerCase());
   /**
    * Coming back through the deck: today's song is already in the field.
    *
@@ -790,7 +834,7 @@ export default function ListeningPage() {
                       It leaves the deck, so it resets the deck the way "Done"
                       does — otherwise coming back in would drop you on the
                       closing slide of a practice you hadn't done yet. */}
-                  {sortedEntries.length > 5 && (
+                  {sortedEntries.length > 0 && (
                     <button
                       type="button"
                       onClick={() => { loggedHere.current = false; setDeckStep(INTRO); setView("history"); }}
@@ -821,13 +865,11 @@ export default function ListeningPage() {
                     * currently, but you can still enter the name of what you
                     * listened to to log").
                     *
-                    * The catalogue lookup is a network call, and normally what
-                    * you log has to be a tapped result — free-typed text is
-                    * refused so the log stays structured. With no connection
-                    * that rule would mean no logging at all, for a practice
-                    * whose whole point is that you listened to something. So
-                    * offline the field says what it can and can't do, and what
-                    * you type IS what gets logged.
+                    * The catalogue lookup is a network call; logging is not —
+                    * what you type is what gets logged, online or off. So with
+                    * no connection the field says which half is unavailable,
+                    * rather than looking broken while a search that cannot
+                    * answer spins.
                     */}
                   {!online && (
                     <p className="text-[13.5px] mb-3" style={{ color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.5 }}>
@@ -943,7 +985,11 @@ export default function ListeningPage() {
             },
             label: deckStep === INTRO
               ? "Begin"
-              : atLog ? (what.trim() || !keptToday ? "Log it" : "Continue")
+              // Prefilled from today's entry → this is not a new log (audit,
+              // 2026-09-06: coming back into the deck offered "Log it" over
+              // text the person had not typed, and logging again wrote a
+              // duplicate row without its artwork).
+              : atLog ? ((what.trim() && !alreadyLoggedThis) || !keptToday ? "Log it" : "Continue")
                 : deckStep === LAST ? "Done" : "Next",
           }}
         />
