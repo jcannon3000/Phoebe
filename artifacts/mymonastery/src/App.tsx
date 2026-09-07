@@ -6,7 +6,6 @@ import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
 import { retryPendingReflectionReads } from "@/lib/cacReadState";
 import { installSessionOutboxFlush } from "@/lib/sessionOutbox";
 import { ApiError, apiRequest, registerQueryClient } from "@/lib/queryClient";
-import { pathWorksOffline } from "@/lib/offline";
 import { reportClientError } from "@/lib/reportClientError";
 import { getGuestStepGoal } from "@/lib/guestSeed";
 // Side-effect import: warms the server-clock offset on app load (re-syncs on
@@ -527,32 +526,32 @@ const queryClient = new QueryClient({
       // toast — a secondary feature's refetch failing shouldn't nag the user
       // who's looking at a perfectly-loaded home.
       if (query.meta?.silentError) return;
-      // Only speak up when the OS says we're genuinely OFFLINE. A single slow
-      // or timed-out query (the 12s GET timeout throws a non-ApiError) happens
-      // on perfectly healthy connections too — popping a "needs a connection"
-      // toast then is both annoying and untrue. Flaky-but-online connections
-      // are handled separately, and more gently, by the NetworkBanner.
-      if (typeof navigator !== "undefined" && navigator.onLine) return;
-      // We have cached data on screen — the failed refetch is invisible to the
-      // user, so there's nothing to tell them.
-      if (query.state.data !== undefined) return;
-      // Nothing is actually observing this query (a background prefetch) — no
-      // one is staring at a blank screen waiting for it.
-      if (query.getObserversCount() === 0) return;
       /**
-       * …AND NOT OVER A PRACTICE THAT IS WORKING. Offline, plenty of secondary
-       * queries fail on a screen that is drawing perfectly from the phone —
-       * the owner met this toast over Visio Divina with the saved picture in
-       * front of him, and over the office. lib/offline knows which routes are
-       * meant to work with no connection; on those, a failed query is not news.
+       * NOTHING IS SAID FOR BEING OFFLINE ANY MORE.
+       *
+       * This toast was written before the app could work without a connection:
+       * it fired whenever a query failed with nothing cached, on the
+       * assumption that meant a blank screen. It no longer does. The owner met
+       * it three times over practices that were working from the phone — Visio
+       * with its saved picture up, the office mid-deck — because a SECONDARY
+       * query on a perfectly full screen is enough to trigger it, and a route
+       * allowlist still let some through.
+       *
+       * Being offline is already said once, by the NetworkBanner, which knows
+       * it is talking about the connection and not about what you are reading.
+       * A second voice interrupting the office to say a background request
+       * failed is noise. Genuine server errors are ApiErrors and returned
+       * above; they were never this branch.
        */
-      if (typeof window !== "undefined" && pathWorksOffline(window.location.pathname)) return;
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
+      if (query.state.data !== undefined) return;
+      if (query.getObserversCount() === 0) return;
       const now = Date.now();
       if (now - lastOfflineToastAt < 8000) return;
       lastOfflineToastAt = now;
       toast({
-        title: "You're offline",
-        description: "This needs a connection — it'll load once you're back online.",
+        title: "Couldn't load that",
+        description: "Something went wrong reaching Phoebe. It'll retry on its own.",
       });
     },
   }),

@@ -1771,7 +1771,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // Don't transition until the intercessions are loaded — so prayer-mode opens
     // on the first slide, not its loader. Usually already warm from the effect
     // above; if not, the portal headline holds a beat longer.
-    try { await prefetchIntercessions(); } catch { /* navigate anyway */ }
+    // …but never with no connection: there is nothing to warm, and the fetch
+    // sits on URLSession's own timeout (CapacitorHttp ignores the abort), which
+    // is the pause the owner met between Amen and the office closing.
+    if (isOnline()) { try { await prefetchIntercessions(); } catch { /* navigate anyway */ } }
     setViewerLocation(url);
   }
 
@@ -2258,6 +2261,20 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       // it should resolve near-instantly here rather than
       // opening prayer-mode cold into its "Gathering the
       // prayers of your community…" loader.
+      /**
+       * OFFLINE, CLOSE AT ONCE (owner: "on the last slide of the office
+       * offline it takes a while for it to close after I hit Amen").
+       *
+       * This waits for the intercessions so prayer-mode opens on its first
+       * slide rather than its "Gathering the prayers of your community…"
+       * loader. With no connection there is nothing to gather, and the wait
+       * became a dead pause at the very end of the office — the last thing
+       * that should feel broken.
+       */
+      if (!isOnline()) {
+        setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+        return;
+      }
       void prefetchIntercessions().finally(() => {
         setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
       });

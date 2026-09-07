@@ -17,7 +17,25 @@ import { useTranslation } from "react-i18next";
 //    overridden from app code because it fires before our JS loads).
 //
 // The banner self-dismisses once a query succeeds.
+/**
+ * SILENT (owner, 2026-09-06: "that top banner is honestly not needed").
+ *
+ * It announced the connection over practices that were working perfectly from
+ * the phone — the office mid-deck, a saved reading, Visio with its picture up.
+ * Now that the app genuinely works offline, being offline is not news: the
+ * screens that DO need a connection say so themselves, in their own words
+ * ("Audio Divina · Offline", "this reading isn't saved yet", the home's Not
+ * available section). A banner over everything else is a second voice
+ * interrupting prayer to describe the network.
+ *
+ * Kept as a component rather than deleted so the flaky-connection detection
+ * below stays in one piece if it is ever wanted again — it renders nothing.
+ */
 export function NetworkBanner() {
+  return null;
+}
+
+function NetworkBannerDisabled() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const [online, setOnline] = useState<boolean>(

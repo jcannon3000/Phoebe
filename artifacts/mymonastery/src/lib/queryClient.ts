@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { isOnline } from "@/lib/offline";
+import { isOnline, noteNetworkFailure, noteNetworkSuccess } from "@/lib/offline";
 
 /**
  * The app's QueryClient, registered by App.tsx at creation so plain libs
@@ -90,6 +90,17 @@ export async function apiRequest<T = unknown>(
             setTimeout(() => reject(new Error(`Timed out: ${method} ${url}`)), budget)),
         ])
       : await req;
+    // We reached something — whatever it answers, there is a connection.
+    noteNetworkSuccess();
+  } catch (err) {
+    /**
+     * A NETWORK failure, not an HTTP one. navigator.onLine can keep saying
+     * "online" in Airplane Mode on the phone, so the app's own experience is
+     * what lib/offline believes: this marks the recent past as offline, and
+     * the next success clears it (see noteNetworkFailure).
+     */
+    noteNetworkFailure();
+    throw err;
   } finally {
     if (timeoutId !== null) clearTimeout(timeoutId);
   }

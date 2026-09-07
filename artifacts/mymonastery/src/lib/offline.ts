@@ -60,7 +60,36 @@ export function setDebugOffline(on: boolean): void {
  * Saving asks the device, never the toggle.
  */
 export function isReallyOnline(): boolean {
-  return typeof navigator === "undefined" ? true : navigator.onLine !== false;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
+  return !recentlyFailed();
+}
+
+/**
+ * navigator.onLine LIES ON THE PHONE.
+ *
+ * In WKWebView it can keep reporting true in Airplane Mode — the interface is
+ * up, nothing has told the page otherwise. Every guard written as "if we're
+ * offline, don't wait / don't warn" then never fires, which is exactly what
+ * the owner kept meeting: "it still said there was a problem with syncing", on
+ * a phone in Airplane Mode, after that toast had been guarded twice.
+ *
+ * So the app also believes its own experience. A request that fails for a
+ * network reason (not an HTTP status — the server answering IS a connection)
+ * marks the recent past as offline, and that verdict expires on its own. The
+ * first successful request clears it immediately.
+ */
+const RECENT_FAILURE_MS = 20_000;
+let lastNetworkFailureAt = 0;
+function recentlyFailed(): boolean {
+  return lastNetworkFailureAt > 0 && Date.now() - lastNetworkFailureAt < RECENT_FAILURE_MS;
+}
+/** A fetch failed for a network reason — a refused connection, a timeout. */
+export function noteNetworkFailure(): void {
+  lastNetworkFailureAt = Date.now();
+}
+/** Something reached the server — whatever it answered, we have a connection. */
+export function noteNetworkSuccess(): void {
+  lastNetworkFailureAt = 0;
 }
 
 export function isOnline(): boolean {
