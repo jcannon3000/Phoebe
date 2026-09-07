@@ -1,12 +1,11 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
-import { QueryClient, QueryClientProvider, QueryCache, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
 import { retryPendingReflectionReads } from "@/lib/cacReadState";
 import { installSessionOutboxFlush } from "@/lib/sessionOutbox";
 import { ApiError, apiRequest, registerQueryClient } from "@/lib/queryClient";
-import { isOnline } from "@/lib/offline";
 import { reportClientError } from "@/lib/reportClientError";
 import { getGuestStepGoal } from "@/lib/guestSeed";
 // Side-effect import: warms the server-clock offset on app load (re-syncs on
@@ -516,47 +515,18 @@ function AccountRequiredGate({ children }: { children: ReactNode }) {
 // network (not an HTTP error from a reachable server) AND we have nothing cached
 // to show them. Then a single throttled toast tells them it'll load once
 // they're back online. Queries that fall back to cached data stay silent.
-let lastOfflineToastAt = 0;
 const queryClient = new QueryClient({
-  queryCache: new QueryCache({
-    onError: (error, query) => {
-      // ApiError = the server replied with a non-2xx (it's reachable) — that's
-      // a real error, not "offline", so don't mislabel it.
-      if (error instanceof ApiError) return;
-      // Background-poll queries (Heart to Hearts, etc.) opt out of the offline
-      // toast — a secondary feature's refetch failing shouldn't nag the user
-      // who's looking at a perfectly-loaded home.
-      if (query.meta?.silentError) return;
-      /**
-       * NOTHING IS SAID FOR BEING OFFLINE ANY MORE.
-       *
-       * This toast was written before the app could work without a connection:
-       * it fired whenever a query failed with nothing cached, on the
-       * assumption that meant a blank screen. It no longer does. The owner met
-       * it three times over practices that were working from the phone — Visio
-       * with its saved picture up, the office mid-deck — because a SECONDARY
-       * query on a perfectly full screen is enough to trigger it, and a route
-       * allowlist still let some through.
-       *
-       * Being offline is already said once, by the NetworkBanner, which knows
-       * it is talking about the connection and not about what you are reading.
-       * A second voice interrupting the office to say a background request
-       * failed is noise. Genuine server errors are ApiErrors and returned
-       * above; they were never this branch.
-       */
-      // isOnline(), not navigator — which lies in Airplane Mode on the phone.
-      if (!isOnline()) return;
-      if (query.state.data !== undefined) return;
-      if (query.getObserversCount() === 0) return;
-      const now = Date.now();
-      if (now - lastOfflineToastAt < 8000) return;
-      lastOfflineToastAt = now;
-      toast({
-        title: "Couldn't load that",
-        description: "Something went wrong reaching Phoebe. It'll retry on its own.",
-      });
-    },
-  }),
+  /**
+   * NO TOAST WHEN A QUERY FAILS (owner, 2026-09-06: "just get rid of that
+   * banner … we don't need it").
+   *
+   * It was down to one voice already — network-level failures only, never
+   * server errors — and it still met the owner on a home screen that had
+   * loaded perfectly, because ONE secondary request failing is enough. There
+   * is nothing for them to do about it and the app retries by itself. The
+   * places where something is genuinely missing say so where it is missing
+   * ("This reading isn't saved yet"), which is the right place to say it.
+   */
   defaultOptions: {
     queries: {
       retry: (failureCount, error) => {
@@ -601,7 +571,7 @@ const queryClient = new QueryClient({
 });
 // Register the client for plain libs (practiceCompletion / cacReadState's
 // cache-forgetting unlogs) — MUST be a top-level statement: an earlier
-// version sat inside the QueryCache onError callback above, so it only ran
+// version sat inside a QueryCache onError callback here, so it only ran
 // if an offline toast ever fired, and every unlog's cache purge silently
 // no-opped (the "unlogged on web but the phone card didn't move" report).
 registerQueryClient(queryClient);
