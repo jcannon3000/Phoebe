@@ -33,6 +33,7 @@ import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday, isOffi
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { anchorModesFor, getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, getSideReflectionExplicit, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT, getSideContemplationKind, getContemplationStyleGlobal, type ContemplationKind as SideContemplationKind } from "@/lib/officePrefs";
 import { isOnline } from "@/lib/offline";
+import { pendingSecondsToday } from "@/lib/contemplationPending";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
 import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
 
@@ -1264,7 +1265,10 @@ export function useRhythmState(): RhythmState {
   // come from the device-local sit tally.
   const contemplationMin = guest
     ? getGuestSilenceMinutesToday()
-    : Math.floor((contStats?.todaySeconds ?? 0) / 60);
+    // …plus any sit still waiting in the outbox: the server's tally cannot
+    // include a session it has not received, and a sit taken with no
+    // connection must still count on the phone that kept it.
+    : Math.floor(((contStats?.todaySeconds ?? 0) + pendingSecondsToday()) / 60);
   const rawGoalMin = officePrefs?.contemplationGoalMinutes ?? 0;
   // Starter rule: an un-set-up user (no saved home layout) gets a 5-minute
   // silence by default — alongside Morning/Evening Psalms + Forward Day by Day.

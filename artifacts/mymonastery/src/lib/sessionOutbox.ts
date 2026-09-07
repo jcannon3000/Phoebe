@@ -53,6 +53,12 @@ export function enqueueSession(body: Record<string, unknown>, id?: string): void
   write(list);
 }
 
+/** The ids still waiting to be sent — what lets a screen count a sit that the
+ *  server has not heard about yet (lib/contemplationPending). */
+export function pendingSessionIds(): string[] {
+  return read().map((p) => p.id);
+}
+
 let flushing = false;
 
 /** Best-effort: POST everything queued, dropping each entry that lands. A

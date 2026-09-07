@@ -13,6 +13,7 @@ import { addGuestSilenceMinutes, getGuestSilenceMinutesToday } from "@/lib/guest
 import { resolveContemplationSideForSit, attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { getSideContemplation } from "@/lib/officePrefs";
 import { enqueueSession } from "@/lib/sessionOutbox";
+import { recordPendingSit } from "@/lib/contemplationPending";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { WhatsNextCard } from "@/components/WhatsNextCard";
@@ -526,7 +527,15 @@ export function ContemplationTimer({
         // silence would be gone while the closing screen congratulated the user.
         // Queue it durably instead; the outbox flushes on app start, on
         // `online`, and on app-active. (2026-07-21 data audit.)
-        enqueueSession(sessionBody);
+        /**
+         * …and COUNT IT MEANWHILE. The queued session syncs later; the minutes
+         * on the card come from the server, so without this a sit taken with
+         * no connection left the day reading exactly as before — the practice
+         * kept, and nothing to show for it.
+         */
+        const queuedId = `s_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        enqueueSession(sessionBody, queuedId);
+        recordPendingSit(queuedId, typeof sessionBody.durationSeconds === "number" ? sessionBody.durationSeconds : 0);
       });
 
     // Daily goal (minutes; 0 = off) — fetched in parallel; doesn't depend on
