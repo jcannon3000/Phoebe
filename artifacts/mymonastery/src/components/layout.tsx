@@ -758,7 +758,29 @@ function DailyProgressPill() {
       ? [{ key: "prayer-list", done: prayerListDone }]
       : [];
 
-  const dotDefsBuilt = [
+  /**
+   * ONE DOT PER NEWSLETTER UNTIL THE DAY GETS CROWDED.
+   *
+   * Every newsletter used to collapse into a single "reflect" dot, always —
+   * two newsletters made a 3-dot pill over a 2-anchor day, so they were folded
+   * together. But on a SHORT rhythm that collapse hides the very thing the pill
+   * is for: someone following two newsletters and little else saw one dot that
+   * stayed unfilled until both were read, with no way to tell which was
+   * outstanding. Owner: "if the user has less than 8 practices, dont condense
+   * their reflection dots into one."
+   *
+   * So the pill expands them while there is room and folds them once there
+   * isn't — at the same 8 the renderer below already calls `many`, so the
+   * threshold that decides how the dots are DRAWN and the one that decides how
+   * many there are cannot disagree.
+   *
+   * Built expanded, then folded in place if the total lands at 8 or more, so
+   * the newsletters keep their position (second, right after Morning) either
+   * way. The pill's own "N of M kept" reads from this list, so it stays true.
+   */
+  const DOT_EXPAND_LIMIT = 8;
+  const reflectDotsExpanded = reflections.map((r) => ({ key: `reflect-${r.source}`, done: r.done }));
+  const dotDefsExpanded = [
     // A novena in "replace" mode takes over this slot's dot entirely — mirrors
     // DailyProgressBody's rawCards replace-mode entries (same gates).
     ...(novenaReplacesMorning && novenaActive ? [{ key: "novena-morning", done: novenaDone }] : []),
@@ -778,7 +800,7 @@ function DailyProgressPill() {
     // useRhythmState's coreFlags makes, so this pill and totalAnchors agree.
     // It used to be one per source: two newsletters made a 3-dot pill over a
     // 2-anchor day.
-    ...(reflections.length > 0 ? [{ key: "reflect", done: reflections.every((r) => r.done) }] : []),
+    ...reflectDotsExpanded,
     ...cDots("morning"),
     // Contemplation is PER SIDE (a Morning + an Evening sit) — one dot each,
     // matching the two home cards, not a single aggregate "silence" dot (that
@@ -841,6 +863,20 @@ function DailyProgressPill() {
   // list disagree about the shape of the day — INCLUDING its coarse shape:
   // these defs carry no slot, so the group comes from the key (morning and the
   // newsletters first, evening last), mirroring the home's slot groups.
+  // Fold the newsletters back into one dot only when the day is crowded — see
+  // the note above dotDefsExpanded. The fold happens where the first newsletter
+  // sat, so the group keeps its place in the order.
+  const dotDefsBuilt = dotDefsExpanded.length < DOT_EXPAND_LIMIT
+    ? dotDefsExpanded
+    : (() => {
+        let folded = false;
+        return dotDefsExpanded.flatMap((d) => {
+          if (!d.key.startsWith("reflect-")) return [d];
+          if (folded) return [];
+          folded = true;
+          return [{ key: "reflect", done: reflections.every((r) => r.done) }];
+        });
+      })();
   const dotDefs = sortCardsByLearnedOrder(dotDefsBuilt, (d) => dayGroupFor(d.key));
 
   // Per-dot "just completed" pulse: when an activity flips done, its dot glows
