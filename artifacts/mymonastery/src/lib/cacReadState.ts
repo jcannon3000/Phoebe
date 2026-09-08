@@ -124,10 +124,41 @@ function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (
     hasReadToday(): boolean {
       return this.getLastReadDay() === todayLocalISO();
     },
+    /**
+     * How long the reader actually stayed with it, in ms, if the surface that
+     * marked it knew. Null when nothing measured — a web tab, or a path that
+     * marks on open.
+     *
+     * The routine's own newsletters do not care: opening one is keeping it,
+     * and that is unchanged. This exists for a newsletter that ISN'T in the
+     * rhythm, which the home shows in Done only after a real read (owner: "if
+     * it is a newsletter, make sure they read it for more than 10 seconds
+     * before putting it in done … this is only if its a newsletter not in
+     * their routine").
+     */
+    dwellMsToday(): number | null {
+      try {
+        const raw = localStorage.getItem(`${storageKey}:dwell`);
+        if (!raw) return null;
+        const [ymd, ms] = raw.split("|");
+        if (ymd !== todayLocalISO()) return null;
+        const n = Number(ms);
+        return Number.isFinite(n) ? n : null;
+      } catch { return null; }
+    },
     /** Stamp today as read locally + notify listeners, and best-effort sync to
-     *  the server so the read shows up on the user's other devices too. */
-    markRead(): void {
+     *  the server so the read shows up on the user's other devices too.
+     *  `dwellMs` is how long the reader was open, when the caller measured it. */
+    markRead(dwellMs?: number): void {
       const ymd = todayLocalISO();
+      if (typeof dwellMs === "number" && Number.isFinite(dwellMs)) {
+        // Keep the LONGEST read of the day: someone who opens it briefly, comes
+        // back and reads properly has read it properly.
+        try {
+          const prev = this.dwellMsToday() ?? 0;
+          localStorage.setItem(`${storageKey}:dwell`, `${ymd}|${Math.max(prev, Math.round(dwellMs))}`);
+        } catch { /* private mode */ }
+      }
       /**
        * Sync only on the day's FIRST mark — but judged by whether the SERVER
        * has it, not by whether the local stamp is set.
@@ -672,7 +703,7 @@ export const CAC_TODAY_URL = "https://withphoebe.app/api/cac/today";
 export const CAC_READ_EVENT = cacTracker.eventName;
 export function getCacReadDay(): string | null { return cacTracker.getLastReadDay(); }
 export function hasReadCacToday(): boolean { return cacTracker.hasReadToday(); }
-export function markCacRead(): void { cacTracker.markRead(); creditAnchorsFor("cac"); }
+export function markCacRead(dwellMs?: number): void { cacTracker.markRead(dwellMs); creditAnchorsFor("cac"); }
 
 // ── Return-to-reflection redirect (shared by all three sources) ──
 // When a daily reflection is opened from a surface that should send the reader
@@ -691,8 +722,8 @@ function flagReflectionReturn(path: string): void {
 // also syncs to cac_reads server-side via markRead, powering community
 // read-presence) and — when opened from a surface that should redirect on
 // return (the home card) — stash the return path the redirect watches.
-export function recordCacOpened(opts?: { flagReturn?: boolean }): void {
-  markCacRead();
+export function recordCacOpened(opts?: { flagReturn?: boolean; dwellMs?: number }): void {
+  markCacRead(opts?.dwellMs);
   if (opts?.flagReturn) flagReflectionReturn("/reflect/cac");
 }
 
@@ -722,9 +753,9 @@ export function hasReadVtsToday(): boolean { return vtsTracker.hasReadToday(); }
  * already walks publishing days only; this keeps the underlying rows honest
  * too, rather than fixing it at the display layer.
  */
-export function markVtsRead(): void {
+export function markVtsRead(dwellMs?: number): void {
   if (!isVtsPublishingDay()) return;
-  vtsTracker.markRead();
+  vtsTracker.markRead(dwellMs);
   creditAnchorsFor("vts");
 }
 // VTS only publishes Dean's Commentary on weekdays — Saturday/Sunday there's
@@ -784,7 +815,7 @@ export const FDD_TODAY_URL = "https://prayer.forwardmovement.org/fdd";
 export const FDD_READ_EVENT = fddTracker.eventName;
 export function getFddReadDay(): string | null { return fddTracker.getLastReadDay(); }
 export function hasReadFddToday(): boolean { return fddTracker.hasReadToday(); }
-export function markFddRead(): void { fddTracker.markRead(); creditAnchorsFor("fdd"); }
+export function markFddRead(dwellMs?: number): void { fddTracker.markRead(dwellMs); creditAnchorsFor("fdd"); }
 // Opened from the home card → mark read + (when flagged) stash the return path
 // so coming back from the browser lands on the FDD journey page (/reflect/fdd
 // — read-aloud + sit), matching CAC's return to its companion page. Was the
@@ -794,8 +825,8 @@ export function markFddRead(): void { fddTracker.markRead(); creditAnchorsFor("f
 // stamps that side's day-flag (and, gated on the side really being set to fdd,
 // POSTs the office-crediting session). Omit it on the plain reflection card so a
 // reflection read never ticks an office dot.
-export function recordFddOpened(opts?: { flagReturn?: boolean; side?: "morning" | "evening" }): void {
-  markFddRead();
+export function recordFddOpened(opts?: { flagReturn?: boolean; side?: "morning" | "evening"; dwellMs?: number }): void {
+  markFddRead(opts?.dwellMs);
   if (opts?.side) markFddPrayed(opts.side);
   if (opts?.flagReturn) flagReflectionReturn("/reflect/fdd");
 }
@@ -821,7 +852,7 @@ export function recordFddOpened(opts?: { flagReturn?: boolean; side?: "morning" 
 // and 302s to the newest — the same shape as /api/vts/today.
 export const NOUWEN_TODAY_URL = "https://withphoebe.app/api/nouwen/today";
 export function hasReadNouwenToday(): boolean { return nouwenTracker.hasReadToday(); }
-export function markNouwenRead(): void { nouwenTracker.markRead(); creditAnchorsFor("nouwen"); }
+export function markNouwenRead(dwellMs?: number): void { nouwenTracker.markRead(dwellMs); creditAnchorsFor("nouwen"); }
 
 // GRIST resolves server-side, exactly as Nouwen and VTS do.
 //
@@ -837,7 +868,7 @@ export function markNouwenRead(): void { nouwenTracker.markRead(); creditAnchors
 // Grist's newsletter archive URLs all 302 to their homepage.
 export const GRIST_TODAY_URL = "https://withphoebe.app/api/grist/today";
 export function hasReadGristToday(): boolean { return gristTracker.hasReadToday(); }
-export function markGristRead(): void { gristTracker.markRead(); creditAnchorsFor("grist"); }
+export function markGristRead(dwellMs?: number): void { gristTracker.markRead(dwellMs); creditAnchorsFor("grist"); }
 
 /**
  * SOJOURNERS' Verse and Voice — the URL is DERIVED from the date:
@@ -871,7 +902,7 @@ export function sojournersTodayUrl(): string {
 }
 
 export function hasReadSojoToday(): boolean { return sojoTracker.hasReadToday(); }
-export function markSojoRead(): void { sojoTracker.markRead(); creditAnchorsFor("sojo"); }
+export function markSojoRead(dwellMs?: number): void { sojoTracker.markRead(dwellMs); creditAnchorsFor("sojo"); }
 
 export const SSJE_TODAY_URL = "https://www.ssje.org/word/";
 
@@ -899,10 +930,62 @@ export function reflectionSourceUrl(source: string): string {
 export const SSJE_READ_EVENT = ssjeTracker.eventName;
 export function getSsjeReadDay(): string | null { return ssjeTracker.getLastReadDay(); }
 export function hasReadSsjeToday(): boolean { return ssjeTracker.hasReadToday(); }
-export function markSsjeRead(): void { ssjeTracker.markRead(); creditAnchorsFor("ssje"); }
+export function markSsjeRead(dwellMs?: number): void { ssjeTracker.markRead(dwellMs); creditAnchorsFor("ssje"); }
 // Opened from the home card → mark read + (when flagged) stash the return path
 // so coming back from the browser lands on the in-app reflection reader.
-export function recordSsjeOpened(opts?: { flagReturn?: boolean }): void {
-  markSsjeRead();
+export function recordSsjeOpened(opts?: { flagReturn?: boolean; dwellMs?: number }): void {
+  markSsjeRead(opts?.dwellMs);
   if (opts?.flagReturn) flagReflectionReturn("/menu/reflections/ssje");
+}
+
+
+/**
+ * How long a reflection's reader was open today, in ms — null when nothing
+ * measured it (a plain web tab, or a surface that marks on open).
+ *
+ * Only the home's EXTRA newsletter cards consult this: a newsletter that is
+ * part of the rhythm is kept by opening it, unchanged.
+ */
+export function reflectionDwellMsToday(source: string): number | null {
+  const t = ({
+    cac: cacTracker, fdd: fddTracker, ssje: ssjeTracker, vts: vtsTracker,
+    nouwen: nouwenTracker, sojo: sojoTracker, grist: gristTracker,
+  } as Record<string, { dwellMsToday(): number | null } | undefined>)[source];
+  return t ? t.dwellMsToday() : null;
+}
+
+/** Read today? — by source key, the counterpart to reflectionDwellMsToday. */
+export function hasReadReflectionToday(source: string): boolean {
+  const t = ({
+    cac: cacTracker, fdd: fddTracker, ssje: ssjeTracker, vts: vtsTracker,
+    nouwen: nouwenTracker, sojo: sojoTracker, grist: gristTracker,
+  } as Record<string, { hasReadToday(): boolean } | undefined>)[source];
+  return t ? t.hasReadToday() : false;
+}
+
+/**
+ * Record how long a reflection was actually read, WITHOUT marking it read.
+ *
+ * The in-app readers (the VTS slideshow) mark themselves read the moment the
+ * reader steps off the title slide — right, for the rhythm's own newsletters —
+ * but that early moment is no measure of a read. This lets such a page report
+ * the real span when it closes, so an EXTRA (not-in-your-rhythm) newsletter
+ * can clear the ten-second bar the home holds it to. Keeps the longest span of
+ * the day, exactly as markRead does.
+ */
+export function recordReflectionDwell(source: string, dwellMs: number): void {
+  if (!Number.isFinite(dwellMs) || dwellMs <= 0) return;
+  const KEYS: Record<string, string> = {
+    cac: "phoebe:cac:last-read-day", fdd: "phoebe:fdd:last-read-day",
+    ssje: "phoebe:ssje:last-read-day", vts: "phoebe:vts:last-read-day",
+    nouwen: "phoebe:nouwen:last-read-day", sojo: "phoebe:sojo:last-read-day",
+    grist: "phoebe:grist:last-read-day",
+  };
+  const base = KEYS[source];
+  if (!base) return;
+  try {
+    const ymd = todayLocalISO();
+    const prev = reflectionDwellMsToday(source) ?? 0;
+    localStorage.setItem(`${base}:dwell`, `${ymd}|${Math.max(prev, Math.round(dwellMs))}`);
+  } catch { /* private mode */ }
 }

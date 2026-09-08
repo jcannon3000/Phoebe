@@ -23,7 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
-import { markVtsRead, markReflectionPrayed } from "@/lib/cacReadState";
+import { markVtsRead, markReflectionPrayed, recordReflectionDwell } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
 import { SPLASH_PHOTO, LEAF_PHOTOS } from "@/lib/earthPhotos";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
@@ -80,6 +80,19 @@ export default function VtsReadingPage() {
   // title slide into a real paragraph — same "opened it" bar every other
   // reflection source uses, not "landed on the page." Fires once, the first
   // time step advances off the title slide.
+  /**
+   * THE REAL SPAN, reported when the reader leaves.
+   *
+   * markReadOnce below fires as soon as they step off the title slide, which
+   * is the right moment to KEEP it but no measure of a read. The home holds an
+   * extra (not-in-your-rhythm) newsletter to ten seconds, so tell it how long
+   * this actually was. Marking is untouched.
+   */
+  useEffect(() => {
+    const openedAt = Date.now();
+    return () => { recordReflectionDwell("vts", Date.now() - openedAt); };
+  }, []);
+
   const markReadOnce = () => {
     if (markedRead) return;
     setMarkedRead(true);

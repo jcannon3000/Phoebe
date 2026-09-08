@@ -2865,8 +2865,8 @@ export function CacHomeCard() {
     // Phoebe's in-app browser. Opening it plainly keeps the page as published
     // AND routes it through BibleBrowser, which still marks it read on close
     // rather than on tap.
-    openExternalThenMarkRead(CAC_TODAY_URL, () => {
-      recordCacOpened();
+    openExternalThenMarkRead(CAC_TODAY_URL, (ms) => {
+      recordCacOpened({ dwellMs: ms });
       // Taking it AS this side's prayer also credits that side (its own
       // per-side tracker + prayer-session row) — see markReflectionPrayed.
       if (praySide) markReflectionPrayed("cac", praySide);
@@ -3190,7 +3190,7 @@ function FddHomeCard() {
       return getSideLevel(v) === "fdd" ? v : undefined;
     } catch { return undefined; }
   });
-  const recordOpened = () => recordFddOpened({ side: praySide });
+  const recordOpened = (dwellMs?: number) => recordFddOpened({ side: praySide, dwellMs });
   // Same hand-off as the readings card above (?fdd=<side> from begin-prayer),
   // and it had the same gap: arriving on the dashboard was the whole journey.
   const fddAutoOpenedRef = useRef(false);
@@ -3616,8 +3616,8 @@ function SsjeHomeCard() {
   }, []);
   const onClick = () => {
     // Mark read only once the reader is closed (see CAC card above).
-    openExternalThenMarkRead(SSJE_TODAY_URL, () => {
-      recordSsjeOpened();
+    openExternalThenMarkRead(SSJE_TODAY_URL, (ms) => {
+      recordSsjeOpened({ dwellMs: ms });
       if (praySide) markReflectionPrayed("ssje", praySide);
     }, { reader: true });
   };

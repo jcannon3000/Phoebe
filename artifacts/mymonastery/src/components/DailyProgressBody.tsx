@@ -22,11 +22,11 @@ import { useOnline, cardAvailableOffline } from "@/lib/offline";
 import { daySwapNote } from "@/components/PracticeSwitcher";
 import { rowIdToCardKeys } from "@/lib/routineOrder";
 import { recordPracticeOpen, sortCardsByLearnedOrder, dayGroupFor, isMorningAnchorKey } from "@/lib/practiceOrderLearning";
-import { reflectionSourceUrl, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
+import { hasReadReflectionToday, reflectionDwellMsToday, reflectionSourceUrl, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markInboxRead, unmarkInboxRead } from "@/lib/taizeInbox";
 import { markCustomDoneToday, setCustomNotToday, unmarkCustomDoneToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig , curatedPromptFor } from "@/lib/customAnchors";
-import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
+import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, hasPracticeDoneToday, type OptionalPractice } from "@/lib/practiceCompletion";
 import { useVisioToday } from "@/hooks/useVisioToday";
 import { undoOfficeToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
@@ -1811,6 +1811,120 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // into the offices (BCP office / Simple Guided Prayer / Psalms) as
     // slides, and gets its own dedicated section on the home screen (see
     // PrayerListSection in dashboard.tsx) rather than a Next/Done rhythm row.
+    /**
+     * A PRACTICE YOU DID THAT ISN'T IN YOUR RHYTHM — shown in Done, today only.
+     *
+     * Owner: "what if anytime you complete an extra practice it goes into your
+     * done category on the home screen, if it wasnt in your routine … like if
+     * you went to the practices page and did a practice that wasnt in your
+     * routine … but it wouldnt be in your routine tomorrow, just shows in done
+     * today."
+     *
+     * Until now the Practices page could log a real practice and the home had
+     * nothing to say about it: no card exists for a practice the layout doesn't
+     * carry, so the day you sat with an icon or walked was invisible on the
+     * very screen that reports the day.
+     *
+     * Three things this deliberately is NOT:
+     *   • not in Next — it is already done, so it never asks to be done again;
+     *   • not in the layout — nothing is written, so tomorrow it is simply gone
+     *     (the flag behind it is per-day, and that is the whole mechanism);
+     *   • not counted — the dots, the anchor total and "the day is kept" all
+     *     read the rhythm's own practices in useRhythmState. An extra is not
+     *     part of the rhythm, so counting it would let a practice you were
+     *     never asked for fill a dot for one you were.
+     *
+     * `inRhythm` has to know about a practice serving as a SIDE's contemplation
+     * as well as having its own card — otherwise Lectio as your evening
+     * practice would draw its side card AND an extra, twice for one reading.
+     */
+    ...(() => {
+      const sideHasKind = (kind: string) =>
+        (morningContemplationActive && sideKind("morning") === kind)
+        || (eveningContemplationActive && sideKind("evening") === kind);
+      const inRhythm: Partial<Record<OptionalPractice, boolean>> = {
+        examen: examenActive || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen",
+        listening: listeningActive || sideHasKind("audio"),
+        reading: readingActive || sideHasKind("reading"),
+        walk: walkActive || sideHasKind("walk"),
+        visio: visioActive || sideHasKind("visio"),
+        lectio: sideHasKind("lectio"),
+        podcasts: podcastsActive,
+        icons: iconsActive,
+        spirituals: spiritualsActive,
+        rosary: rosaryActive,
+      };
+      // Prayer List is left out on purpose — it has its own home section
+      // rather than a rhythm row (see the note just above).
+      const meta: Array<{ key: OptionalPractice; emoji: string; title: string; href?: string }> = [
+        { key: "examen", emoji: "🌗", title: t("rhythm.card_examen", { defaultValue: "The Examen" }), href: "/examen" },
+        { key: "listening", emoji: "🎵", title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }), href: "/listening" },
+        { key: "reading", emoji: "📚", title: t("rhythm.card_reading", { defaultValue: "Reading" }) },
+        { key: "walk", emoji: "🚶🏽", title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }) },
+        { key: "visio", emoji: "🖼️", title: t("rhythm.card_visio", { defaultValue: "Visio Divina" }), href: "/visio" },
+        { key: "lectio", emoji: "📜", title: t("rhythm.card_lectio", { defaultValue: "Lectio Divina" }), href: "/lectio" },
+        { key: "podcasts", emoji: "🎙️", title: t("rhythm.card_podcasts", { defaultValue: "Podcasts" }), href: "/podcast-log" },
+        { key: "icons", emoji: "🪟", title: t("rhythm.card_icons", { defaultValue: "Praying with Icons" }), href: "/icon-prayer" },
+        { key: "spirituals", emoji: "🎶", title: t("rhythm.card_spirituals", { defaultValue: "Spirituals" }), href: "/spirituals" },
+        { key: "rosary", emoji: "📿", title: t("rhythm.card_rosary", { defaultValue: "Rosary" }), href: "/rosary" },
+      ];
+      return meta
+        .filter((m) => !inRhythm[m.key] && hasPracticeDoneToday(m.key))
+        .map((m) => ({
+          key: `extra-practice-${m.key}`,
+          slot: "anytime" as CustomSlot,
+          emoji: m.emoji,
+          rgb: "150,140,160",
+          done: true,
+          ...(m.href ? { href: m.href } : {}),
+          onUnlog: () => unmarkPracticeDoneToday(m.key),
+          title: m.title,
+          blurb: kept,
+          cta: t("rhythm.log", { defaultValue: "Log" }),
+          later: false,
+        }));
+    })(),
+    /**
+     * A NEWSLETTER YOU READ THAT ISN'T IN YOUR RHYTHM — Done, today only, and
+     * only after a REAL read.
+     *
+     * Owner: "if it is a newsletter, make sure they read it for more the 10
+     * seconds before putting it in done … this is only if its a newsletter not
+     * in their routine. if it was in their routine in next just opening moves
+     * it to done."
+     *
+     * So the bar is deliberately asymmetric, and that asymmetry is the point:
+     * a newsletter you CHOSE is kept by opening it — you already decided it is
+     * part of your day. One you merely wandered into from the Reflections menu
+     * has to earn the row, or a tap and an immediate back-swipe would decorate
+     * the day with something nobody read.
+     *
+     * The span comes from the reader's own open→close (lib/openExternal), which
+     * is the only honest measure available here. When nothing measured it — a
+     * plain web tab, or a surface that marks on open — there is no evidence of
+     * a real read, so no card. Silence is not a pass.
+     */
+    ...(() => {
+      const EXTRA_READ_MS = 10_000;
+      const inRhythm = new Set(reflections.map((r) => r.source));
+      return (["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist"] as TrackedReflection[])
+        .filter((src) => !inRhythm.has(src)
+          && hasReadReflectionToday(src)
+          && (reflectionDwellMsToday(src) ?? 0) >= EXTRA_READ_MS)
+        .map((src) => ({
+          key: `extra-reflect-${src}`,
+          slot: "anytime" as CustomSlot,
+          emoji: REFLECTION_EMOJI[src],
+          rgb: "150,140,160",
+          done: true,
+          href: src === "vts" ? "/vts-reading" : reflectionSourceUrl(src),
+          onUnlog: () => unlogReflectionToday(src),
+          title: PUBLICATION_NAME[src],
+          blurb: kept,
+          cta: t("rhythm.read", { defaultValue: "Read" }),
+          later: false,
+        }));
+    })(),
   ];
   // The morning- and evening-slotted cards bookend the list (unchanged — a
   // stable sort on SLOT_RANK, since every card sharing a slot already carries

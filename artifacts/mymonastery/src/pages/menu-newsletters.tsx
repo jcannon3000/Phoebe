@@ -96,7 +96,7 @@ const PUBLISHER: Record<DailySource, string> = {
 const DAILY = TRACKED_REFLECTION_SOURCES.map((source) => ({
   source, emoji: REFLECTION_EMOJI[source], title: PUBLICATION_NAME[source], publisher: PUBLISHER[source],
 }));
-const MARK_READ: Record<DailySource, () => void> = {
+const MARK_READ: Record<DailySource, (dwellMs?: number) => void> = {
   cac: markCacRead, fdd: markFddRead, ssje: markSsjeRead, vts: markVtsRead,
   nouwen: markNouwenRead, sojo: markSojoRead, grist: markGristRead,
 };
@@ -199,7 +199,7 @@ export default function MenuNewslettersPage() {
         // only once scrolled through) — it used to mark read BEFORE opening.
         open: () => {
           if (d.source === "vts") { MARK_READ[d.source](); setLocation("/vts-reading"); return; }
-          openExternalThenMarkRead(reflectionSourceUrl(d.source), () => MARK_READ[d.source](), { reader: true });
+          openExternalThenMarkRead(reflectionSourceUrl(d.source), (ms) => MARK_READ[d.source](ms), { reader: true });
         },
       };
     }),

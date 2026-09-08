@@ -190,7 +190,7 @@ export function openExternal(url: string, opts?: OpenOpts): boolean {
 // (it opens a new tab), so we mark on open, which is the best we can do.
 export function openExternalThenMarkRead(
   url: string,
-  markRead: () => void,
+  markRead: (dwellMs?: number) => void,
   opts?: OpenOpts,
 ): void {
   if (!url) return;
@@ -205,9 +205,18 @@ export function openExternalThenMarkRead(
     // scroll-tracking outcome — "count only when scrolled to the end", a
     // Continue bar for a partial read — was removed 2026-09-05, owner: "take
     // out the scrolling feature at all levels".)
+    /**
+     * …AND HOW LONG THEY STAYED. The reader's open→close span is the only
+     * honest measure of a read this app can take, and the home needs it for
+     * ONE case: a newsletter that isn't in the person's rhythm, which only
+     * lands in Done after a real read rather than a tap and a bounce (owner:
+     * "make sure they read it for more the 10 seconds"). A newsletter that IS
+     * in the rhythm is unaffected — opening it still keeps it.
+     */
+    const openedAt = Date.now();
     const onDone = () => {
       window.removeEventListener("phoebe:browserfinished", onDone);
-      markRead();
+      markRead(Date.now() - openedAt);
     };
     window.addEventListener("phoebe:browserfinished", onDone);
     return;

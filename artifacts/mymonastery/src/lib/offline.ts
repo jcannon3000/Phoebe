@@ -236,6 +236,20 @@ const OFFLINE_ROUTES = [
  * network — their content is a web page or a stream, not a saved copy.
  */
 export function cardAvailableOffline(cardKey: string, sideLevel?: string | null, sideKind?: string | null): boolean {
+  /**
+   * A practice done today that ISN'T in the rhythm rides in Done under an
+   * `extra-practice-` key (see DailyProgressBody). Judge it by the practice it
+   * actually is — without this it fell through to `return false` at the bottom
+   * and a finished, fully-offline Visio was listed under "Not available".
+   *
+   * `extra-reflect-` is deliberately NOT unwrapped: a newsletter needs the web
+   * whether or not it is in the rhythm, which is the same answer the routine's
+   * own reflect- cards get, and the owner's rule that even a read newsletter
+   * moves to "Not available" offline.
+   */
+  if (cardKey.startsWith("extra-practice-")) {
+    return OFFLINE_KEYS.has(cardKey.slice("extra-practice-".length));
+  }
   if (OFFLINE_KEYS.has(cardKey)) return true;
   if (/^(morning|evening)$/.test(cardKey) || /^extra-(morning|evening)$/.test(cardKey)) {
     // A side whose prayer IS a newsletter (the "fdd" level) reads a web page.
