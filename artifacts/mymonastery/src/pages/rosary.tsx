@@ -18,7 +18,7 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { toast } from "@/hooks/use-toast";
 import { isOnline } from "@/lib/offline";
 import {
-  MYSTERY_SETS, mysterySetForDay, artIdForDay, type MysterySet, type Mystery,
+  MYSTERY_SETS, mysterySetForDay, artIdsForDay, type MysterySet, type Mystery,
   ANGLICAN_SETS, ANGLICAN_CIRCLES, type AnglicanSet,
 } from "@/lib/rosary";
 import {
@@ -309,7 +309,7 @@ export default function RosaryPage() {
   useEffect(() => {
     if (isAnglican || beat?.kind !== "repeat" || !beat.decade) return;
     const next = beats.slice(step).find((b) => b.kind === "mystery") as { mystery: Mystery } | undefined;
-    const nextId = next ? artIdForDay(def, next.mystery) : null;
+    const nextId = next ? (dayArtIds[next.mystery.n - 1] ?? null) : null;
     const art = nextId ? artworkById(nextId) : null;
     if (!art?.img) return;
     try { const img = new Image(); img.decoding = "async"; img.src = safeArtUrl(art.img); } catch { /* non-fatal */ }
@@ -420,23 +420,39 @@ export default function RosaryPage() {
    * Undefined for the Assumption, which the library has nothing for — the beat
    * simply shows no picture rather than borrowing an unrelated one.
    */
+  /**
+   * The day's five pictures, chosen TOGETHER rather than one at a time — see
+   * artIdsForDay. Picking per-mystery made a session three-fifths one artist
+   * purely because of list order.
+   */
+  const dayArtIds = useMemo(
+    () => artIdsForDay(def, (id) => artworkById(id)?.artist ?? null),
+    [def],
+  );
   const mysteryArt = (() => {
     if (beat?.kind !== "mystery") return null;
-    const id = artIdForDay(def, beat.mystery);
+    const id = dayArtIds[beat.decade - 1] ?? null;
     return id ? artworkById(id) : null;
   })();
   /** The Anglican set's one icon — shown on the intro and at each turn of the
    *  circle. There are no mysteries to illustrate on this form, so one image
    *  held throughout is the honest equivalent. */
-  const angArt = useMemo(() => (angDef.artId ? artworkById(angDef.artId) : null), [angDef.artId]);
+  const angArt = useMemo(() => {
+    const id = angDef.artIds?.[0];
+    return id ? artworkById(id) : null;
+  }, [angDef.artIds]);
+  /** The picture on THIS beat, when the beat carries one (the cruciform beads). */
+  const beatArt = useMemo(() => {
+    const id = beat?.kind === "prayer" ? beat.artId : undefined;
+    return id ? artworkById(id) : null;
+  }, [beat]);
   /** Every work seen in THIS session — what the closing slide credits. */
   const creditedArt = useMemo(
     () => (isAnglican
-      ? (angArt ? [angArt] : [])
-      : def.mysteries
-        .map((m) => { const id = artIdForDay(def, m); return id ? artworkById(id) : null; })
+      ? (angDef.artIds ?? []).map((id) => artworkById(id)).filter((a): a is NonNullable<typeof a> => !!a)
+      : dayArtIds.map((id) => (id ? artworkById(id) : null))
         .filter((a): a is NonNullable<typeof a> => !!a)),
-    [def, isAnglican, angArt],
+    [dayArtIds, isAnglican, angDef.artIds],
   );
 
   /** The bottom pill: what it says, and what it does. */
@@ -979,6 +995,28 @@ export default function RosaryPage() {
                 <p style={{ color: WARM, margin: 0, fontFamily: FONT, fontSize: 15, lineHeight: 1.55 }}>
                   {beat.note}
                 </p>
+              )}
+              {/* A PICTURE ON A PRAYER SLIDE — the Anglican cruciform beads.
+                  This form does not change its words, so the picture is the
+                  only thing that moves as you go round; without one it is the
+                  same two sentences for a hundred beads. Same treatment the
+                  mystery card gives its painting — no frame, credited under
+                  it, through the formatter that turns "JESUS MAFA" into the
+                  Mafa community — but left-aligned, because the slide is. */}
+              {beatArt?.img && (
+                <figure style={{ margin: 0, width: "100%" }}>
+                  <img
+                    src={safeArtUrl(beatArt.img)}
+                    alt={`${beatArt.title}${beatArt.artist ? ` — ${tidyArtist(beatArt.artist)}` : ""}`}
+                    loading="eager"
+                    decoding="async"
+                    style={{ width: "100%", maxWidth: 260, maxHeight: "30dvh", objectFit: "contain", margin: 0, display: "block" }}
+                  />
+                  <figcaption style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 11.5, lineHeight: 1.45, marginTop: 8 }}>
+                    {beatArt.title}
+                    {beatArt.artist ? <span style={{ display: "block", color: "rgba(240,237,230,0.55)" }}>{tidyArtist(beatArt.artist)}</span> : null}
+                  </figcaption>
+                </figure>
               )}
             </motion.div>
           )}

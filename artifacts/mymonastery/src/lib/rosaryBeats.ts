@@ -30,7 +30,7 @@ export type Form = "roman" | "anglican";
  * `circle` is the Anglican rosary's "round again" — see buildAnglicanBeats.
  */
 export type Beat =
-  | { kind: "prayer"; eyebrow: string; title: string; body: string; note?: string }
+  | { kind: "prayer"; eyebrow: string; title: string; body: string; note?: string; artId?: number }
   | { kind: "mystery"; mystery: Mystery; decade: number }
   | { kind: "repeat"; times: number; eyebrow: string; title: string; body: string; note?: string; decade?: number }
   | { kind: "versicle"; eyebrow: string; v: string; r: string; note?: string }
@@ -146,6 +146,11 @@ export function buildAnglicanBeats(key: AnglicanSet): Beat[] {
   for (let w = 1; w <= WEEKS_PER_CIRCLE; w++) {
     beats.push({
       kind: "prayer", eyebrow: `On the ${ordinal(w)} cruciform bead`, title: def.cruciformTitle, body: def.cruciform,
+      // One picture per cruciform bead, so a circuit moves through all four
+      // the way a Roman decade moves through a mystery. Fixed to the bead
+      // rather than the circuit, so every time round shows the same four in
+      // the same places — the circle is meant to become familiar.
+      artId: def.artIds?.[(w - 1) % def.artIds.length],
       note: w === 1
         ? "Move onto the circle. The four large beads spaced around it make a cross within the ring — this is the first."
         : "The next large bead round the circle, a quarter turn on.",

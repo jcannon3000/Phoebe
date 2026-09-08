@@ -187,6 +187,49 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
  * is offered first, the way the office offers today's psalms.
  */
 /**
+ * THE FIVE PICTURES FOR ONE SESSION, FROM FIVE DIFFERENT HANDS.
+ *
+ * artIdForDay decides each mystery on its own, and each mystery's list tends
+ * to open with the same artist — so a day's rosary came out three-fifths
+ * JESUS MAFA (owner: "which are great, but i dont want every image to be
+ * jesus mafa"). The catalogue holds 525 works by 143 artists; the deck was
+ * leaning on one of them because of list order, not because of choice.
+ *
+ * So the five are chosen TOGETHER: take each mystery's own rotation pick,
+ * then, walking in order, nudge any mystery whose artist has already appeared
+ * forward through ITS OWN list until it finds a hand not yet seen. A mystery
+ * with only one picture, or only pictures by artists already used, keeps its
+ * natural pick — variety never costs a mystery its picture.
+ *
+ * `artistOf` is passed in rather than imported: this file is the rosary's
+ * data and knows nothing about the ACT catalogue, and injecting the lookup
+ * keeps it that way (and makes this testable without loading 525 works).
+ */
+export function artIdsForDay(
+  set: MysterySetDef,
+  artistOf: (id: number) => string | null,
+  d: Date = new Date(),
+): Array<number | null> {
+  const used = new Set<string>();
+  return set.mysteries.map((m) => {
+    const natural = artIdForDay(set, m, d);
+    if (natural === null) return null;
+    const ids = m.artIds ?? [];
+    const start = Math.max(0, ids.indexOf(natural));
+    for (let k = 0; k < ids.length; k++) {
+      const id = ids[(start + k) % ids.length]!;
+      const who = (artistOf(id) ?? "").trim().toLowerCase();
+      if (who && used.has(who)) continue;
+      if (who) used.add(who);
+      return id;
+    }
+    // Every one of this mystery's artists is already on the wall. Keep the
+    // picture rather than showing none — a repeated hand beats a blank slide.
+    return natural;
+  });
+}
+
+/**
  * Which of a mystery's pictures today gets.
  *
  * The first cut indexed by WEEKDAY ALONE, so a set prayed twice a week only
@@ -414,9 +457,22 @@ export type AnglicanSetDef = {
   /** Said on each of the seven beads of a week. */
   week: string;
   weekTitle: string;
-  /** One icon for the set, from the same ACT library — see artIds above for
-   *  the 3:5–16:9 rule these were measured against. */
-  artId?: number;
+  /**
+   * PICTURES FOR THE ANGLICAN FORM (owner: "find a way to include images on
+   * anglican slides, even on the jesus prayer").
+   *
+   * The Roman form gets its eye-rest from the mysteries — a new scene every
+   * decade. This form deliberately does NOT change its words, so without
+   * pictures it is the same two sentences on every slide for a hundred beads.
+   * Each set carries four, shown one per cruciform bead, so going round the
+   * circle moves through them the way a decade moves through a mystery.
+   *
+   * FOUR DIFFERENT HANDS PER SET, on purpose (owner: "i dont want every image
+   * to be jesus mafa"). None of these is Mafa; the catalogue's 525 works come
+   * from 143 artists and the deck was leaning on one of them. Every id
+   * measured over the wire and inside 3:5–16:9 — see artIds above.
+   */
+  artIds?: number[];
 };
 
 /** The invitatory every set shares — the office's own opening versicle. */
@@ -441,7 +497,9 @@ export const ANGLICAN_SETS: Record<AnglicanSet, AnglicanSetDef> = {
     // in, one breath to a line, not a sentence to be read across.
     week: "Lord Jesus Christ,\nSon of God,\nhave mercy on me,\na sinner.",
     weekTitle: "The Jesus Prayer",
-    artId: 57124,
+    // Latimore's working Christ · an Eastern icon (the prayer's own tradition)
+    // · Wesley's Christ the Lord · the Kariye Camii mosaic.
+    artIds: [57124, 55553, 59227, 54557],
   },
   julian: {
     key: "julian",
@@ -454,7 +512,10 @@ export const ANGLICAN_SETS: Record<AnglicanSet, AnglicanSetDef> = {
     cruciformTitle: "All shall be well",
     week: "God of your goodness,\ngive me yourself,\nfor you are enough to me.",
     weekTitle: "God of your goodness",
-    artId: 57119,
+    // The Cloud of Unknowing · Wesley's Churinga (pure light) · Church's
+    // Twilight in the Wilderness · Wesley's Light of the World. Julian's
+    // showings are of light and enclosing love rather than of scenes.
+    artIds: [57119, 59222, 58478, 59168],
   },
   trisagion: {
     key: "trisagion",
@@ -467,7 +528,9 @@ export const ANGLICAN_SETS: Record<AnglicanSet, AnglicanSetDef> = {
     cruciformTitle: "The Trisagion",
     week: "Lord, have mercy.\nChrist, have mercy.\nLord, have mercy.",
     weekTitle: "Kyrie eleison",
-    artId: 57123,
+    // Latimore's Trinity · Miller's Holy Trinity · Wesley's Burning Bush ·
+    // a Book of Hours Trinity. Holy God, holy and mighty.
+    artIds: [57123, 59672, 59170, 58383],
   },
   lamb: {
     key: "lamb",
@@ -480,7 +543,10 @@ export const ANGLICAN_SETS: Record<AnglicanSet, AnglicanSetDef> = {
     cruciformTitle: "Behold the Lamb of God",
     week: "Jesus, Lamb of God,\nhave mercy on us.",
     weekTitle: "Agnus Dei",
-    artId: 57121,
+    // The Good Shepherd · the Institution of the Eucharist, where the Agnus
+    // Dei is actually said · El Greco's Adoration of the Holy Name · an icon
+    // of the Crucifixion, the Lamb who takes away the sin of the world.
+    artIds: [57121, 58334, 58326, 56778],
   },
 };
 
