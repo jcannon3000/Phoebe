@@ -31,6 +31,23 @@ export type Mystery = {
   meditation: string;
   /** The virtue the decade has traditionally been offered for. */
   fruit: string;
+  /**
+   * A CURATED artwork from the ACT (Vanderbilt) library — the same collection
+   * Visio Divina prays with — resolved through visioSelect's artworkById.
+   *
+   * Curated by hand, one per mystery, and deliberately NOT matched by chapter:
+   * Luke 1 holds both the Annunciation and the Visitation, and Luke 2 holds the
+   * Nativity, the Presentation and the Finding, so a chapter matcher
+   * illustrates three different mysteries with the same painting and labels
+   * the Visitation with an Annunciation. Subject first, then a spread of
+   * hands — the Cameroonian JESUS MAFA series, Frank Wesley's Indian
+   * paintings, Mary Jane Miller's icons, John August Swanson's serigraphs and
+   * a few European masters — so five decades are not five of one style.
+   *
+   * Undefined where the library genuinely has nothing on the subject (the
+   * Assumption); the beat simply shows no picture.
+   */
+  artId?: number;
 };
 
 export type MysterySetDef = {
@@ -50,15 +67,15 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
     days: "Mondays and Saturdays",
     blurb: "The coming of Christ, and the ordinary lives that carried him.",
     mysteries: [
-      { n: 1, title: "The Annunciation", ref: "Luke 1:26-38", fruit: "Humility",
+      { n: 1, title: "The Annunciation", ref: "Luke 1:26-38", artId: 48278, fruit: "Humility",
         meditation: "Gabriel comes to a young woman in an unimportant town, and she says yes without knowing what it will cost." },
-      { n: 2, title: "The Visitation", ref: "Luke 1:39-56", fruit: "Love of neighbour",
+      { n: 2, title: "The Visitation", ref: "Luke 1:39-56", artId: 48279, fruit: "Love of neighbour",
         meditation: "Mary goes to Elizabeth. Two pregnant women meet, and the first thing either of them does is sing." },
-      { n: 3, title: "The Nativity", ref: "Luke 2:1-20", fruit: "Poverty of spirit",
+      { n: 3, title: "The Nativity", ref: "Luke 2:1-20", artId: 48387, fruit: "Poverty of spirit",
         meditation: "God arrives without room, without status, and the news goes first to men working a night shift." },
-      { n: 4, title: "The Presentation in the Temple", ref: "Luke 2:22-38", fruit: "Obedience",
+      { n: 4, title: "The Presentation in the Temple", ref: "Luke 2:22-38", artId: 56557, fruit: "Obedience",
         meditation: "Two old people have been waiting their whole lives, and they recognise him at once." },
-      { n: 5, title: "The Finding in the Temple", ref: "Luke 2:41-52", fruit: "Joy in finding God",
+      { n: 5, title: "The Finding in the Temple", ref: "Luke 2:41-52", artId: 59224, fruit: "Joy in finding Jesus",
         meditation: "Three days of looking, and he is where his Father is. His mother does not understand, and keeps it anyway." },
     ],
   },
@@ -68,15 +85,15 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
     days: "Tuesdays and Fridays",
     blurb: "The passion — what love was willing to bear.",
     mysteries: [
-      { n: 1, title: "The Agony in the Garden", ref: "Matthew 26:36-46", fruit: "Sorrow for sin",
+      { n: 1, title: "The Agony in the Garden", ref: "Matthew 26:36-46", artId: 48391, fruit: "Sorrow for sin",
         meditation: "He asks for it to pass. He is not pretending. And still: not what I want, but what you want." },
-      { n: 2, title: "The Scourging at the Pillar", ref: "Matthew 27:26", fruit: "Purity",
+      { n: 2, title: "The Scourging at the Pillar", ref: "Matthew 27:26", artId: 48274, fruit: "Purity",
         meditation: "The body God took is the body that is struck. Nothing about this is symbolic." },
-      { n: 3, title: "The Crowning with Thorns", ref: "Matthew 27:27-31", fruit: "Courage",
+      { n: 3, title: "The Crowning with Thorns", ref: "Matthew 27:27-31", artId: 46134, fruit: "Moral courage",
         meditation: "They dress him as a king to mock him, and are more right than they know." },
-      { n: 4, title: "The Carrying of the Cross", ref: "John 19:17", fruit: "Patience",
+      { n: 4, title: "The Carrying of the Cross", ref: "John 19:17", artId: 59353, fruit: "Patience",
         meditation: "He carries it as far as he can, and then a stranger from the crowd is made to help." },
-      { n: 5, title: "The Crucifixion", ref: "John 19:18-30", fruit: "Perseverance",
+      { n: 5, title: "The Crucifixion", ref: "John 19:18-30", artId: 48390, fruit: "Perseverance",
         meditation: "He gives his mother a son and his friend a mother, and then he says it is finished." },
     ],
   },
@@ -86,11 +103,11 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
     days: "Wednesdays and Sundays",
     blurb: "Easter and what followed — death undone, and the Church begun.",
     mysteries: [
-      { n: 1, title: "The Resurrection", ref: "Matthew 28:1-10", fruit: "Faith",
+      { n: 1, title: "The Resurrection", ref: "Matthew 28:1-10", artId: 48301, fruit: "Faith",
         meditation: "The women come to care for a body and find the grave empty and the guards undone." },
-      { n: 2, title: "The Ascension", ref: "Acts 1:6-11", fruit: "Hope",
+      { n: 2, title: "The Ascension", ref: "Acts 1:6-11", artId: 48398, fruit: "Hope",
         meditation: "He goes, and they are left staring upward until they are told to get on with it." },
-      { n: 3, title: "The Descent of the Holy Spirit", ref: "Acts 2:1-13", fruit: "Love of God",
+      { n: 3, title: "The Descent of the Holy Spirit", ref: "Acts 2:1-13", artId: 59680, fruit: "Love of God",
         meditation: "Wind and fire, and a frightened room becomes a church that can be understood in every language." },
       // ── The two Marian mysteries. Written as what the tradition holds and
       //    what scripture pictures, not as doctrine an Anglican is asked to
@@ -99,7 +116,7 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
       //    here) or keep them.
       { n: 4, title: "The Assumption of Mary", ref: "Revelation 12:1-6", fruit: "Devotion to Mary",
         meditation: "The tradition holds that the one who carried him was carried home. We pray with her, at the end of her long yes." },
-      { n: 5, title: "The Coronation of Mary", ref: "Luke 1:46-55", fruit: "Trust in God's promise",
+      { n: 5, title: "The Coronation of Mary", ref: "Luke 1:46-55", artId: 58434, fruit: "Trust in God's promise",
         meditation: "He has lifted up the lowly. What was promised in her song is finished in her." },
     ],
   },
@@ -109,15 +126,15 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
     days: "Thursdays",
     blurb: "The ministry — the years between the manger and the cross.",
     mysteries: [
-      { n: 1, title: "The Baptism in the Jordan", ref: "Matthew 3:13-17", fruit: "Openness to the Spirit",
+      { n: 1, title: "The Baptism in the Jordan", ref: "Matthew 3:13-17", artId: 48290, fruit: "Openness to the Spirit",
         meditation: "He stands in the river with everyone else, and heaven says: this one, beloved." },
-      { n: 2, title: "The Wedding at Cana", ref: "John 2:1-11", fruit: "Trust in Mary's care",
+      { n: 2, title: "The Wedding at Cana", ref: "John 2:1-11", artId: 59676, fruit: "Trust in Mary's care",
         meditation: "The wine runs out, as it does. His mother notices before anyone else, and simply tells him." },
-      { n: 3, title: "The Proclamation of the Kingdom", ref: "Mark 1:14-15", fruit: "Repentance",
+      { n: 3, title: "The Proclamation of the Kingdom", ref: "Mark 1:14-15", artId: 48379, fruit: "Repentance",
         meditation: "The kingdom has come near — near enough to turn around for." },
-      { n: 4, title: "The Transfiguration", ref: "Matthew 17:1-8", fruit: "Desire for holiness",
+      { n: 4, title: "The Transfiguration", ref: "Matthew 17:1-8", artId: 48307, fruit: "Desire for holiness",
         meditation: "For a moment they see him as he is, and Peter wants to build something and stay." },
-      { n: 5, title: "The Institution of the Eucharist", ref: "Matthew 26:26-30", fruit: "Adoration",
+      { n: 5, title: "The Institution of the Eucharist", ref: "Matthew 26:26-30", artId: 58334, fruit: "Adoration",
         meditation: "On the night before he suffered, he took bread — and it has not stopped being given since." },
     ],
   },
@@ -181,6 +198,25 @@ export const GLORY_BE =
 export const FATIMA_PRAYER =
   "O my Jesus, forgive us our sins, save us from the fires of hell, " +
   "and lead all souls to heaven, especially those in most need of thy mercy. Amen.";
+
+/**
+ * THE CLOSE, which the first build left out.
+ *
+ * After the Hail, holy Queen the received form says the versicle and response
+ * and then the concluding collect — it is not an optional flourish, it is how
+ * the rosary ends. Both are given in the same traditional English as the Our
+ * Father above ("thy", "beseech"), which is also the register of the app's
+ * Rite I office texts, so the deck does not change voice at its last beat.
+ */
+export const CONCLUDING_VERSICLE = "Pray for us, O holy Mother of God.";
+export const CONCLUDING_RESPONSE = "That we may be made worthy of the promises of Christ.";
+
+export const CONCLUDING_PRAYER =
+  "O God, whose only-begotten Son, by his life, death, and resurrection, " +
+  "has purchased for us the rewards of eternal life: grant, we beseech thee, " +
+  "that meditating upon these mysteries of the most holy Rosary of the Blessed Virgin Mary, " +
+  "we may imitate what they contain and obtain what they promise; " +
+  "through the same Christ our Lord. Amen.";
 
 export const HAIL_HOLY_QUEEN =
   "Hail, holy Queen, Mother of mercy, our life, our sweetness, and our hope. " +

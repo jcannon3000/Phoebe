@@ -6,6 +6,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { DeckAnnouncer } from "@/components/DeckAnnouncer";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
+import { artworkById } from "@/lib/visioSelect";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { openReadingPage } from "@/lib/openExternal";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
@@ -14,6 +15,7 @@ import {
   MYSTERY_SETS, mysterySetForDay, type MysterySet, type Mystery,
   SIGN_OF_THE_CROSS, APOSTLES_CREED, OUR_FATHER, HAIL_MARY, GLORY_BE,
   FATIMA_PRAYER, HAIL_HOLY_QUEEN, OPENING_INTENTIONS, BEADS_PER_DECADE,
+  CONCLUDING_VERSICLE, CONCLUDING_RESPONSE, CONCLUDING_PRAYER,
 } from "@/lib/rosary";
 
 /**
@@ -96,6 +98,9 @@ function buildBeats(set: MysterySet): Beat[] {
     beats.push({ kind: "prayer", eyebrow: `The ${ordinal(m.n)} decade`, title: "O my Jesus", body: FATIMA_PRAYER });
   }
   beats.push({ kind: "prayer", eyebrow: "To close", title: "Hail, holy Queen", body: HAIL_HOLY_QUEEN });
+  // The versicle and response, then the collect — the received close.
+  beats.push({ kind: "prayer", eyebrow: CONCLUDING_VERSICLE, title: "Pray for us", body: CONCLUDING_RESPONSE });
+  beats.push({ kind: "prayer", eyebrow: "Let us pray", title: "The Concluding Prayer", body: CONCLUDING_PRAYER });
   beats.push({ kind: "prayer", eyebrow: "To close", title: "The Sign of the Cross", body: SIGN_OF_THE_CROSS });
   beats.push({ kind: "closing" });
   return beats;
@@ -174,6 +179,23 @@ export default function RosaryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, bead, set]);
 
+  /**
+   * WARM THE NEXT MYSTERY'S PICTURE WHILE THIS DECADE IS PRAYED.
+   *
+   * The ACT originals average ~570 KB and the host offers no resizing (its
+   * IIIF paths 403), so an unwarmed picture pops in a beat or two late on
+   * cellular. A decade is ten Hail Marys — a minute or more of certain
+   * warning — so the next one is fetched during it and is simply there.
+   */
+  useEffect(() => {
+    if (beat?.kind !== "beads") return;
+    const next = beats.slice(step).find((b) => b.kind === "mystery") as { mystery: Mystery } | undefined;
+    const art = next?.mystery.artId ? artworkById(next.mystery.artId) : null;
+    if (!art?.img) return;
+    try { const img = new Image(); img.decoding = "async"; img.src = art.img; } catch { /* non-fatal */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, beat?.kind]);
+
   useEffect(() => {
     if (step === 1) { try { playOpeningSwell(); } catch { /* non-fatal */ } }
     if (isClosing) {
@@ -215,6 +237,12 @@ export default function RosaryPage() {
   if (adminLoading || !isSuperAdmin) return null;
 
   const decadeOf = beat && (beat.kind === "mystery" || beat.kind === "beads") ? beat.decade : null;
+  /**
+   * The mystery's picture, from the same ACT library Visio prays with.
+   * Undefined for the Assumption, which the library has nothing for — the beat
+   * simply shows no picture rather than borrowing an unrelated one.
+   */
+  const mysteryArt = beat?.kind === "mystery" && beat.mystery.artId ? artworkById(beat.mystery.artId) : null;
 
   /**
    * One bead on. Hoisted because the pill and the whole slide both do it —
@@ -424,6 +452,23 @@ export default function RosaryPage() {
               >
                 {beat.mystery.title}
               </h2>
+              {mysteryArt?.img && (
+                /* Held small and soft — this is a mystery being announced, not
+                   Visio's long look at one picture. Attribution rides the alt
+                   text the way Visio's does; the ACT licence is the same one. */
+                <img
+                  src={mysteryArt.img}
+                  alt={`${mysteryArt.title}${mysteryArt.artist ? ` — ${mysteryArt.artist}` : ""}`}
+                  loading="eager"
+                  decoding="async"
+                  style={{
+                    width: "100%", maxWidth: 300, maxHeight: "34dvh", objectFit: "contain",
+                    borderRadius: 10, margin: "0 auto 18px",
+                    border: "1px solid rgba(150,170,205,0.28)",
+                    boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+                  }}
+                />
+              )}
               <p style={{ color: "rgba(226,232,244,0.92)", fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(17px, 4.4vw, 21px)", lineHeight: 1.5, marginBottom: 18 }}>
                 {beat.mystery.meditation}
               </p>
