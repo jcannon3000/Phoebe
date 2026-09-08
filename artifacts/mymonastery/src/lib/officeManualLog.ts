@@ -166,7 +166,7 @@ export function clearOfficeUndoToday(side: OfficeUndoSide): void {
  *
  * The mirror of cacReadState's creditSideAnchor, for the other family of
  * completions. Offices and reflections say "I was prayed" through
- * mark*Prayed(side); the Examen, Creation Prayer and a named contemplative
+ * mark*Prayed(side); the Examen, Breathing Together and a named contemplative
  * practice say it through markPracticeDoneToday(key), which knew nothing about
  * sides and so never cleared the tombstone that un-logging leaves behind.
  *

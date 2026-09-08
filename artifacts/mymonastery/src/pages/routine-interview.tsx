@@ -88,7 +88,7 @@ const SLOT_TEXT: Record<string, string> = {
  */
 const CONTEMPLATIVE_CHOICES: Array<{ key: string; emoji: string; label: string; sub: string; slot?: string }> = [
   { key: "silence", emoji: "🕯️", label: "Sitting in silence", sub: "A silent sit, however long you like." },
-  { key: "cobreathe", emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation.", slot: "anytime" },
+  { key: "cobreathe", emoji: "🌍", label: "Breathing Together", sub: "Breathing together with God's creation.", slot: "anytime" },
   // "anytime" on purpose: getPracticeSlot (lib/customAnchors) hard-returns
   // "anytime" for cobreathe / listening / examen / walk, so any other value
   // would put a time on the review that the app never actually applies.
@@ -155,7 +155,7 @@ const EXTRAS: Array<{ key: string; emoji: string; label: string; sub: string; sl
   { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Connecting with God through music.", slot: "anytime" },
   // "anytime", not "evening" — see the note on CONTEMPLATIVE_CHOICES.
   { key: "examen", emoji: "🌗", label: "The Examen", sub: "Review the day with God.", slot: "anytime" },
-  { key: "cobreathe", emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation.", slot: "anytime" },
+  { key: "cobreathe", emoji: "🌍", label: "Breathing Together", sub: "Breathing together with God's creation.", slot: "anytime" },
   // "anytime" on purpose: getPracticeSlot (lib/customAnchors) hard-returns
   // "anytime" for cobreathe / listening / examen / walk, so any other value
   // would put a time on the review that the app never actually applies.
@@ -1449,7 +1449,7 @@ export default function RoutineInterviewPage() {
     // and replicating it means replicating that too — otherwise someone whose
     // evening anchor IS Compline gets offered Compline again here and ends up
     // with two Compline cards for one office. Same for the Examen, and for
-    // Creation Prayer when it's already a side's contemplation style.
+    // Breathing Together when it's already a side's contemplation style.
     const rc = ((spec as any)?.ruleConfig ?? {}) as Record<string, string>;
     const levels = [rc["phoebe:office:level:morning"], rc["phoebe:office:level:evening"]];
     const alreadyPrimary: Record<string, boolean> = {
@@ -1458,7 +1458,7 @@ export default function RoutineInterviewPage() {
       // ANY side whose own kind is the breath — asked per side. The global
       // holds whichever side was written last, so on a rule with the breath in
       // the MORNING and silence at night it read "silent" and the extras slide
-      // re-offered Creation Prayer, giving a practice a side already anchors a
+      // re-offered Breathing Together, giving a practice a side already anchors a
       // second card and a second weekly row.
       cobreathe: (["morning", "evening"] as const).some((sd) => {
         if (rc[`phoebe:office:contemplation:${sd}`] !== "1") return false;

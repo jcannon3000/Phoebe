@@ -1197,7 +1197,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     const ymd = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
     const seed = `${current?.episodeId || current?.showSlug || "audio"}:${ymd}`;
     // The web keeps its own wide landscape set (not bundled into iOS); native
-    // uses the Creation Prayer library above.
+    // uses the Breathing Together library above.
     if (!isNativeShell() && WIDE_PHOTOS.length > 0) {
       return WIDE_PHOTOS[hashStr(seed) % WIDE_PHOTOS.length]!;
     }

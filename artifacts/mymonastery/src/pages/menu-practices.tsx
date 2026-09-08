@@ -14,7 +14,7 @@ export default function MenuPracticesPage() {
   const [, setLocation] = useLocation();
   // PUBLIC no-login version: guests keep exactly Contemplation · Co-Breathe —
   // no Audio Divina anywhere in the public version (owner re-reversal
-  // 2026-07-02), and Creation Prayer stays behind its own flag. See memory
+  // 2026-07-02), and Breathing Together stays behind its own flag. See memory
   // "project_public_no_login".
   const { isGuest } = useGuestMode();
   const { user } = useAuth();
@@ -93,9 +93,9 @@ export default function MenuPracticesPage() {
           // walked through rather than a reading.
           { emoji: "📿", label: "The Rosary", sub: "Pray the mysteries, a decade at a time", onClick: () => go("/rosary") },
           // Guided courses now live in their own "Learn" menu tab.
-          { offlineKey: "cobreathe", emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation", onClick: () => go("/cobreathe") },
+          { offlineKey: "cobreathe", emoji: "🌍", label: "Breathing Together", sub: "Breathing together with God's creation", onClick: () => go("/cobreathe") },
           // Prayers for the Climate sits at the bottom (behind CREATION_PRAYER_ENABLED).
-          // The standalone "Creation Prayer" devotion was removed per owner.
+          // The standalone "Breathing Together" devotion was removed per owner.
           ...(CREATION_PRAYER_ENABLED && !isGuest ? [
             { emoji: "🌍", label: "Prayers for the Climate", sub: "Collects, prayers & words on creation", onClick: () => go("/creation-prayers") },
           ] : []),

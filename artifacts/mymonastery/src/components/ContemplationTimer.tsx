@@ -544,7 +544,7 @@ export function ContemplationTimer({
       // Which per-side card this sit keeps — same resolution the local
       // attribution applies, so the server can echo done-state to the
       // user's OTHER devices (/me/contemplation-sides-today).
-      // This timer is the SILENT sit (the Creation Prayer breath logs its own
+      // This timer is the SILENT sit (the Breathing Together breath logs its own
       // session from /cobreathe with source: "cobreathe"), so resolve the side
       // against silent-kind day-flags.
       contemplationSide: resolveContemplationSideForSit("silent") ?? undefined,
@@ -1164,7 +1164,7 @@ export function ContemplationTimer({
                         className="mt-5 w-full rounded-2xl py-3 transition-opacity hover:opacity-90 active:scale-[0.98] flex flex-col items-center"
                         style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.32)", color: WARM, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
                       >
-                        <span style={{ fontSize: 15, fontWeight: 600 }}><CobreatheGlobe size={15} style={{ marginRight: 4, verticalAlign: "-1px" }} />{t("contemplation_timer.cobreathe", { defaultValue: "Creation Prayer" })}</span>
+                        <span style={{ fontSize: 15, fontWeight: 600 }}><CobreatheGlobe size={15} style={{ marginRight: 4, verticalAlign: "-1px" }} />{t("contemplation_timer.cobreathe", { defaultValue: "Breathing Together" })}</span>
                         <span style={{ fontSize: 12, color: SAGE, marginTop: 2 }}>{t("contemplation_timer.cobreathe_sub", { defaultValue: "Breathing together with God's creation" })}</span>
                       </button>
                     </>

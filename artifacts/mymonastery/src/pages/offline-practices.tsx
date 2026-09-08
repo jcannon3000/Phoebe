@@ -59,7 +59,7 @@ async function savedStatus(key: string): Promise<string | null> {
      * as a failure on a working phone. It asked morning with all three
      * confessions but evening with only one — the walk writes evening:1 / :0
      * once that side's confession has been touched — and never asked for the
-     * Creation Prayer devotions at all, so a reader whose rule is Creation on
+     * Breathing Together devotions at all, so a reader whose rule is Creation on
      * both sides was told nothing was saved with thirty days on the device.
      */
     const confessions = ["", "1", "0"] as const;
@@ -67,7 +67,7 @@ async function savedStatus(key: string): Promise<string | null> {
     let any = false;
     outer: for (const mode of modes) {
       for (const confession of confessions) {
-        // Creation Prayer's deck differs when it is prayed on one side only,
+        // Breathing Together's deck differs when it is prayed on one side only,
         // and the walk keys that with `single` — ask both ways.
         for (const single of [undefined, "1"] as const) {
           if (await has({ mode, date, confession, ...(single ? { single } : {}) })) { any = true; break outer; }

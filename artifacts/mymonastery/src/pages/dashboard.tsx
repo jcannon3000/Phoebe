@@ -2163,7 +2163,7 @@ function NewPrayerRequestsCard({
 
 // ── ContemplationHomeCard — compact "sit in silence" home anchor ──
 // A one-line card that taps through to /contemplation (or /cobreathe when the
-// user's style is Creation Prayer). Hidden by default; surfaced (and pinnable
+// user's style is Breathing Together). Hidden by default; surfaced (and pinnable
 // to the top) from the Customize page so someone whose daily rhythm is silent
 // prayer can lead with it.
 //
@@ -2226,7 +2226,7 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
   // Contemplation cards. Never derived from the shared minutes goal above,
   // so completing one side never flips the other.
   // KIND-FILTERED, like every other reader of this flag. Passing no kind let a
-  // silent sit tick a Creation Prayer side (and the reverse) — this card would
+  // silent sit tick a Breathing Together side (and the reverse) — this card would
   // read "kept" while the /daily-progress card for the same side stayed open,
   // two answers on one rhythm.
   const sideKind: "silent" | "cobreathe" = getSideContemplationKind(side) === "creation" ? "cobreathe" : "silent";
@@ -2267,9 +2267,9 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
     && getSideContemplationKind("evening") === "creation"
     && getSideLevel("morning") === "reflect-sit" && getSideLevel("evening") === "reflect-sit";
   // Silent style always names the side (matches the /daily-progress cards);
-  // Creation Prayer only splits into Morning/Evening when BOTH sides use it.
+  // Breathing Together only splits into Morning/Evening when BOTH sides use it.
   const label = isCreation
-    ? (bothSides ? (side === "morning" ? "Morning Creation Prayer" : "Evening Creation Prayer") : "Creation Prayer")
+    ? (bothSides ? (side === "morning" ? "Morning Breathing Together" : "Evening Breathing Together") : "Breathing Together")
     : (side === "morning" ? "Morning Contemplation" : "Evening Contemplation");
   const emoji = isCreation ? "🌍" : "🕯️";
   const href = isCreation ? `/cobreathe?side=${side}` : `/contemplation?begin=1&side=${side}`;
@@ -2277,13 +2277,13 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
 
   // Evening stays a quiet "later" card until its slot opens at 5 PM — mirrors
   // the evening office's gate (SLOT_OPEN_HOUR.evening in lib/customAnchors.ts)
-  // so Creation Prayer/Contemplation isn't offered as "available" before then.
+  // so Breathing Together/Contemplation isn't offered as "available" before then.
   const hour = new Date().getHours();
   const later = side === "evening" && !met && hour < EVENING_OPEN_HOUR;
 
   // Sub-line: the "later" gate wins (evening, not yet 5 PM); then this side's
   // own kept state; then style-specific blurb; goal progress only applies to
-  // the silent style (Creation Prayer's blurb never mentions minutes, same
+  // the silent style (Breathing Together's blurb never mentions minutes, same
   // rule as the /daily-progress cards).
   const subline = later
     ? "Available from 5 PM"
@@ -2319,7 +2319,7 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
             className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate"
             style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
           >
-            {isCreation ? "Creation Prayer" : "Contemplation"}
+            {isCreation ? "Breathing Together" : "Contemplation"}
           </p>
           <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{label}</p>
           <p className="text-[13.5px] mt-1 leading-snug" style={{ color: met ? "#A8C5A0" : "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -2578,7 +2578,7 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
   const rgb = "46,107,64";
   if (hero) {
     // Same neutral frosted shell + sage outline + green accent every hero card
-    // uses (matches the office/Examen/Creation Prayer hero exactly) — the
+    // uses (matches the office/Examen/Breathing Together hero exactly) — the
     // practice's own identity lives in the eyebrow/title copy, not a tinted
     // card background. This one used to carry its own rose tint + an inline
     // emoji next to the title, reading as a different, older card family.
@@ -2741,9 +2741,9 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
   );
 }
 
-// Creation Prayer home card — replaces the office card for a side set to
-// Creation Prayer. Labels "Morning/Evening Creation Prayer" when BOTH sides are
-// Creation Prayer (so the two cards are distinguishable); just "Creation Prayer"
+// Breathing Together home card — replaces the office card for a side set to
+// Breathing Together. Labels "Morning/Evening Breathing Together" when BOTH sides are
+// Breathing Together (so the two cards are distinguishable); just "Breathing Together"
 // when it's the only side.
 function CreationHomeCard({ side, hero = false }: { side: "morning" | "evening"; hero?: boolean }) {
   const bothCreation = getSideLevel("morning") === "creation" && getSideLevel("evening") === "creation";
@@ -2772,7 +2772,7 @@ function CreationHomeCard({ side, hero = false }: { side: "morning" | "evening";
               Creation Prayer
             </p>
             <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{label}</p>
-            <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>The creation Psalter &amp; prayers, with Creation Prayer</p>
+            <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>The creation Psalter &amp; prayers, with Breathing Together</p>
             {/* Translucent CTA, matching the office hero — see ContemplationHomeCard. */}
             <div
               className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
@@ -3954,8 +3954,8 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   if (getSideLevel(isMorning ? "morning" : "evening") === "custom") {
     return <OwnPracticeHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
   }
-  // Per-user: Creation Prayer IS this side's prayer → its card replaces the
-  // office card. Labels Morning/Evening Creation Prayer when both sides use it.
+  // Per-user: Breathing Together IS this side's prayer → its card replaces the
+  // office card. Labels Morning/Evening Breathing Together when both sides use it.
   // Hidden behind CREATION_PRAYER_ENABLED — when off, a stale "creation" pref
   // falls through to the normal office card.
   if (CREATION_PRAYER_ENABLED && getSideLevel(isMorning ? "morning" : "evening") === "creation") {

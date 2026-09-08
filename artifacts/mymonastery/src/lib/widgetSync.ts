@@ -169,7 +169,7 @@ export function useWidgetSync(): void {
      *  DailyProgressBody's per-side card naming exactly. */
     const contemplationSideFace = (cap: "Morning" | "Evening", kind: string): { title: string; eyebrow: string; subtitle: string; emoji: string } => {
       switch (kind) {
-        case "creation": return { title: `${cap} Creation Prayer`, eyebrow: "A prayer for the earth", subtitle: "Breathing with creation", emoji: "🌍" };
+        case "creation": return { title: `${cap} Breathing Together`, eyebrow: "A prayer for the earth", subtitle: "Breathing with creation", emoji: "🌍" };
         case "walk": return { title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray", emoji: "🚶🏽" };
         case "audio": return { title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music", emoji: "🎵" };
         case "visio": return { title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image", emoji: "🖼️" };
@@ -285,7 +285,7 @@ export function useWidgetSync(): void {
         subtitle: `${r.reflections.filter((rf) => rf.done).length} of ${r.reflections.length} read`,
         cta: "Read", kind: "reflect" as const,
       }] : []),
-      // Named by the side's KIND — the widget called a Creation Prayer (or a
+      // Named by the side's KIND — the widget called a Breathing Together (or a
       // walk, or Audio Divina) side "Contemplation … in silence" while every
       // in-app surface named it correctly, and this file's whole contract is
       // "exactly what's on the home screen".
@@ -300,7 +300,7 @@ export function useWidgetSync(): void {
       // Prayer is riding as the per-side Morning/Evening Contemplation card
       // instead, the standalone card above is suppressed (same gate as
       // rawCards), so this must be too or it double-counts.
-      { active: r.cobreatheStandaloneActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), key: "cobreathe", emoji: "🌍", title: "Creation Prayer", eyebrow: "A prayer for the earth", subtitle: "Breathing together with God's creation", cta: "Begin", kind: "office" },
+      { active: r.cobreatheStandaloneActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), key: "cobreathe", emoji: "🌍", title: "Breathing Together", eyebrow: "A prayer for the earth", subtitle: "Breathing together with God's creation", cta: "Begin", kind: "office" },
       // "Log", not "Begin" — the home card asks you to record what you listened
       // to, and the widget was offering to start something instead.
       { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), key: "listening", emoji: "🎵", title: "Audio Divina", eyebrow: "Audio Divina", subtitle: "Connecting with God through music", cta: "Log", kind: "reflect" },

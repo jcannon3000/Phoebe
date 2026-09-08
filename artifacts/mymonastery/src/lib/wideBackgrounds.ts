@@ -4,7 +4,7 @@
 // (mymonastery/public/wide/wide-01.jpg …). They are deliberately NOT bundled
 // into the iOS app — the compose-www step drops www/wide, so on native these
 // URLs 404. ALWAYS gate their use on !isNativeShell(); on iOS the pages keep
-// their own bundled imagery (the Creation Prayer library).
+// their own bundled imagery (the Breathing Together library).
 //
 // Used as the full-bleed background on Co-Breathe, Contemplation, and Podcasts
 // (web).

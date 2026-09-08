@@ -33,7 +33,7 @@ export type RulePreset = {
    *  silence" means five, not five per side). */
   silenceSide?: OfficeSideKey;
   /** Which contemplative practice the sit IS. Omitted = the silent sit.
-   *  "cobreathe" is the practice the owner renamed "Creation Prayer" — the
+   *  "cobreathe" is the practice the owner renamed "Breathing Together" — the
    *  creation OFFICE (PrayChoice "creation") is flag-off and degrades to a
    *  normal office, so a preset must never reach for it by that name. */
   contemplationStyle?: "silent" | "cobreathe";
@@ -151,10 +151,10 @@ export const RULE_PRESETS: RulePreset[] = [
   // `relational`, the same machinery the default seed uses for it.
   { id: "vts", emoji: "🦩", sides: { morning: true, evening: true },
     // v3 (owner, 2026-09-05): "Morning: Simple · Chapel (Weekdays Only) ·
-    // Dean's Commentary · Creation Prayer · Visio Divina · Evening: Examen".
+    // Dean's Commentary · Breathing Together · Visio Divina · Evening: Examen".
     // Chapel comes back as the seminary's own practice — a custom anchor on
     // weekdays, whose log popup still offers Morning Prayer as a way to keep
-    // it (`office`). Creation Prayer and Visio Divina are standing practices
+    // it (`office`). Breathing Together and Visio Divina are standing practices
     // with their own cards; Express Gratitude is no longer named (adopting
     // never removes a relational practice anyone already keeps).
     pray: "guidedPrayer", evening: "examen",
@@ -165,12 +165,12 @@ export const RULE_PRESETS: RulePreset[] = [
     ],
     practices: { cobreathe: true, visio: true },
     practiceSlots: { visio: "anytime" },
-    title: "VTS", blurb: "Simple Guided Prayer in the morning, Chapel on weekdays, the VTS Dean's Commentary, Creation Prayer, Visio Divina, and the Examen in the evening.",
+    title: "VTS", blurb: "Simple Guided Prayer in the morning, Chapel on weekdays, the VTS Dean's Commentary, Breathing Together, Visio Divina, and the Examen in the evening.",
     rows: [
       { emoji: "🙌🏽", label: "Simple Guided Prayer in the morning" },
       { emoji: "⛪", label: "Chapel, weekdays" },
       { emoji: "🦩", label: "The VTS Dean's Commentary" },
-      { emoji: "🌍", label: "Creation Prayer" },
+      { emoji: "🌍", label: "Breathing Together" },
       { emoji: "🖼️", label: "Visio Divina" },
       { emoji: "🌗", label: "The Examen in the evening" },
     ] },
@@ -195,9 +195,9 @@ export const RULE_PRESETS: RulePreset[] = [
       { emoji: "🌗", label: "The Examen in the evening" },
     ] },
   // CANTERBURY DOWNTOWN (owner) — the chaplaincy's rhythm, reshaped: "Morning
-  // Psalms / Creation Prayer for Contemplation / Evening Psalms."
+  // Psalms / Breathing Together for Contemplation / Evening Psalms."
   //
-  // The Psalter on both sides, and the contemplation is Creation Prayer rather
+  // The Psalter on both sides, and the contemplation is Breathing Together rather
   // than a silent sit — `contemplationStyle: "cobreathe"` is that practice
   // (the creation OFFICE, PrayChoice "creation", is flag-off and degrades to a
   // normal office, so a preset must never reach for it by that name).
@@ -205,15 +205,15 @@ export const RULE_PRESETS: RulePreset[] = [
   // `silence: true` with no silenceSide is what carries the contemplation onto
   // every side the rule turns on; goalMin 10 sizes it, as VTS's does.
   //
-  // Audio Divina and the standing Creation Prayer practice are BOTH gone from
-  // here: music WAS this rule's contemplation and Creation Prayer has taken
+  // Audio Divina and the standing Breathing Together practice are BOTH gone from
+  // here: music WAS this rule's contemplation and Breathing Together has taken
   // that seat, so keeping either would leave the rule holding two answers to
   // one question. The CAC meditation stays — a reflection is a different axis
   // from the anchors, and the owner's three lines didn't touch it.
   { id: "canterbury-downtown", emoji: "🏙️", sides: { morning: true, evening: true },
     // v2 (owner, 2026-09-06): "the Canterbury Downtown routine should be
     // Simple / Forward Day by Day / Gratitude / Visio / and the Examen." The
-    // Psalter morning and evening, Creation Prayer and the CAC are gone with
+    // Psalter morning and evening, Breathing Together and the CAC are gone with
     // it — a rule is what the owner says it is, and re-adopting sweeps the
     // old shape away as any rule swap does.
     pray: "guidedPrayer", evening: "examen",

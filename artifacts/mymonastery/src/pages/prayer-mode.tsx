@@ -718,7 +718,7 @@ function SlideContent({
               Start contemplation <span aria-hidden>→</span>
             </button>
           </div>
-          {/* Creation Prayer (the breath) — set apart with a space. */}
+          {/* Breathing Together (the breath) — set apart with a space. */}
           <button
             type="button"
             onClick={onStartCobreathe}
@@ -726,7 +726,7 @@ function SlideContent({
             style={{ background: "rgba(62,124,122,0.18)", border: "1px solid rgba(62,124,122,0.45)", color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 16, fontWeight: 600, padding: 15, cursor: "pointer" }}
           >
             <CobreatheGlobe size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
-            Creation Prayer
+            Breathing Together
           </button>
           {/* Owner: "add another bar or panel that says read scripture
               reflection and have it open for day by day" — opens the same
@@ -1281,7 +1281,7 @@ function HabitSlide({
   const { t } = useTranslation();
 
   // Garden members who completed THIS side's office today — the same
-  // "who else did it with you" idea as Creation Prayer's closing summary,
+  // "who else did it with you" idea as Breathing Together's closing summary,
   // mirrored here via CompanionFaces (see office-companions-today).
   const side = isEvening ? "evening" : "morning";
   const { data: companionsData } = useQuery<{ companions: Array<{ userId: number; name: string | null; avatarUrl: string | null }>; companionCount: number }>({
@@ -1393,7 +1393,7 @@ function HabitSlide({
       </motion.div>
 
       {/* Who else in your garden prayed this office today — the same "who did
-          it with you" pattern as Creation Prayer's closing summary. */}
+          it with you" pattern as Breathing Together's closing summary. */}
       {officeCompanions.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 6 }}
@@ -2979,7 +2979,7 @@ export default function PrayerModePage() {
     f.email.toLowerCase() !== viewerEmail
   );
 
-  // The closing pause (contemplation / Creation Prayer / Read Scripture
+  // The closing pause (contemplation / Breathing Together / Read Scripture
   // Reflection, "or continue with office") only belongs to the office's own
   // seamless intercessions handoff (?seamless=1, tacked on by bcp-daily-
   // office.tsx) — its "continue with office" pill only makes sense there.

@@ -59,7 +59,7 @@ const INVITABLE: Record<string, {
   listening: { emoji: "🎵", name: "Audio Divina", by: "Praying with music", blurb: "Once a day, connect with God through a song that is meaningful to you.", kind: "practice", cardKey: "listening" },
   walk: { emoji: "🚶🏽", name: "Contemplative Walk", by: "Praying on foot", blurb: "A walk as prayer — unhurried, attentive, outdoors.", kind: "practice", cardKey: "walk" },
   examen: { emoji: "🌗", name: "The Examen", by: "In the school of Ignatius", blurb: "Review the day with God, and notice where grace was.", kind: "practice", cardKey: "examen" },
-  cobreathe: { emoji: "🌍", name: "Creation Prayer", by: "Breathing with creation", blurb: "A short breathing prayer alongside God's creation.", kind: "practice", cardKey: "cobreathe" },
+  cobreathe: { emoji: "🌍", name: "Breathing Together", by: "Breathing with creation", blurb: "A short breathing prayer alongside God's creation.", kind: "practice", cardKey: "cobreathe" },
 };
 
 export default function PracticeInvitePage() {

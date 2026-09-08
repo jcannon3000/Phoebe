@@ -93,10 +93,10 @@ function applyChoices(
 ): void {
   const isContemplation = method.key === "contemplation";
   const isCreation = method.key === "creation";
-  // Contemplative AND Creation Prayer both ride the PER-SIDE contemplation cards
+  // Contemplative AND Breathing Together both ride the PER-SIDE contemplation cards
   // (Morning + Evening), exactly like the customizer — they differ only by
   // contemplation-style: "silent" = a silent sit, "cobreathe" = Co-Breathe, which
-  // renders those two cards as "Morning/Evening Creation Prayer". So both are
+  // renders those two cards as "Morning/Evening Breathing Together". So both are
   // twice-daily. BCP forms (office/psalms/devotion) are the twice-daily office.
   const contemplativeCard = isContemplation || isCreation;
   const officeLevel: OfficeLevel = contemplativeCard ? "ask" : method.level;
@@ -107,7 +107,7 @@ function applyChoices(
     setSideReflection(side, newsletter);
   }
   setReflectionSource(newsletter);
-  // Style the per-side contemplation cards: Co-Breathe for Creation Prayer, a
+  // Style the per-side contemplation cards: Co-Breathe for Breathing Together, a
   // silent sit for Contemplative.
   if (contemplativeCard) {
     try { localStorage.setItem("phoebe:contemplation-style", isCreation ? "cobreathe" : "silent"); } catch { /* ignore */ }
@@ -119,7 +119,7 @@ function applyChoices(
   if (guest) setGuestSilenceGoalMin(contemplativeCard ? 0 : 5);
 
   // Home layout: only the daily reading (chosen ON after the office card, the other
-  // two OFF). Creation Prayer needs NO layout card — it rides the per-side
+  // two OFF). Breathing Together needs NO layout card — it rides the per-side
   // contemplation cards above. Don't FABRICATE a layout for a signed-in user whose
   // real layout isn't loaded (would drop their cards) — only mutate with a base or
   // for a guest.

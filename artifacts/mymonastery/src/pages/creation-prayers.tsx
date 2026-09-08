@@ -13,7 +13,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 // A reading library of the collects, canticles, affirmations, litanies,
 // prayers, blessings, readings, and quotes gathered in *Season of Creation: A
 // Celebration Guide for Episcopal Parishes* (2025). Lives under PRACTICES.
-// Data comes from /api/creation/library (shared with the Creation Prayer
+// Data comes from /api/creation/library (shared with the Breathing Together
 // office).
 //
 // Shape (owner, 2026-07-03): a TITLE-FIRST list — every entry is a tappable

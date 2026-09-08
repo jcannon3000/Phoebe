@@ -1613,7 +1613,7 @@ function CustomizerMock() {
 
 /* ── "Add an additional practice" — the contemplative add-on multi-select ── */
 // Mirrors WayOfLoveRuleFlow's real "contemplative" step: same four rows
-// (Audio Divina, The Examen, Creation Prayer, Contemplative Walk), same
+// (Audio Divina, The Examen, Breathing Together, Contemplative Walk), same
 // checkmark-circle chrome as CustomizerMock above. Two checked, two not —
 // reads as a genuine in-progress pick, not an all-or-nothing state.
 function ContemplativeMock() {
@@ -1624,7 +1624,7 @@ function ContemplativeMock() {
   const rows = [
     { emoji: "🎵", label: "Audio Divina", sub: "Connecting with God through music.", on: true },
     { emoji: "🌗", label: "The Examen", sub: "Review the day with God.", on: false },
-    { emoji: "🌍", label: "Creation Prayer", sub: "Breathing with God's creation.", on: true },
+    { emoji: "🌍", label: "Breathing Together", sub: "Breathing with God's creation.", on: true },
     { emoji: "🚶🏽", label: "Contemplative Walk", sub: "A walk as prayer.", on: false },
   ];
   return (

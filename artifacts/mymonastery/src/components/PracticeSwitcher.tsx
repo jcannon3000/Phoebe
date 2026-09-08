@@ -74,7 +74,7 @@ const SWITCHABLE: Array<{
    * and level "creation" cannot complete: the creation-devotion deck flags
    * `office-completed:creation-<side>`, which anchorModesFor never reads,
    * and sideDone in useRhythmState has no creation clause — so the swapped
-   * day would sit un-keepable however it was prayed. (Creation Prayer as a
+   * day would sit un-keepable however it was prayed. (Breathing Together as a
    * contemplation KIND is a different, working subsystem — not a level.)
    * If the Season-of-Creation level is ever finished, add the entry with
    * href /creation-devotion?mode=creation-<side> — never /cobreathe.
@@ -133,7 +133,7 @@ export function PracticeSwitcher({ side, current }: {
    * practice": a swap is for praying something DIFFERENT today). Already-kept
    * means: the practice whose opener this pill sits on, either side's anchor,
    * either side's extra, an active silence goal (reflect-sit), an active
-   * Creation Prayer card. "ask" (no explicit anchor) excludes nothing.
+   * Breathing Together card. "ask" (no explicit anchor) excludes nothing.
    */
   const kept = new Set<OfficeLevel | null>([
     current,

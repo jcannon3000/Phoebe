@@ -1048,7 +1048,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     onUnlog: () => unlogBreathToday(),
     // Lands on the intro, NOT straight in: that screen carries Enter location.
     href: "/cobreathe",
-    title: t("rhythm.card_cobreathe", { defaultValue: "Creation Prayer" }),
+    title: t("rhythm.card_cobreathe", { defaultValue: "Breathing Together" }),
     blurb: cobreatheDone ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "Breathing together with God's creation" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
@@ -1392,11 +1392,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // and reflections anchor morning / evening; the optional practices (Co-Breathe,
   // Audio Divina, Walk, Journaling, customs) ride at their chosen slot;
   // the Examen is end-of-day, so it sits in the evening.
-  // Creation Prayer as a per-side anchor: when a side's contemplation style is
-  // the breath, that side's card IS Creation Prayer (🌍, opens /cobreathe for
+  // Breathing Together as a per-side anchor: when a side's contemplation style is
+  // the breath, that side's card IS Breathing Together (🌍, opens /cobreathe for
   // this side) instead of a silent sit. Naming per the owner's rule: on ONE side
-  // it's just "Creation Prayer"; on BOTH, "Morning Creation Prayer" / "Evening
-  // Creation Prayer" (kept to one line). When per-side Creation Prayer is on, the
+  // it's just "Breathing Together"; on BOTH, "Morning Breathing Together" / "Evening
+  // Breathing Together" (kept to one line). When per-side Breathing Together is on, the
   // standalone Co-Breathe card is suppressed (below) so it isn't shown twice.
   /**
    * WHICH practice each side keeps — asked PER SIDE now (owner: "let's
@@ -1429,9 +1429,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const creationTitle = (side: "morning" | "evening"): string =>
     creationBothSides
       ? (side === "morning"
-          ? t("rhythm.card_morning_creation", { defaultValue: "Morning Creation Prayer" })
-          : t("rhythm.card_evening_creation", { defaultValue: "Evening Creation Prayer" }))
-      : t("rhythm.card_creation", { defaultValue: "Creation Prayer" });
+          ? t("rhythm.card_morning_creation", { defaultValue: "Morning Breathing Together" })
+          : t("rhythm.card_evening_creation", { defaultValue: "Evening Breathing Together" }))
+      : t("rhythm.card_creation", { defaultValue: "Breathing Together" });
   const creationBlurb = (done: boolean): string =>
     done ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "Breathing together with God's creation" });
   const rawCards = [
@@ -1642,12 +1642,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // THIS side; ?side= tells the timer which). Evening stays in Next even after
     // the morning sit met the daily minutes goal.
     // Manual log method (owner: "log method... either timer or manual log")
-    // only applies to the silent sit — Creation Prayer keeps its own guided
+    // only applies to the silent sit — Breathing Together keeps its own guided
     // breath flow regardless. When on, the card marks itself done on tap
     // instead of opening the countdown timer.
     ...(morningContemplationActive ? [{
       key: "contemplation-morning", slot: "morning" as CustomSlot, emoji: namedSide("morning")?.emoji ?? (sideIsCreation("morning") ? "🌍" : "🕯️"), rgb: "62,124,122", done: morningContemplationDone,
-      // Creation Prayer → the breath for this side; silent + timer → the sit
+      // Breathing Together → the breath for this side; silent + timer → the sit
       // timer at THIS SIDE's length (?sit=N), skipping the length picker;
       // silent + manual → no navigation, just marks the sit done.
       href: namedSide("morning") ? namedSide("morning")!.href
@@ -1656,7 +1656,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       title: namedSide("morning")?.title ?? (sideIsCreation("morning") ? creationTitle("morning") : t("rhythm.card_morning_contemplation", { defaultValue: "Morning Contemplation" })),
       blurb: namedSide("morning")?.blurb ?? (sideIsCreation("morning") ? creationBlurb(morningContemplationDone) : contemplationBlurbFor(morningContemplationDone, sideSitMin("morning"))),
       cta: !sideIsCreation("morning") && contemplationLogMethod === "manual" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-      // Creation Prayer, once done, just reads as kept (checked) like the other
+      // Breathing Together, once done, just reads as kept (checked) like the other
       // rhythm cards — no "breathe again" repeat CTA. Silent contemplation keeps
       // "Sit again" (it has no ceiling) unless it's a manual mark (nothing to redo).
       // A CHECK, NOT A REPEAT (owner: "lets change the contemplation card cta
@@ -1680,9 +1680,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // minutes toward the daily goal. Shown whenever a goal is set and NEITHER
     // side carries a contemplation card (all guests; signed-in users who set
     // only the minutes goal on the Silence step) — a saved goal must always be
-    // visible somewhere. ALSO shown when Creation Prayer (the breath) is the
+    // visible somewhere. ALSO shown when Breathing Together (the breath) is the
     // active style even though a per-side card IS present: unlike a silent
-    // sit's blurb (which names that side's length), the Creation Prayer card's
+    // sit's blurb (which names that side's length), the Breathing Together card's
     // blurb never mentions minutes or the daily goal at all, so the goal
     // progress ("N of M min today") would otherwise be invisible everywhere.
     // Signed-in minutes come from the server's sit stats. Begin opens the timer
@@ -2238,7 +2238,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // waits under a small "Tomorrow" divider at the bottom instead of sitting in
   // Next. It stays tappable (praying it anyway completes today's), and the new
   // day restores it to Next. Signed-in full-app users keep the no-Tomorrow rule.
-  // The morning ANCHOR card — the office, or (when Creation Prayer / a silent
+  // The morning ANCHOR card — the office, or (when Breathing Together / a silent
   // sit IS the morning prayer, so there's no office) the morning contemplation
   // card. Past noon an undone morning anchor belongs to tomorrow morning, so it
   // waits under the "Tomorrow" divider rather than nagging in Next — exactly as
@@ -2457,7 +2457,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   );
   // The card that LEADS the Next list as a hero: the office hero when there is
   // one, otherwise the morning Contemplation card in the big hero layout.
-  // When Creation Prayer (the breath) is the anchor and it LEADS as the hero,
+  // When Breathing Together (the breath) is the anchor and it LEADS as the hero,
   // mirror the office hero exactly: no emoji + a small-caps "CREATION PRAYER"
   // eyebrow above the title (the office hero shows "BOOK OF COMMON PRAYER" and
   // no emoji). The compact list card keeps its 🌍.
@@ -2471,7 +2471,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     <PracticeCard
       href={cardHero.href}
       emoji={heroIsCreation ? "" : cardHero.emoji}
-      eyebrow={heroIsCreation ? t("rhythm.creation_eyebrow", { defaultValue: "Creation Prayer" }) : undefined}
+      eyebrow={heroIsCreation ? t("rhythm.creation_eyebrow", { defaultValue: "Breathing Together" }) : undefined}
       title={cardHero.title}
       blurb={cardHero.blurb}
       cta={cardHero.cta}

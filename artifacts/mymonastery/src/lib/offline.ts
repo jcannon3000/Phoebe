@@ -160,7 +160,7 @@ export const OFFLINE_PRACTICES: OfflinePractice[] = [
   { key: "lectio", emoji: "📜", title: "Lectio Divina", sub: "Three slow readings of a passage saved on your phone", href: "/lectio", how: "saved" },
   { key: "guided-prayer", emoji: "🙌🏽", title: "Simple Guided Prayer", sub: "Three minutes to start your day", href: "/guided-prayer", how: "bundled" },
   { key: "examen", emoji: "🌗", title: "The Examen", sub: "Review the day with God", href: "/examen", how: "bundled" },
-  { key: "cobreathe", emoji: "🌍", title: "Creation Prayer", sub: "Breathing with creation", href: "/cobreathe", how: "bundled" },
+  { key: "cobreathe", emoji: "🌍", title: "Breathing Together", sub: "Breathing with creation", href: "/cobreathe", how: "bundled" },
   { key: "visio", emoji: "🖼️", title: "Visio Divina", sub: "The coming weeks' pictures and readings, saved ahead", href: "/visio", how: "saved" },
   /**
    * THE ROSARY IS BUNDLED and was falling to "Not Available Offline" (audit,

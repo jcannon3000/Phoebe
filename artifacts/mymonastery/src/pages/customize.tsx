@@ -106,7 +106,7 @@ export default function CustomizePage() {
   useEffect(() => { const t = requestAnimationFrame(() => setEntered(true)); return () => cancelAnimationFrame(t); }, []);
 
   /**
-   * Self-heal a stale home layout a short-lived Creation Prayer bug wrote,
+   * Self-heal a stale home layout a short-lived Breathing Together bug wrote,
    * which hid the newsletter card. Guests only.
    *
    * GATED ON A DEVICE THAT PREDATES THE SEED STAMP — the same gate guestSeed
@@ -179,7 +179,7 @@ export default function CustomizePage() {
     clearSideDaySwap("morning"); clearSideDaySwap("evening");
     if (choice === "contemplation") {
       // Contemplative Prayer = a silent sit as this side's prayer. Same per-side
-      // anchor as Creation Prayer but the "silent" style, so the home renders
+      // anchor as Breathing Together but the "silent" style, so the home renders
       // Morning + Evening Contemplation cards (🕯️, the sit timer). The Silence
       // GOAL becomes the day's TOTAL silence (default 20 min, 10-min steps) and
       // the two sessions SPLIT it — each side sits half. No home-layout write
@@ -196,7 +196,7 @@ export default function CustomizePage() {
       setSideContemplationKind("evening", "silent");
       window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
     } else {
-      // Back to a BCP form on both sides — clear the per-side Creation Prayer
+      // Back to a BCP form on both sides — clear the per-side Breathing Together
       // anchor and the breath style so the office cards return.
       setSideContemplation("morning", false);
       setSideContemplation("evening", false);
@@ -440,12 +440,12 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
           })),
       };
       /**
-       * VTS's Creation Prayer isn't named in `preset.practices` at all — it's
+       * VTS's Breathing Together isn't named in `preset.practices` at all — it's
        * expressed as `silence: true, contemplationStyle: "cobreathe"` (the
        * preset's own per-side-sit vocabulary), the same fields the full
        * customizer's `wantCobreathe` reads (`anyContemplation &&
        * anySideCreation`). Without this, adopting VTS Chapel & Commentary
-       * from this page produced no Creation Prayer card at all, while the
+       * from this page produced no Breathing Together card at all, while the
        * full customizer produces one for the identical preset.
        */
       if (preset.silence && preset.contemplationStyle === "cobreathe") {

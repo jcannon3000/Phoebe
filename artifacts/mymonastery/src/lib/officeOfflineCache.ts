@@ -48,7 +48,7 @@ export type OfficeCacheKey = {
   parts?: string;
   /** The Sunday readings deck: "1" | "2" — one cached deck per track. */
   track?: string;
-  /** Creation Prayer prayed on ONE side only ("1"), which changes both the
+  /** Breathing Together prayed on ONE side only ("1"), which changes both the
    *  psalter and the appointed lesson. Undefined for every other deck. */
   single?: string;
 };

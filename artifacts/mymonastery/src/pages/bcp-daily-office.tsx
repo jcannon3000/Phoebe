@@ -1229,7 +1229,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // mode again — once we've handed off, we treat the portal as a
   // transparent slide for the rest of the session.
   const portalHandedOffRef = useRef(false);
-  // Creation Prayer: the intercession slide (metadata.cobreathe) opens the
+  // Breathing Together: the intercession slide (metadata.cobreathe) opens the
   // Co-Breathe breath inline — the shared climate breath IS the intercession.
   // Breathed once per office session; closing the breath advances the office.
   const breathedRef = useRef(false);
@@ -1487,7 +1487,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           ? (() => { const c = getSideConfession(officeSide); return c === null ? "" : (c ? "1" : "0"); })()
           : "";
         const confParam = confessionKey ? `&confession=${confessionKey}` : "";
-        // Creation Prayer: if the user prays it only ONCE a day (not both
+        // Breathing Together: if the user prays it only ONCE a day (not both
         // morning AND evening set to "creation"), ask the server for the
         // four-week combined Psalter so a once-a-day pray-er still covers every
         // psalm. Both-sides pray-ers keep the two-week side-split.
@@ -1874,7 +1874,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slides, slideIdx, resolvedMode, isDevotion]);
 
-  // Creation Prayer intercession → open the Co-Breathe breath inline (once).
+  // Breathing Together intercession → open the Co-Breathe breath inline (once).
   useEffect(() => {
     const s = slides[slideIdx];
     if (!s || breathedRef.current) return;
@@ -3156,14 +3156,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       {/* Says the slide out loud when it changes — see DeckAnnouncer. Without
           it, Next changed the whole screen and announced nothing. */}
       <DeckAnnouncer label={`${sectionLabel}, ${slideIdx + 1} of ${slides.length}${currentSlide.title ? `. ${currentSlide.title}` : ""}`} />
-      {/* Creation Prayer: the intercession's Co-Breathe breath (fixed overlay,
+      {/* Breathing Together: the intercession's Co-Breathe breath (fixed overlay,
           on top). Closing it advances the office to the collect. */}
       {showCreationBreath && (
         <CobreatheOverlay open immediateClose onClose={() => { setShowCreationBreath(false); next(); }} />
       )}
       {/* Contemplative pause's silence path: the real countdown overlay,
           opened at the picked length. A completed sit advances the office to
-          the next slide (matching Creation Prayer's breath above); backing
+          the next slide (matching Breathing Together's breath above); backing
           out just closes the overlay and leaves the chooser in place. */}
       <ContemplationTimer
         open={contemplationOpen}
@@ -3722,11 +3722,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   onClick={() => setShowCreationBreath(true)}
                   style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", background: "transparent", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                 >
-                  🌍 Creation Prayer — breathe together
+                  🌍 Breathing Together — breathe together
                 </button>
                 {/* Owner: "add another bar or panel that says read scripture
                     reflection and have it open for day by day" — a fourth
-                    option alongside silence/Creation Prayer, opening Forward
+                    option alongside silence/Breathing Together, opening Forward
                     Day by Day the same way its home card does (external
                     reader, marked read once the browser actually closes —
                     see DailyProgressBody's reflections.map for why mark()

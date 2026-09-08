@@ -49,7 +49,7 @@ export const ROUTINE_KEYS: string[] = [
   // Per-side Contemplative Prayer (drives the Morning/Evening Contemplation cards).
   "phoebe:office:contemplation:morning", "phoebe:office:contemplation:evening",
   // …and WHICH contemplative practice that side keeps — silent sit or the
-  // Creation Prayer breath. Per side, so a rule can hold both (see
+  // Breathing Together breath. Per side, so a rule can hold both (see
   // officePrefs.getSideContemplationKind). A key missing from THIS list is
   // never mirrored to localStorage and never syncs, so it must live here.
   "phoebe:office:contemplation-kind:morning", "phoebe:office:contemplation-kind:evening",
@@ -73,7 +73,7 @@ export const ROUTINE_KEYS: string[] = [
   // never mirrored to localStorage and never synced, so it could not survive
   // the trip back.
   "phoebe:contemplation-sits",
-  // Creation Prayer breath-count preset (customizer "How many breaths?" +
+  // Breathing Together breath-count preset (customizer "How many breaths?" +
   // the /cobreathe Length dropdown share this key).
   "phoebe:cobreathe-length",
   // Practice time-of-day slots (customAnchors.ts).

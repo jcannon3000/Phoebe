@@ -154,7 +154,7 @@ const CATALOGUE: Record<string, CatalogueEntry> = {
   "reflect-sit":   { kind: "prayer", label: "a silent sit AS their prayer for that part of the day", hint: "centering prayer, Christian meditation, the Jesus Prayer kept silently — when the sit IS the morning or the evening" },
   custom:          { kind: "custom", label: "a practice of their own naming", hint: "\"Chapel\", \"The Rosary\", \"Morning Pages\" — give \"title\"; NEVER a placeholder like \"Morning practice\"" },
   silence:         { kind: "silence", label: "time in silence across the day", hint: "minutes ALL TOLD, one sit or several, timer or logged by hand; NOT for a sit that is itself the morning/evening prayer (use reflect-sit)" },
-  creation:        { kind: "practice", label: "Creation Prayer — a guided breath", hint: "\"Co-Breathe\", \"the breath\"" },
+  creation:        { kind: "practice", label: "Breathing Together — a guided breath", hint: "\"Co-Breathe\", \"the breath\"" },
   walk:            { kind: "practice", label: "a Contemplative Walk", hint: "\"prayer walk\"" },
   listening:       { kind: "practice", label: "Audio Divina — praying with music", hint: "\"sacred listening\"" },
   visio:           { kind: "practice", label: "Visio Divina — praying with an image", hint: "" },
@@ -336,7 +336,7 @@ minutes of silence a day with neither side contemplative.
   "phoebe:office:contemplation-kind:<side>" = WHAT that side's contemplative
       practice is. One of:
         "silent"   — sitting in silence
-        "creation" — Creation Prayer, a guided breath
+        "creation" — Breathing Together, a guided breath
         "walk"     — a contemplative walk
         "audio"    — Audio Divina, praying with music
         "visio"    — Visio Divina, praying with an image
@@ -777,7 +777,7 @@ WHAT PHOEBE CAN RECORD — so you know what counts as an answer. One list:
   the VTS Dean's Commentary, Sojourners, Nouwen, Grist.
 
   Practices kept through the day: a contemplative walk, sacred listening,
-  Creation Prayer (a guided breath), Visio Divina, Praying with Icons, the
+  Breathing Together (a guided breath), Visio Divina, Praying with Icons, the
   Taizé meditation, Spirituals, Lectio Divina, reading a book, podcasts.
 
   Anything else they keep is recorded under its own name, so an unusual

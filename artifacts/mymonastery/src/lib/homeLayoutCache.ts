@@ -110,7 +110,7 @@ export function clearHomeLayoutCache(): void {
 }
 
 // Recovery for a short-lived bug: the basic /customize editor briefly wrote a
-// home layout containing only "cobreathe" for the Creation Prayer pick. Any
+// home layout containing only "cobreathe" for the Breathing Together pick. Any
 // present home layout disables the "un-set-up user falls back to Forward Day by
 // Day" reflection rule in useRhythmState, so that spurious write silently
 // dropped the newsletter card. A guest NEVER legitimately has a home layout —

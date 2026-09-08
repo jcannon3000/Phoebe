@@ -606,7 +606,7 @@ export function toggleScripturePart(part: ScripturePart): void {
 // timer (/contemplation); "manual" just marks the sit done on tap, no timer
 // — owner: "log method... either timer or manual log. or mark as done."
 // Per device, default "timer" (the existing behavior). Only affects the
-// SILENT sit — Creation Prayer (the Co-Breathe breath) is a different
+// SILENT sit — Breathing Together (the Co-Breathe breath) is a different
 // practice with its own guided flow and isn't offered a manual-log choice.
 export type ContemplationLogMethod = "timer" | "manual";
 export function getContemplationLogMethod(): ContemplationLogMethod {
@@ -757,7 +757,7 @@ export function anchorModesFor(side: OfficeSide): string[] {
   // Compline as the side's own anchor completes as "compline", nothing else.
   if (level === "compline") return ["compline"];
   /**
-   * Creation Prayer completes as its OWN mode, not the side's.
+   * Breathing Together completes as its OWN mode, not the side's.
    *
    * Reported: "when my whole routine is done, it still shows evening prayer as
    * if it hasn't been finished." The creation deck runs as resolvedMode
@@ -784,7 +784,7 @@ export function extraOfficeMode(side: OfficeSide, level: OfficeLevel): string | 
   if (level === "devotion" || level === "psalms" || level === "readings" || level === "guided-prayer") {
     return side === "morning" ? "morning-devotion" : "early-evening-devotion";
   }
-  // Same mode the anchor uses (see anchorModesFor) — so Creation Prayer as a
+  // Same mode the anchor uses (see anchorModesFor) — so Breathing Together as a
   // side's SECOND practice completes on the flag its deck actually writes.
   if (level === "creation") return `creation-${side}`;
   return null;
@@ -991,8 +991,8 @@ export function setSideContemplation(side: OfficeSide, v: boolean): void {
  * These two were told apart by ONE GLOBAL FLAG, `phoebe:contemplation-style`.
  * A rule could therefore hold only one of them at a time, and every attempt to
  * keep both produced the same family of bugs, over and over across this
- * project: a silent sit ticking the Creation Prayer card; the customizer
- * retyping an evening of Creation Prayer as silence; the weekly grid reading a
+ * project: a silent sit ticking the Breathing Together card; the customizer
+ * retyping an evening of Breathing Together as silence; the weekly grid reading a
  * `cobreathe` column for a side that kept a `contemplation` one; the review
  * listing one practice twice. Every one of them was the same missing fact —
  * WHICH KIND, on WHICH SIDE.
@@ -1042,7 +1042,7 @@ export function setSideContemplationKind(side: OfficeSide, kind: ContemplationKi
     /**
      * PIN THE OTHER SIDE FIRST. The global written below is the FALLBACK for
      * any side without its own key — so on a legacy rule (contemplation on
-     * both sides, neither kind key written), choosing Creation Prayer for the
+     * both sides, neither kind key written), choosing Breathing Together for the
      * evening silently retyped the MORNING too: its card went 🌍, and a
      * silent sit already kept that morning stopped matching its day-flag and
      * un-ticked mid-day. Writing the other side's current effective kind as

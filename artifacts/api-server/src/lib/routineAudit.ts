@@ -89,7 +89,7 @@ const PRACTICE_NAME: Record<string, string> = {
   podcasts: "Podcasts",
   examen: "the Examen",
   "prayer-list": "your prayer list",
-  cobreathe: "Creation Prayer",
+  cobreathe: "Breathing Together",
 };
 
 export async function buildRoutineAudit(userId: number): Promise<AuditFinding[]> {

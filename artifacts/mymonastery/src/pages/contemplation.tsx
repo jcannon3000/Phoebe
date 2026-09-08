@@ -339,7 +339,7 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
         <p className="text-[12px] mt-0.5" style={{ color: SAGE, margin: 0 }}>
           {when ? formatSessionTime(when) : ""}
           {s.source === "cobreathe" && (
-            <span> · 🌍 {t("cobreathe.title", { defaultValue: "Creation Prayer" })}</span>
+            <span> · 🌍 {t("cobreathe.title", { defaultValue: "Breathing Together" })}</span>
           )}
         </p>
       </div>
@@ -522,9 +522,9 @@ export default function ContemplationPage() {
       morning: mSet === true,
       evening: eSet === true,
     };
-    // This page IS the silent sit — never the Creation Prayer breath (that's
+    // This page IS the silent sit — never the Breathing Together breath (that's
     // /cobreathe). Tagging the kind keeps a silent sit from ticking a side
-    // whose card is styled as Creation Prayer, and vice versa.
+    // whose card is styled as Breathing Together, and vice versa.
     attributeContemplationSit({ explicitSide, activeSides, kind: "silent" });
   };
 
@@ -565,7 +565,7 @@ export default function ContemplationPage() {
   });
 
   // GUESTS (public no-login) can't POST prayer_sessions, so the server stats are
-  // empty for them — their sits (silent AND Creation Prayer) live only in the
+  // empty for them — their sits (silent AND Breathing Together) live only in the
   // device-local tally the home reads. Fold that tally into today's minutes so
   // the Contemplation page shows the same count as the home. Re-read on the
   // guest-silence event + return-to-app so a just-finished sit lands live.
@@ -831,7 +831,7 @@ export default function ContemplationPage() {
           }}
         >
           <CobreatheGlobe size={18} />
-          <span>{t("cobreathe.title", { defaultValue: "Creation Prayer" })}</span>
+          <span>{t("cobreathe.title", { defaultValue: "Breathing Together" })}</span>
         </div>
       </Link>
     </div>

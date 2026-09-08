@@ -129,7 +129,7 @@ function notePageFailedToday(url: string): void {
 /** Today in New York — the calendar the Sunday keys live in. */
 function nextSundayYmdNYToday(): string { return todayYmdNY(); }
 
-/** Creation Prayer prayed on ONE side only — the deck's own condition,
+/** Breathing Together prayed on ONE side only — the deck's own condition,
  *  verbatim, so the URL and the key agree with what the page will ask for. */
 function isSingleSidedCreation(mode: LiturgyMode): boolean {
   if (mode !== "creation-morning" && mode !== "creation-evening") return false;
@@ -151,7 +151,7 @@ function modeForLevel(side: OfficeSide, level: string | null): LiturgyMode | nul
    * same office deck), but this function returned null for it, so
    * fetchAndCacheOne was never called with "creation-morning" or
    * "creation-evening" — the two map entries existed and nothing ever asked for
-   * them. Anyone whose office IS Creation Prayer had no offline copy at all,
+   * them. Anyone whose office IS Breathing Together had no offline copy at all,
    * while the code read as though they did.
    */
   if (level === "creation") return side === "morning" ? "creation-morning" : "creation-evening";

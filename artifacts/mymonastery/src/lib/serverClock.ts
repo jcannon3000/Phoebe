@@ -86,7 +86,7 @@ export function syncClock(): Promise<void> {
  *  BOUNDED: `syncClock()` runs three SEQUENTIAL probes, each of which can sit on
  *  apiRequest's 12s GET timeout — up to 36s before it resolves. Anything gating
  *  UI on that await appears frozen for the whole stretch (the owner's report:
- *  opening Creation Prayer from a notification left the intro slide up "through
+ *  opening Breathing Together from a notification left the intro slide up "through
  *  the slideshow" — the app had woken with the network still in limbo). The
  *  breath only needs sub-second accuracy to feel shared, so we wait a beat and
  *  then get on with it: the sync keeps running in the background and lands via

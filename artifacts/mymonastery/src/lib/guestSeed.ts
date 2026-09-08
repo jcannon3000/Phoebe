@@ -19,8 +19,8 @@
 // day.) See memory "project_public_no_login".
 
 import { ROUTINE_KEYS } from "@/lib/routineSync";
-import { setSideLevel, setReflectionSource, setSideReflection, getExplicitSideLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
-import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, cacheHomeLayoutLocalOnly, addHomeCard } from "@/lib/homeLayoutCache";
+import { setSideLevel, setReflectionSource, setSideReflection, getExplicitSideLevel, getExplicitReflectionSource, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, cacheHomeLayoutLocalOnly, addHomeCard, removeHomeCard } from "@/lib/homeLayoutCache";
 import { setPracticeSlot, setRelationalPractices, activeRelationalPractices } from "@/lib/customAnchors";
 import { clearRoutineSyncClock } from "@/lib/routineSync";
 import { getStoredDefaultSeed, type DefaultSeed } from "@/lib/rulePresetsStore";
@@ -60,7 +60,12 @@ export function predatesSeedStamp(): boolean {
 }
 // v8 (owner, 2026-09-05): "Morning: Simple · Newsletter: Forward · Share
 // Gratitude · Visio Divina · Evening: Examen".
-const SEED_VERSION = "8";
+//
+// v9 (2026-09-08) changes NOTHING about what the default IS — it exists purely
+// to re-run migrateStaleSeed on devices already stamped "8", because those are
+// the ones carrying two newsletters (see the note in the migration). A version
+// bump is the only way to reach a device that already thinks it is current.
+const SEED_VERSION = "9";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never
 // remove: the whole point is recognizing rules we ourselves wrote.
@@ -74,6 +79,9 @@ const STALE_SEEDS: Array<[string, string]> = [
   // this row they match no stale seed and the migration below never runs for
   // them, so the addition would only ever reach devices installing fresh.
   ["guided-prayer", "ask"],
+  // v8's own pair. Already present as row 2 ("guided-prayer"/"examen"), noted
+  // here because v9's migration depends on it: a device seeded fresh on v8 has
+  // to match a stale row or the two-newsletter fix never reaches it.
 ];
 
 // v5's own evening level ("ask") is also v6's stale-seed row above, so a
@@ -132,10 +140,24 @@ function seedVisio(): void {
  * The reflection source was set correctly; the card that reads it was not.
  * Owner: "CAC Newsletter (Its not showing up)" — this is why.
  */
-function seedCac(): void { seedCard("cac"); }
-/** Put one newsletter card IN THE LAYOUT (see the note above seedCac). */
+/** Put one newsletter card IN THE LAYOUT (see the note above). */
 function seedCard(key: "cac" | "fdd"): void {
   const { layout, changed } = addHomeCard(readCachedHomeLayout(), key);
+  if (changed) cacheHomeLayoutLocalOnly(layout);
+}
+/**
+ * Take a PREVIOUS default's card back out when the default moves.
+ *
+ * `removeHomeCard` drops the key from `order` rather than adding it to
+ * `hidden`, which is what we want: `hidden` means "the person deliberately
+ * removed this", and nobody removed anything here — the default changed under
+ * them. It also matters because a guest layout is routinely `hidden: []`, so
+ * anything left in `order` is ON.
+ */
+function unseedCard(key: "cac" | "fdd"): void {
+  const current = readCachedHomeLayout();
+  if (!current) return;
+  const { layout, changed } = removeHomeCard(current, key);
   if (changed) cacheHomeLayoutLocalOnly(layout);
 }
 
@@ -243,13 +265,47 @@ function migrateStaleSeed(): void {
       // ("ask") with Visio riding that slot; a device on an untouched pair had
       // no evening opinion of its own to preserve.
       setSideLevel("evening", "examen");
-      // The REFLECTION SOURCE is deliberately not migrated — a device can sit
-      // on untouched levels and still have chosen its own daily word — but the
-      // CARD is: CAC needs to be IN THE LAYOUT or the fallback that used to
-      // show it (only live while there is no saved layout) never fires once
-      // a saved layout exists. Every device this migration touches gets the
-      // explicit layout entry, not just fresh installs.
-      seedCac();
+      /**
+       * ONE NEWSLETTER, AND THE CURRENT ONE (owner, 2026-09-08, seeing both
+       * Forward Day by Day AND the CAC Daily Meditation on a default rhythm:
+       * "it should just have one").
+       *
+       * This line said `seedCac()` — v7's newsletter — while the fresh seed
+       * below had already moved to Forward Day by Day for v8. So a device that
+       * MIGRATED got CAC and a device installed fresh got FDD, and a device
+       * that had been through both ends of that carried the two of them at
+       * once. It is invisible in review because both calls are correct in
+       * isolation; only the pair is wrong.
+       *
+       * The reflection SOURCE is still not migrated — a device can sit on
+       * untouched levels and still have chosen its own daily word. But when it
+       * has NOT chosen (`reflection-source` unset, which is exactly the state
+       * a seeded-then-migrated device is in), the default's newsletter is the
+       * one that belongs on the home screen, and the previous default's card
+       * is taken back off. A device that chose its own is left completely
+       * alone — `chose` gates both halves.
+       */
+      // getExplicitReflectionSource, NOT getReflectionSource — the latter
+      // defaults to "cac" when nothing was ever chosen, so every untouched
+      // device would read as having picked the CAC.
+      //
+      // ONE NEWSLETTER, WHICHEVER ONE, ENFORCED BOTH WAYS. Branching on
+      // "did they choose?" and only tidying up in the no branch was
+      // ORDER-DEPENDENT and did not work: something writes the reflection
+      // source during boot, so by the time the migration ran the device
+      // looked like it had chosen, took the other branch, and kept both
+      // cards (measured on the Android emulator — stamp advanced to 9,
+      // source became "fdd", and "cac" was still in `order`). Deciding which
+      // card to KEEP and then removing the other is the same statement
+      // without the ordering assumption.
+      const chose = getExplicitReflectionSource();
+      const keep: "cac" | "fdd" = chose === "cac" || chose === "fdd" ? chose : "fdd";
+      if (!chose) {
+        setReflectionSource(keep);
+        setSideReflection("morning", keep);
+      }
+      seedCard(keep);
+      unseedCard(keep === "fdd" ? "cac" : "fdd");
       // VISIO DIVINA, as the EVENING practice (owner, v7). Slotted to evening
       // rather than the practice's own "anytime" default, because the ask was
       // specifically "Visio Divina as the evening practice."
@@ -283,7 +339,7 @@ function migrateStaleSeed(): void {
 export function seedGuestRule(): void {
   try {
     /**
-     * Undo a stale home layout a short-lived bug wrote for the Creation Prayer
+     * Undo a stale home layout a short-lived bug wrote for the Breathing Together
      * pick, which was hiding the newsletter card (see
      * clearSpuriousGuestHomeLayout).
      *
@@ -331,10 +387,10 @@ export function seedGuestRule(): void {
     /**
      * THE DEFAULT ROUTINE, current version (owner): Simple Guided in the
      * morning, an Evening Devotion, the CAC's Daily Meditation, Express
-     * Gratitude, and Creation Prayer.
+     * Gratitude, and Breathing Together.
      *
      * Every card here except the two office sides is a LAYOUT entry, not a
-     * side level — CAC and Creation Prayer are both read from the home
+     * side level — CAC and Breathing Together are both read from the home
      * layout by `useRhythmState`, and a guest who has never saved one gets
      * only the single-reflection fallback (which is what silently dropped
      * CAC the moment Visio's layout write made the fallback stop firing).

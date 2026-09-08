@@ -20,11 +20,11 @@ import { EVENING_OPEN_HOUR } from "@/lib/customAnchors";
 
 export type ContemplationSide = "morning" | "evening";
 // WHICH contemplative practice was kept. A side's card is styled/labelled by
-// the user's `contemplationStyle` — "Creation Prayer" (the Co-Breathe breath)
+// the user's `contemplationStyle` — "Breathing Together" (the Co-Breathe breath)
 // when "cobreathe", "Contemplation" (the silent sit) when "silent" — and the
 // two are DIFFERENT practices, so keeping one must not tick the other's card.
-// (The user's report: "I did a contemplation sit, not Creation Prayer, and it
-// counted it as Creation Prayer.") `null` = a legacy flag written before this
+// (The user's report: "I did a contemplation sit, not Breathing Together, and it
+// counted it as Breathing Together.") `null` = a legacy flag written before this
 // was recorded; it satisfies either style so nobody's existing day regresses.
 export type ContemplationKind = "silent" | "cobreathe";
 
@@ -51,7 +51,7 @@ function readSideFlag(side: ContemplationSide): { date: string; kind: Contemplat
 
 // Did the user keep this side's contemplation today? When `expectedKind` is
 // passed, a flag stamped with the OTHER practice does NOT count — a silent sit
-// leaves a Creation Prayer card open, and vice versa. Legacy (kind-less) flags
+// leaves a Breathing Together card open, and vice versa. Legacy (kind-less) flags
 // still count for either, so today's already-kept sides don't flip back.
 export function hasContemplationSideDoneToday(
   side: ContemplationSide,
@@ -95,7 +95,7 @@ const EVENING_OPENS_HOUR = EVENING_OPEN_HOUR;
 // Previously this was hardcoded morning-first at every hour, so an evening sit
 // with an un-kept morning silently landed on the MORNING card — the user's
 // report: "I did a 20 minute contemplation and it counted as my morning
-// Creation Prayer." The other side is still the fallback, so a lone active
+// Breathing Together." The other side is still the fallback, so a lone active
 // side (or an already-kept preferred side) still receives the sit.
 /**
  * The KIND of contemplation the rhythm is configured for.
@@ -115,8 +115,8 @@ function configuredKindFor(side: ContemplationSide): ContemplationKind {
 /**
  * Does an automatic attribution of `kind` belong to a side at all?
  *
- * Reported: with Creation Prayer as the evening anchor, finishing a SILENT sit
- * played the completion animation on the Creation Prayer card. The standalone
+ * Reported: with Breathing Together as the evening anchor, finishing a SILENT sit
+ * played the completion animation on the Breathing Together card. The standalone
  * contemplation-goal card opens /contemplation with no ?side=, so the sit fell
  * into the order-based fallback below and claimed the evening side — whose
  * practice is the breath. The day-flag's kind kept the CARD from reading as
@@ -126,7 +126,7 @@ function configuredKindFor(side: ContemplationSide): ContemplationKind {
  * celebrated.
  *
  * A sit only auto-claims a side when the side's own practice IS that sit. A
- * silent sit under a breath rhythm (the VTS shape: Creation Prayer in the
+ * silent sit under a breath rhythm (the VTS shape: Breathing Together in the
  * evening plus a daily silence goal) belongs to the standalone goal card, and
  * to no side at all.
  *
@@ -160,7 +160,7 @@ export function attributeContemplationSit(opts: {
   explicitSide?: ContemplationSide | null;
   activeSides: { morning: boolean; evening: boolean };
   // Which practice was actually kept — the silent sit (/contemplation) or the
-  // Creation Prayer breath (/cobreathe). Stamped onto the day-flag so the card
+  // Breathing Together breath (/cobreathe). Stamped onto the day-flag so the card
   // for the OTHER practice stays open.
   kind: ContemplationKind;
 }): void {
@@ -178,7 +178,7 @@ export function attributeContemplationSit(opts: {
   // says a home exists somewhere; without this the find could still land on
   // the other side — morning=breath, evening=silence, a generic silent sit
   // before 5pm targeted MORNING (active, undone) and celebrated on the
-  // Creation Prayer card. The kinds are per-side now, so the pick must be too.
+  // Breathing Together card. The kinds are per-side now, so the pick must be too.
   const eligible = (s: ContemplationSide) => activeSides[s] && kindMatchesRhythm(kind, s);
   const undone = order.find((s) => eligible(s) && !hasContemplationSideDoneToday(s, kind));
   const anyActive = order.find((s) => eligible(s));

@@ -425,7 +425,7 @@ if (fs.existsSync(frontendDist)) {
       description: "A daily rhythm of prayer you build and keep. One day at a time.",
     },
     "/cobreathe": {
-      title: "Creation Prayer — a prayer with all creation",
+      title: "Breathing Together — a prayer with all creation",
       description: "Twelve breaths, prayed together for the earth. Breathe with others around the world, wherever you are — on Phoebe.",
     },
   };

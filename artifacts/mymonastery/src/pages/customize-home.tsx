@@ -78,14 +78,14 @@ const PRAY_OPTIONS: { id: PrayChoice; pill: string }[] = [
   // "Community" removed — it wrote the `intercessions` level, which getSideLevel
   // now coerces to "office" (prayer requests are OFF app-wide), so the pill
   // snapped straight back to Office and could never stay selected.
-  { id: "cobreathe", pill: "Creation Prayer" },
+  { id: "cobreathe", pill: "Breathing Together" },
   { id: "devotion", pill: "Devotions" },
   { id: "offices", pill: "Office" },
 ];
 // The anchor card's identity per choice — mirrors what the home actually
 // renders for that level (community = the "Pray Together 🙏" card).
 const PRAY_CARD: Record<PrayChoice, { emoji: string; label: string; sub: string }> = {
-  cobreathe: { emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation" },
+  cobreathe: { emoji: "🌍", label: "Breathing Together", sub: "Breathing together with God's creation" },
   devotion: { emoji: "🛐", label: "Daily Devotion", sub: "A short morning & evening devotion" },
   offices: { emoji: "📖", label: "Daily Office", sub: "Morning & Evening Prayer" },
 };
@@ -135,7 +135,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     office:       { label: t("customize_home.module_office"),    emoji: "📖", sub: t("customize_home.module_office_sub") },
     contemplation:{ label: t("menu.contemplation"),              emoji: "🕯️", sub: t("customize_home.module_contemplation_sub") },
     listening:    { label: t("menu.listening", { defaultValue: "Audio Divina" }), emoji: "🎧", sub: t("customize_home.module_listening_sub", { defaultValue: "Music as a way of prayer" }) },
-    cobreathe:    { label: t("rhythm.row_cobreathe", { defaultValue: "Creation Prayer" }), emoji: "🌍", sub: t("customize_home.module_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }) },
+    cobreathe:    { label: t("rhythm.row_cobreathe", { defaultValue: "Breathing Together" }), emoji: "🌍", sub: t("customize_home.module_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }) },
     reading:      { label: t("rhythm.row_reading", { defaultValue: "Reading" }), emoji: "📚", sub: t("customize_home.module_reading_sub", { defaultValue: "Read by chapter, page, or time" }) },
     walk:         { label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶🏽", sub: t("customize_home.module_walk_sub", { defaultValue: "A prayerful walk, counted as you go" }) },
     visio:        { label: t("rhythm.row_visio", { defaultValue: "Visio Divina" }), emoji: "🖼️", sub: t("customize_home.module_visio_sub", { defaultValue: "Pray with the day's image, slowly" }) },
@@ -337,7 +337,7 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
     // home/contemplation card opens straight into the breath.
     // Write the PER-SIDE kind too, not only the global. An explicit per-side
     // key beats the global fallback, so a user who already had
-    // contemplation-kind:morning = "silent" picked Creation Prayer here and
+    // contemplation-kind:morning = "silent" picked Breathing Together here and
     // that side simply didn't change — the rule they just chose never took.
     // (Both sides, because this picker sets both side levels above.)
     if (choice === "cobreathe") {

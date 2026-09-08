@@ -808,7 +808,7 @@ function DailyProgressPill() {
     ...(morningContemplationActive ? [{ key: "contemplation-morning", done: morningContemplationDone }] : []),
     ...plDot("morning"),
     // The silence GOAL card exactly as the home renders it — the solo card, OR
-    // the goal-progress card riding alongside per-side Creation Prayer cards
+    // the goal-progress card riding alongside per-side Breathing Together cards
     // (whose own dots are the per-side entries above).
     ...(silenceGoalCardActive ? [{ key: "silence", done: silenceGoalCardDone }] : []),
     // Prayer List DOES get a dot. That exclusion was written when the list had
@@ -843,7 +843,7 @@ function DailyProgressPill() {
     ...cDots("anytime"),
     ...cDots("midday"),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
-    // Standalone Co-Breathe only — when per-side Creation Prayer cards replace
+    // Standalone Co-Breathe only — when per-side Breathing Together cards replace
     // the standalone card, its dot would have no card (theirs are above).
     ...(cobreatheStandaloneActive ? [{ key: "cobreathe", done: cobreatheDone }] : []),
     ...(listeningActive ? [{ key: "listening", done: listeningDone }] : []),

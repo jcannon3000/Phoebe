@@ -232,7 +232,7 @@ function readWeekend(side: OfficeSide, prayFrom: (l: string | null | undefined) 
  */
 const ROUTINE_INTERVIEW_ENTRY_HIDDEN = true;
 
-// Creation Prayer lengths — 6-breath increments, mirroring the /cobreathe
+// Breathing Together lengths — 6-breath increments, mirroring the /cobreathe
 // page's own Length dropdown (default 12).
 const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
 
@@ -297,7 +297,7 @@ const EXTRA_GROUPS: Array<{ id: ExtraGroupId; emoji: string; title: string; sub:
   { id: "office", emoji: "📖", title: "From the prayer book", sub: "The office, a devotion, the psalms or the readings." },
   { id: "guided", emoji: "🙌🏽", title: "Simple Guided Prayer", sub: "Praise · Confession · Thanksgiving · Supplication." },
   { id: "examen", emoji: "🌗", title: "The Examen", sub: "Review the day with God." },
-  { id: "contemplative", emoji: "🕯️", title: "A contemplative practice", sub: "Silence, a walk, sacred listening, Visio Divina, or Creation Prayer." },
+  { id: "contemplative", emoji: "🕯️", title: "A contemplative practice", sub: "Silence, a walk, sacred listening, Visio Divina, or Breathing Together." },
   { id: "newsletter", emoji: "📰", title: "A reflection", sub: "Forward, SSJE, CAC, VTS, Nouwen, Sojourners or Grist." },
 ];
 const EXTRA_PRACTICES: ExtraPractice[] = [
@@ -363,7 +363,7 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
    * generic "log what you read".
    */
   { title: () => "Reading", emoji: "📚", sub: "A book, a page a day — with a bar that shows how far in you are.", excludes: "__none__", maps: { kind: "practice", key: "reading" } , group: "contemplative" },
-  { title: () => "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__", maps: { kind: "practice", key: "cobreathe" } , group: "contemplative" },
+  { title: () => "Breathing Together", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__", maps: { kind: "practice", key: "cobreathe" } , group: "contemplative" },
 ];
 
 /** The extra chosen for a side, as its catalogue entry. */
@@ -569,7 +569,7 @@ const PRAY_LEVEL: Record<PrayChoice, "ask" | "intercessions" | "devotion" | "off
   // The Ignatian Examen IS the prayer for this side (usually evening) — the
   // home Examen card replaces the office card for whoever picks it.
   examen: "examen",
-  // Creation Prayer IS the prayer for this side — a creation-focused devotion
+  // Breathing Together IS the prayer for this side — a creation-focused devotion
   // (the creation Psalter + prayers, opening with Co-Breathe). begin-prayer
   // routes the "creation" level to /creation-devotion.
   creation: "creation",
@@ -666,7 +666,7 @@ const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
   psalms: "devotion",
   // The Examen gets the lighter nudge that just opens the practice.
   examen: "devotion",
-  // Creation Prayer gets the lighter nudge that opens the devotion.
+  // Breathing Together gets the lighter nudge that opens the devotion.
   creation: "devotion",
   // Simple Guided Prayer gets the lighter nudge that opens the practice.
   guidedPrayer: "devotion",
@@ -689,7 +689,7 @@ const SHELL_PAD_BOTTOM = 40;
 // current-version layout counts, and the key must be in `order` and not
 // `hidden`. Used to seed the optional-practice toggles from the live home.
 /**
- * Is the Creation Prayer home card there because a SIDE keeps the breath?
+ * Is the Breathing Together home card there because a SIDE keeps the breath?
  *
  * Owner: "if I had creation prayer in an anchor and take it out, it should not
  * be transferred into my contemplative practices — it should just be turned
@@ -697,7 +697,7 @@ const SHELL_PAD_BOTTOM = 40;
  *
  * A side that keeps the breath makes commit() write the `cobreathe` home card.
  * The standing-practices toggle then seeded ITSELF from that same card — so
- * removing Creation Prayer from the anchor didn't remove it at all, it moved
+ * removing Breathing Together from the anchor didn't remove it at all, it moved
  * it: the card stayed on, the toggle read it back as a standalone practice,
  * and commit wrote it again. The practice migrated rather than ending.
  *
@@ -1296,7 +1296,7 @@ export default function WayOfLoveRuleFlow({
     setContemplationStyle(s);
     try { localStorage.setItem("phoebe:contemplation-style", s); } catch { /* ignore */ }
   };
-  // Creation Prayer length — a BREATHS preset (the same 6-breath increments the
+  // Breathing Together length — a BREATHS preset (the same 6-breath increments the
   // /cobreathe page offers), not minutes. One shared preset (the breath has one
   // length wherever it opens); /cobreathe hydrates from the same key, so the
   // home card's "Begin" opens straight into the chosen length.
@@ -1319,7 +1319,7 @@ export default function WayOfLoveRuleFlow({
     // only; a guest has no account blob to sync against.
     if (user) pushRoutineConfig();
     // Keep the minutes-based silence goal coherent with the breath length
-    // (12s per breath), so a finished Creation Prayer completes the goal.
+    // (12s per breath), so a finished Breathing Together completes the goal.
     chooseSideMinutes(side, Math.max(1, Math.round((n * 12) / 60)));
   };
   // Written vs audio for Forward Day by Day (the fdd-mode step, shown when FDD
@@ -1639,7 +1639,7 @@ export default function WayOfLoveRuleFlow({
   }, [contemplativeForm.morning, contemplativeForm.evening]);
 
   /**
-   * Is THIS SIDE'S contemplative practice the Creation Prayer breath?
+   * Is THIS SIDE'S contemplative practice the Breathing Together breath?
    *
    * The flow used to ask `contemplationStyle === "cobreathe"` in six places
    * with a side in hand. That state is ONE value for the whole rule, so on a
@@ -2227,7 +2227,7 @@ export default function WayOfLoveRuleFlow({
       eveningTime: reminderIsOn("evening") ? shownReminderTime("evening") : null,
     };
     const others = TRACKED_REFLECTION_SOURCES.filter((n) => !newsletters.includes(n));
-    // Creation Prayer earns a home card either through the per-side "way"
+    // Breathing Together earns a home card either through the per-side "way"
     // choice (a side's contemplation IS the breath) OR the standalone
     // "Add an additional practice" toggle (contemplative.cobreathe) — the
     // latter is only offered there when NEITHER side already carries it, so
@@ -2573,7 +2573,7 @@ export default function WayOfLoveRuleFlow({
     // EITHER path: the Contemplation-practices toggle (contemplative.cobreathe) OR
     // choosing Co-Breathe as the contemplative sit's STYLE (contemplationStyle ===
     // "cobreathe" with Contemplative Prayer on). Mirrors the hydration logic above.
-    // Creation Prayer earns a home card either through the per-side "way"
+    // Breathing Together earns a home card either through the per-side "way"
     // choice (a side's contemplation IS the breath) OR the standalone
     // "Add an additional practice" toggle (contemplative.cobreathe) — the
     // latter is only offered there when NEITHER side already carries it, so
@@ -3157,7 +3157,7 @@ export default function WayOfLoveRuleFlow({
    * practice, would get a details page."
    *
    * So the test is the same one the anchor's own config slide applies, asked of
-   * the extra: a silent sit needs its length, Creation Prayer its breaths, the
+   * the extra: a silent sit needs its length, Breathing Together its breaths, the
    * Psalter its cycle, an office form the way you take it. Everything else
    * (a walk, the Examen, Audio Divina) has nothing to ask as an anchor either,
    * and gets no slide here for the same reason.
@@ -3172,7 +3172,7 @@ export default function WayOfLoveRuleFlow({
     // A SILENT sit gets no slide here on purpose. Its length is a daily total
     // set once on the Silence slide, and asking for it per-side is the exact
     // inference that has turned a 90-minute quota into two 5-minute per-side
-    // sits twice now. Creation Prayer is different — it's counted in breaths,
+    // sits twice now. Breathing Together is different — it's counted in breaths,
     // has no daily goal to inherit, and this is its only home.
     if (entry.maps.kind === "contemplation") return contemplationStyle === "cobreathe" ? "breaths" : null;
     if (entry.maps.kind === "practice" && entry.maps.key === "cobreathe") return "breaths";
@@ -3214,9 +3214,9 @@ export default function WayOfLoveRuleFlow({
   /** Is the SILENT sit part of this rhythm? Drives whether the Silence page
    *  (minutes + log method) is asked at all — see buildSteps — and lights the
    *  "Contemplative Prayer / Time set aside for silence" row. KIND-AWARE: a
-   *  side kept as Creation Prayer (or a walk, or listening) is not silence,
+   *  side kept as Breathing Together (or a walk, or listening) is not silence,
    *  and counting it here lit the silence row for a VTS rule and let its
-   *  toggle-OFF silently delete the Evening Creation Prayer. A side that's on
+   *  toggle-OFF silently delete the Evening Breathing Together. A side that's on
    *  with no recorded form is treated as silent (the legacy shape). */
   const sideIsSilentSit = (sd: OfficeSide) =>
     contemplationBySide[sd] && (contemplativeForm[sd] === "prayer" || contemplativeForm[sd] === null);
@@ -3456,7 +3456,7 @@ export default function WayOfLoveRuleFlow({
     // A side's contemplative practice is that side's ANCHOR, so editing it
     // walks the side's whole run of slides (way → which practice → config),
     // exactly as the side:<side> row does — the owner asked to be able to
-    // change Creation Prayer to the evening office from this gear. Without
+    // change Breathing Together to the evening office from this gear. Without
     // this case the walk fell through to false and the FIRST slide's
     // Continue already said Save.
     if (rowId.startsWith("contemplation:")) {
@@ -3843,7 +3843,7 @@ export default function WayOfLoveRuleFlow({
     if (id === "side:evening") return "evening-way";
     // Bare "contemplation" is the DAY's silence goal. "contemplation:<side>"
     // is that side's contemplative practice — of any kind. Lumping the two
-    // sent the gear on "Evening Creation Prayer" to the silent-goal slide
+    // sent the gear on "Evening Breathing Together" to the silent-goal slide
     // (owner screenshot, 2026-08-26), where Save then wrote the whole rule
     // from a slide about a different practice.
     //
@@ -4295,7 +4295,7 @@ export default function WayOfLoveRuleFlow({
             inRoutine: () => orderIds.some((id) => id === "contemplation" || id.startsWith("contemplation:")),
             add: () => { setEntryPhase("add-minutes"); },
           },
-          practiceItem("cobreathe", "🌍", "Creation Prayer"),
+          practiceItem("cobreathe", "🌍", "Breathing Together"),
           practiceItem("walk", "🚶🏽", "Contemplative Walk"),
           practiceItem("listening", "🎵", "Audio Divina"),
           practiceItem("visio", "🖼️", "Visio Divina"),
@@ -4712,7 +4712,7 @@ export default function WayOfLoveRuleFlow({
 
   // ── Contemplative practices — multi-select (pick any) ─────────────────────
   if (step === "contemplative") {
-    // Creation Prayer is already offered per SIDE via the legacy
+    // Breathing Together is already offered per SIDE via the legacy
     // contemplationStyle mechanism (a returning user's saved
     // "cobreathe" style) — only offer it again here as a standalone extra
     // when NEITHER side already carries it, so a user with it as their
@@ -4730,7 +4730,7 @@ export default function WayOfLoveRuleFlow({
      *
      * Reported: "when I got to contemplative practice some of the things that
      * were in my anchors were selected — if they are anchors or additional
-     * they should not be options." Compline, the Examen and Creation Prayer
+     * they should not be options." Compline, the Examen and Breathing Together
      * each had their own hand-written guard above; the Walk, Audio Divina and
      * Visio Divina had none, and they became anchor-able the moment the
      * contemplative slide started offering them. So a morning of Audio Divina
@@ -4794,7 +4794,7 @@ export default function WayOfLoveRuleFlow({
           {/* Lectio sits right after the Examen (owner, 2026-09-05: "move
               Lectio Divina up to be after the Examen"); it was last but one. */}
           {choiceRow(contemplative.lectio, `📜 ${t("wol_rule.cp_lectio", { defaultValue: "Lectio Divina" })}`, t("wol_rule.cp_lectio_sub", { defaultValue: "Read a passage slowly, three times — listen, reflect, pray." }), () => toggleContemplative("lectio"))}
-          {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
+          {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Breathing Together" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
           {!anchoredAsForm("walk") && choiceRow(contemplative.walk, `🚶🏽 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
           {!anchoredAsForm("visio") && choiceRow(contemplative.visio, `🖼️ ${t("wol_rule.cp_visio", { defaultValue: "Visio Divina" })}`, t("wol_rule.cp_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }), () => toggleContemplative("visio"))}
           {/* THIS LIST IS HARDCODED, not driven by the `group: "contemplative"`
@@ -5044,7 +5044,7 @@ export default function WayOfLoveRuleFlow({
         </p>
         {/* SIMPLIFIED daily-prayer choice (owner): exactly two ways, single-select
             — the Book of Common Prayer (its type + medium chosen on the next
-            slide) or Creation Prayer (the 12-breath practice, which REPLACES the
+            slide) or Breathing Together (the 12-breath practice, which REPLACES the
             office for this side). No Contemplative/Prayer List/FDD/Examen rows
             here anymore — contemplation is asked as its own goal-slide later in
             the flow, reflections are chosen on "learn", and Examen/other add-ons
@@ -5129,7 +5129,7 @@ export default function WayOfLoveRuleFlow({
               if (bcpOn) { touchedRef.current = true; choosePrayBySide(side, "none"); return; }
               touchedRef.current = true;
               // Selecting BCP replaces any per-side contemplation on this side
-              // (silent Contemplation OR the Creation Prayer breath).
+              // (silent Contemplation OR the Breathing Together breath).
               if (contemplationBySide[side]) toggleContemplationSide(side);
               // Switching evening AWAY from Examen shouldn't leave the
               // Examen add-on toggle silently still "on" — it was only on
@@ -5283,7 +5283,7 @@ export default function WayOfLoveRuleFlow({
     const cap = side === "morning" ? "Morning" : "Evening";
     // (The quick picks that used to sit under this field are gone — owner:
     // "on create your own, take the choose-a-practice out since those can be
-    // chosen now on contemplative practice." Audio Divina, Creation Prayer and
+    // chosen now on contemplative practice." Audio Divina, Breathing Together and
     // the Contemplative Walk are all rows on the contemplative slide now, so
     // offering them here too was a second door to the same three practices —
     // and the one that arrived as a NAMED CUSTOM ANCHOR rather than as the
@@ -5316,7 +5316,7 @@ export default function WayOfLoveRuleFlow({
   // ── Per-side CONFIG slide — default method / breath count ─────────────────
   // Reminder TIMES are no longer asked here (owner): they live in Settings →
   // Daily reminders, defaulting to 7am / 6pm. This slide only asks HOW you'll
-  // pray (medium, or breath count for Creation Prayer).
+  // pray (medium, or breath count for Breathing Together).
   // ── The ADDITIONAL practice slide ─────────────────────────────────────────
   // Owner: "advance to a second slide that looks exactly like the first morning
   // picker slide but has a different top description, same options — except
@@ -5531,7 +5531,7 @@ export default function WayOfLoveRuleFlow({
     const forms = formsForSide(side);
     const meta = (f: ContemplativeForm): { emoji: string; label: string; sub: string } =>
       f === "prayer" ? { emoji: "🕯️", label: t("wol_rule.cf_prayer", { defaultValue: "Contemplative Prayer" }), sub: t("wol_rule.cf_prayer_sub", { defaultValue: "Time set aside for silence." }) }
-      : f === "creation" ? { emoji: "🌍", label: t("wol_rule.cf_creation", { defaultValue: "Creation Prayer" }), sub: t("wol_rule.cf_creation_sub", { defaultValue: "Breathing with creation, at one shared pace." }) }
+      : f === "creation" ? { emoji: "🌍", label: t("wol_rule.cf_creation", { defaultValue: "Breathing Together" }), sub: t("wol_rule.cf_creation_sub", { defaultValue: "Breathing with creation, at one shared pace." }) }
       : f === "walk" ? { emoji: "🚶🏽", label: t("wol_rule.cf_walk", { defaultValue: "Contemplative Walk" }), sub: t("wol_rule.cf_walk_sub", { defaultValue: "A walk kept as prayer, attentive to what's around you." }) }
       : f === "audio" ? { emoji: "🎵", label: t("wol_rule.cf_audio", { defaultValue: "Audio Divina" }), sub: t("wol_rule.cf_audio_sub", { defaultValue: "Connecting with God through music." }) }
             : f === "visio" ? { emoji: "🖼️", label: t("wol_rule.cf_visio", { defaultValue: "Visio Divina" }), sub: t("wol_rule.cf_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }) }
@@ -5551,7 +5551,7 @@ export default function WayOfLoveRuleFlow({
                   touchedRef.current = true;
                   setContemplativeForm((p) => ({ ...p, [side]: f }));
                   // One contemplative practice per side: the two per-side forms
-                  // (the silent sit / the Creation Prayer breath) ride
+                  // (the silent sit / the Breathing Together breath) ride
                   // contemplationBySide + the style flag; the rest are standing
                   // all-day practices, so choosing one turns the per-side sit
                   // OFF and that practice ON.
@@ -5615,7 +5615,7 @@ export default function WayOfLoveRuleFlow({
     // has no method either. (Silent-sit length is set on the dedicated
     // contemplation-goal step, not here — contemplation is no longer a side anchor.)
     const noMethod = prayBySide[side] === "none" || prayBySide[side] === "fdd" || prayBySide[side] === "readings" || prayBySide[side] === "psalms" || prayBySide[side] === "creation" || prayBySide[side] === "guidedPrayer" || prayBySide[side] === "ownPractice";
-    // Creation Prayer side → the length question is a BREATHS preset, not a
+    // Breathing Together side → the length question is a BREATHS preset, not a
     // silent-sit's minutes (owner: "it should not be minutes but the preset
     // for breaths").
     const isCobreatheSide = contemplationBySide[side] && sideIsCreation(side);
@@ -5643,7 +5643,7 @@ export default function WayOfLoveRuleFlow({
             side that owns it, and the daily goal stays its own separate thing
             on the Silence slide.
 
-            Only for the silent sit: Creation Prayer counts in breaths (its own
+            Only for the silent sit: Breathing Together counts in breaths (its own
             control below), and a walk or Audio Divina has no length to set. */}
         {contemplativeForm[side] === "prayer" && (
           <>
@@ -5826,7 +5826,7 @@ export default function WayOfLoveRuleFlow({
             whole-day quota kept coming back as two per-side sits. The daily
             amount is set once, on the Silence slide.
 
-            The BREATH count stays. It isn't a sit length — Creation Prayer is
+            The BREATH count stays. It isn't a sit length — Breathing Together is
             counted in breaths, has no daily-minutes goal to inherit from the
             Silence slide, and this is its only home. Removing the whole block
             took it out along with the minutes row, which left a Creation
@@ -6839,7 +6839,7 @@ export default function WayOfLoveRuleFlow({
       remove: () => choosePrayBySide(s, "none"),
     })),
     // Per-side contemplative prayer — its own row per side. When the style is
-    // the breath it's "Morning / Evening Creation Prayer" (🌍); a silent sit is
+    // the breath it's "Morning / Evening Breathing Together" (🌍); a silent sit is
     // "Morning / Evening Contemplation". The sub shows THIS side's session
     // length (breaths for the breath, minutes for a sit) — NOT the whole-day
     // goal, which read wrong ("144 min a day" on every card).
@@ -6851,7 +6851,7 @@ export default function WayOfLoveRuleFlow({
       const cap = s === "morning" ? "Morning" : "Evening";
       return {
         emoji: isCob ? "🌍" : (silenceMode === "grow" ? "🌱" : "🕯️"),
-        label: isCob ? `${cap} Creation Prayer` : `${cap} Contemplation`,
+        label: isCob ? `${cap} Breathing Together` : `${cap} Contemplation`,
         sub: isCob
           ? t("wol_rule.n_breaths", { count: cobreatheBreaths, defaultValue: `${cobreatheBreaths} breaths` })
           : (silenceMode === "grow" ? "Growing toward 30 min" : (minutesBySide[s] > 0 ? t("wol_rule.n_min", { count: minutesBySide[s], defaultValue: `${minutesBySide[s]} min` }) : "A silent sit")),
@@ -6916,21 +6916,21 @@ export default function WayOfLoveRuleFlow({
     }] : []),
     // No time-of-day sub-label anymore — these add-ons are just available
     // all day (see the "contemplative" step for the "with your prayer"
-    // exception, when Creation Prayer IS the side's primary sit style).
+    // exception, when Breathing Together IS the side's primary sit style).
     ...(contemplative.compline ? [{ emoji: "🌙", label: "Compline", sub: "Available from 7pm", step: "contemplative" as Step, editId: "slot:compline", remove: () => toggleContemplative("compline") }] : []),
     /**
-     * The standing Creation Prayer add-on — but NOT when a side already lists
+     * The standing Breathing Together add-on — but NOT when a side already lists
      * it as that side's own practice.
      *
      * `contemplative.cobreathe` is inferred as on whenever the style is the
      * breath and any side carries a contemplation (see its initializer), so a
-     * rule with Creation Prayer as its EVENING anchor listed the practice
-     * twice: once as "Evening Creation Prayer · 12 breaths" and again as
-     * "Creation Prayer · With your prayer". The side's row is the truthful
+     * rule with Breathing Together as its EVENING anchor listed the practice
+     * twice: once as "Evening Breathing Together · 12 breaths" and again as
+     * "Breathing Together · With your prayer". The side's row is the truthful
      * one — it names when and how long — so the add-on row stands down.
      */
     ...((contemplative.cobreathe && !(cobreatheIsSideStyle && (contemplationBySide.morning || contemplationBySide.evening)))
-      ? [{ emoji: "🌍", label: "Creation Prayer", sub: "Available all day", step: "contemplative" as Step, editId: "slot:cobreathe", remove: () => toggleContemplative("cobreathe") }] : []),
+      ? [{ emoji: "🌍", label: "Breathing Together", sub: "Available all day", step: "contemplative" as Step, editId: "slot:cobreathe", remove: () => toggleContemplative("cobreathe") }] : []),
     ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: "Available all day", step: "contemplative" as Step, editId: "slot:listening", remove: () => toggleContemplative("audio") }] : []),
     ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Available all day", step: "contemplative" as Step, editId: "slot:examen", remove: () => toggleContemplative("examen") }] : []),
     // Visio was chosen on the contemplative slide and then MISSING here

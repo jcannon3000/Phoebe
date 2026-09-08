@@ -108,7 +108,7 @@ export function CobreatheSummary({
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const afterCollect = (): 1 | 2 => (hasPlaceStory ? 1 : 2);
 
-  // Owner report: "Creation Prayer has been getting stuck on the last slide and
+  // Owner report: "Breathing Together has been getting stuck on the last slide and
   // not closing." The overlay caller (CobreatheOverlay) hands off through this
   // exact sequence: Continue → fadeOut=true → wait for THIS component's fade-out
   // transition to call onFadeOutComplete via framer's onAnimationComplete. That
@@ -248,7 +248,7 @@ export function CobreatheSummary({
             style={{ zIndex: 1 }}
           >
             <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
-              {t("cobreathe.summary_eyebrow", { defaultValue: "Creation Prayer complete" })}
+              {t("cobreathe.summary_eyebrow", { defaultValue: "Breathing Together complete" })}
             </p>
             <p className="text-[26px] leading-[1.3] font-medium italic mb-2" style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}>
               {breathsTaken} {t("cobreathe.breaths_word", { defaultValue: "breaths" })}

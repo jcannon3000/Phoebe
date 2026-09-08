@@ -40,7 +40,7 @@ import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type Cont
 import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
 
 /**
- * The contemplative practice THIS SIDE is set to — the Creation Prayer breath
+ * The contemplative practice THIS SIDE is set to — the Breathing Together breath
  * or the silent sit.
  *
  * PER SIDE. This read the one global style key, which meant a rule keeping
@@ -199,13 +199,13 @@ export type RhythmState = {
    *  per-side contemplation dots. */
   soloSilenceActive: boolean;
   /** The silence GOAL card as the home actually RENDERS it: the solo card, OR
-   *  the goal-progress card that rides ALONGSIDE per-side Creation Prayer
+   *  the goal-progress card that rides ALONGSIDE per-side Breathing Together
    *  cards (whose blurbs never show minutes). Dot/count consumers must use
    *  THIS (with silenceGoalCardDone), not soloSilenceActive, or the
    *  creation-style goal card has no dot. */
   silenceGoalCardActive: boolean;
   silenceGoalCardDone: boolean;
-  /** The STANDALONE Co-Breathe card — false when per-side Creation Prayer
+  /** The STANDALONE Co-Breathe card — false when per-side Breathing Together
    *  cards replace it (DailyProgressBody suppresses the standalone card then,
    *  so a dot on bare cobreatheActive would have no card). */
   cobreatheStandaloneActive: boolean;
@@ -698,7 +698,7 @@ export function useRhythmState(): RhythmState {
   // Per-side contemplation completion (which side's sit is kept today) — its
   // own day-flag so an undone evening sit stays in Next even after the morning
   // sit met the daily minutes goal. The flag is matched against the user's
-  // contemplation STYLE: a side styled as Creation Prayer (the Co-Breathe
+  // contemplation STYLE: a side styled as Breathing Together (the Co-Breathe
   // breath) is only kept by the breath, and a side styled as the silent sit is
   // only kept by a silent sit — they're different practices, so keeping one
   // must not tick the other's card. (Legacy flags carry no kind and satisfy
@@ -1016,7 +1016,7 @@ export function useRhythmState(): RhythmState {
   // this reads it back), so a sit done on the iPhone shows done on the web.
   // ORed with the local flags below; signed-in only (guests are one-device).
   // `kind` narrows the echo to the practice this rhythm's contemplative sides
-  // are actually set to, so a silent sit never reports a Creation Prayer side
+  // are actually set to, so a silent sit never reports a Breathing Together side
   // kept (and vice versa) — the server-side half of the same rule the local
   // day-flags follow.
   // PER SIDE, so a split rule's echo is right on both. One `kind` for both
@@ -1497,9 +1497,9 @@ export function useRhythmState(): RhythmState {
   // A guest who has NOT explicitly chosen per-side contemplation keeps the ONE
   // silence goal card (their default 5-min sit renders as the aggregate solo
   // card below), NOT two per-side cards. But a guest who DID explicitly pick a
-  // per-side anchor — e.g. Creation Prayer (the breath) as Morning + Evening in
+  // per-side anchor — e.g. Breathing Together (the breath) as Morning + Evening in
   // the basic /customize editor, which sets both per-side flags — must get the
-  // Morning/Evening Creation Prayer cards like any signed-in user. So the guest
+  // Morning/Evening Breathing Together cards like any signed-in user. So the guest
   // restriction applies only to the un-chosen fallback branch, not the explicit
   // per-side pick.
   const morningContemplationActive = customized
@@ -1550,7 +1550,7 @@ export function useRhythmState(): RhythmState {
     : (silenceActive
       && (!morningContemplationActive || morningContemplationDone)
       && (!eveningContemplationActive || eveningContemplationDone));
-  // Creation Prayer (the breath) as the per-side style: the home suppresses the
+  // Breathing Together (the breath) as the per-side style: the home suppresses the
   // standalone Co-Breathe card (the per-side cards ARE it) but ALSO renders the
   // minutes-goal card alongside (the breath cards never show goal progress).
   // These two mirror those exact render rules so dots/counts match the cards.

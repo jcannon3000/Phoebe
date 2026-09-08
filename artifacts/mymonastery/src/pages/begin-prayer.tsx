@@ -318,7 +318,7 @@ export default function BeginPrayerPage() {
       setLocation("/dashboard", { replace: true });
       return;
     }
-    // Creation Prayer IS this side's prayer → the creation-focused devotion
+    // Breathing Together IS this side's prayer → the creation-focused devotion
     // (opens with Co-Breathe, then the creation Psalter + prayers). Hidden for
     // now — when off, a stale "creation" pref falls through to the office below.
     if (CREATION_PRAYER_ENABLED && defaultPrayerLevel === "creation") {
@@ -326,7 +326,7 @@ export default function BeginPrayerPage() {
       return;
     }
 
-    // Contemplative OR Creation Prayer set via the simplified customizer
+    // Contemplative OR Breathing Together set via the simplified customizer
     // (/customize) encodes as level "ask" + this side's contemplation flag ON
     // — NOT the literal "reflect-sit"/"creation" levels checked above (those
     // come only from the full rule-of-life builder, and "creation" is

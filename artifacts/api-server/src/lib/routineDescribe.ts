@@ -74,7 +74,7 @@ export const SLOT_LABEL: Record<string, string> = {
   evening: "in the evening", anytime: "any time of day",
 };
 const PRACTICE_LABEL: Record<string, string> = {
-  cobreathe: "Creation Prayer", listening: "Audio Divina", visio: "Visio Divina",
+  cobreathe: "Breathing Together", listening: "Audio Divina", visio: "Visio Divina",
   // Card titles, so no articles: "a Contemplative Walk" reads fine inside a
   // sentence and wrong as the name at the top of a card.
   walk: "Contemplative Walk", reading: "Reading", examen: "The Examen",
@@ -264,7 +264,7 @@ export function describeSpec(spec: {
         // it. It also let the ✕ only ever mean "clear both sides".
         id: `contemplation:${side}`,
         emoji: isBreath ? "🌍" : named ? named.emoji : "🕯️",
-        label: isBreath ? `${cap} Creation Prayer` : named ? `${cap} ${named.label}` : `${cap} Contemplation`,
+        label: isBreath ? `${cap} Breathing Together` : named ? `${cap} ${named.label}` : `${cap} Contemplation`,
         sub: isBreath
           ? "Breathing with creation"
           : named

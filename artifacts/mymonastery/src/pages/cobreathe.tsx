@@ -177,7 +177,7 @@ export default function CobreathePage() {
   const [placeReason, setPlaceReason] = useState<PlaceVerification["reason"] | null>(null);
 
   // Breath count — 12 by default, adjustable on this screen. Reads/writes
-  // phoebe:cobreathe-length so the customizer's Creation Prayer "How many
+  // phoebe:cobreathe-length so the customizer's Breathing Together "How many
   // breaths?" preset stays in sync with whatever's picked here (the home
   // card's Begin opens at whichever length was last set, from either place).
   const [lengthBreaths, setLengthBreaths] = useState<number>(() => {
@@ -504,14 +504,14 @@ export default function CobreathePage() {
     const already = loggedRef.current;
     // Nothing new to credit — this call isn't longer than what's logged.
     if (already && secondsKept <= already.seconds) return;
-    // Reached the set (first log): a completed Creation Prayer always lands
+    // Reached the set (first log): a completed Breathing Together always lands
     // in the daily count, even if the user never taps Finish. Breathing past
     // the 12th breath and tapping Finish calls logSit again with the FULL
     // elapsed time — extend the same row (PATCH) instead of dropping it on
     // the floor, which is what silently capped every session at ~12 breaths
     // before.
     //
-    // Launched as a per-side Creation Prayer card (/cobreathe?side=morning)?
+    // Launched as a per-side Breathing Together card (/cobreathe?side=morning)?
     // Stamp the side so it credits THAT side's per-side completion (like a
     // silent per-side sit), not just the aggregate.
     const sideParam = (() => {
@@ -523,10 +523,10 @@ export default function CobreathePage() {
     // Stamp the per-side day-flag LOCALLY for everyone (same instant echo the
     // silent sit gets from ContemplationTimer). For guests this is the ONLY
     // layer — their /api/me/contemplation-sides-today query is disabled, so
-    // without it a guest's Morning/Evening Creation Prayer card could never
+    // without it a guest's Morning/Evening Breathing Together card could never
     // read "kept". Signed-in users still get the server echo below too.
     // A side can carry the breath in TWO ways: the per-side contemplation flag
-    // (the customizer's Creation Prayer add-on) OR a level of "reflect-sit"
+    // (the customizer's Breathing Together add-on) OR a level of "reflect-sit"
     // with a cobreathe style (what /customize-home's "Breathing together"
     // writes — it never sets the per-side flags). Gating on the flags alone
     // meant the second config skipped this stamp entirely, so its card only
@@ -622,7 +622,7 @@ export default function CobreathePage() {
   }, []);
 
   // Reaching the set records the communal breath AND logs the contemplation sit
-  // right away — so a completed Creation Prayer ALWAYS lands in the daily
+  // right away — so a completed Breathing Together ALWAYS lands in the daily
   // contemplation/silence count, even if the user never taps "Done" (or backs
   // out at the summary). If they keep breathing past the 12th and later tap
   // Finish, handleEnd calls logSit again with the longer elapsed time and it
@@ -1024,7 +1024,7 @@ export default function CobreathePage() {
             {t("cobreathe.before_begin", { defaultValue: "Before you begin" })}
           </p>
           <h1 style={{ color: WARM, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(40px, 11vw, 60px)", lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 18 }}>
-            {t("cobreathe.title", { defaultValue: "Creation Prayer" })}
+            {t("cobreathe.title", { defaultValue: "Breathing Together" })}
           </h1>
           <p style={{ color: "rgba(240,237,230,0.9)", fontFamily: SPACE_GROTESK, fontSize: 17, lineHeight: 1.55, maxWidth: 440, marginBottom: 26 }}>
             {t("cobreathe.intro_blurb", { defaultValue: "We pause to breathe with all life, in gratitude and in recognition of our need to work together to protect our common home." })}
@@ -1034,7 +1034,7 @@ export default function CobreathePage() {
             <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginBottom: 14 }} />
 
             {/* Breath-count selector — restored per owner. Writes the same
-                phoebe:cobreathe-length key the customizer's Creation Prayer
+                phoebe:cobreathe-length key the customizer's Breathing Together
                 "How many breaths?" step reads/writes, so a pick here stays in
                 sync with that preset either direction. */}
             <div className="flex items-center justify-between" style={{ padding: "10px 2px" }}>
