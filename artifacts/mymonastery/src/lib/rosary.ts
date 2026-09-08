@@ -73,7 +73,7 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
         meditation: "Mary goes to Elizabeth. Two pregnant women meet, and the first thing either of them does is sing." },
       { n: 3, title: "The Nativity", ref: "Luke 2:1-20", artId: 48387, fruit: "Poverty of spirit",
         meditation: "God arrives without room, without status, and the news goes first to men working a night shift." },
-      { n: 4, title: "The Presentation in the Temple", ref: "Luke 2:22-38", artId: 56557, fruit: "Obedience",
+      { n: 4, title: "The Presentation in the Temple", ref: "Luke 2:22-38", artId: 54414, fruit: "Obedience",
         meditation: "Two old people have been waiting their whole lives, and they recognise him at once." },
       { n: 5, title: "The Finding in the Temple", ref: "Luke 2:41-52", artId: 59224, fruit: "Joy in finding Jesus",
         meditation: "Three days of looking, and he is where his Father is. His mother does not understand, and keeps it anyway." },

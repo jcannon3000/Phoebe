@@ -60,6 +60,7 @@ import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 import { DeckAnnouncer } from "@/components/DeckAnnouncer";
+import { tidyArtist, tidyDate } from "@/lib/artistName";
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -91,32 +92,6 @@ const NOTICE =
   "As you view the following picture, notice anything that is sticking out to you, or grabs your attention.";
 
 /** "1050-1100" is a range, and a range takes an en dash. */
-function tidyDate(d: string): string {
-  return d.replace(/(\d)\s*-\s*(\d)/g, "$1\u2013$2");
-}
-
-/**
- * "Lippi, Filippino, -1504" → "Lippi, Filippino, d. 1504".
- *
- * ACT records an unknown birth year as a bare leading dash, which renders as
- * a dangling minus sign under the painting — it reads like a typo rather than
- * like "died 1504". Ranges that HAVE both years are left to tidyDate.
- */
-function tidyArtist(a: string): string {
-  /**
-   * "JESUS MAFA" is the SERIES, not a person — Vie de Jesus Mafa, made with
-   * the Mafa community of northern Cameroon. ACT files it as the artist, and
-   * printed under "Artist:" it reads like someone's name (owner: "change the
-   * artist name Jesus Mafa to Mafa community, Cameroon").
-   *
-   * A DISPLAY rename only: the catalogue value is untouched, so the
-   * series note further down still keys off it, and the formal attribution on
-   * the closing slide still credits the work the way ACT and the publisher
-   * record it.
-   */
-  if (a.trim().toUpperCase() === "JESUS MAFA") return "Mafa community, Cameroon";
-  return tidyDate(a.replace(/(^|[,\s])-\s*(\d{3,4})/g, "$1d. $2"));
-}
 
 /**
  * A work swapped in through More options, remembered for the rest of its week.

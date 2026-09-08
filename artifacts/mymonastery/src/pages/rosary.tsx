@@ -7,6 +7,7 @@ import { DeckAnnouncer } from "@/components/DeckAnnouncer";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { artworkById } from "@/lib/visioSelect";
+import { tidyArtist } from "@/lib/artistName";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { openReadingPage } from "@/lib/openExternal";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
@@ -29,13 +30,14 @@ import {
  * terracotta — so the two practices are told apart at a glance without
  * inventing a second visual language.
  *
- * THE ONE THING THAT IS NOT LIKE PACT is the decade. Ten Hail Marys cannot be
- * ten slides: that is fifty slides of identical text in a five-decade rosary,
- * and the deck would stop being a prayer and start being a chore. So a decade
- * is ONE beat with ten beads on it — the pill advances a bead, the dots fill,
- * and the mystery stays on screen above the prayer the whole way, which is
- * what praying a decade actually is. It is also the closest thing on a screen
- * to the thing the beads do in your hand.
+ * REPETITION IS ONE SLIDE THAT SAYS HOW MANY TIMES (owner: "for any
+ * repetition, like the Hail Marys, lets not have 10 slides, just say repeat 10
+ * times"). A decade is ten Hail Marys and the opening is three; as slides that
+ * is fifty-three screens of identical text, and as one tap per bead it was
+ * seventy-nine taps to finish. Either turns a prayer into a chore. So the
+ * words appear once with the count above them and the mystery held alongside,
+ * and you pray them at your own pace — which is what the beads in your hand
+ * are for.
  *
  * ADMIN ONLY for now (owner). Gated here as well as in the menu, so the route
  * cannot be reached by typing it.
@@ -64,11 +66,11 @@ const PILL: CSSProperties = {
   cursor: "pointer",
 };
 
-/** A beat of the deck. `beads` is the decade — see the note above. */
+/** A beat of the deck. `repeat` is a prayer said N times — see above. */
 type Beat =
   | { kind: "prayer"; eyebrow: string; title: string; body: string }
   | { kind: "mystery"; mystery: Mystery; decade: number }
-  | { kind: "beads"; mystery: Mystery; decade: number }
+  | { kind: "repeat"; times: number; eyebrow: string; title: string; body: string; note?: string; decade?: number }
   | { kind: "closing" };
 
 function ordinal(n: number): string {
@@ -82,18 +84,17 @@ function buildBeats(set: MysterySet): Beat[] {
     { kind: "prayer", eyebrow: "To begin", title: "The Sign of the Cross", body: SIGN_OF_THE_CROSS },
     { kind: "prayer", eyebrow: "On the crucifix", title: "The Apostles' Creed", body: APOSTLES_CREED },
     { kind: "prayer", eyebrow: "On the first bead", title: "Our Father", body: OUR_FATHER },
-    ...OPENING_INTENTIONS.map((intention) => ({
-      kind: "prayer" as const,
-      eyebrow: `A Hail Mary — ${intention}`,
-      title: "Hail Mary",
-      body: HAIL_MARY,
-    })),
+    {
+      kind: "repeat", times: OPENING_INTENTIONS.length,
+      eyebrow: "On the three beads", title: "Hail Mary", body: HAIL_MARY,
+      note: `one ${OPENING_INTENTIONS.join(", one ")}`,
+    },
     { kind: "prayer", eyebrow: "", title: "Glory be", body: GLORY_BE },
   ];
   for (const m of def.mysteries) {
     beats.push({ kind: "mystery", mystery: m, decade: m.n });
     beats.push({ kind: "prayer", eyebrow: `The ${ordinal(m.n)} decade`, title: "Our Father", body: OUR_FATHER });
-    beats.push({ kind: "beads", mystery: m, decade: m.n });
+    beats.push({ kind: "repeat", times: BEADS_PER_DECADE, eyebrow: m.title, title: "Hail Mary", body: HAIL_MARY, decade: m.n });
     beats.push({ kind: "prayer", eyebrow: `The ${ordinal(m.n)} decade`, title: "Glory be", body: GLORY_BE });
     beats.push({ kind: "prayer", eyebrow: `The ${ordinal(m.n)} decade`, title: "O my Jesus", body: FATIMA_PRAYER });
   }
@@ -128,7 +129,7 @@ export default function RosaryPage() {
   const resumed = useMemo(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(RESUME_KEY) ?? "null") as
-        { day?: string; set?: MysterySet; step?: number; bead?: number } | null;
+        { day?: string; set?: MysterySet; step?: number } | null;
       if (!raw || raw.day !== new Date().toLocaleDateString("en-CA")) return null;
       if (typeof raw.step !== "number" || raw.step < 1) return null;
       if (!raw.set || !(raw.set in MYSTERY_SETS)) return null;
@@ -139,9 +140,6 @@ export default function RosaryPage() {
   // step 0 is the intro; 1..beats.length walks the beats.
   const [step, setStep] = useState(0);
   const [set, setSet] = useState<MysterySet>(() => resumed?.set ?? mysterySetForDay());
-  // Which bead of the current decade we are on (0-based). Reset whenever the
-  // beat changes, so re-entering a decade from Back starts it again.
-  const [bead, setBead] = useState(0);
 
   const backdropPhoto = useMemo(
     () => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
@@ -153,24 +151,10 @@ export default function RosaryPage() {
   /** What the day appoints — kept separate from `set` so the intro can say
    *  "Today's mysteries" when they match and name the tradition when they don't. */
   const todaysSet = useMemo(() => mysterySetForDay(), []);
-  const [choosing, setChoosing] = useState(false);
 
   const isIntro = step === 0;
   const beat = isIntro ? null : beats[step - 1] ?? null;
   const isClosing = beat?.kind === "closing";
-
-  /**
-   * A new beat starts at its first bead — EXCEPT the one we just resumed onto.
-   *
-   * setStep and setBead batch together, so on a resume this effect ran after
-   * the commit and reset the restored bead straight back to zero: the resume
-   * landed on the right decade and then threw away where in it you were.
-   */
-  const resumingRef = useRef(false);
-  useEffect(() => {
-    if (resumingRef.current) { resumingRef.current = false; return; }
-    setBead(0);
-  }, [step]);
 
   // Write the place on every move. Cheap (one small JSON), and it means the
   // resume offer below is always truthful.
@@ -178,11 +162,11 @@ export default function RosaryPage() {
     if (step === 0) return;
     try {
       localStorage.setItem(RESUME_KEY, JSON.stringify({
-        day: new Date().toLocaleDateString("en-CA"), set, step, bead,
+        day: new Date().toLocaleDateString("en-CA"), set, step,
       }));
     } catch { /* private mode — resume simply won't be offered */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, bead, set]);
+  }, [step, set]);
 
   /**
    * WARM THE NEXT MYSTERY'S PICTURE WHILE THIS DECADE IS PRAYED.
@@ -193,7 +177,7 @@ export default function RosaryPage() {
    * warning — so the next one is fetched during it and is simply there.
    */
   useEffect(() => {
-    if (beat?.kind !== "beads") return;
+    if (beat?.kind !== "repeat" || !beat.decade) return;
     const next = beats.slice(step).find((b) => b.kind === "mystery") as { mystery: Mystery } | undefined;
     const art = next?.mystery.artId ? artworkById(next.mystery.artId) : null;
     if (!art?.img) return;
@@ -241,7 +225,7 @@ export default function RosaryPage() {
   }, [adminLoading, isSuperAdmin, setLocation]);
   if (adminLoading || !isSuperAdmin) return null;
 
-  const decadeOf = beat && (beat.kind === "mystery" || beat.kind === "beads") ? beat.decade : null;
+  const decadeOf = beat && (beat.kind === "mystery" || beat.kind === "repeat") ? (beat.decade ?? null) : null;
   /**
    * The mystery's picture, from the same ACT library Visio prays with.
    * Undefined for the Assumption, which the library has nothing for — the beat
@@ -249,31 +233,10 @@ export default function RosaryPage() {
    */
   const mysteryArt = beat?.kind === "mystery" && beat.mystery.artId ? artworkById(beat.mystery.artId) : null;
 
-  /**
-   * One bead on. Hoisted because the pill and the whole slide both do it —
-   * fifty Hail Marys is fifty taps, and asking for all of them on a pill the
-   * width of two words is the difference between a practice and a chore. The
-   * office deck pages on a tap anywhere for the same reason.
-   */
-  const advanceBead = () => {
-    try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } })); } catch { /* non-fatal */ }
-    if (bead >= BEADS_PER_DECADE - 1) setStep((s) => s + 1);
-    else setBead((b) => b + 1);
-  };
-
   /** The bottom pill: what it says, and what it does. */
   const primary = (() => {
     if (isIntro) return { label: t("rosary.begin", { defaultValue: "Begin" }), onClick: () => setStep(1) };
     if (isClosing) return { label: t("rosary.done", { defaultValue: "Done" }), onClick: () => setLocation("/dashboard") };
-    if (beat?.kind === "beads") {
-      const last = bead >= BEADS_PER_DECADE - 1;
-      return {
-        label: last
-          ? t("rosary.decade_done", { defaultValue: "Glory be" })
-          : t("rosary.next_bead", { defaultValue: "Next bead" }),
-        onClick: advanceBead,
-      };
-    }
     return { label: t("rosary.continue", { defaultValue: "Continue" }), onClick: () => setStep((s) => s + 1) };
   })();
 
@@ -283,7 +246,7 @@ export default function RosaryPage() {
         label={
           isIntro ? `${def.name}. ${def.blurb}`
             : beat?.kind === "mystery" ? `${beat.mystery.title}, the ${ordinal(beat.decade)} mystery. ${beat.mystery.ref}`
-            : beat?.kind === "beads" ? `${beat.mystery.title}. Bead ${bead + 1} of ${BEADS_PER_DECADE}`
+            : beat?.kind === "repeat" ? `${beat.title}, ${beat.times} times. ${beat.eyebrow}`
             : beat?.kind === "prayer" ? beat.title
             : t("rosary.closing_title", { defaultValue: "The rosary is prayed" })
         }
@@ -314,10 +277,7 @@ export default function RosaryPage() {
           onClick={() => {
             // Back steps the deck; from the intro it leaves. Home, not the
             // offices picker — the same exit PACT and the Examen settled on.
-            // Inside a decade, Back walks the beads — losing seven Hail Marys
-            // because you wanted the last one again is not what Back means.
-            if (beat?.kind === "beads" && bead > 0) setBead((b) => b - 1);
-            else if (step > 0) setStep((s) => s - 1);
+            if (step > 0) setStep((s) => s - 1);
             else setLocation("/dashboard");
           }}
           style={{ color: "rgba(143,175,150,0.8)", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: FONT, fontSize: 13 }}
@@ -344,9 +304,6 @@ export default function RosaryPage() {
 
       <main
         className="flex flex-col items-center text-center px-6 w-full"
-        // Only a decade pages on a tap. Everywhere else the pill is the one
-        // way forward, so a stray touch can't skip a prayer you were reading.
-        onClick={beat?.kind === "beads" ? advanceBead : undefined}
         style={{
           maxWidth: 560, margin: "0 auto", minHeight: "var(--app-dvh)", justifyContent: "center",
           paddingTop: "clamp(24px, 6dvh, 72px)",
@@ -383,80 +340,53 @@ export default function RosaryPage() {
               <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15.5px, 4.2vw, 18px)", lineHeight: 1.55 }}>
                 {t("rosary.intro_body", {
                   defaultValue:
-                    "Five mysteries, a decade each. The deck keeps your place on the beads — take it as slowly as you like, and put it down whenever you need to.",
+                    "Five mysteries, a decade each. Pray at your own pace — the deck keeps your place, so you can put it down whenever you need to.",
                 })}
               </p>
 
-              {/**
-                * TODAY'S SET IS THE ANSWER; the others are behind one pill.
-                *
-                * Four chips shown at once made the opening screen a form to
-                * fill in before praying. The day already decides — the deck
-                * says which mystery today is and why, and offers the other
-                * three only to someone who came looking for them (owner).
-                */}
-              <p style={{ color: "rgba(168,186,216,0.72)", fontFamily: FONT, fontSize: 12.5, marginTop: 14 }}>
+              {/* All four, with today's highlighted (owner: "I want the
+                  original of keeping all four visible with todays
+                  highlighted"). The day decides which is lit; any of them can
+                  be tapped. */}
+              <div className="flex flex-wrap items-center justify-center gap-2" style={{ marginTop: 22 }}>
+                {(Object.keys(MYSTERY_SETS) as MysterySet[]).map((k) => {
+                  const on = k === set;
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setSet(k)}
+                      aria-pressed={on}
+                      className="rounded-full"
+                      style={{
+                        // 44px minimum — these were ~30px tall.
+                        padding: "12px 16px", minHeight: 44,
+                        fontFamily: FONT, fontSize: 13, fontWeight: 600,
+                        cursor: "pointer",
+                        color: on ? WARM : "rgba(240,237,230,0.66)",
+                        background: on ? "rgba(150,170,205,0.18)" : "rgba(9,26,16,0.42)",
+                        border: `1px solid ${on ? ACCENT : "rgba(150,170,205,0.22)"}`,
+                        backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+                      }}
+                    >
+                      {MYSTERY_SETS[k].name.replace("The ", "").replace(" Mysteries", "")}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ color: "rgba(168,186,216,0.72)", fontFamily: FONT, fontSize: 12.5, marginTop: 12 }}>
                 {set === todaysSet
                   ? `${t("rosary.today_is", { defaultValue: "Today's mysteries" })} · ${def.days}`
                   : `${t("rosary.traditionally", { defaultValue: "Traditionally prayed on" })} ${def.days}`}
               </p>
 
-              {!choosing ? (
-                <button
-                  type="button"
-                  onClick={() => setChoosing(true)}
-                  className="rounded-full"
-                  style={{
-                    marginTop: 16, padding: "12px 18px", minHeight: 44,
-                    fontFamily: FONT, fontSize: 13.5, fontWeight: 600, cursor: "pointer",
-                    color: "rgba(240,237,230,0.9)", background: "rgba(9,26,16,0.42)",
-                    border: `1px solid rgba(150,170,205,0.32)`,
-                    backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
-                  }}
-                >
-                  {t("rosary.choose_other", { defaultValue: "Choose a different mystery" })}
-                </button>
-              ) : (
-                <div className="flex flex-col items-stretch" style={{ marginTop: 16, gap: 8, width: "100%", maxWidth: 340, marginLeft: "auto", marginRight: "auto" }}>
-                  {(Object.keys(MYSTERY_SETS) as MysterySet[]).map((k) => {
-                    const on = k === set;
-                    const d = MYSTERY_SETS[k];
-                    return (
-                      <button
-                        key={k}
-                        type="button"
-                        onClick={() => { setSet(k); setChoosing(false); }}
-                        aria-pressed={on}
-                        className="rounded-full"
-                        style={{
-                          padding: "11px 16px", minHeight: 44,
-                          fontFamily: FONT, cursor: "pointer", textAlign: "left",
-                          color: on ? WARM : "rgba(240,237,230,0.72)",
-                          background: on ? "rgba(150,170,205,0.18)" : "rgba(9,26,16,0.42)",
-                          border: `1px solid ${on ? ACCENT : "rgba(150,170,205,0.22)"}`,
-                          backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
-                        }}
-                      >
-                        <span style={{ fontSize: 14, fontWeight: 600 }}>
-                          {d.name.replace("The ", "")}
-                        </span>
-                        <span style={{ display: "block", fontSize: 11.5, color: "rgba(168,186,216,0.75)", marginTop: 2 }}>
-                          {k === todaysSet ? t("rosary.today", { defaultValue: "Today" }) : d.days}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
               {/* Offered, never forced: Begin still starts a fresh rosary. */}
               {resumed && (
                 <button
                   type="button"
                   onClick={() => {
-                    resumingRef.current = true;
                     setSet(resumed.set!);
                     setStep(resumed.step!);
-                    if (typeof resumed.bead === "number") setBead(resumed.bead);
                   }}
                   style={{
                     marginTop: 16, padding: "9px 16px", borderRadius: 999, cursor: "pointer",
@@ -491,18 +421,28 @@ export default function RosaryPage() {
                 /* Held small and soft — this is a mystery being announced, not
                    Visio's long look at one picture. Attribution rides the alt
                    text the way Visio's does; the ACT licence is the same one. */
-                <img
-                  src={mysteryArt.img}
-                  alt={`${mysteryArt.title}${mysteryArt.artist ? ` — ${mysteryArt.artist}` : ""}`}
-                  loading="eager"
-                  decoding="async"
-                  style={{
-                    width: "100%", maxWidth: 300, maxHeight: "34dvh", objectFit: "contain",
-                    borderRadius: 10, margin: "0 auto 18px",
-                    border: "1px solid rgba(150,170,205,0.28)",
-                    boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
-                  }}
-                />
+                <figure style={{ margin: "0 auto 18px" }}>
+                  <img
+                    src={mysteryArt.img}
+                    alt={`${mysteryArt.title}${mysteryArt.artist ? ` — ${tidyArtist(mysteryArt.artist)}` : ""}`}
+                    loading="eager"
+                    decoding="async"
+                    // No frame: no border, no card, no shadow (owner). The
+                    // painting sits on the deck's own ground the way Visio's
+                    // does, and anything drawn round it reads as chrome.
+                    style={{
+                      width: "100%", maxWidth: 300, maxHeight: "34dvh", objectFit: "contain",
+                      margin: "0 auto", display: "block",
+                    }}
+                  />
+                  {/* Credited on the slide, not only in the alt text — through
+                      the SAME formatter Visio uses, so "JESUS MAFA" reads as
+                      the Mafa community here too. */}
+                  <figcaption style={{ color: "rgba(168,186,216,0.78)", fontFamily: FONT, fontSize: 11.5, lineHeight: 1.45, marginTop: 8 }}>
+                    {mysteryArt.title}
+                    {mysteryArt.artist ? <span style={{ display: "block", color: "rgba(240,237,230,0.55)" }}>{tidyArtist(mysteryArt.artist)}</span> : null}
+                  </figcaption>
+                </figure>
               )}
               <p style={{ color: "rgba(226,232,244,0.92)", fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(17px, 4.4vw, 21px)", lineHeight: 1.5, marginBottom: 18 }}>
                 {beat.mystery.meditation}
@@ -533,26 +473,27 @@ export default function RosaryPage() {
             </motion.div>
           )}
 
-          {beat?.kind === "beads" && (
+          {beat?.kind === "repeat" && (
             <motion.div
-              key={`beads-${beat.decade}`}
+              key={`repeat-${step}`}
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
               style={{ maxWidth: 480, textAlign: "center" }}
             >
-              {/* The mystery stays above the prayer for the whole decade —
-                  that is what praying a decade is: one thing held while the
-                  same words go round. */}
+              {/* Whose decade this is, held above the prayer — ten Hail Marys
+                  are never prayed without the mystery in front of you. */}
               <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 10 }}>
-                {beat.mystery.title}
+                {beat.eyebrow}
               </p>
-              <p style={{ color: "rgba(240,237,230,0.55)", fontFamily: FONT, fontSize: 12.5, marginBottom: 18 }}>
-                {/* Interpolated, not baked into the default — a real translation of
-                    this key would otherwise lose the numbers entirely. */}
-                {t("rosary.bead_n_of_m", { defaultValue: "Bead {{n}} of {{total}}", n: bead + 1, total: BEADS_PER_DECADE })}
+              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(20px, 5vw, 28px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 6 }}>
+                {beat.title}
+              </h2>
+              <p style={{ color: "rgba(168,186,216,0.95)", fontFamily: FONT, fontSize: 13.5, fontWeight: 600, marginBottom: 18 }}>
+                {t("rosary.times", { defaultValue: "Pray {{times}} times", times: beat.times })}
+                {beat.note ? ` — ${beat.note}` : ""}
               </p>
               <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
-                {HAIL_MARY}
+                {beat.body}
               </p>
             </motion.div>
           )}
@@ -597,7 +538,7 @@ export default function RosaryPage() {
                 {t("rosary.closing_title", { defaultValue: "The rosary is prayed" })}
               </h2>
               <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
-                {t("rosary.closing_body", { defaultValue: "Five mysteries held, one bead at a time. Carry them into the day." })}
+                {t("rosary.closing_body", { defaultValue: "Five mysteries held, one decade at a time. Carry them into the day." })}
               </p>
             </motion.div>
           )}
@@ -608,13 +549,7 @@ export default function RosaryPage() {
           pill. On a decade, the dots are the BEADS; everywhere else they are
           the five decades, so there is always a sense of how far in you are. */}
       <div className="absolute left-0 right-0 flex flex-col items-center" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 22px)", zIndex: 2 }}>
-        {beat?.kind === "beads" ? (
-          <div className="flex items-center justify-center gap-1.5" style={{ marginBottom: 16 }}>
-            {Array.from({ length: BEADS_PER_DECADE }, (_, i) => (
-              <span key={i} className="block rounded-full" style={{ width: 6, height: 6, background: i <= bead ? DOT_ON : DOT_OFF }} />
-            ))}
-          </div>
-        ) : decadeOf !== null ? (
+        {decadeOf !== null ? (
           <div className="flex items-center justify-center gap-1.5" style={{ marginBottom: 16 }}>
             {[1, 2, 3, 4, 5].map((d) => (
               <span key={d} className="block rounded-full" style={{ width: 6, height: 6, background: d <= decadeOf ? DOT_ON : DOT_OFF }} />
