@@ -19,7 +19,7 @@ import {
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin, predatesSeedStamp } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset, type OfficeSideKey } from "@/lib/rulePresets";
 import { getEffectiveRulePresets } from "@/lib/rulePresetsStore";
-import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot, isRelationalAnchor, activeRelationalPractices, setRelationalPractices } from "@/lib/customAnchors";
+import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot, isRelationalAnchor, activeRelationalPractices, setRelationalPractices, RELATIONAL_PRACTICES, type RelationalPracticeId } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 
@@ -158,6 +158,46 @@ export default function CustomizePage() {
   const [addPracticeLocal, setAddPracticeLocal] = useState<AddPractice | null>(null);
   const currentHomeLayout: HomeLayout | null = guest ? readCachedHomeLayout() : (user?.homeLayout ?? null);
   const addPractice: AddPractice = addPracticeLocal ?? (PRACTICE_KEYS.find((k) => homeCardOn(currentHomeLayout, k)) ?? "none");
+
+  /**
+   * THE RELATIONAL PRACTICE — one at a time, or none (owner).
+   *
+   * Gratitude arrives prefilled because the default seed writes it, so a
+   * device on the default rhythm opens this row already showing "Express
+   * gratitude". It is READ, not assumed: someone who has turned it off sees
+   * "None", which is the truth about their rhythm rather than a default
+   * pretending to be their choice.
+   *
+   * Only the three curated ones, and no "custom" (owner). A person's own
+   * typed relational practice is a real thing — addCustomRelationalPractice
+   * on the full customizer's Relational step — but a free-text field does not
+   * belong in a page whose whole promise is a few quick dropdowns, and
+   * setRelationalPractices only ever adds or removes the curated three, so a
+   * hand-typed one is never swept up by a pick here.
+   */
+  const [relationalLocal, setRelationalLocal] = useState<RelationalPracticeId | "none" | null>(null);
+  const relational: RelationalPracticeId | "none" = relationalLocal ?? (activeRelationalPractices()[0] ?? "none");
+  const [relationalRefused, setRelationalRefused] = useState(false);
+
+  const applyRelational = (choice: RelationalPracticeId | "none") => {
+    if (choice === relational) return;
+    setRelationalLocal(choice);
+    setRelationalRefused(false);
+    // Replaces the set, so this row is genuinely single-select: picking one
+    // removes the other two, and "none" removes all three.
+    const refused = setRelationalPractices(choice === "none" ? [] : [choice]);
+    if (refused.length > 0) {
+      /**
+       * The eight-practice cap refused it. addCustomAnchor fails SILENTLY
+       * there, so without this the row would move, report success, write
+       * nothing, and read as unpicked next time — the exact failure
+       * setRelationalPractices was given a return value to prevent.
+       */
+      setRelationalRefused(true);
+      setRelationalLocal(null);
+    }
+    if (user) pushRoutineConfig();
+  };
 
   // The one-day practice swap is invisible in here (see officePrefs) — the
   // Daily Prayer dropdown seeds from getSideLevel, and every apply below
@@ -805,6 +845,21 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
               ? [{ value: "spirituals", label: "Meditating on Spirituals" }]
               : []),
           ], (v) => applyAddPractice(v as AddPractice))}
+
+          {/* RELATIONAL — one small thing done toward a person, or none
+              (owner). Sits last because it is the one row that is not about
+              time alone: the others shape a practice you do by yourself, this
+              one points outward. The curated three only; see the note above
+              applyRelational for why there is no custom entry here. */}
+          {row("Relational", relational, [
+            { value: "none", label: "None" },
+            ...RELATIONAL_PRACTICES.map((r) => ({ value: r.id as string, label: r.title })),
+          ], (v) => applyRelational(v as RelationalPracticeId | "none"))}
+          {relationalRefused && (
+            <p style={{ color: SOFT_GREEN, fontSize: 12.5, fontFamily: FONT, margin: "-2px 4px 0", lineHeight: 1.45 }}>
+              Your rhythm is full — remove a practice first, and this will fit.
+            </p>
+          )}
         </div>
 
         {/* Every row above already applies the moment it's changed — this
