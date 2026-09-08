@@ -3104,7 +3104,23 @@ final class BibleBrowser: NSObject {
         onOfficeDisplaySettings: (() -> Void)? = nil,
         onOpenReaderView: ((URL) -> Void)? = nil
     ) {
-        guard let presenter = presenter else { return }
+        /**
+         * A PRESENTATION THAT CANNOT HAPPEN STILL HAS TO TELL THE WEB
+         * (native audit, 2026-09-08).
+         *
+         * This bailed silently while the plugin went on to resolve the call as
+         * success, so the JS believed a reader had opened and sat waiting for
+         * `phoebe:browserfinished` that could never come — the reading never
+         * marked read, and the pending-read slot in openExternal was held by a
+         * browser that does not exist. Running onDismiss is exactly the "the
+         * reader closed" signal, and it is the truth here: nothing opened.
+         *
+         * The second case is the same shape — UIKit refuses to present over a
+         * view controller that is already presenting, with nothing but a
+         * console warning to show for it.
+         */
+        guard let presenter = presenter else { onDismiss?(); return }
+        if presenter.presentedViewController != nil { onDismiss?(); return }
         // A warm view is already loading the LIVE url — never reuse it for a
         // saved page, or the network copy wins the race we are trying to avoid.
         let vc = BibleWebViewController(

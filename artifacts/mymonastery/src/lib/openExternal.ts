@@ -188,6 +188,15 @@ export function openExternal(url: string, opts?: OpenOpts): boolean {
 // the in-app browser (native), not the instant they open it — so the "done"
 // animation waits until they've actually X'd out. On web there's no close event
 // (it opens a new tab), so we mark on open, which is the best we can do.
+/**
+ * The reading whose close we are still waiting for. At most one — see the note
+ * inside openExternalThenMarkRead.
+ */
+let pendingRead: { cancel: () => void } | null = null;
+/** A reader open for longer than this is not a reading anyone came back from;
+ *  the app was backgrounded, or the close event was suppressed by a handoff. */
+const PENDING_READ_MAX_MS = 6 * 60 * 60 * 1000;
+
 export function openExternalThenMarkRead(
   url: string,
   markRead: (dwellMs?: number) => void,
@@ -214,10 +223,43 @@ export function openExternalThenMarkRead(
      * in the rhythm is unaffected — opening it still keeps it.
      */
     const openedAt = Date.now();
-    const onDone = () => {
+    /**
+     * ONE PENDING READ AT A TIME, AND IT EXPIRES (native audit, 2026-09-08).
+     *
+     * This listener used to be registered per call and removed only from
+     * inside itself, which went wrong two ways.
+     *
+     * The browser does NOT always fire `phoebe:browserfinished`: the native
+     * side suppresses it whenever it dismisses to hand off somewhere else —
+     * Options → "Change format" or "Listen", the office pill's Back/Next, the
+     * Display gear. So the listener outlived its reading and fired on the NEXT
+     * browser close, marking the earlier item read, with a dwell measured from
+     * the earlier open. That is minutes long, so it sailed straight past the
+     * ten-second bar the home holds an out-of-rhythm newsletter to — the one
+     * check that exists to stop a tap and a bounce counting as a read.
+     *
+     * Opening a second reading before the first closes attached two listeners,
+     * and the first close then fired both.
+     *
+     * So: superseding a pending read cancels it (a handoff or a second open is
+     * not a finished read), and one that never hears its event is dropped
+     * after a ceiling rather than waiting all session to credit the wrong
+     * thing. Nothing is marked in either case, which is the safe direction —
+     * an unrecorded read costs a tap; a wrongly recorded one is a lie about
+     * the person's day.
+     */
+    if (pendingRead) pendingRead.cancel();
+    const cancel = () => {
       window.removeEventListener("phoebe:browserfinished", onDone);
+      window.clearTimeout(timer);
+      if (pendingRead?.cancel === cancel) pendingRead = null;
+    };
+    const onDone = () => {
+      cancel();
       markRead(Date.now() - openedAt);
     };
+    const timer = window.setTimeout(cancel, PENDING_READ_MAX_MS);
+    pendingRead = { cancel };
     window.addEventListener("phoebe:browserfinished", onDone);
     return;
   }

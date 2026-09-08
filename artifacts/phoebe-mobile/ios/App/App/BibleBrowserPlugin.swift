@@ -155,8 +155,17 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
         // opens as a continuation of what the reader was just looking at
         // rather than a jump to a different screen. Taken HERE, before
         // anything changes on screen, and only when it will actually be used.
-        let snapshotVeilImage: UIImage? = officeChrome ? self.snapshotBridgeView() : nil
+        //
+        // …AND TAKEN ON THE MAIN THREAD (native audit, 2026-09-08). Capacitor
+        // runs plugin methods on its own background queue, and
+        // snapshotBridgeView() reads view.bounds and calls drawHierarchy —
+        // main-thread-only UIKit. Off-thread it yields a black or torn veil, or
+        // crashes; in a TestFlight release build the Main Thread Checker is off,
+        // so it failed silently and rarely on the highest-traffic reading path
+        // in the app. It has to happen before anything else changes on screen,
+        // so it stays first INSIDE the hop rather than moving out of it.
         DispatchQueue.main.async { [weak self] in
+            let snapshotVeilImage: UIImage? = officeChrome ? (self?.snapshotBridgeView() ?? nil) : nil
             // The Journal button in the browser's bottom bar fires this event
             // into the app's web view, which then navigates to the journal.
             let onJournal: () -> Void = { [weak self] in

@@ -151,6 +151,16 @@ struct PhoebeStats {
     // Before the app has ever pushed data (or if the App Group store can't be
     // read), show a proper-looking hero for the time of day rather than a bare
     // "Time to pray" — so the widget always reads as a real Phoebe card.
+    /** JS `toISOString()` carries fractional seconds; older payloads may not. */
+    private static func parseStamp(_ s: String) -> Date? {
+        let withFraction = ISO8601DateFormatter()
+        withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = withFraction.date(from: s) { return d }
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: s)
+    }
+
     static func timeBasedFallback() -> PhoebeStats {
         // 4:30pm, the same boundary the home and widgetSync keep — the owner
         // asked twice that the evening office not lead before it. This said
@@ -194,6 +204,26 @@ struct PhoebeStats {
               let data = raw.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
+            return timeBasedFallback()
+        }
+        /**
+         * YESTERDAY'S RHYTHM IS NOT TODAY'S (native audit, 2026-09-08).
+         *
+         * This blob is whatever the app last pushed, and nothing here ever
+         * looked at when. So someone who prayed everything on Monday saw three
+         * green dots and "Prayed today" on their lock screen at 7am on
+         * TUESDAY — until they happened to open the app, which is exactly the
+         * moment a widget is supposed to save them. The app has always sent
+         * `updatedAt` (lib/widgetSync); the widget simply ignored it.
+         *
+         * A payload stamped on an earlier LOCAL day is stale, and the honest
+         * thing to show is the time-of-day fallback — "here is what is next" —
+         * rather than a day's worth of ticks nobody has earned yet. An older
+         * payload with no stamp at all is left alone, the same way every other
+         * field here degrades rather than crashes.
+         */
+        if let stamp = obj["updatedAt"] as? String, let when = Self.parseStamp(stamp),
+           !Calendar.current.isDateInToday(when) {
             return timeBasedFallback()
         }
         let streak = (obj["streakDays"] as? NSNumber)?.intValue ?? 0
@@ -296,7 +326,17 @@ struct PhoebeProvider: TimelineProvider {
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<PhoebeEntry>) -> Void) {
         let entry = PhoebeEntry(date: Date(), stats: PhoebeStats.load())
-        let next = Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date().addingTimeInterval(3600)
+        // Hourly as before, but never past LOCAL MIDNIGHT: the day's ticks have
+        // to clear on their own when the day does, whether or not the app is
+        // opened. Without this the staleness check above would only take effect
+        // at the next hourly refresh, which is still the wrong side of midnight
+        // for anyone glancing at the widget first thing.
+        let hourly = Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date().addingTimeInterval(3600)
+        let midnight = Calendar.current.nextDate(
+            after: Date(), matching: DateComponents(hour: 0, minute: 0, second: 5),
+            matchingPolicy: .nextTime,
+        )
+        let next = min(hourly, midnight ?? hourly)
         completion(Timeline(entries: [entry], policy: .after(next)))
     }
 }
