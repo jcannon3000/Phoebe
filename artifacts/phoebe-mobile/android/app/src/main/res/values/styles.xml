@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
@@ -33,7 +33,26 @@
     </style>
 
 
+    <!-- THE COLD-START SPLASH.
+         From Android 12 the system draws the launch screen itself: it ignores
+         android:background and uses windowSplashScreenBackground plus the app
+         icon. Neither was set, so it fell back to the platform's own
+         colorBackground — which on a phone in LIGHT mode is near-white. Every
+         cold start flashed a light-grey screen with the icon on it before
+         Phoebe's dark ground painted (seen on the emulator, 2026-09-08). The
+         same class as the white system-bar strips documented on
+         AppTheme.NoActionBar above: a DayNight default leaking into an app
+         that has no light mode.
+
+         windowSplashScreenBackground is the one that matters on 12+;
+         android:background stays for the pre-12 path, which does use the
+         leaf drawable. postSplashScreenTheme hands over to the dark
+         NoActionBar theme rather than the light AppTheme, so there is no
+         second flash at the handover either. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/phoebeBackground</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/phoebeBackground</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>
