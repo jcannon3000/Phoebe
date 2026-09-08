@@ -150,6 +150,11 @@ export default function RosaryPage() {
   const beats = useMemo(() => buildBeats(set), [set]);
   const def = MYSTERY_SETS[set];
 
+  /** What the day appoints — kept separate from `set` so the intro can say
+   *  "Today's mysteries" when they match and name the tradition when they don't. */
+  const todaysSet = useMemo(() => mysterySetForDay(), []);
+  const [choosing, setChoosing] = useState(false);
+
   const isIntro = step === 0;
   const beat = isIntro ? null : beats[step - 1] ?? null;
   const isClosing = beat?.kind === "closing";
@@ -382,37 +387,67 @@ export default function RosaryPage() {
                 })}
               </p>
 
-              {/* Today's set is offered first; any of the four can be chosen —
-                  the same shape as the office's own day-first, choose-anyway. */}
-              <div className="flex flex-wrap items-center justify-center gap-2" style={{ marginTop: 22 }}>
-                {(Object.keys(MYSTERY_SETS) as MysterySet[]).map((k) => {
-                  const on = k === set;
-                  return (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => setSet(k)}
-                      aria-pressed={on}
-                      className="rounded-full"
-                      style={{
-                        // 44px minimum — the four chips were ~30px tall.
-                        padding: "12px 16px", minHeight: 44,
-                        fontFamily: FONT, fontSize: 13, fontWeight: 600,
-                        cursor: "pointer",
-                        color: on ? WARM : "rgba(240,237,230,0.66)",
-                        background: on ? "rgba(150,170,205,0.18)" : "rgba(9,26,16,0.42)",
-                        border: `1px solid ${on ? ACCENT : "rgba(150,170,205,0.22)"}`,
-                        backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
-                      }}
-                    >
-                      {MYSTERY_SETS[k].name.replace("The ", "").replace(" Mysteries", "")}
-                    </button>
-                  );
-                })}
-              </div>
-              <p style={{ color: "rgba(168,186,216,0.7)", fontFamily: FONT, fontSize: 12.5, marginTop: 12 }}>
-                {t("rosary.traditionally", { defaultValue: "Traditionally prayed on" })} {def.days}
+              {/**
+                * TODAY'S SET IS THE ANSWER; the others are behind one pill.
+                *
+                * Four chips shown at once made the opening screen a form to
+                * fill in before praying. The day already decides — the deck
+                * says which mystery today is and why, and offers the other
+                * three only to someone who came looking for them (owner).
+                */}
+              <p style={{ color: "rgba(168,186,216,0.72)", fontFamily: FONT, fontSize: 12.5, marginTop: 14 }}>
+                {set === todaysSet
+                  ? `${t("rosary.today_is", { defaultValue: "Today's mysteries" })} · ${def.days}`
+                  : `${t("rosary.traditionally", { defaultValue: "Traditionally prayed on" })} ${def.days}`}
               </p>
+
+              {!choosing ? (
+                <button
+                  type="button"
+                  onClick={() => setChoosing(true)}
+                  className="rounded-full"
+                  style={{
+                    marginTop: 16, padding: "12px 18px", minHeight: 44,
+                    fontFamily: FONT, fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                    color: "rgba(240,237,230,0.9)", background: "rgba(9,26,16,0.42)",
+                    border: `1px solid rgba(150,170,205,0.32)`,
+                    backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+                  }}
+                >
+                  {t("rosary.choose_other", { defaultValue: "Choose a different mystery" })}
+                </button>
+              ) : (
+                <div className="flex flex-col items-stretch" style={{ marginTop: 16, gap: 8, width: "100%", maxWidth: 340, marginLeft: "auto", marginRight: "auto" }}>
+                  {(Object.keys(MYSTERY_SETS) as MysterySet[]).map((k) => {
+                    const on = k === set;
+                    const d = MYSTERY_SETS[k];
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => { setSet(k); setChoosing(false); }}
+                        aria-pressed={on}
+                        className="rounded-full"
+                        style={{
+                          padding: "11px 16px", minHeight: 44,
+                          fontFamily: FONT, cursor: "pointer", textAlign: "left",
+                          color: on ? WARM : "rgba(240,237,230,0.72)",
+                          background: on ? "rgba(150,170,205,0.18)" : "rgba(9,26,16,0.42)",
+                          border: `1px solid ${on ? ACCENT : "rgba(150,170,205,0.22)"}`,
+                          backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+                        }}
+                      >
+                        <span style={{ fontSize: 14, fontWeight: 600 }}>
+                          {d.name.replace("The ", "")}
+                        </span>
+                        <span style={{ display: "block", fontSize: 11.5, color: "rgba(168,186,216,0.75)", marginTop: 2 }}>
+                          {k === todaysSet ? t("rosary.today", { defaultValue: "Today" }) : d.days}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {/* Offered, never forced: Begin still starts a fresh rosary. */}
               {resumed && (
                 <button
