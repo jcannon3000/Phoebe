@@ -330,6 +330,39 @@ async function registerForPushIfRequested() {
         // needed. Background and locked-screen pushes go straight through APNs.
       }
 
+      /**
+       * ASK ANDROID WHETHER PUSH IS EVEN POSSIBLE BEFORE REGISTERING.
+       *
+       * PushNotifications.register() on Android calls
+       * FirebaseMessaging.getInstance(), which THROWS when there is no
+       * google-services.json — and it throws on Capacitor's own plugin
+       * thread, so it is a fatal exception that kills the process. The
+       * `catch` below cannot see it: by the time it would run, the app is
+       * gone. Measured on the emulator 2026-09-08 — grant the notification
+       * permission, and Android starts saying "Phoebe keeps stopping".
+       *
+       * PhoebePush.isAvailable reports whether a default FirebaseApp actually
+       * initialised, which is true exactly when that file is present. The day
+       * it is added, this returns true and push begins working with no change
+       * here. iOS has no such plugin and no such problem, so it registers as
+       * it always has.
+       */
+      if (devicePlatform() === "android") {
+        let firebaseReady = false;
+        try {
+          const cap = (window as unknown as { Capacitor?: { Plugins?: Record<string, { isAvailable?: () => Promise<{ available?: boolean }> }> } }).Capacitor;
+          const res = await cap?.Plugins?.PhoebePush?.isAvailable?.();
+          firebaseReady = !!res?.available;
+        } catch { firebaseReady = false; }
+        if (!firebaseReady) {
+          // Not an error the person can act on — the app simply has no push
+          // on this build. Reminders still work through LocalNotifications,
+          // which needs no Firebase at all.
+          window.dispatchEvent(new CustomEvent("phoebe:push-unavailable"));
+          return;
+        }
+      }
+
       await PushNotifications.register();
     } catch (err) {
       window.dispatchEvent(new CustomEvent("phoebe:push-error", { detail: err }));
