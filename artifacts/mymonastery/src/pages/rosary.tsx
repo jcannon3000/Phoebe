@@ -7,11 +7,12 @@ import { DeckAnnouncer } from "@/components/DeckAnnouncer";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { artworkById } from "@/lib/visioSelect";
-import { tidyArtist } from "@/lib/artistName";
+import { tidyArtist, tidyDate } from "@/lib/artistName";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { openReadingPage } from "@/lib/openExternal";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import {
   MYSTERY_SETS, mysterySetForDay, type MysterySet, type Mystery,
   SIGN_OF_THE_CROSS, APOSTLES_CREED, OUR_FATHER, HAIL_MARY, GLORY_BE,
@@ -190,19 +191,15 @@ export default function RosaryPage() {
     if (isClosing) {
       try { triggerSubmitFeedback(); } catch { /* non-fatal */ }
       /**
-       * Kept LOCALLY, and only locally, for now.
-       *
-       * markPracticeDoneToday's OptionalPractice union is closed and each of
-       * its members has a matching server-side section, so adding "rosary"
-       * means a schema decision as well as a client one. This practice is
-       * admin-only and in nobody's rhythm yet, so it records that it was
-       * prayed and stops there — enough for the practice to know itself,
-       * nothing that would write a section the server would reject. Wiring it
-       * into the rhythm, the home card and the weekly grid is the next step,
-       * once the owner has walked it.
+       * Kept the way every other practice is kept, now that the Rosary is a
+       * real option in the customizer: markPracticeDoneToday writes the local
+       * flag, queues the server row through the outbox, and is what the home
+       * card, the dots and the weekly grid all read. "rosary" was added to
+       * OptionalPractice and to the server's own section allow-list in the
+       * same change, so the write is accepted rather than 400ing.
        */
       try {
-        localStorage.setItem("phoebe:rosary:last-prayed", new Date().toLocaleDateString("en-CA"));
+        markPracticeDoneToday("rosary");
         // Finished — there is nothing to resume.
         localStorage.removeItem("phoebe:rosary:progress");
       } catch { /* non-fatal */ }
@@ -232,6 +229,11 @@ export default function RosaryPage() {
    * simply shows no picture rather than borrowing an unrelated one.
    */
   const mysteryArt = beat?.kind === "mystery" && beat.mystery.artId ? artworkById(beat.mystery.artId) : null;
+  /** Every work seen in THIS set — what the closing slide credits. */
+  const creditedArt = useMemo(
+    () => def.mysteries.map((m) => (m.artId ? artworkById(m.artId) : null)).filter((a): a is NonNullable<typeof a> => !!a),
+    [def],
+  );
 
   /** The bottom pill: what it says, and what it does. */
   const primary = (() => {
@@ -489,7 +491,9 @@ export default function RosaryPage() {
                 {beat.title}
               </h2>
               <p style={{ color: "rgba(168,186,216,0.95)", fontFamily: FONT, fontSize: 13.5, fontWeight: 600, marginBottom: 18 }}>
-                {t("rosary.times", { defaultValue: "Pray {{times}} times", times: beat.times })}
+                {/* Beads, not "times" (owner): it is what your hand is
+                    holding, and it names the thing rather than the count. */}
+                {t("rosary.beads", { defaultValue: "{{times}} beads", times: beat.times })}
                 {beat.note ? ` — ${beat.note}` : ""}
               </p>
               <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
@@ -540,6 +544,33 @@ export default function RosaryPage() {
               <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
                 {t("rosary.closing_body", { defaultValue: "Five mysteries held, one decade at a time. Carry them into the day." })}
               </p>
+
+              {/**
+                * THE PICTURES ARE CREDITED HERE (owner).
+                *
+                * Five works are seen in a rosary and each is someone's, held
+                * under a licence. The mystery beats carry the title and the
+                * artist so you know what you are looking at; the formal line —
+                * ACT's attribution, where the work is, and the licence it is
+                * offered under — belongs at the end, the way Visio's closing
+                * slide credits its one work. Same fields, same order, same
+                * formatter for the name.
+                */}
+              {creditedArt.length > 0 && (
+                <div style={{ marginTop: 28, textAlign: "left" }}>
+                  <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 11, fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 10, textAlign: "center" }}>
+                    {t("rosary.credits", { defaultValue: "The pictures" })}
+                  </p>
+                  {creditedArt.map((a) => (
+                    <p key={a.id} style={{ color: "rgba(240,237,230,0.6)", fontFamily: FONT, fontSize: 11, lineHeight: 1.55, margin: "0 0 8px" }}>
+                      <span style={{ color: "rgba(240,237,230,0.8)" }}>{a.title}</span>
+                      {a.artist ? ` — ${tidyArtist(a.artist)}` : ""}
+                      {a.date ? `, ${tidyDate(a.date)}` : ""}
+                      {a.attribution ? <span style={{ display: "block" }}>{a.attribution}{a.where ? ` ${a.where}.` : ""}{a.licence ? ` ${a.licence}.` : ""}</span> : null}
+                    </p>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

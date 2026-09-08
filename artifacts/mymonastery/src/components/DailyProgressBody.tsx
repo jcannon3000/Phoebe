@@ -783,7 +783,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeShown, taizeDone, taizeWaiting, taizeLatest, andrewsActive, andrewsShown, andrewsDone, andrewsWaiting, andrewsLatest, weeklies, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, prayerListCardActive, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeShown, taizeDone, taizeWaiting, taizeLatest, andrewsActive, andrewsShown, andrewsDone, andrewsWaiting, andrewsLatest, weeklies, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, rosaryActive, rosaryDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, prayerListCardActive, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1065,6 +1065,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * /icon-prayer, NOT /icons — dist/public/icons is the PWA icon directory
    * and the static server 301s /icons before the SPA route is reached.
    */
+  const rosaryCard = {
+    key: "rosary", emoji: "📿", rgb: "150,170,205", done: rosaryDone, href: "/rosary",
+    onUnlog: () => unmarkPracticeDoneToday("rosary"),
+    title: t("rhythm.card_rosary", { defaultValue: "The Rosary" }),
+    blurb: rosaryDone ? kept : t("rhythm.blurb_rosary", { defaultValue: "Pray today's mysteries" }),
+    cta: t("common.begin", { defaultValue: "Begin" }),
+  };
   const iconsCard = {
     key: "icons", emoji: "🪟", rgb: "170,140,110", done: iconsDone, href: "/icon-prayer",
     onUnlog: () => unmarkPracticeDoneToday("icons"),
@@ -1737,6 +1744,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(visioActive ? [{ ...visioCard, slot: getPracticeSlot("visio") }] : []),
     ...(spiritualsActive ? [{ ...spiritualsCard, slot: getPracticeSlot("spirituals") }] : []),
     ...(iconsActive ? [{ ...iconsCard, slot: getPracticeSlot("icons") }] : []),
+    ...(rosaryActive ? [{ ...rosaryCard, slot: getPracticeSlot("rosary") }] : []),
     // Only while something is waiting or it was read today (owner) — see taizeShown.
     ...(taizeShown ? [{ ...taizeCard, slot: getPracticeSlot("taize") }] : []),
     // A weekly comment belongs to no hour in particular, like its sibling.

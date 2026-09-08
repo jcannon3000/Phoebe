@@ -269,7 +269,7 @@ const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
  */
 type ExtraMapping =
   | { kind: "level"; level: "office" | "devotion" | "psalms" | "readings" | "guided-prayer" }
-  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" | "icons" | "taize" | "spirituals" | "reading" }
+  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" | "icons" | "taize" | "spirituals" | "reading" | "rosary" }
   | { kind: "contemplation" }
   | { kind: "newsletter" };
 type ExtraPractice = {
@@ -333,6 +333,11 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // list to switch on. One icon for the Monday-to-Sunday week, sat with
   // daily; the sibling of Visio Divina, which is why it sits beside it.
   { title: () => "Praying with Icons", emoji: "🪟", sub: "One icon for the week — return to it daily.", excludes: "__none__", maps: { kind: "practice", key: "icons" } , group: "contemplative" },
+  // The Rosary — ADMIN ONLY while it is being tried, filtered out below for
+  // everyone else, the same way Spirituals is. It sits beside Visio and Icons
+  // because it is their kind of thing: a long, unhurried practice you are
+  // walked through, with a picture at each mystery from the same ACT library.
+  { title: () => "The Rosary", emoji: "📿", sub: "Pray the mysteries, a decade at a time.", excludes: "__none__", maps: { kind: "practice", key: "rosary" } , group: "contemplative" },
   // An INBOX, not a daily: it waits until it is read, and goes quiet until
   // Taizé posts the next one. Offered here because it is a reflection you sit
   // with, not because it behaves like the others in this list.
@@ -1413,6 +1418,7 @@ export default function WayOfLoveRuleFlow({
       visio: homeCardOn(seedLayout(user), "visio"),
       reading: homeCardOn(seedLayout(user), "reading"),
       icons: homeCardOn(seedLayout(user), "icons"),
+      rosary: homeCardOn(seedLayout(user), "rosary"),
       taize: homeCardOn(seedLayout(user), "taize"),
       andrews: homeCardOn(seedLayout(user), "andrews"),
       spirituals: homeCardOn(seedLayout(user), "spirituals"),
@@ -1438,7 +1444,7 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; andrews: boolean; spirituals: boolean; compline: boolean; reading: boolean; lectio: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; andrews: boolean; spirituals: boolean; compline: boolean; reading: boolean; lectio: boolean; rosary: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: !creationHeldBySide() && homeCardOn(seedLayout(user), "cobreathe"),
     audio: homeCardOn(seedLayout(user), "listening"),
@@ -1460,8 +1466,9 @@ export default function WayOfLoveRuleFlow({
     // onKeys and offKeys, the server backfilled it into order AND hidden,
     // and every full-customizer Save switched it off (audit 2026-09-03).
     lectio: homeCardOn(seedLayout(user), "lectio"),
+    rosary: homeCardOn(seedLayout(user), "rosary"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "andrews" | "spirituals" | "compline" | "reading" | "lectio") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "andrews" | "spirituals" | "compline" | "reading" | "lectio" | "rosary") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -2812,7 +2819,7 @@ export default function WayOfLoveRuleFlow({
     // wants Visio Divina and a Contemplative Walk gets exactly those, and
     // nothing survives from the rule being replaced.
     setContemplative({
-      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, andrews: false, spirituals: false, compline: false, reading: false, lectio: false,
+      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, andrews: false, spirituals: false, compline: false, reading: false, lectio: false, rosary: false,
       ...(preset.practices ?? {}),
     });
     /**
@@ -3187,6 +3194,11 @@ export default function WayOfLoveRuleFlow({
     // MUST mirror officePrefs.anchorModesFor's own fallback — see the note there.
     const anchorMode = levelOfficeMode(side, anchorLevel) ?? side;
     return EXTRA_PRACTICES
+      // The Rosary is admin-only while it is being tried (owner). Filtered
+      // here rather than at the render, so it is absent from every consumer of
+      // this list — the group pick, the counts, the "does this group need a
+      // which-one slide" test — and not merely hidden in one of them.
+      .filter((e) => !(e.maps.kind === "practice" && e.maps.key === "rosary") || isSuperAdmin)
       .filter((e) => !e.side || e.side === side)
       .filter((e) => e.excludes !== anchorLevel)
       .filter((e) => e.maps.kind !== "level" || levelOfficeMode(side, e.maps.level) !== anchorMode);

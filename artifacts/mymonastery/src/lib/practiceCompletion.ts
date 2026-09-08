@@ -18,7 +18,7 @@ import { creditAnchorPractice } from "@/lib/officeManualLog";
 // "Today" is the user's LOCAL day (en-CA → ISO 2024-05-26), matching every
 // other rhythm surface.
 
-export type OptionalPractice = "examen" | "listening" | "reading" | "podcasts" | "walk" | "prayer-list" | "visio" | "icons" | "spirituals" | "lectio";
+export type OptionalPractice = "examen" | "listening" | "reading" | "podcasts" | "walk" | "prayer-list" | "visio" | "icons" | "spirituals" | "lectio" | "rosary";
 
 /** Exported so the reading book can date its page logs with the SAME local
  *  day these completion flags use — two different "today"s in one practice is
