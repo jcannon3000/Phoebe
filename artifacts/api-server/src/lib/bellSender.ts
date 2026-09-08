@@ -18,6 +18,7 @@ import {
   prayerFeedEventsTable,
   practiceCompletionTable,
   reflectionReadsTable,
+  deviceTokensTable,
 } from "@workspace/db";
 import { eq, and, gte, ne, sql, isNull, inArray, isNotNull } from "drizzle-orm";
 import {
@@ -1145,6 +1146,91 @@ function followsVts(ruleConfig: unknown, homeLayout: unknown): boolean {
       || values["phoebe:office:reflection:morning"] === "vts"
       || values["phoebe:office:reflection:evening"] === "vts";
   } catch { return false; }
+}
+
+/**
+ * WHY DIDN'T I GET THE DEAN'S COMMENTARY PUSH?
+ *
+ * Owner: "i havent been getting the deans comentary notification on my
+ * phone." Every reason this sender can skip someone is a silent `continue`
+ * inside a loop over the whole user base, so from the outside a missing push
+ * looks the same whichever gate stopped it. This walks the SAME gates in the
+ * SAME order for one user and reports which one it was, instead of leaving us
+ * to guess against production data we cannot read from a laptop.
+ *
+ * Read-only — it sends nothing.
+ */
+export async function diagnoseVtsPush(userId: number): Promise<Record<string, unknown>> {
+  const [u] = await db
+    .select({
+      userId: usersTable.id,
+      userTimezone: usersTable.timezone,
+      ruleConfig: usersTable.ruleConfig,
+      homeLayout: usersTable.homeLayout,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+  if (!u) return { found: false };
+
+  const layout = u.homeLayout as { order?: string[]; hidden?: string[] } | null;
+  const follows = followsVts(u.ruleConfig, u.homeLayout);
+  const tz = u.userTimezone || "America/New_York";
+  const dow = new Date(new Date().toLocaleString("en-US", { timeZone: tz })).getDay();
+  const { hour, minute } = getCurrentTimeInTz(tz);
+  const today = todayInZone(tz);
+  const dedupeKey = `${today}-vts`;
+
+  const [already] = await db
+    .select({ id: bellNotificationsTable.id, sentAt: bellNotificationsTable.sentAt })
+    .from(bellNotificationsTable)
+    .where(and(
+      eq(bellNotificationsTable.userId, userId),
+      eq(bellNotificationsTable.bellDate, dedupeKey),
+    ));
+
+  const [read] = await db
+    .select({ id: reflectionReadsTable.id })
+    .from(reflectionReadsTable)
+    .where(and(
+      eq(reflectionReadsTable.userId, userId),
+      eq(reflectionReadsTable.source, "vts"),
+      eq(reflectionReadsTable.ymd, today),
+    ));
+
+  const tokens = await db
+    .select({ id: deviceTokensTable.id, platform: deviceTokensTable.platform })
+    .from(deviceTokensTable)
+    .where(and(eq(deviceTokensTable.userId, userId), isNull(deviceTokensTable.invalidatedAt)));
+
+  let feed: unknown = null;
+  try { feed = await resolveTodayVts(); } catch (err) { feed = { error: String(err) }; }
+
+  // The first gate that would stop this user today, in the sender's own order.
+  const blockedBy =
+    !follows ? "not-following (no 'vts' in the home layout order, and no vts reflection source)"
+    : (dow === 0 || dow === 6) ? "weekend in the recipient's timezone"
+    : Math.abs((hour * 60 + minute) - (8 * 60)) > 15 ? "outside the 08:00 ±15m send window (this is expected unless you are checking near 8am)"
+    : already ? "already sent today (dedupe row present)"
+    : read ? "already read today, so the nudge is skipped"
+    : tokens.length === 0 ? "NO ACTIVE DEVICE TOKENS — nothing to send to"
+    : null;
+
+  return {
+    found: true,
+    blockedBy,
+    wouldSendNow: blockedBy === null,
+    follows,
+    homeLayoutHasVts: !!layout?.order?.includes("vts"),
+    homeLayoutHidesVts: !!layout?.hidden?.includes("vts"),
+    timezone: tz,
+    localTime: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+    localDay: today,
+    sendWindow: VTS_PUSH_TIME,
+    alreadySentToday: !!already,
+    readToday: !!read,
+    activeDeviceTokens: tokens.length,
+    feed,
+  };
 }
 
 export async function runVtsCommentarySender(opts: { forceNow?: boolean } = {}): Promise<void> {

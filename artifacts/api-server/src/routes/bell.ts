@@ -6,7 +6,7 @@ import {
   betaUsersTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
-import { runBellSender } from "../lib/bellSender";
+import { runBellSender, runVtsCommentarySender, diagnoseVtsPush } from "../lib/bellSender";
 
 const router: IRouter = Router();
 
@@ -289,6 +289,53 @@ router.post("/bell/fire-now", async (req, res): Promise<void> => {
     res.json({ ok: true });
   } catch (err) {
     console.error("POST /api/bell/fire-now error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * ─── The Dean's Commentary push: why didn't it arrive? ───────────────────────
+ *
+ * Owner: "i havent been getting the deans comentary notification on my phone."
+ * Every way the sender can skip someone is a silent `continue`, so these two
+ * make it answer for itself.
+ *
+ * GET  /api/bell/vts-diagnose  — read-only. Walks the sender's own gates for
+ *      the calling user and names the FIRST one that stops them today.
+ * POST /api/bell/vts-fire-now  — clears today's dedupe row for the caller and
+ *      runs the sender with the time window bypassed, so a real push either
+ *      lands on the phone or fails loudly in the logs.
+ */
+router.get("/bell/vts-diagnose", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isBetaAdmin(user.id))) { res.status(403).json({ error: "Admin only" }); return; }
+  try {
+    res.json(await diagnoseVtsPush(user.id));
+  } catch (err) {
+    console.error("GET /api/bell/vts-diagnose error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post("/bell/vts-fire-now", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isBetaAdmin(user.id))) { res.status(403).json({ error: "Admin only" }); return; }
+  try {
+    const tzResult = await pool.query(`SELECT timezone FROM users WHERE id = $1`, [user.id]);
+    const tz = (tzResult.rows[0]?.timezone as string | null) ?? "America/New_York";
+    const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+    // Clear only the caller's own dedupe row, so the forced run can reach them.
+    await pool.query(
+      `DELETE FROM bell_notifications WHERE user_id = $1 AND bell_date = $2`,
+      [user.id, `${todayStr}-vts`],
+    );
+    const before = await diagnoseVtsPush(user.id);
+    await runVtsCommentarySender({ forceNow: true });
+    res.json({ ok: true, clearedFor: `${todayStr}-vts`, diagnosis: before });
+  } catch (err) {
+    console.error("POST /api/bell/vts-fire-now error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
