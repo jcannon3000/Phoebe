@@ -134,11 +134,22 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
         meditation: "He goes, and they are left staring upward until they are told to get on with it." },
       { n: 3, title: "The Descent of the Holy Spirit", ref: "Acts 2:1-13", artIds: [59680, 48388, 59681], fruit: "Love of God",
         meditation: "Wind and fire, and a frightened room becomes a church that can be understood in every language." },
-      // ── The two Marian mysteries. Written as what the tradition holds and
-      //    what scripture pictures, not as doctrine an Anglican is asked to
-      //    assert — see the file header. The owner may want to reword, replace
-      //    (some Anglican uses put the Great Commission and the Last Judgement
-      //    here) or keep them.
+      /* ── The two Marian mysteries. Written as what the tradition holds and
+       *    what scripture pictures, not as doctrine an Anglican is asked to
+       *    assert — see the file header. The owner may want to reword, replace
+       *    (some Anglican uses put the Great Commission and the Last Judgement
+       *    here) or keep them.
+       *
+       *    THE CORONATION IS THE ONE DELIBERATE DEPARTURE IN THE WHOLE DECK
+       *    (tradition audit, 2026-09-08 — everything else, every fruit and
+       *    every reference, matches a received pairing). The manuals give
+       *    Revelation 12:1, "on her head a crown of twelve stars", and a fruit
+       *    of trust in Mary's intercession. This gives the Magnificat and
+       *    "trust in God's promise" instead — the same mystery read as the
+       *    finishing of what she sang rather than as a coronation an Anglican
+       *    is asked to affirm. That is a choice, not drift; it is written down
+       *    here so nobody later "fixes" it back. Reverting is two fields:
+       *    ref → "Revelation 12:1", fruit → "Trust in Mary's intercession". */
       { n: 4, title: "The Assumption of Mary", ref: "Revelation 12:1-6", artIds: [57111, 59249, 59657], fruit: "Devotion to Mary",
         meditation: "The tradition holds that the one who carried him was carried home. We pray with her, at the end of her long yes." },
       { n: 5, title: "The Coronation of Mary", ref: "Luke 1:46-55", artIds: [58434, 57112], fruit: "Trust in God's promise",
@@ -239,19 +250,39 @@ export const SIGN_OF_THE_CROSS =
   "and of the Son,\n" +
   "and of the Holy Spirit. Amen.";
 
+/**
+ * THE CREED THIS APP ALREADY PRAYS — not a third one.
+ *
+ * What shipped here was a HYBRID: Rite I's syntax (the running relative
+ * clause "who was conceived… born… suffered… he descended…") carrying Rite
+ * II's vocabulary ("creator", "Holy Spirit", "descended to the dead", "the
+ * living and the dead"). It matched the app's Rite I text, the app's Rite II
+ * text and the Roman rosary's own traditional English — none of them. It was
+ * a Creed nobody says.
+ *
+ * This is now the 1979 BCP Rite II Apostles' Creed, byte-for-byte the text in
+ * api-server/src/seeds/bcpTexts.ts, so the Creed said in the Rosary is the
+ * Creed said in Morning Prayer. Changing it to the Rite I text would suit the
+ * deck's register better — everything else here is "thy", "thou", "beseech
+ * thee", and the Roman rosary's traditional English Creed is essentially Rite
+ * I — but that also brings "descended into hell", "the quick and the dead"
+ * and "Holy Ghost", which is a pastoral choice, not a typographical one. The
+ * text is in seeds/bcpTextsRite1.ts under `apostles_creed_rite1` if the owner
+ * wants it; it is a copy-paste, nothing else changes.
+ */
 export const APOSTLES_CREED =
   "I believe in God, the Father almighty,\n" +
   "  creator of heaven and earth.\n" +
-  "I believe in Jesus Christ, his only Son, our Lord,\n" +
-  "  who was conceived by the Holy Spirit,\n" +
-  "  born of the Virgin Mary,\n" +
-  "  suffered under Pontius Pilate,\n" +
-  "  was crucified, died, and was buried;\n" +
-  "  he descended to the dead.\n" +
-  "  On the third day he rose again;\n" +
-  "  he ascended into heaven,\n" +
-  "  he is seated at the right hand of the Father,\n" +
-  "  and he will come again to judge the living and the dead.\n" +
+  "I believe in Jesus Christ, his only Son, our Lord.\n" +
+  "  He was conceived by the power of the Holy Spirit\n" +
+  "    and born of the Virgin Mary.\n" +
+  "  He suffered under Pontius Pilate,\n" +
+  "    was crucified, died, and was buried.\n" +
+  "  He descended to the dead.\n" +
+  "  On the third day he rose again.\n" +
+  "  He ascended into heaven,\n" +
+  "    and is seated at the right hand of the Father.\n" +
+  "  He will come again to judge the living and the dead.\n" +
   "I believe in the Holy Spirit,\n" +
   "  the holy catholic Church,\n" +
   "  the communion of saints,\n" +
@@ -345,8 +376,12 @@ export const BEADS_PER_DECADE = 10;
    one invitatory bead, then four "cruciform" beads dividing four "weeks" of
    seven. You enter at the cross, say the invitatory, and go round —
    cruciform, seven; cruciform, seven — four times to complete the circle.
-   The circle is traditionally prayed THREE times (33 × 3 = 99, and the
-   invitatory at the end makes 100), then you close at the cross.
+   The circle is traditionally prayed THREE times, and the count is what ties
+   the form to the century of the Jesus Prayer: 33 beads × 3 = 99, and the
+   invitatory said once more at the end makes the hundredth. That only adds up
+   if the INVITATORY HEADS EVERY CIRCUIT — see circuitStartStep in
+   pages/rosary.tsx, which is where the deck used to loop back to the first
+   cruciform instead and quietly pray 98. Then you close at the cross.
 
    The form dates to the 1980s (the Solitaries of DeKoven, Texas) and there is
    no single authorised text: what is fixed is the SHAPE, and a devotion is

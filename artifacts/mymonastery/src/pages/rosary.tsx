@@ -355,8 +355,19 @@ export default function RosaryPage() {
    * the invitatory — out of the loop entirely, and one circle over-counted for
    * the rest of the session. It goes to the turn you came through instead.
    */
-  const firstCruciformStep = useMemo(() => {
-    const i = beats.findIndex((b) => b.kind === "prayer" && /cruciform/i.test(b.eyebrow));
+  /**
+   * A CIRCUIT STARTS AT THE INVITATORY BEAD, NOT THE FIRST CRUCIFORM.
+   *
+   * The received count is a HUNDRED — thirty-three beads three times round is
+   * ninety-nine, and the invitatory said once more at the end makes the
+   * hundredth, which is what ties the form to the century of the Jesus Prayer.
+   * That arithmetic only works if the invitatory heads EVERY circuit. Looping
+   * back to the first cruciform instead prayed 32 beads a circuit — 96, plus
+   * the two invitatories, 98 — so the header's own "33 × 3 = 99" was two short
+   * of what the deck actually did.
+   */
+  const circuitStartStep = useMemo(() => {
+    const i = beats.findIndex((b) => b.kind === "prayer" && /invitatory/i.test(b.eyebrow));
     return i >= 0 ? i + 1 : -1;
   }, [beats]);
   const circleStep = useMemo(() => {
@@ -364,7 +375,7 @@ export default function RosaryPage() {
     return i >= 0 ? i + 1 : -1;
   }, [beats]);
   const goBack = () => {
-    if (isAnglican && circle > 1 && step === firstCruciformStep && circleStep > 0) {
+    if (isAnglican && circle > 1 && step === circuitStartStep && circleStep > 0) {
       setCircle((c) => c - 1);
       setStep(circleStep);
       return;
@@ -396,7 +407,7 @@ export default function RosaryPage() {
       // the loop still lands right if the opening ever gains a beat.
       return {
         label: t("rosary.round_again", { defaultValue: "Round again" }),
-        onClick: () => { setCircle((c) => c + 1); setStep(firstCruciformStep > 0 ? firstCruciformStep : 3); },
+        onClick: () => { setCircle((c) => c + 1); setStep(circuitStartStep > 0 ? circuitStartStep : 2); },
       };
     }
     return { label: t("rosary.continue", { defaultValue: "Continue" }), onClick: () => setStep((s) => s + 1) };
