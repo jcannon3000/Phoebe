@@ -715,7 +715,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // queries only fire when the pill is actually rendered (signed-in).
 function DailyProgressPill() {
   const { t } = useTranslation();
-  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, visioActive, visioDone, prayerListDone, prayerListCardActive, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, spiritualsActive, spiritualsDone, iconsActive, iconsDone, rosaryActive, rosaryDone, taizeShown, taizeDone, andrewsShown, andrewsDone, weeklies, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, visioActive, visioDone, prayerListDone, prayerListCardActive, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -821,6 +821,25 @@ function DailyProgressPill() {
     // matches DailyProgressBody's rawCards entry (same novenaActive/Done).
     ...(novenaActive && !novenaReplacesMorning && !novenaReplacesEvening ? [{ key: "novena", done: novenaDone }] : []),
     ...plDot("anytime"),
+    /**
+     * THE SIX CARDS THIS PILL HAD NO DOT FOR (audit, 2026-09-08).
+     *
+     * Taizé, Andrew's Version, the pasted-in weeklies, Praying with Icons,
+     * Spirituals and the Rosary all draw home cards and all get widget dots —
+     * and none of them appeared here. So the pill read "4 of 6" over a home
+     * showing nine practices, and someone who read Taizé watched the count sit
+     * still. Same gates the cards use, so the two cannot disagree; the
+     * weeklies carry their own `w:` keys exactly as their cards do.
+     *
+     * This is the drift the widget's own note already records for podcasts —
+     * the pill was simply never brought along.
+     */
+    ...(spiritualsActive ? [{ key: "spirituals", done: spiritualsDone }] : []),
+    ...(iconsActive ? [{ key: "icons", done: iconsDone }] : []),
+    ...(rosaryActive ? [{ key: "rosary", done: rosaryDone }] : []),
+    ...(taizeShown ? [{ key: "taize", done: taizeDone }] : []),
+    ...(andrewsShown ? [{ key: "andrews", done: andrewsDone }] : []),
+    ...weeklies.filter((w) => w.shown).map((w) => ({ key: w.key, done: w.done })),
     ...cDots("anytime"),
     ...cDots("midday"),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
