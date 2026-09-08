@@ -1,4 +1,5 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import splashForestPath from "@/assets/splash/forest-path.jpg";
 import { hasPrayerSurface } from "@/lib/prayerSurface";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-query-persist-client";
@@ -1009,9 +1010,63 @@ function GuestGate({ children }: { children: ReactNode }) {
 // this flashes only for a frame or two; on web it covers the network
 // fetch of the split chunk. Matches the app's dark background so it
 // reads as "still loading" rather than a white flash.
+/**
+ * WHAT YOU LOOK AT WHILE A ROUTE'S CHUNK LOADS.
+ *
+ * This was a bare dark rectangle with nothing in it — no photo, no spinner,
+ * `aria-hidden`, empty. Owner, going into Evening Prayer offline: "it showed a
+ * blank screen for 5 seconds before showing the splash then the first slide …
+ * even if it shows the splash for 5 seconds the splash needs to come up
+ * immediately … to let people know its loading."
+ *
+ * The office's own held-breath veil has carried a spinner and a versicle all
+ * along; the gap was in FRONT of it, before the lazy chunk had even arrived to
+ * render anything. So this now shows the same forest photo the app-open splash
+ * uses and the same spinner the veil places, in the same position — which means
+ * the handoff from this to the office's veil is a photo staying put and a
+ * spinner staying put, not a second flash of something new.
+ *
+ * It stands in for EVERY lazy route, so it stays cheap: one bundled image
+ * (already in the app-open path, so it is warm), no data, no query.
+ */
 function RouteFallback() {
   return (
-    <div style={{ minHeight: "var(--app-dvh)", background: "#091A10" }} aria-hidden />
+    <div
+      style={{
+        position: "fixed", inset: 0, minHeight: "var(--app-dvh)", background: "#091A10",
+        isolation: "isolate", overflow: "hidden",
+      }}
+    >
+      <img
+        src={splashForestPath}
+        alt=""
+        aria-hidden
+        decoding="async"
+        style={{
+          position: "absolute", inset: 0, width: "100%", height: "100%",
+          objectFit: "cover", zIndex: -1, opacity: 0.55,
+        }}
+      />
+      <div
+        aria-hidden
+        style={{
+          position: "absolute", inset: 0, zIndex: -1,
+          background: "linear-gradient(180deg, rgba(8,18,12,0.62) 0%, rgba(8,18,12,0.78) 100%)",
+        }}
+      />
+      {/* Same size, same 64px-from-the-bottom placement as the office veil's
+          spinner, so it does not jump when the deck takes over. */}
+      <div
+        aria-hidden
+        className="animate-spin"
+        style={{
+          position: "absolute", bottom: 64, left: "50%", marginLeft: -11,
+          width: 22, height: 22, borderRadius: "50%",
+          border: "2px solid rgba(143,175,150,0.25)",
+          borderTopColor: "rgba(143,175,150,0.85)",
+        }}
+      />
+    </div>
   );
 }
 
