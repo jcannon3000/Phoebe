@@ -774,10 +774,14 @@ function DailyProgressPill() {
    * threshold that decides how the dots are DRAWN and the one that decides how
    * many there are cannot disagree.
    *
-   * Built expanded, then folded in place if the total lands at 8 or more, so
+   * Built expanded, then folded in place only if that comes to MORE than 8, so
    * the newsletters keep their position (second, right after Morning) either
    * way. The pill's own "N of M kept" reads from this list, so it stays true.
    */
+  // MORE THAN 8 condenses; 8 itself still expands (owner: "if there are more
+  // then 8 dots in the daily progress, the newsletters should be condenced").
+  // Same boundary the renderer uses for `many`, so the count that decides how
+  // the dots are DRAWN and the one that decides how many there are agree.
   const DOT_EXPAND_LIMIT = 8;
   const reflectDotsExpanded = reflections.map((r) => ({ key: `reflect-${r.source}`, done: r.done }));
   const dotDefsExpanded = [
@@ -885,7 +889,7 @@ function DailyProgressPill() {
   // Fold the newsletters back into one dot only when the day is crowded — see
   // the note above dotDefsExpanded. The fold happens where the first newsletter
   // sat, so the group keeps its place in the order.
-  const dotDefsBuilt = dotDefsExpanded.length < DOT_EXPAND_LIMIT
+  const dotDefsBuilt = dotDefsExpanded.length <= DOT_EXPAND_LIMIT
     ? dotDefsExpanded
     : (() => {
         let folded = false;
