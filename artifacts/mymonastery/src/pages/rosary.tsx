@@ -152,11 +152,21 @@ export default function RosaryPage() {
 
   // step 0 is the intro; 1..beats.length walks the beats.
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<Form>(() => resumed?.form ?? "roman");
-  const [set, setSet] = useState<MysterySet>(() => resumed?.set ?? mysterySetForDay());
-  const [angSet, setAngSet] = useState<AnglicanSet>(() => resumed?.ang ?? "jesus");
+  /**
+   * THE OPENING SLIDE SHOWS THE DAY, NOT YESTERDAY'S CHOICE.
+   *
+   * These used to initialise FROM the resume, so a second visit on the same
+   * day opened on whatever you last chose — and the intro, whose whole job is
+   * "all four visible with today's highlighted", stopped highlighting today
+   * and changed its line to "Traditionally prayed on…". The resume is an
+   * OFFER: the button below sets all four of these when you take it. Pressing
+   * Begin instead starts the day's own rosary, which is what Begin says.
+   */
+  const [form, setForm] = useState<Form>("roman");
+  const [set, setSet] = useState<MysterySet>(() => mysterySetForDay());
+  const [angSet, setAngSet] = useState<AnglicanSet>("jesus");
   /** Anglican only: which time round the circle you are on, 1..3. */
-  const [circle, setCircle] = useState(() => resumed?.circle ?? 1);
+  const [circle, setCircle] = useState(1);
 
   const backdropPhoto = useMemo(
     () => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
