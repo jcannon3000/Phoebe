@@ -33,6 +33,8 @@ interface CobreatheSessionMsg {
   startEpochMs: number;
   masterSeed: number;
   fingerprint: string;
+  /** The place they checked into, when they checked into one. */
+  placeId?: number | null;
 }
 
 export function useCobreatheSync(
@@ -66,6 +68,16 @@ export function useCobreatheSync(
   const leadingRef = useRef<CobreatheSessionMsg | null>(null);
   // Latest sessions snapshot, so we can re-elect when garden/fingerprint change.
   const sessionsRef = useRef<CobreatheSessionMsg[]>([]);
+  /**
+   * WHO ELSE IS BREATHING RIGHT NOW, AND WHERE — place id → other people's
+   * user ids, never including you.
+   *
+   * The place list reads this to say "Breathing Together with 3 people" while
+   * it is happening, instead of only "3 breathed here today" once it is over.
+   * Filled from the same sessions snapshot that elects the leader, so there is
+   * one idea of who is live.
+   */
+  const [breathersByPlace, setBreathersByPlace] = useState<Record<number, number[]>>({});
 
   // Stable key for the garden set so the re-election effect doesn't fire on every
   // render (gardenUserIds is a fresh Set each render).
@@ -85,6 +97,26 @@ export function useCobreatheSync(
 
   // Garden-mates currently breathing (any photo set), excluding self — the live
   // co-breather set, deduped.
+  /**
+   * Live breathers grouped by the place they checked into, minus you.
+   *
+   * NOT garden-filtered, unlike coBreathers above: a place is a public,
+   * physical fact — the person across the room counts whether or not you know
+   * them. That is the whole point of checking in somewhere.
+   */
+  const byPlace = useCallback((sessions: CobreatheSessionMsg[]): Record<number, number[]> => {
+    const me = userRef.current?.id;
+    const out: Record<number, Set<number>> = {};
+    for (const s of sessions) {
+      if (typeof s.placeId !== "number") continue;
+      if (me != null && s.userId === me) continue;
+      (out[s.placeId] ??= new Set<number>()).add(s.userId);
+    }
+    const flat: Record<number, number[]> = {};
+    for (const [k, v] of Object.entries(out)) flat[Number(k)] = Array.from(v);
+    return flat;
+  }, []);
+
   const coBreathers = useCallback((sessions: CobreatheSessionMsg[]): number[] => {
     const u = userRef.current;
     if (!u) return [];
@@ -101,6 +133,7 @@ export function useCobreatheSync(
     if (!enabled) {
       setLeader(null);
       setCoBreatherIds([]);
+      setBreathersByPlace({});
       return;
     }
     const handle = (msg: { type: string; [k: string]: unknown }) => {
@@ -109,6 +142,7 @@ export function useCobreatheSync(
       sessionsRef.current = sessions;
       setLeader(elect(sessions));
       setCoBreatherIds(coBreathers(sessions));
+      setBreathersByPlace(byPlace(sessions));
       // Reconnect self-heal: if we're leading but the server no longer lists us
       // (our socket dropped + reconnected, dropping our session), re-announce.
       const mine = leadingRef.current;
@@ -125,7 +159,7 @@ export function useCobreatheSync(
         leadingRef.current = null;
       }
     };
-  }, [enabled, elect, coBreathers]);
+  }, [enabled, elect, coBreathers, byPlace]);
 
   // Re-elect when the garden set or fingerprint changes (e.g. people list loads
   // after the first sync message arrived).
@@ -138,7 +172,7 @@ export function useCobreatheSync(
   // way we advertise it, so a follower re-broadcasts the leader's plan and the
   // chain survives the original leader leaving.
   const announceSession = useCallback(
-    (startEpochMs: number, masterSeed: number) => {
+    (startEpochMs: number, masterSeed: number, placeId?: number | null) => {
       const u = userRef.current;
       if (!enabled || !u) return;
       const payload: CobreatheSessionMsg = {
@@ -149,6 +183,8 @@ export function useCobreatheSync(
         startEpochMs,
         masterSeed,
         fingerprint: fpRef.current,
+        // WHERE, so a place can say who is breathing there right now.
+        placeId: typeof placeId === "number" ? placeId : null,
       };
       leadingRef.current = payload;
       sendMessage({ type: "cobreathe-start", payload });
@@ -163,5 +199,5 @@ export function useCobreatheSync(
     }
   }, []);
 
-  return { leader, announceSession, stop, coBreatherIds };
+  return { leader, announceSession, stop, coBreatherIds, breathersByPlace };
 }

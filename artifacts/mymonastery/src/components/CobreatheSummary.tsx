@@ -29,6 +29,7 @@ export function CobreatheSummary({
   breathsTaken = DEFAULT_TOTAL_BREATHS,
   placeBreathsMonth,
   placeBreathsAllTime,
+  placeCompanions,
   weekBreaths,
   others,
   onContinue,
@@ -62,6 +63,8 @@ export function CobreatheSummary({
    *  line tacked onto the breaths page. */
   placeBreathsMonth?: number;
   placeBreathsAllTime?: number;
+  /** Distinct others seen breathing at this place during THIS sit. */
+  placeCompanions?: number;
   onContinue: () => void;
   continueLabel?: string;
   continueDisabled?: boolean;
@@ -208,6 +211,24 @@ export function CobreatheSummary({
             <p className="mb-8" style={{ color: WARM, fontFamily: SERIF, fontSize: 26, lineHeight: 1.3 }}>
               {placeName}
             </p>
+            {/* WHO WAS HERE WITH YOU — this sit, not today.
+                Owner: "have it show something that says you breathed with x
+                people, the cumulative during the session." Cumulative because a
+                live reading is a snapshot: people can come and go across twelve
+                breaths and the instant count might never rise above one. Blue,
+                the same blue the place list uses for a breath happening now, so
+                the two say the same thing in the same colour. Absent when you
+                breathed alone — nobody needs to be told they were by themselves. */}
+            {typeof placeCompanions === "number" && placeCompanions > 0 && (
+              <p className="mb-6 text-[15px]" style={{ color: "#7FB3E8", fontFamily: SPACE_GROTESK, fontWeight: 600, marginTop: -22 }}>
+                {t("cobreathe.place_companions", {
+                  count: placeCompanions,
+                  defaultValue: placeCompanions === 1
+                    ? "You breathed with 1 person"
+                    : `You breathed with ${placeCompanions} people`,
+                })}
+              </p>
+            )}
             <div className="w-full flex flex-col gap-3 mb-9">
               {([
                 [t("cobreathe.place_today", { defaultValue: "Today" }), placeBreathsToday],

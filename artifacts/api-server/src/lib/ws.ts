@@ -35,6 +35,19 @@ interface CobreatheSession {
   startEpochMs: number;
   masterSeed: number;
   fingerprint: string;
+  /**
+   * WHERE they are breathing, when they checked into a place.
+   *
+   * Carried so a place can say "Breathing Together with 3 people" while it is
+   * actually happening, instead of only "3 breathed here today" after the
+   * fact. Null for anyone breathing at no particular place.
+   *
+   * It is a CLAIM, like the seed and the fingerprint beside it — the socket
+   * takes the user's identity from the session (authedUserId) and never from
+   * the payload, but a place is not identity, and the worst a false one can do
+   * is add a head to a count on a page.
+   */
+  placeId: number | null;
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -350,6 +363,7 @@ export function attachWebSocketServer(server: HttpServer) {
                 startEpochMs: p.startEpochMs,
                 masterSeed: p.masterSeed,
                 fingerprint: p.fingerprint,
+                placeId: typeof p.placeId === "number" && Number.isFinite(p.placeId) ? p.placeId : null,
               });
               broadcastCobreatheSync();
               scheduleBreathRecompute();

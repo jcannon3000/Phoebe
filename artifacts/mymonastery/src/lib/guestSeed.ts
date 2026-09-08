@@ -195,9 +195,26 @@ function unseedCard(key: "cac" | "fdd"): void {
 function applyDefaultSeed(d: DefaultSeed | null, mode: "fresh" | "migrate" = "fresh"): boolean {
   if (!d) return false;
   const migrating = mode === "migrate";
+  // READ THEIR OWN CHOICE FIRST. setReflectionSource a few lines down
+  // overwrites it with the default's, so asking afterwards always answers
+  // "they chose whatever the default says" — which would quietly drop a
+  // newsletter someone had actually picked.
+  const chosenBefore = getExplicitReflectionSource();
   setSideLevel("morning", d.morning as Parameters<typeof setSideLevel>[1]);
   setSideLevel("evening", d.evening as Parameters<typeof setSideLevel>[1]);
-  if (d.reflection && d.reflection !== "none") {
+  /**
+   * AN EXPLICIT CHOICE OUTRANKS A DEFAULT — on migrate.
+   *
+   * This overwrote the person's daily word with the admin's whenever the
+   * default moved, which contradicts the sibling path a few lines down in
+   * migrateStaleSeed ("the REFLECTION SOURCE is deliberately not migrated — a
+   * device can sit on untouched levels and still have chosen its own daily
+   * word"). It also made "one newsletter" impossible to state coherently:
+   * their card said SSJE, the source said the default's, and both cards
+   * showed. A FRESH apply has no choice to outrank, so it still takes the
+   * default's outright.
+   */
+  if (d.reflection && d.reflection !== "none" && !(migrating && chosenBefore && chosenBefore !== "none")) {
     setReflectionSource(d.reflection);
     setSideReflection("morning", d.reflection);
   }
@@ -205,6 +222,45 @@ function applyDefaultSeed(d: DefaultSeed | null, mode: "fresh" | "migrate" = "fr
   let changed = false;
   for (const key of d.cards ?? []) {
     const r = addHomeCard(layout, key, migrating ? { respectRemoval: true } : undefined);
+    layout = r.layout; changed = changed || r.changed;
+  }
+  /**
+   * A DEFAULT LANDS ONE NEWSLETTER, NOT AN ACCUMULATION (owner, 2026-09-08:
+   * "why did the default routine have cac and forward day by day? … it should
+   * just have one").
+   *
+   * This loop only ever ADDED. The admin's `__default__` names Forward Day by
+   * Day; a device seeded before that named the CAC; nothing took the CAC back
+   * off, so the default rhythm showed both — measured on the Android emulator,
+   * `order: ["cac","visio","requests","office","contemplation","fdd",…]` with
+   * `hidden: []`, which turns every one of them on. Every previous default's
+   * newsletter is still sitting in that list on every device that has ever
+   * carried one.
+   *
+   * What survives: any newsletter the CURRENT default names, and — when
+   * migrating — the one the person explicitly chose for themselves. Everything
+   * else comes out of `order` (not into `hidden`, which means "they removed
+   * it"). A fresh apply has no personal choice to protect, so the default's
+   * own list is the whole answer.
+   */
+  const NEWSLETTER_CARDS = ["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist"] as const;
+  const keepNewsletters = new Set<string>(
+    (d.cards ?? []).filter((k) => (NEWSLETTER_CARDS as readonly string[]).includes(k)),
+  );
+  // Whichever source WON above is the one whose card stays. On a migrate that
+  // is their own when they made one, otherwise the default's.
+  const winning = migrating && chosenBefore && chosenBefore !== "none" ? chosenBefore : d.reflection;
+  if (winning && winning !== "none") keepNewsletters.add(winning);
+  // A default that names extra newsletters in `cards` (beyond its own
+  // reflection) is asking for them deliberately — but only on a FRESH apply.
+  // On a migrate, adding a second newsletter to someone who has one is the
+  // accumulation this whole block exists to stop.
+  if (migrating) {
+    for (const k of [...keepNewsletters]) if (k !== winning) keepNewsletters.delete(k);
+  }
+  for (const key of NEWSLETTER_CARDS) {
+    if (keepNewsletters.has(key)) continue;
+    const r = removeHomeCard(layout, key);
     layout = r.layout; changed = changed || r.changed;
   }
   if (changed && layout) cacheHomeLayoutLocalOnly(layout);

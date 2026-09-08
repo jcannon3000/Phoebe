@@ -253,9 +253,59 @@ export default function CobreathePage() {
   const breathFingerprint = useMemo(() => computeFingerprint(breathPhotos), [breathPhotos]);
   const breathSync = useCobreatheSync(user, gardenUserIds, {
     fingerprint: breathFingerprint,
-    active: mode === "breathing",
+    /**
+     * ALSO ON THE PLACE PICKER, not only mid-breath.
+     *
+     * The list is where "Breathing Together with 3 people" has to appear, and
+     * that screen is `location` — so gating the socket on `breathing` alone
+     * meant the live count was always empty exactly where it is read. We only
+     * LISTEN here: nothing is announced until a sit actually starts
+     * (announceSession), so being connected on the picker adds a subscriber,
+     * not a phantom breather.
+     */
+    active: mode === "breathing" || mode === "location",
   });
 
+  /**
+   * A LIVE BREATH AT A PLACE — how many OTHER people are breathing there right
+   * now (from /ws, not the day's tally), and the blue that says so.
+   *
+   * Blue is deliberate and is used nowhere else on this list: everything here
+   * is sage, so the one line that means "this is happening, now" is the only
+   * thing that isn't.
+   */
+  const LIVE_BLUE = "#7FB3E8";
+  const liveHere = (placeId: number) => (breathSync.breathersByPlace[placeId] ?? []).length;
+
+  /**
+   * EVERYONE YOU BREATHED WITH AT THIS PLACE, cumulative across the sit.
+   *
+   * Owner: "on the page where it shows how many breaths at that location there
+   * are, have it show something that says you breathed with x people, the
+   * cumulative during the session."
+   *
+   * Cumulative, because a live count is a snapshot: three people can come and
+   * go over twelve breaths and the instant reading might never exceed one. The
+   * set only grows while a sit is running and is emptied when the next one
+   * begins, so it answers "who was here with me" for THIS sit rather than for
+   * the day.
+   */
+  const placeCompanionsRef = useRef<Set<number>>(new Set());
+  const [placeCompanions, setPlaceCompanions] = useState(0);
+  // A new sit starts from nobody. Declared BEFORE the collector below: effects
+  // run in declaration order, so clearing second would have thrown away whoever
+  // was already breathing here at the moment the sit began.
+  useEffect(() => {
+    if (mode === "breathing") { placeCompanionsRef.current = new Set(); setPlaceCompanions(0); }
+  }, [mode]);
+  useEffect(() => {
+    if (mode !== "breathing") return;
+    const here = place && place.id > 0 ? (breathSync.breathersByPlace[place.id] ?? []) : [];
+    if (here.length === 0) return;
+    let grew = false;
+    for (const id of here) if (!placeCompanionsRef.current.has(id)) { placeCompanionsRef.current.add(id); grew = true; }
+    if (grew) setPlaceCompanions(placeCompanionsRef.current.size);
+  }, [mode, place, breathSync.breathersByPlace]);
   // Who you cobreathed WITH: capture every garden-mate seen breathing live during
   // this sit, so the first to finish still sees the others on the summary even
   // after their session ends (mirrors the contemplation co-presence capture).
@@ -778,9 +828,28 @@ export default function CobreathePage() {
                           {/* The count is the invitation. Zero is said plainly
                               rather than hidden — being the first today is a
                               real and good thing to be told. */}
-                          {p.breathsToday > 0
-                            ? t("cobreathe.location_count", { count: p.breathsToday, defaultValue: `${p.breathsToday} breathed here today` })
-                            : t("cobreathe.location_first", { defaultValue: "Be the first here today" })}
+                          {/* SOMEONE IS BREATHING HERE, NOW.
+                              Owner: "if someone is checked into a location, and
+                              there is someone else checked into that location and
+                              breathing at the time … it should say Breathing
+                              Together with X People and have it in blue."
+                              A live fact outranks the day's tally, so it replaces
+                              the count rather than crowding in beside it — and it
+                              is the one line on this list that isn't sage. */}
+                          {liveHere(p.id) > 0
+                            ? (
+                              <span style={{ color: LIVE_BLUE, fontWeight: 600 }}>
+                                {t("cobreathe.location_live", {
+                                  count: liveHere(p.id),
+                                  defaultValue: liveHere(p.id) === 1
+                                    ? "Breathing Together with 1 person"
+                                    : `Breathing Together with ${liveHere(p.id)} people`,
+                                })}
+                              </span>
+                            )
+                            : p.breathsToday > 0
+                              ? t("cobreathe.location_count", { count: p.breathsToday, defaultValue: `${p.breathsToday} breathed here today` })
+                              : t("cobreathe.location_first", { defaultValue: "Be the first here today" })}
                           {p.subtitle ? ` · ${p.subtitle}` : ""}
                         </span>
                       </span>
@@ -940,7 +1009,10 @@ export default function CobreathePage() {
           centerGlyph={place?.centerEmoji ?? null}
           followSeed={breathSync.leader?.masterSeed}
           followStartEpochMs={breathSync.leader?.startEpochMs}
-          onSession={(info) => breathSync.announceSession(info.startEpochMs, info.masterSeed)}
+          // …and WHERE, so the place can name who is breathing there right now.
+          onSession={(info) => breathSync.announceSession(
+            info.startEpochMs, info.masterSeed, place && place.id > 0 ? place.id : null,
+          )}
           coBreathingFellows={coBreathingFellows}
         />
       </motion.div>
@@ -1005,6 +1077,7 @@ export default function CobreathePage() {
         // carried these all along; only today's number was ever shown.
         placeBreathsMonth={placeStats?.month?.breaths}
         placeBreathsAllTime={placeStats?.allTime?.breaths}
+        placeCompanions={placeCompanions}
         companions={summaryFaces}
         onContinue={() => setLocation("/")}
       />
