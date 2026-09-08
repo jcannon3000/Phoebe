@@ -49,7 +49,7 @@ const DEFAULT_HIDDEN_MODULES = [
  *  this is used.) */
 const ALL_OPTIONAL_MODULES = [
   "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen",
-  "visio", "icons", "lectio", "taize", "andrews", "spirituals", "cac", "fdd", "ssje", "vts",
+  "visio", "icons", "lectio", "rosary", "taize", "andrews", "spirituals", "cac", "fdd", "ssje", "vts",
   "nouwen", "sojo", "grist", "ncmp", "podcasts", "prayer-list",
 ];
 

@@ -48,8 +48,8 @@ type DailyPrayer = "guided-prayer" | "psalms" | "devotion" | "office" | "reading
 // Contemplative Walk / Visio Divina / Taize / Spirituals), just ONE at a time here (this page is meant to stay a
 // few quick dropdowns, not a multi-select). Backed by the same home-layout
 // module keys those toggles write in WayOfLoveRuleFlow.tsx.
-type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spirituals" | "taize" | "icons" | "lectio";
-const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio", "spirituals", "taize", "icons", "lectio"];
+type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spirituals" | "taize" | "icons" | "lectio" | "rosary";
+const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio", "spirituals", "taize", "icons", "lectio", "rosary"];
 function homeCardOn(hl: HomeLayout | null, key: string): boolean {
   return !!hl && hl.order.includes(key) && !hl.hidden.includes(key);
 }

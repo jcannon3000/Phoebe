@@ -162,6 +162,16 @@ export const OFFLINE_PRACTICES: OfflinePractice[] = [
   { key: "examen", emoji: "🌗", title: "The Examen", sub: "Review the day with God", href: "/examen", how: "bundled" },
   { key: "cobreathe", emoji: "🌍", title: "Creation Prayer", sub: "Breathing with creation", href: "/cobreathe", how: "bundled" },
   { key: "visio", emoji: "🖼️", title: "Visio Divina", sub: "The coming weeks' pictures and readings, saved ahead", href: "/visio", how: "saved" },
+  /**
+   * THE ROSARY IS BUNDLED and was falling to "Not Available Offline" (audit,
+   * 2026-09-07). Every word of it ships in the app — the prayers, the four
+   * sets of mysteries with their meditations, the Anglican devotions — and
+   * completion queues through the outbox like any other. Only two things reach
+   * the network: the mystery's painting, and the scripture link, which already
+   * says so plainly when there is nothing saved. Worded like Audio Divina's
+   * entry: available for what it can do, honest about the rest.
+   */
+  { key: "rosary", emoji: "📿", title: "The Rosary", sub: "The prayers and mysteries are in the app; the paintings need a connection", href: "/rosary", how: "bundled" },
   // The phone holds four Sundays, both tracks, with their readings — and this
   // list, which is where people go to ask what works offline, never said so.
   { key: "sunday", emoji: "⛪", title: "This Sunday", sub: "The coming Sundays' readings, both tracks, saved four weeks ahead", href: "/this-sunday", how: "saved" },

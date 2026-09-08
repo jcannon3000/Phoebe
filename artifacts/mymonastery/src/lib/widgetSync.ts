@@ -307,6 +307,13 @@ export function useWidgetSync(): void {
       { active: r.podcastsActive, done: r.podcastsDone, slot: "afternoon" as CustomSlot, key: "podcasts", emoji: "🎙️", title: "Podcasts", eyebrow: "A podcast episode", subtitle: "Log what you listened to", cta: "Log", kind: "reflect" },
       { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), key: "walk", emoji: "🚶🏽", title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "A walk as prayer", cta: "Log", kind: "office" },
       { active: r.visioActive, done: r.visioDone, slot: getPracticeSlot("visio"), key: "visio", emoji: "🖼️", title: "Visio Divina", eyebrow: "Return", subtitle: "Pray with today's image", cta: "View", kind: "office" },
+      // THE ROSARY WAS MISSING FROM THIS LIST (audit, 2026-09-07). It is a
+      // real rhythm card — customizer option, home card, weekly dot — and the
+      // widget is the third renderer that has to know about every one of them
+      // or the lock screen counts fewer dots than the home does and can never
+      // reach "the day is kept". Same drift cobreathe, listening, walk,
+      // reading and examen were found in, noted three lines below.
+      { active: r.rosaryActive, done: r.rosaryDone, slot: getPracticeSlot("rosary"), key: "rosary", emoji: "📿", title: "The Rosary", eyebrow: "Pray the mysteries", subtitle: "A decade at a time", cta: "Begin", kind: "office" },
       /**
        * THE THREE INBOX PRACTICES AND THE ICON, which this mirror was missing.
        *
@@ -445,6 +452,7 @@ export function useWidgetSync(): void {
       cobreathe: "/cobreathe",
       listening: "/listening",
       visio: "/visio",
+      rosary: "/rosary",
       examen: "/examen",
       novena: "/novena",
       compline: "/bcp/daily-office?mode=compline",
@@ -564,7 +572,7 @@ export function useWidgetSync(): void {
     r.eveningContemplationActive, r.eveningContemplationDone,
     r.silenceActive, r.silenceDone, r.reflectActive, reflSig,
     r.cobreatheActive, r.cobreatheDone, r.listeningActive, r.listeningDone,
-    r.walkActive, r.walkDone, r.visioActive, r.visioDone, r.complineActive, r.complineDone,
+    r.walkActive, r.walkDone, r.visioActive, r.visioDone, r.rosaryActive, r.rosaryDone, r.complineActive, r.complineDone,
     // podcastsActive/Done are READ by this effect (the Way of Love item) and
     // were missing here, while prayerListActive/Done were listed but never
     // read — the Prayer List is deliberately excluded from the widget's items.

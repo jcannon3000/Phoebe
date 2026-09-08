@@ -34,6 +34,12 @@ export const HOME_MODULE_KEYS = [
   // Praying with Icons — one icon a week, sat with daily.
   "icons",
   "lectio",
+  // The Rosary — Roman mysteries or Anglican prayer beads, chosen in the deck.
+  // Missing from this list until the 2026-09-07 audit, which is the bug this
+  // file's header is about: the card was a real customizer option with a home
+  // card and a weekly dot, and the layout sanitiser would have quietly dropped
+  // it from any prescribed routine, group rule or restored snapshot.
+  "rosary",
   // The inbox practices: they wait rather than expiring at midnight.
   "taize",
   // "Andrew's Version" — a weekly lectionary comment, kept as an inbox like

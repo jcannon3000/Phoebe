@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { useLocation } from "wouter";
+import { X } from "lucide-react";
+import DeckNavPill from "@/components/DeckNavPill";
+import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -16,10 +19,11 @@ import { toast } from "@/hooks/use-toast";
 import { isOnline } from "@/lib/offline";
 import {
   MYSTERY_SETS, mysterySetForDay, artIdForDay, type MysterySet, type Mystery,
-  SIGN_OF_THE_CROSS, APOSTLES_CREED, OUR_FATHER, HAIL_MARY, GLORY_BE,
-  FATIMA_PRAYER, HAIL_HOLY_QUEEN, OPENING_INTENTIONS, BEADS_PER_DECADE,
-  CONCLUDING_VERSICLE, CONCLUDING_RESPONSE, CONCLUDING_PRAYER,
+  ANGLICAN_SETS, ANGLICAN_CIRCLES, type AnglicanSet,
 } from "@/lib/rosary";
+import {
+  buildRomanBeats, buildAnglicanBeats, ordinal, cap, type Form,
+} from "@/lib/rosaryBeats";
 
 /**
  * THE ROSARY — a guided walk through a set of mysteries.
@@ -48,69 +52,70 @@ import {
  * GUEST_ALLOWED_EXACT for the same reason Visio and the Examen are.
  */
 
-const FONT = "'Space Grotesk', sans-serif";
+/**
+ * THE OFFICE'S OWN TOKENS, NOT A SECOND PALETTE (owner: "audit to make sure
+ * you have it exactly like the office UI").
+ *
+ * These are lifted verbatim from bcp-daily-office.tsx — same var() names with
+ * the same fallbacks — so the Rosary is themed by the office's paper/type
+ * settings rather than sitting beside them in a private blue. What is left of
+ * the Marian accent is one thing: the intro's mystery-set chips, where four
+ * options need telling apart.
+ */
+const FONT = "var(--office-font, 'Space Grotesk', system-ui, sans-serif)";
 const SERIF = "Georgia, 'Times New Roman', serif";
-const BG = "#0C1F12";
-const WARM = "#F0EDE6";
-// PACT's chrome with a Marian blue in place of its terracotta. Same alpha
-// values and the same roles (hairline, eyebrow, dots) so nothing else shifts.
+const BG = "var(--oh-bg2, #091A10)";
+const WARM = "var(--oh-ink, #F0EDE6)";
+const FAINT_GREEN = "rgba(var(--ot-sage, 143,175,150),0.55)";
+const BORDER = "rgba(var(--ot-green, 46,107,64),0.38)";
+const CHROME_BG = "rgba(var(--ot-deep, 9,26,16), 0.297)";
+/** The one place the Rosary keeps a blue: four chips that must read apart. */
 const ACCENT = "rgba(150,170,205,0.5)";
-const EYEBROW = "rgba(168,186,216,0.8)";
-const DOT_ON = "#9BB0D0";
-const DOT_OFF = "rgba(120,140,175,0.32)";
 
-const PILL: CSSProperties = {
-  background: "rgba(9,26,16,0.42)",
-  backdropFilter: "blur(11px)",
-  WebkitBackdropFilter: "blur(11px)",
-  border: `1px solid ${ACCENT}`,
-  color: WARM,
-  fontFamily: FONT,
-  fontSize: 16,
-  fontWeight: 700,
-  cursor: "pointer",
+// The office's own title scale (bcp-daily-office 110-112) — reused, not
+// re-clamped, so the deck can't drift apart one slide at a time.
+const TITLE_LG = "clamp(40px, 8vw, 48px)"; // threshold title
+const TITLE_MD = "clamp(36px, 7vw, 44px)"; // a mystery being announced
+
+/**
+ * A PRAYER, SET IN LINES.
+ *
+ * The texts carry the office's own line breaking — a line per clause, two
+ * spaces of indent for a continuation (see the note over the texts in
+ * lib/rosary.ts). Rendering that with `white-space: pre-wrap` would honour the
+ * breaks but NOT the indent on wrap: a long indented line that runs past the
+ * measure comes back to the left margin, which is precisely where the eye
+ * expects a new clause. So each line is its own block with real padding —
+ * the same thing the office does for an indented psalm hemistich — and a
+ * wrapped line hangs under its own indent.
+ *
+ * A blank line in the source (the Anglican invitatory has one between the
+ * versicle pair and the Gloria) becomes a gap, not an empty row.
+ */
+function PrayerLines({ text, style }: { text: string; style?: CSSProperties }) {
+  const lines = text.split("\n");
+  return (
+    <p style={{ color: WARM, margin: 0, fontFamily: FONT, fontSize: 20, lineHeight: 1.7, maxWidth: 600, ...style }}>
+      {lines.map((raw, i) => {
+        if (raw.trim() === "") return <span key={i} aria-hidden style={{ display: "block", height: "0.7em" }} />;
+        const indent = (raw.length - raw.trimStart().length) / 2;
+        return (
+          <span key={i} style={{ display: "block", paddingLeft: indent * 18, textIndent: 0 }}>
+            {raw.trimStart()}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+/** Office chrome circle — ✕ and ⚙ are the same 38px frosted button. */
+const CHROME_BTN: CSSProperties = {
+  width: 38, height: 38, borderRadius: 999, display: "flex", alignItems: "center",
+  justifyContent: "center", background: CHROME_BG,
+  backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+  border: `1px solid ${BORDER}`, color: WARM, cursor: "pointer", padding: 0,
 };
-
-/** A beat of the deck. `repeat` is a prayer said N times — see above. */
-type Beat =
-  | { kind: "prayer"; eyebrow: string; title: string; body: string }
-  | { kind: "mystery"; mystery: Mystery; decade: number }
-  | { kind: "repeat"; times: number; eyebrow: string; title: string; body: string; note?: string; decade?: number }
-  | { kind: "closing" };
-
-function ordinal(n: number): string {
-  return ["first", "second", "third", "fourth", "fifth"][n - 1] ?? `${n}`;
-}
-
-/** The whole rosary, in order, for one set of mysteries. */
-function buildBeats(set: MysterySet): Beat[] {
-  const def = MYSTERY_SETS[set];
-  const beats: Beat[] = [
-    { kind: "prayer", eyebrow: "To begin", title: "The Sign of the Cross", body: SIGN_OF_THE_CROSS },
-    { kind: "prayer", eyebrow: "On the crucifix", title: "The Apostles' Creed", body: APOSTLES_CREED },
-    { kind: "prayer", eyebrow: "On the first bead", title: "Our Father", body: OUR_FATHER },
-    {
-      kind: "repeat", times: OPENING_INTENTIONS.length,
-      eyebrow: "On the three beads", title: "Hail Mary", body: HAIL_MARY,
-      note: `one ${OPENING_INTENTIONS.join(", one ")}`,
-    },
-    { kind: "prayer", eyebrow: "", title: "Glory be", body: GLORY_BE },
-  ];
-  for (const m of def.mysteries) {
-    beats.push({ kind: "mystery", mystery: m, decade: m.n });
-    beats.push({ kind: "prayer", eyebrow: `The ${ordinal(m.n)} decade`, title: "Our Father", body: OUR_FATHER });
-    beats.push({ kind: "repeat", times: BEADS_PER_DECADE, eyebrow: m.title, title: "Hail Mary", body: HAIL_MARY, decade: m.n });
-    beats.push({ kind: "prayer", eyebrow: `The ${ordinal(m.n)} decade`, title: "Glory be", body: GLORY_BE });
-    beats.push({ kind: "prayer", eyebrow: `The ${ordinal(m.n)} decade`, title: "O my Jesus", body: FATIMA_PRAYER });
-  }
-  beats.push({ kind: "prayer", eyebrow: "To close", title: "Hail, holy Queen", body: HAIL_HOLY_QUEEN });
-  // The versicle and response, then the collect — the received close.
-  beats.push({ kind: "prayer", eyebrow: CONCLUDING_VERSICLE, title: "Pray for us", body: CONCLUDING_RESPONSE });
-  beats.push({ kind: "prayer", eyebrow: "Let us pray", title: "The Concluding Prayer", body: CONCLUDING_PRAYER });
-  beats.push({ kind: "prayer", eyebrow: "To close", title: "The Sign of the Cross", body: SIGN_OF_THE_CROSS });
-  beats.push({ kind: "closing" });
-  return beats;
-}
 
 export default function RosaryPage() {
   const { t } = useTranslation();
@@ -133,28 +138,47 @@ export default function RosaryPage() {
   const resumed = useMemo(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(RESUME_KEY) ?? "null") as
-        { day?: string; set?: MysterySet; step?: number } | null;
+        { day?: string; form?: Form; set?: MysterySet; ang?: AnglicanSet; circle?: number; step?: number } | null;
       if (!raw || raw.day !== new Date().toLocaleDateString("en-CA")) return null;
       if (typeof raw.step !== "number" || raw.step < 1) return null;
-      if (!raw.set || !(raw.set in MYSTERY_SETS)) return null;
-      return raw;
+      // A resume from before the Anglican form existed has no `form` and a
+      // Roman `set` — read it as Roman rather than throwing the place away.
+      const form: Form = raw.form === "anglican" ? "anglican" : "roman";
+      if (form === "roman" && (!raw.set || !(raw.set in MYSTERY_SETS))) return null;
+      if (form === "anglican" && (!raw.ang || !(raw.ang in ANGLICAN_SETS))) return null;
+      return { ...raw, form };
     } catch { return null; }
   }, []);
 
   // step 0 is the intro; 1..beats.length walks the beats.
   const [step, setStep] = useState(0);
+  const [form, setForm] = useState<Form>(() => resumed?.form ?? "roman");
   const [set, setSet] = useState<MysterySet>(() => resumed?.set ?? mysterySetForDay());
+  const [angSet, setAngSet] = useState<AnglicanSet>(() => resumed?.ang ?? "jesus");
+  /** Anglican only: which time round the circle you are on, 1..3. */
+  const [circle, setCircle] = useState(() => resumed?.circle ?? 1);
 
   const backdropPhoto = useMemo(
     () => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
     [],
   );
-  const beats = useMemo(() => buildBeats(set), [set]);
+  const isAnglican = form === "anglican";
+  const beats = useMemo(
+    () => (isAnglican ? buildAnglicanBeats(angSet) : buildRomanBeats(set)),
+    [isAnglican, angSet, set],
+  );
   const def = MYSTERY_SETS[set];
+  const angDef = ANGLICAN_SETS[angSet];
+  /** What the intro and the header call whichever form is in your hand. */
+  const formName = isAnglican ? angDef.name : def.name;
 
   /** What the day appoints — kept separate from `set` so the intro can say
    *  "Today's mysteries" when they match and name the tradition when they don't. */
   const todaysSet = useMemo(() => mysterySetForDay(), []);
+
+  /** Changing the form on the intro resets the circle — you are starting a
+   *  different object, not continuing this one. */
+  const chooseForm = (f: Form) => { setForm(f); setCircle(1); setStep(0); };
 
   const isIntro = step === 0;
   const beat = isIntro ? null : beats[step - 1] ?? null;
@@ -166,11 +190,11 @@ export default function RosaryPage() {
     if (step === 0) return;
     try {
       localStorage.setItem(RESUME_KEY, JSON.stringify({
-        day: new Date().toLocaleDateString("en-CA"), set, step,
+        day: new Date().toLocaleDateString("en-CA"), form, set, ang: angSet, circle, step,
       }));
     } catch { /* private mode — resume simply won't be offered */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, set]);
+  }, [step, form, set, angSet, circle]);
 
   /**
    * WARM THE NEXT MYSTERY'S PICTURE WHILE THIS DECADE IS PRAYED.
@@ -181,14 +205,14 @@ export default function RosaryPage() {
    * warning — so the next one is fetched during it and is simply there.
    */
   useEffect(() => {
-    if (beat?.kind !== "repeat" || !beat.decade) return;
+    if (isAnglican || beat?.kind !== "repeat" || !beat.decade) return;
     const next = beats.slice(step).find((b) => b.kind === "mystery") as { mystery: Mystery } | undefined;
     const nextId = next ? artIdForDay(def, next.mystery) : null;
     const art = nextId ? artworkById(nextId) : null;
     if (!art?.img) return;
     try { const img = new Image(); img.decoding = "async"; img.src = safeArtUrl(art.img); } catch { /* non-fatal */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, beat?.kind]);
+  }, [step, beat?.kind, isAnglican]);
 
   /**
    * THE READER'S OWN BOTTOM BAR STEPS THIS DECK.
@@ -202,9 +226,12 @@ export default function RosaryPage() {
    * exactly what "the scripture link is not loading" looks like from the
    * outside — you go, you come back, and nothing has moved.
    */
+  /** The reader's floating pill fires from an effect that must not re-bind on
+   *  every render — the latest goBack is read through a ref instead. */
+  const goBackRef = useRef<() => void>(() => {});
   useEffect(() => {
     const next = () => setStep((n) => Math.min(n + 1, beats.length));
-    const prev = () => setStep((n) => Math.max(0, n - 1));
+    const prev = () => goBackRef.current();
     window.addEventListener("phoebe:office-next-slide", next);
     window.addEventListener("phoebe:office-prev-slide", prev);
     return () => {
@@ -235,7 +262,57 @@ export default function RosaryPage() {
   }, [step]);
 
 
+  /**
+   * TITLE CARD vs CONTENT SLIDE — the office's one distinction, and the whole
+   * of the owner's ask ("the title slides can be centered", "left aligned in
+   * Space Grotesk"). A card that ANNOUNCES (the opening, a mystery, the end)
+   * is centred and vertically middled; a slide you READ FROM (a prayer, a
+   * decade) is left-aligned and starts at the top, because centred prose is
+   * unreadable at the Creed's length.
+   */
+  const isTitleCard = isIntro || beat?.kind === "mystery" || beat?.kind === "circle" || isClosing;
+
   const decadeOf = beat && (beat.kind === "mystery" || beat.kind === "repeat") ? (beat.decade ?? null) : null;
+
+  /**
+   * WHERE YOU ARE, IN THE OFFICE'S WORDS: "N of M · Section". The section is
+   * the part of the rosary you are in — the opening prayers, one of the five
+   * decades by name, or the close — so the counter says something more useful
+   * than a bare number in a deck of thirty-six.
+   */
+  const navLabel = (() => {
+    if (isAnglican) {
+      // "N of M" is the wrong counter for a circle you go round three times —
+      // it would run 1..17 and then jump backwards. Where you are on THIS form
+      // is which circle and which week, which is what the beads say too.
+      if (isIntro) return t("rosary.sec_beads", { defaultValue: "Anglican prayer beads" });
+      if (isClosing) return t("rosary.sec_closing", { defaultValue: "Closing" });
+      const here = t("rosary.circle_of", { defaultValue: "Circle {{n}} of {{of}}", n: circle, of: ANGLICAN_CIRCLES });
+      // The turn of the circle is a place of its own — labelling it with the
+      // fourth week (the beat before it) said you were still in the week you
+      // had just finished.
+      if (beat?.kind === "circle") return here;
+      const w = decadeOf;
+      if (w === null) return here;
+      return `${here} · ${t("rosary.week_n", { defaultValue: "{{which}} week", which: cap(ordinal(w)) })}`;
+    }
+    const total = beats.length + 1;
+    const n = step + 1;
+    let section: string;
+    if (isIntro) section = t("rosary.sec_open", { defaultValue: "The Rosary" });
+    else if (decadeOf !== null) {
+      section = t("rosary.sec_decade", { defaultValue: "{{which}} Mystery", which: cap(ordinal(decadeOf)) });
+    } else if (step <= 5) section = t("rosary.sec_opening", { defaultValue: "Opening" });
+    else if (step > 5 && step < beats.length - 4) {
+      // Between the opening and the close, an un-numbered beat still belongs
+      // to the decade it follows — count the mysteries passed so far.
+      const d = beats.slice(0, step).filter((b) => b.kind === "mystery").length;
+      section = d > 0
+        ? t("rosary.sec_decade", { defaultValue: "{{which}} Mystery", which: cap(ordinal(d)) })
+        : t("rosary.sec_opening", { defaultValue: "Opening" });
+    } else section = t("rosary.sec_closing", { defaultValue: "Closing" });
+    return `${n} of ${total} · ${section}`;
+  })();
   /**
    * The mystery's picture, from the same ACT library Visio prays with.
    * Undefined for the Assumption, which the library has nothing for — the beat
@@ -246,29 +323,85 @@ export default function RosaryPage() {
     const id = artIdForDay(def, beat.mystery);
     return id ? artworkById(id) : null;
   })();
-  /** Every work seen in THIS set — what the closing slide credits. */
+  /** The Anglican set's one icon — shown on the intro and at each turn of the
+   *  circle. There are no mysteries to illustrate on this form, so one image
+   *  held throughout is the honest equivalent. */
+  const angArt = useMemo(() => (angDef.artId ? artworkById(angDef.artId) : null), [angDef.artId]);
+  /** Every work seen in THIS session — what the closing slide credits. */
   const creditedArt = useMemo(
-    () => def.mysteries
-      .map((m) => { const id = artIdForDay(def, m); return id ? artworkById(id) : null; })
-      .filter((a): a is NonNullable<typeof a> => !!a),
-    [def],
+    () => (isAnglican
+      ? (angArt ? [angArt] : [])
+      : def.mysteries
+        .map((m) => { const id = artIdForDay(def, m); return id ? artworkById(id) : null; })
+        .filter((a): a is NonNullable<typeof a> => !!a)),
+    [def, isAnglican, angArt],
   );
 
   /** The bottom pill: what it says, and what it does. */
+  /**
+   * BACK, ROUND A CIRCLE.
+   *
+   * Stepping back from the first cruciform bead on circle 2 or 3 would land on
+   * the invitatory — out of the loop entirely, and one circle over-counted for
+   * the rest of the session. It goes to the turn you came through instead.
+   */
+  const firstCruciformStep = useMemo(() => {
+    const i = beats.findIndex((b) => b.kind === "prayer" && /cruciform/i.test(b.eyebrow));
+    return i >= 0 ? i + 1 : -1;
+  }, [beats]);
+  const circleStep = useMemo(() => {
+    const i = beats.findIndex((b) => b.kind === "circle");
+    return i >= 0 ? i + 1 : -1;
+  }, [beats]);
+  const goBack = () => {
+    if (isAnglican && circle > 1 && step === firstCruciformStep && circleStep > 0) {
+      setCircle((c) => c - 1);
+      setStep(circleStep);
+      return;
+    }
+    setStep((n) => Math.max(0, n - 1));
+  };
+  goBackRef.current = goBack;
+
+  /**
+   * ANDROID'S BACK STEPS THE DECK (it did not, here).
+   *
+   * The office, Lectio and Visio all guard this; the Rosary did not, and it is
+   * the practice that can least afford it — thirty-six slides is the longest
+   * walk in the app, and on Android one Back press at the fourth decade left
+   * for the dashboard. The deck pushes no history of its own, so the guard
+   * keeps one spare entry in front of the page while you are past the intro.
+   * No early returns above it: this component has none, and the hook must run
+   * on every render or React tears the tree down (learned the hard way in the
+   * office — see the crash note in bcp-daily-office).
+   */
+  useDeckBackGuard({ active: step > 0, atStart: step <= 0, onBack: goBack });
+
   const primary = (() => {
     if (isIntro) return { label: t("rosary.begin", { defaultValue: "Begin" }), onClick: () => setStep(1) };
     if (isClosing) return { label: t("rosary.done", { defaultValue: "Done" }), onClick: () => setLocation("/dashboard") };
+    if (beat?.kind === "circle" && circle < ANGLICAN_CIRCLES) {
+      // Back to the FIRST cruciform bead — index 2 in the built list (cross,
+      // invitatory, then the circle), so step 3. Derived, not hard-coded, so
+      // the loop still lands right if the opening ever gains a beat.
+      return {
+        label: t("rosary.round_again", { defaultValue: "Round again" }),
+        onClick: () => { setCircle((c) => c + 1); setStep(firstCruciformStep > 0 ? firstCruciformStep : 3); },
+      };
+    }
     return { label: t("rosary.continue", { defaultValue: "Continue" }), onClick: () => setStep((s) => s + 1) };
   })();
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", overflow: "hidden" }}>
+    <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <DeckAnnouncer
         label={
-          isIntro ? `${def.name}. ${def.blurb}`
+          isIntro ? `${formName}. ${isAnglican ? angDef.blurb : def.blurb}`
             : beat?.kind === "mystery" ? `${beat.mystery.title}, the ${ordinal(beat.decade)} mystery. ${beat.mystery.ref}`
-            : beat?.kind === "repeat" ? `${beat.title}, ${beat.times} times. ${beat.eyebrow}`
-            : beat?.kind === "prayer" ? beat.title
+            : beat?.kind === "repeat" ? `${beat.title}, on ${beat.times} beads. ${beat.eyebrow}`
+            : beat?.kind === "versicle" ? `${beat.v} ${beat.r}`
+            : beat?.kind === "circle" ? t("rosary.circle_done", { defaultValue: "Circle {{n}} of {{of}} complete", n: circle, of: ANGLICAN_CIRCLES })
+            : beat?.kind === "prayer" ? `${beat.eyebrow}. ${beat.title}`
             : t("rosary.closing_title", { defaultValue: "The rosary is prayed" })
         }
       />
@@ -289,126 +422,237 @@ export default function RosaryPage() {
         <AnimatedBackground base={BG} variant="subtle" />
       )}
 
-      <header
-        className="px-5 pb-2 flex items-center justify-between"
-        style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: "max(1.25rem, calc(var(--safe-top) + 0.5rem))" }}
-      >
-        <button
-          type="button"
-          onClick={() => {
-            // Back steps the deck; from the intro it leaves. Home, not the
-            // offices picker — the same exit PACT and the Examen settled on.
-            if (step > 0) setStep((s) => s - 1);
-            else setLocation("/dashboard");
+      {/* THE OFFICE'S HEADER, COLUMN FOR COLUMN — ← Back, the centred title
+          pill, the ✕ circle. It was a two-item flex row with no title; the
+          office uses a 1fr/auto/1fr grid precisely so the pill stays centred
+          however wide "Back" gets in another language. pointerEvents is off on
+          the bar and back on inside it, so the header never eats a tap meant
+          for the slide beneath it. */}
+      <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, pointerEvents: "none" }}>
+        <div
+          className="max-w-2xl mx-auto w-full px-5 pb-2"
+          style={{
+            display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center",
+            gap: 12, pointerEvents: "auto", paddingTop: "max(1.5rem, var(--safe-top))",
           }}
-          style={{ color: "rgba(143,175,150,0.8)", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: FONT, fontSize: 13 }}
         >
-          {t("rosary.back", { defaultValue: "← Back" })}
-        </button>
-        {!isIntro && !isClosing && (
           <button
             type="button"
-            onClick={() => setLocation("/dashboard")}
-            aria-label={t("rosary.exit", { defaultValue: "Exit" })}
-            className="flex items-center justify-center rounded-full"
+            onClick={() => {
+              // Back steps the deck; from the intro it leaves. Home, not the
+              // offices picker — the same exit PACT and the Examen settled on.
+              if (step > 0) goBack();
+              else setLocation("/dashboard");
+            }}
+            style={{ color: FAINT_GREEN, fontSize: 13, background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", fontFamily: FONT }}
+          >
+            {t("rosary.back", { defaultValue: "← Back" })}
+          </button>
+          <span
+            className="rounded-full"
             style={{
-              width: 32, height: 32, background: "rgba(9,26,16,0.42)",
-              backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
-              border: `1px solid ${ACCENT}`, color: "rgba(240,237,230,0.85)",
-              fontSize: 17, lineHeight: 1, cursor: "pointer",
+              background: CHROME_BG, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+              border: `1px solid ${BORDER}`, color: WARM, fontSize: 12, fontWeight: 600,
+              letterSpacing: "0.04em", padding: "6px 16px", fontFamily: FONT, whiteSpace: "nowrap",
             }}
           >
-            ×
-          </button>
-        )}
+            {isAnglican
+              ? t("rosary.title_ang", { defaultValue: "Anglican Beads" })
+              : t("rosary.title", { defaultValue: "The Rosary" })}
+          </span>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={() => setLocation("/dashboard")}
+              aria-label={t("rosary.exit", { defaultValue: "Close" })}
+              style={CHROME_BTN}
+            >
+              <X size={19} />
+            </button>
+          </div>
+        </div>
       </header>
 
       <main
-        className="flex flex-col items-center text-center px-6 w-full"
+        className="flex-1 px-5"
         style={{
-          maxWidth: 560, margin: "0 auto", minHeight: "var(--app-dvh)",
           /**
-           * CENTRED, EXCEPT WHERE THERE IS TOO MUCH TO CENTRE.
+           * THE OFFICE'S SCROLL COLUMN, STRUCTURE FOR STRUCTURE.
            *
-           * The closing slide carries the picture credits — five works, each
-           * with ACT's full attribution line — and centring a block that tall
-           * pushes its end below the fold with nothing to suggest there is
-           * more. (Reported: "didn't see the credits.") The closing starts at
-           * the top and scrolls; every other beat is short and stays centred.
+           * flex-1 + minHeight:0 rather than minHeight:var(--app-dvh): a
+           * dvh-tall child inside a fixed root cannot scroll to its end on
+           * Android web, where the visual viewport is shorter than 100dvh.
+           *
+           * Bottom clearance is a SPACER CHILD at the end of this element,
+           * never paddingBottom here — iOS WKWebView drops a flex-column
+           * scroll container's padding-bottom once a child overflows, which is
+           * exactly how the end of the Creed ended up behind the nav pill.
            */
-          justifyContent: isClosing ? "flex-start" : "center",
-          paddingTop: "clamp(24px, 6dvh, 72px)",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 168px)",
-          position: "relative", zIndex: 1,
-          /**
-           * SCROLLS WHEN IT HAS TO. PACT's bodies are two lines; the Creed is
-           * seven hundred characters and Hail, holy Queen not far behind, and
-           * the deck root is `overflow: hidden` — so on a small phone the end
-           * of the Creed was simply cut off with no way to reach it. Centred
-           * while it fits, scrollable when it doesn't.
-           */
+          minHeight: 0,
           overflowY: "auto",
           overscrollBehavior: "contain",
+          WebkitOverflowScrolling: "touch",
+          /**
+           * HEADER CLEARANCE ON EVERY SLIDE, NOT ONLY THE READING ONES.
+           *
+           * The office gives its title cards 24px because its title cards are
+           * two lines and centre far below the bar. Two of THESE are not: the
+           * mystery card carries a painting, and the closing card carries five
+           * picture credits. Measured on a 375×812 phone, the closing card's
+           * first line sat at y=22 with the header's bottom edge at y=63 — the
+           * top of the slide was behind the chrome. Every slide clears the bar
+           * now, and the auto margins below still centre the short ones.
+           */
+          paddingTop: "max(110px, calc(var(--safe-top) + 80px))",
+          paddingBottom: 0,
+          display: "flex",
+          flexDirection: "column",
+          position: "relative", zIndex: 1,
+          // Slight drop shadow on all slide text so it stays legible over the
+          // leaf backdrop — the office's own line.
+          textShadow: "0 1px 6px rgba(var(--ot-shadow, 8,30,18),0.5)",
         }}
       >
+        <div
+          className="mx-auto"
+          style={{
+            display: "flex", flexDirection: "column", width: "100%", maxWidth: 672,
+            /**
+             * AUTO MARGINS, NOT justify-content, TO CENTRE A TITLE CARD.
+             *
+             * `flex-grow:1` + `justify-content:center` centres a card that
+             * fits and CLIPS one that doesn't: the overflow spills equally off
+             * both ends and the top half becomes unreachable by scrolling —
+             * the classic flex-centring trap. Auto margins centre exactly the
+             * same way while collapsing to zero when the card is taller than
+             * the box, so a long closing simply starts at the top and scrolls.
+             */
+            marginTop: isTitleCard ? "auto" : 0,
+            marginBottom: isTitleCard ? "auto" : 0,
+            flexGrow: 0,
+            flexShrink: 0,
+            justifyContent: "flex-start",
+            textAlign: isTitleCard ? "center" : "left",
+            alignItems: isTitleCard ? "center" : undefined,
+            gap: 20,
+          }}
+        >
         <AnimatePresence mode="wait">
           {isIntro && (
             <motion.div
               key="intro"
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "center" }}
+              style={{ maxWidth: 540, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}
             >
-              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
-                {t("rosary.eyebrow", { defaultValue: "Pray the Rosary" })}
+              <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 11, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
+                {t("rosary.eyebrow", { defaultValue: "Before you begin" })}
               </p>
-              <h1 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 14 }}>
-                {def.name}
+              <h1
+                className="title-glow-breathe"
+                style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: TITLE_LG, lineHeight: 1.05, letterSpacing: "-0.02em", margin: 0 }}
+              >
+                {formName}
               </h1>
-              <p style={{ color: "rgba(226,232,244,0.9)", fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(17px, 4.4vw, 21px)", lineHeight: 1.5, marginBottom: 18 }}>
-                {def.blurb}
+              <p style={{ color: "var(--oh-ink2, #E8E4D8)", fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(18px, 3.4vw, 22px)", lineHeight: 1.55, margin: 0, maxWidth: 460 }}>
+                {isAnglican ? angDef.blurb : def.blurb}
               </p>
-              <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15.5px, 4.2vw, 18px)", lineHeight: 1.55 }}>
-                {t("rosary.intro_body", {
-                  defaultValue:
-                    "Five mysteries, a decade each. Pray at your own pace — the deck keeps your place, so you can put it down whenever you need to.",
-                })}
+
+              {/* The Anglican set's icon, held here the way a mystery's picture
+                  is held on its own slide — there are no scenes to illustrate
+                  on this form, so one image stays with you throughout. */}
+              {isAnglican && angArt?.img && (
+                <figure style={{ margin: 0, width: "100%" }}>
+                  <img
+                    src={safeArtUrl(angArt.img)}
+                    alt={`${angArt.title}${angArt.artist ? ` — ${tidyArtist(angArt.artist)}` : ""}`}
+                    loading="eager"
+                    decoding="async"
+                    style={{ width: "100%", maxWidth: 260, maxHeight: "26dvh", objectFit: "contain", margin: "0 auto", display: "block" }}
+                  />
+                  <figcaption style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 11.5, lineHeight: 1.45, marginTop: 8 }}>
+                    {angArt.title}
+                    {angArt.artist ? <span style={{ display: "block", color: "rgba(240,237,230,0.55)" }}>{tidyArtist(angArt.artist)}</span> : null}
+                  </figcaption>
+                </figure>
+              )}
+
+              {/* HOW THE BEADS WORK, IN ONE LINE. Somebody opening this has
+                  quite possibly never held a rosary — the deck names a bead at
+                  every step ("on the crucifix", "on the ten small beads"), and
+                  that only helps if you have been told what is in your hand.
+                  It also says plainly that you don't need the beads at all. */}
+              <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: 15.5, lineHeight: 1.6 }}>
+                {isAnglican
+                  ? t("rosary.intro_ang", {
+                      defaultValue:
+                        "Thirty-three beads, for the years of his life: a cross, one invitatory bead, then four cruciform beads dividing four weeks of seven. You go round the circle three times. Each slide names the bead — and if you have no beads, your fingers or nothing at all will do.",
+                    })
+                  : t("rosary.intro_body", {
+                      defaultValue:
+                        "Five mysteries, a decade each. Each slide names the bead it belongs to — the crucifix, the large bead, the ten small ones — and if you have no beads, your fingers or nothing at all will do. Pray at your own pace; the deck keeps your place, so you can put it down whenever you need to.",
+                    })}
               </p>
 
               {/* All four, with today's highlighted (owner: "I want the
                   original of keeping all four visible with todays
                   highlighted"). The day decides which is lit; any of them can
-                  be tapped. */}
-              <div className="flex flex-wrap items-center justify-center gap-2" style={{ marginTop: 22 }}>
-                {(Object.keys(MYSTERY_SETS) as MysterySet[]).map((k) => {
-                  const on = k === set;
-                  return (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => setSet(k)}
-                      aria-pressed={on}
-                      className="rounded-full"
-                      style={{
-                        // 44px minimum — these were ~30px tall.
-                        padding: "12px 16px", minHeight: 44,
-                        fontFamily: FONT, fontSize: 13, fontWeight: 600,
-                        cursor: "pointer",
-                        color: on ? WARM : "rgba(240,237,230,0.66)",
-                        background: on ? "rgba(150,170,205,0.18)" : "rgba(9,26,16,0.42)",
-                        border: `1px solid ${on ? ACCENT : "rgba(150,170,205,0.22)"}`,
-                        backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
-                      }}
-                    >
-                      {MYSTERY_SETS[k].name.replace("The ", "").replace(" Mysteries", "")}
-                    </button>
-                  );
-                })}
+                  be tapped. On the Anglican form the same row offers the four
+                  devotions instead — nothing there is appointed by day. */}
+              <div className="flex flex-wrap items-center justify-center gap-2" style={{ marginTop: 2 }}>
+                {isAnglican
+                  ? (Object.keys(ANGLICAN_SETS) as AnglicanSet[]).map((k) => {
+                      const on = k === angSet;
+                      return (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => { setAngSet(k); setCircle(1); }}
+                          aria-pressed={on}
+                          className="rounded-full"
+                          style={{
+                            padding: "12px 16px", minHeight: 44,
+                            fontFamily: FONT, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                            color: on ? WARM : "rgba(240,237,230,0.66)",
+                            background: on ? "rgba(150,170,205,0.18)" : CHROME_BG,
+                            border: `1px solid ${on ? ACCENT : "rgba(150,170,205,0.22)"}`,
+                            backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+                          }}
+                        >
+                          {ANGLICAN_SETS[k].name}
+                        </button>
+                      );
+                    })
+                  : (Object.keys(MYSTERY_SETS) as MysterySet[]).map((k) => {
+                      const on = k === set;
+                      return (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => setSet(k)}
+                          aria-pressed={on}
+                          className="rounded-full"
+                          style={{
+                            // 44px minimum — these were ~30px tall.
+                            padding: "12px 16px", minHeight: 44,
+                            fontFamily: FONT, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                            color: on ? WARM : "rgba(240,237,230,0.66)",
+                            background: on ? "rgba(150,170,205,0.18)" : CHROME_BG,
+                            border: `1px solid ${on ? ACCENT : "rgba(150,170,205,0.22)"}`,
+                            backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+                          }}
+                        >
+                          {MYSTERY_SETS[k].name.replace("The ", "").replace(" Mysteries", "")}
+                        </button>
+                      );
+                    })}
               </div>
-              <p style={{ color: "rgba(168,186,216,0.72)", fontFamily: FONT, fontSize: 12.5, marginTop: 12 }}>
-                {set === todaysSet
-                  ? `${t("rosary.today_is", { defaultValue: "Today's mysteries" })} · ${def.days}`
-                  : `${t("rosary.traditionally", { defaultValue: "Traditionally prayed on" })} ${def.days}`}
+              <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 12.5, margin: 0 }}>
+                {isAnglican
+                  ? angDef.source
+                  : set === todaysSet
+                    ? `${t("rosary.today_is", { defaultValue: "Today's mysteries" })} · ${def.days}`
+                    : `${t("rosary.traditionally", { defaultValue: "Traditionally prayed on" })} ${def.days}`}
               </p>
 
               {/* Offered, never forced: Begin still starts a fresh rosary. */}
@@ -416,11 +660,14 @@ export default function RosaryPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setSet(resumed.set!);
+                    setForm(resumed.form);
+                    if (resumed.set) setSet(resumed.set);
+                    if (resumed.ang) setAngSet(resumed.ang);
+                    setCircle(resumed.circle ?? 1);
                     setStep(resumed.step!);
                   }}
                   style={{
-                    marginTop: 16, padding: "9px 16px", borderRadius: 999, cursor: "pointer",
+                    padding: "12px 16px", minHeight: 44, borderRadius: 999, cursor: "pointer",
                     fontFamily: FONT, fontSize: 13.5, fontWeight: 600, color: WARM,
                     background: "rgba(150,170,205,0.18)", border: `1px solid ${ACCENT}`,
                     backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
@@ -429,6 +676,50 @@ export default function RosaryPage() {
                   {t("rosary.resume", { defaultValue: "Pick up where you left off" })}
                 </button>
               )}
+
+              {/* WHICH BEADS ARE IN YOUR HAND — the toggle the owner asked for,
+                  at the foot of the opening slide. Two genuinely different
+                  objects prayed two genuinely different ways, so it sits below
+                  everything else with a rule above it: it changes what the
+                  whole rest of the deck is, not which set within one form. */}
+              <div style={{ marginTop: 6, paddingTop: 18, borderTop: `1px solid ${BORDER}`, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
+                  {t("rosary.which_beads", { defaultValue: "Which beads" })}
+                </p>
+                <div
+                  role="group"
+                  aria-label={t("rosary.which_beads", { defaultValue: "Which beads" })}
+                  className="rounded-full"
+                  style={{
+                    display: "inline-flex", padding: 4, gap: 4, background: CHROME_BG,
+                    backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+                    border: `1px solid ${BORDER}`,
+                  }}
+                >
+                  {([["roman", t("rosary.form_roman", { defaultValue: "Rosary" })],
+                     ["anglican", t("rosary.form_anglican", { defaultValue: "Anglican beads" })]] as const).map(([k, label]) => {
+                    const on = form === k;
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => chooseForm(k)}
+                        aria-pressed={on}
+                        className="rounded-full"
+                        style={{
+                          padding: "10px 18px", minHeight: 44, border: "none", cursor: "pointer",
+                          fontFamily: FONT, fontSize: 13, fontWeight: 600,
+                          color: on ? WARM : "rgba(240,237,230,0.62)",
+                          background: on ? "rgba(var(--ot-green, 46,107,64),0.55)" : "transparent",
+                          transition: "background 200ms ease-out, color 200ms ease-out",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </motion.div>
           )}
 
@@ -437,14 +728,14 @@ export default function RosaryPage() {
               key={`mystery-${beat.decade}`}
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "center" }}
+              style={{ maxWidth: 540, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}
             >
-              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
+              <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 11, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
                 {t("rosary.mystery_n", { defaultValue: "The {{which}} mystery", which: ordinal(beat.decade) })}
               </p>
               <h2
                 className="title-glow-breathe"
-                style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 14 }}
+                style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: TITLE_MD, lineHeight: 1.08, letterSpacing: "-0.02em", margin: 0 }}
               >
                 {beat.mystery.title}
               </h2>
@@ -452,7 +743,7 @@ export default function RosaryPage() {
                 /* Held small and soft — this is a mystery being announced, not
                    Visio's long look at one picture. Attribution rides the alt
                    text the way Visio's does; the ACT licence is the same one. */
-                <figure style={{ margin: "0 auto 18px" }}>
+                <figure style={{ margin: 0, width: "100%" }}>
                   <img
                     src={safeArtUrl(mysteryArt.img)}
                     alt={`${mysteryArt.title}${mysteryArt.artist ? ` — ${tidyArtist(mysteryArt.artist)}` : ""}`}
@@ -475,7 +766,7 @@ export default function RosaryPage() {
                   </figcaption>
                 </figure>
               )}
-              <p style={{ color: "rgba(226,232,244,0.92)", fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(17px, 4.4vw, 21px)", lineHeight: 1.5, marginBottom: 18 }}>
+              <p style={{ color: "var(--oh-ink2, #E8E4D8)", fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(18px, 3.4vw, 22px)", lineHeight: 1.55, margin: 0, maxWidth: 460 }}>
                 {beat.mystery.meditation}
               </p>
               {/* The passage opens in the app's reader, the same hand-off the
@@ -498,7 +789,7 @@ export default function RosaryPage() {
                     });
                 }}
                 style={{
-                  color: "rgba(168,186,216,0.95)", background: "none", border: "none",
+                  color: "var(--oh-sage, #8FAF96)", background: "none", border: "none",
                   // A link you tap on a phone needs a tappable box, not a text baseline.
                   padding: "10px 12px", minHeight: 44,
                   cursor: "pointer", fontFamily: FONT, fontSize: 14.5, textDecoration: "underline", textUnderlineOffset: 4,
@@ -506,7 +797,7 @@ export default function RosaryPage() {
               >
                 {beat.mystery.ref} →
               </button>
-              <p style={{ color: "rgba(240,237,230,0.6)", fontFamily: FONT, fontSize: 12.5, marginTop: 16 }}>
+              <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 12.5, margin: 0 }}>
                 {t("rosary.fruit", { defaultValue: "Fruit of the mystery" })}: {beat.mystery.fruit}
               </p>
             </motion.div>
@@ -517,25 +808,27 @@ export default function RosaryPage() {
               key={`repeat-${step}`}
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "center" }}
+              style={{ width: "100%", textAlign: "left", display: "flex", flexDirection: "column", gap: 12 }}
             >
               {/* Whose decade this is, held above the prayer — ten Hail Marys
                   are never prayed without the mystery in front of you. */}
-              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 10 }}>
+              <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
                 {beat.eyebrow}
               </p>
-              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(20px, 5vw, 28px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 6 }}>
+              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 600, fontSize: 22, lineHeight: 1.25, letterSpacing: "-0.01em", margin: 0 }}>
                 {beat.title}
               </h2>
-              <p style={{ color: "rgba(168,186,216,0.95)", fontFamily: FONT, fontSize: 13.5, fontWeight: 600, marginBottom: 18 }}>
+              <p style={{ color: "var(--oh-sage, #8FAF96)", fontFamily: FONT, fontSize: 13, fontWeight: 600, margin: 0 }}>
                 {/* Beads, not "times" (owner): it is what your hand is
                     holding, and it names the thing rather than the count. */}
                 {t("rosary.beads", { defaultValue: "{{times}} beads", times: beat.times })}
-                {beat.note ? ` — ${beat.note}` : ""}
               </p>
-              <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
-                {beat.body}
-              </p>
+              <PrayerLines text={beat.body} />
+              {beat.note && (
+                <p style={{ color: FAINT_GREEN, margin: 0, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, fontStyle: "italic" }}>
+                  {beat.note}
+                </p>
+              )}
             </motion.div>
           )}
 
@@ -544,25 +837,87 @@ export default function RosaryPage() {
               key={`prayer-${step}`}
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "center" }}
+              style={{ width: "100%", textAlign: "left", display: "flex", flexDirection: "column", gap: 12 }}
             >
+              {/* A PRAYER IS SET LIKE THE OFFICE SETS ONE (owner): eyebrow at
+                  10px/0.18em in faint sage, title at 22/600, body at 20/1.7 in
+                  Space Grotesk, left, measure capped at 600 — the office's
+                  collect slide exactly. Not centred serif italic, which turns
+                  the Creed into a pull-quote you can't read. */}
               {beat.eyebrow && (
-                <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 14 }}>
+                <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
                   {beat.eyebrow}
                 </p>
               )}
-              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(20px, 5vw, 28px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 16 }}>
+              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 600, fontSize: 22, lineHeight: 1.25, letterSpacing: "-0.01em", margin: 0 }}>
                 {beat.title}
               </h2>
-              <p
-                style={{
-                  color: "rgba(240,237,230,0.92)", margin: 0,
-                  fontFamily: SERIF, fontStyle: "italic",
-                  fontSize: beat.body.length > 420 ? "clamp(15px, 4vw, 17px)" : "clamp(19px, 4.8vw, 24px)",
-                  lineHeight: 1.6,
-                }}
+              <PrayerLines text={beat.body} />
+              {beat.note && (
+                <p style={{ color: FAINT_GREEN, margin: 0, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, fontStyle: "italic" }}>
+                  {beat.note}
+                </p>
+              )}
+            </motion.div>
+          )}
+
+          {/* SAID AND ANSWERED. A versicle and its response are two voices, and
+              the office sets them as two lines with the ℣/℟ marks rather than
+              as a title over a body — so does this. It was previously a
+              versicle jammed into the eyebrow slot, rendered in letterspaced
+              ten-point small caps, which read as a label for the slide. */}
+          {beat?.kind === "versicle" && (
+            <motion.div
+              key={`versicle-${step}`}
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              style={{ width: "100%", textAlign: "left", display: "flex", flexDirection: "column", gap: 12 }}
+            >
+              <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
+                {beat.eyebrow}
+              </p>
+              {([["℣", beat.v], ["℟", beat.r]] as const).map(([mark, line]) => (
+                <p key={mark} style={{ color: WARM, margin: 0, fontFamily: FONT, fontSize: 20, lineHeight: 1.7, maxWidth: 600, display: "flex", gap: 10 }}>
+                  <span aria-hidden style={{ flex: "0 0 auto", color: FAINT_GREEN, fontSize: 15, paddingTop: 4 }}>{mark}</span>
+                  <span>{line}</span>
+                </p>
+              ))}
+            </motion.div>
+          )}
+
+          {/* ROUND AGAIN — the Anglican circle's turn. A title card, because
+              it is a pause and a place, not something to read. */}
+          {beat?.kind === "circle" && (
+            <motion.div
+              key={`circle-${circle}`}
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              style={{ maxWidth: 540, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}
+            >
+              <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 11, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
+                {t("rosary.circle_done", { defaultValue: "Circle {{n}} of {{of}} complete", n: circle, of: ANGLICAN_CIRCLES })}
+              </p>
+              <h2
+                className="title-glow-breathe"
+                style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: TITLE_MD, lineHeight: 1.08, letterSpacing: "-0.02em", margin: 0 }}
               >
-                {beat.body}
+                {circle < ANGLICAN_CIRCLES
+                  ? t("rosary.round_again_title", { defaultValue: "Round again" })
+                  : t("rosary.circle_last", { defaultValue: "Three times round" })}
+              </h2>
+              {angArt?.img && (
+                <img
+                  src={safeArtUrl(angArt.img)}
+                  alt=""
+                  aria-hidden
+                  decoding="async"
+                  style={{ width: "100%", maxWidth: 240, maxHeight: "28dvh", objectFit: "contain", margin: 0, display: "block" }}
+                />
+              )}
+              <p style={{ color: "var(--oh-ink2, #E8E4D8)", fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(18px, 3.4vw, 22px)", lineHeight: 1.55, margin: 0, maxWidth: 460 }}>
+                {circle < ANGLICAN_CIRCLES
+                  ? t("rosary.round_again_body", { defaultValue: "You have come back to where you started, which is how a circle works. Go round again — the same words, further in." })
+                  : t("rosary.circle_last_body", { defaultValue: "Three times round the circle, and one prayer left to say. Return to the invitatory bead." })}
               </p>
             </motion.div>
           )}
@@ -572,14 +927,21 @@ export default function RosaryPage() {
               key="closing"
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "center" }}
+              style={{ maxWidth: 540, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}
             >
-              <p style={{ fontSize: 40, marginBottom: 18 }} aria-hidden>📿</p>
-              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 16 }}>
-                {t("rosary.closing_title", { defaultValue: "The rosary is prayed" })}
+              <p style={{ fontSize: 40, margin: 0 }} aria-hidden>📿</p>
+              <h2
+                className="title-glow-breathe"
+                style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: TITLE_MD, lineHeight: 1.08, letterSpacing: "-0.02em", margin: 0 }}
+              >
+                {isAnglican
+                  ? t("rosary.closing_title_ang", { defaultValue: "The circle is prayed" })
+                  : t("rosary.closing_title", { defaultValue: "The rosary is prayed" })}
               </h2>
-              <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
-                {t("rosary.closing_body", { defaultValue: "Five mysteries held, one decade at a time. Carry them into the day." })}
+              <p style={{ color: "var(--oh-ink2, #E8E4D8)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(18px, 3.4vw, 22px)", lineHeight: 1.55, maxWidth: 460 }}>
+                {isAnglican
+                  ? t("rosary.closing_body_ang", { defaultValue: "Three times round the circle, and back to the cross you started from. Carry the last prayer into the day." })
+                  : t("rosary.closing_body", { defaultValue: "Five mysteries held, one decade at a time. Carry them into the day." })}
               </p>
 
               {/**
@@ -594,9 +956,11 @@ export default function RosaryPage() {
                 * formatter for the name.
                 */}
               {creditedArt.length > 0 && (
-                <div style={{ marginTop: 28, textAlign: "left" }}>
-                  <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 11, fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 10, textAlign: "center" }}>
-                    {t("rosary.credits", { defaultValue: "The pictures" })}
+                <div style={{ marginTop: 12, textAlign: "left", width: "100%" }}>
+                  <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 11, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10, textAlign: "center" }}>
+                    {creditedArt.length === 1
+                      ? t("rosary.credit_one", { defaultValue: "The picture" })
+                      : t("rosary.credits", { defaultValue: "The pictures" })}
                   </p>
                   {creditedArt.map((a) => (
                     <p key={a.id} style={{ color: "rgba(240,237,230,0.6)", fontFamily: FONT, fontSize: 11, lineHeight: 1.55, margin: "0 0 8px" }}>
@@ -611,32 +975,23 @@ export default function RosaryPage() {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
+        {/* Bottom clearance — a real box, so it survives iOS's flex-overflow
+            padding-drop and the last line always scrolls clear of the pill. */}
+        <div aria-hidden style={{ flexShrink: 0, height: "calc(env(safe-area-inset-bottom) + 112px)" }} />
       </main>
 
-      {/* Bottom band — decade dots where the office puts its counter, then the
-          pill. On a decade, the dots are the BEADS; everywhere else they are
-          the five decades, so there is always a sense of how far in you are. */}
-      <div className="absolute left-0 right-0 flex flex-col items-center" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 22px)", zIndex: 2 }}>
-        {decadeOf !== null ? (
-          <div className="flex items-center justify-center gap-1.5" style={{ marginBottom: 16 }}>
-            {[1, 2, 3, 4, 5].map((d) => (
-              <span key={d} className="block rounded-full" style={{ width: 6, height: 6, background: d <= decadeOf ? DOT_ON : DOT_OFF }} />
-            ))}
-          </div>
-        ) : null}
-        <button
-          type="button"
-          // The bottom band is a SIBLING of <main>, not a child, so a tap on
-          // the pill does not also reach the decade's tap-to-advance — no
-          // double bead. (Checked, because it would be an easy thing to get
-          // wrong and an invisible one to notice.)
-          onClick={primary.onClick}
-          className="rounded-full py-3 px-12 transition-opacity hover:opacity-90 active:scale-[0.99]"
-          style={PILL}
-        >
-          {primary.label}
-        </button>
-      </div>
+      {/* THE OFFICE'S BOTTOM BAR (owner: "we want the bottom bar that the
+          office has") — Back · "N of M · Section" · Next, the same
+          DeckNavPill lectio, visio and audio divina already share. It
+          replaces a lone centred pill with a bare row of decade dots: the
+          dots said which decade, but nothing said where you were in the
+          whole, and there was no Back except the one in the corner. */}
+      <DeckNavPill
+        label={navLabel}
+        back={{ onClick: goBack, disabled: isIntro }}
+        primary={{ label: primary.label, onClick: primary.onClick }}
+      />
     </div>
   );
 }
