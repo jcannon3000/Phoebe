@@ -919,7 +919,7 @@ export default function RosaryPage() {
                   a rosary knows the mystery is what you hold while you pray the
                   decade; someone who has not reads four things and taps
                   Continue. One line, in the same voice as the bead rubrics. */}
-              <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, fontStyle: "italic", margin: 0 }}>
+              <p style={{ color: WARM, fontFamily: FONT, fontSize: 15, lineHeight: 1.55, margin: 0 }}>
                 {t("rosary.mystery_rubric", { defaultValue: "Look at it for a moment. You will hold this scene through the ten beads that follow." })}
               </p>
             </motion.div>
@@ -947,7 +947,7 @@ export default function RosaryPage() {
               </p>
               <PrayerLines text={beat.body} />
               {beat.note && (
-                <p style={{ color: FAINT_GREEN, margin: 0, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, fontStyle: "italic" }}>
+                <p style={{ color: WARM, margin: 0, fontFamily: FONT, fontSize: 15, lineHeight: 1.55 }}>
                   {beat.note}
                 </p>
               )}
@@ -976,7 +976,7 @@ export default function RosaryPage() {
               </h2>
               <PrayerLines text={beat.body} />
               {beat.note && (
-                <p style={{ color: FAINT_GREEN, margin: 0, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, fontStyle: "italic" }}>
+                <p style={{ color: WARM, margin: 0, fontFamily: FONT, fontSize: 15, lineHeight: 1.55 }}>
                   {beat.note}
                 </p>
               )}
@@ -1005,7 +1005,7 @@ export default function RosaryPage() {
                 </p>
               ))}
               {beat.note && (
-                <p style={{ color: FAINT_GREEN, margin: 0, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, fontStyle: "italic" }}>
+                <p style={{ color: WARM, margin: 0, fontFamily: FONT, fontSize: 15, lineHeight: 1.55 }}>
                   {beat.note}
                 </p>
               )}
