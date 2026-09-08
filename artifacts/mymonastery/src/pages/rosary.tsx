@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type CSSProperties } from "react";
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
@@ -149,7 +149,18 @@ export default function RosaryPage() {
   const beat = isIntro ? null : beats[step - 1] ?? null;
   const isClosing = beat?.kind === "closing";
 
-  useEffect(() => { setBead(0); }, [step]);
+  /**
+   * A new beat starts at its first bead — EXCEPT the one we just resumed onto.
+   *
+   * setStep and setBead batch together, so on a resume this effect ran after
+   * the commit and reset the restored bead straight back to zero: the resume
+   * landed on the right decade and then threw away where in it you were.
+   */
+  const resumingRef = useRef(false);
+  useEffect(() => {
+    if (resumingRef.current) { resumingRef.current = false; return; }
+    setBead(0);
+  }, [step]);
 
   // Write the place on every move. Cheap (one small JSON), and it means the
   // resume offer below is always truthful.
@@ -356,7 +367,8 @@ export default function RosaryPage() {
                       aria-pressed={on}
                       className="rounded-full"
                       style={{
-                        padding: "8px 14px",
+                        // 44px minimum — the four chips were ~30px tall.
+                        padding: "12px 16px", minHeight: 44,
                         fontFamily: FONT, fontSize: 13, fontWeight: 600,
                         cursor: "pointer",
                         color: on ? WARM : "rgba(240,237,230,0.66)",
@@ -377,7 +389,12 @@ export default function RosaryPage() {
               {resumed && (
                 <button
                   type="button"
-                  onClick={() => { setSet(resumed.set!); setStep(resumed.step!); if (typeof resumed.bead === "number") setBead(resumed.bead); }}
+                  onClick={() => {
+                    resumingRef.current = true;
+                    setSet(resumed.set!);
+                    setStep(resumed.step!);
+                    if (typeof resumed.bead === "number") setBead(resumed.bead);
+                  }}
                   style={{
                     marginTop: 16, padding: "9px 16px", borderRadius: 999, cursor: "pointer",
                     fontFamily: FONT, fontSize: 13.5, fontWeight: 600, color: WARM,
@@ -399,7 +416,7 @@ export default function RosaryPage() {
               style={{ maxWidth: 480, textAlign: "center" }}
             >
               <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
-                {t("rosary.mystery_n", { defaultValue: `The ${ordinal(beat.decade)} mystery` })}
+                {t("rosary.mystery_n", { defaultValue: "The {{which}} mystery", which: ordinal(beat.decade) })}
               </p>
               <h2
                 className="title-glow-breathe"
@@ -422,7 +439,9 @@ export default function RosaryPage() {
                   void openReadingPage(url, { officeTitle: def.name, slideLabel: `${beat.decade} of 5`, sectionLabel: beat.mystery.title });
                 }}
                 style={{
-                  color: "rgba(168,186,216,0.95)", background: "none", border: "none", padding: 0,
+                  color: "rgba(168,186,216,0.95)", background: "none", border: "none",
+                  // A link you tap on a phone needs a tappable box, not a text baseline.
+                  padding: "10px 12px", minHeight: 44,
                   cursor: "pointer", fontFamily: FONT, fontSize: 14.5, textDecoration: "underline", textUnderlineOffset: 4,
                 }}
               >
@@ -448,9 +467,11 @@ export default function RosaryPage() {
                 {beat.mystery.title}
               </p>
               <p style={{ color: "rgba(240,237,230,0.55)", fontFamily: FONT, fontSize: 12.5, marginBottom: 18 }}>
-                {t("rosary.bead_n_of_m", { defaultValue: `Bead ${bead + 1} of ${BEADS_PER_DECADE}` })}
+                {/* Interpolated, not baked into the default — a real translation of
+                    this key would otherwise lose the numbers entirely. */}
+                {t("rosary.bead_n_of_m", { defaultValue: "Bead {{n}} of {{total}}", n: bead + 1, total: BEADS_PER_DECADE })}
               </p>
-              <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(18px, 4.6vw, 22px)", lineHeight: 1.6 }}>
+              <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
                 {HAIL_MARY}
               </p>
             </motion.div>
@@ -468,14 +489,14 @@ export default function RosaryPage() {
                   {beat.eyebrow}
                 </p>
               )}
-              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(20px, 5vw, 27px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 16 }}>
+              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(20px, 5vw, 28px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 16 }}>
                 {beat.title}
               </h2>
               <p
                 style={{
                   color: "rgba(240,237,230,0.92)", margin: 0,
                   fontFamily: SERIF, fontStyle: "italic",
-                  fontSize: beat.body.length > 420 ? "clamp(15px, 3.9vw, 17.5px)" : "clamp(17px, 4.5vw, 21px)",
+                  fontSize: beat.body.length > 420 ? "clamp(15px, 4vw, 17px)" : "clamp(19px, 4.8vw, 24px)",
                   lineHeight: 1.6,
                 }}
               >
