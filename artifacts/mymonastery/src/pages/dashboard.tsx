@@ -41,7 +41,7 @@ import {
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, recordFddOpened,
   getReadingsTodayUrl, READINGS_PRAYED_EVENT, hasPrayedReadingsToday, recordReadingsOpened,
   SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, recordSsjeOpened,
-  VTS_READ_EVENT, hasReadVtsToday, isVtsPublishingDay,
+  VTS_READ_EVENT, hasReadVtsToday, isVtsPublishingDay, isVtsStillExpected,
   PSALMS_READ_EVENT, hasPrayedPsalmsToday,
   GUIDED_PRAYER_READ_EVENT, hasPrayedGuidedPrayerToday,
   CUSTOM_PRAYER_READ_EVENT, hasPrayedCustomToday, markCustomPrayed, unmarkCustomPrayed,
@@ -2962,7 +2962,7 @@ function VtsHomeCard() {
   // Today's actual commentary title (scraped from the VTS RSS feed). Only
   // fetched on a publishing day — no point warming this query on a weekend
   // the card won't even render.
-  const { data: vtsMeta } = useQuery<{ title: string; url: string }>({
+  const { data: vtsMeta } = useQuery<{ title: string; url: string; isToday?: boolean }>({
     queryKey: ["/api/vts/today-meta"],
     queryFn: () => apiRequest("GET", "/api/vts/today-meta"),
     staleTime: 30 * 60_000,
@@ -2978,6 +2978,13 @@ function VtsHomeCard() {
   // Weekday-only publisher — no card on Sat/Sun (see isVtsPublishingDay).
   // Both guards come AFTER every hook above so hook order stays unconditional.
   if (!isVtsPublishingDay()) return null;
+  /**
+   * …and a weekday VTS skipped. Labor Day was a Monday with no commentary and
+   * the card still stood there, unfillable. Same predicate useRhythmState uses
+   * (vtsCountsToday) on the same cached response, so the card, the dot and the
+   * done-count cannot disagree. Undecided still shows — see the note there.
+   */
+  if (vtsMeta?.isToday === false && !isVtsStillExpected()) return null;
   const vtsTitle = vtsMeta?.title ?? "";
   // In-app slideshow (VTS gave permission to bring the text into Phoebe) —
   // read-tracking happens there once the reader is actually stepped

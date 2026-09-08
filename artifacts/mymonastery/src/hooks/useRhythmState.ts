@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAndrewsVisible } from "@/lib/appSettings";
 import {
-  hasReadCacToday, hasReadFddToday, hasReadSsjeToday, hasReadVtsToday, isVtsPublishingDay,
+  hasReadCacToday, hasReadFddToday, hasReadSsjeToday, hasReadVtsToday, isVtsPublishingDay, isVtsStillExpected,
   CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT, VTS_READ_EVENT,
   hasPrayedPsalmsToday, PSALMS_READ_EVENT,
   hasPrayedGuidedPrayerToday, GUIDED_PRAYER_READ_EVENT,
@@ -305,6 +305,8 @@ export type RhythmState = {
   visioDone: boolean;
   iconsActive: boolean;
   iconsDone: boolean;
+  rosaryActive: boolean;
+  rosaryDone: boolean;
   spiritualsActive: boolean;
   spiritualsDone: boolean;
   complineDone: boolean;
@@ -566,6 +568,7 @@ export function useRhythmState(): RhythmState {
     walkSkipped: hasPracticeSkippedToday("walk"),
     visio: hasPracticeDoneToday("visio"),
     icons: hasPracticeDoneToday("icons"),
+    rosary: hasPracticeDoneToday("rosary"),
     spirituals: hasPracticeDoneToday("spirituals"),
     prayerList: hasPracticeDoneToday("prayer-list"),
   }));
@@ -580,6 +583,7 @@ export function useRhythmState(): RhythmState {
       walkSkipped: hasPracticeSkippedToday("walk"),
       visio: hasPracticeDoneToday("visio"),
     icons: hasPracticeDoneToday("icons"),
+    rosary: hasPracticeDoneToday("rosary"),
     spirituals: hasPracticeDoneToday("spirituals"),
       prayerList: hasPracticeDoneToday("prayer-list"),
     });
@@ -813,6 +817,9 @@ export function useRhythmState(): RhythmState {
   // WEEK is the icon's; the sitting is the day's, so completion is
   // day-scoped like every other practice card.
   const iconsActive = homeCardActive(hl, "icons");
+  // The Rosary — admin-only while it is being tried, so the card only ever
+  // appears for someone who could put it in their rule in the first place.
+  const rosaryActive = homeCardActive(hl, "rosary");
   // Spirituals is admin-only, not public — see lib/spiritualsFlag.ts. Every
   // consumer (DailyProgressBody's card, the layout dots, widgetSync) reads
   // spiritualsActive off this hook, so gating it here governs all of them
@@ -1311,6 +1318,7 @@ export function useRhythmState(): RhythmState {
   const walkDone = walkActive && (practiceLocal.walk || serverDone("walk"));
   const visioDone = visioActive && (practiceLocal.visio || serverDone("visio"));
   const iconsDone = iconsActive && (practiceLocal.icons || serverDone("icons"));
+  const rosaryDone = rosaryActive && (practiceLocal.rosary || serverDone("rosary"));
   /**
    * SPIRITUALS COUNTS FROM ITS OWN HISTORY as well as the usual two.
    *
@@ -1612,7 +1620,31 @@ export function useRhythmState(): RhythmState {
   // The card self-hides for both too, but doing it here is what keeps
   // reflectActive/reflectDone honest when VTS is the ONLY chosen source
   // (otherwise the day could never read as complete).
-  const vtsCountsToday = entitlements.vts && isVtsPublishingDay();
+  /**
+   * …AND ONLY WHEN THERE IS ACTUALLY A COMMENTARY TODAY.
+   *
+   * A weekday is not the same as a publishing day. Labor Day 2026-09-07 was a
+   * Monday, VTS posted nothing, and the card still sat in the rhythm as a
+   * permanently-undone anchor (owner: "today was labor day so there was no
+   * update to the deans commentary … in those cases dont have it show up in
+   * the routine"). The feed already tells us — resolveToday() compares the
+   * newest item's pubDate against the NEW YORK day and returns isToday — the
+   * home just wasn't asking.
+   *
+   * Undecided (still loading, offline, or the request failed) reads as
+   * PUBLISHING, exactly as Sojourners does below: hiding a real commentary
+   * because a check hasn't answered would be the worse of the two mistakes.
+   * The weekday test stays in front of it as the cheap local gate, so no
+   * request goes out on a Saturday at all.
+   */
+  const { data: vtsMeta } = useQuery<{ title: string; url: string; isToday?: boolean }>({
+    queryKey: ["/api/vts/today-meta"],
+    queryFn: () => apiRequest("GET", "/api/vts/today-meta") as Promise<{ title: string; url: string; isToday?: boolean }>,
+    enabled: !guest && entitlements.vts && isVtsPublishingDay() && chosenReflections.includes("vts"),
+    staleTime: 30 * 60_000,
+  });
+  const vtsCountsToday = entitlements.vts && isVtsPublishingDay()
+    && (vtsMeta?.isToday !== false || isVtsStillExpected());
   /**
    * …AND SOJOURNERS ONLY WHILE THEY ARE PUBLISHING.
    *
@@ -1905,6 +1937,8 @@ export function useRhythmState(): RhythmState {
     visioDone,
     iconsActive,
     iconsDone,
+    rosaryActive,
+    rosaryDone,
     spiritualsActive,
     spiritualsDone,
     complineDone,

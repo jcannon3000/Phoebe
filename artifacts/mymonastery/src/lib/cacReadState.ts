@@ -736,6 +736,44 @@ export function isVtsPublishingDay(now: Date = new Date()): boolean {
   const day = now.getDay(); // 0 = Sunday, 6 = Saturday
   return day !== 0 && day !== 6;
 }
+
+/**
+ * IS TODAY'S COMMENTARY STILL PLAUSIBLY COMING?
+ *
+ * `isToday === false` means the feed's newest piece is not from today — but
+ * that covers two different mornings:
+ *
+ *   • 7am on an ordinary weekday. VTS posts on weekday MORNINGS and hasn't
+ *     yet. Owner: "if the Dean's commentary has not been updated yet, and
+ *     it's a weekday, put it in later faded, and second line being waiting
+ *     for update." The card belongs in the routine; it just isn't ready.
+ *
+ *   • Labor Day. Nothing is coming at all. Owner: "today was labor day so
+ *     there was no update to the deans commentary … in those cases dont have
+ *     it show up in ther routine."
+ *
+ * The feed cannot tell these apart — on both, the newest item is Friday's —
+ * so the clock does. Before the cutoff the card waits; after it, the day is
+ * plainly not going to bring one and the card leaves the rhythm rather than
+ * standing there as an anchor nothing can fill.
+ *
+ * New York, because that is when VTS considers a day to have started; the
+ * reader's own timezone would move the cutoff around the world.
+ */
+const VTS_LATEST_PLAUSIBLE_HOUR = 13; // 1pm ET — VTS posts in the morning.
+export function isVtsStillExpected(now: Date = new Date()): boolean {
+  if (!isVtsPublishingDay(now)) return false;
+  try {
+    const h = Number(new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York", hour: "numeric", hour12: false,
+    }).format(now));
+    return Number.isFinite(h) && h < VTS_LATEST_PLAUSIBLE_HOUR;
+  } catch {
+    // No Intl timezone data — treat it as still coming rather than hiding a
+    // commentary that may well be there.
+    return true;
+  }
+}
 export function recordVtsOpened(): void { markVtsRead(); }
 
 // ── Forward Day by Day (Forward Movement) ──
