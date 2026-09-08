@@ -78,6 +78,98 @@ const TITLE_LG = "clamp(40px, 8vw, 48px)"; // threshold title
 const TITLE_MD = "clamp(36px, 7vw, 44px)"; // a mystery being announced
 
 /**
+ * WHAT THE BEADS LOOK LIKE.
+ *
+ * The deck's directions are its best feature and its steepest cliff: every
+ * beat names a physical bead — "on the crucifix", "on the first large bead",
+ * "on the next three beads", "on the ten small beads", "on the medal" — and
+ * somebody who has never held a rosary cannot map one of those to an object.
+ * Fifteen distinct directions, and the opening slide named four of the words
+ * without explaining any of them.
+ *
+ * So the opening shows the thing. Labelled with the SAME WORDS the rubrics
+ * use, deliberately — this diagram is a key to the rest of the deck, not
+ * decoration. One decade is drawn out in full and the other four are the
+ * dashed arc, because "a decade is ten small beads after a large one" is the
+ * single fact that makes the whole walk legible.
+ *
+ * Inline SVG rather than an image: it has to be legible at 300px on a dark
+ * ground and it costs nothing to ship.
+ */
+function BeadDiagram({ anglican }: { anglican: boolean }) {
+  const BEAD = "rgba(240,237,230,0.88)";
+  const RING = "rgba(143,175,150,0.32)";
+  const LEAD = "rgba(143,175,150,0.45)";
+  const LABEL = "rgba(143,175,150,0.9)";
+  const pt = (cx: number, cy: number, r: number, deg: number) => {
+    const a = (deg * Math.PI) / 180;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)] as const;
+  };
+  const label = (x: number, y: number, text: string, anchorEnd = false) => (
+    <text x={x} y={y} fill={LABEL} fontSize={11} fontFamily={FONT} textAnchor={anchorEnd ? "end" : "start"}>{text}</text>
+  );
+
+  if (anglican) {
+    const cx = 150, cy = 118, r = 78;
+    const cruciform = [0, 90, 180, 270].map((d) => pt(cx, cy, r, d));
+    const week: Array<readonly [number, number]> = [];
+    for (let q = 0; q < 4; q++) for (let i = 1; i <= 7; i++) week.push(pt(cx, cy, r, q * 90 + i * 11.25));
+    return (
+      <svg viewBox="0 0 300 300" role="img" aria-label="Anglican prayer beads: a cross, one invitatory bead, then a circle of four cruciform beads dividing four weeks of seven beads." style={{ width: "100%", maxWidth: 280, margin: "0 auto", display: "block" }}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={RING} strokeWidth={1} />
+        {week.map(([x, y], i) => <circle key={i} cx={x} cy={y} r={3} fill={BEAD} />)}
+        {cruciform.map(([x, y], i) => <circle key={`c${i}`} cx={x} cy={y} r={6} fill={BEAD} />)}
+        {/* the pendant: the invitatory bead, then the cross */}
+        <line x1={cx} y1={cy + r} x2={cx} y2={232} stroke={RING} strokeWidth={1} />
+        <circle cx={cx} cy={222} r={6} fill={BEAD} />
+        <path d={`M ${cx} 240 v 34 M ${cx - 12} 252 h 24`} stroke={BEAD} strokeWidth={3} strokeLinecap="round" fill="none" />
+        <line x1={cx + r + 8} y1={cy} x2={252} y2={cy} stroke={LEAD} strokeWidth={1} />
+        {label(256, cy + 4, "cruciform")}
+        <line x1={week[3]![0] + 6} y1={week[3]![1] + 4} x2={236} y2={196} stroke={LEAD} strokeWidth={1} />
+        {label(240, 200, "a week")}
+        <line x1={cx - 10} y1={222} x2={92} y2={222} stroke={LEAD} strokeWidth={1} />
+        {label(88, 226, "invitatory", true)}
+        <line x1={cx - 14} y1={258} x2={92} y2={266} stroke={LEAD} strokeWidth={1} />
+        {label(88, 270, "the cross", true)}
+      </svg>
+    );
+  }
+
+  const cx = 150, cy = 112, r = 78;
+  // One decade drawn in full — a large bead, then ten small — with the other
+  // four as the dashed arc. That is the fact the whole walk turns on.
+  const bigOnLoop = pt(cx, cy, r, 100);
+  const decade = Array.from({ length: 10 }, (_, i) => pt(cx, cy, r, 108 + i * 6.4));
+  return (
+    <svg viewBox="0 0 300 300" role="img" aria-label="A rosary: a crucifix, then a large bead, three small beads, the medal, and a loop of five decades — each a large bead followed by ten small ones." style={{ width: "100%", maxWidth: 280, margin: "0 auto", display: "block" }}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={RING} strokeWidth={1} strokeDasharray="3 5" />
+      {decade.map(([x, y], i) => <circle key={i} cx={x} cy={y} r={3.2} fill={BEAD} />)}
+      <circle cx={bigOnLoop[0]} cy={bigOnLoop[1]} r={6} fill={BEAD} />
+      <text x={cx} y={cy + 4} fill={LABEL} fontSize={11} fontFamily={FONT} textAnchor="middle">five of these</text>
+      {/* the pendant, in the order you pray it */}
+      <line x1={cx} y1={cy + r} x2={cx} y2={214} stroke={RING} strokeWidth={1} />
+      <circle cx={cx} cy={198} r={7} fill={BEAD} />
+      <circle cx={cx} cy={222} r={6} fill={BEAD} />
+      {[244, 258, 272].map((y) => <circle key={y} cx={cx} cy={y} r={3.2} fill={BEAD} />)}
+      <path d={`M ${cx} 282 v 14`} stroke={RING} strokeWidth={1} />
+      <path d={`M ${cx} 284 v 16 M ${cx - 9} 290 h 18`} stroke={BEAD} strokeWidth={3} strokeLinecap="round" fill="none" />
+      <line x1={decade[4]![0] - 6} y1={decade[4]![1]} x2={38} y2={150} stroke={LEAD} strokeWidth={1} />
+      {label(34, 154, "ten small beads", true)}
+      <line x1={bigOnLoop[0] - 8} y1={bigOnLoop[1]} x2={38} y2={116} stroke={LEAD} strokeWidth={1} />
+      {label(34, 120, "a large bead", true)}
+      <line x1={cx + 10} y1={198} x2={196} y2={198} stroke={LEAD} strokeWidth={1} />
+      {label(200, 202, "the medal")}
+      <line x1={cx + 9} y1={222} x2={196} y2={224} stroke={LEAD} strokeWidth={1} />
+      {label(200, 228, "large bead")}
+      <line x1={cx + 7} y1={258} x2={196} y2={258} stroke={LEAD} strokeWidth={1} />
+      {label(200, 262, "three beads")}
+      <line x1={cx + 11} y1={292} x2={196} y2={292} stroke={LEAD} strokeWidth={1} />
+      {label(200, 296, "the crucifix")}
+    </svg>
+  );
+}
+
+/**
  * A PRAYER, SET IN LINES.
  *
  * The texts carry the office's own line breaking — a line per clause, two
@@ -821,6 +913,15 @@ export default function RosaryPage() {
               <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 12.5, margin: 0 }}>
                 {t("rosary.fruit", { defaultValue: "Fruit of the mystery" })}: {beat.mystery.fruit}
               </p>
+              {/* WHAT TO DO WITH A MYSTERY. The card announces a scene and
+                  then hands you a picture, a passage and a fruit — and says
+                  nothing about what any of that is FOR. Someone who has prayed
+                  a rosary knows the mystery is what you hold while you pray the
+                  decade; someone who has not reads four things and taps
+                  Continue. One line, in the same voice as the bead rubrics. */}
+              <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, fontStyle: "italic", margin: 0 }}>
+                {t("rosary.mystery_rubric", { defaultValue: "Look at it for a moment. You will hold this scene through the ten beads that follow." })}
+              </p>
             </motion.div>
           )}
 
@@ -903,6 +1004,11 @@ export default function RosaryPage() {
                   <span>{line}</span>
                 </p>
               ))}
+              {beat.note && (
+                <p style={{ color: FAINT_GREEN, margin: 0, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, fontStyle: "italic" }}>
+                  {beat.note}
+                </p>
+              )}
             </motion.div>
           )}
 

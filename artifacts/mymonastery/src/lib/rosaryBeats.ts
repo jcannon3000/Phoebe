@@ -33,7 +33,7 @@ export type Beat =
   | { kind: "prayer"; eyebrow: string; title: string; body: string; note?: string }
   | { kind: "mystery"; mystery: Mystery; decade: number }
   | { kind: "repeat"; times: number; eyebrow: string; title: string; body: string; note?: string; decade?: number }
-  | { kind: "versicle"; eyebrow: string; v: string; r: string }
+  | { kind: "versicle"; eyebrow: string; v: string; r: string; note?: string }
   | { kind: "circle" }
   | { kind: "closing" };
 
@@ -43,6 +43,13 @@ export function ordinal(n: number): string {
 export function cap(x: string): string { return x.replace(/^./, (c) => c.toUpperCase()); }
 
 /**
+ * SAY IT HOW MANY TIMES? A repeat slide shows the prayer ONCE with the bead
+ * count above it, which is right for anyone who has prayed a rosary before
+ * and silently wrong for anyone who has not: read the Hail Mary, tap Continue,
+ * and you have prayed a decade of one. The count line stays "10 beads" (the
+ * owner's word — it is what your hand is holding), and the rubric under the
+ * prayer now says the number out loud.
+ *
  * THE DIRECTIONS ARE THE POINT (owner: "audit to make sure the directions are
  * being shown properly — all the instructions").
  *
@@ -58,24 +65,38 @@ export function cap(x: string): string { return x.replace(/^./, (c) => c.toUpper
 export function buildRomanBeats(set: MysterySet): Beat[] {
   const def = MYSTERY_SETS[set];
   const beats: Beat[] = [
-    { kind: "prayer", eyebrow: "On the crucifix", title: "The Sign of the Cross", body: SIGN_OF_THE_CROSS },
-    { kind: "prayer", eyebrow: "On the crucifix", title: "The Apostles' Creed", body: APOSTLES_CREED },
-    { kind: "prayer", eyebrow: "On the first large bead", title: "Our Father", body: OUR_FATHER },
+    { kind: "prayer", eyebrow: "On the crucifix", title: "The Sign of the Cross", body: SIGN_OF_THE_CROSS,
+      note: "Take the crucifix between your fingers. The rosary begins and ends here." },
+    { kind: "prayer", eyebrow: "On the crucifix", title: "The Apostles' Creed", body: APOSTLES_CREED,
+      note: "Still holding the crucifix — you have not moved to the beads yet." },
+    { kind: "prayer", eyebrow: "On the first large bead", title: "Our Father", body: OUR_FATHER,
+      note: "Move up from the crucifix to the single large bead above it." },
     {
       kind: "repeat", times: OPENING_INTENTIONS.length,
       eyebrow: "On the next three beads", title: "Hail Mary", body: HAIL_MARY,
-      note: `One ${OPENING_INTENTIONS.join(", one ")}.`,
+      note: `The three small beads in a row above it. Say it three times — one ${OPENING_INTENTIONS.join(", one ")}.`,
     },
-    { kind: "prayer", eyebrow: "Before the first decade", title: "Glory be", body: GLORY_BE },
+    { kind: "prayer", eyebrow: "Before the first decade", title: "Glory be", body: GLORY_BE,
+      note: "One more bead brings you to the medal, where the loop begins. The five decades go round from there." },
   ];
   for (const m of def.mysteries) {
     beats.push({ kind: "mystery", mystery: m, decade: m.n });
-    beats.push({ kind: "prayer", eyebrow: "On the large bead", title: "Our Father", body: OUR_FATHER });
+    beats.push({
+      kind: "prayer", eyebrow: "On the large bead", title: "Our Father", body: OUR_FATHER,
+      note: m.n === 1
+        ? "The first large bead on the loop, just past the medal."
+        : "The large bead your fingers have just reached, at the head of this decade.",
+    });
     beats.push({
       kind: "repeat", times: BEADS_PER_DECADE, eyebrow: m.title, title: "Hail Mary", body: HAIL_MARY,
-      note: "On the ten small beads, holding the mystery.", decade: m.n,
+      note: "Say it ten times, once on each small bead, holding the mystery.", decade: m.n,
     });
-    beats.push({ kind: "prayer", eyebrow: "After the ten beads", title: "Glory be", body: GLORY_BE });
+    beats.push({
+      kind: "prayer", eyebrow: "After the ten beads", title: "Glory be", body: GLORY_BE,
+      note: m.n === 5
+        ? "The tenth bead of the last decade. The loop is closed."
+        : "You are at the end of this decade, on the chain before the next large bead.",
+    });
     // The Fatima prayer is a twentieth-century addition, prayed very widely
     // and required nowhere. Saying so is the honest rubric, and it means
     // nobody wonders whether Continue is skipping something.
@@ -84,10 +105,21 @@ export function buildRomanBeats(set: MysterySet): Beat[] {
       note: "Widely prayed, and optional — continue if you don't use it.",
     });
   }
-  beats.push({ kind: "prayer", eyebrow: "On the medal", title: "Hail, holy Queen", body: HAIL_HOLY_QUEEN });
-  beats.push({ kind: "versicle", eyebrow: "Said and answered", v: CONCLUDING_VERSICLE, r: CONCLUDING_RESPONSE });
+  beats.push({
+    kind: "prayer", eyebrow: "On the medal", title: "Hail, holy Queen", body: HAIL_HOLY_QUEEN,
+    note: "Round the loop and back to the medal you set out from.",
+  });
+    beats.push({
+    kind: "versicle", eyebrow: "Said and answered", v: CONCLUDING_VERSICLE, r: CONCLUDING_RESPONSE,
+    // ℣ and ℟ are two glyphs a first-timer has never met. Praying alone you
+    // say both — which is the one thing the marks do not tell you.
+    note: "Praying alone, say both lines. ℣ is the line that calls, ℟ the one that answers.",
+  });
   beats.push({ kind: "prayer", eyebrow: "Let us pray", title: "The Concluding Prayer", body: CONCLUDING_PRAYER });
-  beats.push({ kind: "prayer", eyebrow: "On the crucifix", title: "The Sign of the Cross", body: SIGN_OF_THE_CROSS });
+  beats.push({
+    kind: "prayer", eyebrow: "On the crucifix", title: "The Sign of the Cross", body: SIGN_OF_THE_CROSS,
+    note: "Back down the short chain to the crucifix, where you began.",
+  });
   beats.push({ kind: "closing" });
   return beats;
 }
@@ -106,22 +138,32 @@ export function buildRomanBeats(set: MysterySet): Beat[] {
 export function buildAnglicanBeats(key: AnglicanSet): Beat[] {
   const def = ANGLICAN_SETS[key];
   const beats: Beat[] = [
-    { kind: "prayer", eyebrow: "On the cross", title: "The Sign of the Cross", body: def.cross },
-    { kind: "prayer", eyebrow: "On the invitatory bead", title: "The Invitatory", body: def.invitatory },
+    { kind: "prayer", eyebrow: "On the cross", title: "The Sign of the Cross", body: def.cross,
+      note: "Take the cross between your fingers. The circle begins and ends here." },
+    { kind: "prayer", eyebrow: "On the invitatory bead", title: "The Invitatory", body: def.invitatory,
+      note: "The single bead between the cross and the circle. You come back to it at the head of each time round, and once more at the end." },
   ];
   for (let w = 1; w <= WEEKS_PER_CIRCLE; w++) {
     beats.push({
       kind: "prayer", eyebrow: `On the ${ordinal(w)} cruciform bead`, title: def.cruciformTitle, body: def.cruciform,
-      note: w === 1 ? "The four cruciform beads make the cross within the circle." : undefined,
+      note: w === 1
+        ? "Move onto the circle. The four large beads spaced around it make a cross within the ring — this is the first."
+        : "The next large bead round the circle, a quarter turn on.",
     });
     beats.push({
       kind: "repeat", times: BEADS_PER_WEEK, eyebrow: `The ${ordinal(w)} week`, title: def.weekTitle, body: def.week,
-      note: `On the seven beads of the ${ordinal(w)} week.`, decade: w,
+      note: `Say it seven times, once on each bead of the ${ordinal(w)} week.`, decade: w,
     });
   }
   beats.push({ kind: "circle" });
-  beats.push({ kind: "prayer", eyebrow: "Back on the invitatory bead", title: "The Lord's Prayer", body: ANGLICAN_CLOSING_PRAYER });
-  beats.push({ kind: "prayer", eyebrow: "On the cross", title: "The Blessing", body: ANGLICAN_DISMISSAL });
+  beats.push({
+    kind: "prayer", eyebrow: "Back on the invitatory bead", title: "The Lord's Prayer", body: ANGLICAN_CLOSING_PRAYER,
+    note: "Off the circle and back down to the bead you set out from — the hundredth prayer.",
+  });
+  beats.push({
+    kind: "prayer", eyebrow: "On the cross", title: "The Blessing", body: ANGLICAN_DISMISSAL,
+    note: "Back to the cross, where you began.",
+  });
   beats.push({ kind: "closing" });
   return beats;
 }
