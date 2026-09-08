@@ -42,6 +42,19 @@
 
         </activity>
 
+        <!-- The in-app reading. A plain Activity rather than a Capacitor
+             bridge one: it is a WebView showing somebody else's page, and it
+             must NOT get the app's JS bridge. singleTop so a second tap on a
+             reference re-uses it instead of stacking readers; the Done button
+             and the office pill both just finish() it. -->
+        <activity
+            android:name=".ReaderActivity"
+            android:label="@string/app_name"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
