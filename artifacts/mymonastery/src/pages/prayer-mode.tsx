@@ -2475,7 +2475,13 @@ export default function PrayerModePage() {
      * layer is for. A failed ask is not an answer: while offline, stay put and
      * let the page paint from what is saved.
      */
-    if (isOnline() && !authLoading && !user) setLocation("/");
+    /**
+     * NO SIGN-IN GATE. /prayer-mode is in GUEST_ALLOWED_PREFIX; GuestGate owns
+     * this and says yes. Identical gate, identical history, identical fix as
+     * bcp-daily-office — see the long note there. It bounced a session-less
+     * visitor out of the prayer slideshow while a signed-in one sailed
+     * through, which is why nobody caught it.
+     */
   }, [user, authLoading, setLocation]);
 
   // Force a fresh fetch of every data source the slideshow depends on

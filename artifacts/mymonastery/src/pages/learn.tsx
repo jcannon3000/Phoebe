@@ -65,7 +65,12 @@ export default function LearnPage() {
   ];
 
   useEffect(() => {
-    if (!isLoading && !user) setLocation("/");
+    /**
+     * NO SIGN-IN GATE. /learn is in GUEST_ALLOWED_EXACT — the Courses page is
+     * one of the guest menu's own rows, so bouncing a guest off it sent them
+     * back to the screen they had just tapped from. Same class as the /bcp
+     * family; see bcp-daily-office.
+     */
   }, [user, isLoading, setLocation]);
 
   if (isLoading || !user) return null;

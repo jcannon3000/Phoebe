@@ -206,13 +206,43 @@ export default function CustomizePage() {
       // evening review. So this one pick programs BOTH sides, rather than
       // praying PACT twice. Every other choice stays the same on both sides.
       setSideLevel("morning", choice);
-      setSideLevel("evening", choice === "guided-prayer" ? "examen" : choice);
+      /**
+       * DAILY SCRIPTURE IS A MORNING PRACTICE, ONCE (owner, 2026-09-08: "if
+       * they set their light customizer to daily scripture we just want one
+       * practice in the morning, just turn their evening off, and we want it
+       * the slideshow").
+       *
+       * Every pick but Simple Guided programmed BOTH sides with the same
+       * level, so choosing Daily Scripture Readings put the same deck on the
+       * morning AND the evening — two identical practices for a choice that
+       * reads as one. The day's appointed lessons are read once; there is no
+       * second set in the evening to read.
+       *
+       * Same shape as the guided-prayer line beside it: one pick, both sides
+       * programmed, just not both the same. "ask" is a side's OFF state.
+       */
+      setSideLevel(
+        "evening",
+        choice === "guided-prayer" ? "examen"
+          : choice === "readings" ? "ask"
+            : choice,
+      );
       // Owner: "on the light customizer, if they chose offices, have the medium
       // be venite." Only the FULL office — Venite has no working deep link for
       // anything else (Compline renders blank there, and psalms/devotion/
       // readings aren't offices it serves), so every other pick still reads on
       // screen. Both sides map to morning-prayer / evening-prayer, which are
       // exactly the two Venite handles.
+      /**
+       * …AND IT OPENS THE SLIDESHOW, NOT VENITE (owner, same note).
+       *
+       * "read" is Phoebe's own deck. This already resolved to "read" for
+       * every non-office pick, but it is written EXPLICITLY on both sides and
+       * always — because getDefaultOfficeEntry()'s global fallback is
+       * "venite", so a side left unwritten silently hands the reader off to
+       * venite.app, which has no working deep link for the readings anyway.
+       * An explicit "read" is the only thing that keeps that fallback out.
+       */
       const entry = choice === "office" ? "venite" : "read";
       setSideEntry("morning", entry);
       setSideEntry("evening", entry);

@@ -60,7 +60,28 @@ export default function BcpIntercessionsPage() {
      * layer is for. A failed ask is not an answer: while offline, stay put and
      * let the page paint from what is saved.
      */
-    if (isOnline() && !isLoading && !user) setLocation("/");
+    /**
+     * NO SIGN-IN GATE HERE. GuestGate owns route permission (App.tsx), and it
+     * ALLOWS this route for guests — the whole /bcp family is in
+     * GUEST_ALLOWED_PREFIX, and the endpoints behind it answer without a
+     * session (verified against production with no cookies: /office/morning,
+     * /office/evening and /office/scripture all 200).
+     *
+     * This page-level redirect disagreed with that gate and won, because it
+     * runs after it: a visitor with NO session at all — not the anonymous
+     * device user, which is truthy here, but a genuinely session-less one —
+     * reached the deck and was thrown back to the home screen. Owner,
+     * 2026-09-08, on the last iOS build across two phones: "when you click
+     * daily readings ... it just glitches and goes to home", logged out, while
+     * logged in it worked. Signed in, `user` is truthy and this never fired,
+     * which is exactly why it survived so long.
+     *
+     * It had already been narrowed once — `isOnline()` was bolted on when the
+     * same gate made every saved office unreachable offline — which was the
+     * warning that the gate itself was wrong, not its condition. Two gates for
+     * one question is the drift this codebase keeps paying for; there is one
+     * now, and it is GuestGate.
+     */
   }, [user, isLoading, setLocation]);
 
   // Close modal on Escape key

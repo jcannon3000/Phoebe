@@ -38,7 +38,17 @@ export default function FddSitPage() {
   const today = new Date().toLocaleDateString("en-CA");
 
   useEffect(() => {
-    if (!authLoading && !user) setLocation("/");
+    /**
+     * NO SIGN-IN GATE. /reflect/fdd is in GUEST_ALLOWED_EXACT and the endpoint
+     * behind it is public — GuestGate owns this decision, and it says yes.
+     *
+     * Worse here than on the /bcp pages that carried the same contradiction:
+     * Forward Day by Day is the DEFAULT rhythm's daily word (seed v9), so a
+     * logged-out visitor tapping the card their own home screen offered them
+     * was thrown back to that home screen. And with no isOnline() guard, a
+     * failed /auth/me offline read as "no account" too. See the long note in
+     * bcp-daily-office.tsx.
+     */
   }, [user, authLoading, setLocation]);
 
   const { data } = useQuery<FddToday>({
