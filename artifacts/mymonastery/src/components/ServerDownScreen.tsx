@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { boundedFetch } from "@/lib/boundedFetch";
 import { isReallyOnline } from "@/lib/offline";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/queryClient";
@@ -46,15 +47,24 @@ function isServerSideError(err: unknown): boolean {
 
 async function probeHealth(): Promise<boolean> {
   try {
-    const ctrl = new AbortController();
-    const timeout = window.setTimeout(() => ctrl.abort(), 4500);
-    const res = await fetch("/api/healthz", {
+    /**
+     * boundedFetch, NOT an AbortController.
+     *
+     * CapacitorHttp replaces window.fetch on device and never reads
+     * options.signal, so the abort below timed nothing out: in Airplane Mode
+     * this promise simply never settled, runProbe never returned, and the
+     * recovery loop stopped for the rest of the session without a trace. A
+     * raced timer is the only bound that holds here — the same reason the
+     * whole offline layer goes through boundedFetch.
+     *
+     * It also teaches lib/offline that the network failed, which is what
+     * keeps isOnline() honest when navigator.onLine is lying.
+     */
+    const res = await boundedFetch("/api/healthz", {
       method: "GET",
-      signal: ctrl.signal,
       credentials: "omit",
       cache: "no-store",
-    });
-    window.clearTimeout(timeout);
+    }, 4500);
     if (!res.ok) return false;
     // Captive portals love to return 200 with HTML. Insist on JSON
     // shaped { status: "ok" } so we don't false-recover on a portal.

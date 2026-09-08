@@ -358,14 +358,41 @@ export async function runOfficePrefetch(opts?: { force?: boolean }): Promise<voi
     const eveningMode = modeForSide("evening");
     const morningExtraMode = extraModeForSide("morning");
     const eveningExtraMode = extraModeForSide("evening");
+    /**
+     * MORNING AND EVENING PRAYER ARE ALWAYS SAVED, whatever the rule says.
+     *
+     * modeForSide returns null for every level that isn't office / devotion /
+     * creation — and the default rhythm (seed v8) is Simple Guided Prayer in
+     * the morning and the Examen in the evening, so for a person who has never
+     * customized, BOTH came back null and not one office was saved. Compline
+     * and the Scripture Reading were warmed unconditionally; the two offices
+     * the app is actually named for were not.
+     *
+     * Meanwhile /offline promises, in these words, "Daily Offices — Morning and
+     * Evening Prayer, Compline and the Sunday readings". They are always one
+     * tap away on the Daily Offices page regardless of anybody's rule, so they
+     * are warmed on exactly the footing Compline already had. A deck is a few
+     * dozen KB; this is the difference between that promise being true and the
+     * owner meeting a blank Morning Prayer in Airplane Mode again.
+     *
+     * Keyed by mode so a rule that already asks for one of them queues it once,
+     * not twice.
+     */
+    const dayModes = new Map<LiturgyMode, OfficeSide>();
+    if (morningMode) dayModes.set(morningMode, "morning");
+    if (eveningMode) dayModes.set(eveningMode, "evening");
+    // A side's SECOND practice gets the same offline treatment as its anchor.
+    if (morningExtraMode) dayModes.set(morningExtraMode, "morning");
+    if (eveningExtraMode) dayModes.set(eveningExtraMode, "evening");
+    if (!dayModes.has("morning")) dayModes.set("morning", "morning");
+    if (!dayModes.has("evening")) dayModes.set("evening", "evening");
+
     const jobs: Array<() => Promise<void>> = [];
     for (let i = 0; i < WINDOW_DAYS; i++) {
       const date = ymdPlusDays(i);
-      if (morningMode) jobs.push(async () => { if (await fetchAndCacheOneCounting(morningMode, date, confessionFor(morningMode, "morning"), { noteFetched })) noteSaved(); });
-      if (eveningMode) jobs.push(async () => { if (await fetchAndCacheOneCounting(eveningMode, date, confessionFor(eveningMode, "evening"), { noteFetched })) noteSaved(); });
-      // A side's SECOND practice gets the same offline treatment as its anchor.
-      if (morningExtraMode) jobs.push(async () => { if (await fetchAndCacheOneCounting(morningExtraMode, date, confessionFor(morningExtraMode, "morning"), { noteFetched })) noteSaved(); });
-      if (eveningExtraMode) jobs.push(async () => { if (await fetchAndCacheOneCounting(eveningExtraMode, date, confessionFor(eveningExtraMode, "evening"), { noteFetched })) noteSaved(); });
+      for (const [mode, side] of dayModes) {
+        jobs.push(async () => { if (await fetchAndCacheOneCounting(mode, date, confessionFor(mode, side), { noteFetched })) noteSaved(); });
+      }
       // Compline has no side/level of its own — always available every
       // evening, so always warmed regardless of either side's rule.
       jobs.push(async () => { if (await fetchAndCacheOneCounting("compline", date, "", { noteFetched })) noteSaved(); });
@@ -400,7 +427,8 @@ export async function runOfficePrefetch(opts?: { force?: boolean }): Promise<voi
       jobs.push(async () => { if (await fetchAndCacheOneCounting("sunday", sundayYmd, "", { noteFetched }, "2")) noteSaved(); });
     }
     if (jobs.length > 0) await runQueue(jobs);
-    const { picturesComplete } = await warmReadersAndPictures({ onWifi, noteSaved, noteFetched }, morningMode, eveningMode, morningExtraMode, eveningExtraMode);
+    // Same set the decks were saved for, so their readings are saved too.
+    const { picturesComplete } = await warmReadersAndPictures({ onWifi, noteSaved, noteFetched }, ...dayModes.keys());
     /**
      * A PASS THAT FETCHED NOTHING found everything already here — record the
      * day, and the next open returns immediately. A pass that fetched
