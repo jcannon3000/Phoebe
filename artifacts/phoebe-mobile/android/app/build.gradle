@@ -37,11 +37,17 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // versionCode 1 is correct as-is — Play Console tracks its own upload
         // sequence starting from the first AAB, independent of iOS's build
-        // counter. versionName aligned to iOS's current MARKETING_VERSION
+        // counter. versionName is aligned to iOS's current MARKETING_VERSION
         // (App.xcodeproj/project.pbxproj) so both platforms show the same
-        // user-facing version string; bump alongside iOS from here on.
+        // user-facing version string.
+        //
+        // KEEP THESE IN SYNC. It drifted once already: iOS went 9.4 → 10.1
+        // while this stayed at 9.4 (caught by the 2026-09-07 audit). A store
+        // listing that says 9.4 next to an iPhone that says 10.1 is the kind
+        // of thing a tester reports as a bug. `grep MARKETING_VERSION
+        // ios/App/App.xcodeproj/project.pbxproj` is the source of truth.
         versionCode 1
-        versionName "9.4"
+        versionName "10.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
