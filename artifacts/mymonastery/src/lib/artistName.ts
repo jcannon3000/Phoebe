@@ -27,3 +27,20 @@ export function tidyArtist(a: string): string {
   if (a.trim().toUpperCase() === "JESUS MAFA") return "Mafa community, Cameroon";
   return tidyDate(a.replace(/(^|[,\s])-\s*(\d{3,4})/g, "$1d. $2"));
 }
+
+/**
+ * An ACT image URL that a browser will actually fetch.
+ *
+ * Ten of the works this app curates have SPACES in their filename —
+ * ".../jpeg/Boy Jesus with the Teachers-Frank Wesley.jpg" — and a raw space in
+ * an <img src> is not reliably encoded by every engine. On iOS it simply does
+ * not load, which is how the Finding in the Temple showed up blank on a phone
+ * while every reachability check passed: the checks used encodeURI and the
+ * page did not.
+ *
+ * Guarded on whitespace so an already-encoded URL is never double-encoded
+ * (encodeURI would turn its % into %25).
+ */
+export function safeArtUrl(url: string): string {
+  return /\s/.test(url) ? encodeURI(url) : url;
+}

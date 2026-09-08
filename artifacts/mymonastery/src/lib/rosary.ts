@@ -32,8 +32,20 @@ export type Mystery = {
   /** The virtue the decade has traditionally been offered for. */
   fruit: string;
   /**
-   * A CURATED artwork from the ACT (Vanderbilt) library — the same collection
+   * CURATED artworks from the ACT (Vanderbilt) library — the same collection
    * Visio Divina prays with — resolved through visioSelect's artworkById.
+   *
+   * ONE PER DAY THE SET IS PRAYED (owner: "for the mysteries that are prayed
+   * multiple times a week, how about you have different pictures for the
+   * different scenes on different days"). The Joyful, Sorrowful and Glorious
+   * sets come round twice a week, so they carry two: Monday's Annunciation is
+   * a Mafa painting and Saturday's is Mary Jane Miller's icon. The index is
+   * the day's position in the set's own `dayNumbers`, so it is the same
+   * picture for everyone on a given day, and choosing a set off its day falls
+   * back to the first.
+   *
+   * Where the library has only one work on a subject (the Scourging) the list
+   * simply holds one and both days show it.
    *
    * Curated by hand, one per mystery, and deliberately NOT matched by chapter:
    * Luke 1 holds both the Annunciation and the Visitation, and Luke 2 holds the
@@ -47,7 +59,7 @@ export type Mystery = {
    * Undefined where the library genuinely has nothing on the subject (the
    * Assumption); the beat simply shows no picture.
    */
-  artId?: number;
+  artIds?: number[];
 };
 
 export type MysterySetDef = {
@@ -55,6 +67,9 @@ export type MysterySetDef = {
   name: string;
   /** When it is traditionally prayed — shown on the intro. */
   days: string;
+  /** The same days as weekday numbers (0 = Sunday), in order. Picks which of
+   *  a mystery's pictures today gets — see Mystery.artIds. */
+  dayNumbers: number[];
   /** One sentence naming what the whole set is about. */
   blurb: string;
   mysteries: Mystery[];
@@ -63,51 +78,54 @@ export type MysterySetDef = {
 export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
   joyful: {
     key: "joyful",
+    dayNumbers: [1, 6],
     name: "The Joyful Mysteries",
     days: "Mondays and Saturdays",
     blurb: "The coming of Christ, and the ordinary lives that carried him.",
     mysteries: [
-      { n: 1, title: "The Annunciation", ref: "Luke 1:26-38", artId: 48278, fruit: "Humility",
+      { n: 1, title: "The Annunciation", ref: "Luke 1:26-38", artIds: [48278, 59673], fruit: "Humility",
         meditation: "Gabriel comes to a young woman in an unimportant town, and she says yes without knowing what it will cost." },
-      { n: 2, title: "The Visitation", ref: "Luke 1:39-56", artId: 48279, fruit: "Love of neighbour",
+      { n: 2, title: "The Visitation", ref: "Luke 1:39-56", artIds: [48279, 59190], fruit: "Love of neighbour",
         meditation: "Mary goes to Elizabeth. Two pregnant women meet, and the first thing either of them does is sing." },
-      { n: 3, title: "The Nativity", ref: "Luke 2:1-20", artId: 48387, fruit: "Poverty of spirit",
+      { n: 3, title: "The Nativity", ref: "Luke 2:1-20", artIds: [48387, 59201], fruit: "Poverty of spirit",
         meditation: "God arrives without room, without status, and the news goes first to men working a night shift." },
-      { n: 4, title: "The Presentation in the Temple", ref: "Luke 2:22-38", artId: 54414, fruit: "Obedience",
+      { n: 4, title: "The Presentation in the Temple", ref: "Luke 2:22-38", artIds: [54414, 59646], fruit: "Obedience",
         meditation: "Two old people have been waiting their whole lives, and they recognise him at once." },
-      { n: 5, title: "The Finding in the Temple", ref: "Luke 2:41-52", artId: 59224, fruit: "Joy in finding Jesus",
+      { n: 5, title: "The Finding in the Temple", ref: "Luke 2:41-52", artIds: [59224, 48280], fruit: "Joy in finding Jesus",
         meditation: "Three days of looking, and he is where his Father is. His mother does not understand, and keeps it anyway." },
     ],
   },
   sorrowful: {
     key: "sorrowful",
+    dayNumbers: [2, 5],
     name: "The Sorrowful Mysteries",
     days: "Tuesdays and Fridays",
     blurb: "The passion — what love was willing to bear.",
     mysteries: [
-      { n: 1, title: "The Agony in the Garden", ref: "Matthew 26:36-46", artId: 48391, fruit: "Sorrow for sin",
+      { n: 1, title: "The Agony in the Garden", ref: "Matthew 26:36-46", artIds: [48391, 59718], fruit: "Sorrow for sin",
         meditation: "He asks for it to pass. He is not pretending. And still: not what I want, but what you want." },
-      { n: 2, title: "The Scourging at the Pillar", ref: "Matthew 27:26", artId: 48274, fruit: "Purity",
+      { n: 2, title: "The Scourging at the Pillar", ref: "Matthew 27:26", artIds: [48274], fruit: "Purity",
         meditation: "The body God took is the body that is struck. Nothing about this is symbolic." },
-      { n: 3, title: "The Crowning with Thorns", ref: "Matthew 27:27-31", artId: 46134, fruit: "Moral courage",
+      { n: 3, title: "The Crowning with Thorns", ref: "Matthew 27:27-31", artIds: [46134, 58355], fruit: "Moral courage",
         meditation: "They dress him as a king to mock him, and are more right than they know." },
-      { n: 4, title: "The Carrying of the Cross", ref: "John 19:17", artId: 59353, fruit: "Patience",
+      { n: 4, title: "The Carrying of the Cross", ref: "John 19:17", artIds: [59353, 59166], fruit: "Patience",
         meditation: "He carries it as far as he can, and then a stranger from the crowd is made to help." },
-      { n: 5, title: "The Crucifixion", ref: "John 19:18-30", artId: 48390, fruit: "Perseverance",
+      { n: 5, title: "The Crucifixion", ref: "John 19:18-30", artIds: [48390, 59218], fruit: "Perseverance",
         meditation: "He gives his mother a son and his friend a mother, and then he says it is finished." },
     ],
   },
   glorious: {
     key: "glorious",
+    dayNumbers: [3, 0],
     name: "The Glorious Mysteries",
     days: "Wednesdays and Sundays",
     blurb: "Easter and what followed — death undone, and the Church begun.",
     mysteries: [
-      { n: 1, title: "The Resurrection", ref: "Matthew 28:1-10", artId: 48301, fruit: "Faith",
+      { n: 1, title: "The Resurrection", ref: "Matthew 28:1-10", artIds: [48301, 59213], fruit: "Faith",
         meditation: "The women come to care for a body and find the grave empty and the guards undone." },
-      { n: 2, title: "The Ascension", ref: "Acts 1:6-11", artId: 48398, fruit: "Hope",
+      { n: 2, title: "The Ascension", ref: "Acts 1:6-11", artIds: [48398, 59720], fruit: "Hope",
         meditation: "He goes, and they are left staring upward until they are told to get on with it." },
-      { n: 3, title: "The Descent of the Holy Spirit", ref: "Acts 2:1-13", artId: 59680, fruit: "Love of God",
+      { n: 3, title: "The Descent of the Holy Spirit", ref: "Acts 2:1-13", artIds: [59680, 48388], fruit: "Love of God",
         meditation: "Wind and fire, and a frightened room becomes a church that can be understood in every language." },
       // ── The two Marian mysteries. Written as what the tradition holds and
       //    what scripture pictures, not as doctrine an Anglican is asked to
@@ -116,25 +134,26 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
       //    here) or keep them.
       { n: 4, title: "The Assumption of Mary", ref: "Revelation 12:1-6", fruit: "Devotion to Mary",
         meditation: "The tradition holds that the one who carried him was carried home. We pray with her, at the end of her long yes." },
-      { n: 5, title: "The Coronation of Mary", ref: "Luke 1:46-55", artId: 58434, fruit: "Trust in God's promise",
+      { n: 5, title: "The Coronation of Mary", ref: "Luke 1:46-55", artIds: [58434, 59177], fruit: "Trust in God's promise",
         meditation: "He has lifted up the lowly. What was promised in her song is finished in her." },
     ],
   },
   luminous: {
     key: "luminous",
+    dayNumbers: [4],
     name: "The Luminous Mysteries",
     days: "Thursdays",
     blurb: "The ministry — the years between the manger and the cross.",
     mysteries: [
-      { n: 1, title: "The Baptism in the Jordan", ref: "Matthew 3:13-17", artId: 48290, fruit: "Openness to the Spirit",
+      { n: 1, title: "The Baptism in the Jordan", ref: "Matthew 3:13-17", artIds: [48290], fruit: "Openness to the Spirit",
         meditation: "He stands in the river with everyone else, and heaven says: this one, beloved." },
-      { n: 2, title: "The Wedding at Cana", ref: "John 2:1-11", artId: 59676, fruit: "Trust in Mary's care",
+      { n: 2, title: "The Wedding at Cana", ref: "John 2:1-11", artIds: [59676], fruit: "Trust in Mary's care",
         meditation: "The wine runs out, as it does. His mother notices before anyone else, and simply tells him." },
-      { n: 3, title: "The Proclamation of the Kingdom", ref: "Mark 1:14-15", artId: 48379, fruit: "Repentance",
+      { n: 3, title: "The Proclamation of the Kingdom", ref: "Mark 1:14-15", artIds: [48379], fruit: "Repentance",
         meditation: "The kingdom has come near — near enough to turn around for." },
-      { n: 4, title: "The Transfiguration", ref: "Matthew 17:1-8", artId: 48307, fruit: "Desire for holiness",
+      { n: 4, title: "The Transfiguration", ref: "Matthew 17:1-8", artIds: [48307], fruit: "Desire for holiness",
         meditation: "For a moment they see him as he is, and Peter wants to build something and stay." },
-      { n: 5, title: "The Institution of the Eucharist", ref: "Matthew 26:26-30", artId: 58334, fruit: "Adoration",
+      { n: 5, title: "The Institution of the Eucharist", ref: "Matthew 26:26-30", artIds: [58334], fruit: "Adoration",
         meditation: "On the night before he suffered, he took bread — and it has not stopped being given since." },
     ],
   },
@@ -149,6 +168,17 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
  * The reader can always choose another on the intro — this only decides what
  * is offered first, the way the office offers today's psalms.
  */
+/**
+ * Which of a mystery's pictures today gets — its index in the set's days.
+ * A set prayed twice a week alternates; one prayed once always shows its
+ * first; a set chosen off its own day falls back to the first as well.
+ */
+export function artIdForDay(set: MysterySetDef, m: Mystery, d: Date = new Date()): number | null {
+  if (!m.artIds || m.artIds.length === 0) return null;
+  const i = set.dayNumbers.indexOf(d.getDay());
+  return m.artIds[(i >= 0 ? i : 0) % m.artIds.length] ?? m.artIds[0] ?? null;
+}
+
 export function mysterySetForDay(d: Date = new Date()): MysterySet {
   switch (d.getDay()) {
     case 0: return "glorious";

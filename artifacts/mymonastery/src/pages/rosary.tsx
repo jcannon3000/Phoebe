@@ -7,14 +7,15 @@ import { DeckAnnouncer } from "@/components/DeckAnnouncer";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { artworkById } from "@/lib/visioSelect";
-import { tidyArtist, tidyDate } from "@/lib/artistName";
+import { tidyArtist, tidyDate, safeArtUrl } from "@/lib/artistName";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { openReadingPage } from "@/lib/openExternal";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
-import { useBetaStatus } from "@/hooks/useDemo";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { toast } from "@/hooks/use-toast";
+import { isOnline } from "@/lib/offline";
 import {
-  MYSTERY_SETS, mysterySetForDay, type MysterySet, type Mystery,
+  MYSTERY_SETS, mysterySetForDay, artIdForDay, type MysterySet, type Mystery,
   SIGN_OF_THE_CROSS, APOSTLES_CREED, OUR_FATHER, HAIL_MARY, GLORY_BE,
   FATIMA_PRAYER, HAIL_HOLY_QUEEN, OPENING_INTENTIONS, BEADS_PER_DECADE,
   CONCLUDING_VERSICLE, CONCLUDING_RESPONSE, CONCLUDING_PRAYER,
@@ -40,8 +41,11 @@ import {
  * and you pray them at your own pace — which is what the beads in your hand
  * are for.
  *
- * ADMIN ONLY for now (owner). Gated here as well as in the menu, so the route
- * cannot be reached by typing it.
+ * OPEN TO EVERYONE (owner) — signed in or not. Nothing in it needs an
+ * account: the prayers and mysteries are bundled, the artwork is the public
+ * ACT library, and completion is a local flag whose server write already
+ * treats a signed-out 401 as "nothing to sync". /rosary is in
+ * GUEST_ALLOWED_EXACT for the same reason Visio and the Examen are.
  */
 
 const FONT = "'Space Grotesk', sans-serif";
@@ -111,7 +115,6 @@ function buildBeats(set: MysterySet): Beat[] {
 export default function RosaryPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
-  const { rawIsAdmin: isSuperAdmin, isLoading: adminLoading } = useBetaStatus();
 
   /**
    * WHERE YOU WERE, KEPT.
@@ -180,11 +183,35 @@ export default function RosaryPage() {
   useEffect(() => {
     if (beat?.kind !== "repeat" || !beat.decade) return;
     const next = beats.slice(step).find((b) => b.kind === "mystery") as { mystery: Mystery } | undefined;
-    const art = next?.mystery.artId ? artworkById(next.mystery.artId) : null;
+    const nextId = next ? artIdForDay(def, next.mystery) : null;
+    const art = nextId ? artworkById(nextId) : null;
     if (!art?.img) return;
-    try { const img = new Image(); img.decoding = "async"; img.src = art.img; } catch { /* non-fatal */ }
+    try { const img = new Image(); img.decoding = "async"; img.src = safeArtUrl(art.img); } catch { /* non-fatal */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, beat?.kind]);
+
+  /**
+   * THE READER'S OWN BOTTOM BAR STEPS THIS DECK.
+   *
+   * openOfficeReading opens the passage with `officeChrome` — the office's
+   * top bar and a floating Back/Next pill over the page — and that pill does
+   * not navigate the browser: it dismisses it and posts
+   * phoebe:office-{next,prev}-slide to whatever deck is underneath. Every
+   * other deck listens (bcp-daily-office, lectio, visio); this one did not, so
+   * the reading opened over the Rosary and its Next did nothing, which is
+   * exactly what "the scripture link is not loading" looks like from the
+   * outside — you go, you come back, and nothing has moved.
+   */
+  useEffect(() => {
+    const next = () => setStep((n) => Math.min(n + 1, beats.length));
+    const prev = () => setStep((n) => Math.max(0, n - 1));
+    window.addEventListener("phoebe:office-next-slide", next);
+    window.addEventListener("phoebe:office-prev-slide", prev);
+    return () => {
+      window.removeEventListener("phoebe:office-next-slide", next);
+      window.removeEventListener("phoebe:office-prev-slide", prev);
+    };
+  }, [beats.length]);
 
   useEffect(() => {
     if (step === 1) { try { playOpeningSwell(); } catch { /* non-fatal */ } }
@@ -207,20 +234,6 @@ export default function RosaryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  /**
-   * The route is admin-only as well as the menu row, so it can't be reached by
-   * typing it — a quiet redirect rather than a refusal screen, since there is
-   * nothing to explain to someone not meant to see it yet.
-   *
-   * WAIT FOR THE ANSWER. useBetaStatus returns rawIsAdmin: false while its
-   * query is still in flight, so redirecting on `false` alone bounced the ADMIN
-   * to the dashboard before the status resolved — the page would never have
-   * opened for the one person allowed in. Caught auditing my own build.
-   */
-  useEffect(() => {
-    if (!adminLoading && !isSuperAdmin) setLocation("/dashboard");
-  }, [adminLoading, isSuperAdmin, setLocation]);
-  if (adminLoading || !isSuperAdmin) return null;
 
   const decadeOf = beat && (beat.kind === "mystery" || beat.kind === "repeat") ? (beat.decade ?? null) : null;
   /**
@@ -228,10 +241,16 @@ export default function RosaryPage() {
    * Undefined for the Assumption, which the library has nothing for — the beat
    * simply shows no picture rather than borrowing an unrelated one.
    */
-  const mysteryArt = beat?.kind === "mystery" && beat.mystery.artId ? artworkById(beat.mystery.artId) : null;
+  const mysteryArt = (() => {
+    if (beat?.kind !== "mystery") return null;
+    const id = artIdForDay(def, beat.mystery);
+    return id ? artworkById(id) : null;
+  })();
   /** Every work seen in THIS set — what the closing slide credits. */
   const creditedArt = useMemo(
-    () => def.mysteries.map((m) => (m.artId ? artworkById(m.artId) : null)).filter((a): a is NonNullable<typeof a> => !!a),
+    () => def.mysteries
+      .map((m) => { const id = artIdForDay(def, m); return id ? artworkById(id) : null; })
+      .filter((a): a is NonNullable<typeof a> => !!a),
     [def],
   );
 
@@ -307,7 +326,17 @@ export default function RosaryPage() {
       <main
         className="flex flex-col items-center text-center px-6 w-full"
         style={{
-          maxWidth: 560, margin: "0 auto", minHeight: "var(--app-dvh)", justifyContent: "center",
+          maxWidth: 560, margin: "0 auto", minHeight: "var(--app-dvh)",
+          /**
+           * CENTRED, EXCEPT WHERE THERE IS TOO MUCH TO CENTRE.
+           *
+           * The closing slide carries the picture credits — five works, each
+           * with ACT's full attribution line — and centring a block that tall
+           * pushes its end below the fold with nothing to suggest there is
+           * more. (Reported: "didn't see the credits.") The closing starts at
+           * the top and scrolls; every other beat is short and stays centred.
+           */
+          justifyContent: isClosing ? "flex-start" : "center",
           paddingTop: "clamp(24px, 6dvh, 72px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 168px)",
           position: "relative", zIndex: 1,
@@ -425,7 +454,7 @@ export default function RosaryPage() {
                    text the way Visio's does; the ACT licence is the same one. */
                 <figure style={{ margin: "0 auto 18px" }}>
                   <img
-                    src={mysteryArt.img}
+                    src={safeArtUrl(mysteryArt.img)}
                     alt={`${mysteryArt.title}${mysteryArt.artist ? ` — ${tidyArtist(mysteryArt.artist)}` : ""}`}
                     loading="eager"
                     decoding="async"
@@ -458,7 +487,15 @@ export default function RosaryPage() {
                   // never hand that to the reader, which would open about:blank.
                   const url = bibleUrl(beat.mystery.ref);
                   if (!url) return;
-                  void openReadingPage(url, { officeTitle: def.name, slideLabel: `${beat.decade} of 5`, sectionLabel: beat.mystery.title });
+                  void openReadingPage(url, { officeTitle: def.name, slideLabel: `${beat.decade} of 5`, sectionLabel: beat.mystery.title })
+                    .then((opened) => {
+                      // Silence is the worst answer — the office and Lectio
+                      // both say why rather than appearing to ignore the tap.
+                      if (opened) return;
+                      toast(isOnline()
+                        ? { title: "Your browser blocked the reading", description: "Allow pop-ups for Phoebe, and the passage will open in a new tab." }
+                        : { title: "This reading isn't saved yet", description: "Open the app once with a connection and it will be kept for you." });
+                    });
                 }}
                 style={{
                   color: "rgba(168,186,216,0.95)", background: "none", border: "none",

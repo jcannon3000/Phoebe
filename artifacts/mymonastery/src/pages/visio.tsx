@@ -60,7 +60,7 @@ import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 import { DeckAnnouncer } from "@/components/DeckAnnouncer";
-import { tidyArtist, tidyDate } from "@/lib/artistName";
+import { tidyArtist, tidyDate, safeArtUrl } from "@/lib/artistName";
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -1246,7 +1246,7 @@ export default function VisioPage() {
           }}>
           <div ref={imageBoxRef} style={{ maxWidth: "100%", display: "flex", justifyContent: "center" }}>
           <ZoomableImage
-            src={imgSrc}
+            src={safeArtUrl(imgSrc)}
             alt={`${view.title}${view.artist ? ` — ${view.artist}` : ""}`}
             style={{ flex: "0 0 auto", maxWidth: "100%", maxHeight: "62vh", borderRadius: 10 }}
             imgRef={(el) => { if (el?.complete && el.naturalWidth > 0) setLoadedSrc(imgSrc); }}

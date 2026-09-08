@@ -333,8 +333,7 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // list to switch on. One icon for the Monday-to-Sunday week, sat with
   // daily; the sibling of Visio Divina, which is why it sits beside it.
   { title: () => "Praying with Icons", emoji: "🪟", sub: "One icon for the week — return to it daily.", excludes: "__none__", maps: { kind: "practice", key: "icons" } , group: "contemplative" },
-  // The Rosary — ADMIN ONLY while it is being tried, filtered out below for
-  // everyone else, the same way Spirituals is. It sits beside Visio and Icons
+  // The Rosary sits beside Visio and Icons
   // because it is their kind of thing: a long, unhurried practice you are
   // walked through, with a picture at each mystery from the same ACT library.
   { title: () => "The Rosary", emoji: "📿", sub: "Pray the mysteries, a decade at a time.", excludes: "__none__", maps: { kind: "practice", key: "rosary" } , group: "contemplative" },
@@ -3194,11 +3193,6 @@ export default function WayOfLoveRuleFlow({
     // MUST mirror officePrefs.anchorModesFor's own fallback — see the note there.
     const anchorMode = levelOfficeMode(side, anchorLevel) ?? side;
     return EXTRA_PRACTICES
-      // The Rosary is admin-only while it is being tried (owner). Filtered
-      // here rather than at the render, so it is absent from every consumer of
-      // this list — the group pick, the counts, the "does this group need a
-      // which-one slide" test — and not merely hidden in one of them.
-      .filter((e) => !(e.maps.kind === "practice" && e.maps.key === "rosary") || isSuperAdmin)
       .filter((e) => !e.side || e.side === side)
       .filter((e) => e.excludes !== anchorLevel)
       .filter((e) => e.maps.kind !== "level" || levelOfficeMode(side, e.maps.level) !== anchorMode);
