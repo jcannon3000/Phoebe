@@ -490,10 +490,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            one however important the ancestor's is. Caught in testing — the
            background and the tidy both landed while the type stayed Verdana. */
         '.bible,.bibletext,.bibletext *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
-        /* Reading text is 2pt larger across every reader (owner, 2026-09-05:
-           "increase the font on reader views by 2pts") — body and headings;
-           captions, eyebrows, by-lines and notes keep their size. */
-        '.bibletext{font-size:21px!important;line-height:1.72!important;color:#F0EDE6!important;}',
+        /* Scripture reads 2pt SMALLER again (owner, 2026-09-09: "decrease the
+           size of text on oremus slides by 2pts … on the reader view, not the
+           actual oremus page"). This is the oremus reader only — .bibletext is
+           oremus's own class — so the +2pt of 2026-09-05 still stands for the
+           other readers (Forward Day by Day, the Substack arm, VerseVoice).
+           Verse numbers and chapter marks are sized in `em` against this rule,
+           so they follow it down on their own. */
+        '.bibletext{font-size:19px!important;line-height:1.72!important;color:#F0EDE6!important;}',
         /* Belt and braces on the descendants — the real constraint is on
            BODY (see the width:auto there). */
         '.bible p,.bible blockquote,.bibletext p,.bibletext blockquote,.bible h2,.bible div{width:auto!important;max-width:none!important;}',
@@ -2496,15 +2500,31 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             let item = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
             item.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
             standardItem = item
+            /**
+             * …AND THE aA BESIDE IT. It rides the same lazy creation as
+             * Standard because it answers to the same condition: both belong
+             * to pages Phoebe's reader can actually restyle. On a page it
+             * cannot, changing the type would do nothing, and a control that
+             * does nothing is worse than no control.
+             */
+            let display = UIBarButtonItem(
+                image: UIImage(systemName: "textformat.size"),
+                menu: readerDisplayMenu(),
+            )
+            display.accessibilityLabel = "Text size and typeface"
+            displayItem = display
             // TOP RIGHT, just inside whatever already holds the corner
             // (Previous on newsletter pages). Right-hand items render
             // right-to-left.
             if let existing = navigationItem.rightBarButtonItem, existing !== item {
-                navigationItem.rightBarButtonItems = [existing, item]
+                navigationItem.rightBarButtonItems = [existing, item, display]
             } else {
-                navigationItem.rightBarButtonItem = item
+                navigationItem.rightBarButtonItems = [item, display]
             }
         }
+        // The page just (re)styled itself — put the reader's own size and face
+        // back on top of it.
+        applyReaderDisplay()
     }
 
     /**
@@ -2637,6 +2657,8 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      */
     private var readerViewOn: Bool = true
     private weak var standardItem: UIBarButtonItem?
+    /** The aA button — text size and typeface for the reader view. */
+    private weak var displayItem: UIBarButtonItem?
     /**
      * THE READER'S FONT, REGISTERED WITH THE PROCESS — NOT FETCHED.
      *
@@ -2686,10 +2708,128 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      * preference is written, read, and then silently ignored on every load,
      * and the toggle only appears to work until you leave the page.
      */
+
+    // MARK: - Reader display (text size + typeface)
+
+    /**
+     * THE READER'S OWN DISPLAY SETTINGS — the same two choices the offices
+     * offer, on the pages the offices hand you off to.
+     *
+     * Owner: "lets have a settings ui on those slides like in offices where
+     * they could increase or decrease the size or change the font in a drop
+     * down." The office deck has had this for a while (OfficeDisplaySheet);
+     * a scripture reading opened from that deck is a NATIVE web view, so the
+     * deck's sheet cannot reach it — its type was fixed by readerJS and there
+     * was nothing to turn.
+     *
+     * Deliberately the SAME vocabulary as the deck rather than a second one:
+     * four sizes and three typefaces, the identical scales and families from
+     * lib/officeDisplay.ts. Two lists that mean the same thing but drift are
+     * the recurring bug in this codebase; if the deck gains a face, this
+     * should gain it too.
+     *
+     * Device-local (UserDefaults), like the deck's own — this is per-screen
+     * ergonomics, not part of anybody's rule.
+     */
+    private static let readerScaleKey = "phoebe.reader.fontScale"
+    private static let readerFontKey = "phoebe.reader.font"
+    /** Matches OFFICE_FONT_SCALES in lib/officeDisplay.ts. */
+    private static let readerScales: [Double] = [0.85, 1.0, 1.15, 1.3]
+    /** Matches OFFICE_FONT_FAMILIES. Keys are the same strings the web uses. */
+    private static let readerFonts: [(id: String, label: String, css: String)] = [
+        ("grotesk", "Grotesk", "'Space Grotesk', ui-sans-serif, system-ui, sans-serif"),
+        ("georgia", "Georgia", "Georgia, 'Times New Roman', serif"),
+        ("arial", "Arial", "Arial, Helvetica, sans-serif"),
+    ]
+    /** The size readerJS sets; every scale is a multiple of it. */
+    private static let readerBasePt: Double = 19
+
+    private var readerScale: Double {
+        get {
+            let v = UserDefaults.standard.double(forKey: Self.readerScaleKey)
+            return Self.readerScales.contains(v) ? v : 1.0
+        }
+        set { UserDefaults.standard.set(newValue, forKey: Self.readerScaleKey) }
+    }
+    private var readerFontId: String {
+        get {
+            let v = UserDefaults.standard.string(forKey: Self.readerFontKey) ?? "grotesk"
+            return Self.readerFonts.contains(where: { $0.id == v }) ? v : "grotesk"
+        }
+        set { UserDefaults.standard.set(newValue, forKey: Self.readerFontKey) }
+    }
+
+    /**
+     * Applied as ONE override stylesheet appended after readerJS, rather than
+     * by templating readerJS itself. That string is long, escape-sensitive and
+     * shared by the saved-page path; a separate sheet with the same specificity
+     * cannot break it, and re-applying is just a text swap.
+     *
+     * Only the reading text moves. Eyebrows, by-lines, captions and notes keep
+     * their size — they are furniture, not the passage — and verse numbers are
+     * sized in `em`, so they follow the body down on their own.
+     */
+    func applyReaderDisplay() {
+        let px = Int((Self.readerBasePt * readerScale).rounded())
+        let family = Self.readerFonts.first(where: { $0.id == readerFontId })?.css ?? Self.readerFonts[0].css
+        let css = ".bibletext{font-size:\(px)px!important;}"
+            + ".bible,.bibletext,.bibletext *{font-family:\(family)!important;}"
+        let js = """
+        (function(){
+          var id='phoebe-reader-display';
+          var el=document.getElementById(id);
+          if(!el){ el=document.createElement('style'); el.id=id; (document.head||document.documentElement).appendChild(el); }
+          el.textContent=\(Self.jsStringLiteral(css));
+        })();
+        """
+        webView?.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    /** A JS string literal built by JSONSerialization — never by hand. */
+    private static func jsStringLiteral(_ s: String) -> String {
+        if let d = try? JSONSerialization.data(withJSONObject: [s], options: []),
+           let arr = String(data: d, encoding: .utf8) {
+            return String(arr.dropFirst().dropLast())
+        }
+        return "''"
+    }
+
+    /** The aA button's menu — one single-selection group per choice. */
+    private func readerDisplayMenu() -> UIMenu {
+        let sizeLabels = ["Small", "Default", "Large", "Larger"]
+        let sizes = zip(Self.readerScales, sizeLabels).map { scale, label in
+            UIAction(title: label, state: readerScale == scale ? .on : .off) { [weak self] _ in
+                guard let self = self else { return }
+                self.readerScale = scale
+                self.applyReaderDisplay()
+                self.refreshReaderDisplayMenu()
+            }
+        }
+        let fonts = Self.readerFonts.map { f in
+            UIAction(title: f.label, state: readerFontId == f.id ? .on : .off) { [weak self] _ in
+                guard let self = self else { return }
+                self.readerFontId = f.id
+                self.applyReaderDisplay()
+                self.refreshReaderDisplayMenu()
+            }
+        }
+        return UIMenu(title: "", children: [
+            UIMenu(title: "Text size", options: [.displayInline, .singleSelection], children: sizes),
+            UIMenu(title: "Typeface", options: [.displayInline, .singleSelection], children: fonts),
+        ])
+    }
+
+    /** Rebuild so the checkmarks show the new choice next time it opens. */
+    private func refreshReaderDisplayMenu() {
+        displayItem?.menu = readerDisplayMenu()
+    }
+
     private func applyReaderState() {
         webView?.evaluateJavaScript("window.__phoebeReaderSet && window.__phoebeReaderSet(\(readerViewOn))", completionHandler: nil)
         standardItem?.title = readerViewOn ? "Standard" : "Reader"
         syncReaderBackdrop()
+        // Reader mode owns the type; Standard shows the site's own.
+        if readerViewOn { applyReaderDisplay() }
     }
 
     /** The backdrop belongs to reader mode only — Standard shows the site's
