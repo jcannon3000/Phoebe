@@ -283,7 +283,20 @@ export default function CustomizePage() {
        * venite.app, which has no working deep link for the readings anyway.
        * An explicit "read" is the only thing that keeps that fallback out.
        */
-      const entry = choice === "office" ? "venite" : "read";
+      /**
+       * THE SLIDESHOW FOR EVERY PICK, OFFICES INCLUDED (owner, 2026-09-08:
+       * "for the offices logged out we want it defaulting to the digital
+       * slide show", and "we dont want venite at all").
+       *
+       * This was `choice === "office" ? "venite" : "read"`, from the earlier
+       * instruction "on the light customizer, if they chose offices, have the
+       * medium be venite". That is superseded: this page IS the logged-out
+       * customizer, so its Offices pick is exactly the case now meant to open
+       * on screen. Someone who wants Venite can still choose it — the office's
+       * own way-to-pray picker offers it, and an explicit choice always wins
+       * over what is written here.
+       */
+      const entry = "read";
       setSideEntry("morning", entry);
       setSideEntry("evening", entry);
       if (choice === "psalms") setPsalmCycle("office");

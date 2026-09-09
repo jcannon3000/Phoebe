@@ -19,7 +19,7 @@
 // day.) See memory "project_public_no_login".
 
 import { ROUTINE_KEYS } from "@/lib/routineSync";
-import { setSideLevel, setReflectionSource, setSideReflection, getExplicitSideLevel, getExplicitReflectionSource, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { setSideLevel, setSideEntry, setReflectionSource, setSideReflection, getExplicitSideLevel, getExplicitReflectionSource, getExplicitSideEntry, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, cacheHomeLayoutLocalOnly, addHomeCard, removeHomeCard } from "@/lib/homeLayoutCache";
 import { setPracticeSlot, setRelationalPractices, activeRelationalPractices } from "@/lib/customAnchors";
 import { clearRoutineSyncClock } from "@/lib/routineSync";
@@ -61,11 +61,15 @@ export function predatesSeedStamp(): boolean {
 // v8 (owner, 2026-09-05): "Morning: Simple · Newsletter: Forward · Share
 // Gratitude · Visio Divina · Evening: Examen".
 //
-// v9 (2026-09-08) changes NOTHING about what the default IS — it exists purely
+// v10 (2026-09-08) likewise changes nothing about WHAT the default is — it
+// exists so devices stamped "9" re-run the migration and pick up the office
+// ENTRY ("read", the slideshow) that the seed now writes.
+//
+// v9 (2026-09-08) changed NOTHING about what the default IS — it existed purely
 // to re-run migrateStaleSeed on devices already stamped "8", because those are
 // the ones carrying two newsletters (see the note in the migration). A version
 // bump is the only way to reach a device that already thinks it is current.
-const SEED_VERSION = "9";
+const SEED_VERSION = "10";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never
 // remove: the whole point is recognizing rules we ourselves wrote.
@@ -200,6 +204,33 @@ function applyDefaultSeed(d: DefaultSeed | null, mode: "fresh" | "migrate" = "fr
   // "they chose whatever the default says" — which would quietly drop a
   // newsletter someone had actually picked.
   const chosenBefore = getExplicitReflectionSource();
+  /**
+   * A SEEDED DEVICE READS THE OFFICE ON SCREEN (owner, 2026-09-08: "for the
+   * offices logged out we want it defaulting to the digital slide show").
+   *
+   * getDefaultOfficeEntry()'s global fallback is "venite" — an old instruction,
+   * and still right for someone signed in who has never chosen. But it is a
+   * FALLBACK, so it caught every logged-out device that had never opened the
+   * customizer, and handed a first-time visitor to another site before they
+   * had seen ours.
+   *
+   * HERE, not beside the setSideLevel calls further down: this function
+   * returns early when an admin `__default__` overlay exists, which is most
+   * devices, so anything written after that call is unreachable for them. The
+   * same trap the newsletter fix hit. applyDefaultSeed is the one place both
+   * the fresh seed and the migration pass through.
+   *
+   * Not taught to officePrefs either: that module is pure localStorage and
+   * knows nothing about sessions, and the one non-React signal for "signed in"
+   * (hasEverAuthenticated) is module-level and resets on every cold boot — it
+   * would flip a signed-in person to "read" for the first second of a launch.
+   * Logout clears this with the rest of the phoebe:office: prefix.
+   *
+   * An explicit choice is never overwritten.
+   */
+  for (const side of ["morning", "evening"] as const) {
+    if (!getExplicitSideEntry(side)) setSideEntry(side, "read");
+  }
   setSideLevel("morning", d.morning as Parameters<typeof setSideLevel>[1]);
   setSideLevel("evening", d.evening as Parameters<typeof setSideLevel>[1]);
   /**

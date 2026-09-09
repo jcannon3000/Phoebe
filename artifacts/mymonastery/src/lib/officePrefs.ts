@@ -623,6 +623,26 @@ export function setContemplationLogMethod(v: ContemplationLogMethod): void {
 
 // Way to pray per side (read / listen / watch). Falls back to the shared
 // default-office-entry when this side has no override.
+/**
+ * The side's OWN stored entry, or null — no per-side value, no global value,
+ * no "venite" fallback.
+ *
+ * The counterpart to getExplicitSideLevel / getExplicitReflectionSource, and
+ * for the same reason: getSideEntry answers "how do we open this", which is
+ * never null, so it cannot be used to ask "did this person actually choose?"
+ * The seed needs that second question — it writes the slideshow as the default
+ * for a logged-out device and must not overwrite a real preference.
+ */
+export function getExplicitSideEntry(side: OfficeSide): DefaultOfficeEntry | null {
+  try {
+    const raw = localStorage.getItem(`phoebe:office:entry:${side}`);
+    if (raw && (DEFAULT_OFFICE_ENTRIES as string[]).includes(raw)) return raw as DefaultOfficeEntry;
+    const global = localStorage.getItem(KEY_DEFAULT_OFFICE_ENTRY);
+    if (global && (DEFAULT_OFFICE_ENTRIES as string[]).includes(global)) return global as DefaultOfficeEntry;
+  } catch { /* private mode */ }
+  return null;
+}
+
 export function getSideEntry(side: OfficeSide): DefaultOfficeEntry {
   try {
     const raw = localStorage.getItem(`phoebe:office:entry:${side}`);
