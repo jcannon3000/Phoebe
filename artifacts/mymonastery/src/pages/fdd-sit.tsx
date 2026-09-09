@@ -54,14 +54,18 @@ export default function FddSitPage() {
   const { data } = useQuery<FddToday>({
     queryKey: ["/api/podcast/forward-day-by-day/today"],
     queryFn: () => apiRequest("GET", "/api/podcast/forward-day-by-day/today"),
-    enabled: !!user,
+    // Public endpoint — a guest reads the same day's word as anyone else.
+    enabled: true,
     staleTime: 30 * 60_000,
   });
   // First-ever visit gets a one-card intro to what Forward Day by Day IS, so a
   // beginner isn't handed a bare reflection link unguided.
   const [introDismissed, setIntroDismissed] = useState(false);
 
-  if (authLoading || !user) return null;
+  // Forward Day by Day is the DEFAULT rhythm's daily word, so this page has
+  // to open without an account — the redirect above was already removed for
+  // that reason; this null-gate had to go with it.
+  if (authLoading) return null;
 
   if (!introDismissed && !hasSeenIntro("fdd")) {
     const dismiss = () => { markIntroSeen("fdd"); setIntroDismissed(true); };

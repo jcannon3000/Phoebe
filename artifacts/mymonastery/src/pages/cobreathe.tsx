@@ -275,7 +275,7 @@ export default function CobreathePage() {
    * thing that isn't.
    */
   const LIVE_BLUE = "#7FB3E8";
-  const liveHere = (placeId: number) => (breathSync.breathersByPlace[placeId] ?? []).length;
+  const liveHere = (placeId: number) => breathSync.breathersByPlace[placeId] ?? 0;
 
   /**
    * EVERYONE YOU BREATHED WITH AT THIS PLACE, cumulative across the sit.
@@ -290,21 +290,25 @@ export default function CobreathePage() {
    * begins, so it answers "who was here with me" for THIS sit rather than for
    * the day.
    */
-  const placeCompanionsRef = useRef<Set<number>>(new Set());
+  const placeCompanionsRef = useRef<number>(0);
   const [placeCompanions, setPlaceCompanions] = useState(0);
   // A new sit starts from nobody. Declared BEFORE the collector below: effects
   // run in declaration order, so clearing second would have thrown away whoever
   // was already breathing here at the moment the sit began.
   useEffect(() => {
-    if (mode === "breathing") { placeCompanionsRef.current = new Set(); setPlaceCompanions(0); }
+    if (mode === "breathing") { placeCompanionsRef.current = 0; setPlaceCompanions(0); }
   }, [mode]);
   useEffect(() => {
     if (mode !== "breathing") return;
-    const here = place && place.id > 0 ? (breathSync.breathersByPlace[place.id] ?? []) : [];
-    if (here.length === 0) return;
-    let grew = false;
-    for (const id of here) if (!placeCompanionsRef.current.has(id)) { placeCompanionsRef.current.add(id); grew = true; }
-    if (grew) setPlaceCompanions(placeCompanionsRef.current.size);
+    // The wire carries a COUNT, not who — so "cumulative" is the high-water
+    // mark across the sit rather than a set of ids. That is the honest reading
+    // of the same question ("how many were here with me"), and it is what let
+    // us stop broadcasting each person's location.
+    const here = place && place.id > 0 ? (breathSync.breathersByPlace[place.id] ?? 0) : 0;
+    if (here > placeCompanionsRef.current) {
+      placeCompanionsRef.current = here;
+      setPlaceCompanions(here);
+    }
   }, [mode, place, breathSync.breathersByPlace]);
   // Who you cobreathed WITH: capture every garden-mate seen breathing live during
   // this sit, so the first to finish still sees the others on the summary even

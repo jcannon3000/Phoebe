@@ -68,6 +68,9 @@ export function useCobreatheSync(
   const leadingRef = useRef<CobreatheSessionMsg | null>(null);
   // Latest sessions snapshot, so we can re-elect when garden/fingerprint change.
   const sessionsRef = useRef<CobreatheSessionMsg[]>([]);
+  /** Latest place counts from the server, kept so re-entering the picker can
+   *  paint immediately — see the re-seed in the subscribe effect. */
+  const placeCountsRef = useRef<Record<number, number>>({});
   /**
    * WHO ELSE IS BREATHING RIGHT NOW, AND WHERE — place id → other people's
    * user ids, never including you.
@@ -77,7 +80,7 @@ export function useCobreatheSync(
    * Filled from the same sessions snapshot that elects the leader, so there is
    * one idea of who is live.
    */
-  const [breathersByPlace, setBreathersByPlace] = useState<Record<number, number[]>>({});
+  const [breathersByPlace, setBreathersByPlace] = useState<Record<number, number>>({});
 
   // Stable key for the garden set so the re-election effect doesn't fire on every
   // render (gardenUserIds is a fresh Set each render).
@@ -104,17 +107,19 @@ export function useCobreatheSync(
    * physical fact — the person across the room counts whether or not you know
    * them. That is the whole point of checking in somewhere.
    */
-  const byPlace = useCallback((sessions: CobreatheSessionMsg[]): Record<number, number[]> => {
-    const me = userRef.current?.id;
-    const out: Record<number, Set<number>> = {};
-    for (const s of sessions) {
-      if (typeof s.placeId !== "number") continue;
-      if (me != null && s.userId === me) continue;
-      (out[s.placeId] ??= new Set<number>()).add(s.userId);
+  const byPlace = useCallback((counts: Record<number, number> | undefined): Record<number, number> => {
+    const mine = leadingRef.current?.placeId;
+    const out: Record<number, number> = {};
+    for (const [k, n] of Object.entries(counts ?? {})) {
+      const place = Number(k);
+      // The server counts everyone at the place, including us — we know the
+      // place we announced, so we take ourselves back out here. It cannot
+      // publish a per-person subtraction without putting each person's
+      // location on the wire, which is the thing we stopped doing.
+      const others = n - (typeof mine === "number" && mine === place ? 1 : 0);
+      if (others > 0) out[place] = others;
     }
-    const flat: Record<number, number[]> = {};
-    for (const [k, v] of Object.entries(out)) flat[Number(k)] = Array.from(v);
-    return flat;
+    return out;
   }, []);
 
   const coBreathers = useCallback((sessions: CobreatheSessionMsg[]): number[] => {
@@ -140,9 +145,10 @@ export function useCobreatheSync(
       if (msg.type !== "cobreathe-sync") return;
       const sessions = (msg.sessions as CobreatheSessionMsg[]) ?? [];
       sessionsRef.current = sessions;
+      placeCountsRef.current = (msg.placeCounts as Record<number, number>) ?? {};
       setLeader(elect(sessions));
       setCoBreatherIds(coBreathers(sessions));
-      setBreathersByPlace(byPlace(sessions));
+      setBreathersByPlace(byPlace(placeCountsRef.current));
       // Reconnect self-heal: if we're leading but the server no longer lists us
       // (our socket dropped + reconnected, dropping our session), re-announce.
       const mine = leadingRef.current;
@@ -151,6 +157,18 @@ export function useCobreatheSync(
         sendMessage({ type: "cobreathe-start", payload: mine });
       }
     };
+    /**
+     * SEED FROM THE LAST SNAPSHOT WE SAW.
+     *
+     * The server sends a cobreathe-sync only on a NEW socket connection or
+     * when someone starts or stops. The socket is never closed between modes,
+     * so coming back to the place picker — which is the ordinary path, since
+     * picking a place goes through the stats screen and back — got no snapshot
+     * and the blue "Breathing Together with N" line never appeared. Breathing
+     * self-heals because announcing triggers a broadcast; the picker announces
+     * nothing by design, so it was the one surface with no way to recover.
+     */
+    setBreathersByPlace(byPlace(placeCountsRef.current));
     const unsub = subscribe(handle);
     return () => {
       unsub();

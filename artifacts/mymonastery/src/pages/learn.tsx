@@ -73,7 +73,10 @@ export default function LearnPage() {
      */
   }, [user, isLoading, setLocation]);
 
-  if (isLoading || !user) return null;
+  // …and no null-gate either. The redirect above was removed for guests but
+  // this line was not, so /learn stayed permanently blank for them — the same
+  // half-fix that /saints had.
+  if (isLoading) return null;
 
   if (activeTopic) {
     return (

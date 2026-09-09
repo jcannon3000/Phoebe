@@ -118,14 +118,46 @@ function broadcastPresenceSync() {
 // their connections by userId (the page passes garden user-ids), so email never
 // needs to cross the wire to every connected client. (email is kept server-side
 // in the Map but never broadcast — a privacy fix vs. the original design.)
-function getCobreatheSessions(): Array<Omit<CobreatheSession, "email">> {
-  // Strip the server-only email — it never reaches a client via the general
-  // sync. Garden filtering still happens client-side by userId.
-  return Array.from(cobreatheSessions.values()).map(({ email: _email, ...rest }) => rest);
+function getCobreatheSessions(): Array<Omit<CobreatheSession, "email" | "placeId">> {
+  /**
+   * Strip the server-only email — it never reaches a client via the general
+   * sync. Garden filtering still happens client-side by userId.
+   *
+   * …AND STRIP placeId. It was added so a place could say who is breathing
+   * there right now, but this payload goes to EVERY connected client, so
+   * sending it per-session published "user 42 is at place 7, now" — a named
+   * physical location with a real radius, against a stable user id, readable
+   * by anyone with an account and a socket. The screen only ever needed a
+   * NUMBER, so the wire only carries a number: see placeCounts below.
+   */
+  return Array.from(cobreatheSessions.values())
+    .map(({ email: _email, placeId: _placeId, ...rest }) => rest);
+}
+
+/**
+ * How many people are breathing at each place, right now — the aggregate the
+ * place list actually renders. One person on two sockets counts once; a client
+ * subtracts itself, since it knows the place it announced.
+ */
+function getCobreathePlaceCounts(): Record<number, number> {
+  const byPlace = new Map<number, Set<number>>();
+  for (const s of cobreatheSessions.values()) {
+    if (typeof s.placeId !== "number") continue;
+    let set = byPlace.get(s.placeId);
+    if (!set) { set = new Set<number>(); byPlace.set(s.placeId, set); }
+    set.add(s.userId);
+  }
+  const out: Record<number, number> = {};
+  for (const [place, users] of byPlace) out[place] = users.size;
+  return out;
 }
 
 function broadcastCobreatheSync() {
-  const msg = JSON.stringify({ type: "cobreathe-sync", sessions: getCobreatheSessions() });
+  const msg = JSON.stringify({
+    type: "cobreathe-sync",
+    sessions: getCobreatheSessions(),
+    placeCounts: getCobreathePlaceCounts(),
+  });
   for (const [ws] of clients) {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(msg);
@@ -321,7 +353,7 @@ export function attachWebSocketServer(server: HttpServer) {
       // Send current presence + cobreathe state to the new client so a late
       // joiner immediately sees who's present and who's already breathing.
       ws.send(JSON.stringify({ type: "presence-sync", presence: getPresenceList() }));
-      ws.send(JSON.stringify({ type: "cobreathe-sync", sessions: getCobreatheSessions() }));
+      ws.send(JSON.stringify({ type: "cobreathe-sync", sessions: getCobreatheSessions(), placeCounts: getCobreathePlaceCounts() }));
 
       ws.on("message", (raw) => {
         try {

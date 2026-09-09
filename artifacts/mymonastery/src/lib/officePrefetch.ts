@@ -56,7 +56,10 @@ const SUNDAYS_AHEAD = 4;
  * has been invisible for a day because THIS key said the work was done: bump
  * it whenever what a run SAVES changes, not only when a run's plumbing does.
  */
-const LAST_RUN_KEY = "phoebe:office-prefetch:last-run-day:v4";
+// v5: Morning and Evening Prayer are now saved whatever the rule says, so a
+// device already stamped complete under v4 has to walk the window once more
+// to pick them up — see the rule above these keys.
+const LAST_RUN_KEY = "phoebe:office-prefetch:last-run-day:v5";
 /** The day a pass found the whole window already on the device. While this is
  *  today, an open costs nothing at all. */
 // v4: the Sunday decks moved from the key "next" to their own dates, so a
@@ -64,7 +67,7 @@ const LAST_RUN_KEY = "phoebe:office-prefetch:last-run-day:v4";
 // look again today. THE RULE: change WHAT is saved or HOW it is keyed and
 // these stamps move with it, or the day-stamp blocks the very re-fetch the
 // change needs.
-const COMPLETE_KEY = "phoebe:office-prefetch:complete-day:v4";
+const COMPLETE_KEY = "phoebe:office-prefetch:complete-day:v5";
 /** …and while it is NOT complete, don't re-walk more often than this. */
 const LAST_CHECK_KEY = "phoebe:office-prefetch:last-check";
 const RECHECK_MS = 5 * 60 * 1000;

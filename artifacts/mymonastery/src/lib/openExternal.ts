@@ -175,6 +175,7 @@ export function openExternal(url: string, opts?: OpenOpts): boolean {
    */
   if (opts?.system) return openWebTab(url);
   if (native?.openInAppBrowser) {
+    cancelPendingRead();
     void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back, ...(opts?.savedHtml ? { savedHtml: opts.savedHtml } : {}), ...(opts?.previous?.length ? { previous: opts.previous } : {}) });
     return true;
   }
@@ -193,6 +194,19 @@ export function openExternal(url: string, opts?: OpenOpts): boolean {
  * inside openExternalThenMarkRead.
  */
 let pendingRead: { cancel: () => void } | null = null;
+/**
+ * ANY native browser open supersedes a pending read — not just another
+ * openExternalThenMarkRead (audit, 2026-09-08).
+ *
+ * The supersede was wired into one of the three doors. The others
+ * (openExternal, openOfficeReading) left an armed listener behind, so the
+ * original bug survived end to end: open the CAC meditation, use its Options
+ * menu to change format (which suppresses browserfinished), then open an
+ * office lesson and close it — and the CAC read is marked, with a dwell
+ * measured from the CAC open. Long enough to clear the ten-second bar, and
+ * markRead credits the anchor whatever the bar says.
+ */
+export function cancelPendingRead(): void { pendingRead?.cancel(); }
 /** A reader open for longer than this is not a reading anyone came back from;
  *  the app was backgrounded, or the close event was suppressed by a handoff. */
 const PENDING_READ_MAX_MS = 6 * 60 * 60 * 1000;
@@ -209,6 +223,7 @@ export function openExternalThenMarkRead(
   // read the INSTANT the link opens rather than when the person comes back —
   // that was the "newsletter dot flips at tap time" bug.
   if (native?.isNative?.() && native?.openInAppBrowser) {
+    cancelPendingRead();
     void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back, ...(opts?.savedHtml ? { savedHtml: opts.savedHtml } : {}), ...(opts?.previous?.length ? { previous: opts.previous } : {}) });
     // Marks read when the browser closes — the finished event. (The 2026-09-04
     // scroll-tracking outcome — "count only when scrolled to the end", a
@@ -311,6 +326,7 @@ export function openOfficeReading(
   if (!url) return false;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative }).PhoebeNative;
   if (native?.openInAppBrowser) {
+    cancelPendingRead();
     void native.openInAppBrowser(url, {
       officeChrome: true,
       officeTitle: ctx.officeTitle,

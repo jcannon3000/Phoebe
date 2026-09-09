@@ -1803,6 +1803,24 @@ export function useRhythmState(): RhythmState {
     ...(walkActive ? [walkDone] : []),
     ...(visioActive ? [visioDone] : []),
     ...(iconsActive ? [iconsDone] : []),
+    /**
+     * SPIRITUALS, THE ROSARY AND LECTIO COUNT TOO (audit, 2026-09-08).
+     *
+     * All three draw a home card and — since the pill was completed — a dot,
+     * but none of them reached this list, so the day could read as KEPT with
+     * one of them still in Next. Someone with the Rosary in their rhythm
+     * prayed everything else and watched the routine hand over to the
+     * finished-day home while the pill directly above it still showed an
+     * unfilled rosary dot. The pill fix did not cause that; it made a
+     * long-standing miscount visible.
+     *
+     * Lectio's card is suppressed when a side's contemplation IS lectio (it is
+     * rendered as that side instead), so it counts only in the standalone
+     * case — the same gate its card uses.
+     */
+    ...(spiritualsActive ? [spiritualsDone] : []),
+    ...(rosaryActive ? [rosaryDone] : []),
+    ...(lectioActive && !(morningContemplationKind === "lectio" || eveningContemplationKind === "lectio") ? [lectioDone] : []),
     ...(complineActive ? [complineDone] : []),
     // Only an anchor when there IS a list. The layout check alone counted it
     // for everyone — including guests, whose intentions query never runs — so

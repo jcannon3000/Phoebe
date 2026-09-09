@@ -1872,7 +1872,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         reading: readingActive || sideHasKind("reading"),
         walk: walkActive || sideHasKind("walk"),
         visio: visioActive || sideHasKind("visio"),
-        lectio: sideHasKind("lectio"),
+        // lectioActive TOO — every other entry here ORs the layout flag with
+        // the side kind, and this one omitted it. So someone with Lectio as a
+        // STANDALONE practice got two identical "Lectio Divina" rows in Done:
+        // the rhythm's own card and an extra. Exactly the double this map
+        // exists to prevent.
+        lectio: lectioActive || sideHasKind("lectio"),
         podcasts: podcastsActive,
         icons: iconsActive,
         spirituals: spiritualsActive,

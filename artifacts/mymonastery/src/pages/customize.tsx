@@ -71,11 +71,23 @@ function currentDailyPrayer(): DailyPrayer {
   if (lvl === "psalms") return "psalms";
   if (lvl === "office") return "office";
   if (lvl === "readings") return "readings";
-  // "Devotions" is no longer a selectable option here — an existing user
-  // whose level is still "devotion" (or anything else unmatched) shows
-  // "Offices" pre-selected, the closest remaining option. A "custom" level
-  // (named in the full customizer) is handled separately by isOwnPractice
-  // below — this fallback never actually surfaces for that case.
+  /**
+   * DEVOTIONS IS SELECTABLE AGAIN, SO IT HAS TO BE NAMEABLE.
+   *
+   * The option came back to the row above, but this reader never learned the
+   * level — so a person who chose Daily Devotions came back to a row reading
+   * "Daily Offices" while their rule still said devotion. Worse, tapping
+   * "Daily Offices" to correct it did NOTHING: applyDailyPrayer early-returns
+   * when the choice equals what the row believes is already selected, so
+   * Offices was unreachable from that state.
+   *
+   * A row must never show a value its own list cannot name — the same rule
+   * Psalms was kept visible under.
+   */
+  if (lvl === "devotion") return "devotion";
+  // Anything still unmatched — a "custom" level named in the full customizer —
+  // is handled separately by isOwnPractice below, so this fallback is only the
+  // last resort for a level this row genuinely has no word for.
   return "office";
 }
 

@@ -58,9 +58,13 @@ export default function SaintsIndex() {
   // one tap away without forcing a devotional "today" surface.
   const [openMonth, setOpenMonth] = useState<number | null>(new Date().getMonth() + 1);
 
-  useEffect(() => {
-    if (!isLoading && !user) setLocation("/");
-  }, [user, isLoading, setLocation]);
+  /**
+   * NO SIGN-IN REDIRECT. /saints is guest-allowed and its content is a bundled
+   * table. The `return null` below was fixed; THIS was left behind, so a
+   * logged-out visitor was still thrown to "/" — which forwards to the
+   * dashboard — from a row the guest menu itself offers (Menu -> Resources).
+   * Half a fix reads exactly like no fix.
+   */
 
   useEffect(() => {
     if (!selected) return;
