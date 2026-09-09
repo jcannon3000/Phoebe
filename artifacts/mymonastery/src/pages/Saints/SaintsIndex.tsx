@@ -69,7 +69,12 @@ export default function SaintsIndex() {
     return () => window.removeEventListener("keydown", handler);
   }, [selected]);
 
-  if (isLoading || !user) return null;
+  /**
+   * The saints index is guest-allowed (GUEST_ALLOWED_PREFIX "/saints") and its
+   * content is a bundled table — no account, no request. `!user` blanked it
+   * permanently for anyone logged out, the same way it blanked the offices.
+   */
+  if (isLoading) return null;
 
   const results = query.trim() ? searchSaints(query) : [];
 

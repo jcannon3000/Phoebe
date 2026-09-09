@@ -6453,7 +6453,26 @@ export default function BcpDailyOfficePage() {
    * /auth/me must still paint — blanking it made every office, psalm and
    * collect a white screen the moment the signal dropped.
    */
-  if (isOnline() && (isLoading || betaLoading || !user)) return null;
+  /**
+   * …AND SO DOES A LOGGED-OUT VISITOR. `!user` blocked this page FOREVER for
+   * anyone without an account: /auth/me settles with a null user, isLoading
+   * goes false, and the condition stays true — so Practices → Daily Scripture
+   * Reading (and every other door into this page) was a permanent black
+   * screen. Owner: "logged out users cant acess the practices."
+   *
+   * The Daily Office needs no account. Its content is the bundled prayer book
+   * and a public endpoint; `user` is read further down only for things that
+   * genuinely need one (the beta chooser, session logging), and each of those
+   * already handles its absence. Waiting on a person who is never going to
+   * arrive is not a gate, it is a hang.
+   *
+   * What remains is the honest wait — auth still in flight — and even that
+   * paints the veil rather than nothing, because a blank screen is how this
+   * whole class of bug hides.
+   */
+  if (isOnline() && (isLoading || betaLoading)) {
+    return <div style={{ minHeight: "var(--app-dvh)", background: BG }} aria-hidden />;
+  }
 
   if (showMode) {
     return (

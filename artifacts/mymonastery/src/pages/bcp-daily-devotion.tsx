@@ -95,7 +95,17 @@ export default function BcpDailyDevotionPage() {
    * /auth/me must still paint — blanking it made every office, psalm and
    * collect a white screen the moment the signal dropped.
    */
-  if (isOnline() && (isLoading || !user)) return null;
+  /**
+   * A LOGGED-OUT VISITOR IS NOT A LOADING STATE. `!user` held this page on a
+   * blank screen forever for anyone without an account: /auth/me settles with
+   * a null user, isLoading goes false, and the condition never clears. Owner:
+   * "logged out users cant acess the practices."
+   *
+   * That this is safe is proved by the line's own offline branch, which has
+   * always rendered with no user at all — the prayer book is bundled and the
+   * endpoints behind it are public. Only the honest wait remains.
+   */
+  if (isOnline() && isLoading) return null;
 
   if (showMode === "morning-devotion" || showMode === "early-evening-devotion") {
     return <OfficeViewer mode={showMode} cameFromPicker={cameFromPicker} onBack={() => { setShowMode(null); setLocation("/dashboard"); }} />;
