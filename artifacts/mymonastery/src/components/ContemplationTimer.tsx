@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import { antiphonForDay } from "@/lib/antiphons";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
@@ -86,11 +87,17 @@ function formatDone(totalSeconds: number): string {
   return `${m} min ${sec} sec`;
 }
 
+// "opening" is the day's ANTIPHON, held for as long as you want before the
+// silence — the office's own one line, and the threshold into stillness.
+// Owner, after watching Contemplative Outreach open a sit with a psalm verse:
+// "what if we use antiphons from Morning and Evening Prayer". A sit with an
+// audio reflection skips it: the reflection IS its opening.
+//
 // "reflection" is the audio-led opening (e.g. Forward Day by Day read
 // aloud). It plays FIRST and is deliberately NOT counted as
 // contemplative time — only the "running" silence that follows it logs
 // as prayer. Plain sits skip "reflection" and go picker → running.
-type Phase = "picker" | "reflection" | "running" | "complete" | "whats-next";
+type Phase = "picker" | "opening" | "reflection" | "running" | "complete" | "whats-next";
 
 // An optional "what's next" closing card shown AFTER the completion summary — a
 // gentle handoff into the next thing in the day's rhythm (e.g. today's
@@ -183,6 +190,20 @@ export function ContemplationTimer({
   const [fddCustomMode, setFddCustomMode] = useState(false);
   const [fddCustomMin, setFddCustomMin] = useState("10");
   // Chosen length + the live remaining count (seconds).
+  /** The minutes chosen on the picker, waiting behind the antiphon. */
+  const pendingSilenceMinRef = useRef(0);
+  /**
+   * The day's antiphon. Computed once per mount: a sit does not straddle
+   * midnight often enough to justify re-deriving it, and a value that changed
+   * under the reader mid-threshold would be worse than one that is an hour
+   * stale. `side` picks the register — Compline's settling antiphon in the
+   * evening, the day's invitatory in the morning — on the same 4 PM boundary
+   * the home uses to call a card "this evening".
+   */
+  const antiphon = useMemo(
+    () => antiphonForDay(new Date(), new Date().getHours() >= 16 ? "evening" : "morning"),
+    [],
+  );
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [remaining, setRemaining] = useState(0);
   // Once the set time is reached, the countdown freezes at the goal and
@@ -706,7 +727,17 @@ export function ContemplationTimer({
         startSilence(silenceMinRef.current);
       }
     } else {
-      startSilence(minutes);
+      /**
+       * THE ANTIPHON FIRST. One line, one tap, then the bell.
+       *
+       * Held in a ref as well as state because startSilence is called from the
+       * Amen handler, and the minutes chosen on the picker have to survive the
+       * phase change to reach it.
+       */
+      pendingSilenceMinRef.current = minutes;
+      setPhase("opening");
+      phaseRef.current = "opening";
+      void acquireWakeLock();
     }
   }
 
@@ -959,6 +990,49 @@ export function ContemplationTimer({
           className="flex-1 flex flex-col items-center justify-center text-center px-6 w-full"
           style={{ maxWidth: 440, position: "relative", zIndex: 1 }}
         >
+          {/**
+            * THE ANTIPHON — Breathing Together's closing-collect slide, exactly
+            * (owner: "have them displayed like the closing collect ui of
+            * breathing together"). Same measure, same eyebrow at 11px/0.2em in
+            * faint sage, the same Georgia 24/1.5 body, the same attribution
+            * line, and the same green Amen pill sitting left under it. See
+            * components/CobreatheSummary.tsx step 0.
+            *
+            * LEFT-ALIGNED inside a centred column: the parent centres its
+            * children, so the text-align has to be undone here or the collect
+            * shape collapses into a poster.
+            */}
+          {phase === "opening" && (
+            <motion.div
+              key="antiphon"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+              className="flex flex-col w-full"
+              style={{ textAlign: "left", alignItems: "flex-start" }}
+            >
+              <p
+                className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-4"
+                style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}
+              >
+                {t("contemplation.antiphon_eyebrow", { defaultValue: "The Antiphon" })}
+              </p>
+              <p style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 24, lineHeight: 1.5, letterSpacing: "0.005em" }}>
+                {antiphon.text}
+              </p>
+              <p className="text-[12px] mt-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
+                {antiphon.source}
+              </p>
+              <button
+                type="button"
+                onClick={() => startSilence(pendingSilenceMinRef.current)}
+                className="rounded-full px-9 py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98] mt-9 self-start"
+                style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: SPACE_GROTESK, cursor: "pointer" }}
+              >
+                {t("contemplation.antiphon_amen", { defaultValue: "Amen" })}
+              </button>
+            </motion.div>
+          )}
+
           {phase === "picker" && (
             <>
               <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.55)" }}>
