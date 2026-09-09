@@ -18,7 +18,7 @@ import { openReadingPage } from "@/lib/openExternal";
 import { toast } from "@/hooks/use-toast";
 import { isOnline, useOnline } from "@/lib/offline";
 import { nextSundayYmdNY } from "@/lib/sundayDate";
-import { FDD_TODAY_URL, markFddRead } from "@/lib/cacReadState";
+import { FDD_TODAY_URL, markFddRead, recordReadingsOpened, hasPrayedReadingsToday } from "@/lib/cacReadState";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -645,6 +645,39 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // off this; otherwise the historical exit path is unchanged for
   // beta + community users.
   const { user: viewerUser } = useAuth();
+  /**
+   * STAMP THE DAY COMPLETE — FOR EVERYONE, AND FOR THE CARD THAT OPENED IT.
+   *
+   * Owner, 2026-09-09: "The daily scripture readings are not going to done in
+   * the logged out version after they are practiced." Two causes, both here.
+   *
+   * (a) Every completion stamp in this deck was wrapped in `if (viewerUser)`.
+   *     The stamp is a LOCAL flag — the home card reads localStorage, not an
+   *     account — so gating it on a user meant a logged-out person could
+   *     finish the whole deck and nothing on the phone would remember it.
+   *     The same class as the sign-in gates removed on 2026-09-08, on the
+   *     write side instead of the render side.
+   * (b) The scripture deck writes `office-completed:scripture`, but a SIDE
+   *     whose practice is the readings shows "done" from a different signal:
+   *     readings:{side}:last-read-day, via hasPrayedReadingsToday. Only
+   *     recordReadingsOpened writes that, and on 2026-09-08 I removed both
+   *     of its callers when the readings stopped opening a website ("completion
+   *     follows from finishing the deck") — without making finishing the deck
+   *     write it. The card/dot/widget must read ONE signal; this restores it
+   *     at the moment completion is actually a fact.
+   *
+   * One helper, called from all four end paths (Amen, Done, the book path,
+   * the play-through), so they cannot drift again.
+   */
+  const stampCompleted = () => {
+    localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1");
+    markRecentCompletion(completedCardKey);
+    if (resolvedMode === "scripture") {
+      for (const side of ["morning", "evening"] as const) {
+        if (getSideLevel(side) === "readings" && !hasPrayedReadingsToday(side)) recordReadingsOpened({ side });
+      }
+    }
+  };
   /**
    * Where an office ENDS. /prayer-mode is gated (PrayerGate), so for everyone
    * outside the pilot the closing handoff was a pause on three requests they
@@ -2107,14 +2140,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         enqueueSession(bookSessionBody);
       });
     try {
-      if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1"); // Stamp the home card this office completes, so returning home plays its
+      stampCompleted(); { // (was gated on viewerUser — see stampCompleted) // Stamp the home card this office completes, so returning home plays its
                   // completion moment (the side anchor card is keyed "morning"/"evening").
                   //
                   // completedCardKey — the ONE definition. Two copies of this
                   // ternary survived here, and neither knew about a side
                   // carrying a SECOND practice: finishing it animated the
                   // anchor's card instead of the one just prayed.
-                  markRecentCompletion(completedCardKey); }
+                  }
       localStorage.removeItem(officeProgressKey(resolvedMode, officeTodayKey(), trackVariant));
     } catch { /* non-fatal */ }
     if (!isSecondPracticeRun) clearOfficeReminderNotifications();
@@ -2299,7 +2332,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // for prayer-shaped closings, Done for non-prayer ones).
     completedRef.current = true;
     try {
-      if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1"); // Stamp the home card this office completes, so returning home plays its
+      stampCompleted(); { // (was gated on viewerUser — see stampCompleted) // Stamp the home card this office completes, so returning home plays its
         // completion moment (the side anchor card is keyed "morning"/"evening").
         // completedCardKey, NOT a third hand-written copy of this ternary.
         // Owner: "STILL … ANIMATES MORNING PRAYER". The reading deck's last
@@ -2309,7 +2342,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // two other completion moments were corrected and this one was missed;
         // completedCardKey already returns "scripture" for a reading deck (see
         // its definition) and is what line ~2438 uses.
-        markRecentCompletion(completedCardKey); }
+        }
       localStorage.removeItem(officeProgressKey(resolvedMode, officeTodayKey(), trackVariant));
     } catch { /* non-fatal */ }
     // Clear the daily reminder pushes — the "Done" path is the
@@ -2751,14 +2784,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // still see the completed flag and decide what copy to show.
     completedRef.current = true;
     try {
-      if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1"); // Stamp the home card this office completes, so returning home plays its
+      stampCompleted(); { // (was gated on viewerUser — see stampCompleted) // Stamp the home card this office completes, so returning home plays its
                   // completion moment (the side anchor card is keyed "morning"/"evening").
                   //
                   // completedCardKey — the ONE definition. Two copies of this
                   // ternary survived here, and neither knew about a side
                   // carrying a SECOND practice: finishing it animated the
                   // anchor's card instead of the one just prayed.
-                  markRecentCompletion(completedCardKey); }
+                  }
       localStorage.removeItem(officeProgressKey(resolvedMode, officeTodayKey(), trackVariant));
     } catch { /* non-fatal */ }
     // The public /pray page handles its own close (a sign-up invite)
@@ -2817,10 +2850,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         if (durationSeconds < 180) return; // the server's own bar for this surface
         const endedAt = new Date();
         try {
-          if (viewerUser) {
-            localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1");
-            markRecentCompletion(completedCardKey);
-          }
+          stampCompleted();
         } catch { /* private mode — non-fatal */ }
         if (!isSecondPracticeRun) clearOfficeReminderNotifications();
         void apiRequest("POST", "/api/prayer-sessions", {
