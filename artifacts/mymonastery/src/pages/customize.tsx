@@ -793,12 +793,21 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             )
             : row("Daily Prayer", dailyPrayer, [
                 { value: "guided-prayer", label: "Simple Guided Prayer" },
-                { value: "psalms", label: "Psalms" },
-                // "Offices" (and the Venite devotion entry it carried) removed
-                // from this row (owner). Anyone already on it keeps it — this
-                // list only decides what a NEW pick offers.
+                // OFFICES AND DEVOTIONS ARE BACK (owner, 2026-09-08: "the
+                // offices and devotions are not in the drop down for daily
+                // prayer"). They had been removed; the light customizer is the
+                // only customizer most people ever see, and the Daily Office is
+                // the app's centre.
+                { value: "office", label: "Daily Offices" },
+                { value: "devotion", label: "Daily Devotions" },
                 { value: "readings", label: "Daily Scripture Readings" },
                 { value: "contemplation", label: "Contemplative Prayer" },
+                // PSALMS OUT (owner, same note) — but only as a NEW pick.
+                // Someone already praying the psalms keeps the option visible,
+                // or the row would show a value its own list cannot name and
+                // the first touch of any other row would silently reassign
+                // their anchor. Same rule offices were removed under.
+                ...(dailyPrayer === "psalms" ? [{ value: "psalms", label: "Psalms" }] : []),
               ], (v) => applyDailyPrayer(v as DailyPrayer))}
 
           {/* VTS is feed-gated: the Dean's Commentary only appears once the

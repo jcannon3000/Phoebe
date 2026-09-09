@@ -268,47 +268,35 @@ export default function BeginPrayerPage() {
      * Anything else keeps the Forward Movement hand-off, which now actually
      * OPENS the readings rather than just landing on the home.
      */
+    /**
+     * DAILY SCRIPTURE READING IS OUR OWN SLIDESHOW. ALWAYS. (Owner,
+     * 2026-09-08, filmed: "when the card is in the routine its not pulling up
+     * the slideshow" — the Morning Scripture Reading card opened venite.app's
+     * Daily Readings page; and "we want it the slideshow".)
+     *
+     * This branch had TWO ways to leave the app and none to stay in it:
+     *   1. venite.app, whenever the side's entry was "venite" — and
+     *      getDefaultOfficeEntry()'s GLOBAL fallback IS "venite", so every
+     *      device that never wrote a per-side entry took it. That is most
+     *      devices: the entry is only written when someone saves the
+     *      customizer, and "readings" is also the built-in default for the
+     *      evening side, so people arrived here having chosen nothing at all.
+     *   2. prayer.forwardmovement.org otherwise.
+     * Offline it already opened our deck — which is the tell: the deck has
+     * carried these readings all along, and only the online paths went out.
+     *
+     * Venite has no working deep link for the readings anyway; customize.tsx's
+     * own note says so in as many words ("psalms/devotion/readings aren't
+     * offices it serves"). Two places believed different things about one
+     * preference. The office keeps its Venite hand-off, further down.
+     *
+     * Completion is NOT marked here. The deck marks it when it is FINISHED,
+     * which is the office-completed invariant; marking on open was only
+     * defensible while the reading happened on someone else's site where we
+     * could never see the end of it.
+     */
     if (defaultPrayerLevel === "readings") {
-      // OFFLINE, VENITE IS A WEBSITE (owner, 2026-09-06: "Morning Prayer did
-      // not load", filmed in Airplane Mode). Handing them to venite.app with no
-      // connection is a blank browser over a deck they cannot see; the app's
-      // own office IS saved, so open that instead and let the site have them
-      // back when they're online.
-      if (getSideEntry(side) === "venite" && isOnline()) {
-        // Computed inline: the shared officeModeForLink/reset are declared
-        // further down, and this branch returns long before them.
-        const mode = isMorning ? "morning" : "evening";
-        // No &reset= here: prayedToday is computed further down, and a Venite
-        // hand-off doesn't resume a slide position anyway — the deck opens only
-        // to pass them straight to the browser.
-        setLocation(`/bcp/daily-office?mode=${mode}&venite=1`, { replace: true });
-        return;
-      }
-      // Open the readings HERE, rather than handing off to a card and hoping
-      // it mounts and notices. Reported twice: "morning scripture reading isn't
-      // going forward, it just refreshes the home screen." The ?readings= param
-      // only works if the ReadingsHomeCard happens to be rendered on the
-      // dashboard for that side — a lot of conditions between a tap and a
-      // lectionary. The tap that got us here is the user gesture, so opening
-      // directly is both simpler and more reliable.
-      /**
-       * OFFLINE THE READINGS ARE THE SAVED DECK, not the website (audit,
-       * 2026-09-06). "readings" is the built-in default for the EVENING side,
-       * so anyone who never chose an evening practice had a card the home
-       * called available offline that opened prayer.forwardmovement.org and
-       * died there. The app's own Daily Scripture Reading deck carries the
-       * same day's lessons and is saved ahead, so with no connection we open
-       * that instead; online the hand-off is unchanged.
-       */
-      if (!isOnline()) {
-        setLocation("/bcp/daily-office?mode=scripture", { replace: true });
-        return;
-      }
-      openExternalThenMarkRead(
-        getReadingsTodayUrl(),
-        () => recordReadingsOpened({ side }),
-      );
-      setLocation("/dashboard", { replace: true });
+      setLocation("/bcp/daily-office?mode=scripture", { replace: true });
       return;
     }
     // A practice the user named themselves IS this side's prayer → there's no

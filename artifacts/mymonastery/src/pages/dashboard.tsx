@@ -3307,6 +3307,7 @@ function FddHomeCard() {
 // practice that is 'Daily Scripture Readings'... configured to morning [for
 // morning] and evening for evening."
 function ReadingsHomeCard({ side = "morning", hero = false }: { side?: "morning" | "evening"; hero?: boolean } = {}) {
+  const [, setReadingsLocation] = useLocation();
   // Same ?readings=<side> handoff FddHomeCard uses for ?fdd=<side> — set by
   // begin-prayer.tsx when Daily Scripture Readings IS a side's chosen prayer.
   const [praySide] = useState<"morning" | "evening" | undefined>(() => {
@@ -3333,8 +3334,24 @@ function ReadingsHomeCard({ side = "morning", hero = false }: { side?: "morning"
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [praySide, side]);
+  /**
+   * THE SLIDESHOW, NOT A WEBSITE (owner, 2026-09-08: "we dont want venite at
+   * all it should be the daily scripture slideshow", filmed tapping this very
+   * card and landing on venite.app's Daily Readings page).
+   *
+   * This card opened Forward Movement's daily-readings page, and begin-prayer
+   * — the OTHER way into the same practice — opened venite.app or Forward
+   * Movement depending on a preference whose global fallback is "venite". Two
+   * renderers, two different websites, and neither was the deck the app builds
+   * for this day. Both go to the deck now.
+   *
+   * Completion follows from FINISHING the deck (the office-completed
+   * invariant). recordReadingsOpened marked it on the way OUT of the app,
+   * which was the only thing available while the reading happened somewhere we
+   * could never see the end of.
+   */
   const onClick = () => {
-    openExternalThenMarkRead(getReadingsTodayUrl(), () => recordReadingsOpened({ side: praySide ?? side }), { reader: true });
+    setReadingsLocation("/bcp/daily-office?mode=scripture");
   };
   /**
    * The routine card asked to PRAY this, so open it.
