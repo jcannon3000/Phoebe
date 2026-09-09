@@ -63,7 +63,16 @@ export function CobreatheSummary({
    *  line tacked onto the breaths page. */
   placeBreathsMonth?: number;
   placeBreathsAllTime?: number;
-  /** Distinct others seen breathing at this place during THIS sit. */
+  /**
+   * How many OTHER people breathed at this place today.
+   *
+   * From the place's own record (breath_place_breaths, distinct users), not
+   * from who happened to be breathing at the same moment: today's headline
+   * number sums every SET by everyone, so a person who breathed twice could
+   * not tell their own second set from a stranger's first. Owner: "today i
+   * breathed 15 and it said there was 27 in total … i should have seen that
+   * there was someone else who i breathed with."
+   */
   placeCompanions?: number;
   onContinue: () => void;
   continueLabel?: string;

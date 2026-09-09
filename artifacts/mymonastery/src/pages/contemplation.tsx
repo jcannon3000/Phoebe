@@ -79,6 +79,14 @@ type Stats = {
   todaySeconds: number; todayCount: number; todayDays: number;
   weekSeconds: number; weekCount: number; weekDays: number;
   totalSeconds: number; sessionCount: number; totalDays: number;
+  /** The same windows counting EVERY contemplative sit, Breathing Together
+   *  included. The bare keys above stay silent-only because the SILENCE GOAL
+   *  is measured against them; these are what this page reports. */
+  withBreath?: {
+    todaySeconds: number; todayCount: number; todayDays: number;
+    weekSeconds: number; weekCount: number; weekDays: number;
+    totalSeconds: number; sessionCount: number; totalDays: number;
+  };
 };
 
 // Someone in your garden whose contemplative prayer overlapped yours.
@@ -586,7 +594,10 @@ export default function ContemplationPage() {
       window.removeEventListener("visibilitychange", recheck);
     };
   }, [guest]);
-  const todayTotalSeconds = (stats?.todaySeconds ?? 0) + (guest ? guestSeconds : 0);
+  // Breath included — this page reports contemplation, and a Breathing
+  // Together sit is contemplation. The SILENCE GOAL still reads the
+  // silent-only figure (see the type above).
+  const todayTotalSeconds = (stats?.withBreath?.todaySeconds ?? stats?.todaySeconds ?? 0) + (guest ? guestSeconds : 0);
 
   // History — every logged sit, newest first.
   const { data: sessions = [] } = useQuery<Session[]>({
@@ -978,14 +989,14 @@ export default function ContemplationPage() {
             <div className="flex gap-3 mb-4">
               {/* Cumulative time = in-app sits (incl. Cobreathe) for each window. */}
               <StatTile label={t("contemplation.label_today")} value={humanMinutes(todayTotalSeconds)} />
-              <StatTile label={t("contemplation.label_this_week")} value={humanMinutes(stats?.weekSeconds ?? 0)} />
-              <StatTile label={t("contemplation.label_all_time")} value={humanMinutes(stats?.totalSeconds ?? 0)} />
+              <StatTile label={t("contemplation.label_this_week")} value={humanMinutes(stats?.withBreath?.weekSeconds ?? stats?.weekSeconds ?? 0)} />
+              <StatTile label={t("contemplation.label_all_time")} value={humanMinutes(stats?.withBreath?.totalSeconds ?? stats?.totalSeconds ?? 0)} />
             </div>
             <RowLabel>{t("contemplation.average_per_day")}</RowLabel>
             <div className="flex gap-3">
               <StatTile label={t("contemplation.label_today")} value={avgPerDay(todayTotalSeconds, stats?.todayDays ?? 0)} />
-              <StatTile label={t("contemplation.label_this_week")} value={avgPerDay(stats?.weekSeconds ?? 0, stats?.weekDays ?? 0)} />
-              <StatTile label={t("contemplation.label_all_time")} value={avgPerDay(stats?.totalSeconds ?? 0, stats?.totalDays ?? 0)} />
+              <StatTile label={t("contemplation.label_this_week")} value={avgPerDay(stats?.withBreath?.weekSeconds ?? stats?.weekSeconds ?? 0, stats?.withBreath?.weekDays ?? stats?.weekDays ?? 0)} />
+              <StatTile label={t("contemplation.label_all_time")} value={avgPerDay(stats?.withBreath?.totalSeconds ?? stats?.totalSeconds ?? 0, stats?.withBreath?.totalDays ?? stats?.totalDays ?? 0)} />
             </div>
           </div>
         )}

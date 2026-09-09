@@ -1016,9 +1016,22 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
     const tz = await resolveUserTz(req, sessionUserId, meTz?.timezone);
     const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
     const [ty, tm, td] = todayYmd.split("-").map((n) => parseInt(n, 10));
+    /**
+     * FIVE DAYS, NOT ONE (owner: "the home screen ordering of cards is still
+     * not ordering based on the average order of my past 5 days").
+     *
+     * One day is a rumour; five is a habit. A single skipped or unusual
+     * evening used to rewrite the whole middle of the home for the next day.
+     * The window is the five COMPLETED days before today — today is excluded
+     * on purpose, so the order does not rearrange itself under you as you
+     * pray through the morning.
+     */
     const yDate = new Date(Date.UTC(ty, tm - 1, td));
     yDate.setUTCDate(yDate.getUTCDate() - 1);
     const yesterdayYmd = yDate.toISOString().slice(0, 10);
+    const startDate = new Date(Date.UTC(ty, tm - 1, td));
+    startDate.setUTCDate(startDate.getUTCDate() - 5);
+    const windowStartYmd = startDate.toISOString().slice(0, 10);
 
     const [officeRows, contRows, sideContRows, reflectRows, breathRows, pcRows] = await Promise.all([
       // The office anchors — owner: "there should be endpoints in that when
@@ -1032,7 +1045,7 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
       // partial sit the rest of the app treats as unprayed. Compline stays its
       // OWN side for the same reason it does there: folding it into 'evening'
       // would rank Evening Prayer off a Compline-only night.
-      db.execute<{ side: string; surface: string; at: string }>(sql`
+      db.execute<{ side: string; surface: string; at: number }>(sql`
         SELECT
           CASE
             WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
@@ -1040,7 +1053,7 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
             WHEN surface = 'compline' THEN 'compline'
           END AS side,
           surface,
-          MIN(ended_at) AS at
+          AVG(EXTRACT(EPOCH FROM (((ended_at) AT TIME ZONE ${tz})::time)))::float8 AS at
         FROM prayer_sessions
         WHERE user_id = ${sessionUserId}
           AND (
@@ -1048,25 +1061,25 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
             OR (surface = 'national-cathedral' AND duration_seconds >= 180)
             OR (surface IN ('morning-office-podcast', 'evening-office-podcast') AND completed = TRUE)
           )
-          AND (ended_at AT TIME ZONE ${tz})::date = ${yesterdayYmd}::date
+          AND (ended_at AT TIME ZONE ${tz})::date BETWEEN ${windowStartYmd}::date AND ${yesterdayYmd}::date
         GROUP BY 1, surface
       `),
       // The "Contemplation" (silence) anytime card — earliest sit yesterday.
       // Only the SIDELESS sits: a per-side sit belongs to its own card below,
       // and counting it here too would rank both cards off the same moment.
-      db.execute<{ at: string }>(sql`
-        SELECT MIN(ended_at) AS at FROM prayer_sessions
+      db.execute<{ at: number }>(sql`
+        SELECT AVG(EXTRACT(EPOCH FROM (((ended_at) AT TIME ZONE ${tz})::time)))::float8 AS at FROM prayer_sessions
         WHERE user_id = ${sessionUserId} AND surface = 'contemplation'
           AND contemplation_side IS NULL
-          AND (ended_at AT TIME ZONE ${tz})::date = ${yesterdayYmd}::date
+          AND (ended_at AT TIME ZONE ${tz})::date BETWEEN ${windowStartYmd}::date AND ${yesterdayYmd}::date
       `),
       // Per-side Contemplative Prayer — the morning/evening Contemplation
       // cards complete independently, so each ranks off its own earliest sit.
-      db.execute<{ side: string; at: string }>(sql`
-        SELECT contemplation_side AS side, MIN(ended_at) AS at FROM prayer_sessions
+      db.execute<{ side: string; at: number }>(sql`
+        SELECT contemplation_side AS side, AVG(EXTRACT(EPOCH FROM (((ended_at) AT TIME ZONE ${tz})::time)))::float8 AS at FROM prayer_sessions
         WHERE user_id = ${sessionUserId} AND surface = 'contemplation'
           AND contemplation_side IN ('morning', 'evening')
-          AND (ended_at AT TIME ZONE ${tz})::date = ${yesterdayYmd}::date
+          AND (ended_at AT TIME ZONE ${tz})::date BETWEEN ${windowStartYmd}::date AND ${yesterdayYmd}::date
         GROUP BY contemplation_side
       `),
       // Daily reflections (Dean's Commentary, Forward Day by Day, SSJE …).
@@ -1075,25 +1088,25 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
       // this feed entirely, so their cards could never be ranked. One row per
       // (user, source, day) inserted on the FIRST read, so created_at is
       // exactly when they opened it.
-      db.execute<{ source: string; at: string }>(sql`
-        SELECT source, MIN(created_at) AS at FROM reflection_reads
-        WHERE user_id = ${sessionUserId} AND ymd = ${yesterdayYmd}
+      db.execute<{ source: string; at: number }>(sql`
+        SELECT source, AVG(EXTRACT(EPOCH FROM (((created_at) AT TIME ZONE ${tz})::time)))::float8 AS at FROM reflection_reads
+        WHERE user_id = ${sessionUserId} AND ymd BETWEEN ${windowStartYmd} AND ${yesterdayYmd}
         GROUP BY source
       `),
       // Co-Breathe — one row per local day already.
-      db.execute<{ at: string }>(sql`
-        SELECT created_at AS at FROM breath_sessions
-        WHERE user_id = ${sessionUserId} AND day = ${yesterdayYmd}
+      db.execute<{ at: number }>(sql`
+        SELECT AVG(EXTRACT(EPOCH FROM (((created_at) AT TIME ZONE ${tz})::time)))::float8 AS at FROM breath_sessions
+        WHERE user_id = ${sessionUserId} AND day BETWEEN ${windowStartYmd} AND ${yesterdayYmd}
         LIMIT 1
       `),
       // Audio Divina / Reading / Podcasts / Contemplative Walk.
       // …and the Examen + Prayer List, which have cards like any other practice
       // and were simply missing from this filter, so they could never rank.
-      db.execute<{ section: string; at: string }>(sql`
-        SELECT section, MIN(created_at) AS at FROM practice_completion
+      db.execute<{ section: string; at: number }>(sql`
+        SELECT section, AVG(EXTRACT(EPOCH FROM (((created_at) AT TIME ZONE ${tz})::time)))::float8 AS at FROM practice_completion
         WHERE user_id = ${sessionUserId}
           AND section IN ('listening', 'reading', 'podcasts', 'walk', 'examen', 'prayer-list', 'visio')
-          AND local_date = ${yesterdayYmd}
+          AND local_date BETWEEN ${windowStartYmd} AND ${yesterdayYmd}
         GROUP BY section
       `),
     ]);
@@ -1101,7 +1114,18 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
     // Keys MUST match DailyProgressBody's card `key`s exactly — that map lookup
     // is the whole mechanism, and a key that doesn't match simply ranks
     // Infinity and sorts last, silently.
-    const entries: Array<{ key: string; at: string }> = [];
+    /**
+     * `at` is now SECONDS PAST LOCAL MIDNIGHT, averaged over the window — not a
+     * timestamp. "When do I usually do this" is the question the home is
+     * asking, and averaging clock times answers it directly; averaging dates
+     * would just return a date in the middle of the window.
+     *
+     * A practice done twice in one day pulls its own average slightly later.
+     * That is the honest reading — it says something about when the practice
+     * really sits in the day — and it cannot reorder anything by more than the
+     * gap between the two sittings.
+     */
+    const entries: Array<{ key: string; at: number }> = [];
     /**
      * 'morning' | 'evening' | 'compline' are already the card keys verbatim —
      * EXCEPT when a side carries a second practice. A devotion prayed alongside
@@ -1116,33 +1140,33 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
       morning: "morning-devotion",
       evening: "early-evening-devotion",
     };
-    const earliest = new Map<string, string>();
-    const note = (key: string, at: string) => {
+    const earliest = new Map<string, number>();
+    const note = (key: string, at: number) => {
       const prev = earliest.get(key);
-      if (!prev || new Date(at).getTime() < new Date(prev).getTime()) earliest.set(key, at);
+      if (prev === undefined || at < prev) earliest.set(key, at);
     };
     for (const r of officeRows.rows) {
-      if (!r.at || !r.side) continue;
+      if (r.at == null || !r.side) continue;
       const isExtra = r.surface === DEVOTION_SURFACE[r.side]
         && rcValues[`phoebe:office:level:${r.side}`] === "office";
       note(isExtra ? `extra-${r.side}` : r.side, r.at);
     }
     for (const [key, at] of earliest) entries.push({ key, at });
-    if (contRows.rows[0]?.at) entries.push({ key: "silence", at: contRows.rows[0].at });
-    if (breathRows.rows[0]?.at) entries.push({ key: "cobreathe", at: breathRows.rows[0].at });
+    if (contRows.rows[0]?.at != null) entries.push({ key: "silence", at: contRows.rows[0].at });
+    if (breathRows.rows[0]?.at != null) entries.push({ key: "cobreathe", at: breathRows.rows[0].at });
     for (const r of sideContRows.rows) {
-      if (r.at && r.side) entries.push({ key: `contemplation-${r.side}`, at: r.at });
+      if (r.at != null && r.side) entries.push({ key: `contemplation-${r.side}`, at: r.at });
     }
     for (const r of reflectRows.rows) {
-      if (r.at && r.source) entries.push({ key: `reflect-${r.source}`, at: r.at });
+      if (r.at != null && r.source) entries.push({ key: `reflect-${r.source}`, at: r.at });
     }
     for (const r of pcRows.rows) {
       // The card key is "prayer-list-card"; the stored section is
       // "prayer-list". Pushing the section verbatim ranked a key that no card
       // has, which the map lookup ignores in silence.
-      if (r.at) entries.push({ key: r.section === "prayer-list" ? "prayer-list-card" : r.section, at: r.at });
+      if (r.at != null) entries.push({ key: r.section === "prayer-list" ? "prayer-list-card" : r.section, at: r.at });
     }
-    entries.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+    entries.sort((a, b) => a.at - b.at);
     res.json({ order: entries.map((e) => e.key) });
   } catch (err) {
     console.error("[yesterday-order] failed:", err);

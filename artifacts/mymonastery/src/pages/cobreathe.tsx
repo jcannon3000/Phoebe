@@ -277,39 +277,6 @@ export default function CobreathePage() {
   const LIVE_BLUE = "#7FB3E8";
   const liveHere = (placeId: number) => breathSync.breathersByPlace[placeId] ?? 0;
 
-  /**
-   * EVERYONE YOU BREATHED WITH AT THIS PLACE, cumulative across the sit.
-   *
-   * Owner: "on the page where it shows how many breaths at that location there
-   * are, have it show something that says you breathed with x people, the
-   * cumulative during the session."
-   *
-   * Cumulative, because a live count is a snapshot: three people can come and
-   * go over twelve breaths and the instant reading might never exceed one. The
-   * set only grows while a sit is running and is emptied when the next one
-   * begins, so it answers "who was here with me" for THIS sit rather than for
-   * the day.
-   */
-  const placeCompanionsRef = useRef<number>(0);
-  const [placeCompanions, setPlaceCompanions] = useState(0);
-  // A new sit starts from nobody. Declared BEFORE the collector below: effects
-  // run in declaration order, so clearing second would have thrown away whoever
-  // was already breathing here at the moment the sit began.
-  useEffect(() => {
-    if (mode === "breathing") { placeCompanionsRef.current = 0; setPlaceCompanions(0); }
-  }, [mode]);
-  useEffect(() => {
-    if (mode !== "breathing") return;
-    // The wire carries a COUNT, not who — so "cumulative" is the high-water
-    // mark across the sit rather than a set of ids. That is the honest reading
-    // of the same question ("how many were here with me"), and it is what let
-    // us stop broadcasting each person's location.
-    const here = place && place.id > 0 ? (breathSync.breathersByPlace[place.id] ?? 0) : 0;
-    if (here > placeCompanionsRef.current) {
-      placeCompanionsRef.current = here;
-      setPlaceCompanions(here);
-    }
-  }, [mode, place, breathSync.breathersByPlace]);
   // Who you cobreathed WITH: capture every garden-mate seen breathing live during
   // this sit, so the first to finish still sees the others on the summary even
   // after their session ends (mirrors the contemplation co-presence capture).
@@ -454,6 +421,9 @@ export default function CobreathePage() {
     place: { id: number; name: string; subtitle: string | null };
     // (No `people` roster — it isn't requested and isn't shown.)
     today: number;
+    /** Distinct people who breathed here today — today's headline number is
+     *  BREATHS, summed across everyone and across each person's sets. */
+    todayPeople?: number;
     month: { breaths: number; people: number };
     allTime: { breaths: number; people: number };
   }>({
@@ -472,6 +442,18 @@ export default function CobreathePage() {
       && !!place && (place.id > 0 || !!place.slug),
     staleTime: 60_000,
   });
+
+  /**
+   * EVERYONE WHO BREATHED HERE TODAY, BESIDES YOU.
+   *
+   * The place's own record, not live presence: the stats screen reports the
+   * DAY, and a person who came twice must not read as two people. `todayPeople`
+   * counts distinct users, so subtracting yourself gives the line the owner
+   * asked for — "you breathed with x people" — and it is only shown when there
+   * actually was somebody else.
+   */
+  const placeCompanions = Math.max(0, (placeStats?.todayPeople ?? 0) - 1);
+
 
   const record = useMutation({
     onError: (_err, seconds) => {

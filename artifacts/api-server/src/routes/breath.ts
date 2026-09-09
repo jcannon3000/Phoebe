@@ -495,6 +495,7 @@ router.get("/breath/places/:id/stats", async (req: Request, res: Response): Prom
         // object here would have broken the client on exactly the path this
         // fallback exists to serve.
         today: 0,
+        todayPeople: 0,
         month: { breaths: 0, people: 0 },
         allTime: { breaths: 0, people: 0 },
       });
@@ -507,11 +508,18 @@ router.get("/breath/places/:id/stats", async (req: Request, res: Response): Prom
     // the slide says "N breaths", and breath_sessions is one row per person
     // per completed day, which is why twelve breaths used to read as "1".
     const rows = await db.execute<{
-      today: number; month_breaths: number; month_people: number;
+      today: number; today_people: number; month_breaths: number; month_people: number;
       all_breaths: number; all_people: number;
     }>(sql`
       SELECT
         COALESCE(SUM(breaths) FILTER (WHERE day = ${day}), 0)::int              AS today,
+        -- HOW MANY PEOPLE, not how many breaths. Today's headline number sums
+        -- every SET by everyone, so a person who breathed twice cannot tell
+        -- their own second set from a stranger's first. Owner: "today i
+        -- breathed 15 and it said there was 27 in total … i should have seen
+        -- that there was someone else who i breathed with." This is what makes
+        -- that answerable.
+        COUNT(DISTINCT user_id) FILTER (WHERE day = ${day})::int                AS today_people,
         COALESCE(SUM(breaths) FILTER (WHERE day LIKE ${monthPrefix}), 0)::int   AS month_breaths,
         COUNT(DISTINCT user_id) FILTER (WHERE day LIKE ${monthPrefix})::int      AS month_people,
         COALESCE(SUM(breaths), 0)::int                                          AS all_breaths,
@@ -536,6 +544,8 @@ router.get("/breath/places/:id/stats", async (req: Request, res: Response): Prom
     res.json({
       place,
       today: r?.today ?? 0,
+      // Distinct people who breathed here today — see the note in the query.
+      todayPeople: r?.today_people ?? 0,
       month: { breaths: r?.month_breaths ?? 0, people: r?.month_people ?? 0 },
       allTime: { breaths: r?.all_breaths ?? 0, people: r?.all_people ?? 0 },
     });
