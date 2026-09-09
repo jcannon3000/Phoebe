@@ -1783,7 +1783,10 @@ export default function VisioPage() {
                   : t("common.continue", { defaultValue: "Continue" })}
           </span>
         </button>
-        <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.12em" }}>{step + 1} / {TOTAL}</span>
+        {/* The same words every other deck's counter uses ("2 of 11"), in the
+            office's citation scale. The flow around it is the owner's kept one
+            (64267c5a) and is untouched — this is vocabulary, not chrome. */}
+        <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase" }}>{step + 1} of {TOTAL}</span>
       </div>
     </div>
   );

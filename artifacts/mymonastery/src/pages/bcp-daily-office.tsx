@@ -4820,10 +4820,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     </p>
                     <p
                       style={{
-                        fontSize: 9,
+                        // Readability audit 2026-09-09: 9px at 30% was the
+                        // smallest, faintest text in the app — below the
+                        // 10px eyebrow floor every other deck keeps. A credit
+                        // can whisper; it should still be legible on a phone.
+                        fontSize: 10,
                         textTransform: "uppercase",
                         letterSpacing: "0.14em",
-                        color: "rgba(var(--ot-sage, 143,175,150),0.3)",
+                        color: "rgba(var(--ot-sage, 143,175,150),0.5)",
                         margin: "12px 0 0",
                         fontFamily: SPACE_GROTESK,
                       }}
