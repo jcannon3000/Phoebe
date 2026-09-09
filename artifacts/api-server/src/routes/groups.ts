@@ -3315,6 +3315,45 @@ router.post("/beta/users", async (req, res): Promise<void> => {
   }
 });
 
+// PATCH /api/beta/users/:id — make (or unmake) a beta user a super admin.
+//
+// Super admin = beta_users.is_admin, read by /auth/me (isSuperAdmin) and
+// /api/beta/status (isAdmin). Until this route existed the ONLY way to set
+// it was /beta/claim with the BETA_CLAIM_TOKEN secret — the /beta page could
+// add a beta user but never promote one, which is how a second super admin
+// ends up seeing the beta features and none of the admin ones (owner,
+// 2026-09-09: "Anabelle the other super admin is not seeing the other super
+// admin features"). Same gate as DELETE; you cannot demote yourself, so the
+// last admin can never lock everyone out.
+router.patch("/beta/users/:id", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (!(await isBetaAdmin(user.id))) {
+      res.status(403).json({ error: "Beta admin access required" });
+      return;
+    }
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+    const isAdmin = req.body?.isAdmin;
+    if (typeof isAdmin !== "boolean") { res.status(400).json({ error: "isAdmin must be a boolean" }); return; }
+
+    const [target] = await db.select({ id: betaUsersTable.id, email: betaUsersTable.email }).from(betaUsersTable).where(eq(betaUsersTable.id, id));
+    if (!target) { res.status(404).json({ error: "Not found" }); return; }
+    const [selfUser] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, user.id));
+    if (!isAdmin && selfUser && target.email === selfUser.email.toLowerCase()) {
+      res.status(400).json({ error: "Cannot remove your own admin access" });
+      return;
+    }
+
+    await db.update(betaUsersTable).set({ isAdmin }).where(eq(betaUsersTable.id, id));
+    res.json({ ok: true, isAdmin });
+  } catch (err) {
+    console.error("PATCH /api/beta/users error:", err);
+    res.status(500).json({ error: "Table not ready — run schema push" });
+  }
+});
+
 // DELETE /api/beta/users/:id — remove a beta user (admin only)
 router.delete("/beta/users/:id", async (req, res): Promise<void> => {
   try {

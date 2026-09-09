@@ -113,6 +113,21 @@ export default function BetaAdminPage() {
     },
   });
 
+  // Make (or unmake) a beta user a super admin — beta_users.is_admin, the one
+  // flag /auth/me and /api/beta/status both read. Adding someone here only
+  // ever made them a beta user; a second super admin had no way in from the
+  // app. Refreshes /auth/me too, in case the person promoted is you on
+  // another account.
+  const adminMutation = useMutation({
+    mutationFn: ({ id, isAdmin }: { id: number; isAdmin: boolean }) =>
+      apiRequest("PATCH", `/api/beta/users/${id}`, { isAdmin }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/beta/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/beta/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+  });
+
   if (authLoading || betaLoading || !user || !isAdmin) return null;
 
   const betaUsers = betaUsersData?.users ?? [];
@@ -354,6 +369,21 @@ export default function BetaAdminPage() {
                     <span className="text-[10px]" style={{ color: "rgba(143,175,150,0.4)" }}>
                       {new Date(bu.createdAt).toLocaleDateString()}
                     </span>
+                    {/* Shield = super admin. Filled for admins (tap to
+                        revoke, never your own); outlined for beta users
+                        (tap to promote). */}
+                    {bu.email !== (user.email ?? "").toLowerCase() && (
+                      <button
+                        onClick={() => adminMutation.mutate({ id: bu.id, isAdmin: !bu.isAdmin })}
+                        disabled={adminMutation.isPending}
+                        title={bu.isAdmin ? "Remove super admin" : "Make super admin"}
+                        aria-label={bu.isAdmin ? "Remove super admin" : "Make super admin"}
+                        className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
+                        style={{ color: bu.isAdmin ? "#8FAF96" : "rgba(143,175,150,0.4)" }}
+                      >
+                        <Shield size={14} fill={bu.isAdmin ? "currentColor" : "none"} />
+                      </button>
+                    )}
                     {!bu.isAdmin && (
                       <button
                         onClick={() => removeMutation.mutate(bu.id)}
