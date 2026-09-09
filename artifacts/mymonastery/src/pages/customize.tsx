@@ -854,6 +854,22 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
               only customizer most people ever see. Gated on
               auth having settled so a light account's saved layout doesn't
               briefly read as "None" before it loads. */}
+          {/* RELATIONAL — one small thing done toward a person, or none
+              (owner). Sits ABOVE "Add a practice" (owner, 2026-09-08): the
+              rows above it shape a practice you do by yourself, and this one
+              points outward, so it belongs with the rule rather than after the
+              catch-all. The curated three only; see the note above
+              applyRelational for why there is no custom entry here. */}
+          {row("Relational", relational, [
+            { value: "none", label: "None" },
+            ...RELATIONAL_PRACTICES.map((r) => ({ value: r.id as string, label: r.title })),
+          ], (v) => applyRelational(v as RelationalPracticeId | "none"))}
+          {relationalRefused && (
+            <p style={{ color: SOFT_GREEN, fontSize: 12.5, fontFamily: FONT, margin: "-2px 4px 0", lineHeight: 1.45 }}>
+              Your rhythm is full — remove a practice first, and this will fit.
+            </p>
+          )}
+
           {!authLoading && row("Add a practice", addPractice, [
             { value: "none", label: "None" },
             { value: "listening", label: "Audio Divina" },
@@ -880,20 +896,6 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
               : []),
           ], (v) => applyAddPractice(v as AddPractice))}
 
-          {/* RELATIONAL — one small thing done toward a person, or none
-              (owner). Sits last because it is the one row that is not about
-              time alone: the others shape a practice you do by yourself, this
-              one points outward. The curated three only; see the note above
-              applyRelational for why there is no custom entry here. */}
-          {row("Relational", relational, [
-            { value: "none", label: "None" },
-            ...RELATIONAL_PRACTICES.map((r) => ({ value: r.id as string, label: r.title })),
-          ], (v) => applyRelational(v as RelationalPracticeId | "none"))}
-          {relationalRefused && (
-            <p style={{ color: SOFT_GREEN, fontSize: 12.5, fontFamily: FONT, margin: "-2px 4px 0", lineHeight: 1.45 }}>
-              Your rhythm is full — remove a practice first, and this will fit.
-            </p>
-          )}
         </div>
 
         {/* Every row above already applies the moment it's changed — this
