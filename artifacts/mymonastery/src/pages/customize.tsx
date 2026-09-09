@@ -841,6 +841,18 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             { value: "taize", label: "Taizé meditation" },
             { value: "icons", label: "Praying with Icons" },
             { value: "lectio", label: "Lectio Divina" },
+            /**
+             * THE ROSARY WAS IN PRACTICE_KEYS BUT NOT IN THIS LIST — which is
+             * worse than merely missing. applyAddPractice STRIPS every
+             * PRACTICE_KEYS entry from the layout and re-adds only the chosen
+             * one, so a person who had the Rosary on and then touched this row
+             * at all lost it silently, with no option here to put it back.
+             *
+             * The two lists are the same statement written twice; keep them
+             * together. (Same drift the note under this row already warns
+             * about between here and WayOfLoveRuleFlow's commit().)
+             */
+            { value: "rosary", label: "The Rosary" },
             ...(spiritualsVisible(user?.isSuperAdmin)
               ? [{ value: "spirituals", label: "Meditating on Spirituals" }]
               : []),

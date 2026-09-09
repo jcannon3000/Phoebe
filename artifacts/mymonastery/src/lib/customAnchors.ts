@@ -86,7 +86,7 @@ export function slotOpensLabel(slot: CustomSlot): string | null {
 // Built-in practices that the customizer places at a chosen time of day
 // (Co-Breathe, Audio Divina, the Examen) — each carries a per-device slot.
 // Sensible defaults if the user never picks one.
-export type SlottedPractice = "cobreathe" | "listening" | "examen" | "walk" | "reading" | "visio" | "icons" | "taize" | "spirituals" | "rosary";
+export type SlottedPractice = "cobreathe" | "listening" | "examen" | "walk" | "reading" | "visio" | "icons" | "taize" | "spirituals" | "rosary" | "lectio";
 const PRACTICE_SLOT_DEFAULT: Record<SlottedPractice, CustomSlot> = {
   // Visio Divina is looked at whenever there's light and quiet — not pinned.
   visio: "anytime",
@@ -107,6 +107,8 @@ const PRACTICE_SLOT_DEFAULT: Record<SlottedPractice, CustomSlot> = {
   examen: "evening",
   walk: "afternoon",
   reading: "afternoon", // was a hardcoded "afternoon"; now user-choosable
+  // Lectio is read whenever there is room for it, like the Rosary.
+  lectio: "anytime",
 };
 export function getPracticeSlot(key: SlottedPractice): CustomSlot {
   // Co-Breathe / Audio Divina / the Examen / a contemplative walk no longer

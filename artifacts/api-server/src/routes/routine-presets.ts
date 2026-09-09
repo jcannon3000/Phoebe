@@ -47,7 +47,7 @@ const LEVELS = new Set(["ask", "devotion", "office", "intercessions", "reflect-s
 // customAnchors.ts CustomSlot
 const SLOTS = new Set(["morning", "anytime", "midday", "afternoon", "evening"]);
 // customAnchors.ts SlottedPractice
-const SLOTTED = new Set(["cobreathe", "listening", "examen", "walk", "reading", "visio", "icons", "taize", "spirituals", "rosary"]);
+const SLOTTED = new Set(["cobreathe", "listening", "examen", "walk", "reading", "visio", "icons", "taize", "spirituals", "rosary", "lectio"]);
 // customAnchors.ts RELATIONAL_PRACTICES ids
 const RELATIONAL = new Set(["hug", "gratitude", "call"]);
 // RulePreset.practices keys

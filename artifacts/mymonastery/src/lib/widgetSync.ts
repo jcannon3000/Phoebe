@@ -314,6 +314,10 @@ export function useWidgetSync(): void {
       // reach "the day is kept". Same drift cobreathe, listening, walk,
       // reading and examen were found in, noted three lines below.
       { active: r.rosaryActive, done: r.rosaryDone, slot: getPracticeSlot("rosary"), key: "rosary", emoji: "📿", title: "The Rosary", eyebrow: "Pray the mysteries", subtitle: "A decade at a time", cta: "Begin", kind: "office" },
+      // Lectio, for the same reason the Rosary is here: the widget is the third
+      // renderer, and a card the home draws but the widget does not makes the
+      // lock screen count fewer dots than the home and never reach "kept".
+      { active: r.lectioActive, done: r.lectioDone, slot: getPracticeSlot("lectio"), key: "lectio", emoji: "📜", title: "Lectio Divina", eyebrow: "Read slowly", subtitle: "A passage read three times", cta: "Begin", kind: "office" },
       /**
        * THE THREE INBOX PRACTICES AND THE ICON, which this mirror was missing.
        *
@@ -453,6 +457,7 @@ export function useWidgetSync(): void {
       listening: "/listening",
       visio: "/visio",
       rosary: "/rosary",
+      lectio: "/lectio",
       examen: "/examen",
       novena: "/novena",
       compline: "/bcp/daily-office?mode=compline",
@@ -572,7 +577,7 @@ export function useWidgetSync(): void {
     r.eveningContemplationActive, r.eveningContemplationDone,
     r.silenceActive, r.silenceDone, r.reflectActive, reflSig,
     r.cobreatheActive, r.cobreatheDone, r.listeningActive, r.listeningDone,
-    r.walkActive, r.walkDone, r.visioActive, r.visioDone, r.rosaryActive, r.rosaryDone, r.complineActive, r.complineDone,
+    r.walkActive, r.walkDone, r.visioActive, r.visioDone, r.rosaryActive, r.rosaryDone, r.lectioActive, r.lectioDone, r.complineActive, r.complineDone,
     // podcastsActive/Done are READ by this effect (the Way of Love item) and
     // were missing here, while prayerListActive/Done were listed but never
     // read — the Prayer List is deliberately excluded from the widget's items.

@@ -307,6 +307,19 @@ export type RhythmState = {
   iconsDone: boolean;
   rosaryActive: boolean;
   rosaryDone: boolean;
+  /**
+   * Lectio Divina as a STANDALONE practice, not only as a side's kind.
+   *
+   * It was offered in the light customizer's "Add a practice" row and in
+   * WayOfLoveRuleFlow, both of which write `lectio` into the home layout —
+   * and nothing here ever read it. So the layout said lectio was on
+   * (`order` contained it, `hidden` did not) and no card was ever drawn:
+   * you picked Lectio Divina and the app agreed and then showed you nothing.
+   * Every sibling key (listening, examen, walk, visio, icons, taize,
+   * spirituals, rosary) had this pair; lectio was the one that did not.
+   */
+  lectioActive: boolean;
+  lectioDone: boolean;
   spiritualsActive: boolean;
   spiritualsDone: boolean;
   complineDone: boolean;
@@ -820,6 +833,7 @@ export function useRhythmState(): RhythmState {
   // The Rosary — admin-only while it is being tried, so the card only ever
   // appears for someone who could put it in their rule in the first place.
   const rosaryActive = homeCardActive(hl, "rosary");
+  const lectioActive = homeCardActive(hl, "lectio");
   // Spirituals is admin-only, not public — see lib/spiritualsFlag.ts. Every
   // consumer (DailyProgressBody's card, the layout dots, widgetSync) reads
   // spiritualsActive off this hook, so gating it here governs all of them
@@ -1319,6 +1333,7 @@ export function useRhythmState(): RhythmState {
   const visioDone = visioActive && (practiceLocal.visio || serverDone("visio"));
   const iconsDone = iconsActive && (practiceLocal.icons || serverDone("icons"));
   const rosaryDone = rosaryActive && (practiceLocal.rosary || serverDone("rosary"));
+  const lectioDone = lectioActive && (practiceLocal.lectio || serverDone("lectio"));
   /**
    * SPIRITUALS COUNTS FROM ITS OWN HISTORY as well as the usual two.
    *
@@ -1939,6 +1954,8 @@ export function useRhythmState(): RhythmState {
     iconsDone,
     rosaryActive,
     rosaryDone,
+    lectioActive,
+    lectioDone,
     spiritualsActive,
     spiritualsDone,
     complineDone,

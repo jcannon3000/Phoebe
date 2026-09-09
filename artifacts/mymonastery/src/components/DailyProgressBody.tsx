@@ -783,7 +783,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeShown, taizeDone, taizeWaiting, taizeLatest, andrewsActive, andrewsShown, andrewsDone, andrewsWaiting, andrewsLatest, weeklies, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, rosaryActive, rosaryDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, prayerListCardActive, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeShown, taizeDone, taizeWaiting, taizeLatest, andrewsActive, andrewsShown, andrewsDone, andrewsWaiting, andrewsLatest, weeklies, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, rosaryActive, rosaryDone, lectioActive, lectioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, prayerListCardActive, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1070,6 +1070,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     onUnlog: () => unmarkPracticeDoneToday("rosary"),
     title: t("rhythm.card_rosary", { defaultValue: "The Rosary" }),
     blurb: rosaryDone ? kept : t("rhythm.blurb_rosary", { defaultValue: "Pray today's mysteries" }),
+    cta: t("common.begin", { defaultValue: "Begin" }),
+  };
+  /**
+   * LECTIO DIVINA AS ITS OWN CARD. Offered in both customizers, written into
+   * the home layout by both, and drawn by neither — the only key in the "Add
+   * a practice" set without a card. Picking it agreed and then showed nothing.
+   * (Lectio is ALSO a side's contemplation kind; that path is unchanged and
+   * renders through the side card, not here.)
+   */
+  const lectioCard = {
+    key: "lectio", emoji: "📜", rgb: "150,170,205", done: lectioDone, href: "/lectio",
+    onUnlog: () => unmarkPracticeDoneToday("lectio"),
+    title: t("rhythm.card_lectio", { defaultValue: "Lectio Divina" }),
+    blurb: lectioDone ? kept : t("rhythm.blurb_lectio", { defaultValue: "A passage read slowly, three times" }),
     cta: t("common.begin", { defaultValue: "Begin" }),
   };
   const iconsCard = {
@@ -1408,6 +1422,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const sideKind = (side: "morning" | "evening") =>
     side === "morning" ? morningContemplationKind : eveningContemplationKind;
   const sideIsCreation = (side: "morning" | "evening") => sideKind(side) === "creation";
+  /** Is Lectio already a SIDE's practice? Then the layout card would double it. */
+  const sideHasLectio =
+    (morningContemplationActive && sideKind("morning") === "lectio")
+    || (eveningContemplationActive && sideKind("evening") === "lectio");
   /**
    * A side whose practice is a walk, sacred listening or Visio Divina — the
    * app's own practices, kept as this side's anchor rather than as standing
@@ -1745,6 +1763,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(spiritualsActive ? [{ ...spiritualsCard, slot: getPracticeSlot("spirituals") }] : []),
     ...(iconsActive ? [{ ...iconsCard, slot: getPracticeSlot("icons") }] : []),
     ...(rosaryActive ? [{ ...rosaryCard, slot: getPracticeSlot("rosary") }] : []),
+    /**
+     * Only when lectio is a LAYOUT card, not when it is a side's kind — a side
+     * that prays Lectio already draws its own card, and both would show the
+     * same practice twice on one screen.
+     */
+    ...(lectioActive && !sideHasLectio ? [{ ...lectioCard, slot: getPracticeSlot("lectio") }] : []),
     // Only while something is waiting or it was read today (owner) — see taizeShown.
     ...(taizeShown ? [{ ...taizeCard, slot: getPracticeSlot("taize") }] : []),
     // A weekly comment belongs to no hour in particular, like its sibling.
