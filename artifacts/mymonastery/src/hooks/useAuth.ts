@@ -233,6 +233,21 @@ export function useLogout() {
       body: JSON.stringify(persistentToken ? { persistentToken } : {}),
     });
     clearPersistentToken();
+    /**
+     * A ONE-SHOT WIPE FLAG FOR THE NEXT BOOT (owner, 2026-09-09: "i dont want
+     * things pre seeded from past log ins, if someone logs out give them just
+     * the default routine").
+     *
+     * The persister below is THROTTLED (1000ms). queryClient.clear() schedules
+     * a dehydrate write; the removeItem a few lines down runs before that
+     * write lands; then window.location.href reloads. So the previous
+     * account's blob — with its /api/auth/me user and homeLayout inside —
+     * could be re-written up to a second after we deleted it, and rehydrated
+     * on the very next boot. That is how Nouwen survived a sign-out. The flag
+     * is honoured in App.tsx BEFORE the persister is created, where no late
+     * write can follow it.
+     */
+    try { window.localStorage.setItem("phoebe:wipe-on-boot", "1"); } catch { /* ignore */ }
     queryClient.setQueryData(["/api/auth/me"], null);
     queryClient.clear();
     // Wipe the persisted React Query blob too — clear() + an immediate reload

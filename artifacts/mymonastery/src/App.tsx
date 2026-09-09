@@ -4,6 +4,7 @@ import { hasPrayerSurface } from "@/lib/prayerSurface";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+import { resetDeviceRuleForLogout } from "@/lib/guestSeed";
 import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
 import { retryPendingReflectionReads } from "@/lib/cacReadState";
 import { installSessionOutboxFlush } from "@/lib/sessionOutbox";
@@ -680,6 +681,23 @@ function safeLocalStorage(): Storage {
     } as Storage;
   }
 }
+/**
+ * HONOUR A PENDING LOGOUT WIPE BEFORE ANYTHING CAN REHYDRATE.
+ *
+ * useLogout wipes the device rule and the persisted query blob, then reloads —
+ * but the persister is throttled, and a dehydrate scheduled by clear() can
+ * land AFTER the wipe and before the reload. Here, at module load and before
+ * rqPersister exists, nothing can write behind us: drop the blob, re-run the
+ * device-rule reset, and the next seed writes the plain default. Idempotent —
+ * the flag is cleared, and a boot with no flag does nothing.
+ */
+try {
+  if (localStorage.getItem("phoebe:wipe-on-boot") === "1") {
+    localStorage.removeItem("phoebe:rq-daily");
+    resetDeviceRuleForLogout();
+    localStorage.removeItem("phoebe:wipe-on-boot");
+  }
+} catch { /* private mode — nothing to wipe */ }
 const rqPersister = createSyncStoragePersister({
   storage: safeLocalStorage(),
   key: "phoebe:rq-daily",
