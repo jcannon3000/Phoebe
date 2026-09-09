@@ -386,13 +386,26 @@ function migrateStaleSeed(): void {
       // card to KEEP and then removing the other is the same statement
       // without the ordering assumption.
       const chose = getExplicitReflectionSource();
-      const keep: "cac" | "fdd" = chose === "cac" || chose === "fdd" ? chose : "fdd";
-      if (!chose) {
-        setReflectionSource(keep);
-        setSideReflection("morning", keep);
+      /**
+       * A CHOICE OUTSIDE {cac, fdd} IS LEFT ENTIRELY ALONE. The first cut let
+       * `keep` fall through to "fdd" for someone who had chosen SSJE, VTS,
+       * Nouwen, Sojourners or Grist, and then seeded the FDD card on top of
+       * their pick — exactly the second newsletter this block exists to
+       * remove. (Caught by the peer session's audit of a hunk that reached
+       * the tree via their `git add -A`.) Only a device with NO choice, or one
+       * whose choice is one of the two defaults, gets its cards touched.
+       */
+      if (chose && chose !== "cac" && chose !== "fdd") {
+        // Their own word; nothing here is ours to change.
+      } else {
+        const keep: "cac" | "fdd" = chose === "cac" ? "cac" : "fdd";
+        if (!chose) {
+          setReflectionSource(keep);
+          setSideReflection("morning", keep);
+        }
+        seedCard(keep);
+        unseedCard(keep === "fdd" ? "cac" : "fdd");
       }
-      seedCard(keep);
-      unseedCard(keep === "fdd" ? "cac" : "fdd");
       // VISIO DIVINA, as the EVENING practice (owner, v7). Slotted to evening
       // rather than the practice's own "anytime" default, because the ask was
       // specifically "Visio Divina as the evening practice."

@@ -2264,6 +2264,15 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.andrews ? ["andrews"] : []),
       ...(contemplative.spirituals ? ["spirituals"] : []),
       ...(contemplative.lectio ? ["lectio"] : []),
+      /**
+       * THE ROSARY WAS IN THE TYPE, THE ROW, THE STATE AND THE TOGGLE — and in
+       * none of these four lists, so Save never wrote it. The server backfills
+       * any key it isn't told about into BOTH order and hidden, and hidden
+       * governs: the toggle moved, said yes, and the card never came. Flagged
+       * by the peer session's audit. Both halves, in both copies, or an
+       * unticked Rosary is never hidden either.
+       */
+      ...(contemplative.rosary ? ["rosary"] : []),
       ...(contemplative.reading ? ["reading"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
@@ -2280,6 +2289,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.andrews ? [] : ["andrews"]),
       ...(contemplative.spirituals ? [] : ["spirituals"]),
       ...(contemplative.lectio ? [] : ["lectio"]),
+      ...(contemplative.rosary ? [] : ["rosary"]),
       ...(contemplative.reading ? [] : ["reading"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
@@ -2616,6 +2626,15 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.andrews ? ["andrews"] : []),
       ...(contemplative.spirituals ? ["spirituals"] : []),
       ...(contemplative.lectio ? ["lectio"] : []),
+      /**
+       * THE ROSARY WAS IN THE TYPE, THE ROW, THE STATE AND THE TOGGLE — and in
+       * none of these four lists, so Save never wrote it. The server backfills
+       * any key it isn't told about into BOTH order and hidden, and hidden
+       * governs: the toggle moved, said yes, and the card never came. Flagged
+       * by the peer session's audit. Both halves, in both copies, or an
+       * unticked Rosary is never hidden either.
+       */
+      ...(contemplative.rosary ? ["rosary"] : []),
       ...(contemplative.reading ? ["reading"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
@@ -2633,6 +2652,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.andrews ? [] : ["andrews"]),
       ...(contemplative.spirituals ? [] : ["spirituals"]),
       ...(contemplative.lectio ? [] : ["lectio"]),
+      ...(contemplative.rosary ? [] : ["rosary"]),
       ...(contemplative.reading ? [] : ["reading"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
