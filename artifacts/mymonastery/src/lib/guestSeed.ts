@@ -347,6 +347,18 @@ function migrateStaleSeed(): void {
       return;
     }
     if (untouched) {
+    /**
+       * THE OFFICE ENTRY, ON THE CODE-SEED PATH TOO. The write inside
+       * applyDefaultSeed only runs when an admin __default__ overlay is stored —
+       * which is every device that has fetched the presets, and NOT a first open
+       * with no network, the case this code path exists for. The repo check
+       * scripts/checks/seed.mjs caught it: with no stored default, newsletters
+       * were right and the entry was still "venite". Same guard as there: an
+       * explicit choice is never overwritten.
+       */
+      for (const side of ["morning", "evening"] as const) {
+        if (!getExplicitSideEntry(side)) setSideEntry(side, "read");
+      }
       setSideLevel("morning", "guided-prayer");
       // THE EXAMEN IN THE EVENING (owner, v8). v7 had left the evening off
       // ("ask") with Visio riding that slot; a device on an untouched pair had
@@ -504,6 +516,18 @@ export function seedGuestRule(): void {
       localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
       clearRoutineSyncClock();
       return;
+    }
+    /**
+     * THE OFFICE ENTRY, ON THE CODE-SEED PATH TOO. The write inside
+     * applyDefaultSeed only runs when an admin __default__ overlay is stored —
+     * which is every device that has fetched the presets, and NOT a first open
+     * with no network, the case this code path exists for. The repo check
+     * scripts/checks/seed.mjs caught it: with no stored default, newsletters
+     * were right and the entry was still "venite". Same guard as there: an
+     * explicit choice is never overwritten.
+     */
+    for (const side of ["morning", "evening"] as const) {
+      if (!getExplicitSideEntry(side)) setSideEntry(side, "read");
     }
     setSideLevel("morning", "guided-prayer");
     // THE DEFAULT, v8 (owner, 2026-09-05): "Morning: Simple · Newsletter:
