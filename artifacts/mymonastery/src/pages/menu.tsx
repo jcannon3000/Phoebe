@@ -146,14 +146,13 @@ export default function MenuPage() {
   groups.push(explore);
 
   // Account.
-  // Settings is only for people who've actually made an account — not the
-  // no-login guest or the anonymous device user. (There's nothing to configure
-  // until you sign up; the rhythm lives in Customize, reachable above.)
+  // Settings is for everyone — the anonymous device user and the signed-out
+  // (session-less) viewer included (owner, 2026-09-09: "for logged out users they cant access
+  // settings"). The page itself drops the account affordances for them and
+  // keeps the rhythm, reminders and notification switches.
   const account: MenuHubGroup = {
     header: t("menu.hdr_account"),
-    items: signedUp
-      ? [{ emoji: "⚙️", label: t("menu.settings"), onClick: () => go("/settings") }]
-      : [],
+    items: [{ emoji: "⚙️", label: t("menu.settings"), onClick: () => go("/settings") }],
   };
   if (showAdminTools) account.items.push({ emoji: "🔧", label: t("menu.admin_tools"), onClick: () => go("/admin/tools") });
   // About opens the deck first; finishing the deck (exitTo) lands on /about.

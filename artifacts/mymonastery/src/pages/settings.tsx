@@ -626,7 +626,7 @@ function ResetRoutineSettings() {
     <>
       <SectionHeader label="Reset routine to default" />
       <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        Start over with the standard daily rhythm — Morning &amp; Evening Prayer, Forward Day by Day, and five minutes of silence. Your custom practices and any changes are cleared; what you&rsquo;ve already prayed stays.
+        Start over with the standard daily rhythm — Simple Guided Prayer in the morning, the Examen in the evening, Forward Day by Day, a moment of gratitude, and Visio Divina. Your custom practices and any changes are cleared; what you&rsquo;ve already prayed stays.
       </p>
       <SettingsCard>
         {!confirming ? (
@@ -1640,16 +1640,30 @@ export default function SettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.showPresence]);
 
-  // Settings is for signed-up accounts only. Not-signed-up viewers — logged out
-  // (session gone/expired) or the anonymous device user — have nothing to
-  // configure here, so send them home rather than strand them on the blank
-  // `return null` below. (The menu hides the Settings entry for them too.)
-  useEffect(() => {
-    if (!isLoading && (!user || user.isAnonymous)) setLocation("/");
-  }, [isLoading, user, setLocation]);
-
-  if (isLoading || !user || user.isAnonymous) return null;
-  const accountless = !!user.isAnonymous;
+  // The anonymous device user GETS the light settings page (owner,
+  // 2026-09-09: "for logged out users they cant access settings"). The
+  // `accountless` branches below already drop every account affordance for
+  // them; what remains — prayer depth, home display, reset, reminders,
+  // notifications, legal — is exactly what a no-login person configures.
+  // Only a viewer with NO session at all (expired, or /auth/me unreachable)
+  // is sent home rather than stranded on the blank `return null` below.
+  // GuestGate + the pair rule: this redirect and the return below are one
+  // condition — see reference_page_level_signin_gates.
+  if (isLoading) return null;
+  /**
+   * THREE shapes of viewer, two flags:
+   *  - `account`: a signed-up person. Profile, Sign out, Export, Delete.
+   *  - the anonymous device user: has a session, so the server-backed rows
+   *    (office reminders, the notifications switch) work; no account rows.
+   *  - NO session at all — which is what a phone IS after Sign out: the
+   *    anonymous provisioning runs only from the welcome flows, so a signed-out
+   *    person stays session-less. They keep every local preference (prayer
+   *    depth, home display, weekly practices, reset) and the legal links;
+   *    the rows that call /api/me/* are hidden rather than left to 401.
+   * GuestGate already allows /settings; nothing here redirects.
+   */
+  const account = user && !user.isAnonymous ? user : null;
+  const hasSession = !!user;
 
   return (
     <Layout>
@@ -1673,7 +1687,7 @@ export default function SettingsPage() {
 
         {/* ── Account — hidden while the session has no real account (the
               anonymous device user has nothing to edit here). ── */}
-        {!accountless && (
+        {account && (
         <div className="mb-8">
           <SectionHeader label={t("settings.account")} />
           <AccountSection />
@@ -1719,7 +1733,7 @@ export default function SettingsPage() {
         {/* ── Office reminders — only where a push can actually arrive (the
               iOS shell, or Android mobile web). Desktop / iOS-Safari web get
               no notification UI at all. ── */}
-        {notificationsSupportedHere() && (
+        {hasSession && notificationsSupportedHere() && (
         <div className="mb-8">
           <OfficeReminderSettings />
         </div>
@@ -1728,14 +1742,14 @@ export default function SettingsPage() {
         {/* Language settings removed — the app is English-only. */}
 
         {/* ── Offices-only extras (tier-gated) ── */}
-        {user.accessTier === "offices-only" && (
+        {user?.accessTier === "offices-only" && (
           <div className="mb-8">
             <OfficesOnlyExtras />
           </div>
         )}
 
         {/* ── Notifications master switch — same platform rule as reminders. ── */}
-        {notificationsSupportedHere() && (
+        {hasSession && notificationsSupportedHere() && (
         <div className="mb-8">
           <NotificationsSettings />
         </div>
@@ -1750,7 +1764,7 @@ export default function SettingsPage() {
         )}
 
         {/* ── Sign out — only when there's a real account to sign out of. ── */}
-        {!accountless && (
+        {account && (
         <button
           onClick={() => { logout(); setLocation("/"); }}
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-80"
@@ -1765,7 +1779,7 @@ export default function SettingsPage() {
             GDPR right-to-portability. Downloads a JSON blob of every row
             the database holds tied to this user. Auth material (password
             hash, OAuth tokens) is redacted server-side. */}
-        {!accountless && (
+        {account && (
         <div className="mt-8">
           <ExportDataSection />
         </div>
@@ -1776,9 +1790,9 @@ export default function SettingsPage() {
             any app that creates accounts must offer in-app deletion. Also
             a legitimate privacy affordance for web users. Gated behind a
             confirm step (type your email) to prevent accidents. */}
-        {!accountless && (
+        {account && (
         <div className="mt-4">
-          <DeleteAccountSection email={user.email} />
+          <DeleteAccountSection email={account.email} />
         </div>
         )}
 
