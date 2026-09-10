@@ -1031,7 +1031,21 @@ export function CobreatheBreath({
       <button
         type="button"
         aria-label={reachedNow ? t("common.done", { defaultValue: "Done" }) : t("common.cancel", { defaultValue: "Cancel" })}
-        onClick={() => onEnd(Math.round((syncedNow() - startRef.current) / 1000), reachedNow ? true : reachedRef.current)}
+        onClick={() => {
+          /**
+           * CLAIM THE GUARD. This tap ends the set — and the parent then
+           * unmounts this view, whose cleanup ALSO ends the set unless
+           * `endedRef` says it already happened. Without this line every
+           * set ended twice: the place tally posted the same breaths twice
+           * (owner, 2026-09-09: "it was at 29 at the Flamingo, I did 6
+           * breaths, then it went up to 41") and a completed set credited
+           * the sit and the communal count twice. The hidden-tab path and
+           * the cleanup already set the flag; this was the one that didn't.
+           */
+          if (endedRef.current) return;
+          endedRef.current = true;
+          onEnd(Math.round((syncedNow() - startRef.current) / 1000), reachedNow ? true : reachedRef.current);
+        }}
         style={{
           position: "absolute", top: "calc(var(--safe-top) + 16px)", right: 16,
           borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
