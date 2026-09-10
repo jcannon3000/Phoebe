@@ -86,10 +86,9 @@ const BY_SEASON: Record<LiturgicalSeason, Antiphon> = {
 };
 
 /**
- * Compline's, for a sit in the evening. Not seasonal (the BCP swaps it only
- * for the Easter alleluias, which assembleCompline already handles for the
- * office itself) and the one BCP antiphon written for going quiet rather than
- * for beginning to praise.
+ * Compline's. Kept for the client/server match check (scripts/antiphon-match)
+ * and for anyone who wants it; the sit itself no longer uses it — see
+ * EVENING_ANTIPHONS.
  */
 export const COMPLINE_ANTIPHON: Antiphon = {
   text: "Guide us waking, O Lord, and guard us sleeping; that awake we may watch with Christ, and asleep we may rest in peace.",
@@ -100,8 +99,8 @@ export const COMPLINE_ANTIPHON: Antiphon = {
  * The antiphon for a given day.
  *
  * `side` picks the register rather than the text's season: an evening sit
- * opens with Compline's settling antiphon, a morning one with the day's
- * invitatory.
+ * opens with one of Evening Prayer's night sentences, a morning one with the
+ * day's invitatory.
  *
  * THREE DAYS A YEAR ARE DELIBERATELY APPROXIMATE. Ascension, the Day of
  * Pentecost and Trinity Sunday each have their own antiphon in the office,
@@ -137,13 +136,16 @@ export const ORDINARY_ANTIPHONS: readonly Antiphon[] = [
 /**
  * THE EVENING ROTATES TOO. Evening Prayer has no invitatory antiphons; what
  * it has is its opening sentences (BCP p. 115–116), the short scriptural lines
- * the office begins with, and Compline has its one antiphon. An evening sit
- * takes turns through Compline's antiphon and the sentences that are
- * themselves about the night — the ones that settle rather than summon.
+ * the office begins with. An evening sit takes turns through the ones that
+ * are themselves about the night — the ones that settle rather than summon.
  * Each is one or two sentences, and each names where it is from.
+ *
+ * NOT Compline's antiphon (owner, 2026-09-10: "don't use Compline antiphons
+ * for the contemplation"). Compline is its own office in this app, and its
+ * "Guide us waking" belongs to it; the sit keeps to Morning and Evening
+ * Prayer, which is what was asked for in the first place.
  */
 export const EVENING_ANTIPHONS: readonly Antiphon[] = [
-  COMPLINE_ANTIPHON,
   {
     text: "Let my prayer be set forth in your sight as incense, the lifting up of my hands as the evening sacrifice.",
     source: "Psalm 141:2 · Evening Prayer, BCP p. 115",
