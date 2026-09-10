@@ -27,9 +27,17 @@ export type Mystery = {
   title: string;
   /** Where it is read — opens in the reader, like every other passage. */
   ref: string;
-  /** One line to hold while the decade is prayed. */
+  /**
+   * One line to hold while the decade is prayed — a plain summary of the
+   * scene in the register of the printed guides (USCCB, the Rosary Center,
+   * the Dominican booklets): reverent, inside the scene, never wry. Audited
+   * against them 2026-09-10 (owner: "most in line with tradition"); six
+   * lines that stepped outside the scene to comment were rewritten.
+   */
   meditation: string;
-  /** The virtue the decade has traditionally been offered for. */
+  /** The virtue the decade has traditionally been offered for — the
+   *  standard list (Assumption: a happy death; Coronation: trust in Mary's
+   *  intercession; Cana: to Jesus through Mary), not paraphrases of it. */
   fruit: string;
   /**
    * CURATED artworks from the ACT (Vanderbilt) library — the same collection
@@ -93,9 +101,9 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
       { n: 1, title: "The Annunciation", ref: "Luke 1:26-38", artIds: [48278, 59673, 59234], fruit: "Humility",
         meditation: "Gabriel comes to a young woman in an unimportant town, and she says yes without knowing what it will cost." },
       { n: 2, title: "The Visitation", ref: "Luke 1:39-56", artIds: [48279, 59190, 58365], fruit: "Love of neighbour",
-        meditation: "Mary goes to Elizabeth. Two pregnant women meet, and the first thing either of them does is sing." },
+        meditation: "Mary goes in haste to Elizabeth. The child leaps in the womb, the older woman cries out in blessing, and Mary sings: my soul magnifies the Lord." },
       { n: 3, title: "The Nativity", ref: "Luke 2:1-20", artIds: [48387, 59201, 57108], fruit: "Poverty of spirit",
-        meditation: "God arrives without room, without status, and the news goes first to men working a night shift." },
+        meditation: "Born in a stable, laid in a manger, because there was no room for them. The news goes first to shepherds keeping watch in the night." },
       { n: 4, title: "The Presentation in the Temple", ref: "Luke 2:22-38", artIds: [54414, 59646, 59769], fruit: "Obedience",
         meditation: "Two old people have been waiting their whole lives, and they recognise him at once." },
       { n: 5, title: "The Finding in the Temple", ref: "Luke 2:41-52", artIds: [59224, 48280, 59221], fruit: "Joy in finding Jesus",
@@ -112,7 +120,7 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
       { n: 1, title: "The Agony in the Garden", ref: "Matthew 26:36-46", artIds: [48391, 56551, 59717], fruit: "Sorrow for sin",
         meditation: "He asks for it to pass. He is not pretending. And still: not what I want, but what you want." },
       { n: 2, title: "The Scourging at the Pillar", ref: "Matthew 27:26", artIds: [48274, 59143, 58357], fruit: "Purity",
-        meditation: "The body God took is the body that is struck. Nothing about this is symbolic." },
+        meditation: "The body God took is the body that is struck. He is silent under the lash, and offers it for us." },
       { n: 3, title: "The Crowning with Thorns", ref: "Matthew 27:27-31", artIds: [46134, 58355], fruit: "Moral courage",
         meditation: "They dress him as a king to mock him, and are more right than they know." },
       { n: 4, title: "The Carrying of the Cross", ref: "John 19:17", artIds: [59353, 59166, 59352], fruit: "Patience",
@@ -131,7 +139,7 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
       { n: 1, title: "The Resurrection", ref: "Matthew 28:1-10", artIds: [48301, 59213, 59246], fruit: "Faith",
         meditation: "The women come to care for a body and find the grave empty and the guards undone." },
       { n: 2, title: "The Ascension", ref: "Acts 1:6-11", artIds: [48398, 59720, 57474], fruit: "Hope",
-        meditation: "He goes, and they are left staring upward until they are told to get on with it." },
+        meditation: "He is taken up before their eyes, and a cloud receives him. He goes to prepare a place, and sends them to be his witnesses." },
       { n: 3, title: "The Descent of the Holy Spirit", ref: "Acts 2:1-13", artIds: [59680, 48388, 59681], fruit: "Love of God",
         meditation: "Wind and fire, and a frightened room becomes a church that can be understood in every language." },
       /* ── The two Marian mysteries. Written as what the tradition holds and
@@ -150,9 +158,9 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
        *    is asked to affirm. That is a choice, not drift; it is written down
        *    here so nobody later "fixes" it back. Reverting is two fields:
        *    ref → "Revelation 12:1", fruit → "Trust in Mary's intercession". */
-      { n: 4, title: "The Assumption of Mary", ref: "Revelation 12:1-6", artIds: [57111, 59249, 59657], fruit: "Devotion to Mary",
+      { n: 4, title: "The Assumption of Mary", ref: "Revelation 12:1-6", artIds: [57111, 59249, 59657], fruit: "The grace of a happy death",
         meditation: "The tradition holds that the one who carried him was carried home. We pray with her, at the end of her long yes." },
-      { n: 5, title: "The Coronation of Mary", ref: "Luke 1:46-55", artIds: [58434, 57112], fruit: "Trust in God's promise",
+      { n: 5, title: "The Coronation of Mary", ref: "Luke 1:46-55", artIds: [58434, 57112], fruit: "Trust in Mary's intercession",
         meditation: "He has lifted up the lowly. What was promised in her song is finished in her." },
     ],
   },
@@ -165,10 +173,10 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
     mysteries: [
       { n: 1, title: "The Baptism in the Jordan", ref: "Matthew 3:13-17", artIds: [48290, 59682, 59675], fruit: "Openness to the Spirit",
         meditation: "He stands in the river with everyone else, and heaven says: this one, beloved." },
-      { n: 2, title: "The Wedding at Cana", ref: "John 2:1-11", artIds: [59676, 48305, 58825], fruit: "Trust in Mary's care",
-        meditation: "The wine runs out, as it does. His mother notices before anyone else, and simply tells him." },
+      { n: 2, title: "The Wedding at Cana", ref: "John 2:1-11", artIds: [59676, 48305, 58825], fruit: "To Jesus through Mary",
+        meditation: "The wine runs out. His mother sees it before anyone and says only, they have no wine. Then, to the servants: do whatever he tells you." },
       { n: 3, title: "The Proclamation of the Kingdom", ref: "Mark 1:14-15", artIds: [48379, 57121, 48284, 59266], fruit: "Repentance",
-        meditation: "The kingdom has come near — near enough to turn around for." },
+        meditation: "The time is fulfilled and the kingdom of God is at hand. Repent, he says, and believe the good news." },
       { n: 4, title: "The Transfiguration", ref: "Matthew 17:1-8", artIds: [48307, 57114, 59679], fruit: "Desire for holiness",
         meditation: "For a moment they see him as he is, and Peter wants to build something and stay." },
       { n: 5, title: "The Institution of the Eucharist", ref: "Matthew 26:26-30", artIds: [58334, 48272], fruit: "Adoration",
