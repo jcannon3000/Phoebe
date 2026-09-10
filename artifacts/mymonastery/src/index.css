@@ -847,3 +847,45 @@ a:active,
 .min-h-screen { min-height: var(--app-dvh); }
 .h-screen     { height:     var(--app-dvh); }
 .max-h-screen { max-height: var(--app-dvh); }
+
+/* ── THE BORDER IS DRAWN ON A BOX THAT CARRIES NO BLUR ────────────────────────
+   Owner, 2026-09-10 (TestFlight + Safari screenshots): "some borders are
+   missing", "look at the top of the Morning Prayer card", "it's a glitch in
+   how it loads". Every home card painted its 1px border on the SAME element
+   as its backdrop blur (and, on the rhythm rows, a -webkit-mask); on WebKit a
+   blurred, rounded box resamples its own antialiased edge as the blur layer
+   is (re)composited, and the hairline border comes out drawn for part of an
+   edge and gone for the rest — differing card to card and load to load.
+
+   The rhythm rows (DailyProgressBody.PracticeCard) fix this in JSX with an
+   inner `frost` layer. The dashboard's own hero and info cards — a dozen
+   sites, all `style={{ background, backdropFilter: "blur(11.34px)", border }}`
+   on one box — are fixed HERE, in one place: the blur is lifted off the
+   bordered element and painted by a ::before that sits inside the padding
+   box (so it can never touch the border), with the same seam mask the rows
+   use. Matched by the inline style itself, so no site needs editing and no
+   new site can forget. Scoped to the home shell. */
+.dash-shell [style*="blur(11.34px)"]:not([aria-hidden="true"]) {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  isolation: isolate;
+}
+/* A card that never positioned itself (the course card is a plain button)
+   must, or its ::before would land on some ancestor instead. */
+.dash-shell [style*="blur(11.34px)"]:not([aria-hidden="true"]):not([style*="position"]) {
+  position: relative;
+}
+/* `aria-hidden` excludes the rhythm rows' own inner frost layers, which are
+   already the inner layer and must keep their blur. */
+.dash-shell [style*="blur(11.34px)"]:not([aria-hidden="true"])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  backdrop-filter: blur(11.34px);
+  -webkit-backdrop-filter: blur(11.34px);
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+

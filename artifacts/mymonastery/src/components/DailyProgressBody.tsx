@@ -421,19 +421,39 @@ export function PracticeCard({
   // animates the fill sweeping in right then, not before.
   const progressFillPct = (p: { current: number; goal: number }) =>
     showPreDone ? 0 : Math.min(100, Math.round((p.current / p.goal) * 100));
-  // Gradual per-card blur-in. When blurDelay is provided we drop the static
-  // backdrop-filter from `style` and animate it (both unprefixed + -webkit- so
-  // it works across iOS 15.x) from blur(0) → full. It stays at 0 while the card
-  // is still behind the opening splash (pulseOnLoad === splashCleared is false),
-  // then — when the splash clears and the card cascades up — ramps in starting
-  // at its landing time, so each card's frosted backdrop arrives as it settles
-  // instead of every card's blur popping in at once after the cascade.
-  const blurOn = blurDelay != null;
-  const blurTarget = blurOn ? (pulseOnLoad ? "blur(11.34px)" : "blur(0px)") : "blur(11.34px)";
-  const blurInitial = blurOn ? { backdropFilter: "blur(0px)", WebkitBackdropFilter: "blur(0px)" } : undefined;
-  const blurAnimate = blurOn ? { backdropFilter: blurTarget, WebkitBackdropFilter: blurTarget } : undefined;
-  const blurTransition = blurOn ? { backdropFilter: { delay: blurDelay, duration: 0.7, ease: "easeOut" as const }, WebkitBackdropFilter: { delay: blurDelay, duration: 0.7, ease: "easeOut" as const } } : undefined;
-  const staticBlur = blurOn ? {} : { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" };
+  // (`blurDelay` is still accepted so callers need no change; the blur no
+  // longer animates — see `frost` below for why.)
+  /**
+   * THE BORDER IS DRAWN ON A BOX THAT CARRIES NOTHING ELSE.
+   *
+   * Owner, 2026-09-10, two screenshots (TestFlight and Safari): "some borders
+   * are missing", "look at the top of the Morning Prayer card", "it's a glitch
+   * in how it loads". The card's 1px border, its backdrop blur, its rounded
+   * overflow clip and the -webkit-mask that hides Safari's blur seam all sat
+   * on ONE element — and on WebKit a masked, blurred, rounded box repaints its
+   * own antialiased edge as the blur layer is resampled, so the hairline
+   * border came out drawn for part of an edge and gone for the rest, differing
+   * card to card and load to load. Animating the blur in (0 → 11px on a
+   * per-card delay) made every load a different roll.
+   *
+   * So: the OUTER box owns the border and the rounded clip and nothing else;
+   * an INNER layer (`frost` below, z-index -1 inside an isolated outer) owns
+   * the tint, the blur and the seam mask. The mask can only ever clip the
+   * frost, never the border. The blur is static — the cascade still fades and
+   * rises each card in; it just no longer re-rasterises a filter under a
+   * border while doing it.
+   */
+  const frost = (
+    <div
+      aria-hidden
+      style={{
+        position: "absolute", inset: 0, zIndex: -1, pointerEvents: "none", borderRadius: "inherit",
+        background: cardTintBg(tint),
+        backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+        WebkitMaskImage: "-webkit-radial-gradient(white, black)",
+      }}
+    />
+  );
   // Cycle the subtitle whenever a cycle is supplied — including on a DONE card
   // (so the reflection keeps flipping its publication name ↔ today's title even
   // after it's read). Cards that shouldn't cycle when done simply pass no cycle.
@@ -490,15 +510,11 @@ export function PracticeCard({
     const heroRow = (
       <motion.div
         className={`${pulseOnLoad && !celebrate ? "phoebe-card-outline-pulse" : ""} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: cardTintBg(tint), backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1,
-          // Safari draws a faint seam along a blurred, bordered, rounded box's
-          // edge — a backdrop-filter + border-radius clipping quirk, not a
-          // logic bug. Forcing Safari to mask through its own radial gradient
-          // makes it clip the blur properly instead of leaving the seam.
-          WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
-        animate={celebrate ? { borderColor: [CARD_BORDER, `rgba(${rgb},0.95)`, CARD_BORDER] } : undefined}
-        transition={celebrate ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } } : undefined}
+        style={{ background: "transparent", border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1, isolation: "isolate" }}
+        animate={celebrate ? { borderColor: [CARD_BORDER, `rgba(${rgb},0.95)`, CARD_BORDER] } : { borderColor: CARD_BORDER }}
+        transition={celebrate ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } } : { borderColor: { duration: 0.3 } }}
       >
+        {frost}
         <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
         <div className="flex-1 px-5 py-5">
           {/* Emoji sits to the RIGHT of the title, never as a leading icon
@@ -636,27 +652,28 @@ export function PracticeCard({
   const row = (
     <motion.div
       className={`${pulse || !pulseOnLoad ? "" : "phoebe-card-outline-pulse"} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: cardTintBg(tint), ...staticBlur, border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1,
-        WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
-      initial={blurInitial}
+      style={{ background: "transparent", border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1, isolation: "isolate" }}
       animate={
         // A just-completed card gets a BRIGHTER, quicker border pulse than the
         // ordinary "next up" pulse — it's saying "this one is done", and it
-        // rides along as the card moves from Next down into Done.
+        // rides along as the card moves from Next down into Done. When neither
+        // is on, the border is told its rest colour explicitly, so a pulse
+        // that stops mid-cycle lands rather than freezing wherever it was.
         celebrate
-          ? { borderColor: [restBorder, `rgba(${rgb},0.95)`, restBorder], ...(blurAnimate ?? {}) }
+          ? { borderColor: [restBorder, `rgba(${rgb},0.95)`, restBorder] }
           : pulse
-            ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder], ...(blurAnimate ?? {}) }
-            : blurAnimate
+            ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder] }
+            : { borderColor: restBorder }
       }
       transition={
         celebrate
-          ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" }, ...(blurTransition ?? {}) }
+          ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } }
           : pulse
-            ? { borderColor: { duration: 2.2, repeat: Infinity, ease: "easeInOut" }, ...(blurTransition ?? {}) }
-            : blurTransition
+            ? { borderColor: { duration: 2.2, repeat: Infinity, ease: "easeInOut" } }
+            : { borderColor: { duration: 0.3 } }
       }
     >
+      {frost}
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />
       <div className="flex-1 min-w-0 px-4 py-3.5">
         <div className="flex items-center gap-3">
