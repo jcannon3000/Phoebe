@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { forwardMovementFeastUrl } from "@/lib/liturgical/forwardMovementCalendar";
+import { openExternal } from "@/lib/openExternal";
 import { format } from "date-fns";
 import { getDay, readLesserFeastsPref } from "@/lib/liturgical";
 import type { LiturgicalColor, LiturgicalDay } from "@/lib/liturgical";
@@ -122,6 +124,25 @@ export function LiturgicalDateHeader({
   const hasDetail = false;
   void setDetailOpen;
   void COLOR_HEX;
+  /**
+   * TAPPING THE FEAST OPENS ITS LIFE, in the same reader that opens Forward
+   * Day by Day (owner: "if you click that line, it brings up the whole page,
+   * and you have the reader over it"). Until now the line did nothing at all.
+   *
+   * Forward Movement's page, not our copy of it: the collect and the
+   * hagiography there are Lesser Feasts and Fasts 2024, copyright the Domestic
+   * and Foreign Missionary Society, used by permission — THEIRS, not ours. So
+   * the words stay on their page with their notice attached, which is the same
+   * rule this app already follows for oremus and every newsletter.
+   *
+   * Gated on the day actually BEING a commemoration, not merely on the date
+   * having an entry: the map is keyed by month-day, so an ordinary Sunday that
+   * outranks a lesser feast would otherwise offer a saint we are not keeping.
+   */
+  const isCommemoration = day.rank === "principal_feast"
+    || day.rank === "holy_day"
+    || !!day.commemoration;
+  const feastUrl = isCommemoration ? forwardMovementFeastUrl() : null;
 
   return (
     <>
@@ -138,7 +159,29 @@ export function LiturgicalDateHeader({
         >
           {primary}
         </p>
-        {secondary && (
+        {secondary && (feastUrl ? (
+          <button
+            type="button"
+            className="mt-1"
+            onClick={() => openExternal(feastUrl, { reader: true })}
+            style={{
+              color: "rgba(200,212,192,0.6)",
+              fontSize: 13,
+              fontFamily: "'Space Grotesk', sans-serif",
+              background: "none", border: "none", padding: 0,
+              textAlign: "left", cursor: "pointer",
+              // Underlined so it reads as a door, but dotted and dim: this is a
+              // quiet subtitle under the date, and a full underline would pull
+              // it above the date it belongs to.
+              textDecoration: "underline",
+              textDecorationStyle: "dotted",
+              textUnderlineOffset: 3,
+              textDecorationColor: "rgba(200,212,192,0.35)",
+            }}
+          >
+            {secondary}
+          </button>
+        ) : (
           <p
             className="mt-1"
             style={{
@@ -149,7 +192,7 @@ export function LiturgicalDateHeader({
           >
             {secondary}
           </p>
-        )}
+        ))}
       </div>
 
       {detailOpen && hasDetail && (
