@@ -112,8 +112,66 @@ export const COMPLINE_ANTIPHON: Antiphon = {
  * the server's, for one line on three days. If they are ever wanted, take the
  * key from the SERVER rather than recomputing it.
  */
+/**
+ * THE GREEN SEASONS ROTATE (owner, 2026-09-10: "make sure the contemplative
+ * prayer is rotating antiphons"). Ordinary time runs for months, and one line
+ * for months is not a threshold, it is wallpaper. The BCP gives THREE
+ * invitatory antiphons for "other Sundays and weekdays" (p. 82); the office
+ * seeds only one of them (antiphon_anytime), so the sit takes turns through
+ * all three, one per day, in the book's own order. Seasons with a single
+ * antiphon keep it — Advent is Advent every morning, and that sameness is the
+ * season's own.
+ */
+export const ORDINARY_ANTIPHONS: readonly Antiphon[] = [
+  BY_SEASON.ordinary,
+  {
+    text: "Worship the Lord in the beauty of holiness: Come let us adore him.",
+    source: "Antiphon · BCP p. 82",
+  },
+  {
+    text: "The mercy of the Lord is everlasting: Come let us adore him.",
+    source: "Antiphon · BCP p. 82",
+  },
+];
+
+/**
+ * THE EVENING ROTATES TOO. Evening Prayer has no invitatory antiphons; what
+ * it has is its opening sentences (BCP p. 115–116), the short scriptural lines
+ * the office begins with, and Compline has its one antiphon. An evening sit
+ * takes turns through Compline's antiphon and the sentences that are
+ * themselves about the night — the ones that settle rather than summon.
+ * Each is one or two sentences, and each names where it is from.
+ */
+export const EVENING_ANTIPHONS: readonly Antiphon[] = [
+  COMPLINE_ANTIPHON,
+  {
+    text: "Let my prayer be set forth in your sight as incense, the lifting up of my hands as the evening sacrifice.",
+    source: "Psalm 141:2 · Evening Prayer, BCP p. 115",
+  },
+  {
+    text: "I will bless the Lord who gives me counsel; my heart teaches me, night after night. I have set the Lord always before me; because he is at my right hand I shall not fall.",
+    source: "Psalm 16:7, 8 · Evening Prayer, BCP p. 115",
+  },
+  {
+    text: "Yours is the day, O God, yours also the night; you established the moon and the sun. You fixed all the boundaries of the earth; you made both summer and winter.",
+    source: "Psalm 74:15, 16 · Evening Prayer, BCP p. 115",
+  },
+  {
+    text: "Darkness is not dark to you, O Lord; the night is as bright as the day; darkness and light to you are both alike.",
+    source: "Psalm 139:11 · Evening Prayer, BCP p. 116",
+  },
+];
+
+/** Day of the year, 0-based, in local time — the rotation's clock. */
+function dayOfYear(d: Date): number {
+  const start = new Date(d.getFullYear(), 0, 1);
+  return Math.floor((d.getTime() - start.getTime()) / 86_400_000);
+}
+
 export function antiphonForDay(d: Date = new Date(), side: "morning" | "evening" = "morning"): Antiphon {
-  if (side === "evening") return COMPLINE_ANTIPHON;
+  const n = dayOfYear(d);
+  if (side === "evening") return EVENING_ANTIPHONS[n % EVENING_ANTIPHONS.length]!;
   const season = getDay(d).season;
+  if (season === "ordinary" || season === "pentecost") return ORDINARY_ANTIPHONS[n % ORDINARY_ANTIPHONS.length]!;
   return BY_SEASON[season] ?? BY_SEASON.ordinary;
 }

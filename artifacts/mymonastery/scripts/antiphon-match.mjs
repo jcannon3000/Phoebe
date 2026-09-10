@@ -28,7 +28,13 @@ for (const [season, key] of Object.entries(MAP)) {
   const [y,m,d] = DATES[season];
   const got = client.antiphonForDay(new Date(y,m,d), "morning").text;
   const want = serverText(key);
-  const ok = want && got === want;
+  // The green seasons ROTATE through the BCP's three "any time" antiphons
+  // (p. 82); the office seeds one of them. In step = the seeded one is in the
+  // rotation AND today's line is one of the three.
+  const green = season === "ordinary" || season === "pentecost";
+  const ok = green
+    ? (client.ORDINARY_ANTIPHONS.some((a) => a.text === want) && client.ORDINARY_ANTIPHONS.some((a) => a.text === got))
+    : (want && got === want);
   if (!ok) { bad++; console.log(`  ✗ ${season}\n      client: ${got}\n      server: ${want}`); }
   else console.log(`  ✓ ${season.padEnd(11)} matches ${key}`);
 }
