@@ -927,8 +927,11 @@ export function ContemplationTimer({
         <AnimatedBackground base={BG} variant="pronounced" />
         {/* A still landscape behind the sit — the world held quiet while you
             rest in it. Heavily washed in the home green so the timer + text stay
-            legible. Shown during the silence + the closing summary. */}
-        {(phase === "running" || phase === "complete" || phase === "whats-next") && (
+            legible. Shown from the antiphon on: the opening slide sits on the
+            same picture Breathing Together's slides do (owner, 2026-09-10:
+            "the background of that should be pictures like the breathing
+            together ui"), then the silence and the closing summary. */}
+        {(phase === "opening" || phase === "running" || phase === "complete" || phase === "whats-next") && (
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
             <img src={bgPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }} />
             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(9,26,16, 0.550) 0%, rgba(9,26,16, 0.792) 55%, rgba(9,26,16, 0.946) 100%)" }} />
