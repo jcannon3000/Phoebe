@@ -528,6 +528,27 @@ export default function CobreathePage() {
   // signed-in users) the prayer_sessions row id to extend. Starts null (never
   // logged). A guest never gets an id — there's no server row for them.
   const loggedRef = useRef<{ seconds: number; id: number | null } | null>(null);
+  /**
+   * THE FIRST LOG'S REPLY, SO A LONGER ONE CAN WAIT FOR IT. The set is
+   * logged the moment it is reached, and again — longer — when the person
+   * taps Done. If Done lands before the server has answered the first POST,
+   * `loggedRef.id` is still null and the longer call had two bad choices:
+   * open a second, shorter-lived row, or be dropped. Now it waits for the
+   * id and extends the same row. (Owner, 2026-09-10: "make sure that if I
+   * do 24 breaths it counts for the total time, not just 3 minutes".)
+   */
+  const pendingLogRef = useRef<Promise<void> | null>(null);
+  /**
+   * EACH SET IS ITS OWN SIT. `loggedRef` remembers the row of the set just
+   * logged so a longer Done can extend it — but a SECOND set on the same
+   * page (breathe again from the summary) was compared against the first
+   * and dropped whenever it wasn't longer, or folded into the first row when
+   * it was. A new set starts with nothing logged.
+   */
+  const breathingNow = mode === "breathing";
+  useEffect(() => {
+    if (breathingNow) { loggedRef.current = null; pendingLogRef.current = null; }
+  }, [breathingNow]);
   // Latest user for the guest check inside the stable ([]) logSit callback.
   const userRef = useRef(user);
   userRef.current = user;
@@ -605,6 +626,24 @@ export default function CobreathePage() {
       loggedRef.current = { seconds: secondsKept, id: null };
       return;
     }
+    // A longer call while the first POST is still unanswered: wait for the
+    // id, then extend that row rather than opening a second one.
+    if (already && already.id == null && pendingLogRef.current) {
+      const pending = pendingLogRef.current;
+      loggedRef.current = { seconds: secondsKept, id: null };
+      void pending.then(() => {
+        const now = loggedRef.current;
+        if (now && now.id != null) {
+          void apiRequest("PATCH", `/api/me/contemplation-sessions/${now.id}/duration`, {
+            durationSeconds: secondsKept,
+          }).then(() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+          }).catch(() => { /* best-effort */ });
+        }
+      });
+      return;
+    }
     // Reserve this length synchronously so a second call arriving before the
     // request resolves can't fire a duplicate POST or a stale PATCH.
     loggedRef.current = { seconds: secondsKept, id: already?.id ?? null };
@@ -633,9 +672,12 @@ export default function CobreathePage() {
       isPrivate: false,
       ...(sideParam ? { contemplationSide: sideParam } : {}),
     };
-    void apiRequest<{ id: number | null }>("POST", "/api/prayer-sessions", sessionBody)
+    pendingLogRef.current = apiRequest<{ id: number | null }>("POST", "/api/prayer-sessions", sessionBody)
       .then((resp) => {
-        loggedRef.current = { seconds: secondsKept, id: resp?.id ?? null };
+        // Keep whatever LONGER length a later call reserved meanwhile; only
+        // the id is news here.
+        const reserved = loggedRef.current?.seconds ?? secondsKept;
+        loggedRef.current = { seconds: Math.max(reserved, secondsKept), id: resp?.id ?? null };
         invalidate();
       })
       .catch(() => {
