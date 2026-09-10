@@ -162,10 +162,13 @@ export const EVENING_ANTIPHONS: readonly Antiphon[] = [
   },
 ];
 
-/** Day of the year, 0-based, in local time — the rotation's clock. */
+/**
+ * Day of the year, 0-based — the rotation's clock. Calendar arithmetic, not
+ * millisecond arithmetic: a local-time subtraction across a daylight-saving
+ * change is an hour short and floors to the previous day.
+ */
 function dayOfYear(d: Date): number {
-  const start = new Date(d.getFullYear(), 0, 1);
-  return Math.floor((d.getTime() - start.getTime()) / 86_400_000);
+  return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(d.getFullYear(), 0, 1)) / 86_400_000);
 }
 
 export function antiphonForDay(d: Date = new Date(), side: "morning" | "evening" = "morning"): Antiphon {
