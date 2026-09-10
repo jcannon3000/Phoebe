@@ -48,8 +48,14 @@ type DailyPrayer = "guided-prayer" | "psalms" | "devotion" | "office" | "reading
 // Contemplative Walk / Visio Divina / Taize / Spirituals), just ONE at a time here (this page is meant to stay a
 // few quick dropdowns, not a multi-select). Backed by the same home-layout
 // module keys those toggles write in WayOfLoveRuleFlow.tsx.
-type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spirituals" | "taize" | "icons" | "lectio" | "rosary" | "hagiography";
-const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio", "spirituals", "taize", "icons", "lectio", "rosary", "hagiography"];
+type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spirituals" | "taize" | "icons" | "lectio" | "rosary";
+// NOTE: the day's commemoration ("hagiography") is deliberately NOT here.
+// This row is SINGLE-select — applyAddPractice strips every key in this list
+// from the layout and puts back only the chosen one — so listing it would mean
+// turning on the commemoration turned OFF Visio Divina, and vice versa. It is
+// a reading, not a practice competing for that one slot, so it is followed
+// from the Reflections page instead, where following is additive per source.
+const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio", "spirituals", "taize", "icons", "lectio", "rosary"];
 function homeCardOn(hl: HomeLayout | null, key: string): boolean {
   return !!hl && hl.order.includes(key) && !hl.hidden.includes(key);
 }
@@ -903,9 +909,6 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
              * about between here and WayOfLoveRuleFlow's commit().)
              */
             { value: "rosary", label: "The Rosary" },
-            // Shows only on the days the calendar carries a commemoration —
-            // several days a week, not every day.
-            { value: "hagiography", label: "Lives of the Saints" },
             ...(spiritualsVisible(user?.isSuperAdmin)
               ? [{ value: "spirituals", label: "Meditating on Spirituals" }]
               : []),
