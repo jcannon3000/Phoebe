@@ -1296,7 +1296,21 @@ function LoadReveal() {
 }
 
 // Full-bleed page backdrop — fades UP once the photo decodes (no flash/pop), and
-// sits z-index:-1 within the Layout root's isolation:isolate context so it stays put.
+// sits z-index:-1 within the Layout root's isolation:isolate context.
+//
+// ABSOLUTE, NOT FIXED (owner, 2026-09-09: "sometimes the titles load faded",
+// "on many surfaces", "sometimes on first load"). The page content rises in
+// inside a framer wrapper — composited while it animates, then dropped back
+// into the root layer when the rise ends — while these two layers are still
+// mid-way through their 0.8s opacity fade. A `position: fixed` layer is
+// composited in WebKit for good, and a composited NEGATIVE z-index layer over
+// non-composited parent content is the one paint order WebKit gets wrong:
+// the wash painted OVER the in-flow headings (the date, the feast line,
+// "Next", "Done") while the frosted cards — layers of their own — stayed
+// bright. Fixed never de-promotes, so it never healed. Absolute inside the
+// relative root covers the same full page (the root grows with its content),
+// is composited only for the 0.8s of the fade, and then paints in the root
+// layer in ordinary z-order. See reference_page_backdrop_pattern.
 function LayoutBackdrop({ photo, opacity }: { photo: string; opacity: number }) {
   // Owner report: the home's backdrop always faded in from opacity 0, even
   // when it's the SAME photo the opening splash just showed a beat earlier
@@ -1316,8 +1330,8 @@ function LayoutBackdrop({ photo, opacity }: { photo: string; opacity: number }) 
   // instantly while the photo is still loading behind it.
   return (
     <>
-      <img src={photo} alt="" aria-hidden onLoad={() => setLoaded(true)} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: loaded ? opacity : 0, transition: "opacity 0.8s ease", zIndex: -1 }} />
-      <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, opacity: loaded ? 1 : 0, transition: "opacity 0.8s ease", background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+      <img src={photo} alt="" aria-hidden onLoad={() => setLoaded(true)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: loaded ? opacity : 0, transition: "opacity 0.8s ease", zIndex: -1 }} />
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, opacity: loaded ? 1 : 0, transition: "opacity 0.8s ease", background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
     </>
   );
 }
@@ -1377,10 +1391,12 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
           reading and seeds the routine, then dismisses onto the home. Self-gates
           (native + first launch); renders nothing otherwise. */}
       <FirstOpenOnboarding />
-      {/* Optional full-bleed page backdrop — fixed (edge to edge, behind the header
-          AND the content gutters), z-index:-1 within this isolation:isolate root so
-          it renders reliably (never position:fixed without isolation — that flashes
-          then vanishes in the iOS WebView; see reference_page_backdrop_pattern). */}
+      {/* Optional full-bleed page backdrop — absolute (edge to edge, behind the
+          header AND the content gutters; this root is relative and grows with
+          the page), z-index:-1 within this isolation:isolate root so it renders
+          reliably. Never position:fixed — that flashes then vanishes in the iOS
+          WebView, and on Safari it painted over the page's plain headings; see
+          LayoutBackdrop and reference_page_backdrop_pattern. */}
       {bgPhoto && <LayoutBackdrop photo={bgPhoto} opacity={bgOpacity} />}
       {/* Chromeless mode (e.g. the Rule-of-Life customizer) drops the full Phoebe
           top bar in favour of a single X-out, so the builder reads as a focused

@@ -1107,9 +1107,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     },
     onUnlog: () => unmarkHagiographyToday(),
     title: hagiographyName ?? t("rhythm.card_hagiography", { defaultValue: "Lives of the Saints" }),
+    // The TITLE is the feast, and nothing else (owner: "just the feast name …
+    // to keep it short"), so the second line is what says what kind of thing
+    // this is. One word does it.
     blurb: hagiographyDone
       ? kept
-      : t("rhythm.blurb_hagiography", { defaultValue: "The life behind today's feast" }),
+      : t("rhythm.blurb_hagiography", { defaultValue: "Hagiography" }),
     cta: t("rhythm.read", { defaultValue: "Read" }),
   };
   const iconsCard = {

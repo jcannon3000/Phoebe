@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { forwardMovementFeastUrl } from "@/lib/liturgical/forwardMovementCalendar";
+import { getDay, readLesserFeastsPref } from "@/lib/liturgical";
+import { hasReadHagiographyToday, markHagiographyRead } from "@/lib/cacReadState";
 import { useOnline } from "@/lib/offline";
 import { useLocation, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -186,6 +189,14 @@ export default function MenuNewslettersPage() {
     const eff = user ? applyCachedHomeLayout(user).homeLayout : readCachedHomeLayout();
     return { order: [...(eff?.order ?? [])], hidden: [...(eff?.hidden ?? [])], v: eff?.v ?? HOME_LAYOUT_VERSION };
   };
+  /** The day's commemoration, from the same calendar the home card reads. */
+  const hagiographyUrl = forwardMovementFeastUrl();
+  const hagiographyName = (() => {
+    try {
+      const d = getDay(new Date(), { observeLesserFeasts: readLesserFeastsPref() });
+      return d.commemoration ?? (d.rank === "principal_feast" || d.rank === "holy_day" ? d.name : null);
+    } catch { return null; }
+  })();
   const layout = layoutNow();
   const on = (key: string) => isHomeCardOn(layout, key);
 
@@ -203,6 +214,22 @@ export default function MenuNewslettersPage() {
         },
       };
     }),
+    /**
+     * THE DAY'S COMMEMORATION — here as well as on the home (owner: "It should
+     * show up on the reflection page too … on days there is one").
+     *
+     * Present only when the calendar carries an entry for today, which is the
+     * same gate the home card uses, so the two surfaces cannot disagree about
+     * whether there is one. Titled with the feast itself and nothing else; the
+     * publisher line says what kind of thing it is.
+     */
+    ...(hagiographyUrl ? [{
+      key: "hagiography", emoji: "📜",
+      title: hagiographyName ?? "Today's commemoration",
+      publisher: "Hagiography · Forward Movement", cadence: "daily" as const,
+      followed: on("hagiography"), done: hasReadHagiographyToday(),
+      open: () => openExternalThenMarkRead(hagiographyUrl, () => markHagiographyRead(), { reader: true }),
+    }] : []),
     {
       key: "taize", emoji: "🕯️", title: "Taizé meditation", publisher: "Taizé", cadence: "weekly",
       followed: on("taize"), done: rs.taizeDone, latestTitle: taizeLatest?.title,
