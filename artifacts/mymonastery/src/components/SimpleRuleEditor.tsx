@@ -54,7 +54,6 @@ const REFLECTION_CHOICES: { value: ReflectionSource; label: string; sub: string 
   { value: "ssje", label: "Brother, Give Us a Word", sub: "A daily word from the SSJE monks" },
   { value: "sojo", label: "Sojourners Daily Devotion", sub: "Verse, voice and prayer of the day" },
   { value: "nouwen", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society" },
-  { value: "grist", label: "Grist Climate News", sub: "The day's climate reporting" },
   // VTS BELONGS HERE TOO. Without it this editor did something worse than
   // omit an option: the label lookup below falls back to "Forward Day by Day",
   // so a reader whose reflection IS the Dean's Commentary was shown a screen

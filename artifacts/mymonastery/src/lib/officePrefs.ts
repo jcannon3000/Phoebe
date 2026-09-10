@@ -73,9 +73,13 @@ const KEY_DEFAULT_OFFICE_ENTRY = "phoebe:office:default-entry";
  * and a place in TRACKED_REFLECTION_SOURCES below.
  */
 export type ReflectionSource = "cac" | "fdd" | "ssje" | "vts" | "nouwen" | "sojo" | "grist" | "none";
-const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "none"];
+const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "nouwen", "sojo", "grist", "vts", "none"];
 /** The sources that count toward the Reflect anchor when opened. */
-export const TRACKED_REFLECTION_SOURCES = ["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist"] as const;
+// VTS LAST (owner, 2026-09-10: "just make sure it is at the bottom of the
+// page") — this order is the newsletters hub's order. Grist is still tracked
+// (a device that chose it keeps its card and its read-state) but is no longer
+// OFFERED anywhere; see menu-newsletters DAILY and the customizers.
+export const TRACKED_REFLECTION_SOURCES = ["cac", "fdd", "ssje", "nouwen", "sojo", "grist", "vts"] as const;
 export function isTrackedReflectionSource(s: ReflectionSource): boolean {
   return (TRACKED_REFLECTION_SOURCES as readonly string[]).includes(s);
 }

@@ -458,7 +458,6 @@ export default function OfficeSettingsPage() {
           { value: "ssje" as const, emoji: "✍🏽", label: t("office_settings.reflection_ssje_label"), sub: t("office_settings.reflection_ssje_sub") },
           { value: "sojo" as const, emoji: "🕊️", label: "Sojourners Daily Devotion", sub: "Verse, voice and prayer of the day" },
           { value: "nouwen" as const, emoji: "😊", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society" },
-          { value: "grist" as const, emoji: "🌎", label: "Grist Climate News", sub: "The day's climate reporting" },
           { value: "none" as const, emoji: "🚫", label: t("office_settings.reflection_none_label"), sub: t("office_settings.reflection_none_sub") },
         ]).map((o) => (
           <OptionCard

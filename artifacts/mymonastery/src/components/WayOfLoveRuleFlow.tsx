@@ -739,12 +739,14 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "fdd", label: "📖 Forward Day by Day", sub: "Forward Movement" },
   { id: "ssje", label: "✍🏽 SSJE — Brother, Give Us a Word", sub: "Society of St. John the Evangelist" },
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
-  { id: "vts", label: "🦩 VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
   // Read-only sources (see ReflectionSource): they sit in the rule and open in
   // the reader like the others, but opening one is not scored.
   { id: "nouwen", label: "😊 Nouwen Daily Devotion", sub: "Henri Nouwen Society" },
   { id: "sojo", label: "🕊️ Sojourners Daily Devotion", sub: "Verse, voice and prayer of the day" },
-  { id: "grist", label: "🌍 Grist Climate News", sub: "The day's climate journalism · weekdays" },
+  // Grist left the list 2026-09-10 (owner: "take out the grist newsletter");
+  // a device that still has it keeps its card until it changes source.
+  // VTS sits last (owner: "just make sure it is at the bottom").
+  { id: "vts", label: "🦩 VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
 ];
 
 // A captured routine, identical to what commit() would write — used by the
@@ -3256,7 +3258,6 @@ export default function WayOfLoveRuleFlow({
         "learn",
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
-        "relational",
         "custom",
       ]
     : pilot
@@ -3271,7 +3272,6 @@ export default function WayOfLoveRuleFlow({
         "learn",
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
-        "relational",
         "custom",
       ]
     : [
@@ -3310,7 +3310,6 @@ export default function WayOfLoveRuleFlow({
     // CATEGORY of ready-made practices, like the contemplative and newsletter
     // slides above it — and "create your own" belongs last, after every list
     // we can offer has been offered.
-    "relational",
     "custom",
     // The weekly Way of Love rhythm (Commune / Go / Bless / Rest) closes the
     // flow — restored per owner (2026-07-09): a rule of life turns weekly too.

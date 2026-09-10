@@ -1329,7 +1329,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     onUnlog: () => unmarkPracticeDoneToday("examen"),
     title: t("rhythm.card_examen", { defaultValue: "The Examen" }),
     blurb: examenDone ? kept : t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }),
-    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+    cta: t("rhythm.begin", { defaultValue: "Begin" }),
+    // The Examen is ALWAYS an evening practice (examenSlot below), so it
+    // waits like the other evening cards — "Later" before the evening
+    // opens. It said later:false while the evening sit beside it said
+    // "Later" (tester, 2026-09-10: "it didn't do the same for the Ignatian
+    // Examen, which I also marked as an evening practice").
+    ...eveningLater,
   };
   const cobreatheSlot = getPracticeSlot("cobreathe");
   const listeningSlot = getPracticeSlot("listening");
@@ -1967,7 +1973,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(() => {
       const EXTRA_READ_MS = 10_000;
       const inRhythm = new Set(reflections.map((r) => r.source));
-      return (["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist"] as TrackedReflection[])
+      return (["cac", "fdd", "ssje", "nouwen", "sojo", "grist", "vts"] as TrackedReflection[])
         .filter((src) => !inRhythm.has(src)
           && hasReadReflectionToday(src)
           && (reflectionDwellMsToday(src) ?? 0) >= EXTRA_READ_MS)

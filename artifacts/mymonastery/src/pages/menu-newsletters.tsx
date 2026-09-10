@@ -96,7 +96,7 @@ const PUBLISHER: Record<DailySource, string> = {
   grist: "The day's climate reporting",
   vts: "Virginia Theological Seminary · weekdays",
 };
-const DAILY = TRACKED_REFLECTION_SOURCES.map((source) => ({
+const DAILY = TRACKED_REFLECTION_SOURCES.filter((s) => s !== "grist").map((source) => ({
   source, emoji: REFLECTION_EMOJI[source], title: PUBLICATION_NAME[source], publisher: PUBLISHER[source],
 }));
 const MARK_READ: Record<DailySource, (dwellMs?: number) => void> = {

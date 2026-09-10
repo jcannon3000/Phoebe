@@ -269,6 +269,17 @@ export function getCustomAnchors(): CustomAnchor[] {
     const raw = JSON.parse(localStorage.getItem(DEFS_KEY) || "[]");
     if (!Array.isArray(raw)) return [];
     return raw
+      /**
+       * RELATIONAL PRACTICES ARE GONE (owner, 2026-09-10, on a tester's
+       * note that the step "seems to come out of nowhere": "take out
+       * relational practices — both in the cards but also the customizer").
+       * Filtered HERE, at the one reader every card, list, widget and sync
+       * goes through, so an anchor a device already holds simply stops
+       * appearing; the seeds and customizer steps that used to add them are
+       * retired below (setRelationalPractices is a no-op).
+       */
+      .filter((a: { title?: unknown; isRelational?: unknown }) =>
+        !(a && typeof a.title === "string" && isRelationalAnchor({ title: a.title, isRelational: a.isRelational === true })))
       .filter(
         (a): a is { id: string; title: string; emoji: string; slot?: unknown; reading?: unknown } =>
           !!a && typeof a.id === "string" && typeof a.title === "string" && typeof a.emoji === "string",
@@ -415,18 +426,10 @@ export function addCustomRelationalPractice(title: string, prompt?: string): boo
  * opened the customizer, with no explanation offered anywhere.
  */
 export function setRelationalPractices(wanted: readonly RelationalPracticeId[]): RelationalPracticeId[] {
-  const want = new Set(wanted);
-  const existing = getCustomAnchors();
-  const refused: RelationalPracticeId[] = [];
-  for (const r of RELATIONAL_PRACTICES) {
-    const found = existing.find((a) => a.title.trim().toLowerCase() === r.title.toLowerCase());
-    if (want.has(r.id) && !found) {
-      if (!addCustomAnchor(r.title, r.emoji, "anytime", undefined, undefined, undefined, r.prompt, undefined, true)) refused.push(r.id);
-    } else if (!want.has(r.id) && found) {
-      removeCustomAnchor(found.id);
-    }
-  }
-  return refused;
+  // Retired 2026-09-10 — see getCustomAnchors. Nothing is added or removed;
+  // callers (seeds, presets) are left in place and do nothing.
+  void wanted;
+  return [];
 }
 
 export function addCustomAnchor(

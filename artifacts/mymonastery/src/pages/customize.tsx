@@ -463,10 +463,7 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
       }
     }
     // The rule's relational practices join the person's own — added, never
-    // removed (the sweep above spares relational anchors). Mirrors adoptRule.
-    if (preset.relational?.length) {
-      setRelationalPractices(Array.from(new Set([...activeRelationalPractices(), ...preset.relational])));
-    }
+    // Relational practices retired 2026-09-10 — a preset's list is ignored.
 
     /**
      * The rest of what a preset can carry.
@@ -852,12 +849,12 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             { value: "cac", label: "CAC Daily Meditation" },
             { value: "sojo", label: "Sojourners Daily Devotion" },
             { value: "nouwen", label: "Nouwen Daily Devotion" },
-            { value: "grist", label: "Grist Climate News" },
+            { value: "fdd", label: "Forward Day by Day" },
+            { value: "ssje", label: "SSJE — Brother, Give Us a Word" },
+            // VTS is always the LAST newsletter listed (owner, 2026-09-10).
             ...(entitlements.vts || newsletter === "vts"
               ? [{ value: "vts", label: "VTS Dean's Commentary" }]
               : []),
-            { value: "fdd", label: "Forward Day by Day" },
-            { value: "ssje", label: "SSJE — Brother, Give Us a Word" },
           ], (v) => applyNewsletter(v as ReflectionSource))}
 
           {/* "None" leads: the default rhythm keeps no silence goal, and a
@@ -872,21 +869,6 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
               only customizer most people ever see. Gated on
               auth having settled so a light account's saved layout doesn't
               briefly read as "None" before it loads. */}
-          {/* RELATIONAL — one small thing done toward a person, or none
-              (owner). Sits ABOVE "Add a practice" (owner, 2026-09-08): the
-              rows above it shape a practice you do by yourself, and this one
-              points outward, so it belongs with the rule rather than after the
-              catch-all. The curated three only; see the note above
-              applyRelational for why there is no custom entry here. */}
-          {row("Relational", relational, [
-            { value: "none", label: "None" },
-            ...RELATIONAL_PRACTICES.map((r) => ({ value: r.id as string, label: r.title })),
-          ], (v) => applyRelational(v as RelationalPracticeId | "none"))}
-          {relationalRefused && (
-            <p style={{ color: SOFT_GREEN, fontSize: 12.5, fontFamily: FONT, margin: "-2px 4px 0", lineHeight: 1.45 }}>
-              Your rhythm is full — remove a practice first, and this will fit.
-            </p>
-          )}
 
           {!authLoading && row("Add a practice", addPractice, [
             { value: "none", label: "None" },
