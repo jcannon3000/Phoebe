@@ -141,6 +141,10 @@ export default function WelcomePublicPage() {
       className="min-h-screen flex flex-col"
       style={{
         background: BG,
+        // Relative, so the absolute backdrop below spans the whole page (not
+        // the viewport). Absolute, not fixed: a fixed negative-z layer painted
+        // over the plain headings on Safari — see LayoutBackdrop in layout.tsx.
+        position: "relative",
         isolation: "isolate",
         fontFamily: SPACE_GROTESK,
         paddingTop: "var(--safe-top)",
@@ -149,8 +153,8 @@ export default function WelcomePublicPage() {
     >
       {bgPhoto && (
         <>
-          <img src={bgPhoto} alt="" aria-hidden style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.42, zIndex: -1 }} />
-          <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.5) 0%, rgba(8,18,12,0.64) 45%, rgba(8,18,12,0.82) 100%)" }} />
+          <img src={bgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.42, zIndex: -1 }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.5) 0%, rgba(8,18,12,0.64) 45%, rgba(8,18,12,0.82) 100%)" }} />
         </>
       )}
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
