@@ -935,6 +935,10 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // Reference content the guest Resources menu links to.
   "/building-faith",
   "/signin", "/login", "/onboarding",
+  // Password recovery is BY DEFINITION a signed-out act. These were missing,
+  // so a person who had signed out and tapped "Forgot password" was bounced
+  // to the dashboard before the page could render (found 2026-09-09).
+  "/forgot-password", "/reset-password",
   "/about", "/about-deck", "/overview-deck", "/privacy", "/terms",
   // The invite landing page — a first-time visitor tapping a shared link has
   // no session yet, which useGuestMode treats as a guest; without this the
