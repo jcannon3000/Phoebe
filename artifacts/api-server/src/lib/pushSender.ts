@@ -37,6 +37,8 @@ if (VAPID_PUBLIC && VAPID_PRIVATE) {
 }
 
 const APNS_ENV = (process.env["APNS_ENVIRONMENT"] ?? "production").toLowerCase();
+const APNS_SANDBOX_HOST = "https://api.sandbox.push.apple.com";
+const APNS_PRODUCTION_HOST = "https://api.push.apple.com";
 const APNS_HOST = APNS_ENV === "sandbox"
   ? "https://api.sandbox.push.apple.com"
   : "https://api.push.apple.com";
@@ -293,6 +295,18 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
       .where(and(
         eq(webPushSubscriptionsTable.userId, userId),
         isNull(webPushSubscriptionsTable.invalidatedAt),
+        /**
+         * ONLY BROWSERS SEEN THIS SEASON. A browser registers its
+         * subscription every time it opens the app with permission granted
+         * (WebPushPermissionPrompt → ensureWebPushSubscription → upsert,
+         * which stamps last_seen_at). An endpoint that has not been seen in
+         * 45 days is one the person no longer opens the app in — a cleared
+         * Safari profile, an old Add-to-Dock copy — yet Apple keeps
+         * delivering to it, which is how one reminder arrived FOUR times on
+         * one Mac (owner, 2026-09-09: "a ton of notifications"). Any browser
+         * actually in use re-stamps itself long before the window closes.
+         */
+        sql`${webPushSubscriptionsTable.lastSeenAt} > now() - interval '45 days'`,
       )),
   ]);
 
@@ -686,6 +700,34 @@ async function sendOneApns(deviceToken: string, payload: PushPayload): Promise<A
   // uninstall). Both mean we should stop sending to this token.
   if (result.status === 410) return "invalid";
 
+  /**
+   * THE OTHER ENVIRONMENT, BEFORE GIVING UP ON THE TOKEN.
+   *
+   * A build run from Xcode registers a SANDBOX token; TestFlight and the App
+   * Store register PRODUCTION ones. The server speaks to one host, so a phone
+   * on a development build got BadDeviceToken from production on every
+   * send, its token was marked invalid, and from then on "it came to my
+   * desktop but not my phone" (owner, 2026-09-06 and again 2026-09-09, a
+   * week of rebuilding in Xcode). The token itself was fine — it just lived
+   * on the other host. Try there once; if it lands, it was that, and the
+   * token stays live. Only when BOTH hosts refuse it is it really invalid.
+   */
+  if (result.status === 400 && result.reason === "BadDeviceToken") {
+    const other = APNS_HOST === APNS_SANDBOX_HOST ? APNS_PRODUCTION_HOST : APNS_SANDBOX_HOST;
+    try {
+      const retry = await apnsRequest(deviceToken, headers, body, other);
+      if (retry.status === 200) {
+        logger.info(
+          { deviceToken: deviceToken.slice(0, 8) + "…", host: other },
+          "[push] token belongs to the other APNs environment — delivered there"
+        );
+        return "ok";
+      }
+    } catch (err) {
+      logger.warn({ err, host: other }, "[push] APNs network error on the other environment");
+    }
+  }
+
   logger.warn(
     { status: result.status, reason: result.reason, deviceToken: deviceToken.slice(0, 8) + "…" },
     "[push] APNs send failed"
@@ -729,9 +771,10 @@ async function apnsRequest(
   deviceToken: string,
   headers: Record<string, string>,
   body: string,
+  host: string = APNS_HOST,
 ): Promise<{ status: number; reason: string }> {
   return new Promise((resolve, reject) => {
-    const session = http2.connect(APNS_HOST);
+    const session = http2.connect(host);
     let settled = false;
     // Node's http2 has NO default timeout, and this loop is serial over every
     // device token — so one half-open socket to Apple stalled an entire

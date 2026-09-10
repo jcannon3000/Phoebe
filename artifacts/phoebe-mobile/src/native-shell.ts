@@ -205,7 +205,10 @@ async function postDeviceToken(token: string): Promise<boolean> {
         // app resume. The /api/push/device-token endpoint is idempotent,
         // but skipping the network round-trip when we know it landed is
         // free politeness.
-        try { localStorage.setItem("phoebe:push-token-registered", token); } catch { /* private mode */ }
+        try {
+          localStorage.setItem("phoebe:push-token-registered", token);
+          localStorage.setItem("phoebe:push-token-registered-at", String(Date.now()));
+        } catch { /* private mode */ }
         return true;
       }
       // 4xx (except 401) are permanent — don't retry.
@@ -282,8 +285,21 @@ async function registerForPushIfRequested() {
           // reissue, iCloud restore, app reinstall), the value won't
           // match and we'll POST the new one.
           let lastRegistered: string | null = null;
-          try { lastRegistered = localStorage.getItem("phoebe:push-token-registered"); } catch { /* ignore */ }
-          if (token.value === lastRegistered) {
+          let lastRegisteredAt = 0;
+          try {
+            lastRegistered = localStorage.getItem("phoebe:push-token-registered");
+            lastRegisteredAt = parseInt(localStorage.getItem("phoebe:push-token-registered-at") ?? "0", 10) || 0;
+          } catch { /* ignore */ }
+          // ONCE A DAY, EVEN IF UNCHANGED. The server retires a token it
+          // could not deliver to (410, or BadDeviceToken from the wrong APNs
+          // environment) and only a fresh POST — an idempotent upsert that
+          // clears invalidated_at — brings it back. Skipping every re-post
+          // of an unchanged token meant a phone whose row had been retired
+          // stayed silent for good, however often the app was opened
+          // (owner, 2026-09-09: no evening reminder on mobile, four on the
+          // desktop). Same token within 24h: still skipped, still cheap.
+          const DAY = 24 * 60 * 60 * 1000;
+          if (token.value === lastRegistered && Date.now() - lastRegisteredAt < DAY) {
             window.dispatchEvent(new CustomEvent("phoebe:push-ready", { detail: { token: token.value } }));
             return;
           }
