@@ -77,7 +77,11 @@ export function buildRomanBeats(set: MysterySet): Beat[] {
       note: `The three small beads in a row above it. Say it three times — one ${OPENING_INTENTIONS.join(", one ")}.`,
     },
     { kind: "prayer", eyebrow: "Before the first decade", title: "Glory be", body: GLORY_BE,
-      note: "One more bead brings you to the medal, where the loop begins. The five decades go round from there." },
+      // Audit 2026-09-10: there is NO bead for this one — after the three small
+      // beads the chain runs straight to the medal, and the Glory Be is said on
+      // the way. "One more bead brings you to the medal" sent the hand looking
+      // for a bead that is not there.
+      note: "There is no bead for this one: say it on the chain, on the way up to the medal, where the loop begins. The five decades go round from there." },
   ];
   for (const m of def.mysteries) {
     beats.push({ kind: "mystery", mystery: m, decade: m.n });

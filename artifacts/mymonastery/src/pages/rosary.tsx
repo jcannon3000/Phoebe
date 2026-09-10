@@ -723,59 +723,12 @@ export default function RosaryPage() {
                     })}
               </p>
 
-              {/* All four, with today's highlighted (owner: "I want the
-                  original of keeping all four visible with todays
-                  highlighted"). The day decides which is lit; any of them can
-                  be tapped. On the Anglican form the same row offers the four
-                  devotions instead — nothing there is appointed by day. */}
-              <div className="flex flex-wrap items-center justify-center gap-2" style={{ marginTop: 2 }}>
-                {isAnglican
-                  ? (Object.keys(ANGLICAN_SETS) as AnglicanSet[]).map((k) => {
-                      const on = k === angSet;
-                      return (
-                        <button
-                          key={k}
-                          type="button"
-                          onClick={() => { setAngSet(k); setCircle(1); }}
-                          aria-pressed={on}
-                          className="rounded-full"
-                          style={{
-                            padding: "12px 16px", minHeight: 44,
-                            fontFamily: FONT, fontSize: 13, fontWeight: 600, cursor: "pointer",
-                            color: on ? WARM : "rgba(240,237,230,0.66)",
-                            background: on ? "rgba(150,170,205,0.18)" : CHROME_BG,
-                            border: `1px solid ${on ? ACCENT : "rgba(150,170,205,0.22)"}`,
-                            backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
-                          }}
-                        >
-                          {ANGLICAN_SETS[k].name}
-                        </button>
-                      );
-                    })
-                  : (Object.keys(MYSTERY_SETS) as MysterySet[]).map((k) => {
-                      const on = k === set;
-                      return (
-                        <button
-                          key={k}
-                          type="button"
-                          onClick={() => setSet(k)}
-                          aria-pressed={on}
-                          className="rounded-full"
-                          style={{
-                            // 44px minimum — these were ~30px tall.
-                            padding: "12px 16px", minHeight: 44,
-                            fontFamily: FONT, fontSize: 13, fontWeight: 600, cursor: "pointer",
-                            color: on ? WARM : "rgba(240,237,230,0.66)",
-                            background: on ? "rgba(150,170,205,0.18)" : CHROME_BG,
-                            border: `1px solid ${on ? ACCENT : "rgba(150,170,205,0.22)"}`,
-                            backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
-                          }}
-                        >
-                          {MYSTERY_SETS[k].name.replace("The ", "").replace(" Mysteries", "")}
-                        </button>
-                      );
-                    })}
-              </div>
+              {/* THE PICKERS ARE GONE (owner, 2026-09-10: "take out those option
+                  slides too, just to simplify"). The day appoints the mysteries
+                  — the caption below still says which and why — and the
+                  Anglican circle prays the Jesus Prayer. `set` / `angSet` keep
+                  their state so a resumed rosary comes back on the set it was
+                  on; nothing on this slide changes them any more. */}
               <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 12.5, margin: 0 }}>
                 {isAnglican
                   ? angDef.source
