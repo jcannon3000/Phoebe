@@ -164,22 +164,45 @@ export function LiturgicalDateHeader({
             type="button"
             className="mt-1"
             onClick={() => openExternal(feastUrl, { reader: true })}
+            aria-label={`${secondary} — read the life and collect`}
             style={{
               color: "rgba(200,212,192,0.6)",
               fontSize: 13,
               fontFamily: "'Space Grotesk', sans-serif",
               background: "none", border: "none", padding: 0,
               textAlign: "left", cursor: "pointer",
-              // Underlined so it reads as a door, but dotted and dim: this is a
-              // quiet subtitle under the date, and a full underline would pull
-              // it above the date it belongs to.
-              textDecoration: "underline",
-              textDecorationStyle: "dotted",
-              textUnderlineOffset: 3,
-              textDecorationColor: "rgba(200,212,192,0.35)",
+              // The feast itself is NOT underlined (owner). It is the day's
+              // name, and dressing a name as a link makes the whole subtitle
+              // read as chrome. The affordance sits at the end instead, so the
+              // line still says what today is first and offers the door second.
+              display: "inline", lineHeight: 1.45,
             }}
           >
             {secondary}
+            {/* An (i) in a circle, drawn rather than typed: the character ⓘ
+                renders at wildly different weights across iOS and Android, and
+                this line is 13px — it has to sit exactly on the text baseline. */}
+            <svg
+              width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false"
+              style={{ display: "inline-block", verticalAlign: "-1px", margin: "0 3px 0 6px" }}
+            >
+              <circle cx="6" cy="6" r="5.25" fill="none" stroke="rgba(200,212,192,0.5)" strokeWidth="1" />
+              <circle cx="6" cy="3.5" r="0.7" fill="rgba(200,212,192,0.75)" />
+              <rect x="5.4" y="5.1" width="1.2" height="3.6" rx="0.6" fill="rgba(200,212,192,0.75)" />
+            </svg>
+            {/* Only THIS carries the underline — the one word that is a link. */}
+            <span
+              style={{
+                textDecoration: "underline",
+                textDecorationStyle: "dotted",
+                textUnderlineOffset: 3,
+                textDecorationColor: "rgba(200,212,192,0.4)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              More
+            </span>
+            <span aria-hidden="true" style={{ marginLeft: 3 }}>›</span>
           </button>
         ) : (
           <p
