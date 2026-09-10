@@ -849,43 +849,69 @@ a:active,
 .max-h-screen { max-height: var(--app-dvh); }
 
 /* ── THE BORDER IS DRAWN ON A BOX THAT CARRIES NO BLUR ────────────────────────
-   Owner, 2026-09-10 (TestFlight + Safari screenshots): "some borders are
-   missing", "look at the top of the Morning Prayer card", "it's a glitch in
-   how it loads". Every home card painted its 1px border on the SAME element
-   as its backdrop blur (and, on the rhythm rows, a -webkit-mask); on WebKit a
-   blurred, rounded box resamples its own antialiased edge as the blur layer
-   is (re)composited, and the hairline border comes out drawn for part of an
-   edge and gone for the rest — differing card to card and load to load.
+   Owner, 2026-09-10 (TestFlight + Safari screenshots, a recording): "some
+   borders are missing", "look at the top of the Morning Prayer card", "it's a
+   glitch in how it loads", "they came in right then got messed up". A card
+   painted its 1px border on the SAME element as its backdrop blur; on WebKit a
+   blurred, rounded box resamples its own antialiased edge as the blur layer is
+   (re)committed, and the hairline border comes out drawn for part of an edge
+   and gone for the rest — differing card to card and load to load.
 
-   The rhythm rows (DailyProgressBody.PracticeCard) fix this in JSX with an
-   inner `frost` layer. The dashboard's own hero and info cards — a dozen
-   sites, all `style={{ background, backdropFilter: "blur(11.34px)", border }}`
-   on one box — are fixed HERE, in one place: the blur is lifted off the
-   bordered element and painted by a ::before that sits inside the padding
-   box (so it can never touch the border), with the same seam mask the rows
-   use. Matched by the inline style itself, so no site needs editing and no
-   new site can forget. Scoped to the home shell. */
-.dash-shell [style*="blur(11.34px)"]:not([aria-hidden="true"]) {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  isolation: isolate;
-}
-/* A card that never positioned itself (the course card is a plain button)
-   must, or its ::before would land on some ancestor instead. */
-.dash-shell [style*="blur(11.34px)"]:not([aria-hidden="true"]):not([style*="position"]) {
-  position: relative;
-}
-/* `aria-hidden` excludes the rhythm rows' own inner frost layers, which are
-   already the inner layer and must keep their blur. */
-.dash-shell [style*="blur(11.34px)"]:not([aria-hidden="true"])::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  pointer-events: none;
-  backdrop-filter: blur(11.34px);
-  -webkit-backdrop-filter: blur(11.34px);
-  -webkit-mask-image: -webkit-radial-gradient(white, black);
-}
+   The app has ~120 such sites (`style={{ backdropFilter: "blur(Npx)", border }}`
+   on one box) across thirty files, at fifteen blur radii. Rather than edit
+   each, this lifts the blur off every bordered element in the app and paints
+   it with a ::before that sits inside the padding box, where it can never
+   touch the border — matched by the inline style itself, one rule per radius,
+   so no site needs editing and no new site can forget. The rhythm rows'
+   inner frost layers (aria-hidden) are the inner layer already and are
+   skipped; a box that never positioned itself is made relative so its
+   ::before lands on it and not on an ancestor. The seam mask the rows use
+   rides along on the ::before. See reference_card_border_no_blur.
 
+   Generated: one block per radius found in src. Add a radius here if a new
+   one appears (grep backdropFilter). */
+[style*="backdrop-filter: blur(2px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(2px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(2px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(3px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(3px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(3px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(4px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(4px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(4px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(6px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(6px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(6px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(8px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(8px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(8px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(10px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(10px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(10px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(11px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(11px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(11px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(11px); -webkit-backdrop-filter: blur(11px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(11.34px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(11.34px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(11.34px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(11.34px); -webkit-backdrop-filter: blur(11.34px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(12px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(12px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(12px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(12.6px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(12.6px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(12.6px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(12.6px); -webkit-backdrop-filter: blur(12.6px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(14px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(14px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(14px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(14.4px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(14.4px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(14.4px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(14.4px); -webkit-backdrop-filter: blur(14.4px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(16px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(16px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(16px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(20px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(20px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(20px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(22px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
+[style*="backdrop-filter: blur(22px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
+[style*="backdrop-filter: blur(22px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
