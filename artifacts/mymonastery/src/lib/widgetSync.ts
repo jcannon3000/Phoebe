@@ -177,6 +177,7 @@ export function useWidgetSync(): void {
         // didn't, so the widget showed a silent sit for a Lectio side.
         case "lectio": return { title: "Lectio Divina", eyebrow: "Lectio Divina", subtitle: "Read a passage slowly, three times", emoji: "📜" };
         case "reading": return { title: "Reading", eyebrow: "Reading", subtitle: "A page a day", emoji: "📚" };
+        case "rosary": return { title: "The Rosary", eyebrow: "The Rosary", subtitle: "Today's mysteries, a decade at a time", emoji: "📿" };
         default: return { title: `${cap} Contemplation`, eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", emoji: "🕯️" };
       }
     };
@@ -474,6 +475,7 @@ export function useWidgetSync(): void {
       if (kind === "visio") return "/visio";
       if (kind === "lectio") return "/lectio";
       if (kind === "reading") return "/reading-log";
+      if (kind === "rosary") return "/rosary";
       if (kind === "creation") return `/cobreathe?side=${side}`;
       return `/contemplation?begin=1&side=${side}`;
     };

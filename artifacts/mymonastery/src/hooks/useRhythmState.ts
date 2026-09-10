@@ -1574,7 +1574,8 @@ export function useRhythmState(): RhythmState {
           // practice (owner, 2026-09-04) is done when that practice was.
           : kind === "lectio" ? (practiceLocal.lectio || serverDone("lectio"))
             : kind === "reading" ? (practiceLocal.reading || serverDone("reading"))
-              : null;
+              : kind === "rosary" ? (practiceLocal.rosary || serverDone("rosary"))
+                : null;
   const morningContemplationDone = kindKept(morningContemplationKind)
     ?? (contemplationSideDone.morning || sidesToday.morning);
   const eveningContemplationDone = kindKept(eveningContemplationKind)
@@ -1851,7 +1852,9 @@ export function useRhythmState(): RhythmState {
      * case — the same gate its card uses.
      */
     ...(spiritualsActive ? [spiritualsDone] : []),
-    ...(rosaryActive ? [rosaryDone] : []),
+    // Same rule as Lectio below: a side that keeps the Rosary already counts
+    // it as that side's practice.
+    ...(rosaryActive && !(morningContemplationKind === "rosary" || eveningContemplationKind === "rosary") ? [rosaryDone] : []),
     ...(hagiographyShown ? [hagiographyDone] : []),
     ...(lectioActive && !(morningContemplationKind === "lectio" || eveningContemplationKind === "lectio") ? [lectioDone] : []),
     ...(complineActive ? [complineDone] : []),

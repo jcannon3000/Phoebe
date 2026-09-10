@@ -1478,6 +1478,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const sideHasLectio =
     (morningContemplationActive && sideKind("morning") === "lectio")
     || (eveningContemplationActive && sideKind("evening") === "lectio");
+  /** Same for the Rosary — a side's practice since 2026-09-10. */
+  const sideHasRosary =
+    (morningContemplationActive && sideKind("morning") === "rosary")
+    || (eveningContemplationActive && sideKind("evening") === "rosary");
   /**
    * A side whose practice is a walk, sacred listening or Visio Divina — the
    * app's own practices, kept as this side's anchor rather than as standing
@@ -1490,6 +1494,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     visio: { emoji: "🖼️", title: t("rhythm.card_visio", { defaultValue: "Visio Divina" }), blurb: t("rhythm.blurb_visio", { defaultValue: "Pray with the day's image" }), href: "/visio" },
     lectio: { emoji: "📜", title: t("rhythm.card_lectio", { defaultValue: "Lectio Divina" }), blurb: t("rhythm.blurb_lectio", { defaultValue: "Read a passage slowly, three times" }), href: "/lectio" },
     reading: { emoji: "📚", title: t("rhythm.card_reading", { defaultValue: "Reading" }), blurb: t("rhythm.blurb_reading_side", { defaultValue: "A page a day" }), href: "/reading-log" },
+    rosary: { emoji: "📿", title: t("rhythm.card_rosary", { defaultValue: "The Rosary" }), blurb: t("rhythm.blurb_rosary", { defaultValue: "Pray today's mysteries" }), href: "/rosary" },
   };
   const namedSide = (side: "morning" | "evening") => NAMED_SIDE_PRACTICE[sideKind(side)] ?? null;
   // Kept for the handful of places that genuinely have no side in hand.
@@ -1814,7 +1819,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(visioActive ? [{ ...visioCard, slot: getPracticeSlot("visio") }] : []),
     ...(spiritualsActive ? [{ ...spiritualsCard, slot: getPracticeSlot("spirituals") }] : []),
     ...(iconsActive ? [{ ...iconsCard, slot: getPracticeSlot("icons") }] : []),
-    ...(rosaryActive ? [{ ...rosaryCard, slot: getPracticeSlot("rosary") }] : []),
+    ...(rosaryActive && !sideHasRosary ? [{ ...rosaryCard, slot: getPracticeSlot("rosary") }] : []),
     // Only on days that carry a commemoration — see hagiographyShown.
     ...(hagiographyShown ? [{ ...hagiographyCard, slot: "anytime" as const }] : []),
     /**
@@ -1935,7 +1940,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         podcasts: podcastsActive,
         icons: iconsActive,
         spirituals: spiritualsActive,
-        rosary: rosaryActive,
+        rosary: rosaryActive || sideHasKind("rosary"),
       };
       // Prayer List is left out on purpose — it has its own home section
       // rather than a rhythm row (see the note just above).

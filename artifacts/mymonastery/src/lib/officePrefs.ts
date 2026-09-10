@@ -1039,8 +1039,10 @@ export function setSideContemplation(side: OfficeSide, v: boolean): void {
  */
 // "lectio" and "reading" joined 2026-09-04 (owner: Lectio Divina and Reading
 // as a side's contemplative practice, "not just for the contemplative slide").
-export type ContemplationKind = "silent" | "creation" | "walk" | "audio" | "visio" | "lectio" | "reading";
-const CONTEMPLATION_KINDS: ContemplationKind[] = ["silent", "creation", "walk", "audio", "visio", "lectio", "reading"];
+// "rosary" joined 2026-09-10 (owner: "make sure it's in the contemplative
+// options both on that slide but also to program into morning or evening").
+export type ContemplationKind = "silent" | "creation" | "walk" | "audio" | "visio" | "lectio" | "reading" | "rosary";
+const CONTEMPLATION_KINDS: ContemplationKind[] = ["silent", "creation", "walk", "audio", "visio", "lectio", "reading", "rosary"];
 
 export function getContemplationStyleGlobal(): ContemplationKind {
   try {
