@@ -713,6 +713,28 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            "SATURDAY, AUGUST 29" with only a wide space between them. */
         'article.fdd h1 a{color:inherit!important;text-decoration:none!important;',
         'display:block!important;margin-top:2px!important;}',
+        /* THE CALENDAR PAGE — a saint's collect and life, opened from the feast
+           line on the home (prayer.forwardmovement.org/calendar/<slug>,
+           a1e3d47d). Same host, different page: it has no article.fdd, so every
+           rule above scoped to that article missed it, and the life rendered
+           in Forward Movement's own black Times on the reader's green (owner's
+           screenshot, 2026-09-10). Its root is div.pray-container — h1, the
+           collect in <ldf-liturgical-document> (light DOM, filled after load),
+           an hr, div.bio with the life, an hr, em.copyright. The name stays a
+           headline (their h1 IS the title here, not a date), the collect keeps
+           a serif in cream — a prayer, set the way the app sets prayers — and
+           the life takes the Day by Day body measure. */
+        '.pray-container,.pray-container *{background-color:transparent!important;text-align:left!important;}',
+        '.pray-container{padding:0 20px!important;}',
+        '.pray-container h1{font-size:29px!important;line-height:1.18!important;font-weight:700!important;',
+        'letter-spacing:0!important;text-transform:none!important;margin:6px 0 16px!important;color:#F0EDE6!important;}',
+        '.pray-container p,.pray-container li,.pray-container .bio{font-size:20px!important;line-height:1.72!important;',
+        'color:#F0EDE6!important;margin:0 0 1.15em!important;}',
+        '.pray-container ldf-liturgical-document,.pray-container ldf-liturgical-document *{color:#F0EDE6!important;',
+        'font-family:Georgia,"Times New Roman",serif!important;font-size:21px!important;line-height:1.6!important;}',
+        '.pray-container hr{border:0!important;border-top:1px solid rgba(200,212,192,0.18)!important;margin:18px 0!important;}',
+        '.pray-container em.copyright{display:block!important;font-style:normal!important;font-size:14px!important;',
+        'line-height:1.6!important;color:rgba(200,212,192,0.72)!important;}',
         /* SCOPED to the block. `[class*="newsletter"]` is an unanchored
            substring match on any class attribute — the same hazard as the
            `.inline` collision that once un-hid every VCS picture — and it was
