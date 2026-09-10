@@ -48,8 +48,8 @@ type DailyPrayer = "guided-prayer" | "psalms" | "devotion" | "office" | "reading
 // Contemplative Walk / Visio Divina / Taize / Spirituals), just ONE at a time here (this page is meant to stay a
 // few quick dropdowns, not a multi-select). Backed by the same home-layout
 // module keys those toggles write in WayOfLoveRuleFlow.tsx.
-type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spirituals" | "taize" | "icons" | "lectio" | "rosary";
-const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio", "spirituals", "taize", "icons", "lectio", "rosary"];
+type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spirituals" | "taize" | "icons" | "lectio" | "rosary" | "hagiography";
+const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio", "spirituals", "taize", "icons", "lectio", "rosary", "hagiography"];
 function homeCardOn(hl: HomeLayout | null, key: string): boolean {
   return !!hl && hl.order.includes(key) && !hl.hidden.includes(key);
 }
@@ -903,6 +903,9 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
              * about between here and WayOfLoveRuleFlow's commit().)
              */
             { value: "rosary", label: "The Rosary" },
+            // Shows only on the days the calendar carries a commemoration —
+            // several days a week, not every day.
+            { value: "hagiography", label: "Lives of the Saints" },
             ...(spiritualsVisible(user?.isSuperAdmin)
               ? [{ value: "spirituals", label: "Meditating on Spirituals" }]
               : []),

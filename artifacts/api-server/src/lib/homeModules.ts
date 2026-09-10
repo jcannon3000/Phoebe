@@ -46,6 +46,15 @@ export const HOME_MODULE_KEYS = [
   // Taizé. Admin-only on the client for now.
   "andrews",
   "spirituals",
+  /**
+   * The day's commemoration — the life behind the feast, read at Forward
+   * Movement (see lib/liturgical/forwardMovementCalendar.ts for why it is
+   * their page and not our copy of the text).
+   *
+   * Conditional like Taizé and the weeklies: it draws a card only on days that
+   * actually carry a commemoration, which is most but not all of the year.
+   */
+  "hagiography",
   // The reflection newsletters.
   "cac",
   "fdd",

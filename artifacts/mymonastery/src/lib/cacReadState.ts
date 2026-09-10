@@ -269,6 +269,24 @@ const sojoTracker = makeDailyReadTracker(
   (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "sojo", ymd }).catch(() => { /* best effort */ }); },
   "reflect-sojo",
 );
+/**
+ * THE DAY'S COMMEMORATION — the life behind the feast.
+ *
+ * Kept locally only: there is no server `source` for it (the reflections route
+ * validates against a fixed set), and it does not need one — this is a
+ * per-device day-flag exactly like the practice completions, and nothing
+ * cross-device depends on it yet. Add a source and a sync here if it ever does.
+ */
+const hagiographyTracker = makeDailyReadTracker(
+  "phoebe:hagiography:last-read-day", "phoebe:hagiography-read",
+  () => { /* local only — see above */ },
+  "hagiography",
+);
+export const HAGIOGRAPHY_READ_EVENT = hagiographyTracker.eventName;
+export function hasReadHagiographyToday(): boolean { return hagiographyTracker.hasReadToday(); }
+export function markHagiographyRead(): void { hagiographyTracker.markRead(); }
+export function unmarkHagiographyToday(): void { hagiographyTracker.unmarkRead(); }
+
 const gristTracker = makeDailyReadTracker(
   "phoebe:grist:last-read-day", "phoebe:grist-read",
   (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "grist", ymd }).catch(() => { /* best effort */ }); },

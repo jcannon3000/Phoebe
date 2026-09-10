@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { markHagiographyRead, unmarkHagiographyToday } from "@/lib/cacReadState";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -783,7 +784,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeShown, taizeDone, taizeWaiting, taizeLatest, andrewsActive, andrewsShown, andrewsDone, andrewsWaiting, andrewsLatest, weeklies, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, rosaryActive, rosaryDone, lectioActive, lectioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, prayerListCardActive, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeShown, taizeDone, taizeWaiting, taizeLatest, andrewsActive, andrewsShown, andrewsDone, andrewsWaiting, andrewsLatest, weeklies, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, rosaryActive, rosaryDone, lectioActive, lectioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, prayerListCardActive, hagiographyShown, hagiographyDone, hagiographyUrl, hagiographyName, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1085,6 +1086,31 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     title: t("rhythm.card_lectio", { defaultValue: "Lectio Divina" }),
     blurb: lectioDone ? kept : t("rhythm.blurb_lectio", { defaultValue: "A passage read slowly, three times" }),
     cta: t("common.begin", { defaultValue: "Begin" }),
+  };
+  /**
+   * LIVES OF THE SAINTS — the day's commemoration, read at Forward Movement.
+   *
+   * Named after whoever the day belongs to rather than carrying a generic
+   * title, because it appears several times a week: "Lives of the Saints"
+   * repeated five days running says nothing, "The Martyrs of Memphis" says
+   * what today is.
+   *
+   * Opens THEIR page in the reader (see lib/liturgical/forwardMovementCalendar
+   * for why it is a link and not our copy of the words) and marks itself kept
+   * on the way out, like the newsletters.
+   */
+  const hagiographyCard = {
+    key: "hagiography", emoji: "📜", rgb: "150,130,175", done: hagiographyDone,
+    onClick: () => {
+      if (!hagiographyUrl) return;
+      openExternalThenMarkRead(hagiographyUrl, () => markHagiographyRead(), { reader: true });
+    },
+    onUnlog: () => unmarkHagiographyToday(),
+    title: hagiographyName ?? t("rhythm.card_hagiography", { defaultValue: "Lives of the Saints" }),
+    blurb: hagiographyDone
+      ? kept
+      : t("rhythm.blurb_hagiography", { defaultValue: "The life behind today's feast" }),
+    cta: t("rhythm.read", { defaultValue: "Read" }),
   };
   const iconsCard = {
     key: "icons", emoji: "🪟", rgb: "170,140,110", done: iconsDone, href: "/icon-prayer",
@@ -1763,6 +1789,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(spiritualsActive ? [{ ...spiritualsCard, slot: getPracticeSlot("spirituals") }] : []),
     ...(iconsActive ? [{ ...iconsCard, slot: getPracticeSlot("icons") }] : []),
     ...(rosaryActive ? [{ ...rosaryCard, slot: getPracticeSlot("rosary") }] : []),
+    // Only on days that carry a commemoration — see hagiographyShown.
+    ...(hagiographyShown ? [{ ...hagiographyCard, slot: "anytime" as const }] : []),
     /**
      * Only when lectio is a LAYOUT card, not when it is a side's kind — a side
      * that prays Lectio already draws its own card, and both would show the

@@ -247,6 +247,10 @@ export function cardAvailableOffline(cardKey: string, sideLevel?: string | null,
    * own reflect- cards get, and the owner's rule that even a read newsletter
    * moves to "Not available" offline.
    */
+  // The day's commemoration is Forward Movement's page — a connection, like
+  // every newsletter. It is named here rather than left to fall through so the
+  // answer is deliberate rather than incidental.
+  if (cardKey === "hagiography") return false;
   if (cardKey.startsWith("extra-practice-")) {
     return OFFLINE_KEYS.has(cardKey.slice("extra-practice-".length));
   }

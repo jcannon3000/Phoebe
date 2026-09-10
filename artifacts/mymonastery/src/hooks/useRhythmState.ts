@@ -1,4 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
+import { forwardMovementFeastUrl } from "@/lib/liturgical/forwardMovementCalendar";
+import { hasReadHagiographyToday } from "@/lib/cacReadState";
+import { getDay, readLesserFeastsPref } from "@/lib/liturgical";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 import { useGroupFeatures } from "@/hooks/useGroupFeatures";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -297,6 +300,11 @@ export type RhythmState = {
   prayerListActive: boolean;
   /** The card/dot/count gate — see where it is computed. */
   prayerListCardActive: boolean;
+  /** The day's commemoration draws a card — see where it is computed. */
+  hagiographyShown: boolean;
+  hagiographyDone: boolean;
+  hagiographyUrl: string | null;
+  hagiographyName: string | null;
   examenDone: boolean;
   listeningDone: boolean;
   readingDone: boolean;
@@ -833,6 +841,30 @@ export function useRhythmState(): RhythmState {
   // The Rosary — admin-only while it is being tried, so the card only ever
   // appears for someone who could put it in their rule in the first place.
   const rosaryActive = homeCardActive(hl, "rosary");
+  /**
+   * THE DAY'S COMMEMORATION — on days that have one.
+   *
+   * Conditional in the same way Taizé and the weeklies are: the card is in the
+   * rhythm all year, but it only DRAWS on a day that actually carries a
+   * commemoration (owner: "just like the others that arnt every day, it would
+   * just show up on the days there is one"). Roughly 277 days of the year.
+   *
+   * `hagiographyShown` is the gate every renderer reads — the card, the pill
+   * dot, the widget and the day's total — so none of them can disagree about
+   * whether today has one.
+   */
+  const hagiographyUrl = forwardMovementFeastUrl();
+  /** Whose day it is — the card names them, because it appears several times a
+   *  week and a generic repeated line would say nothing. */
+  const hagiographyName = (() => {
+    try {
+      const d = getDay(new Date(), { observeLesserFeasts: readLesserFeastsPref() });
+      return d.commemoration ?? (d.rank === "principal_feast" || d.rank === "holy_day" ? d.name : null);
+    } catch { return null; }
+  })();
+  const hagiographyActive = homeCardActive(hl, "hagiography");
+  const hagiographyShown = hagiographyActive && !!hagiographyUrl;
+  const hagiographyDone = hasReadHagiographyToday();
   const lectioActive = homeCardActive(hl, "lectio");
   // Spirituals is admin-only, not public — see lib/spiritualsFlag.ts. Every
   // consumer (DailyProgressBody's card, the layout dots, widgetSync) reads
@@ -1820,6 +1852,7 @@ export function useRhythmState(): RhythmState {
      */
     ...(spiritualsActive ? [spiritualsDone] : []),
     ...(rosaryActive ? [rosaryDone] : []),
+    ...(hagiographyShown ? [hagiographyDone] : []),
     ...(lectioActive && !(morningContemplationKind === "lectio" || eveningContemplationKind === "lectio") ? [lectioDone] : []),
     ...(complineActive ? [complineDone] : []),
     // Only an anchor when there IS a list. The layout check alone counted it
@@ -1962,6 +1995,10 @@ export function useRhythmState(): RhythmState {
     cobreatheActive,
     prayerListActive,
     prayerListCardActive,
+    hagiographyShown,
+    hagiographyDone,
+    hagiographyUrl,
+    hagiographyName,
     examenDone,
     listeningDone,
     readingDone,

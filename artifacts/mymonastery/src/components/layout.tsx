@@ -715,7 +715,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // queries only fire when the pill is actually rendered (signed-in).
 function DailyProgressPill() {
   const { t } = useTranslation();
-  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, spiritualsActive, spiritualsDone, iconsActive, iconsDone, rosaryActive, rosaryDone, taizeShown, taizeDone, andrewsShown, andrewsDone, weeklies, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, visioActive, visioDone, prayerListDone, prayerListCardActive, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, spiritualsActive, spiritualsDone, iconsActive, iconsDone, rosaryActive, rosaryDone, hagiographyShown, hagiographyDone, taizeShown, taizeDone, andrewsShown, andrewsDone, weeklies, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, visioActive, visioDone, prayerListDone, prayerListCardActive, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -841,6 +841,7 @@ function DailyProgressPill() {
     ...(spiritualsActive ? [{ key: "spirituals", done: spiritualsDone }] : []),
     ...(iconsActive ? [{ key: "icons", done: iconsDone }] : []),
     ...(rosaryActive ? [{ key: "rosary", done: rosaryDone }] : []),
+    ...(hagiographyShown ? [{ key: "hagiography", done: hagiographyDone }] : []),
     ...(taizeShown ? [{ key: "taize", done: taizeDone }] : []),
     ...(andrewsShown ? [{ key: "andrews", done: andrewsDone }] : []),
     ...weeklies.filter((w) => w.shown).map((w) => ({ key: w.key, done: w.done })),

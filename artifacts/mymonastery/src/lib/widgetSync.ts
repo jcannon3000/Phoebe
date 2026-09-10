@@ -300,6 +300,7 @@ export function useWidgetSync(): void {
       // Prayer is riding as the per-side Morning/Evening Contemplation card
       // instead, the standalone card above is suppressed (same gate as
       // rawCards), so this must be too or it double-counts.
+      { active: r.hagiographyShown, done: r.hagiographyDone, slot: "anytime", key: "hagiography", emoji: "📜", title: r.hagiographyName ?? "Lives of the Saints", eyebrow: "Today's commemoration", subtitle: "The life behind today's feast", cta: "Read", kind: "reflect" },
       { active: r.cobreatheStandaloneActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), key: "cobreathe", emoji: "🌍", title: "Breathing Together", eyebrow: "A prayer for the earth", subtitle: "Breathing together with God's creation", cta: "Begin", kind: "office" },
       // "Log", not "Begin" — the home card asks you to record what you listened
       // to, and the widget was offering to start something instead.
