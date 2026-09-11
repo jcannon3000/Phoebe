@@ -533,7 +533,10 @@ export default function RosaryPage() {
     if (isIntro || isClosing) return;
     const target = e.target as HTMLElement | null;
     if (target?.closest("button, a, input, textarea, select, label")) return;
-    if (e.clientX < window.innerWidth / 2) goBack();
+    // Measured against the stage, not the window — the stage is what was
+    // tapped, and a window width can read 0 in an embedded view.
+    const r = e.currentTarget.getBoundingClientRect();
+    if (e.clientX - r.left < r.width / 2) goBack();
     else primary.onClick();
   };
 
