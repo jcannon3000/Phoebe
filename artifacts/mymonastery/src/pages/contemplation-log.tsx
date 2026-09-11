@@ -29,13 +29,14 @@ const SAGE = "#8FAF96";
 const BG = "#091A10";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
-const MINUTE_OPTIONS = [5, 10, 15, 20, 25, 30, 45, 60];
 
 export default function ContemplationLogPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { contemplationMin, contemplationGoalMin } = useRhythmState();
-  const [minutes, setMinutes] = useState(10);
+  /** What is in the box. A string so it can be empty mid-edit; see the field. */
+  const [minutesText, setMinutesText] = useState("20");
+  const minutes = parseInt(minutesText, 10) || 0;
   const [when, setWhen] = useState<"today" | "yesterday">("today");
   const [justLogged, setJustLogged] = useState(false);
 
@@ -123,18 +124,30 @@ export default function ContemplationLogPage() {
           <p style={{ color: SAGE, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600, fontFamily: SPACE_GROTESK, margin: "0 0 8px" }}>
             How long
           </p>
+          {/* TYPED, NOT PICKED (owner: "I don't want it to be a drop down with
+              intervals — a text that you'll only put numbers in, in minutes").
+              A sit is however long it was; a list of eight tidy intervals made
+              everyone round to the nearest one it offered.
+
+              Held as a STRING while editing so the field can be empty as you
+              clear it — a number state forces a 0 in the box the moment the
+              last digit goes, and you end up typing around it. Non-digits are
+              stripped rather than rejected, so a stray keystroke does nothing
+              visible instead of blocking the field. */}
           <div style={{ position: "relative", marginBottom: 20 }}>
-            <select
-              value={String(minutes)}
-              onChange={(e) => setMinutes(parseInt(e.target.value, 10))}
-              aria-label="How long"
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={minutesText}
+              onChange={(e) => setMinutesText(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
+              placeholder="20"
+              aria-label="How many minutes"
               style={fieldStyle}
-            >
-              {MINUTE_OPTIONS.map((m) => (
-                <option key={m} value={String(m)}>{m} minutes</option>
-              ))}
-            </select>
-            <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+            />
+            <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 13, pointerEvents: "none", fontFamily: SPACE_GROTESK }}>
+              minutes
+            </span>
           </div>
 
           <p style={{ color: SAGE, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600, fontFamily: SPACE_GROTESK, margin: "0 0 8px" }}>
@@ -156,7 +169,8 @@ export default function ContemplationLogPage() {
           <button
             type="button"
             onClick={() => logMutation.mutate()}
-            disabled={logMutation.isPending || justLogged}
+            // Nothing to log with an empty box or a zero.
+            disabled={logMutation.isPending || justLogged || minutes < 1}
             className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
             style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, padding: 15, cursor: "pointer", opacity: logMutation.isPending || justLogged ? 0.6 : 1 }}
           >
