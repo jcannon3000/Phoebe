@@ -926,12 +926,6 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // partway through.
   "/find-your-rhythm", "/routine-interview", "/routine-audit", "/routine-history",
   "/journey", "/centering-prayer", "/way-of-love-course", "/learn",
-  // Round Table on Race — the second Courses row (owner, 2026-09-11) opens the
-  // season-card show page; the Courses menu is guest-visible, so its target
-  // must be too or the tap bounces to the dashboard (it did, on first deploy).
-  // Its season pages are allow-listed by prefix below; the flat show page stays
-  // reachable from Discover.
-  "/podcasts/show/roundtables-on-race", "/cac-show/roundtables-on-race",
   "/begin-prayer", "/prayer-chooser",
   // Media the guest's OWN office routes to: the listen-medium office podcasts
   // (begin-prayer's flow=daily hand-off) and the watch-medium pages (the
@@ -965,8 +959,6 @@ const GUEST_ALLOWED_PREFIX = [
   "/routine/",
   // Single-practice invite links (/practice/:key) — shareable the same way.
   "/practice/",
-  // Round Table on Race's season pages (/cac-course/roundtables-on-race-s1 …).
-  "/cac-course/roundtables-on-race-s",
   // Printable parish/community invite SIGN (/sign/:token) — a leader prints the
   // QR poster; it shows the community name + the routine QR, all public info.
   "/sign/",

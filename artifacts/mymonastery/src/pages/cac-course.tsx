@@ -118,7 +118,7 @@ export default function CacCoursePage() {
             <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}`, ...FROST }}>
               <p className="text-sm leading-relaxed" style={{ color: CAC.inkMuted }}>
                 We couldn't find that course. Head back to{" "}
-                <Link href="/menu/learn" style={{ color: CAC.gold, textDecoration: "underline" }}>Podcasts</Link>.
+                <Link href="/menu/learn" style={{ color: CAC.gold, textDecoration: "underline" }}>Courses</Link>.
               </p>
             </div>
           ) : (

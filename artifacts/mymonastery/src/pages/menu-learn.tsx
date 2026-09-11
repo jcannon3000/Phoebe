@@ -49,9 +49,9 @@ export default function MenuLearnPage() {
   const online = useOnline();
   return (
     <MenuHub
-      title="Podcasts"
-      emoji="🎧"
-      subtitle="Shows to walk through a season at a time, and the Way of Love course."
+      title="Courses"
+      emoji="🎓"
+      subtitle="Guided courses in the life of prayer."
       backLabel="Menu"
       backHref="/menu"
       groups={[{
@@ -68,10 +68,6 @@ export default function MenuLearnPage() {
           // own row — "bring them out of the folder of just CAC Courses" —
           // then the web-only Keating courses.
           { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", muted: !online, onClick: () => go("/way-of-love-course") },
-          // Round Table on Race — second after The Way of Love (owner, 2026-09-11).
-          // A scraped diocesan show; opens the generic show page, which carries
-          // its description. Glyph = the Justice & Race theme's two-tone handshake.
-          { emoji: "🫱🏽‍🫲🏿", label: "Round Table on Race", sub: "Conversations on race from the Diocese of North Carolina", muted: !online, onClick: () => go("/cac-show/roundtables-on-race") },
           ...(isAdmin || cacLibraryGranted
             ? shows.map((show) => ({
                 emoji: "🌵",
