@@ -2,6 +2,7 @@ import { ReactNode, useState, useEffect, useRef, useMemo, type CSSProperties } f
 import { anchorOnDay } from "@/lib/customAnchors";
 import { useGroupFeatures } from "@/hooks/useGroupFeatures";
 import { HIDE_COMMUNITY_KEY } from "@/lib/displayPrefs";
+import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
@@ -180,10 +181,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
    * listens for, so flipping it updates the drawer with no reload.
    */
   const [communityHidden, setCommunityHidden] = useState<boolean>(() => {
+    if (!COMMUNITY_FEATURES_ENABLED) return true;
     try { return localStorage.getItem(HIDE_COMMUNITY_KEY) === "1"; } catch { return false; }
   });
   useEffect(() => {
-    const sync = () => { try { setCommunityHidden(localStorage.getItem(HIDE_COMMUNITY_KEY) === "1"); } catch { /* ignore */ } };
+    const sync = () => { if (!COMMUNITY_FEATURES_ENABLED) return; try { setCommunityHidden(localStorage.getItem(HIDE_COMMUNITY_KEY) === "1"); } catch { /* ignore */ } };
     window.addEventListener("phoebe:prefs-changed", sync);
     window.addEventListener("storage", sync);
     return () => { window.removeEventListener("phoebe:prefs-changed", sync); window.removeEventListener("storage", sync); };

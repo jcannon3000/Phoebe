@@ -1,3 +1,4 @@
+import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useMemo } from "react";
 import { forwardMovementFeastUrl } from "@/lib/liturgical/forwardMovementCalendar";
 import { hasReadHagiographyToday } from "@/lib/cacReadState";
@@ -916,7 +917,7 @@ export function useRhythmState(): RhythmState {
   // "prayer-list" at all. Rather than defaulting a brand-new capability to
   // invisible for every current user, treat it as active unless explicitly
   // hidden — the customizer can still turn it off from here.
-  const prayerListActive = !(new Set(hl?.hidden ?? []).has("prayer-list"));
+  const prayerListActive = COMMUNITY_FEATURES_ENABLED && !(new Set(hl?.hidden ?? []).has("prayer-list"));
   const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || visioActive || complineActive || prayerListActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
@@ -1018,7 +1019,7 @@ export function useRhythmState(): RhythmState {
    *
    * Everything reads this now: the card, the dot, the count.
    */
-  const prayerListCardActive = !guest && (prayerListSurfaced || hasPrayerGroup) && intentionsTotalCount > 0;
+  const prayerListCardActive = COMMUNITY_FEATURES_ENABLED && !guest && (prayerListSurfaced || hasPrayerGroup) && intentionsTotalCount > 0;
   const intentionsPrayedCount = activeIntentions.filter((it) => it.prayedToday).length + communityPrayedCount;
 
   // Local midnight of `day` (which is recomputed from the wall clock on every

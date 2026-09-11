@@ -1,3 +1,4 @@
+import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -40,7 +41,7 @@ const HOME_MODULES = [
   // re-appended them, and because they were absent from `hidden` too, the
   // hidden-governs-visibility rule turned both cards ON for someone who had
   // simply reordered their home.
-  "icons", "prayer-list", "lectio",
+  "icons", ...(COMMUNITY_FEATURES_ENABLED ? ["prayer-list" as const] : []), "lectio",
   "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests",
 ] as const;
 type HomeModule = typeof HOME_MODULES[number];

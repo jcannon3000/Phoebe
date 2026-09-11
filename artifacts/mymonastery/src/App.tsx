@@ -1,3 +1,4 @@
+import { COMMUNITY_FEATURES_ENABLED, COMMUNITY_ROUTE_PREFIXES } from "@/lib/communityFlag";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 import { hasPrayerSurface } from "@/lib/prayerSurface";
@@ -980,6 +981,25 @@ const WEB_CUSTOMIZER_ROUTES = new Set<string>([
   "/bcp/daily-office/settings",
 ]);
 
+/**
+ * COMMUNITY OFF (owner, 2026-09-11: "turn off community features including
+ * prayer list for all users"). While lib/communityFlag says so, every
+ * community route — prayer list, prayer requests, communities, events,
+ * gatherings, feeds, group reflections, people — goes home. The menu, the
+ * drawer and the home card already hide their doors; this closes the ones a
+ * bookmark, a push or an old link could still open.
+ */
+function CommunityGate({ children }: { children: ReactNode }) {
+  const [location, setLocation] = useLocation();
+  useEffect(() => {
+    if (COMMUNITY_FEATURES_ENABLED) return;
+    if (COMMUNITY_ROUTE_PREFIXES.some((p) => location === p || location.startsWith(p.endsWith("/") ? p : p + "/") || location.startsWith(p + "?"))) {
+      setLocation("/", { replace: true });
+    }
+  }, [location, setLocation]);
+  return <>{children}</>;
+}
+
 function GuestGate({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const { isGuest, isLoading } = useGuestMode();
@@ -1588,11 +1608,13 @@ function App() {
                 audio keeps playing as you navigate. Renders its own
                 persistent <audio> + mini-player bar. */}
             <PodcastPlayerProvider>
+              <CommunityGate>
               <GuestGate>
                 <PilotGate>
                   <Router />
                 </PilotGate>
               </GuestGate>
+              </CommunityGate>
             </PodcastPlayerProvider>
           </WouterRouter>
           <Toaster />

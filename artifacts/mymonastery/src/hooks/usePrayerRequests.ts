@@ -1,4 +1,5 @@
 import { useAuth } from "./useAuth";
+import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 
 // Whether the prayer-request feature is available to this account.
 //
@@ -16,6 +17,7 @@ import { useAuth } from "./useAuth";
 // request to a /prayer-* route still hits it).
 export function usePrayerRequestsEnabled(): boolean {
   const { user } = useAuth();
+  if (!COMMUNITY_FEATURES_ENABLED) return false;
   return !!user?.inPilotGroup || !!user?.isSuperAdmin;
 }
 
@@ -32,5 +34,6 @@ export function usePrayerRequestsEnabled(): boolean {
 // account) in App.tsx — this hook only controls whether it's surfaced.
 export function usePrayerListEnabled(): boolean {
   const { user } = useAuth();
+  if (!COMMUNITY_FEATURES_ENABLED) return false;
   return !!user?.inPilotGroup || !!user?.isSuperAdmin;
 }

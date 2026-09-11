@@ -14,6 +14,7 @@
  * the Daily progress "Customize" pill and returns there when done.
  */
 
+import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef, type ReactNode, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
@@ -1921,7 +1922,8 @@ export default function WayOfLoveRuleFlow({
       setEditRows([
         ...serverCustomless.filter((row) => row.id !== "slot:prayer-list"),
         ...localCustomRows,
-        prayerListRow,
+        // The Prayer List card only exists while community is on (lib/communityFlag).
+        ...(COMMUNITY_FEATURES_ENABLED ? [prayerListRow] : []),
       ]);
     } catch { /* no routine to edit — the scratch path is the fallback */ }
   };

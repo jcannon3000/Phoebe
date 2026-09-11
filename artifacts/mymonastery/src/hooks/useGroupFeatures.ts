@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 
 /**
  * WHAT A PERSON'S COMMUNITIES UNLOCK.
@@ -19,10 +20,10 @@ export function useGroupFeatures() {
   const { data } = useQuery<{ groups: GroupLite[] }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups") as Promise<{ groups: GroupLite[] }>,
-    enabled: !!user,
+    enabled: !!user && COMMUNITY_FEATURES_ENABLED,
     staleTime: 60_000,
   });
-  const groups = data?.groups ?? [];
+  const groups = COMMUNITY_FEATURES_ENABLED ? (data?.groups ?? []) : [];
   const eventGroups = groups.filter((g) => g.eventsEnabled !== false);
   // A member gets the Prayer list unless the group's admin switched prayer
   // requests OFF. A PUBLIC group's flag is forced false by the server (a

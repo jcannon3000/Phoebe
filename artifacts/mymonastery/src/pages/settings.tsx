@@ -1,3 +1,4 @@
+import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { useTranslation } from "react-i18next";
@@ -1305,6 +1306,10 @@ function HomeDisplaySettings() {
           </div>
         </button>
 
+        {/* The row below is superseded while lib/communityFlag turns community
+            off for everyone (owner, 2026-09-11) — a switch for something that
+            is not there would only puzzle. It returns with the flag. */}
+        {COMMUNITY_FEATURES_ENABLED && (<>
         <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
 
         {/* HIDE COMMUNITY FEATURES (owner, 2026-09-05): "a toggle that says
@@ -1332,6 +1337,7 @@ function HomeDisplaySettings() {
             />
           </div>
         </button>
+        </>)}
       </SettingsCard>
 
       <div className="mb-8" />
