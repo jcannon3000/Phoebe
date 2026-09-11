@@ -425,6 +425,10 @@ export type EpisodeFull = {
   // (e.g. which mystic, which Rohr book) an episode belongs to. Most other
   // shows in the registry don't set it, so this is null there.
   season: number | null;
+  // The season's own name where the source gives one ("Race and Education");
+  // the show page uses it as the group header. Only the Roundtables scraper
+  // sets it today.
+  seasonName?: string | null;
 };
 export type ParsedFeed = {
   feedTitle: string | null;
@@ -590,6 +594,7 @@ export function scrapeRoundtables(html: string, fallbackTitle: string): ParsedFe
   const cards = html.split(/<li class="wt26-pub-card(?=[\s"])/).slice(1);
   const fromCards: EpisodeFull[] = [];
   const seenCard = new Set<string>();
+  const seasonNames = new Map<number, string>();
   for (const raw of cards) {
     const card = raw.split("</ul>")[0] ?? raw;
     const audio = card.match(/<audio[^>]*\ssrc="([^"]+\.mp3)"/i);
@@ -606,19 +611,39 @@ export function scrapeRoundtables(html: string, fallbackTitle: string): ParsedFe
     // so lend it from there.
     const theme = summary.match(/^Season (\d+):\s*(.+?)\s+Episode \d+:/i);
     const seasonNo = title.match(/^Season (\d+)/i)?.[1] ?? theme?.[1];
-    const fullTitle = title && theme && !/^Season \d+/i.test(title) ? `Season ${theme[1]}, ${title}` : title;
+    // Owner (2026-09-11): the page groups by season, so the title drops its
+    // "Season N," prefix — "Episode 3: Why It Matters – Education". The pilot
+    // (no season anywhere, a week before S1E1) opens Season 1.
+    const shortTitle = title.replace(/^Season \d+,\s*/i, "");
+    const season = seasonNo ? Number(seasonNo) : /pilot/i.test(title) ? 1 : null;
+    if (theme && season != null && !seasonNames.has(season)) seasonNames.set(season, theme[2].trim());
     fromCards.push({
       id: audio[1],
-      title: fullTitle || null,
+      title: shortTitle || null,
       audioUrl: audio[1],
       durationSeconds: null,
       publishedAt: d ? `20${d[3]}-${d[1]}-${d[2]}T12:00:00.000Z` : null,
-      description: theme ? `Season ${theme[1]}: ${theme[2]}` : summary && summary !== title ? summary : null,
+      description: null,
       imageUrl: null,
-      season: seasonNo ? Number(seasonNo) : null,
+      season,
     });
   }
   if (fromCards.length > 0) {
+    // A season the page never names (Season 4 has no summaries) is named by
+    // the prefix its titles share — "Why It Matters – Education", "Why It
+    // Matters – Voting, Part 1" → "Why It Matters".
+    const bySeason = new Map<number, string[]>();
+    for (const ep of fromCards) {
+      if (ep.season == null || !ep.title) continue;
+      bySeason.set(ep.season, [...(bySeason.get(ep.season) ?? []), ep.title.replace(/^Episode \d+:\s*/i, "")]);
+    }
+    for (const [season, titles] of bySeason) {
+      if (seasonNames.has(season) || titles.length < 2) continue;
+      const sep = /\s[–—-]\s/;
+      const first = titles[0]!.split(sep)[0]!.trim();
+      if (first && titles.every((t) => sep.test(t) && t.split(sep)[0]!.trim() === first)) seasonNames.set(season, first);
+    }
+    for (const ep of fromCards) ep.seasonName = ep.season != null ? seasonNames.get(ep.season) ?? null : null;
     return { feedTitle: fallbackTitle, feedImage: null, feedDescription: null, episodes: fromCards };
   }
 

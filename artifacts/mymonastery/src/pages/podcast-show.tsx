@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Fragment, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -36,6 +36,10 @@ type Episode = {
   publishedAt: string | null;
   description: string | null;
   imageUrl: string | null;
+  // Set by feeds that mark seasons (CAC's <itunes:season>, the Roundtables
+  // scraper). When any episode carries one the list groups by season.
+  season?: number | null;
+  seasonName?: string | null;
 };
 type ShowResponse = {
   show: {
@@ -103,14 +107,16 @@ export default function PodcastShowPage() {
   const player = usePodcastPlayer();
   const { t } = useTranslation();
 
-  useEffect(() => {
-    if (!authLoading && !user) setLocation("/");
-  }, [user, authLoading, setLocation]);
+  // No sign-in bounce: the show route is public and Round Table on Race is a
+  // guest-visible Courses row (owner, 2026-09-11: "public for everyone"). A
+  // session-less visitor has user === null; the page must still render. The
+  // listen list and listened marks below stay gated on a user — they are the
+  // account's own records.
 
   const { data, isLoading } = useQuery<ShowResponse>({
     queryKey: [`/api/podcasts/show/${slug}`],
     queryFn: () => apiRequest("GET", `/api/podcasts/show/${slug}`),
-    enabled: !!user && !!slug,
+    enabled: !!slug,
     staleTime: 15 * 60_000,
   });
 
@@ -210,13 +216,33 @@ export default function PodcastShowPage() {
       return sortNewest ? tb - ta : ta - tb;
     });
   }, [episodes, query, sortNewest]);
+  // Season groups (owner, 2026-09-11: "split into seasons"). Buckets follow
+  // the sorted order, so newest-first puts the latest season on top. A show
+  // with no season marks is one unlabeled section — the list as before.
+  const sections = useMemo(() => {
+    if (!visibleEpisodes.some((ep) => ep.season != null)) return [{ key: "all", label: null as string | null, episodes: visibleEpisodes }];
+    const out: { key: string; label: string | null; episodes: Episode[] }[] = [];
+    for (const ep of visibleEpisodes) {
+      const key = ep.season == null ? "none" : `s${ep.season}`;
+      let sec = out.find((x) => x.key === key);
+      if (!sec) {
+        const label = ep.season == null ? t("podcasts.season_other", { defaultValue: "More" })
+          : ep.seasonName ? `${t("podcasts.season_n", { n: ep.season, defaultValue: `Season ${ep.season}` })} · ${ep.seasonName}`
+          : t("podcasts.season_n", { n: ep.season, defaultValue: `Season ${ep.season}` });
+        sec = { key, label, episodes: [] };
+        out.push(sec);
+      }
+      sec.episodes.push(ep);
+    }
+    return out;
+  }, [visibleEpisodes, t]);
 
   // useIsShowFollowed above the auth gate — it used to sit after it, so the
   // hook count changed the moment auth settled (or on the 60s re-poll's
   // transient null), throwing "Rendered more hooks than during the previous
   // render." on a plain cold open of a shared podcast link.
   const followed = useIsShowFollowed(slug);
-  if (authLoading || !user) return null;
+  if (authLoading) return null;
 
   const show = data?.show;
 
@@ -314,7 +340,14 @@ export default function PodcastShowPage() {
               <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 8 }}>{t("podcasts.no_episodes_match", { query })}</p>
             ) : (
             <div className="space-y-2.5">
-              {visibleEpisodes.map((ep) => {
+              {sections.map((sec, si) => (
+              <Fragment key={sec.key}>
+              {sec.label && (
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", color: PALETTE.sage, margin: si === 0 ? "2px 0 8px 4px" : "22px 0 8px 4px" }}>
+                  {sec.label}
+                </p>
+              )}
+              {sec.episodes.map((ep) => {
               const active = player.isCurrent(slug, ep.id);
               const date = formatDate(ep.publishedAt);
               const dur = formatDuration(ep.durationSeconds);
@@ -403,6 +436,8 @@ export default function PodcastShowPage() {
                 </div>
               );
             })}
+              </Fragment>
+              ))}
             </div>
             )}
           </>
