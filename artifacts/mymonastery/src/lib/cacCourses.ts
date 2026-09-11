@@ -22,6 +22,7 @@ export interface CacEpisode {
   description: string | null;
   imageUrl: string | null;
   season: number | null;
+  seasonName?: string | null;
 }
 
 export interface CacCourse {
@@ -52,6 +53,33 @@ export function useCacCourses(opts?: { enabled?: boolean }) {
     enabled: opts?.enabled ?? true,
     staleTime: 10 * 60_000,
   });
+}
+
+export interface ShowCoursesResponse {
+  show: {
+    slug: string; title: string; artist: string; artwork: string | null;
+    publisher: string; publisherTitle: string; emoji: string;
+    description: string | null;
+  };
+  courses: CacCourse[];
+}
+
+/** One show's seasons as courses, plus its header copy — the season-card show
+ *  page reads this for any show, CAC or not (Round Table on Race first,
+ *  2026-09-11). Course ids match /api/podcasts/cac/courses, so progress
+ *  stored under them is the same either way. */
+export function useShowCourses(slug: string | undefined) {
+  return useQuery<ShowCoursesResponse>({
+    queryKey: [`/api/podcasts/show/${slug}/courses`],
+    queryFn: () => apiRequest("GET", `/api/podcasts/show/${slug}/courses`),
+    enabled: !!slug,
+    staleTime: 10 * 60_000,
+  });
+}
+
+/** The season pages' course ids are `${showSlug}-s${season}`. */
+export function showSlugFromCourseId(id: string | undefined): string | undefined {
+  return id ? id.replace(/-s\d+$/, "") : undefined;
 }
 
 export function formatDuration(seconds: number | null | undefined): string {

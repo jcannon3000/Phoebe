@@ -345,7 +345,7 @@ export const SHOWS: Record<string, Show> = {
   "roundtables-on-race": {
     slug: "roundtables-on-race",
     title: "Round Table on Race",
-    artist: "Episcopal Diocese of North Carolina",
+    artist: "The Rev. Canon Kathy Walker · Diocese of North Carolina",
     publisher: "around-the-church",
     feedUrl: "https://episdionc.org/podcast-roundtables-on-race/",
     artwork: "/podcast-art/roundtables.jpg",
@@ -1057,19 +1057,17 @@ export type CacCourse = {
   episodes: EpisodeFull[];
 };
 
-router.get("/podcasts/cac/courses", async (_req: Request, res: Response): Promise<void> => {
-  res.setHeader("Cache-Control", "public, max-age=600");
-  const showSlugs = PUBLISHERS.cac?.showSlugs ?? [];
+// One "course" per season of a show, in feed order (oldest first). Shared by
+// the CAC library and the per-show endpoint below, so course ids — the key
+// the device's progress is stored under — are identical from both.
+async function buildCourses(shows: Show[]): Promise<CacCourse[]> {
   const courses: CacCourse[] = [];
-  // Fetch all 6 shows' feeds concurrently — each is an independent external
+  // Fetch every show's feed concurrently — each is an independent external
   // request, so awaiting them one at a time in a for-loop meant a cold cache
   // (server just started, or the 30-min per-show TTL lapsed) paid the sum of
-  // all 6 round-trips instead of just the slowest one.
+  // all the round-trips instead of just the slowest one.
   const showsWithFeeds = await Promise.all(
-    showSlugs
-      .map((slug) => SHOWS[slug])
-      .filter((show): show is Show => !!show)
-      .map(async (show) => ({ show, feed: await loadFeed(show, 400) })),
+    shows.map(async (show) => ({ show, feed: await loadFeed(show, 400) })),
   );
   for (const { show, feed } of showsWithFeeds) {
     const slug = show.slug;
@@ -1105,7 +1103,11 @@ router.get("/podcasts/cac/courses", async (_req: Request, res: Response): Promis
       // The feed lists newest-first; a course plays oldest-first.
       const episodes = [...(bySeason.get(season) ?? [])].reverse();
       if (episodes.length === 0) continue;
-      const seasonName = seasons.length > 1 ? deriveSeasonName(episodes) : null;
+      // A feed that names its seasons (the Roundtables scraper) wins over the
+      // title-pattern guess; a season nobody names is plain "Season N" (owner).
+      const seasonName = seasons.length > 1
+        ? (episodes.find((ep) => ep.seasonName)?.seasonName ?? deriveSeasonName(episodes))
+        : null;
       courses.push({
         id: `${slug}-s${season}`,
         showSlug: slug,
@@ -1118,7 +1120,40 @@ router.get("/podcasts/cac/courses", async (_req: Request, res: Response): Promis
       });
     }
   }
-  res.json({ courses });
+  return courses;
+}
+
+router.get("/podcasts/cac/courses", async (_req: Request, res: Response): Promise<void> => {
+  res.setHeader("Cache-Control", "public, max-age=600");
+  const shows = (PUBLISHERS.cac?.showSlugs ?? [])
+    .map((slug) => SHOWS[slug])
+    .filter((show): show is Show => !!show);
+  res.json({ courses: await buildCourses(shows) });
+});
+
+// One show's seasons in the same course shape, plus the show's own header
+// copy. The season-card show page (pages/cac-show.tsx) reads this for ANY
+// show; Round Table on Race is the first non-CAC one (owner, 2026-09-11:
+// "more like this, with the description still").
+router.get("/podcasts/show/:slug/courses", async (req: Request, res: Response): Promise<void> => {
+  const show = SHOWS[String(req.params.slug ?? "")];
+  if (!show) { res.status(404).json({ error: "Unknown show" }); return; }
+  res.setHeader("Cache-Control", "public, max-age=600");
+  const pub = PUBLISHERS[show.publisher];
+  const courses = await buildCourses([show]);
+  res.json({
+    show: {
+      slug: show.slug,
+      title: show.title,
+      artist: show.artist,
+      artwork: courses[0]?.artwork ?? show.artwork ?? null,
+      publisher: show.publisher,
+      publisherTitle: pub?.title || show.artist,
+      emoji: show.emoji ?? pub?.emoji ?? "🎧",
+      description: show.description ?? null,
+    },
+    courses,
+  });
 });
 
 export default router;

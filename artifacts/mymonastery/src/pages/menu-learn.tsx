@@ -71,7 +71,7 @@ export default function MenuLearnPage() {
           // Round Table on Race — second after The Way of Love (owner, 2026-09-11).
           // A scraped diocesan show; opens the generic show page, which carries
           // its description. Glyph = the Justice & Race theme's two-tone handshake.
-          { emoji: "🫱🏽‍🫲🏿", label: "Round Table on Race", sub: "Conversations on race from the Diocese of North Carolina", muted: !online, onClick: () => go("/podcasts/show/roundtables-on-race") },
+          { emoji: "🫱🏽‍🫲🏿", label: "Round Table on Race", sub: "Conversations on race from the Diocese of North Carolina", muted: !online, onClick: () => go("/cac-show/roundtables-on-race") },
           ...(isAdmin || cacLibraryGranted
             ? shows.map((show) => ({
                 emoji: "🌵",

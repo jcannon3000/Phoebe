@@ -8,7 +8,7 @@ import { useMemo } from "react";
 import { Link, useParams } from "wouter";
 import { ArrowLeft, CheckCircle2, X } from "lucide-react";
 import { Layout } from "@/components/layout";
-import { useCacCourses, courseCompletion, type CacCourse } from "@/lib/cacCourses";
+import { useShowCourses, courseCompletion, type CacCourse } from "@/lib/cacCourses";
 import { useAnyCourseProgressTick, clearStarted } from "@/lib/courseProgress";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useCacLibrary } from "@/hooks/useCacLibrary";
@@ -71,7 +71,13 @@ export default function CacShowPage() {
   const { isAdmin } = useBetaStatus();
   const { enabled: cacLibraryGranted } = useCacLibrary();
   const { slug } = useParams<{ slug: string }>();
-  const { data, isLoading } = useCacCourses();
+  const { data, isLoading } = useShowCourses(slug);
+  // Only the Center for Action and Contemplation's shows sit behind the CAC
+  // library grant. Round Table on Race (Diocese of NC) is public for everyone
+  // (owner, 2026-09-11) and reads this same page.
+  const isCac = data?.show.publisher === "cac";
+  const backHref = isCac ? "/cac-courses" : "/menu/learn";
+  const backLabel = isCac ? "CAC Courses" : "Courses";
   const leafBg = useCacLeafBg();
   useAnyCourseProgressTick();
 
@@ -99,7 +105,7 @@ export default function CacShowPage() {
    * The same expression guards all four surfaces (this page, cac-show,
    * cac-course, and the Learn row). Widen one, widen all.
    */
-  if (!isAdmin && !cacLibraryGranted) {
+  if (isCac && !isAdmin && !cacLibraryGranted) {
     return (
       <Layout bgPhoto={leafBg}>
         <CacFrame>
@@ -115,8 +121,8 @@ export default function CacShowPage() {
     <Layout bgPhoto={leafBg}>
       <CacFrame>
         <div className="mx-auto w-full max-w-2xl">
-          <Link href="/cac-courses" className="mb-4 flex items-center gap-1 text-xs transition-opacity hover:opacity-70" style={{ color: CAC.inkMuted, fontFamily: CAC.label }}>
-            <ArrowLeft size={13} /> CAC Courses
+          <Link href={backHref} className="mb-4 flex items-center gap-1 text-xs transition-opacity hover:opacity-70" style={{ color: CAC.inkMuted, fontFamily: CAC.label }}>
+            <ArrowLeft size={13} /> {backLabel}
           </Link>
 
           {isLoading && !show ? (
@@ -125,7 +131,7 @@ export default function CacShowPage() {
             <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}`, ...FROST }}>
               <p className="text-sm leading-relaxed" style={{ color: CAC.inkMuted }}>
                 We couldn't find that show. Head back to{" "}
-                <Link href="/cac-courses" style={{ color: CAC.gold, textDecoration: "underline" }}>CAC Courses</Link>.
+                <Link href={backHref} style={{ color: CAC.gold, textDecoration: "underline" }}>{backLabel}</Link>.
               </p>
             </div>
           ) : (
@@ -151,6 +157,14 @@ export default function CacShowPage() {
                   </p>
                 </div>
               </div>
+
+              {/* The show's own description, when the catalogue carries one
+                  (owner, 2026-09-11: "with the description still"). */}
+              {data?.show.description && (
+                <p className="mb-6 max-w-lg text-[13px] leading-relaxed" style={{ color: CAC.inkMuted }}>
+                  {data.show.description}
+                </p>
+              )}
 
               <div className="h-px" style={{ background: CAC.divider }} />
 
