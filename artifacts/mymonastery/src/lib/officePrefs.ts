@@ -1041,8 +1041,11 @@ export function setSideContemplation(side: OfficeSide, v: boolean): void {
 // as a side's contemplative practice, "not just for the contemplative slide").
 // "rosary" joined 2026-09-10 (owner: "make sure it's in the contemplative
 // options both on that slide but also to program into morning or evening").
-export type ContemplationKind = "silent" | "creation" | "walk" | "audio" | "visio" | "lectio" | "reading" | "rosary";
-const CONTEMPLATION_KINDS: ContemplationKind[] = ["silent", "creation", "walk", "audio", "visio", "lectio", "reading", "rosary"];
+// "icons" joined the same day. "reading" stays in the TYPE so a side stored
+// that way still parses, but the wizard no longer offers it (owner: "take out
+// reading") and re-opens such a side as Contemplative Prayer.
+export type ContemplationKind = "silent" | "creation" | "walk" | "audio" | "visio" | "lectio" | "reading" | "rosary" | "icons";
+const CONTEMPLATION_KINDS: ContemplationKind[] = ["silent", "creation", "walk", "audio", "visio", "lectio", "reading", "rosary", "icons"];
 
 export function getContemplationStyleGlobal(): ContemplationKind {
   try {

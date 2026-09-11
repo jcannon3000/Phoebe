@@ -1563,7 +1563,11 @@ export default function WayOfLoveRuleFlow({
   // and its own row in the standing-practices multi-select — it was simply
   // never added to THIS list, so the "which practice?" dropdown on a side
   // couldn't offer the one contemplative practice that shipped last.
-  const CONTEMPLATIVE_FORMS = ["prayer", "creation", "walk", "audio", "visio", "lectio", "reading", "rosary"] as const;
+  // "reading" left the list 2026-09-10 (owner: "take out reading") — a side no
+  // longer keeps Reading as its contemplative practice; the standalone Reading
+  // practice in the catalogue is untouched. A side already stored as "reading"
+  // re-opens as Contemplative Prayer (see the seed mapping below).
+  const CONTEMPLATIVE_FORMS = ["prayer", "creation", "walk", "audio", "visio", "lectio", "rosary", "icons"] as const;
   type ContemplativeForm = (typeof CONTEMPLATIVE_FORMS)[number];
   // Owner: "the Examen and Compline shouldn't be in contemplative practice in
   // evening as they can be chosen other places." Compline is one of the prayer
@@ -1618,8 +1622,8 @@ export default function WayOfLoveRuleFlow({
               // over it, which is the same losing-its-identity bug the block
               // above exists to prevent.
               : kind === "lectio" ? "lectio"
-                : kind === "reading" ? "reading"
-                  : kind === "rosary" ? "rosary"
+                : kind === "rosary" ? "rosary"
+                  : kind === "icons" ? "icons"
                     : "prayer";
     };
     return { morning: seed("morning"), evening: seed("evening") };
@@ -2183,7 +2187,7 @@ export default function WayOfLoveRuleFlow({
           setSideContemplationKind(side,
             f === "creation" ? "creation" : f === "walk" ? "walk"
               : f === "audio" ? "audio" : f === "visio" ? "visio"
-                : f === "lectio" ? "lectio" : f === "reading" ? "reading" : f === "rosary" ? "rosary" : "silent");
+                : f === "lectio" ? "lectio" : f === "rosary" ? "rosary" : f === "icons" ? "icons" : "silent");
         }
         // Sit length is per side (config picker), NOT the daily goal.
         if (contemplationBySide[side]) setSideMinutes(side, minutesBySide[side]);
@@ -2480,7 +2484,7 @@ export default function WayOfLoveRuleFlow({
           setSideContemplationKind(side,
             f === "creation" ? "creation" : f === "walk" ? "walk"
               : f === "audio" ? "audio" : f === "visio" ? "visio"
-                : f === "lectio" ? "lectio" : f === "reading" ? "reading" : f === "rosary" ? "rosary" : "silent");
+                : f === "lectio" ? "lectio" : f === "rosary" ? "rosary" : f === "icons" ? "icons" : "silent");
         }
         // Sit length is per side (config picker), NOT the daily goal — a
         // 90-minute goal must not put a 90-minute sit on each card (owner).
@@ -5557,7 +5561,7 @@ export default function WayOfLoveRuleFlow({
             : f === "visio" ? { emoji: "🖼️", label: t("wol_rule.cf_visio", { defaultValue: "Visio Divina" }), sub: t("wol_rule.cf_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }) }
       : f === "lectio" ? { emoji: "📜", label: t("wol_rule.cf_lectio", { defaultValue: "Lectio Divina" }), sub: t("wol_rule.cf_lectio_sub", { defaultValue: "Read a passage slowly, three times — listen, reflect, pray." }) }
       : f === "rosary" ? { emoji: "📿", label: t("wol_rule.cf_rosary", { defaultValue: "The Rosary" }), sub: t("wol_rule.cf_rosary_sub", { defaultValue: "The day's mysteries, a decade at a time — or the Anglican beads." }) }
-      : { emoji: "📚", label: t("wol_rule.cf_reading", { defaultValue: "Reading" }), sub: t("wol_rule.cf_reading_sub", { defaultValue: "A book, a page a day — with a bar showing how far in you are." }) };
+      : { emoji: "🪟", label: t("wol_rule.cf_icons", { defaultValue: "Praying with Icons" }), sub: t("wol_rule.cf_icons_sub", { defaultValue: "One icon for the week — return to it daily." }) };
     return shell(
       <>
         {backRow(goPrev)}

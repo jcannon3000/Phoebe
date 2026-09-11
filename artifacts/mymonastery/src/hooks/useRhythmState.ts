@@ -1575,7 +1575,8 @@ export function useRhythmState(): RhythmState {
           : kind === "lectio" ? (practiceLocal.lectio || serverDone("lectio"))
             : kind === "reading" ? (practiceLocal.reading || serverDone("reading"))
               : kind === "rosary" ? (practiceLocal.rosary || serverDone("rosary"))
-                : null;
+                : kind === "icons" ? (practiceLocal.icons || serverDone("icons"))
+                  : null;
   const morningContemplationDone = kindKept(morningContemplationKind)
     ?? (contemplationSideDone.morning || sidesToday.morning);
   const eveningContemplationDone = kindKept(eveningContemplationKind)
@@ -1835,7 +1836,7 @@ export function useRhythmState(): RhythmState {
     ...(podcastsActive ? [podcastsDone] : []),
     ...(walkActive ? [walkDone] : []),
     ...(visioActive ? [visioDone] : []),
-    ...(iconsActive ? [iconsDone] : []),
+    ...(iconsActive && !(morningContemplationKind === "icons" || eveningContemplationKind === "icons") ? [iconsDone] : []),
     /**
      * SPIRITUALS, THE ROSARY AND LECTIO COUNT TOO (audit, 2026-09-08).
      *
