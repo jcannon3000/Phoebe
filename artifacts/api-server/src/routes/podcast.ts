@@ -34,6 +34,7 @@ import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { safeFetch } from "../lib/ssrfGuard";
 import { rateLimit } from "../lib/rate-limit";
+import { FDD_TRANSCRIPTION_ENABLED } from "../lib/transcription/fddTranscription";
 
 const router: IRouter = Router();
 
@@ -725,7 +726,7 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
       if (mark && mark.status === "done" && (mark.episodeGuid == null || mark.episodeGuid === guid)) {
         scriptureStartSec = mark.scriptureStartSec;
         appealStartSec = mark.appealStartSec;
-      } else if (!mark || mark.status === "pending") {
+      } else if (FDD_TRANSCRIPTION_ENABLED && (!mark || mark.status === "pending")) {
         // On-demand fallback (no worker): kick off the transcribe+detect in
         // the background so a later poll / the next open gets the marks. The
         // dynamic import breaks a circular dependency — buildFddAlignment

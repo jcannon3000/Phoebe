@@ -15,6 +15,7 @@ import { db, fddAudioMarksTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { SHOWS, loadFeed } from "../../routes/podcast";
 import { transcribeAudio, transcriptionEnabled, type Transcript } from "./transcribeAudio";
+import { FDD_TRANSCRIPTION_ENABLED } from "./fddTranscription";
 
 export type FddAlignmentResult = {
   episodeDate: string;
@@ -92,6 +93,10 @@ async function detectFddMarks(
 export async function buildFddAlignment(opts: { date?: Date; force?: boolean } = {}): Promise<FddAlignmentResult> {
   const date = opts.date ?? new Date();
   const episodeDate = date.toISOString().slice(0, 10);
+
+  if (!FDD_TRANSCRIPTION_ENABLED) {
+    return { episodeDate, status: "skipped", reason: "Forward Day by Day transcription is switched off (FDD_TRANSCRIPTION_ENABLED)" };
+  }
 
   const [existing] = await db
     .select()

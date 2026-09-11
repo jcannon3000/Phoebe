@@ -22,6 +22,7 @@
 
 import { buildOfficeAlignment } from "./transcription/buildOfficeAlignment";
 import { buildFddAlignment } from "./transcription/buildFddAlignment";
+import { FDD_TRANSCRIPTION_ENABLED } from "./transcription/fddTranscription";
 import { logger } from "./logger";
 import { transcriptionEnabled } from "./transcription/transcribeAudio";
 
@@ -74,6 +75,8 @@ async function runOfficeAlignment(): Promise<void> {
   // Forward Day by Day skip-marks (Reflect & Sit). FDD publishes once daily;
   // buildFddAlignment is idempotent on the episode guid, so attempting it on
   // any daytime tick costs a real Whisper pass only when a new episode lands.
+  if (!FDD_TRANSCRIPTION_ENABLED) return;
+
   try {
     const fdd = await buildFddAlignment();
     if (fdd.cached) {
