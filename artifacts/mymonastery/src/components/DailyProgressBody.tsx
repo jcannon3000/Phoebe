@@ -73,7 +73,7 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 const SESSION_SIT_CAP = 20;
 // Shared card outline — matches the home "+" FAB ring (dashboard.tsx), so every
 // home card reads with the same soft sage edge rather than per-practice tints.
-const CARD_BORDER = "rgba(200,212,192,0.35)";
+const CARD_BORDER = "rgba(200,212,192,0.30)";
 /**
  * 1.5px, NOT 1px. The cards sit at fractional offsets (the text line-heights
  * above them never sum to whole pixels — measured tops of 498.713, 565.041,
@@ -88,13 +88,11 @@ const CARD_BORDER = "rgba(200,212,192,0.35)";
  * screen, before and after the animation. Owner, 2026-09-10, after four
  * screenshots and three recordings: "this is a widespread issue".
  */
-// 1px — the line is NOT the lever (owner, 2026-09-11: "I didn't want the
-// borders to be thicker … it was more about the card background fit, the
-// offset … just do whatever you did slightly more"). What worked was pulling
-// the frost layer inside the border so its rounded bounds can never reach
-// it; that inset is 3px now (see `frost`). The ring between border and frost
-// is the card's own tint, so it reads as part of the card, not as a gap.
-const CARD_BORDER_PX = "1px";
+// 2px since 2026-09-11 (owner: "still slightly inconsistent on mobile … just a
+// little more"): six device rows at 3× instead of four-and-a-half, so a
+// half-pixel start changes the line by a sixth rather than a fifth. Opacity
+// eased from 0.35 to 0.30 so the weight on screen stays what it was.
+const CARD_BORDER_PX = "2px";
 
 // Subtle per-card lightness ramp for the routine card stack: a touch lighter at
 // the top, easing a touch darker toward the bottom (tint 0 → 1). Stays in the
@@ -524,7 +522,7 @@ export function PracticeCard({
         // the border on whichever edge it crosses. Inset by a pixel it can
         // never reach the border however it rounds. The unfrosted 1px ring
         // inside the border sits under the tint and is invisible.
-        position: "absolute", inset: 3, zIndex: -1, pointerEvents: "none", borderRadius: "inherit",
+        position: "absolute", inset: 2, zIndex: -1, pointerEvents: "none", borderRadius: "inherit",
         WebkitMaskImage: "-webkit-radial-gradient(white, black)",
         ...("style" in frostRamp ? frostRamp.style : {}),
       }}
