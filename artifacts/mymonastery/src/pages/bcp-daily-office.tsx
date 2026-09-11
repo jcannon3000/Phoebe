@@ -1,3 +1,4 @@
+import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { hasPrayerSurface } from "@/lib/prayerSurface";
 import { swellHaptic } from "@/lib/swellHaptic";
@@ -969,7 +970,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const { data: intentionsData } = useQuery<{ intentions: Array<{ id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean }> }>({
     queryKey: ["/api/prayer-intentions"],
     queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
-    enabled: signedUp,
+    // No prayer list in the offices while community is off (owner,
+    // 2026-09-11: "the prayer list should not be in the offices or slide
+    // shows"). An empty list means no prayer-intentions slide is spliced.
+    enabled: signedUp && COMMUNITY_FEATURES_ENABLED,
     staleTime: 60_000,
   });
   const activeIntentions = useMemo(

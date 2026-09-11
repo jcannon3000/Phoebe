@@ -1,3 +1,4 @@
+import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef } from "react";
 import { Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -2387,7 +2388,7 @@ export default function PrayerModePage() {
   const circleIntentionsQuery = useQuery<{ intentions: CircleIntention[] }>({
     queryKey: ["/api/groups/me/circle-intentions"],
     queryFn: () => apiRequest("GET", "/api/groups/me/circle-intentions"),
-    enabled: !!user && !officesOnly,
+    enabled: !!user && !officesOnly && COMMUNITY_FEATURES_ENABLED,
   });
   const circleIntentionsData = circleIntentionsQuery.data;
 
@@ -2401,7 +2402,8 @@ export default function PrayerModePage() {
   const myIntentionsQuery = useQuery<{ intentions: Array<{ id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean }> }>({
     queryKey: ["/api/prayer-intentions"],
     queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
-    enabled: signedUp && !queueMode,
+    // No prayer list in the slideshow while community is off (lib/communityFlag).
+    enabled: signedUp && !queueMode && COMMUNITY_FEATURES_ENABLED,
   });
   const myIntentionsData = myIntentionsQuery.data;
 
@@ -3067,7 +3069,10 @@ export default function PrayerModePage() {
     return (
       momentsQuery.isSuccess &&
       prayerRequestsQuery.isSuccess &&
-      circleIntentionsQuery.isSuccess &&
+      // A query that is not enabled never becomes isSuccess, so guard with its
+      // own enabled condition or the slideshow waits forever. Community off
+      // (lib/communityFlag) disables this one and the personal list below.
+      (!(!!user && !officesOnly && COMMUNITY_FEATURES_ENABLED) || circleIntentionsQuery.isSuccess) &&
       // Personal-list slides (owner: "it needs to do a slideshow of both
       // community and personal") — this query is only enabled when
       // signed up; when it's disabled it never becomes isSuccess, so guard
@@ -3077,7 +3082,7 @@ export default function PrayerModePage() {
       // slower, page-specific fetch resolves, permanently excluding the
       // personal list from that session (this is the exact regression
       // reported: "back to only doing community prayers").
-      (!(signedUp && !queueMode) || myIntentionsQuery.isSuccess) &&
+      (!(signedUp && !queueMode && COMMUNITY_FEATURES_ENABLED) || myIntentionsQuery.isSuccess) &&
       (queueMode !== "parish-weekly" || parishWeeklyQuery.isSuccess)
     );
   })();

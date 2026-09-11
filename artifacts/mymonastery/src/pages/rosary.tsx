@@ -521,6 +521,22 @@ export default function RosaryPage() {
     return { label: t("rosary.continue", { defaultValue: "Continue" }), onClick: () => setStep((s) => s + 1) };
   })();
 
+  /**
+   * TAP TO GO FORWARD (owner, 2026-09-11: "make sure in the rosary slideshow
+   * you can tap to go forward") — the office deck's own gesture: right half
+   * of the slide advances, left half goes back, and a tap that lands on a
+   * button or link is that control's, not paging. The intro (its toggle and
+   * chips are the point of the slide) and the closing card (Done is a
+   * decision) keep their buttons only, exactly as the office skips its intro.
+   */
+  const handleTapNavigate = (e: React.MouseEvent) => {
+    if (isIntro || isClosing) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("button, a, input, textarea, select, label")) return;
+    if (e.clientX < window.innerWidth / 2) goBack();
+    else primary.onClick();
+  };
+
   return (
     <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <DeckAnnouncer
@@ -602,7 +618,7 @@ export default function RosaryPage() {
         </div>
       </header>
 
-      <main
+      <main onClick={handleTapNavigate}
         className="flex-1 px-5"
         style={{
           /**
