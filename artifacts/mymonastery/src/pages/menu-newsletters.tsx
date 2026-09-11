@@ -215,26 +215,21 @@ export default function MenuNewslettersPage() {
       };
     }),
     /**
-     * FEAST-DAY HAGIOGRAPHIES — the subscription is ALWAYS offered here
-     * (owner, 2026-09-11: "Feast day hagiographies should be an option"); it
-     * used to appear only on days the calendar carried a commemoration, so on
-     * an ordinary day there was nothing to switch on. The HOME CARD still
-     * shows only on feast days (hagiographyShown in useRhythmState). Opening
-     * it on a day with no commemoration lands on the Saints index instead.
+     * THE DAY'S COMMEMORATION — here as well as on the home (owner: "It should
+     * show up on the reflection page too … on days there is one").
+     *
+     * Present only when the calendar carries an entry for today, which is the
+     * same gate the home card uses, so the two surfaces cannot disagree about
+     * whether there is one. Titled with the feast itself and nothing else; the
+     * publisher line says what kind of thing it is.
      */
-    {
+    ...(hagiographyUrl ? [{
       key: "hagiography", emoji: "📜",
-      title: "Feast-day hagiographies",
-      publisher: "Forward Movement · on feast days", cadence: "daily" as const,
-      about: hagiographyName
-        ? `Today: ${hagiographyName} · Forward Movement`
-        : "The life of the saint, on days the calendar keeps one · Forward Movement",
-      followed: on("hagiography"), done: !!hagiographyUrl && hasReadHagiographyToday(),
-      open: () => {
-        if (hagiographyUrl) openExternalThenMarkRead(hagiographyUrl, () => markHagiographyRead(), { reader: true });
-        else setLocation("/saints");
-      },
-    },
+      title: hagiographyName ?? "Today's commemoration",
+      publisher: "Hagiography · Forward Movement", cadence: "daily" as const,
+      followed: on("hagiography"), done: hasReadHagiographyToday(),
+      open: () => openExternalThenMarkRead(hagiographyUrl, () => markHagiographyRead(), { reader: true }),
+    }] : []),
     {
       key: "taize", emoji: "🕯️", title: "Taizé meditation", publisher: "Taizé", cadence: "weekly",
       followed: on("taize"), done: rs.taizeDone, latestTitle: taizeLatest?.title,
