@@ -443,14 +443,39 @@ export function PracticeCard({
    * rises each card in; it just no longer re-rasterises a filter under a
    * border while doing it.
    */
+  /**
+   * SECOND PASS, from the phone's own pixels (owner's recording, the same
+   * evening). The border was never absent — it is a 1px line at 35% and it
+   * only reads where something dark sits behind it. Moving the TINT into the
+   * frost left the outer box transparent, so the border composited over the
+   * raw photograph and vanished wherever a bright fern lay behind it: "still
+   * having issues with top borders". So the tint lives on the OUTER box again
+   * (a background extends under its own border), and the frost carries only
+   * the blur and the seam mask.
+   *
+   * And the blur RAMPS IN again — "there is a new animation part", "a light
+   * accent blur that wasn't there before": with the blur present from the
+   * first frame of a card's fade-in, the card glowed in instead of landing
+   * and then frosting. The ramp is safe here because this layer has no
+   * border to clip; that was the whole point of the split.
+   */
+  const frostRamp = blurDelay != null
+    ? {
+        initial: { backdropFilter: "blur(0px)", WebkitBackdropFilter: "blur(0px)" },
+        animate: pulseOnLoad
+          ? { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" }
+          : { backdropFilter: "blur(0px)", WebkitBackdropFilter: "blur(0px)" },
+        transition: { backdropFilter: { delay: blurDelay, duration: 0.7, ease: "easeOut" as const }, WebkitBackdropFilter: { delay: blurDelay, duration: 0.7, ease: "easeOut" as const } },
+      }
+    : { style: { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } };
   const frost = (
-    <div
+    <motion.div
       aria-hidden
+      {...frostRamp}
       style={{
         position: "absolute", inset: 0, zIndex: -1, pointerEvents: "none", borderRadius: "inherit",
-        background: cardTintBg(tint),
-        backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
         WebkitMaskImage: "-webkit-radial-gradient(white, black)",
+        ...("style" in frostRamp ? frostRamp.style : {}),
       }}
     />
   );
@@ -510,7 +535,7 @@ export function PracticeCard({
     const heroRow = (
       <motion.div
         className={`${pulseOnLoad && !celebrate ? "phoebe-card-outline-pulse" : ""} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: "transparent", border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1, isolation: "isolate" }}
+        style={{ background: cardTintBg(tint), border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1, isolation: "isolate" }}
         animate={celebrate ? { borderColor: [CARD_BORDER, `rgba(${rgb},0.95)`, CARD_BORDER] } : { borderColor: CARD_BORDER }}
         transition={celebrate ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } } : { borderColor: { duration: 0.3 } }}
       >
@@ -652,7 +677,7 @@ export function PracticeCard({
   const row = (
     <motion.div
       className={`${pulse || !pulseOnLoad ? "" : "phoebe-card-outline-pulse"} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: "transparent", border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1, isolation: "isolate" }}
+      style={{ background: cardTintBg(tint), border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1, isolation: "isolate" }}
       animate={
         // A just-completed card gets a BRIGHTER, quicker border pulse than the
         // ordinary "next up" pulse — it's saying "this one is done", and it
