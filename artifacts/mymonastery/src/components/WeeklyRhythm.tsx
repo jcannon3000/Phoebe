@@ -14,6 +14,7 @@
  * is the spine; this rides alongside it). See lib/weeklyRhythm.ts.
  */
 import { useEffect, useRef, useState } from "react";
+import { holdLayer } from "@/lib/holdLayer";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -164,6 +165,7 @@ export function WeeklyRhythm({ cascadeBaseDelay = 0 }: { cascadeBaseDelay?: numb
     initial: { opacity: 0, y: 10 },
     animate: splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
     transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as const, delay: cascadeBaseDelay + Math.min(i * 0.08, 0.6) },
+    transformTemplate: holdLayer,
   });
 
   return (
