@@ -215,20 +215,27 @@ export default function MenuNewslettersPage() {
       };
     }),
     /**
-     * THE DAY'S COMMEMORATION — here as well as on the home (owner: "It should
-     * show up on the reflection page too … on days there is one").
+     * FEAST-DAY HAGIOGRAPHIES — two surfaces, two rules (owner, 2026-09-11:
+     * "on the manage subscription where it has toggle it should always be
+     * there, but on the reflection page where it is showing them for the
+     * reader to read, it should only have one if there is one").
      *
-     * Present only when the calendar carries an entry for today, which is the
-     * same gate the home card uses, so the two surfaces cannot disagree about
-     * whether there is one. Titled with the feast itself and nothing else; the
-     * publisher line says what kind of thing it is.
+     * MANAGE: a standing subscription, so the toggle is always offered and is
+     * titled as the subscription. REFLECTIONS LIST: what there is to read
+     * today, so the commemoration appears only when the calendar carries one —
+     * the same gate the home card uses — and is titled with the feast itself.
      */
-    ...(hagiographyUrl ? [{
+    ...(managing || hagiographyUrl ? [{
       key: "hagiography", emoji: "📜",
-      title: hagiographyName ?? "Today's commemoration",
-      publisher: "Hagiography · Forward Movement", cadence: "daily" as const,
-      followed: on("hagiography"), done: hasReadHagiographyToday(),
-      open: () => openExternalThenMarkRead(hagiographyUrl, () => markHagiographyRead(), { reader: true }),
+      title: managing ? "Feast-day hagiographies" : (hagiographyName ?? "Today's commemoration"),
+      publisher: managing ? "Forward Movement · on feast days" : "Hagiography · Forward Movement",
+      cadence: "daily" as const,
+      ...(managing ? { about: "The life of the saint, on days the calendar keeps one · Forward Movement" } : {}),
+      followed: on("hagiography"), done: !!hagiographyUrl && hasReadHagiographyToday(),
+      open: () => {
+        if (hagiographyUrl) openExternalThenMarkRead(hagiographyUrl, () => markHagiographyRead(), { reader: true });
+        else setLocation("/saints");
+      },
     }] : []),
     {
       key: "taize", emoji: "🕯️", title: "Taizé meditation", publisher: "Taizé", cadence: "weekly",
