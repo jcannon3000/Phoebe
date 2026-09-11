@@ -851,13 +851,16 @@ a:active,
 .h-screen     { height:     var(--app-dvh); }
 .max-h-screen { max-height: var(--app-dvh); }
 
-/* PIXEL-SNAP THE HOME'S BORDERED CARDS. Their tops land on fractional pixels
-   (the text line-heights above never sum to whole pixels), and a 1px border on
-   a half-pixel row is painted as two half-strength rows — invisible at 35%.
-   A composited layer is snapped to device pixels, so the border was crisp only
-   while a card was animating. Keep them composited. Scoped to the home shell;
-   the rhythm rows do the same inline. See reference_card_border_no_blur. */
-.dash-shell [style*="backdrop-filter"][style*="border"]:not([aria-hidden="true"]) { will-change: transform; }
+/* A 1.5px HAIRLINE ON EVERY BORDERED CARD, APP-WIDE. Cards land on fractional
+   pixels (text line-heights above them never sum to whole pixels), and a 1px
+   border that starts on a half pixel paints as two half-strength rows —
+   invisible at 35%. A compositing hint did not snap it (WebKit keeps the
+   sub-pixel offset in the layer's paint). 1.5px always covers whole device
+   rows whichever fraction it starts on, so every card reads the same, before
+   and after its animation. Same selector as the frost rules below; a box with
+   border-radius but no border keeps border-style none, so nothing new
+   appears. See reference_card_border_no_blur. */
+[style*="backdrop-filter"][style*="border"]:not([aria-hidden="true"]) { border-width: 1.5px !important; }
 
 /* ── THE BORDER IS DRAWN ON A BOX THAT CARRIES NO BLUR ────────────────────────
    Owner, 2026-09-10 (TestFlight + Safari screenshots, a recording): "some
@@ -877,52 +880,55 @@ a:active,
    inner frost layers (aria-hidden) are the inner layer already and are
    skipped; a box that never positioned itself is made relative so its
    ::before lands on it and not on an ancestor. The seam mask the rows use
-   rides along on the ::before. See reference_card_border_no_blur.
+   rides along on the ::before, INSET 1px: the ::before is its own compositing
+   layer and WebKit rounds layer bounds outward to device pixels, so at inset 0
+   it grew over the border on whichever edge it crossed (owner: "the card
+   background is overflowing"). See reference_card_border_no_blur.
 
    Generated: one block per radius found in src. Add a radius here if a new
    one appears (grep backdropFilter). */
 [style*="backdrop-filter: blur(2px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(2px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(2px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(2px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(3px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(3px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(3px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(3px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(4px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(4px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(4px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(4px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(6px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(6px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(6px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(6px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(8px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(8px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(8px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(8px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(10px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(10px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(10px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(10px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(11px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(11px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(11px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(11px); -webkit-backdrop-filter: blur(11px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(11px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(11px); -webkit-backdrop-filter: blur(11px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(11.34px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(11.34px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(11.34px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(11.34px); -webkit-backdrop-filter: blur(11.34px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(11.34px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(11.34px); -webkit-backdrop-filter: blur(11.34px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(12px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(12px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(12px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(12px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(12.6px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(12.6px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(12.6px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(12.6px); -webkit-backdrop-filter: blur(12.6px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(12.6px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(12.6px); -webkit-backdrop-filter: blur(12.6px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(14px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(14px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(14px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(14px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(14.4px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(14.4px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(14.4px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(14.4px); -webkit-backdrop-filter: blur(14.4px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(14.4px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(14.4px); -webkit-backdrop-filter: blur(14.4px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(16px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(16px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(16px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(16px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(20px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(20px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(20px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(20px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
 [style*="backdrop-filter: blur(22px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(22px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
-[style*="backdrop-filter: blur(22px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[style*="backdrop-filter: blur(22px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 1px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); -webkit-mask-image: -webkit-radial-gradient(white, black); }

@@ -74,6 +74,21 @@ const SESSION_SIT_CAP = 20;
 // Shared card outline — matches the home "+" FAB ring (dashboard.tsx), so every
 // home card reads with the same soft sage edge rather than per-practice tints.
 const CARD_BORDER = "rgba(200,212,192,0.35)";
+/**
+ * 1.5px, NOT 1px. The cards sit at fractional offsets (the text line-heights
+ * above them never sum to whole pixels — measured tops of 498.713, 565.041,
+ * 631.369px), and a 1px line that starts on a half pixel is painted as two
+ * half-strength rows, invisible at 35%. Which cards suffer depends on their
+ * exact offset, so the same home showed some borders and not others, and
+ * "it came in right then got messed up" as the enter animation's composited
+ * (pixel-snapped) layer was dropped. A compositing hint did not help: WebKit
+ * carries the sub-pixel offset into the layer's paint. A 1.5px line always
+ * covers whole device rows whichever fraction it starts on — at 2× three
+ * rows, at 3× four or five — so it reads the same on every card, on every
+ * screen, before and after the animation. Owner, 2026-09-10, after four
+ * screenshots and three recordings: "this is a widespread issue".
+ */
+const CARD_BORDER_PX = "1.5px";
 
 // Subtle per-card lightness ramp for the routine card stack: a touch lighter at
 // the top, easing a touch darker toward the bottom (tint 0 → 1). Stays in the
@@ -473,25 +488,37 @@ export function PracticeCard({
    * of whack". Which cards suffer depends on their exact offset, which is
    * why it differed by card, by screen and by build.
    *
-   * `will-change: transform` on the bordered box keeps it composited, and
-   * therefore pixel-snapped, for good. The blur lives on the frost, not this
-   * box, so the compositing that once clipped a blurred border cannot here.
+   * A compositing hint (will-change: transform) was tried and did NOT snap
+   * the border — WebKit keeps the sub-pixel offset when painting into the
+   * layer (measured at device resolution in the Simulator: Lectio's top edge
+   * still at half strength). The fix is the line's thickness: see
+   * CARD_BORDER_PX.
    */
-  const frostRamp = blurDelay != null
-    ? {
-        initial: { backdropFilter: "blur(0px)", WebkitBackdropFilter: "blur(0px)" },
-        animate: pulseOnLoad
-          ? { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" }
-          : { backdropFilter: "blur(0px)", WebkitBackdropFilter: "blur(0px)" },
-        transition: { backdropFilter: { delay: blurDelay, duration: 0.7, ease: "easeOut" as const }, WebkitBackdropFilter: { delay: blurDelay, duration: 0.7, ease: "easeOut" as const } },
-      }
-    : { style: { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } };
+  /**
+   * STATIC BLUR (owner, 2026-09-10 late: "it does this top glow flash that
+   * was never in there before"). A backdrop blur ramping from 0 to 11px
+   * samples the bright card and button just above this one and, for the
+   * 0.7s of the ramp, brightens the frost's top rows into a glow that then
+   * fades — a flash along the top edge of every card as it lands. The card
+   * still fades and rises in (enterUp); its frost is simply already frosted.
+   * `blurDelay` is still accepted so callers need no change.
+   */
+  const frostRamp = { style: { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } } as const;
   const frost = (
     <motion.div
       aria-hidden
       {...frostRamp}
       style={{
-        position: "absolute", inset: 0, zIndex: -1, pointerEvents: "none", borderRadius: "inherit",
+        // INSET 1px, NOT 0 (owner, 2026-09-10, watching the Simulator: "the
+        // hero doesn't have a bottom, Lectio doesn't have top or bottom … it's
+        // almost like the card background is overflowing and is too large").
+        // Exactly that. This frost is its own compositing layer, and WebKit
+        // rounds a layer's bounds OUTWARD to whole device pixels; at a
+        // fractional offset it grows by up to a device pixel and paints over
+        // the border on whichever edge it crosses. Inset by a pixel it can
+        // never reach the border however it rounds. The unfrosted 1px ring
+        // inside the border sits under the tint and is invisible.
+        position: "absolute", inset: 1, zIndex: -1, pointerEvents: "none", borderRadius: "inherit",
         WebkitMaskImage: "-webkit-radial-gradient(white, black)",
         ...("style" in frostRamp ? frostRamp.style : {}),
       }}
@@ -553,7 +580,7 @@ export function PracticeCard({
     const heroRow = (
       <motion.div
         className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: cardTintBg(tint), border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1, isolation: "isolate", willChange: "transform" }}
+        style={{ background: cardTintBg(tint), border: `${CARD_BORDER_PX} solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1, isolation: "isolate" }}
         animate={celebrate ? { borderColor: [CARD_BORDER, `rgba(${rgb},0.95)`, CARD_BORDER] } : { borderColor: CARD_BORDER }}
         transition={celebrate ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } } : { borderColor: { duration: 0.3 } }}
       >
@@ -695,7 +722,7 @@ export function PracticeCard({
   const row = (
     <motion.div
       className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: cardTintBg(tint), border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1, isolation: "isolate", willChange: "transform" }}
+      style={{ background: cardTintBg(tint), border: `${CARD_BORDER_PX} solid ${restBorder}`, opacity: waiting ? 0.72 : 1, isolation: "isolate" }}
       animate={
         // A just-completed card gets a BRIGHTER, quicker border pulse than the
         // ordinary "next up" pulse — it's saying "this one is done", and it
