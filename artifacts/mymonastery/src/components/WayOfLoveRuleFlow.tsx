@@ -4835,7 +4835,15 @@ export default function WayOfLoveRuleFlow({
               not be in contemplation"). Its one row is on the reflections step;
               it toggles the same `contemplative.taize` state, and both onKeys
               copies still read it. */}
-          {choiceRow(contemplative.icons, `🪟 ${t("wol_rule.cp_icons", { defaultValue: "Praying with Icons" })}`, t("wol_rule.cp_icons_sub", { defaultValue: "Sit with an icon — return to it daily." }), () => toggleContemplative("icons"))}
+          {!anchoredAsForm("icons") && choiceRow(contemplative.icons, `🪟 ${t("wol_rule.cp_icons", { defaultValue: "Praying with Icons" })}`, t("wol_rule.cp_icons_sub", { defaultValue: "Sit with an icon — return to it daily." }), () => toggleContemplative("icons"))}
+          {/* THE ROSARY — the note above, proved again the same day it was
+              written about Icons: the Rosary was in the options array, in
+              toggleContemplative's keys, in both onKeys copies, and on the
+              "Which practice?" slide — everywhere except this list. Owner,
+              2026-09-10: "I didn't see the Rosary in the last Xcode build in
+              the customizer." Guarded like Visio: a side that already keeps
+              the Rosary as its practice is not offered it twice. */}
+          {!anchoredAsForm("rosary") && choiceRow(contemplative.rosary, `📿 ${t("wol_rule.cp_rosary", { defaultValue: "The Rosary" })}`, t("wol_rule.cp_rosary_sub", { defaultValue: "The day's mysteries, a decade at a time — or the Anglican beads." }), () => toggleContemplative("rosary"))}
           {/* NO READING and NO SPIRITUALS rows (owner, 2026-09-05: "take out
               reading and spirituals from the practices ... both on the main
               practice page and in the customizer"). Their `contemplative.reading`
