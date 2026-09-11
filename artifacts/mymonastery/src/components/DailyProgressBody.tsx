@@ -2754,7 +2754,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
               haptic ticks are scheduled per CARD, so titles never buzz).
               mt-3 = a touch more air above "Next" (owner) — the welcome/date
               stack above was crowding it. */}
-          <motion.div {...enterUp(0)} className="mt-3">{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Routine" }))}</motion.div>
+          <motion.div {...enterUp(0)} className="mt-3">{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}</motion.div>
           <div className="flex flex-col gap-2">
             {/* The hero leads the Next list — the office, or (with no office)
                 the morning Contemplation card, above the reflection. */}

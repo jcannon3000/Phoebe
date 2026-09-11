@@ -577,9 +577,7 @@ export const en = {
     // leader and congregation, not alone.
     subtitle_parish: "Your walk today — kept step by step with your parish.",
     practices_heading: "Today's practices",
-    // The section is the person's rule for the day, not a queue of what is
-    // coming up (owner, 2026-09-11).
-    next_heading: "Routine",
+    next_heading: "Next",
     done_heading: "Done",
     tomorrow_heading: "Tomorrow",
   },
