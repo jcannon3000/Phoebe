@@ -1157,7 +1157,7 @@ const CONTEMPLATION_BELL_FILE = "PhoebeRising-high.caf";
 // depth — a stale TestFlight build shouldn't crash).
 function getPhoebeAudio(): {
   prime?: () => Promise<void>;
-  playNow?: (opts: { sound: string }) => Promise<void>;
+  playNow?: (opts: { sound: string; bell?: boolean }) => Promise<void>;
   scheduleBellAt?: (opts: { at: number; sound: string }) => Promise<void>;
   cancelScheduled?: () => Promise<void>;
   scheduleBellNotification?: (opts: { at: number; sound: string }) => Promise<void>;
@@ -1263,7 +1263,9 @@ function wireContemplation() {
     // swell, "-high.caf" for the close. Default to the close bell.
     const detail = (e as CustomEvent).detail as { sound?: string } | undefined;
     const sound = detail?.sound ?? CONTEMPLATION_BELL_FILE;
-    try { await getPhoebeAudio()?.playNow?.({ sound }); }
+    // A BELL, not an effect — it rings through the silent switch (see
+    // PhoebeAudioPlugin.ensureSessionActive).
+    try { await getPhoebeAudio()?.playNow?.({ sound, bell: true }); }
     catch { /* best-effort — web layer also plays its synthesized bell */ }
   });
 }

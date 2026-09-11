@@ -76,7 +76,7 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func playPad(_ call: CAPPluginCall) {
         let step = max(0, min(4, Int(call.getDouble("octaveStep") ?? 0)))
         do {
-            try ensureSessionActive()
+            try ensureSessionActive(bell: call.getBool("bell") ?? false)
             let sr = 44100.0
             let swellIn = 2.5, hold = 0.8, fadeOut = 3.7
             let total = swellIn + hold + fadeOut
@@ -279,11 +279,37 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     // that ignores the silent switch. We mix with others while idle so
     // we don't yank a user's music — but the closing bell, which
     // briefly plays, is loud enough to be heard alongside.
-    private func ensureSessionActive() throws {
+    /**
+     * TWO KINDS OF SOUND, TWO CATEGORIES (owner, 2026-09-11: "make sure that
+     * there are no sound effects when the ringer is off on their phone").
+     *
+     * `.ambient` honours the hardware silent switch — that is the category
+     * for every EFFECT: the office deck's chime, the breath tone, the menu
+     * swell (WebAudio in the web view rides the same session). `.playback`
+     * plays through silence — that is for the sit's BELL only, which is a
+     * timer's alarm and must be heard. Both mix with other apps' audio.
+     *
+     * The app starts in `.ambient` (see load) so a WebAudio swell on the first
+     * tap already honours the switch, and every bell path relaxes back to it
+     * when the bell has rung or is cancelled, so a chime after a sit does not
+     * inherit the bell's licence.
+     */
+    private func ensureSessionActive(bell: Bool = false) throws {
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try session.setCategory(bell ? .playback : .ambient, mode: .default, options: [.mixWithOthers])
         try session.setActive(true, options: [])
         sessionPrimed = true
+    }
+
+    /// Back to the silent-switch-honouring category once no bell is pending.
+    private func relaxSession() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+    }
+
+    public override func load() {
+        super.load()
+        relaxSession()
     }
 
     // MARK: - Silent WAV generator
@@ -361,7 +387,7 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     // web side calls this when the contemplation timer mounts.
     @objc func prime(_ call: CAPPluginCall) {
         do {
-            try ensureSessionActive()
+            try ensureSessionActive(bell: call.getBool("bell") ?? false)
             call.resolve()
         } catch {
             call.reject("session prime failed: \(error.localizedDescription)")
@@ -381,7 +407,7 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         do {
-            try ensureSessionActive()
+            try ensureSessionActive(bell: call.getBool("bell") ?? false)
             let player = try AVAudioPlayer(contentsOf: url)
             player.prepareToPlay()
             player.play()
@@ -427,7 +453,7 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // we don't end up with two overlapping bells in edge cases.
         teardownPlayers()
         do {
-            try ensureSessionActive()
+            try ensureSessionActive(bell: true) // the sit's bell rings through silence
 
             // Start the silent keep-alive loop.
             if let silenceURL = silenceURL() {
@@ -454,6 +480,7 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             let cleanup = Timer(timeInterval: delay + 10.0, repeats: false) { [weak self] _ in
                 guard let self = self else { return }
                 self.silencePlayer?.stop()
+                self.relaxSession()
                 self.silencePlayer = nil
             }
             RunLoop.main.add(cleanup, forMode: .common)
@@ -480,6 +507,7 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private func teardownPlayers() {
         cleanupTimer?.invalidate()
+        relaxSession()
         cleanupTimer = nil
         silencePlayer?.stop()
         silencePlayer = nil
