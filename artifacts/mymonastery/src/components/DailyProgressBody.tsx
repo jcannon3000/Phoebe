@@ -534,7 +534,7 @@ export function PracticeCard({
     );
     const heroRow = (
       <motion.div
-        className={`${pulseOnLoad && !celebrate ? "phoebe-card-outline-pulse" : ""} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
+        className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
         style={{ background: cardTintBg(tint), border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1, isolation: "isolate" }}
         animate={celebrate ? { borderColor: [CARD_BORDER, `rgba(${rgb},0.95)`, CARD_BORDER] } : { borderColor: CARD_BORDER }}
         transition={celebrate ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } } : { borderColor: { duration: 0.3 } }}
@@ -676,7 +676,7 @@ export function PracticeCard({
   const restBorder = CARD_BORDER;
   const row = (
     <motion.div
-      className={`${pulse || !pulseOnLoad ? "" : "phoebe-card-outline-pulse"} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
+      className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
       style={{ background: cardTintBg(tint), border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1, isolation: "isolate" }}
       animate={
         // A just-completed card gets a BRIGHTER, quicker border pulse than the

@@ -825,8 +825,11 @@ a:active,
   45%  { border-color: rgba(230,244,221,0.50); }
   100% { border-color: rgba(200,212,192,0.35); }
 }
-.phoebe-card-outline-pulse { animation: phoebeCardOutlinePulse 0.425s ease-out 1 both; }
-@media (prefers-reduced-motion: reduce) { .phoebe-card-outline-pulse { animation: none; } }
+/* RETIRED 2026-09-10 (owner: "there was this flash on the cards"): the
+   one-shot outline brightening on load, June 21. It was the flash. The class
+   is no longer applied; the keyframes stay so nothing else that names them
+   breaks. */
+.phoebe-card-outline-pulse { animation: none; }
 
 
 /**
