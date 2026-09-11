@@ -92,7 +92,7 @@ const CARD_BORDER = "rgba(200,212,192,0.30)";
 // little more"): six device rows at 3× instead of four-and-a-half, so a
 // half-pixel start changes the line by a sixth rather than a fifth. Opacity
 // eased from 0.35 to 0.30 so the weight on screen stays what it was.
-const CARD_BORDER_PX = "2px";
+const CARD_BORDER_PX = "1.5px"; // owner 2026-09-11: "1.5 not 2px"; the frost inset stays 2px so the blur never reaches the stroke
 
 // Subtle per-card lightness ramp for the routine card stack: a touch lighter at
 // the top, easing a touch darker toward the bottom (tint 0 → 1). Stays in the

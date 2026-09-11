@@ -860,7 +860,7 @@ a:active,
    and after its animation. Same selector as the frost rules below; a box with
    border-radius but no border keeps border-style none, so nothing new
    appears. See reference_card_border_no_blur. */
-[style*="backdrop-filter"][style*="border"]:not([aria-hidden="true"]) { border-width: 2px !important; }
+[style*="backdrop-filter"][style*="border"]:not([aria-hidden="true"]) { border-width: 1.5px !important; }
 
 /* ── THE BORDER IS DRAWN ON A BOX THAT CARRIES NO BLUR ────────────────────────
    Owner, 2026-09-10 (TestFlight + Safari screenshots, a recording): "some
