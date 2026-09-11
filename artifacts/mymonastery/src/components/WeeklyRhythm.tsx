@@ -14,7 +14,6 @@
  * is the spine; this rides alongside it). See lib/weeklyRhythm.ts.
  */
 import { useEffect, useRef, useState } from "react";
-import { holdLayer } from "@/lib/holdLayer";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -162,10 +161,12 @@ export function WeeklyRhythm({ cascadeBaseDelay = 0 }: { cascadeBaseDelay?: numb
   // Header rises first, each card a beat behind (delay by index) — the whole
   // band offset by cascadeBaseDelay so it lands after the daily section.
   const enterUp = (i: number) => ({
-    initial: { opacity: 0, y: 10 },
-    animate: splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
+    // Opacity only — no travel. Animating y lands the card on a fractional
+    // pixel and the end-of-animation re-rasterise shifts its hairline border.
+    // See the long note on enterUp in DailyProgressBody.
+    initial: { opacity: 0 },
+    animate: splashCleared ? { opacity: 1 } : { opacity: 0 },
     transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as const, delay: cascadeBaseDelay + Math.min(i * 0.08, 0.6) },
-    transformTemplate: holdLayer,
   });
 
   return (

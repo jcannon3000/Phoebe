@@ -10,7 +10,6 @@
 // Budde's Way of Love (an audio course on the podcast player) appears.
 
 import { useEffect, useRef, useState } from "react";
-import { holdLayer } from "@/lib/holdLayer";
 import { useLocation } from "wouter";
 import { motion, useInView } from "framer-motion";
 import { Play } from "lucide-react";
@@ -194,10 +193,12 @@ export function HomeLearnSection() {
   // below the fold, so an on-mount cascade would play off-screen and be missed),
   // then the whole cascade fires once, top-to-bottom, via the per-index delay.
   const enterUp = (i: number) => ({
-    initial: { opacity: 0, y: 10 },
-    animate: inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
+    // Opacity only — no travel. Animating y lands the card on a fractional
+    // pixel and the end-of-animation re-rasterise shifts its hairline border.
+    // See the long note on enterUp in DailyProgressBody.
+    initial: { opacity: 0 },
+    animate: inView ? { opacity: 1 } : { opacity: 0 },
     transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 1.2) },
-    transformTemplate: holdLayer,
   });
 
   return (

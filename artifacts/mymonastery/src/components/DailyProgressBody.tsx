@@ -9,7 +9,6 @@
  */
 
 import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
-import { holdLayer } from "@/lib/holdLayer";
 import { warmedHtml, warmPages } from "@/lib/warmedPages";
 import { markHagiographyRead, unmarkHagiographyToday } from "@/lib/cacReadState";
 import { Link, useLocation } from "wouter";
@@ -589,7 +588,7 @@ export function PracticeCard({
           ) : (
             <motion.div
               key="hero-done"
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
               className="absolute inset-0 w-full text-center rounded-full text-[15px] font-semibold flex items-center justify-center gap-2"
               style={{ background: `rgba(${rgb},0.28)`, color: WARM, border: `1px solid rgba(${rgb},0.55)`, fontFamily: FONT }}
@@ -694,7 +693,7 @@ export function PracticeCard({
         ) : (
           <motion.span
             key="check"
-            initial={{ opacity: 0, y: 9 }} animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
             className="absolute inset-0 rounded-full text-[12px] font-semibold flex items-center justify-center"
             style={{ background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)` }}
@@ -2705,16 +2704,41 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // Returning from a practice, the cards are ALREADY THERE — no cascade. The
   // completion moment is the thing to watch, and a stagger underneath it just
   // competes for attention.
+  /**
+   * THE CARDS FADE IN. THEY DO NOT RISE.
+   *
+   * Owner: "the borders shimmy up a little bit at the end of the animation …
+   * it would be best if they just held still", and then, of the first attempt,
+   * "they are still settling in wrong and end up looking weird."
+   *
+   * The border was never moving on its own — the card was. Animating `y` puts
+   * the card on a GPU layer at fractional pixels; when it lands, the transform
+   * stops being a transform, the layer is discarded, and the whole card
+   * re-rasterises snapped to whole pixels. A hairline border straddling a half
+   * pixel lands a fraction from where it sat a frame earlier. That is the
+   * twitch, and it is worst on these cards precisely because of the thing the
+   * card-border note already records: a frost layer that rounds outward over a
+   * hairline at fractional offsets.
+   *
+   * The first fix pinned the layer with translateZ(0) so it would never be
+   * discarded. It stopped the snap and cost more than it bought: a permanently
+   * composited layer changes how the frost's blur is sampled underneath, which
+   * is the "looking weird".
+   *
+   * So: remove the cause rather than pin it. With no transform there is no
+   * fractional placement, no layer to discard and nothing to re-rasterise — the
+   * card is drawn at its final position from the first frame and only its
+   * opacity changes. The cascade still reads as a stagger, because the stagger
+   * was always in the DELAY, not in the travel.
+   */
   const enterUp = (i: number) => (celebrateKey ? {
     initial: false as const,
-    animate: { opacity: 1, y: 0 },
+    animate: { opacity: 1 },
     transition: { duration: 0 },
-    transformTemplate: holdLayer,
   } : {
-    initial: { opacity: 0, y: 8 },
-    animate: splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 },
+    initial: { opacity: 0 },
+    animate: splashCleared ? { opacity: 1 } : { opacity: 0 },
     transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 0.7) },
-    transformTemplate: holdLayer,
   });
   // Hold the first paint until the rhythm queries have settled (so cards don't
   // jump from Next to Done as data lands), then fade each card up in turn.
@@ -2810,7 +2834,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
               // completion, not just the celebrate-navigation flow) needs the
               // rest of this list to smoothly reflow down, not snap.
               const enter = c.key === celebrateKey
-                ? { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] as const }, transformTemplate: holdLayer }
+                ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] as const } }
                 : enterUp(doneBase + i);
               return (
                 <motion.div

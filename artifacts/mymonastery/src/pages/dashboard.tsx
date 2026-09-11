@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback, useRef, isValidElement } from "react";
-import { holdLayer } from "@/lib/holdLayer";
 import { Link, useLocation } from "wouter";
 import { Plus, X, Camera } from "lucide-react";
 import { LEAF_PHOTOS, HOME_LEAF_PHOTOS, WATER_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
@@ -7497,13 +7496,13 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // Staggered fade-up — each card rises just after the one above,
                 // matching the Daily progress page's cascade.
                 const enterUp = (i: number) => ({
-                  initial: { opacity: 0, y: 10 },
+                  // Opacity only — no travel; see enterUp in DailyProgressBody.
+                  initial: { opacity: 0 },
                   // Gate on the splash like the rest of the home cards, so these
                   // cascade in AFTER the opening splash clears (not behind it),
                   // matching the carousel/events stagger + step.
-                  animate: ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
+                  animate: ownReqSplashCleared ? { opacity: 1 } : { opacity: 0 },
                   transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 1.5) },
-                  transformTemplate: holdLayer,
                 });
                 // The next THREE events, flattened across the day buckets (already
                 // chronological today→month) into a single "Next up" section.
