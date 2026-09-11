@@ -851,6 +851,14 @@ a:active,
 .h-screen     { height:     var(--app-dvh); }
 .max-h-screen { max-height: var(--app-dvh); }
 
+/* PIXEL-SNAP THE HOME'S BORDERED CARDS. Their tops land on fractional pixels
+   (the text line-heights above never sum to whole pixels), and a 1px border on
+   a half-pixel row is painted as two half-strength rows — invisible at 35%.
+   A composited layer is snapped to device pixels, so the border was crisp only
+   while a card was animating. Keep them composited. Scoped to the home shell;
+   the rhythm rows do the same inline. See reference_card_border_no_blur. */
+.dash-shell [style*="backdrop-filter"][style*="border"]:not([aria-hidden="true"]) { will-change: transform; }
+
 /* ── THE BORDER IS DRAWN ON A BOX THAT CARRIES NO BLUR ────────────────────────
    Owner, 2026-09-10 (TestFlight + Safari screenshots, a recording): "some
    borders are missing", "look at the top of the Morning Prayer card", "it's a

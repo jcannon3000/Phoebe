@@ -459,6 +459,24 @@ export function PracticeCard({
    * and then frosting. The ramp is safe here because this layer has no
    * border to clip; that was the whole point of the split.
    */
+  /**
+   * THIRD PASS — THE ACTUAL CAUSE, from frames of the owner's recording at
+   * full size: after landing, a card kept its corner arcs and lost the whole
+   * straight top edge — the topmost pixel row of the box. The cards sit at
+   * FRACTIONAL positions (tops measured at 498.713, 565.041, 631.369px; rows
+   * are 59.133px tall — the text line-heights above never add up to whole
+   * pixels), so a 1px line lands across two device rows at half strength
+   * each, and at 35% that is invisible. While a card animates in it is
+   * composited, and WebKit snaps composited layers to whole device pixels —
+   * so the border was crisp "when it came in" — then the layer is dropped
+   * and the box is painted at its true fractional offset: "then it gets out
+   * of whack". Which cards suffer depends on their exact offset, which is
+   * why it differed by card, by screen and by build.
+   *
+   * `will-change: transform` on the bordered box keeps it composited, and
+   * therefore pixel-snapped, for good. The blur lives on the frost, not this
+   * box, so the compositing that once clipped a blurred border cannot here.
+   */
   const frostRamp = blurDelay != null
     ? {
         initial: { backdropFilter: "blur(0px)", WebkitBackdropFilter: "blur(0px)" },
@@ -535,7 +553,7 @@ export function PracticeCard({
     const heroRow = (
       <motion.div
         className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: cardTintBg(tint), border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1, isolation: "isolate" }}
+        style={{ background: cardTintBg(tint), border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1, isolation: "isolate", willChange: "transform" }}
         animate={celebrate ? { borderColor: [CARD_BORDER, `rgba(${rgb},0.95)`, CARD_BORDER] } : { borderColor: CARD_BORDER }}
         transition={celebrate ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } } : { borderColor: { duration: 0.3 } }}
       >
@@ -677,7 +695,7 @@ export function PracticeCard({
   const row = (
     <motion.div
       className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: cardTintBg(tint), border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1, isolation: "isolate" }}
+      style={{ background: cardTintBg(tint), border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1, isolation: "isolate", willChange: "transform" }}
       animate={
         // A just-completed card gets a BRIGHTER, quicker border pulse than the
         // ordinary "next up" pulse — it's saying "this one is done", and it
