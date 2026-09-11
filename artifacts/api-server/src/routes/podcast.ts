@@ -50,6 +50,11 @@ export type Show = {
   // feed — episodes are MP3s embedded on a WordPress page, so we scrape
   // them (titles + audio URLs) into the same episode shape.
   kind?: "rss" | "scrape-roundtables";
+  // Copy for the show page when the feed can't supply one — the scraped
+  // Roundtables page has no <description>. The show route prefers it.
+  description?: string;
+  // Per-show glyph for the show page eyebrow; the publisher's otherwise.
+  emoji?: string;
   // When true, the show's artwork is used as the imageUrl for EVERY
   // episode, ignoring per-episode <itunes:image> tags. Useful when the
   // feed omits episode art (or uses generic imagery) but we have a good
@@ -333,14 +338,25 @@ export const SHOWS: Record<string, Show> = {
   },
   // ── Episcopal Diocese of North Carolina ─────────────────────────────
   // No RSS feed — scraped from the diocese's WordPress page.
+  // Owner (2026-09-11) lists it on the Courses page second after The Way of
+  // Love, under the name "Round Table on Race" (the diocese writes
+  // "Roundtables on Race"). Glyph: the two-tone handshake the Justice & Race
+  // theme uses (owner, over a table — Unicode has none).
   "roundtables-on-race": {
     slug: "roundtables-on-race",
-    title: "Roundtables on Race",
+    title: "Round Table on Race",
     artist: "Episcopal Diocese of North Carolina",
     publisher: "around-the-church",
     feedUrl: "https://episdionc.org/podcast-roundtables-on-race/",
     artwork: "/podcast-art/roundtables.jpg",
     kind: "scrape-roundtables",
+    emoji: "🫱🏽‍🫲🏿",
+    description:
+      "Conversations about race and its reach into American life, from the Episcopal Diocese of North Carolina, " +
+      "hosted by the Rev. Canon Kathy Walker, Canon Missioner for Black Ministries. Each season stays with one subject " +
+      "\u2014 race and education, why race matters in voting and government \u2014 so every episode can go a layer deeper " +
+      "than a single conversation usually allows. For people already doing the work of racial equity and reconciliation, " +
+      "and for anyone wondering why we are still talking about it.",
   },
   // ── Forward + affiliated podcasts (Discover section under CAC) ──────
   "forward-day-by-day": {
@@ -566,7 +582,46 @@ export function parseFeed(xml: string, limit: number): ParsedFeed {
 // (or "Season N, …") attribute. Titles and MP3 URLs both appear
 // newest-first in document order, so we extract each list (de-duped,
 // order-preserving) and zip them by index.
-function scrapeRoundtables(html: string, fallbackTitle: string): ParsedFeed {
+export function scrapeRoundtables(html: string, fallbackTitle: string): ParsedFeed {
+  // 2026-09 layout: one <li class="wt26-pub-card"> per publication carrying
+  // a date (MM/DD/YY), a titled link ("RoR – Season 4, Episode 3: …"), an
+  // optional one-line summary and the <audio src>. Titles are no longer in a
+  // title="" attribute, which is why the fallback below served "Episode N".
+  const cards = html.split(/<li class="wt26-pub-card(?=[\s"])/).slice(1);
+  const fromCards: EpisodeFull[] = [];
+  const seenCard = new Set<string>();
+  for (const raw of cards) {
+    const card = raw.split("</ul>")[0] ?? raw;
+    const audio = card.match(/<audio[^>]*\ssrc="([^"]+\.mp3)"/i);
+    if (!audio?.[1] || seenCard.has(audio[1])) continue;
+    seenCard.add(audio[1]);
+    const strip = (x: string): string => decodeXmlText(x.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+    const title = strip(card.match(/class="wt26-pub-card__title">([\s\S]*?)<\/p>/i)?.[1] ?? "")
+      .replace(/^RoR\s*[–—-]\s*/i, "");
+    const summary = strip(card.match(/class="wt26-pub-card__summary">([\s\S]*?)<\/p>/i)?.[1] ?? "");
+    const d = card.match(/class="wt26-pub-card__date">\s*(\d{2})\/(\d{2})\/(\d{2})\s*</);
+    // The summary, where present, is "Season 3: Race and Education Episode 1:
+    // Critical Race Theory" — the season's THEME plus the title again. Keep the
+    // theme as the description; Season 1 titles lack their "Season 1," prefix,
+    // so lend it from there.
+    const theme = summary.match(/^Season (\d+):\s*(.+?)\s+Episode \d+:/i);
+    const seasonNo = title.match(/^Season (\d+)/i)?.[1] ?? theme?.[1];
+    const fullTitle = title && theme && !/^Season \d+/i.test(title) ? `Season ${theme[1]}, ${title}` : title;
+    fromCards.push({
+      id: audio[1],
+      title: fullTitle || null,
+      audioUrl: audio[1],
+      durationSeconds: null,
+      publishedAt: d ? `20${d[3]}-${d[1]}-${d[2]}T12:00:00.000Z` : null,
+      description: theme ? `Season ${theme[1]}: ${theme[2]}` : summary && summary !== title ? summary : null,
+      imageUrl: null,
+      season: seasonNo ? Number(seasonNo) : null,
+    });
+  }
+  if (fromCards.length > 0) {
+    return { feedTitle: fallbackTitle, feedImage: null, feedDescription: null, episodes: fromCards };
+  }
+
   const titles: string[] = [];
   const seenTitle = new Set<string>();
   const titleRe = /title="((?:RoR|Season)[^"]+)"/gi;
@@ -910,8 +965,8 @@ router.get("/podcasts/show/:slug", async (req: Request, res: Response): Promise<
       artwork: feed.feedImage ?? show.artwork ?? null,
       publisher: show.publisher,
       publisherTitle: pub?.title || show.artist,
-      emoji: pub?.emoji ?? "🎧",
-      description: feed.feedDescription ?? null,
+      emoji: show.emoji ?? pub?.emoji ?? "🎧",
+      description: show.description ?? feed.feedDescription ?? null,
     },
     episodes: feed.episodes,
   });

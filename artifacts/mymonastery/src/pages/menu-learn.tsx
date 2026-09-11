@@ -68,6 +68,10 @@ export default function MenuLearnPage() {
           // own row — "bring them out of the folder of just CAC Courses" —
           // then the web-only Keating courses.
           { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", muted: !online, onClick: () => go("/way-of-love-course") },
+          // Round Table on Race — second after The Way of Love (owner, 2026-09-11).
+          // A scraped diocesan show; opens the generic show page, which carries
+          // its description. Glyph = the Justice & Race theme's two-tone handshake.
+          { emoji: "🫱🏽‍🫲🏿", label: "Round Table on Race", sub: "Conversations on race from the Diocese of North Carolina", muted: !online, onClick: () => go("/podcasts/show/roundtables-on-race") },
           ...(isAdmin || cacLibraryGranted
             ? shows.map((show) => ({
                 emoji: "🌵",

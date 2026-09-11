@@ -126,6 +126,7 @@ export default function MenuPage() {
     learn.items.push({ emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") });
   }
   learn.items.push({ emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") });
+  learn.items.push({ emoji: "🫱🏽‍🫲🏿", label: "Round Table on Race", sub: "Conversations on race from the Diocese of North Carolina", onClick: () => go("/podcasts/show/roundtables-on-race") });
   groups.push(thisSunday);
   groups.push(learn);
 
