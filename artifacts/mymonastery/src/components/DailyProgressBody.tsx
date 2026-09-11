@@ -12,7 +12,7 @@ import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from 
 import { markHagiographyRead, unmarkHagiographyToday } from "@/lib/cacReadState";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type TargetAndTransition, type Transition } from "framer-motion";
 import { ReadingBookSheet } from "@/components/ReadingBookSheet";
 import { getReadingBook, unlogReadingToday } from "@/lib/readingBook";
 import { useTranslation } from "react-i18next";
@@ -528,6 +528,32 @@ export function PracticeCard({
       }}
     />
   );
+  /**
+   * THE STROKE, PAINTED ABOVE THE FROST (owner, 2026-09-11, from a recording:
+   * the cards "come in right but then settling in get messed up … make sure
+   * the border stroke is above the background, the background is overlaying
+   * it"). Exactly so: the frost is its own compositing layer at z -1, which
+   * paints ABOVE the box's own border, and once the entrance transform ends
+   * the layer re-rasterises at a fractional page offset and its rounded-out
+   * bounds cover part of the stroke (frames at 3.68s vs 4.71s: a full band,
+   * then half of one). A border painted by the box can never win that, so
+   * the visible stroke is this overlay at z 1 — plain, uncomposited, always
+   * on top of the frost. The box keeps a TRANSPARENT border of the same
+   * width (layout unchanged) with background-clip: padding-box so the tint
+   * ends at the ring, and the ring's radius matches the padding box's.
+   */
+  const strokeRadius = `calc(1.5rem - ${CARD_BORDER_PX})`;
+  const strokeOverlay = (animate: TargetAndTransition, transition: Transition) => (
+    <motion.div
+      aria-hidden
+      style={{
+        position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
+        borderRadius: strokeRadius, border: `${CARD_BORDER_PX} solid ${CARD_BORDER}`,
+      }}
+      animate={animate}
+      transition={transition}
+    />
+  );
   // Cycle the subtitle whenever a cycle is supplied — including on a DONE card
   // (so the reflection keeps flipping its publication name ↔ today's title even
   // after it's read). Cards that shouldn't cycle when done simply pass no cycle.
@@ -584,11 +610,13 @@ export function PracticeCard({
     const heroRow = (
       <motion.div
         className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: cardTintBg(tint), border: `${CARD_BORDER_PX} solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1, isolation: "isolate" }}
-        animate={celebrate ? { borderColor: [CARD_BORDER, `rgba(${rgb},0.95)`, CARD_BORDER] } : { borderColor: CARD_BORDER }}
-        transition={celebrate ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } } : { borderColor: { duration: 0.3 } }}
+        style={{ background: cardTintBg(tint), backgroundClip: "padding-box", border: `${CARD_BORDER_PX} solid transparent`, opacity: waiting ? 0.8 : 1, isolation: "isolate" }}
       >
         {frost}
+        {strokeOverlay(
+          celebrate ? { borderColor: [CARD_BORDER, `rgba(${rgb},0.95)`, CARD_BORDER] } : { borderColor: CARD_BORDER },
+          celebrate ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } } : { borderColor: { duration: 0.3 } },
+        )}
         <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
         <div className="flex-1 px-5 py-5">
           {/* Emoji sits to the RIGHT of the title, never as a leading icon
@@ -726,28 +754,26 @@ export function PracticeCard({
   const row = (
     <motion.div
       className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: cardTintBg(tint), border: `${CARD_BORDER_PX} solid ${restBorder}`, opacity: waiting ? 0.72 : 1, isolation: "isolate" }}
-      animate={
+      style={{ background: cardTintBg(tint), backgroundClip: "padding-box", border: `${CARD_BORDER_PX} solid transparent`, opacity: waiting ? 0.72 : 1, isolation: "isolate" }}
+    >
+      {frost}
+      {strokeOverlay(
         // A just-completed card gets a BRIGHTER, quicker border pulse than the
         // ordinary "next up" pulse — it's saying "this one is done", and it
         // rides along as the card moves from Next down into Done. When neither
-        // is on, the border is told its rest colour explicitly, so a pulse
+        // is on, the stroke is told its rest colour explicitly, so a pulse
         // that stops mid-cycle lands rather than freezing wherever it was.
         celebrate
           ? { borderColor: [restBorder, `rgba(${rgb},0.95)`, restBorder] }
           : pulse
             ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder] }
-            : { borderColor: restBorder }
-      }
-      transition={
+            : { borderColor: restBorder },
         celebrate
           ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } }
           : pulse
             ? { borderColor: { duration: 2.2, repeat: Infinity, ease: "easeInOut" } }
-            : { borderColor: { duration: 0.3 } }
-      }
-    >
-      {frost}
+            : { borderColor: { duration: 0.3 } },
+      )}
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />
       <div className="flex-1 min-w-0 px-4 py-3.5">
         <div className="flex items-center gap-3">
