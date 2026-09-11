@@ -371,7 +371,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   after Newsletters (owner, 2026-09-04: "put This Sunday after
                   Newsletters"). */}
               <MenuRow emoji="🗓️" label={t("menu.this_sunday", { defaultValue: "This Sunday" })} onClick={() => goCategory("/this-sunday")} />
-              <MenuRow emoji="🎓" label={t("menu.learn", { defaultValue: "Courses" })} onClick={() => goCategory("/menu/learn")} />
+              <MenuRow emoji="🎧" label={t("menu.learn", { defaultValue: "Podcasts" })} onClick={() => goCategory("/menu/learn")} />
             </div>
 
             {/* Communities block MOVED here (owner, 2026-09-02): it now sits

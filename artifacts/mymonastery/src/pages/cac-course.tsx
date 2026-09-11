@@ -32,6 +32,11 @@ export default function CacCoursePage() {
   const course = (data?.courses ?? []).find((c) => c.id === id) ?? null;
   // See cac-show.tsx: only CAC's own shows sit behind the library grant.
   const isCac = data?.show.publisher === "cac";
+  // The footer credit: CAC's sentence for CAC; otherwise the publisher half of
+  // the artist line ("… · Diocese of North Carolina").
+  const audioCredit = isCac
+    ? "the Center for Action and Contemplation"
+    : `the ${data?.show.artist.split(" · ").pop() ?? data?.show.title ?? "publisher"}`;
   const episodes = course?.episodes ?? [];
 
   const toPlaying = (ep: CacEpisode): PlayingEpisode => ({
@@ -113,7 +118,7 @@ export default function CacCoursePage() {
             <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}`, ...FROST }}>
               <p className="text-sm leading-relaxed" style={{ color: CAC.inkMuted }}>
                 We couldn't find that course. Head back to{" "}
-                <Link href="/menu/learn" style={{ color: CAC.gold, textDecoration: "underline" }}>Courses</Link>.
+                <Link href="/menu/learn" style={{ color: CAC.gold, textDecoration: "underline" }}>Podcasts</Link>.
               </p>
             </div>
           ) : (
@@ -209,7 +214,7 @@ export default function CacCoursePage() {
               </div>
 
               <p className="mt-6 px-1 text-[11px] italic leading-relaxed" style={{ color: CAC.inkMuted }}>
-                Audio from the Center for Action and Contemplation. Plays in Phoebe's podcast player; your progress is saved on this device.
+                Audio from {audioCredit}. Plays in Phoebe's podcast player; your progress is saved on this device.
               </p>
             </>
           )}

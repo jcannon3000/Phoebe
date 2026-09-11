@@ -49,9 +49,9 @@ export default function MenuLearnPage() {
   const online = useOnline();
   return (
     <MenuHub
-      title="Courses"
-      emoji="🎓"
-      subtitle="Guided courses in the life of prayer."
+      title="Podcasts"
+      emoji="🎧"
+      subtitle="Shows to walk through a season at a time, and the Way of Love course."
       backLabel="Menu"
       backHref="/menu"
       groups={[{

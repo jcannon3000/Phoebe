@@ -77,7 +77,7 @@ export default function CacShowPage() {
   // (owner, 2026-09-11) and reads this same page.
   const isCac = data?.show.publisher === "cac";
   const backHref = isCac ? "/cac-courses" : "/menu/learn";
-  const backLabel = isCac ? "CAC Courses" : "Courses";
+  const backLabel = isCac ? "CAC Courses" : "Podcasts";
   const leafBg = useCacLeafBg();
   useAnyCourseProgressTick();
 
