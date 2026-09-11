@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { warmedHtml, warmPages } from "@/lib/warmedPages";
 import { forwardMovementFeastUrl } from "@/lib/liturgical/forwardMovementCalendar";
 import { getDay, readLesserFeastsPref } from "@/lib/liturgical";
 import { hasReadHagiographyToday, markHagiographyRead } from "@/lib/cacReadState";
@@ -197,6 +198,11 @@ export default function MenuNewslettersPage() {
       return d.commemoration ?? (d.rank === "principal_feast" || d.rank === "holy_day" ? d.name : null);
     } catch { return null; }
   })();
+  // Warm the saved copies so a tap reads them synchronously (lib/warmedPages).
+  useEffect(() => {
+    void warmPages(DAILY.map((d) => reflectionSourceUrl(d.source)));
+  }, []);
+
   const layout = layoutNow();
   const on = (key: string) => isHomeCardOn(layout, key);
 
@@ -210,7 +216,9 @@ export default function MenuNewslettersPage() {
         // only once scrolled through) — it used to mark read BEFORE opening.
         open: () => {
           if (d.source === "vts") { MARK_READ[d.source](); setLocation("/vts-reading"); return; }
-          openExternalThenMarkRead(reflectionSourceUrl(d.source), (ms) => MARK_READ[d.source](ms), { reader: true });
+          // This morning's copy when the walk got one — see lib/warmedPages.
+          const src = reflectionSourceUrl(d.source);
+          openExternalThenMarkRead(src, (ms) => MARK_READ[d.source](ms), { reader: true, savedHtml: warmedHtml(src) });
         },
       };
     }),

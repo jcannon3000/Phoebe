@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { warmedHtml, warmPages } from "@/lib/warmedPages";
 import { markHagiographyRead, unmarkHagiographyToday } from "@/lib/cacReadState";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -1812,7 +1813,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         // used it for the thing that mattered. VTS has no onClick at all —
         // it navigates via href and marks read itself once the reader is
         // actually stepped through (see vts-reading.tsx).
-        ...(isVts ? {} : { onClick: () => openExternalThenMarkRead(url, () => { mark(); swellHaptic(); }, { reader: true }) }),
+        // savedHtml: this morning's copy, when the walk got one. CAC and the
+        // Dean's Commentary can take five seconds to reach live; a warmed copy
+        // renders at once. Read SYNCHRONOUSLY here — the store is async and on
+        // web the open has to happen inside the tap's own tick.
+        ...(isVts ? {} : { onClick: () => openExternalThenMarkRead(url, () => { mark(); swellHaptic(); }, { reader: true, savedHtml: warmedHtml(url) }) }),
         cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
       };
     }),
@@ -2199,6 +2204,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // No slot-window "Later" state any more (owner: "we don't want any cards
   // to be later and faded anymore — all available"). Slots still ORDER the
   // day; they no longer gate it.
+  /**
+   * Pull this morning's saved copies into memory so a tap can read them
+   * synchronously — see lib/warmedPages for why it cannot be a lookup at tap
+   * time. Reflections only: these are the pages that keep people waiting.
+   */
+  useEffect(() => {
+    void warmPages(reflections.map((r) => reflectionSourceUrl(r.source)));
+  }, [reflections]);
+
   const cards = sortedCards;
 
   // When a dedicated office hero is supplied (the beta home), the office shows
@@ -2737,7 +2751,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
               haptic ticks are scheduled per CARD, so titles never buzz).
               mt-3 = a touch more air above "Next" (owner) — the welcome/date
               stack above was crowding it. */}
-          <motion.div {...enterUp(0)} className="mt-3">{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}</motion.div>
+          <motion.div {...enterUp(0)} className="mt-3">{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Routine" }))}</motion.div>
           <div className="flex flex-col gap-2">
             {/* The hero leads the Next list — the office, or (with no office)
                 the morning Contemplation card, above the reflection. */}

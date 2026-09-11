@@ -52,6 +52,40 @@ export async function hasSavedPage(url: string): Promise<boolean> {
   return !!page && (page.sv ?? 1) >= SAVE_VERSION;
 }
 
+/**
+ * A DAILY PAGE WHOSE URL NEVER CHANGES — a newsletter.
+ *
+ * The scripture pages are keyed by passage, so a saved copy is good for as
+ * long as it is kept. A newsletter is the opposite: CAC, the Dean's
+ * Commentary, Forward Day by Day and the rest all live at ONE address whose
+ * contents change overnight. Keyed by URL like everything else, yesterday's
+ * copy would be served as today's — which is exactly the bug the two VTS
+ * caches produced in September, in a different place.
+ *
+ * So these two ask a different question: is the saved copy from TODAY. The
+ * saver already records savedAt; nothing else had needed to read it.
+ */
+export async function getSavedPageToday(url: string | null | undefined): Promise<SavedPage | null> {
+  const page = await getSavedPage(url);
+  if (!page) return null;
+  const savedYmd = new Date(page.savedAt).toLocaleDateString("en-CA");
+  return savedYmd === new Date().toLocaleDateString("en-CA") ? page : null;
+}
+
+/**
+ * Save today's copy, replacing yesterday's.
+ *
+ * cachePage returns early when ANY current page is stored, which is right for
+ * a passage and wrong here — it would keep yesterday's newsletter forever. So
+ * this clears the entry first and lets the saver run.
+ */
+export async function cachePageForToday(url: string): Promise<boolean> {
+  if (!url) return false;
+  if (await getSavedPageToday(url)) return true;
+  try { await storeDelete(PAGES, url); } catch { /* nothing stored */ }
+  return cachePage(url);
+}
+
 /** Fetch and keep one page. Best-effort; false when it could not be saved. */
 export async function cachePage(url: string): Promise<boolean> {
   if (!url) return false;

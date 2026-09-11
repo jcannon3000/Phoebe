@@ -453,6 +453,32 @@ export default function IconsPage() {
    * lately"), and any of them is a search away by name. `history` stays in the
    * dependency list of nothing here on purpose — see the memo keys below.
    */
+  /**
+   * THE ONES YOU KEEP COMING BACK TO — over the past month.
+   *
+   * Owner: "show the most frequently looked at over the past month." The
+   * history already counts returns per icon (recordIconPrayed de-duplicates
+   * and carries a count forward), so the ranking is that count.
+   *
+   * HONEST ABOUT ITS OWN WINDOW: the count is all-time, while the date stored
+   * is only the LAST sitting, so a true 30-day tally is not in the data. What
+   * this can say truthfully is "of the icons you have returned to in the past
+   * month, these are the ones you return to most" — the window filters which
+   * icons qualify, the count orders them. An icon prayed twice last week beats
+   * one prayed once, which is the question being asked.
+   */
+  const mostReturned = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    const since = cutoff.toLocaleDateString("en-CA");
+    return history
+      .filter((h) => h.ymd >= since && (h.count ?? 1) > 1)
+      .sort((a, b) => (b.count ?? 1) - (a.count ?? 1))
+      .slice(0, 4)
+      .map((h) => ({ art: byId.get(h.id), times: h.count ?? 1 }))
+      .filter((x): x is { art: IconArtwork; times: number } => !!x.art);
+  }, [history, byId]);
+
   const results = useMemo(() => {
     const q = norm(query.trim());
     if (!q) return browse.slice(0, RESULT_CAP);
@@ -746,7 +772,44 @@ export default function IconsPage() {
                   {t("icons.log_pill", { defaultValue: "🕯️ Log your own icon" })}
                 </button>
               )}
-              <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {/* ONE PER ROW, FULL WIDTH (owner). An icon is chosen by
+                  LOOKING at it, and two to a row gave each one a 120px
+                  thumbnail — small enough that the choice came down to reading
+                  the title underneath. Full width gives the picture the space
+                  the practice is actually about. */}
+              {/* Only while browsing — a search is a question about the
+                  catalogue, not about your own history, and this row under the
+                  results would answer something nobody asked. */}
+              {query.trim() === "" && mostReturned.length > 0 && (
+                <div style={{ width: "100%" }}>
+                  <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", margin: "2px 0 8px" }}>
+                    {t("icons.most_returned", { defaultValue: "You return to these" })}
+                  </p>
+                  <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
+                    {mostReturned.map(({ art, times }) => (
+                      <button
+                        key={art.id}
+                        type="button"
+                        onClick={() => choose(art)}
+                        style={{
+                          userSelect: "none", WebkitTapHighlightColor: "transparent",
+                          flex: "0 0 auto", width: 112, padding: 0, border: "none",
+                          background: "none", cursor: "pointer", textAlign: "left",
+                        }}
+                      >
+                        <img
+                          src={art.img} alt="" loading="lazy" decoding="async"
+                          style={{ width: 112, height: 112, objectFit: "cover", borderRadius: 10, boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}
+                        />
+                        <span style={{ display: "block", color: FAINT, fontFamily: FONT, fontSize: 10.5, marginTop: 5 }}>
+                          {t("icons.times_prayed", { count: times, defaultValue: `${times} times` })}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
                 {results.map((a) => (
                   <button
                     key={a.id}
@@ -765,10 +828,10 @@ export default function IconsPage() {
                   >
                     <img
                       src={a.img} alt="" loading="lazy" decoding="async"
-                      style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 9, boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}
+                      style={{ width: "100%", height: 208, objectFit: "cover", borderRadius: 9, boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}
                     />
                     <span style={{ minWidth: 0 }}>
-                      <span style={{ color: WARM, fontFamily: SERIF, fontSize: 13.5, fontStyle: "italic", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                      <span style={{ color: WARM, fontFamily: SERIF, fontSize: 15, fontStyle: "italic", lineHeight: 1.35 }}>
                         {a.title}
                       </span>
                       {a.artist && (

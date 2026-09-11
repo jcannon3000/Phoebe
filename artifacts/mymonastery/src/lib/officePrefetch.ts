@@ -17,6 +17,12 @@
 // means fewer days are available offline, never an error the user sees.
 
 import { useEffect } from "react";
+import { getSavedPageToday, cachePageForToday } from "@/lib/pageCache";
+import { readCachedHomeLayout } from "@/lib/homeLayoutCache";
+import { clearWarmedPages } from "@/lib/warmedPages";
+import { reflectionSourceUrl } from "@/lib/cacReadState";
+/** The seven daily reflections, matching useRhythmState's own list. */
+const REFLECTION_SOURCES = ["fdd", "cac", "ssje", "vts", "nouwen", "sojo", "grist"] as const;
 import { boundedFetch } from "@/lib/boundedFetch";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isReallyOnline } from "@/lib/offline";
@@ -631,6 +637,40 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
     else notePageFailedToday(url);
   });
   if (pageJobs.length > 0) await runQueue(pageJobs);
+
+  /**
+   * …AND THE DAY'S READING, WARMED BEFORE IT IS ASKED FOR.
+   *
+   * Owner: "have the app fetch any reflection/newsletter in the background in
+   * the morning and cache it so when the user opens it it can load in a
+   * second — CAC and VTS can take 5 seconds to load sometimes." Those five
+   * seconds are somebody else's server, reached at the moment of the tap; the
+   * fix is to have already reached it.
+   *
+   * ONLY WHAT THIS PERSON FOLLOWS. Seven publishers warmed for everyone would
+   * be a lot of somebody else's bandwidth to spend on pages nobody opens, so
+   * the list is read from the home layout — the same membership the cards
+   * themselves are drawn from.
+   *
+   * cachePageForToday, not cachePage: these live at ONE address whose contents
+   * change overnight, so the question is "is the saved copy from today", not
+   * "is anything saved". Yesterday's is replaced rather than kept.
+   *
+   * Failures are quiet on purpose. A warmed page is an optimisation; when it
+   * is missing the reader simply fetches live, exactly as it does today.
+   */
+  const hl = readCachedHomeLayout();
+  const order = hl?.order ?? [];
+  const hidden = new Set(hl?.hidden ?? []);
+  // Same membership test the cards use: in the order, not hidden.
+  const followed = REFLECTION_SOURCES.filter((src) => order.includes(src) && !hidden.has(src));
+  const newsletterJobs = followed.map((src) => async () => {
+    const url = reflectionSourceUrl(src);
+    if (!url || (await getSavedPageToday(url))) return;
+    ctx.noteFetched();
+    if (await cachePageForToday(url)) ctx.noteSaved();
+  });
+  if (newsletterJobs.length > 0) await runQueue(newsletterJobs);
   /**
    * THEN SWEEP WHAT IS BEHIND US. Once a day, connected: the past goes and the
    * window rolls forward (the fetches above skip what is already here, so each
@@ -669,9 +709,25 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
 /** Mounted once, app-wide (see App.tsx, alongside WidgetSync) — fires the
  *  prefetch on mount and lets runOfficePrefetch's own guards decide whether
  *  there's actually anything to do. */
+/** The day the in-memory warmed pages belong to. */
+let lastWarmDay = todayYmd();
+
 export function OfficeOfflinePrefetch(): null {
   useEffect(() => {
-    void runOfficePrefetch();
+    /**
+     * A WARMED COPY IS ONLY GOOD FOR ITS OWN DAY.
+     *
+     * lib/warmedPages holds this morning's newsletters in memory so a tap can
+     * read them synchronously. The phone is rarely force-quit, so that memory
+     * outlives midnight — and a newsletter lives at ONE address whose contents
+     * change overnight. Clearing here ties the memory's life to the walk that
+     * fills it: same trigger, same day.
+     */
+    const refresh = () => {
+      if (lastWarmDay !== todayYmd()) { lastWarmDay = todayYmd(); clearWarmedPages(); }
+      void runOfficePrefetch();
+    };
+    refresh();
     /**
      * …AND ON EVERY RETURN TO THE APP. This ran once per MOUNT, which on a
      * phone that is never force-quit means once per install: the WebView
@@ -680,7 +736,7 @@ export function OfficeOfflinePrefetch(): null {
      * phoebe:appactive (eight other components listen); the day-stamp guard
      * inside makes each extra call a no-op until the date actually changes.
      */
-    const again = () => { void runOfficePrefetch(); };
+    const again = () => { refresh(); };
     const onVisible = () => { if (document.visibilityState === "visible") again(); };
     window.addEventListener("phoebe:appactive", again);
     document.addEventListener("visibilitychange", onVisible);
