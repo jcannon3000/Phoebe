@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   db,
   usersTable,
@@ -12,6 +12,7 @@ import {
   waitlistTable,
   contemplationGoalHistoryTable,
   groupPostsTable,
+  userClientStateTable,
 } from "@workspace/db";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { exportUserData } from "../lib/userDataExport";
@@ -226,6 +227,59 @@ router.delete("/users/me", async (req, res): Promise<void> => {
 //
 // GET returns the current prefs; PUT does a partial update (any keys
 // present in the body merge in).
+// ── Per-user client state ─────────────────────────────────────────────────
+// Small JSON blobs a DEVICE keeps and the ACCOUNT remembers (owner, 2026-09-12:
+// "if you log out, it forgets what you looked at last. So this must be saved
+// to the account. Although if they're offline, it saves to the device and
+// syncs to the account"). Local-first, last write wins by updatedAt (ms):
+// a PUT older than what is stored is answered with the stored copy, which the
+// device then adopts. Keys are allow-listed; a value is capped at 32 KB.
+const CLIENT_STATE_KEYS = new Set(["icon-history"]);
+const CLIENT_STATE_MAX_BYTES = 32 * 1024;
+
+router.get("/me/client-state/:key", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const key = String(req.params.key ?? "");
+  if (!CLIENT_STATE_KEYS.has(key)) { res.status(404).json({ error: "Unknown state key" }); return; }
+  const [row] = await db
+    .select()
+    .from(userClientStateTable)
+    .where(and(eq(userClientStateTable.userId, sessionUserId), eq(userClientStateTable.key, key)));
+  res.json({ value: row?.value ?? null, updatedAt: row ? Number(row.updatedAtMs) : null });
+});
+
+router.put("/me/client-state/:key", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const key = String(req.params.key ?? "");
+  if (!CLIENT_STATE_KEYS.has(key)) { res.status(404).json({ error: "Unknown state key" }); return; }
+  const body = (req.body ?? {}) as { value?: unknown; updatedAt?: unknown };
+  const updatedAt = typeof body.updatedAt === "number" && Number.isFinite(body.updatedAt) ? Math.floor(body.updatedAt) : null;
+  if (updatedAt === null || body.value === undefined) { res.status(400).json({ error: "value and updatedAt are needed" }); return; }
+  let encoded: string;
+  try { encoded = JSON.stringify(body.value); } catch { res.status(400).json({ error: "value must be JSON" }); return; }
+  if (encoded.length > CLIENT_STATE_MAX_BYTES) { res.status(413).json({ error: "value too large" }); return; }
+  const [existing] = await db
+    .select()
+    .from(userClientStateTable)
+    .where(and(eq(userClientStateTable.userId, sessionUserId), eq(userClientStateTable.key, key)));
+  if (existing && Number(existing.updatedAtMs) > updatedAt) {
+    // The account has something newer (another device, or this one before a
+    // wipe): hand it back, the device adopts it.
+    res.json({ value: existing.value, updatedAt: Number(existing.updatedAtMs), kept: "server" });
+    return;
+  }
+  await db
+    .insert(userClientStateTable)
+    .values({ userId: sessionUserId, key, value: body.value, updatedAtMs: updatedAt })
+    .onConflictDoUpdate({
+      target: [userClientStateTable.userId, userClientStateTable.key],
+      set: { value: body.value, updatedAtMs: updatedAt },
+    });
+  res.json({ value: body.value, updatedAt, kept: "device" });
+});
+
 router.get("/me/office-prefs", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }

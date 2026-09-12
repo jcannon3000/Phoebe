@@ -11,7 +11,66 @@
  * feed selection" rule to keep here. It only feeds the closing cards.
  */
 
+import { apiRequest } from "@/lib/queryClient";
+import { enqueueWrite, flushWrites } from "@/lib/writeOutbox";
+
 const KEY = "phoebe:icon-history";
+const PHYSICAL_KEY = "phoebe:icon-physical-log";
+/**
+ * THE ACCOUNT REMEMBERS TOO (owner, 2026-09-12: "if you log out, it forgets
+ * what you looked at last. So this must be saved to the account. Although
+ * if they're offline, it saves to the device and syncs to the account").
+ *
+ * Local-first, exactly as before: every read here is localStorage. What is
+ * new is a clock (STAMP_KEY, ms) bumped on every write, a push of the whole
+ * blob to /api/me/client-state/icon-history through the write outbox (so an
+ * offline sitting still reaches the account when the connection returns),
+ * and a pull when the practice opens: whichever side is newer wins.
+ */
+const STAMP_KEY = "phoebe:icon-history:updated-at";
+const STATE_URL = "/api/me/client-state/icon-history";
+export const ICON_HISTORY_EVENT = "phoebe:icon-history-changed";
+type IconState = { history: IconPrayed[]; physical: PhysicalIconLog[] };
+function readStamp(): number {
+  try { return Number(localStorage.getItem(STAMP_KEY) ?? 0) || 0; } catch { return 0; }
+}
+function writeStamp(ms: number): void {
+  try { localStorage.setItem(STAMP_KEY, String(ms)); } catch { /* private mode */ }
+}
+/** Queue this device's copy for the account and try to send it now. */
+function pushIconStateToAccount(): void {
+  const updatedAt = Date.now();
+  writeStamp(updatedAt);
+  const value: IconState = { history: getIconHistory(), physical: getPhysicalIconLogs() };
+  enqueueWrite("client-state:icon-history", "PUT", STATE_URL, { value, updatedAt });
+  void flushWrites();
+}
+function isIconState(v: unknown): v is IconState {
+  return !!v && typeof v === "object"
+    && Array.isArray((v as IconState).history) && Array.isArray((v as IconState).physical);
+}
+/**
+ * Adopt the account's copy when it is newer than this device's; push ours
+ * when ours is newer. Resolves true when local storage changed. Quiet for a
+ * session-less visitor (401) or offline (the outbox already has any push).
+ */
+export async function pullIconStateFromAccount(): Promise<boolean> {
+  let remote: { value: unknown; updatedAt: number | null } | null = null;
+  try { remote = await apiRequest("GET", STATE_URL); } catch { return false; }
+  const local = readStamp();
+  const remoteAt = remote?.updatedAt ?? 0;
+  if (remoteAt > local && isIconState(remote?.value)) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(remote!.value.history.slice(0, CAP)));
+      localStorage.setItem(PHYSICAL_KEY, JSON.stringify(remote!.value.physical.slice(0, CAP)));
+    } catch { return false; }
+    writeStamp(remoteAt);
+    try { window.dispatchEvent(new Event(ICON_HISTORY_EVENT)); } catch { /* ignore */ }
+    return true;
+  }
+  if (local > remoteAt && (getIconHistory().length > 0 || getPhysicalIconLogs().length > 0)) pushIconStateToAccount();
+  return false;
+}
 const CAP = 30;
 
 export type IconPrayed = {
@@ -60,6 +119,7 @@ export function recordIconPrayed(id: number, ymd: string): void {
   } catch {
     /* private mode / quota — non-fatal */
   }
+  pushIconStateToAccount();
 }
 
 /**
@@ -99,7 +159,6 @@ export function mostFrequentIcon(excludeId?: number): IconPrayed | null {
  * the icon is of, nothing more. Named entries, not catalogue ids — their icon
  * isn't in any catalogue.
  */
-const PHYSICAL_KEY = "phoebe:icon-physical-log";
 
 export type PhysicalIconLog = { name: string; ymd: string };
 
@@ -131,4 +190,5 @@ export function recordPhysicalIcon(name: string, ymd: string): void {
   } catch {
     /* private mode / quota — non-fatal */
   }
+  pushIconStateToAccount();
 }

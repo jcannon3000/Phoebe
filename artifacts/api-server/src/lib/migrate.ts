@@ -3548,6 +3548,21 @@ export async function migrate() {
       )
     `);
 
+    // ── Per-user client state ─────────────────────────────────
+    // Small JSON blobs a device keeps and the account remembers (icon
+    // history first). Last write wins by updated_at_ms; one row per key.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS user_client_state (
+        id             SERIAL PRIMARY KEY,
+        user_id        INTEGER NOT NULL,
+        key            TEXT NOT NULL,
+        value          JSONB NOT NULL,
+        updated_at_ms  BIGINT NOT NULL,
+        created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (user_id, key)
+      )
+    `);
+
     // ── user_wol — persisted Way of Love selections ──────────────────────
     // One row per user. `selections` is a JSONB map of practiceId →
     // { optionIds: string[], custom: string } so the daily-practice page

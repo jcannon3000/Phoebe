@@ -36,7 +36,7 @@ import { ACT_COMMENTARY_CATALOGUE } from "@/lib/visioCommentaryCatalogue";
 import { openExternal } from "@/lib/openExternal";
 import { isActHidden, actIconOn, actIconOff, ACT_OVERRIDES_EVENT } from "@/lib/actOverrides";
 import { weekIconId, setWeekIcon, suggestedForWeek, suggestionReason } from "@/lib/iconWeek";
-import { getIconHistory, recordIconPrayed, getPhysicalIconLogs, recordPhysicalIcon, lastIconPrayed, mostFrequentIcon } from "@/lib/iconHistory";
+import { getIconHistory, recordIconPrayed, getPhysicalIconLogs, recordPhysicalIcon, lastIconPrayed, mostFrequentIcon, pullIconStateFromAccount } from "@/lib/iconHistory";
 import { FROST_BLUR } from "@/lib/frost";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
@@ -118,18 +118,22 @@ function iconPool(): IconArtwork[] {
 function WeekDoor({ art, label, note, onClick }: {
   art: IconArtwork; label: string; note: string | null; onClick: () => void;
 }) {
+  /**
+   * FULL LENGTH (owner, 2026-09-12: "what I wanted you to make full width was
+   * not the browsing … the first thing you get shows you the last icon you
+   * looked at and your suggestion — that's what we wanted full length").
+   * An icon is chosen by LOOKING at it, so each door is the whole artwork
+   * across the card — contained, never cropped, capped so a tall panel
+   * still leaves the next door in reach — with the words beneath it. The
+   * catalogue's rows (IconRow) keep their own shape.
+   */
   return (
     <button
       type="button"
       onClick={onClick}
       style={{
         userSelect: "none", WebkitTapHighlightColor: "transparent",
-        /* FULL LENGTH, VERTICALLY CENTRED (owner). The image used to be a 64px
-           square floating inside 12px of padding, so the card read as a list
-           row with a thumbnail. It now runs the FULL HEIGHT of the card with no
-           padding on its side — the artwork is the point of this door — and the
-           text block is centred against it rather than sitting top-aligned. */
-        width: "100%", display: "flex", alignItems: "stretch", gap: 0, textAlign: "left",
+        width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", gap: 0, textAlign: "left",
         borderRadius: 16, padding: 0, overflow: "hidden",
         background: "rgba(240,237,230,0.06)",
         backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
@@ -141,16 +145,9 @@ function WeekDoor({ art, label, note, onClick }: {
         alt=""
         aria-hidden
         decoding="async"
-        /* An EXPLICIT height, not just alignSelf:stretch. With only a width
-           set, the img keeps its intrinsic aspect ratio and — since nothing
-           else constrains the row — a PORTRAIT icon drove the card to about
-           300pt tall, which is what "full length" turned into on the first
-           attempt. A fixed height with objectFit:cover gives every door the
-           same shape whatever the artwork's proportions, and the text beside
-           it stays centred against it. */
-        style={{ width: 96, height: 112, objectFit: "cover", flexShrink: 0 }}
+        style={{ width: "100%", height: "auto", maxHeight: "58vh", objectFit: "contain", display: "block", background: "rgba(0,0,0,0.25)" }}
       />
-      <span style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 3, minWidth: 0, padding: "14px 16px" }}>
+      <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0, padding: "12px 16px 14px" }}>
         <span style={{ color: "rgba(143,175,150,0.9)", fontFamily: FONT, fontSize: 10.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>
           {label}
         </span>
@@ -228,6 +225,13 @@ export default function IconsPage() {
   /** Read once at mount, like Visio's — this session's own completion joins
    *  it in state so the closing cards update without a re-read. */
   const [history, setHistory] = useState(() => getIconHistory());
+  // The account's copy, if newer than this phone's (a sign-out wiped it, or
+  // another device sat with an icon since) — see iconHistory.
+  useEffect(() => {
+    let alive = true;
+    void pullIconStateFromAccount().then((changed) => { if (alive && changed) setHistory(getIconHistory()); });
+    return () => { alive = false; };
+  }, []);
   /** Bumped when the admin overrides change, re-deriving the pool below. */
   const [ovVersion, setOvVersion] = useState(0);
   useEffect(() => {
