@@ -1123,9 +1123,30 @@ async function buildCourses(shows: Show[]): Promise<CacCourse[]> {
   return courses;
 }
 
+/**
+ * WHICH CAC SHOWS ARE OFFERED AS COURSES — a shorter list than the publisher's.
+ *
+ * Owner, 2026-09-11: "what if we added Turning to the Mystics and The Cosmic We
+ * into the admin only courses … those i think are most relevant … hide the
+ * other courses." A course is something you sit down and walk end to end, and
+ * only these two read that way; the rest of CAC's catalogue is a podcast you
+ * dip into. The other four shows are NOT removed from anything else — Discover
+ * still lists them, search still finds them, /podcast/:show still plays them,
+ * and /podcasts/show/:slug/courses still serves any show by slug for a direct
+ * link. They are simply not presented as courses to begin.
+ *
+ * This one list narrows every surface at once (the Courses menu rows, the CAC
+ * grid, the CAC home, the home's Learn section) because all four read this
+ * endpoint. Widen it here and they all widen together.
+ */
+const CAC_COURSE_SHOW_SLUGS: readonly string[] = [
+  "cac-turning-to-the-mystics",
+  "cac-cosmic-we",
+];
+
 router.get("/podcasts/cac/courses", async (_req: Request, res: Response): Promise<void> => {
   res.setHeader("Cache-Control", "public, max-age=600");
-  const shows = (PUBLISHERS.cac?.showSlugs ?? [])
+  const shows = CAC_COURSE_SHOW_SLUGS
     .map((slug) => SHOWS[slug])
     .filter((show): show is Show => !!show);
   res.json({ courses: await buildCourses(shows) });
