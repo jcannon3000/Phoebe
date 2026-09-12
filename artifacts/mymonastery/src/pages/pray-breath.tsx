@@ -9,6 +9,7 @@ import { CobreatheBreath, DEFAULT_TOTAL_BREATHS, CYCLE_MS } from "@/components/C
 import { useAuth } from "@/hooks/useAuth";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { enqueueSession } from "@/lib/sessionOutbox";
 
 // ── BETA "Pray the breath" ──────────────────────────────────────────────────
 // A Co-Breathe variant where, instead of photos of the earth, the top half of
@@ -116,19 +117,21 @@ export default function PrayBreathPage() {
     sitLoggedRef.current = true;
     const endedAt = new Date();
     const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
-    void apiRequest("POST", "/api/prayer-sessions", {
+    const sit = {
       surface: "contemplation",
       source: "cobreathe",
       durationSeconds: secondsKept,
       startedAt: startedAt.toISOString(),
       endedAt: endedAt.toISOString(),
       isPrivate: false,
-    })
+    };
+    void apiRequest("POST", "/api/prayer-sessions", sit)
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
       })
-      .catch(() => { /* best-effort */ });
+      // Offline: kept for the account until the connection returns.
+      .catch(() => { enqueueSession(sit); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

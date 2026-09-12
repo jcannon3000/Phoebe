@@ -1,8 +1,28 @@
 import { getQueryClient, apiRequest } from "@/lib/queryClient";
+import { enqueueWrite, flushWrites } from "@/lib/writeOutbox";
+import { enqueueSession } from "@/lib/sessionOutbox";
 import { getSideLevel, getSideReflectionExplicit } from "@/lib/officePrefs";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 import { undoOfficeToday, clearOfficeUndoToday } from "@/lib/officeManualLog";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
+
+/**
+ * OFFLINE-SAFE WRITES (owner audit, 2026-09-12: "when things are offline, they
+ * sync to the device, and once they come back online the activity syncs to
+ * the account"). Every read-mark and credited session here was a
+ * fire-and-forget POST with an empty catch: the phone kept the day, the
+ * account never heard. Each now falls back to the outboxes, which drain on
+ * the next "online" / app-active — same as the office's own manual log.
+ */
+function postOrQueue(id: string, url: string, body: Record<string, unknown>): void {
+  void apiRequest("POST", url, body).catch(() => {
+    enqueueWrite(id, "POST", url, body);
+    void flushWrites();
+  });
+}
+function postSessionOrQueue(body: Record<string, unknown>): void {
+  void apiRequest("POST", "/api/prayer-sessions", body).catch(() => { enqueueSession(body); });
+}
 
 // Does this side's rhythm actually prescribe `level`? Psalms and PACT credit a
 // side's OFFICE when they're that side's chosen prayer — but they're also
@@ -229,22 +249,22 @@ function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (
 
 const cacTracker = makeDailyReadTracker(
   "phoebe:cac:last-read-day", "phoebe:cac-read",
-  (ymd) => { void apiRequest("POST", "/api/cac/read", { ymd }).catch(() => { /* best effort */ }); },
+  (ymd) => { postOrQueue(`cac-read:${ymd}`, "/api/cac/read", { ymd }); },
   "reflect-cac",
 );
 const fddTracker = makeDailyReadTracker(
   "phoebe:fdd:last-read-day", "phoebe:fdd-read",
-  (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "fdd", ymd }).catch(() => { /* best effort */ }); },
+  (ymd) => { postOrQueue(`reflect-read:fdd:${ymd}`, "/api/reflections/read", { source: "fdd", ymd }); },
   "reflect-fdd",
 );
 const ssjeTracker = makeDailyReadTracker(
   "phoebe:ssje:last-read-day", "phoebe:ssje-read",
-  (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "ssje", ymd }).catch(() => { /* best effort */ }); },
+  (ymd) => { postOrQueue(`reflect-read:ssje:${ymd}`, "/api/reflections/read", { source: "ssje", ymd }); },
   "reflect-ssje",
 );
 const vtsTracker = makeDailyReadTracker(
   "phoebe:vts:last-read-day", "phoebe:vts-read",
-  (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "vts", ymd }).catch(() => { /* best effort */ }); },
+  (ymd) => { postOrQueue(`reflect-read:vts:${ymd}`, "/api/reflections/read", { source: "vts", ymd }); },
   "reflect-vts",
 );
 /**
@@ -261,12 +281,12 @@ const vtsTracker = makeDailyReadTracker(
  */
 const nouwenTracker = makeDailyReadTracker(
   "phoebe:nouwen:last-read-day", "phoebe:nouwen-read",
-  (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "nouwen", ymd }).catch(() => { /* best effort */ }); },
+  (ymd) => { postOrQueue(`reflect-read:nouwen:${ymd}`, "/api/reflections/read", { source: "nouwen", ymd }); },
   "reflect-nouwen",
 );
 const sojoTracker = makeDailyReadTracker(
   "phoebe:sojo:last-read-day", "phoebe:sojo-read",
-  (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "sojo", ymd }).catch(() => { /* best effort */ }); },
+  (ymd) => { postOrQueue(`reflect-read:sojo:${ymd}`, "/api/reflections/read", { source: "sojo", ymd }); },
   "reflect-sojo",
 );
 /**
@@ -289,7 +309,7 @@ export function unmarkHagiographyToday(): void { hagiographyTracker.unmarkRead()
 
 const gristTracker = makeDailyReadTracker(
   "phoebe:grist:last-read-day", "phoebe:grist-read",
-  (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "grist", ymd }).catch(() => { /* best effort */ }); },
+  (ymd) => { postOrQueue(`reflect-read:grist:${ymd}`, "/api/reflections/read", { source: "grist", ymd }); },
   "reflect-grist",
 );
 
@@ -389,7 +409,7 @@ function syncPsalmsSession(side: "morning" | "evening"): void {
   // Only when Psalms IS this side's prayer — see sideIsSetTo above.
   if (!sideIsSetTo(side, "psalms")) return;
   const now = new Date();
-  void apiRequest("POST", "/api/prayer-sessions", {
+  postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
     durationSeconds: 60,
     // Clears the "actually prayed an office" (>=3 slides) filter the community
@@ -398,7 +418,7 @@ function syncPsalmsSession(side: "morning" | "evening"): void {
     completed: true,
     startedAt: now.toISOString(),
     endedAt: now.toISOString(),
-  }).catch(() => { /* best effort — the local flag already credited it today */ });
+  });
 }
 
 const psalmsTrackerMorning = makeDailyReadTracker("phoebe:psalms:morning:last-read-day", PSALMS_READ_EVENT, () => syncPsalmsSession("morning"), "morning");
@@ -419,14 +439,14 @@ function syncGuidedPrayerSession(side: "morning" | "evening"): void {
   // Only when Simple Guided Prayer IS this side's prayer — see sideIsSetTo.
   if (!sideIsSetTo(side, "guided-prayer")) return;
   const now = new Date();
-  void apiRequest("POST", "/api/prayer-sessions", {
+  postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
     durationSeconds: 60,
     slidesCompleted: 99,
     completed: true,
     startedAt: now.toISOString(),
     endedAt: now.toISOString(),
-  }).catch(() => { /* best effort — the local flag already credited it today */ });
+  });
 }
 const guidedPrayerTrackerMorning = makeDailyReadTracker("phoebe:guided-prayer:morning:last-read-day", GUIDED_PRAYER_READ_EVENT, () => syncGuidedPrayerSession("morning"), "morning");
 const guidedPrayerTrackerEvening = makeDailyReadTracker("phoebe:guided-prayer:evening:last-read-day", GUIDED_PRAYER_READ_EVENT, () => syncGuidedPrayerSession("evening"), "evening");
@@ -442,14 +462,14 @@ function syncCustomPrayerSession(side: "morning" | "evening"): void {
   // Only when this side's own practice IS this side's prayer — see sideIsSetTo.
   if (!sideIsSetTo(side, "custom")) return;
   const now = new Date();
-  void apiRequest("POST", "/api/prayer-sessions", {
+  postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
     durationSeconds: 60,
     slidesCompleted: 99,
     completed: true,
     startedAt: now.toISOString(),
     endedAt: now.toISOString(),
-  }).catch(() => { /* best effort — the local flag already credited it today */ });
+  });
 }
 const customPrayerTrackerMorning = makeDailyReadTracker("phoebe:custom-prayer:morning:last-read-day", CUSTOM_PRAYER_READ_EVENT, () => syncCustomPrayerSession("morning"), "morning");
 const customPrayerTrackerEvening = makeDailyReadTracker("phoebe:custom-prayer:evening:last-read-day", CUSTOM_PRAYER_READ_EVENT, () => syncCustomPrayerSession("evening"), "evening");
@@ -502,14 +522,14 @@ function syncFddSession(side: "morning" | "evening"): void {
   // Only when Forward Day by Day IS this side's prayer — see sideIsSetTo above.
   if (!sideIsSetTo(side, "fdd")) return;
   const now = new Date();
-  void apiRequest("POST", "/api/prayer-sessions", {
+  postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
     durationSeconds: 60,
     slidesCompleted: 99,
     completed: true,
     startedAt: now.toISOString(),
     endedAt: now.toISOString(),
-  }).catch(() => { /* best effort — the local flag already credited it today */ });
+  });
 }
 const fddTrackerMorning = makeDailyReadTracker("phoebe:fdd:morning:last-read-day", FDD_PRAYED_EVENT, () => syncFddSession("morning"), "morning");
 const fddTrackerEvening = makeDailyReadTracker("phoebe:fdd:evening:last-read-day", FDD_PRAYED_EVENT, () => syncFddSession("evening"), "evening");
@@ -542,11 +562,11 @@ export function markFddPrayed(side: "morning" | "evening" = "morning"): void { f
 function syncCacSession(side: "morning" | "evening"): void {
   if (!sideIsSetTo(side, "fdd")) return;
   const now = new Date();
-  void apiRequest("POST", "/api/prayer-sessions", {
+  postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
     durationSeconds: 60, slidesCompleted: 99, completed: true,
     startedAt: now.toISOString(), endedAt: now.toISOString(),
-  }).catch(() => { /* best effort — the local flag already credited it today */ });
+  });
 }
 export const CAC_PRAYED_EVENT = "phoebe:cac-prayed";
 const cacTrackerMorning = makeDailyReadTracker("phoebe:cac:morning:last-read-day", CAC_PRAYED_EVENT, () => syncCacSession("morning"), "morning");
@@ -558,11 +578,11 @@ export function markCacPrayed(side: "morning" | "evening" = "morning"): void { c
 function syncSsjeSession(side: "morning" | "evening"): void {
   if (!sideIsSetTo(side, "fdd")) return;
   const now = new Date();
-  void apiRequest("POST", "/api/prayer-sessions", {
+  postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
     durationSeconds: 60, slidesCompleted: 99, completed: true,
     startedAt: now.toISOString(), endedAt: now.toISOString(),
-  }).catch(() => { /* best effort */ });
+  });
 }
 export const SSJE_PRAYED_EVENT = "phoebe:ssje-prayed";
 const ssjeTrackerMorning = makeDailyReadTracker("phoebe:ssje:morning:last-read-day", SSJE_PRAYED_EVENT, () => syncSsjeSession("morning"), "morning");
@@ -574,11 +594,11 @@ export function markSsjePrayed(side: "morning" | "evening" = "morning"): void { 
 function syncVtsSession(side: "morning" | "evening"): void {
   if (!sideIsSetTo(side, "fdd")) return;
   const now = new Date();
-  void apiRequest("POST", "/api/prayer-sessions", {
+  postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
     durationSeconds: 60, slidesCompleted: 99, completed: true,
     startedAt: now.toISOString(), endedAt: now.toISOString(),
-  }).catch(() => { /* best effort */ });
+  });
 }
 export const VTS_PRAYED_EVENT = "phoebe:vts-prayed";
 const vtsTrackerMorning = makeDailyReadTracker("phoebe:vts:morning:last-read-day", VTS_PRAYED_EVENT, () => syncVtsSession("morning"), "morning");
@@ -681,14 +701,14 @@ function syncReadingsSession(side: "morning" | "evening"): void {
   // Only when Daily Scripture Readings IS this side's prayer — see sideIsSetTo above.
   if (!sideIsSetTo(side, "readings")) return;
   const now = new Date();
-  void apiRequest("POST", "/api/prayer-sessions", {
+  postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
     durationSeconds: 60,
     slidesCompleted: 99,
     completed: true,
     startedAt: now.toISOString(),
     endedAt: now.toISOString(),
-  }).catch(() => { /* best effort — the local flag already credited it today */ });
+  });
 }
 const readingsTrackerMorning = makeDailyReadTracker("phoebe:readings:morning:last-read-day", READINGS_PRAYED_EVENT, () => syncReadingsSession("morning"), "morning");
 const readingsTrackerEvening = makeDailyReadTracker("phoebe:readings:evening:last-read-day", READINGS_PRAYED_EVENT, () => syncReadingsSession("evening"), "evening");

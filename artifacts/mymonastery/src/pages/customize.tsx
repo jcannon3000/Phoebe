@@ -22,6 +22,7 @@ import { getEffectiveRulePresets } from "@/lib/rulePresetsStore";
 import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot, isRelationalAnchor, activeRelationalPractices, setRelationalPractices, RELATIONAL_PRACTICES, type RelationalPracticeId } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
+import { enqueueWrite } from "@/lib/writeOutbox";
 
 // ── /customize — the BASIC customizer for logged-out / device-local sessions ─
 //
@@ -697,7 +698,9 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
     else {
       qc.setQueryData(["/api/me/office-prefs"], (old: Record<string, unknown> | undefined) =>
         ({ ...(old ?? {}), contemplationGoalMinutes: min }));
-      void apiRequest("PUT", "/api/me/office-prefs", { contemplationGoalMinutes: min }).catch(() => { /* best-effort */ });
+      void apiRequest("PUT", "/api/me/office-prefs", { contemplationGoalMinutes: min })
+        // Offline: last write wins in the outbox; the account catches up.
+        .catch(() => { enqueueWrite("office-prefs:contemplationGoalMinutes", "PUT", "/api/me/office-prefs", { contemplationGoalMinutes: min }); });
     }
     if (opts?.splitAcrossSides) {
       const half = Math.round(min / 2);

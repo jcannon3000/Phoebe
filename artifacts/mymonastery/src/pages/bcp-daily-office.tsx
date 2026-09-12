@@ -2880,10 +2880,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           stampCompleted();
         } catch { /* private mode — non-fatal */ }
         if (!isSecondPracticeRun) clearOfficeReminderNotifications();
-        void apiRequest("POST", "/api/prayer-sessions", {
+        const watched = {
           surface: "national-cathedral", durationSeconds, completed: true,
           startedAt: new Date(openedAt).toISOString(), endedAt: endedAt.toISOString(),
-        }).catch(() => { /* best-effort — the local flag already credited it */ });
+        };
+        // Offline: the local flag already credited it; the account hears when
+        // the connection returns (owner audit, 2026-09-12).
+        void apiRequest("POST", "/api/prayer-sessions", watched).catch(() => { enqueueSession(watched); });
       };
       window.addEventListener("phoebe:browserfinished", onWatchDone);
       openExternal("https://www.youtube.com/@WashingtonNationalCathedral/live");

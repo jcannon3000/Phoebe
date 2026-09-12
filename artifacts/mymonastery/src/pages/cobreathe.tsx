@@ -762,12 +762,15 @@ export default function CobreathePage() {
     if (at && breaths >= 1 && !isDeviceLocalGuest(userRef.current)) {
       const target = at.id > 0 ? String(at.id) : encodeURIComponent(at.slug ?? "");
       if (target) {
-        void apiRequest("POST", `/api/breath/places/${target}/breaths`, { day, breaths })
+        const tallyUrl = `/api/breath/places/${target}/breaths`;
+        void apiRequest("POST", tallyUrl, { day, breaths })
           .then(() => {
             queryClient.invalidateQueries({ queryKey: ["/api/breath/places/stats"] });
             queryClient.invalidateQueries({ queryKey: ["/api/breath/places"] });
           })
-          .catch(() => { /* best-effort — the sit itself is already kept */ });
+          // Offline: the set waits in the outbox. A UNIQUE id per set — the
+          // server SUMS breaths, so two sets must not collapse into one.
+          .catch(() => { enqueueWrite(`breath-place:${target}:${day}:${Date.now()}`, "POST", tallyUrl, { day, breaths }); });
       }
     }
     // Heart to Heart is OFF — cobreathing with a fellow no longer starts a 1:1
