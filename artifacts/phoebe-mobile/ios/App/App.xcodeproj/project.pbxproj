@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		1906F0DF4B109027829D0BEC /* PhoebeWidgetPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF59DA4399194D23B4DC93F2 /* PhoebeWidgetPlugin.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		4B50372FC8AA42F99EB7684E /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7221AA64D384C2295B89E3F /* SceneDelegate.swift */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
@@ -31,7 +32,6 @@
 		PB0EBE7515E0001000000001 /* PhoebeRising.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000002 /* PhoebeRising.caf */; };
 		PB0EBE7515E0001000000004 /* PhoebeRising-low.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000003 /* PhoebeRising-low.caf */; };
 		PB0EBE7515E0001000000006 /* PhoebeRising-high.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000005 /* PhoebeRising-high.caf */; };
-		4B50372FC8AA42F99EB7684E /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7221AA64D384C2295B89E3F /* SceneDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,6 +82,7 @@
 		B1B1E0010000000000000007 /* PhoebeAudioPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeAudioPlugin.swift; sourceTree = "<group>"; };
 		B1B1E001000000000000000B /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		B2B2E0020000000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B7221AA64D384C2295B89E3F /* SceneDelegate.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		CD6994986DD0CAC2938F8675 /* PhoebeWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = PhoebeWidget.entitlements; sourceTree = "<group>"; };
 		FA11FEEDCA55E001DEADBEEF /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
 		FA11FEEDCA55E002DEADBEEF /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
@@ -90,7 +91,6 @@
 		PB0EBE7515E0001000000002 /* PhoebeRising.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = PhoebeRising.caf; sourceTree = "<group>"; };
 		PB0EBE7515E0001000000003 /* PhoebeRising-low.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PhoebeRising-low.caf"; sourceTree = "<group>"; };
 		PB0EBE7515E0001000000005 /* PhoebeRising-high.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PhoebeRising-high.caf"; sourceTree = "<group>"; };
-		B7221AA64D384C2295B89E3F /* SceneDelegate.swift */ = {isa = PBXFileReference; name = "SceneDelegate.swift"; path = "SceneDelegate.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -519,7 +519,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 10.2;
+				MARKETING_VERSION = 10.3;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = app.withphoebe.mobile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -542,7 +542,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 10.2;
+				MARKETING_VERSION = 10.3;
 				PRODUCT_BUNDLE_IDENTIFIER = app.withphoebe.mobile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";

@@ -71,7 +71,7 @@ const chooseTodaysPractice = (side: OfficeSide, level: OfficeLevel) => {
   if (level === base) clearSideDaySwap(side);
   else setSideDaySwap(side, level);
 };
-import { getOfficeCacheEntry, putOfficeCacheEntry } from "@/lib/officeOfflineCache";
+import { getOfficeCacheEntry, getOfficeCacheEntryForDay, putOfficeCacheEntry } from "@/lib/officeOfflineCache";
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
@@ -1629,7 +1629,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
          * background for tomorrow — without swapping the slides under someone
          * mid-prayer.
          */
-        const savedFirst = await getOfficeCacheEntry(cacheKey);
+        /**
+         * THE EXACT KEY, THEN ANY DECK SAVED FOR THIS DAY (owner, 2026-09-12,
+         * Airplane Mode: "THAT CONTENT SHOULD BE PRELOADED SO IT SHOULD LOAD
+         * INSTANTLY"). The key carries the confession flag, the chosen readings
+         * and the Sunday track; change any of them after the walk saved the day
+         * and a deck that IS on the phone reads as a miss. The near-match is the
+         * same office assembled under a slightly different setting — the right
+         * answer to "I have this saved", and the only one that keeps the promise
+         * offline.
+         */
+        const savedFirst = (await getOfficeCacheEntry(cacheKey))
+          ?? (await getOfficeCacheEntryForDay(resolvedMode, requestDate));
         if (savedFirst) {
           data = savedFirst;
           if (isOnline()) {
@@ -1645,6 +1656,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               } catch { /* the saved deck is already on screen */ }
             })();
           }
+        } else if (!isOnline()) {
+          /**
+           * OFFLINE AND NOT SAVED: SAY SO NOW, DON'T SPEND THE TIMEOUT.
+           *
+           * This branch used to fetch regardless. In Airplane Mode the bridge's
+           * fetch does not reject — it hangs on URLSession — so the deck sat on
+           * a bare screen for the FULL six-second bound before the catch below
+           * could read a cache that had already missed. Six of the seven and a
+           * half seconds the owner filmed were this, spent asking a radio that
+           * is switched off. There is nothing a network can add here.
+           */
+          throw new Error("This office isn't saved on the phone yet");
         } else {
           try {
             const res = await withTimeout(

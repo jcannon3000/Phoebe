@@ -387,6 +387,24 @@ const RoutineHistoryPage = lazy(() => import("./pages/routine-history"));
 const SpotifyCallbackPage = lazy(() => import("./pages/spotify-callback"));
 const BcpIntercessionsPage = lazy(() => import("./pages/bcp-intercessions"));
 const BcpDailyOfficePage = lazy(() => import("./pages/bcp-daily-office"));
+/**
+ * THE OFFICE DECK'S CHUNK IS WARMED WHILE NOBODY IS WAITING.
+ *
+ * It is the biggest route in the app and the one people open every day, and
+ * its code was only fetched and parsed on the tap — a gap between the home
+ * unmounting and the deck's veil mounting, with nothing but the app's own
+ * ground on screen. Owner, 2026-09-12, filming Airplane Mode: "THERE SHOULD BE
+ * NO GREEN SCREEN LIKE THAT." Warming it at idle means the route swap is
+ * already in memory when the tap lands, so the veil is the next frame.
+ * Best-effort and fire-and-forget: a failure here just restores the old
+ * behaviour of loading it on demand.
+ */
+function warmOfficeChunk(): void {
+  const run = () => { void import("./pages/bcp-daily-office").catch(() => { /* loaded on demand instead */ }); };
+  const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+  if (ric) ric(run, { timeout: 4000 });
+  else setTimeout(run, 1200);
+}
 const BcpDailyDevotionPage = lazy(() => import("./pages/bcp-daily-devotion"));
 const CreationDevotionPage = lazy(() => import("./pages/creation-devotion"));
 const CreationPrayersPage = lazy(() => import("./pages/creation-prayers"));
@@ -1543,6 +1561,9 @@ function AndroidBackButton() {
 
 
 function App() {
+  // Warm the office deck's chunk once, at idle, so opening Morning Prayer is a
+  // veil on the next frame rather than a wait on a parse. See warmOfficeChunk.
+  useEffect(() => { warmOfficeChunk(); }, []);
   return (
     <PersistQueryClientProvider
       client={queryClient}

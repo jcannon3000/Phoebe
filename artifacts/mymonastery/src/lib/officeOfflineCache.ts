@@ -122,6 +122,44 @@ export function getOfficeCacheEntry(key: OfficeCacheKey): Promise<unknown | null
   }).catch(() => null);
 }
 
+/**
+ * ANY saved deck for this mode and this day — the fallback when the exact key
+ * misses.
+ *
+ * Owner, 2026-09-12, from an Airplane Mode recording: seven and a half seconds
+ * of bare ground before Morning Prayer appeared. "THERE IS NO REASON WHY WHEN
+ * OFFLINE IT TAKES SO LONG … THAT CONTENT SHOULD BE PRELOADED SO IT SHOULD LOAD
+ * INSTANTLY." He is right: the deck was on the phone. The exact key carries the
+ * confession flag, the chosen readings, the Sunday track — any one of which can
+ * have moved since the night the walk saved the day, and a single changed
+ * character turns a saved office into a cache miss and a network wait.
+ *
+ * So an exact miss asks a second question before giving up: is there ANY deck
+ * saved for this mode on this date? Ids are "<mode>:<date>:<confession>[…]", so
+ * a bounded range over that prefix answers it in one read. A near-match deck is
+ * the same office with (say) the confession the reader used last week — far
+ * closer to right than a blank screen, and incomparably closer than six seconds
+ * of nothing.
+ */
+export function getOfficeCacheEntryForDay(mode: LiturgyMode, date: string): Promise<unknown | null> {
+  return getDB().then((db) => {
+    if (!db) return null;
+    return new Promise<unknown | null>((resolve) => {
+      try {
+        const range = IDBKeyRange.bound(`${mode}:${date}:`, `${mode}:${date}:\uffff`);
+        const req = db.transaction(STORE, "readonly").objectStore(STORE).get(range);
+        req.onsuccess = () => {
+          const e = req.result as Entry | undefined;
+          if (!e) { resolve(null); return; }
+          if (Date.now() - e.updatedAt > MAX_AGE_MS) { resolve(null); return; }
+          resolve(e.data);
+        };
+        req.onerror = () => resolve(null);
+      } catch { resolve(null); }
+    });
+  }).catch(() => null);
+}
+
 /** Write one office day's already-assembled slides into the cache. Returns whether the day is actually stored — a QuotaExceededError ABORTS
  *  the transaction, and reporting that as success is how a phone ends up
  *  stamped "saved" with nothing on it. */
