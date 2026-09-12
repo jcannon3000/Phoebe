@@ -52,7 +52,8 @@ const REFLECTION_CHOICES: { value: ReflectionSource; label: string; sub: string 
   { value: "fdd", label: "Forward Day by Day", sub: "The classic daily meditation" },
   { value: "cac", label: "Richard Rohr — Daily Meditation", sub: "Center for Action and Contemplation" },
   { value: "ssje", label: "Brother, Give Us a Word", sub: "A daily word from the SSJE monks" },
-  { value: "sojo", label: "Sojourners Daily Devotion", sub: "Verse, voice and prayer of the day" },
+  // Sojourners is not offered while Verse and Voice is silent (2026-09-12);
+  // see UNOFFERED_REFLECTION_SOURCES in lib/officePrefs.
   { value: "nouwen", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society" },
   // VTS BELONGS HERE TOO. Without it this editor did something worse than
   // omit an option: the label lookup below falls back to "Forward Day by Day",

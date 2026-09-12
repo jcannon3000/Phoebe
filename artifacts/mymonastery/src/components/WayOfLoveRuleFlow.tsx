@@ -743,9 +743,10 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   // Read-only sources (see ReflectionSource): they sit in the rule and open in
   // the reader like the others, but opening one is not scored.
   { id: "nouwen", label: "😊 Nouwen Daily Devotion", sub: "Henri Nouwen Society" },
-  { id: "sojo", label: "🕊️ Sojourners Daily Devotion", sub: "Verse, voice and prayer of the day" },
   // Grist left the list 2026-09-10 (owner: "take out the grist newsletter");
-  // a device that still has it keeps its card until it changes source.
+  // Sojourners 2026-09-12 (Verse and Voice silent since August — back when
+  // they post again; see UNOFFERED_REFLECTION_SOURCES). A device that still
+  // has one keeps its card until it changes source.
   // VTS sits last (owner: "just make sure it is at the bottom").
   { id: "vts", label: "🦩 VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
 ];

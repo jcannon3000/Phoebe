@@ -80,6 +80,15 @@ const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "nouwen", 
 // (a device that chose it keeps its card and its read-state) but is no longer
 // OFFERED anywhere; see menu-newsletters DAILY and the customizers.
 export const TRACKED_REFLECTION_SOURCES = ["cac", "fdd", "ssje", "nouwen", "sojo", "grist", "vts"] as const;
+/**
+ * TRACKED BUT NOT OFFERED. A device that already chose one keeps its card and
+ * its read-state; the newsletters hub and both customizers just stop listing
+ * it. Grist since 2026-09-10 (owner: "take out the grist newsletter").
+ * Sojourners since 2026-09-12: Verse and Voice has not posted since August
+ * (owner: "we want Sojourners hid until they do another verse and voice") —
+ * take it out of this set when they resume.
+ */
+export const UNOFFERED_REFLECTION_SOURCES: ReadonlySet<string> = new Set(["grist", "sojo"]);
 export function isTrackedReflectionSource(s: ReflectionSource): boolean {
   return (TRACKED_REFLECTION_SOURCES as readonly string[]).includes(s);
 }

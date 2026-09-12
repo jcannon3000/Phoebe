@@ -12,7 +12,7 @@ import { ToggleRow } from "@/components/ToggleRow";
 import { useQueryClient } from "@tanstack/react-query";
 import { addHomeCard, applyCachedHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, isHomeCardOn, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 import { PracticeCard, PUBLICATION_NAME, REFLECTION_EMOJI, rhythmGradientRgb } from "@/components/DailyProgressBody";
-import { TRACKED_REFLECTION_SOURCES } from "@/lib/officePrefs";
+import { TRACKED_REFLECTION_SOURCES, UNOFFERED_REFLECTION_SOURCES } from "@/lib/officePrefs";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
@@ -97,7 +97,7 @@ const PUBLISHER: Record<DailySource, string> = {
   grist: "The day's climate reporting",
   vts: "Virginia Theological Seminary · weekdays",
 };
-const DAILY = TRACKED_REFLECTION_SOURCES.filter((s) => s !== "grist").map((source) => ({
+const DAILY = TRACKED_REFLECTION_SOURCES.filter((s) => !UNOFFERED_REFLECTION_SOURCES.has(s)).map((source) => ({
   source, emoji: REFLECTION_EMOJI[source], title: PUBLICATION_NAME[source], publisher: PUBLISHER[source],
 }));
 const MARK_READ: Record<DailySource, (dwellMs?: number) => void> = {
