@@ -116,6 +116,20 @@ export function isOnline(): boolean {
   if (debugOfflineForced()) return false;
   return isReallyOnline();
 }
+/**
+ * THE OS'S OWN WORD, WITHOUT THE FAILURE VERDICT — for actions that are cheap
+ * to try and report their own outcome, like opening the in-app reader on a
+ * page. isOnline() also says "offline" for 20 s after any request timed out,
+ * and a signed-out phone has no saved page to fall back on in that window —
+ * so a slow feed fetch was enough to keep the Visio passage from opening at
+ * all (owner, 2026-09-12: "the scripture didn't load in the Visio Divina when
+ * logged out"). The reader shows its own error page if the connection really
+ * is down; refuse only when the OS says so (or the debug switch is on).
+ */
+export function osSaysOnline(): boolean {
+  if (debugOfflineForced()) return false;
+  return !(typeof navigator !== "undefined" && navigator.onLine === false);
+}
 
 /** The OS's own word — airplane mode, Wi-Fi off. (A captive portal or a
  *  dead server still reads "online"; NetworkBanner handles that separately.) */

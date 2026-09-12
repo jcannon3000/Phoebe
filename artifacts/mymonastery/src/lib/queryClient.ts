@@ -51,6 +51,8 @@ export async function apiRequest<T = unknown>(
     : null;
 
   let res: Response;
+  // Whether this GET ran on the short "already offline" budget — see the catch.
+  let shortBudget = false;
   try {
     /**
      * THE TIMEOUT CANNOT BE AN ABORT ALONE ON THE PHONE.
@@ -83,6 +85,7 @@ export async function apiRequest<T = unknown>(
     // a request would have gone through), so a working connection still gets
     // a couple of seconds to answer.
     const budget = isOnline() ? GET_TIMEOUT_MS : OFFLINE_GET_TIMEOUT_MS;
+    shortBudget = budget === OFFLINE_GET_TIMEOUT_MS;
     res = isGet
       ? await Promise.race([
           req,
@@ -98,8 +101,17 @@ export async function apiRequest<T = unknown>(
      * "online" in Airplane Mode on the phone, so the app's own experience is
      * what lib/offline believes: this marks the recent past as offline, and
      * the next success clears it (see noteNetworkFailure).
+     *
+     * EXCEPT a timeout under the SHORT budget. Once the verdict is "offline"
+     * every GET gets 2.5 s, so on a slow-but-live connection each one timed
+     * out and renewed the verdict — a trap the app could not leave, and on a
+     * signed-out phone (nothing saved to fall back on) it read as "the
+     * scripture didn't load" and a home full of "Not available". A short
+     * timeout is the verdict's own consequence, not new evidence; only a real
+     * rejection or a full-budget timeout may extend it.
      */
-    noteNetworkFailure();
+    const timedOut = err instanceof Error && err.message.startsWith("Timed out:");
+    if (!(timedOut && shortBudget)) noteNetworkFailure();
     throw err;
   } finally {
     if (timeoutId !== null) clearTimeout(timeoutId);

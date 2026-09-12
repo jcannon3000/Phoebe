@@ -47,7 +47,7 @@ type PhoebeNative = {
  * beat. Owner: "for the newsletters default to a white top bar."
  */
 import { getSavedPage } from "@/lib/pageCache";
-import { isOnline } from "@/lib/offline";
+import { isOnline, osSaysOnline } from "@/lib/offline";
 
 type OpenOpts = {
   /**
@@ -385,6 +385,10 @@ export async function openReadingPage(
   if (!hasNativeBrowser()) return openOfficeReading(url, ctx);
   const saved = await getSavedPage(url);
   if (saved?.html) return openOfficeReading(url, { ...ctx, savedHtml: saved.html });
-  if (!isOnline()) return false;
+  // Not isOnline(): that verdict stays "offline" for 20 s after any request
+  // timed out, and with nothing saved (a signed-out phone) it kept the Visio
+  // passage from opening at all. The reader reports its own failure; only the
+  // OS's word (Airplane Mode, Wi-Fi off) refuses here.
+  if (!osSaysOnline()) return false;
   return openOfficeReading(url, ctx);
 }
