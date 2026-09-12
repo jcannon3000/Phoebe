@@ -349,6 +349,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          on FDD; the date, title and meditation on Nouwen. */
       var isNouwen = (h === 'henrinouwen.org' || h.slice(-16) === '.henrinouwen.org');
       var isFdd = (h === 'forwardmovement.org' || h.slice(-20) === '.forwardmovement.org');
+      /* THE CALENDAR PAGE (a saint's collect and life) is the same host as
+         Day by Day and shares its div.pray-container — so rules written for
+         the saint's page landed on Day by Day too, and its 20px gutter
+         stacked with article.fdd's own (owner, 2026-09-12: "the forward day
+         by day margins got condensed"). The saint rules are scoped to this
+         class, set here at document start, before the stylesheet matters. */
+      var isSaint = isFdd && /\\/calendar\\//.test(location.pathname || '');
+      if (isSaint && document.documentElement) { document.documentElement.className += ' phoebe-saint'; }
       /* Sojourners' Verse and Voice — verse, voice and prayer of the day. */
       var isSojo = (h === 'sojo.net' || h.slice(-9) === '.sojo.net');
       /* Substack — any *.substack.com publication (owner, 2026-09-04: "a
@@ -724,16 +732,19 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            headline (their h1 IS the title here, not a date), the collect keeps
            a serif in cream — a prayer, set the way the app sets prayers — and
            the life takes the Day by Day body measure. */
-        '.pray-container,.pray-container *{background-color:transparent!important;text-align:left!important;}',
-        '.pray-container{padding:0 20px!important;}',
-        '.pray-container h1{font-size:29px!important;line-height:1.18!important;font-weight:700!important;',
+        /* SCOPED to html.phoebe-saint (set at document start for /calendar/
+           pages): Day by Day has the same div.pray-container, and unscoped
+           these stacked a second 20px gutter on it. */
+        'html.phoebe-saint .pray-container,html.phoebe-saint .pray-container *{background-color:transparent!important;text-align:left!important;}',
+        'html.phoebe-saint .pray-container{padding:0 20px!important;}',
+        'html.phoebe-saint .pray-container h1{font-size:29px!important;line-height:1.18!important;font-weight:700!important;',
         'letter-spacing:0!important;text-transform:none!important;margin:6px 0 16px!important;color:#F0EDE6!important;}',
-        '.pray-container p,.pray-container li,.pray-container .bio{font-size:20px!important;line-height:1.72!important;',
+        'html.phoebe-saint .pray-container p,html.phoebe-saint .pray-container li,html.phoebe-saint .pray-container .bio{font-size:20px!important;line-height:1.72!important;',
         'color:#F0EDE6!important;margin:0 0 1.15em!important;}',
-        '.pray-container ldf-liturgical-document,.pray-container ldf-liturgical-document *{color:#F0EDE6!important;',
+        'html.phoebe-saint .pray-container ldf-liturgical-document,html.phoebe-saint .pray-container ldf-liturgical-document *{color:#F0EDE6!important;',
         'font-family:Georgia,"Times New Roman",serif!important;font-size:21px!important;line-height:1.6!important;}',
-        '.pray-container hr{border:0!important;border-top:1px solid rgba(200,212,192,0.18)!important;margin:18px 0!important;}',
-        '.pray-container em.copyright{display:block!important;font-style:normal!important;font-size:14px!important;',
+        'html.phoebe-saint .pray-container hr{border:0!important;border-top:1px solid rgba(200,212,192,0.18)!important;margin:18px 0!important;}',
+        'html.phoebe-saint .pray-container em.copyright{display:block!important;font-style:normal!important;font-size:14px!important;',
         'line-height:1.6!important;color:rgba(200,212,192,0.72)!important;}',
         /* SCOPED to the block. `[class*="newsletter"]` is an unanchored
            substring match on any class attribute — the same hazard as the
@@ -1682,7 +1693,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 let standardItem = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
                 standardItem.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
                 self.standardItem = standardItem
-                navigationItem.rightBarButtonItems = [nextItem, standardItem]
+                // …and the aA. It was built only by refreshReaderChrome, which
+                // skips pages whose Standard button this bar already made — so
+                // the office chrome (a Visio reading) never had it (owner,
+                // 2026-09-12: "the new text adjusts on readers don't work").
+                navigationItem.rightBarButtonItems = [nextItem, standardItem, makeDisplayItem()]
             }
         } else if isArticle {
             // No Options, no Reader button — owner reverted both. Every
@@ -1722,7 +1737,8 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 let standardItem = UIBarButtonItem(title: readerViewOn ? "Standard" : "Reader", style: .plain, target: self, action: #selector(toggleReaderView))
                 standardItem.accessibilityLabel = "Switch between Phoebe's reader view and the standard page"
                 self.standardItem = standardItem
-                navigationItem.rightBarButtonItems = (previousItem.map { [$0] } ?? []) + [standardItem]
+                // The aA beside Standard here too — see the office chrome above.
+                navigationItem.rightBarButtonItems = (previousItem.map { [$0] } ?? []) + [standardItem, makeDisplayItem()]
             } else {
                 navigationItem.rightBarButtonItem = previousItem
             }
@@ -2529,12 +2545,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
              * cannot, changing the type would do nothing, and a control that
              * does nothing is worse than no control.
              */
-            let display = UIBarButtonItem(
-                image: UIImage(systemName: "textformat.size"),
-                menu: readerDisplayMenu(),
-            )
-            display.accessibilityLabel = "Text size and typeface"
-            displayItem = display
+            let display = makeDisplayItem()
             // TOP RIGHT, just inside whatever already holds the corner
             // (Previous on newsletter pages). Right-hand items render
             // right-to-left.
@@ -2764,7 +2775,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         ("arial", "Arial", "Arial, Helvetica, sans-serif"),
     ]
     /** The size readerJS sets; every scale is a multiple of it. */
-    private static let readerBasePt: Double = 19
 
     private var readerScale: Double {
         get {
@@ -2791,17 +2801,72 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      * their size — they are furniture, not the passage — and verse numbers are
      * sized in `em`, so they follow the body down on their own.
      */
+    /**
+     * EVERY READER THE BUTTON APPEARS ON, NOT JUST OREMUS (owner, 2026-09-12:
+     * "the new text adjusts on readers don't work — they don't change the
+     * reader's formatting"). The override only ever named `.bibletext`, so on
+     * Forward Day by Day, a saint's page and VerseVoice the menu changed
+     * nothing. Each reader's reading-text rule from readerJS is mirrored here
+     * with its OWN base size, so a scale means the same thing on every page,
+     * and prefixed `html body` so it out-specifies the rule it overrides
+     * whatever order the two stylesheets end up in.
+     *
+     * Default size and face emit NOTHING: readerJS's own design stands (a
+     * saint's prayer set in Georgia, oremus at 19px). Only a choice away from
+     * the default writes a rule.
+     */
+    private static let readerTextRules: [(selectors: [String], basePx: Double)] = [
+        ([".bibletext"], 19),
+        ([".fl-post-feed-content p"], 20),
+        (["article.fdd p", "article.fdd li"], 20),
+        (["html.phoebe-saint .pray-container p", "html.phoebe-saint .pray-container li", "html.phoebe-saint .pray-container .bio"], 20),
+        (["html.phoebe-saint .pray-container ldf-liturgical-document", "html.phoebe-saint .pray-container ldf-liturgical-document *"], 21),
+        (["article.node-versevoice .field-item", "article.node-versevoice .field-item p",
+          "article.node-versevoice p", "article.node-versevoice li", "article.node-versevoice blockquote"], 22),
+    ]
+    private static let readerFamilySelectors: [String] = [
+        ".bible", ".bibletext", ".bibletext *",
+        ".fl-post-feed-content", ".fl-post-feed-content *",
+        "article.fdd p", "article.fdd li",
+        "html.phoebe-saint .pray-container p", "html.phoebe-saint .pray-container li", "html.phoebe-saint .pray-container .bio",
+        "html.phoebe-saint .pray-container ldf-liturgical-document", "html.phoebe-saint .pray-container ldf-liturgical-document *",
+        "article.node-versevoice", "article.node-versevoice *",
+    ]
+    /** The same selector, two ancestors deeper — so it outranks the readerJS
+     *  rule it mirrors whatever order the two stylesheets land in. A selector
+     *  already rooted at html.phoebe-saint gets `body` after the root. */
+    private static func outranking(_ sel: String) -> String {
+        if sel.hasPrefix("html.") {
+            if let sp = sel.firstIndex(of: " ") { return String(sel[..<sp]) + " body" + String(sel[sp...]) }
+            return sel
+        }
+        return "html body \(sel)"
+    }
     func applyReaderDisplay() {
-        let px = Int((Self.readerBasePt * readerScale).rounded())
-        let family = Self.readerFonts.first(where: { $0.id == readerFontId })?.css ?? Self.readerFonts[0].css
-        let css = ".bibletext{font-size:\(px)px!important;}"
-            + ".bible,.bibletext,.bibletext *{font-family:\(family)!important;}"
+        let scale = readerScale
+        let fontId = readerFontId
+        let family = Self.readerFonts.first(where: { $0.id == fontId })?.css ?? Self.readerFonts[0].css
+        var css = ""
+        if scale != 1.0 {
+            for rule in Self.readerTextRules {
+                let px = Int((rule.basePx * scale).rounded())
+                let sel = rule.selectors.map(Self.outranking).joined(separator: ",")
+                css += "\(sel){font-size:\(px)px!important;}"
+            }
+        }
+        if fontId != "grotesk" {
+            let sel = Self.readerFamilySelectors.map(Self.outranking).joined(separator: ",")
+            css += "\(sel){font-family:\(family)!important;}"
+        }
         let js = """
         (function(){
           var id='phoebe-reader-display';
           var el=document.getElementById(id);
-          if(!el){ el=document.createElement('style'); el.id=id; (document.head||document.documentElement).appendChild(el); }
+          var host=document.head||document.documentElement;
+          if(!el){ el=document.createElement('style'); el.id=id; host.appendChild(el); }
           el.textContent=\(Self.jsStringLiteral(css));
+          // Keep it LAST, so a stylesheet a page adds after us can't take the type back.
+          if(el.parentNode && el.parentNode.lastElementChild!==el){ el.parentNode.appendChild(el); }
         })();
         """
         webView?.evaluateJavaScript(js, completionHandler: nil)
@@ -2844,6 +2909,18 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     /** Rebuild so the checkmarks show the new choice next time it opens. */
     private func refreshReaderDisplayMenu() {
         displayItem?.menu = readerDisplayMenu()
+    }
+    /** The aA button — ONE maker for all three chrome builders (office,
+     *  newsletter, refreshReaderChrome), so a page that gets a Standard button
+     *  always gets this beside it. */
+    private func makeDisplayItem() -> UIBarButtonItem {
+        let display = UIBarButtonItem(
+            image: UIImage(systemName: "textformat.size"),
+            menu: readerDisplayMenu(),
+        )
+        display.accessibilityLabel = "Text size and typeface"
+        displayItem = display
+        return display
     }
 
     private func applyReaderState() {
