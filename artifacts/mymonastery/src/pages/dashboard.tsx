@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, isValidElement } from "react";
+import { HeroCardShell } from "@/components/HeroCardShell";
 import { Link, useLocation } from "wouter";
 import { Plus, X, Camera } from "lucide-react";
 import { LEAF_PHOTOS, HOME_LEAF_PHOTOS, WATER_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
@@ -2298,18 +2299,10 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
   if (hero) {
     const rgb = "46,107,64";
     const inner = (
-      <div
+      <HeroCardShell
         role={later ? undefined : "button"}
         tabIndex={later ? undefined : 0}
-        className={`relative flex rounded-3xl overflow-hidden mb-3 ${later ? "opacity-60" : "cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{
-          background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-          // Same sage outline + 3xl radius as the office hero (PrayerOfficeCard)
-          // and the cascade rhythm cards, so this reads as the same family
-          // rather than a teal-framed outlier. The teal identity survives in the
-          // accent bar + CTA, which is where the office hero carries its own.
-          border: "1px solid rgba(200,212,192,0.35)",
-        }}
+        className={`mb-3 ${later ? "opacity-60" : "cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
       >
         <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
         <div className="flex-1 px-4 pt-[20px] pb-[20px]">
@@ -2356,7 +2349,7 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
             </div>
           )}
         </div>
-      </div>
+      </HeroCardShell>
     );
     return later ? <div className="block">{inner}</div> : <Link href={href} className="block">{inner}</Link>;
   }
@@ -2500,15 +2493,10 @@ function ExamenHomeCard({ hero = false }: { hero?: boolean } = {}) {
     const rgb = "46,107,64";
     return (
       <Link href="/examen" className="block">
-        <div
+        <HeroCardShell
           role="button"
           tabIndex={0}
-          className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
-          style={{
-            background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-            // Same sage outline the office hero uses — see ContemplationHomeCard.
-            border: "1px solid rgba(200,212,192,0.35)",
-          }}
+          className="cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
         >
           <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
           <div className="flex-1 px-4 pt-[20px] pb-[20px]">
@@ -2536,7 +2524,7 @@ function ExamenHomeCard({ hero = false }: { hero?: boolean } = {}) {
               Begin <span aria-hidden>→</span>
             </div>
           </div>
-        </div>
+        </HeroCardShell>
       </Link>
     );
   }
@@ -2583,10 +2571,7 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
     // card background. This one used to carry its own rose tint + an inline
     // emoji next to the title, reading as a different, older card family.
     return (
-      <div
-        className="relative flex rounded-3xl overflow-hidden"
-        style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)" }}
-      >
+      <HeroCardShell>
         <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
         <div className="flex-1 px-4 pt-[20px] pb-[20px]">
           <p className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate" style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}>
@@ -2609,7 +2594,7 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
             </div>
           )}
         </div>
-      </div>
+      </HeroCardShell>
     );
   }
   return (
@@ -2670,10 +2655,7 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
   const rgb = "46,107,64";
   if (hero) {
     return (
-      <div
-        className="relative flex rounded-3xl overflow-hidden"
-        style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)" }}
-      >
+      <HeroCardShell>
         <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
         <div className="flex-1 px-4 pt-[20px] pb-[20px]">
           <p className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate" style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}>
@@ -2701,7 +2683,7 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
             </div>
           )}
         </div>
-      </div>
+      </HeroCardShell>
     );
   }
   // The pill is the only tap target (owner: "it should just be on the cta")
@@ -2753,15 +2735,10 @@ function CreationHomeCard({ side, hero = false }: { side: "morning" | "evening";
   if (hero) {
     return (
       <Link href={href} className="block">
-        <div
+        <HeroCardShell
           role="button"
           tabIndex={0}
-          className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
-          style={{
-            background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-            // Same sage outline the office hero uses — see ContemplationHomeCard.
-            border: "1px solid rgba(200,212,192,0.35)",
-          }}
+          className="cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
         >
           <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
           <div className="flex-1 px-4 pt-[20px] pb-[20px]">
@@ -2789,7 +2766,7 @@ function CreationHomeCard({ side, hero = false }: { side: "morning" | "evening";
               Begin <span aria-hidden>→</span>
             </div>
           </div>
-        </div>
+        </HeroCardShell>
       </Link>
     );
   }
@@ -3388,16 +3365,12 @@ function ReadingsHomeCard({ side = "morning", hero = false }: { side?: "morning"
 
   if (hero) {
     return (
-      <div
+      <HeroCardShell
         role="button"
         tabIndex={0}
         onClick={onClick}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
-        className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99]"
-        style={{
-          background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-          border: "1px solid rgba(200,212,192,0.35)",
-        }}
+        className="cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99]"
       >
         <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
         <div className="flex-1 px-4 pt-[20px] pb-[20px]">
@@ -3417,7 +3390,7 @@ function ReadingsHomeCard({ side = "morning", hero = false }: { side?: "morning"
             {hasRead ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span>&nbsp;Read again</> : "Read"} <span aria-hidden>→</span>
           </div>
         </div>
-      </div>
+      </HeroCardShell>
     );
   }
 
@@ -3519,13 +3492,7 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
   // it would contradict the office variant beside it.
   if (hero) {
     return (
-      <div
-        className="relative flex rounded-3xl overflow-hidden"
-        style={{
-          background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-          border: "1px solid rgba(200,212,192,0.35)",
-        }}
-      >
+      <HeroCardShell>
         <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
         <div className="flex-1 px-4 pt-[20px] pb-[20px]">
           <div className="flex items-start justify-between gap-2">
@@ -3562,7 +3529,7 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
             </div>
           )}
         </div>
-      </div>
+      </HeroCardShell>
     );
   }
 
@@ -4173,17 +4140,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
 
   return (
     <>
-    <div
-      className="relative flex rounded-3xl overflow-hidden"
-      style={{
-        background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-        // Match the cascade rhythm cards exactly — same sage outline + 3xl
-        // radius — so the hero reads as the same family, not a green-framed
-        // outlier. Always full strength; the top progress indicator signals
-        // completion, so the card no longer dims itself to mark "not prayed yet".
-        border: "1px solid rgba(200,212,192,0.35)",
-      }}
-      >
+    <HeroCardShell>
         <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
         <div className="flex-1 px-4 pt-[20px] pb-[20px]">
           <div className="flex items-start justify-between gap-2">
@@ -4342,7 +4299,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
             </Link>
           )}
       </div>
-    </div>
+    </HeroCardShell>
     {bookLogOpen && (
       <BookOfficeLogSheet
         side={officeSide}

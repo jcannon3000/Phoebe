@@ -543,13 +543,37 @@ export function PracticeCard({
    * width (layout unchanged) with background-clip: padding-box so the tint
    * ends at the ring, and the ring's radius matches the padding box's.
    */
-  const strokeRadius = `calc(1.5rem - ${CARD_BORDER_PX})`;
-  const strokeOverlay = (animate: TargetAndTransition, transition: Transition) => (
+  /**
+   * FOURTH PASS — THE RING LIVES OUTSIDE THE CLIP (owner, 2026-09-11, from a
+   * recording measured at device resolution: "the hero boarder is still
+   * getting messed up after it settles"). Frame by frame, the hero's stroke
+   * is four device rows wide while the entrance is running and ONE row the
+   * instant it lands — bottom four rows to two — while every ordinary card
+   * below it keeps its four. Sides stay four throughout. A uniform border
+   * cannot render four rows on the left and one on the top unless something
+   * takes the rest away, and the rows that lose it read as plain background,
+   * not as a half-strength line: the ring is not thinned, it is ERASED.
+   *
+   * Both candidates for erasing it lived inside the card: the rounded
+   * `overflow: hidden` clip, whose boundary the ring sat exactly on, and the
+   * frost's compositing layer. So the ring moved OUT — it is now a sibling
+   * painted over the clipped box, at the card's BORDER box (hence the plain
+   * 1.5rem radius, not the inner one), where no clip of the card's and no
+   * layer of the frost's can reach it. Nothing inside the card draws over it
+   * any more; there is no z-order race left to lose.
+   */
+  const ringOverlay = (animate: TargetAndTransition, transition: Transition) => (
     <motion.div
       aria-hidden
       style={{
         position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
-        borderRadius: strokeRadius, border: `${CARD_BORDER_PX} solid ${CARD_BORDER}`,
+        borderRadius: "1.5rem", border: `${CARD_BORDER_PX} solid ${CARD_BORDER}`,
+        // Its own layer for life. A composited backdrop-filter (the frost) can
+        // out-paint a plain sibling whatever the z-order says — that is how the
+        // stroke got buried the LAST time. A contentless ring costs one layer
+        // and can never change what the frost samples: the frost reads what is
+        // painted BELOW it, and the ring is above.
+        willChange: "opacity",
       }}
       animate={animate}
       transition={transition}
@@ -609,48 +633,56 @@ export function PracticeCard({
       </div>
     );
     const heroRow = (
-      <motion.div
-        className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: cardTintBg(tint), backgroundClip: "padding-box", border: `${CARD_BORDER_PX} solid transparent`, opacity: waiting ? 0.8 : 1, isolation: "isolate" }}
-      >
-        {frost}
-        {strokeOverlay(
+      // The ring is a SIBLING of the clipped card, never a child of it (see
+      // ringOverlay). Press and hover live on this wrapper so the card and its
+      // ring move as one.
+      // `opacity` for a Later card lives on the WRAPPER, not on the card:
+      // the ring is outside the card now, so dimming the card alone would leave
+      // a full-strength outline around a faded card.
+      <div className={`relative ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`} style={{ opacity: waiting ? 0.8 : 1 }}>
+        <motion.div
+          className="relative flex rounded-3xl overflow-hidden"
+          style={{ background: cardTintBg(tint), backgroundClip: "padding-box", border: `${CARD_BORDER_PX} solid transparent`, isolation: "isolate" }}
+        >
+          {frost}
+          <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
+          <div className="flex-1 px-5 py-5">
+            {/* Emoji sits to the RIGHT of the title, never as a leading icon
+                column (owner). */}
+            <div className="flex items-start gap-3.5">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                {eyebrow ? (
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-widest truncate"
+                    style={{ color: "rgba(143,175,150,0.55)", margin: 0, marginBottom: 4, fontFamily: FONT }}
+                  >
+                    {eyebrow}
+                  </p>
+                ) : null}
+                <p className="text-[22px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>
+                  {title}{emoji ? <span className="ml-2" aria-hidden>{emoji}</span> : null}
+                </p>
+                {useCycle
+                  ? <CardSubtitleCycle values={blurbCycle!} className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }} />
+                  : <p className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }}>{blurb}</p>}
+              </div>
+            </div>
+            {progress && progress.goal > 0 && (!done || alwaysShowProgress) && (
+              <div className="mt-3.5 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${progressFillPct(progress)}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
+                />
+              </div>
+            )}
+            {heroCta}
+          </div>
+        </motion.div>
+        {ringOverlay(
           celebrate ? { borderColor: [CARD_BORDER, `rgba(${rgb},0.95)`, CARD_BORDER] } : { borderColor: CARD_BORDER },
           celebrate ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } } : { borderColor: { duration: 0.3 } },
         )}
-        <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
-        <div className="flex-1 px-5 py-5">
-          {/* Emoji sits to the RIGHT of the title, never as a leading icon
-              column (owner). */}
-          <div className="flex items-start gap-3.5">
-            <div className="flex-1 min-w-0 overflow-hidden">
-              {eyebrow ? (
-                <p
-                  className="text-[11px] font-semibold uppercase tracking-widest truncate"
-                  style={{ color: "rgba(143,175,150,0.55)", margin: 0, marginBottom: 4, fontFamily: FONT }}
-                >
-                  {eyebrow}
-                </p>
-              ) : null}
-              <p className="text-[22px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>
-                {title}{emoji ? <span className="ml-2" aria-hidden>{emoji}</span> : null}
-              </p>
-              {useCycle
-                ? <CardSubtitleCycle values={blurbCycle!} className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }} />
-                : <p className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }}>{blurb}</p>}
-            </div>
-          </div>
-          {progress && progress.goal > 0 && (!done || alwaysShowProgress) && (
-            <div className="mt-3.5 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
-              <div
-                className="h-full rounded-full"
-                style={{ width: `${progressFillPct(progress)}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
-              />
-            </div>
-          )}
-          {heroCta}
-        </div>
-      </motion.div>
+      </div>
     );
     if (waiting) return heroRow;
     // ctaOnly: the CTA above carries the handler; the body stays inert.
@@ -753,12 +785,47 @@ export function PracticeCard({
 
   const restBorder = CARD_BORDER;
   const row = (
-    <motion.div
-      className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: cardTintBg(tint), backgroundClip: "padding-box", border: `${CARD_BORDER_PX} solid transparent`, opacity: waiting ? 0.72 : 1, isolation: "isolate" }}
-    >
-      {frost}
-      {strokeOverlay(
+    // The ring is a SIBLING of the clipped card (see ringOverlay); press and
+    // hover live on this wrapper so card and ring move together.
+    // Later-card dimming rides the wrapper so the ring fades with the card.
+    <div className={`relative ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`} style={{ opacity: waiting ? 0.72 : 1 }}>
+      <motion.div
+        className="relative flex rounded-3xl overflow-hidden"
+        style={{ background: cardTintBg(tint), backgroundClip: "padding-box", border: `${CARD_BORDER_PX} solid transparent`, isolation: "isolate" }}
+      >
+        {frost}
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />
+        <div className="flex-1 min-w-0 px-4 py-3.5">
+          <div className="flex items-center gap-3">
+            {/* Compact rows keep the emoji as a LEADING icon on the left (owner)
+                — only the HERO layout moves it to the right of the title. */}
+            {emoji ? (
+              <span className="text-[15px] leading-none flex-shrink-0" aria-hidden>{emoji}</span>
+            ) : null}
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>
+                {title}
+              </p>
+              {useCycle
+                ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }} />
+                : blurb ? <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }}>{blurb}</p> : null}
+            </div>
+            {pill}
+          </div>
+          {/* Progress bar spans the full width below the row — so "Begin" sits
+              above it rather than beside it. Hidden once the card is DONE (a full
+              bar under a ✓ is just noise). */}
+          {progress && progress.goal > 0 && (!done || alwaysShowProgress) && (
+            <div className="mt-3 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${progressFillPct(progress)}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
+              />
+            </div>
+          )}
+        </div>
+      </motion.div>
+      {ringOverlay(
         // A just-completed card gets a BRIGHTER, quicker border pulse than the
         // ordinary "next up" pulse — it's saying "this one is done", and it
         // rides along as the card moves from Next down into Done. When neither
@@ -775,37 +842,7 @@ export function PracticeCard({
             ? { borderColor: { duration: 2.2, repeat: Infinity, ease: "easeInOut" } }
             : { borderColor: { duration: 0.3 } },
       )}
-      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />
-      <div className="flex-1 min-w-0 px-4 py-3.5">
-        <div className="flex items-center gap-3">
-          {/* Compact rows keep the emoji as a LEADING icon on the left (owner)
-              — only the HERO layout moves it to the right of the title. */}
-          {emoji ? (
-            <span className="text-[15px] leading-none flex-shrink-0" aria-hidden>{emoji}</span>
-          ) : null}
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>
-              {title}
-            </p>
-            {useCycle
-              ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }} />
-              : blurb ? <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }}>{blurb}</p> : null}
-          </div>
-          {pill}
-        </div>
-        {/* Progress bar spans the full width below the row — so "Begin" sits
-            above it rather than beside it. Hidden once the card is DONE (a full
-            bar under a ✓ is just noise). */}
-        {progress && progress.goal > 0 && (!done || alwaysShowProgress) && (
-          <div className="mt-3 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${progressFillPct(progress)}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
-            />
-          </div>
-        )}
-      </div>
-    </motion.div>
+    </div>
   );
 
   // A "Later" card is intentionally inert (e.g. Evening before 3 PM). Mark it
