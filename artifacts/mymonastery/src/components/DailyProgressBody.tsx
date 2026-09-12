@@ -2166,6 +2166,22 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           later: false,
         }));
     })(),
+    // The day's saint, read from the feast line by someone who does NOT keep
+    // the hagiography card: it still lands in Done (owner, 2026-09-12). The
+    // card itself covers the subscribed case (hagiographyShown).
+    ...(hagiographyUrl && hagiographyDone && !hagiographyShown ? [{
+      key: "extra-hagiography",
+      slot: "anytime" as CustomSlot,
+      emoji: "📜",
+      rgb: "150,130,175",
+      done: true,
+      onClick: () => openExternalThenMarkRead(hagiographyUrl, () => markHagiographyRead(), { reader: true }),
+      onUnlog: () => unmarkHagiographyToday(),
+      title: hagiographyName ?? t("rhythm.card_hagiography", { defaultValue: "Lives of the Saints" }),
+      blurb: kept,
+      cta: t("rhythm.read", { defaultValue: "Read" }),
+      later: false,
+    }] : []),
   ];
   // The morning- and evening-slotted cards bookend the list (unchanged — a
   // stable sort on SLOT_RANK, since every card sharing a slot already carries

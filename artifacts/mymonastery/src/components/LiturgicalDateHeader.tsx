@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { forwardMovementFeastUrl } from "@/lib/liturgical/forwardMovementCalendar";
-import { openExternal } from "@/lib/openExternal";
+import { openExternalThenMarkRead } from "@/lib/openExternal";
+import { markHagiographyRead } from "@/lib/cacReadState";
 import { format } from "date-fns";
 import { getDay, readLesserFeastsPref } from "@/lib/liturgical";
 import type { LiturgicalColor, LiturgicalDay } from "@/lib/liturgical";
@@ -163,7 +164,11 @@ export function LiturgicalDateHeader({
           <button
             type="button"
             className="mt-1"
-            onClick={() => openExternal(feastUrl, { reader: true })}
+            // Opening the life from HERE counts the same as from the card
+            // (owner, 2026-09-12: "if someone opens the hagiography from the
+            // feast day title, put that in done as if they completed that
+            // practice") — the same read-gated mark the card uses.
+            onClick={() => openExternalThenMarkRead(feastUrl, () => markHagiographyRead(), { reader: true })}
             aria-label={`${secondary} — read the life and collect`}
             style={{
               color: "rgba(200,212,192,0.6)",
