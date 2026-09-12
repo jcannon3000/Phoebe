@@ -2775,14 +2775,28 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * opacity changes. The cascade still reads as a stagger, because the stagger
    * was always in the DELAY, not in the travel.
    */
+  /**
+   * …AND HOLD (owner, 2026-09-12, recording: "borders are still shimmying up
+   * at the end of the animation, i want them to come in and hold"). Even with
+   * no travel, the fade itself puts the card on a compositing layer that is
+   * discarded the frame the fade ends, and the card re-rasterises snapped a
+   * device pixel from where it was — measured on the simulator: each card's
+   * ring moved 1–3 device px as its own fade finished. A will-change the
+   * animation library does not get to remove keeps that layer for good, so
+   * the last frame of the fade IS the resting frame. It is the state the
+   * owner pointed at as the one to keep ("the 3.68 cards is what we want").
+   */
+  const hold = { style: { willChange: "opacity" } as const };
   const enterUp = (i: number) => (celebrateKey ? {
     initial: false as const,
     animate: { opacity: 1 },
     transition: { duration: 0 },
+    ...hold,
   } : {
     initial: { opacity: 0 },
     animate: splashCleared ? { opacity: 1 } : { opacity: 0 },
     transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 0.7) },
+    ...hold,
   });
   // Hold the first paint until the rhythm queries have settled (so cards don't
   // jump from Next to Done as data lands), then fade each card up in turn.
@@ -2878,7 +2892,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
               // completion, not just the celebrate-navigation flow) needs the
               // rest of this list to smoothly reflow down, not snap.
               const enter = c.key === celebrateKey
-                ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] as const } }
+                ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] as const }, ...hold }
                 : enterUp(doneBase + i);
               return (
                 <motion.div
