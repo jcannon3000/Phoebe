@@ -796,7 +796,14 @@ export function PracticeCard({
         {frost}
         <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />
         <div className="flex-1 min-w-0 px-4 py-3.5">
-          <div className="flex items-center gap-3">
+          {/* ONE ROW HEIGHT (owner, 2026-09-12: "make sure the cards are the same
+              height unless they have a progress bar under or hero"). The row's
+              natural height is the two text lines — title (14.5px × 1.25) + 2px
+              + subtitle (12px × 1.375) — and both truncate, so nothing grows
+              past it; this floor keeps a card WITHOUT a subtitle, or one whose
+              pill is the tallest thing in it, from coming up short. The progress
+              bar below still adds to the cards that carry one. */}
+          <div className="flex items-center gap-3" style={{ minHeight: "calc(14.5px * 1.25 + 2px + 12px * 1.375)" }}>
             {/* Compact rows keep the emoji as a LEADING icon on the left (owner)
                 — only the HERO layout moves it to the right of the title. */}
             {emoji ? (
