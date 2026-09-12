@@ -2818,7 +2818,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private static let readerTextRules: [(selectors: [String], basePx: Double)] = [
         ([".bibletext"], 19),
         ([".fl-post-feed-content p"], 20),
-        (["article.fdd p", "article.fdd li"], 20),
+        // Day by Day's date + feast heading is an h1 wrapping a <p>; it is
+        // furniture and keeps its size (owner, 2026-09-12, seeing it at
+        // "Larger": "that is too large").
+        (["article.fdd p:not(h1 p)", "article.fdd li"], 20),
         (["html.phoebe-saint .pray-container p", "html.phoebe-saint .pray-container li", "html.phoebe-saint .pray-container .bio"], 20),
         (["html.phoebe-saint .pray-container ldf-liturgical-document", "html.phoebe-saint .pray-container ldf-liturgical-document *"], 21),
         (["article.node-versevoice .field-item", "article.node-versevoice .field-item p",
@@ -2827,7 +2830,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private static let readerFamilySelectors: [String] = [
         ".bible", ".bibletext", ".bibletext *",
         ".fl-post-feed-content", ".fl-post-feed-content *",
-        "article.fdd p", "article.fdd li",
+        "article.fdd p:not(h1 p)", "article.fdd li",
         "html.phoebe-saint .pray-container p", "html.phoebe-saint .pray-container li", "html.phoebe-saint .pray-container .bio",
         "html.phoebe-saint .pray-container ldf-liturgical-document", "html.phoebe-saint .pray-container ldf-liturgical-document *",
         "article.node-versevoice", "article.node-versevoice *",
