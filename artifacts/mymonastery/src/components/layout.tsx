@@ -1357,6 +1357,7 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
     return () => cancelAnimationFrame(id1);
   }, []);
   const { user } = useAuth();
+  const [pageLocation] = useLocation();
   // Water home theme: tint the browser toolbar / status bar blue to match the
   // page (the meta must be a literal hex — CSS var() is ignored there). Restore
   // the app green when the theme is off / on unmount.
@@ -1517,7 +1518,17 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
           // The page rises up over the backdrop on entry. Deliberately gentle —
           // a slower, taller rise reads as the new page lifting into place over
           // what was there, rather than a quick snap.
-          initial={{ opacity: 0, y: 28 }}
+          //
+          // NOT ON HOME (owner, 2026-09-14, recording: "a shimmy at the end of
+          // the animation … it makes the cards be un even", "after they settle
+          // some bump a nudge"). Measured frame by frame: 0.8s after home
+          // appeared — this rise's length — every card jumped 0–7 device px in
+          // ONE frame and stayed uneven. The rise holds the whole page on a
+          // compositing layer at a fractional offset; the frame it ends, the
+          // layer is dropped and every card, frost and ring re-rasterises at its
+          // true sub-pixel position, each rounding its own way. Home already
+          // brings its cards in with their own held fade, so it doesn't rise.
+          initial={pageLocation === "/dashboard" || pageLocation === "/" ? false : { opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
           className="flex-1 flex flex-col w-full h-full"

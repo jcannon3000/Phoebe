@@ -2829,10 +2829,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     );
   }
 
-  // Gap above Done: when Next still has cards, a smaller gap reads right; when
-  // the hero (or nothing) is the only thing in Next it needs more breathing room.
-  const doneGapCls = !(upcomingDisplay.length > 0 || heroLeads) ? ""
-    : upcomingDisplay.length > 0 ? "mt-4" : "mt-8";
+  // Gap above Done — the same whether Next holds cards or only the hero. The
+  // hero-only case used to take mt-8 for "breathing room"; owner, 2026-09-14,
+  // recording: "look how much space there is under the hero when it is the
+  // only practice left" — it read as a hole, not air.
+  const doneGapCls = !(upcomingDisplay.length > 0 || heroLeads) ? "" : "mt-4";
 
   // Cascade base index for each section — must count the hero card (it leads the
   // Next list at enterUp(0)), or the Done/Tomorrow sections rise one step early
