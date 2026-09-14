@@ -44,6 +44,7 @@ import path from "node:path";
 import { getOfficeDay } from "./lib/liturgicalCalendar.ts";
 import { getLectionaryReadings } from "./lib/lectionary.ts";
 import { RCL_SUNDAYS } from "./data/rclSundays.ts";
+import { GOSPEL_PARALLELS } from "./data/gospelParallels.ts";
 import { pickFromTier, matchScore, rotationForDay, parseRef } from "../../mymonastery/src/lib/visioSelect.ts";
 import { ACT_CATALOGUE as CURATED_CATALOGUE } from "../../mymonastery/src/lib/visioCatalogue.ts";
 import { ACT_COMMENTARY_CATALOGUE } from "../../mymonastery/src/lib/visioCommentaryCatalogue.ts";
@@ -159,6 +160,88 @@ const TIER_NAMES = ["gospel", "epistle", "ot"];
  */
 const WALK = [[0, 3], [1, 3], [1, 2], [2, 3], [2, 2], [0, 2]];
 
+/**
+ * How many verses two references share — same book, same chapter; a whole
+ * chapter counts as all of them.
+ *
+ * matchScore calls a single shared verse "the same verses", which is right for
+ * a reading but wrong for telling STORIES apart: Luke 9:21 ends Peter's
+ * confession and begins "take up your cross", so Carrying of the Cross (Luke
+ * 9:21-27) scored as a painting of Matthew 16:13-20. Two shared verses is the
+ * least that means the same story.
+ */
+function sharedVerses(aRef, bRef) {
+  const a = parseRef(aRef), b = parseRef(bRef);
+  if (!a || !b || a.book !== b.book) return 0;
+  let n = 0;
+  for (const x of a.spans) for (const y of b.spans) {
+    if (x.chapter !== y.chapter) continue;
+    const lo = Math.max(x.start, y.start), hi = Math.min(x.end, y.end);
+    if (hi >= lo) n += hi === Infinity ? 99 : hi - lo + 1;
+  }
+  return n;
+}
+const tellsSameStory = (refsA, refsB) => refsA.some((r) => refsB.some((q) => sharedVerses(r, q) >= 2));
+
+/** Every OTHER gospel's telling of the stories in `gospelRefs` (data/gospelParallels). */
+function parallelsFor(gospelRefs) {
+  if (!gospelRefs.length) return [];
+  const out = new Set();
+  for (const story of GOSPEL_PARALLELS) {
+    if (!story.some((m) => tellsSameStory([m], gospelRefs))) continue;
+    for (const m of story) if (!tellsSameStory([m], gospelRefs)) out.add(m);
+  }
+  return [...out];
+}
+/** A guess may never be a psalm (owner: "we dont want anything that … is from the psalm"). */
+const notPsalmOnly = (a) => (a.refs ?? []).some((r) => !isPsalmRef(r));
+
+/** The Sunday Advent begins in `year` — the Sunday from 27 Nov to 3 Dec. */
+function adventSunday(year) {
+  const d = new Date(`${year}-11-27T12:00:00`);
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+  return d;
+}
+/** The RCL year of a date, turning over at Advent: Year A began Advent 2022. */
+function rclYearLetter(d) {
+  const y = d.getFullYear();
+  const start = d >= adventSunday(y) ? y : y - 1;
+  return "ABC"[(((start - 2022) % 3) + 3) % 3];
+}
+const ordinal = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" })[n % 10] ?? "th"}`;
+/** ACT's day names are inconsistently spaced ("Epiphany 4thSunday"), so compare without spaces. */
+const dayKey = (s) => s.toLowerCase().replace(/\s+/g, "");
+/**
+ * ACT's name for a Sunday — "Year B Lent 2nd Sunday" — from the liturgical
+ * calendar, so it works for weeks outside the RCL table too. Returns null
+ * where the mapping isn't certain: a wrong name would only find no works, but a
+ * missing one is honest.
+ */
+function actSundayName(sunday) {
+  let day;
+  try { day = getOfficeDay(sunday); } catch { return null; }
+  if (day.dayOfWeek !== 0) return null;
+  const Y = `Year ${rclYearLetter(sunday)}`;
+  const n = day.weekInSeason;
+  switch (day.season) {
+    case "advent": return `${Y} Advent ${ordinal(n)} Sunday`;
+    case "christmas": return `${Y} Christmas ${ordinal(n)} Sunday`;
+    case "lent": return `${Y} Lent ${ordinal(n)} Sunday`;
+    case "easter": return n >= 2 ? `${Y} Easter ${ordinal(n)} Sunday` : `${Y} Resurrection of the Lord`;
+    case "epiphany": {
+      if (n === 1) return `${Y} Baptism of the Lord`;
+      const next = new Date(sunday.getTime());
+      next.setDate(next.getDate() + 7);
+      try { if (getOfficeDay(next).season === "lent") return `${Y} Transfiguration Sunday`; } catch { /* the plain name below */ }
+      return `${Y} Epiphany ${ordinal(n)} Sunday`;
+    }
+    case "season_after_pentecost":
+      if (day.properNumber === 29) return `${Y} Reign of Christ`;
+      return day.properNumber ? `${Y} Proper ${ordinal(day.properNumber)} Sunday` : null;
+    default: return null;
+  }
+}
+
 function refsForDay(d) {
   const day = getOfficeDay(d);
   const out = [];
@@ -242,7 +325,7 @@ function build() {
   const rows = [];
   /** weekStartYmd → the artwork id that whole week shows. */
   const weekPick = new Map();
-  const stats = { days: 0, curated: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, epistle: 0, ot: 0, exact: 0, chapter: 0, book: 0, rotation: 0, sameHandAsLastWeek: 0, thirdStraightBroken: 0 };
+  const stats = { days: 0, curated: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, epistle: 0, ot: 0, exact: 0, chapter: 0, parallel: 0, sundayAssigned: 0, book: 0, rotation: 0, sameHandAsLastWeek: 0, thirdStraightBroken: 0 };
   /** The last ARTIST_GAP_WEEKS weeks' artists, newest first, across year ends. */
   const recentHands = [];
   let lastWeekId = null;
@@ -400,25 +483,48 @@ function build() {
       }
     }
 
-    // PASS 3 — nothing reached chapter level in any tier at all. Book-level
-    // across everything, cap respected; then the least-used work in the
-    // catalogue. Never nothing (visioSelect's own header: it always returns
-    // something — the blank-screen rule this repo keeps).
+    /**
+     * PASS 3 — NO READING IS PAINTED: A RELEVANT GUESS, NOT THE SAME BOOK.
+     *
+     * Owner, 2026-09-14: "if its nothing, can you guess as to an image that
+     * would be relevant", then "the same book is not really helpful for us".
+     * This pass used to take any work from the same BOOK — Jairus's daughter
+     * (Mark 5) for Advent's "keep awake" (Mark 13) — and then the plain
+     * rotation. Every week that reached it was a Mark week: Mark is the least
+     * painted gospel in the library. So, in order:
+     *
+     *   1. THE SAME STORY IN ANOTHER GOSPEL (data/gospelParallels). Mark 8:31-38
+     *      is Matthew 16:21-28 and Luke 9:22-27, and those are painted.
+     *   2. A WORK ACT ITSELF ASSIGNS TO THIS SUNDAY ("Year C Epiphany 3rd
+     *      Sunday" → Ezra Reads the Law, that Sunday's Eucharist reading).
+     *   3. Only then the same book; last the rotation. Never nothing.
+     *
+     * None of these is the week's appointed passage, so none claims to be:
+     * followsToday stays false, and the card names the passage the picture
+     * actually shows. The cap is respected here, as book-level always was.
+     */
     if (!chosen) {
-      /**
-       * TIERED, like every pass above it.
-       *
-       * This scored the whole catalogue against gospel and epistle TOGETHER
-       * and took the highest, so a strong epistle match beat a weaker gospel
-       * one and the owner's tier order — gospel first, then epistle or OT,
-       * then psalm — was inverted at the bottom of the ladder. The week
-       * ending 2027-08-01 appoints John 6:24-35 and Ephesians 4:1-16, and the
-       * pin was the Ephesians work.
-       *
-       * Walking the tiers here costs nothing: the first tier with any match
-       * at all wins, which is what "gospel first" means.
-       */
-      // `tiers` is already computed at the top of this week's loop.
+      const parallelRefs = parallelsFor(tiers[0].refs);
+      if (parallelRefs.length) {
+        const pick = pickVaried(ACT_CATALOGUE.filter((a) => notPsalmOnly(a) && tellsSameStory(a.refs, parallelRefs)), true);
+        if (pick) {
+          chosen = { art: pick, tierRefs: [], top: 0, refOverride: pick.refs.find((r) => tellsSameStory([r], parallelRefs)) };
+          stats.parallel++;
+        }
+      }
+    }
+    if (!chosen) {
+      const name = actSundayName(sunday);
+      if (name) {
+        const k = dayKey(name);
+        const pick = pickVaried(ACT_CATALOGUE.filter((a) => notPsalmOnly(a) && (a.days ?? []).some((dd) => dayKey(dd) === k)), true);
+        // The card names a non-psalm passage the picture shows, never the psalm.
+        if (pick) { chosen = { art: pick, tierRefs: [], top: 0, refOverride: pick.refs.find((r) => !isPsalmRef(r)) }; stats.sundayAssigned++; }
+      }
+    }
+    if (!chosen) {
+      // `tiers` is already computed at the top of this week's loop; the first
+      // tier with any match at all wins, which is what "gospel first" means.
       let scored = [];
       let top = 0;
       let tierRefsHere = [...refs.nt, ...refs.ot];
@@ -435,16 +541,10 @@ function build() {
       }
       const best = scored.filter((x) => x.score === top).map((x) => x.art);
       /**
-       * BOOK-LEVEL RESPECTS THE CAP — no bend here.
-       *
-       * PASS 2 bends because a work that genuinely depicts today's GOSPEL
-       * beats a stranger, and the owner said so. That reasoning does not carry
-       * down here: a book-level hit is "same book, different passage" — a thin
-       * thread already, and the row even reports followsToday:false. Bending
-       * it was unlimited, so a sole Joshua painting won every Joshua day all
-       * year: measured 10 appearances in 2026 against a cap of 3. Falling
-       * through to the rotation costs a weak thread and buys a fresh work,
-       * which is the better trade at this depth.
+       * BOOK-LEVEL RESPECTS THE CAP — no bend here. Bending it was unlimited,
+       * so a sole Joshua painting won every Joshua day all year (10 appearances
+       * in 2026 against a cap of 3). Falling through to the rotation costs a
+       * weak thread and buys a fresh work.
        */
       const pick = pickVaried(best, true);
       if (pick) { chosen = { art: pick, tierRefs: tierRefsHere, top }; stats.book++; }
@@ -491,7 +591,7 @@ function build() {
 
     if (movedTier) stats.tierMoved++;
     const { art, tierRefs, top } = chosen;
-    const ref = (top > 0 ? art.refs.find((r) => matchScore([r], tierRefs) === top) : null) ?? art.refs[0] ?? "";
+    const ref = chosen.refOverride ?? (top > 0 ? art.refs.find((r) => matchScore([r], tierRefs) === top) : null) ?? art.refs[0] ?? "";
     /**
      * "THIS WEEK'S READING" MEANS THE VERSES, NOT THE CHAPTER.
      *
@@ -546,6 +646,8 @@ const header = `// GENERATED by artifacts/api-server/src/build-visio-week-schedu
 // Readings: the gospel's own verses first; otherwise the epistle (with Acts in
 // Eastertide), then the Old Testament, each exact before its chapter; only then
 // a painting of the gospel's chapter. Psalms are never used (owner, 2026-09-14).
+// When no reading is painted: the same story in another gospel, then a work ACT
+// assigns to that Sunday; a same-book picture only after both.
 //
 // A different artist each week where the reading allows: the same hand is not
 // chosen for back-to-back weeks if another artist painted the same reading, and
