@@ -44,7 +44,7 @@ import path from "node:path";
 import { getOfficeDay } from "./lib/liturgicalCalendar.ts";
 import { getLectionaryReadings } from "./lib/lectionary.ts";
 import { RCL_SUNDAYS } from "./data/rclSundays.ts";
-import { rankedTiers, pickFromTier, matchScore, rotationForDay, parseRef } from "../../mymonastery/src/lib/visioSelect.ts";
+import { pickFromTier, matchScore, rotationForDay, parseRef } from "../../mymonastery/src/lib/visioSelect.ts";
 import { ACT_CATALOGUE as CURATED_CATALOGUE } from "../../mymonastery/src/lib/visioCatalogue.ts";
 import { ACT_COMMENTARY_CATALOGUE } from "../../mymonastery/src/lib/visioCommentaryCatalogue.ts";
 
@@ -112,10 +112,13 @@ const norm = (r) =>
     .replace(/\s+,/g, ",").replace(/\s+/g, " ").trim();
 
 /**
- * NEW TESTAMENT ONLY (owner: "Lets not use OT passages", after "we dont want
- * anything that … is from the psalm").
+ * THE GOSPEL, THEN THE EPISTLE, THEN THE OLD TESTAMENT (owner, 2026-09-14:
+ * "for other than the 97, try the epistle, then try the OT"). It was New
+ * Testament only ("Lets not use OT passages"); the Old Testament reading is now
+ * the last reading asked, never ahead of the gospel's own verses or the
+ * epistle. Psalms stay out ("we dont want anything that … is from the psalm").
  *
- * So a week is chosen by its GOSPEL or its EPISTLE and nothing else. The book
+ * This test sorts a reading into the NT or OT group by its BOOK. The book
  * names come from parseRef, which lowercases, strips points and normalises the
  * numbered books ("1 Cor." and "Corinthians I" both become "1 cor"), so a
  * prefix test covers the lectionary's abbreviations and ACT's back-to-front
@@ -131,21 +134,45 @@ const isNewTestament = (ref) => {
   if (/^(matt|mark|luke|john)/.test(p.book)) return true;
   return NT_NON_GOSPEL.test(p.book);
 };
+const isGospelRef = (ref) => /^(matt|mark|luke|john)/.test(parseRef(ref)?.book ?? "");
+/** A psalm, wherever it turns up: the RCL table's `ot` list carries one on some
+ *  Sundays (Psalm 99 at the Transfiguration, Psalm 145 on Proper 20). */
+const isPsalmRef = (ref) => /^ps/.test(parseRef(ref)?.book ?? "");
+
+/** The three readings a week is matched on. */
+const TIER_NAMES = ["gospel", "epistle", "ot"];
+/**
+ * THE ORDER A WEEK'S PICTURE IS LOOKED FOR — [reading, closeness], where 3 is
+ * the passage's own verses and 2 is the same chapter at other verses.
+ *
+ * Owner, 2026-09-14, after hearing that 97 of 157 weeks showed the Sunday's
+ * exact verses: "for other than the 97, try the epistle, then try the OT". So
+ * the gospel's own verses lead; failing those, the epistle (exact, then its
+ * chapter), then the Old Testament (exact, then its chapter); and only then a
+ * painting of the gospel's chapter at other verses, which is what those weeks
+ * had been getting. Same-book and the rotation stay the last resort (PASS 3).
+ *
+ * Every step asks for works at EXACTLY that closeness, so a chapter-level
+ * gospel painting can no longer slip in ahead of the epistle as the "one step
+ * behind" reflection runner-up the tie-break used to allow — and the card's
+ * "this week's reading" is always the pick's own score.
+ */
+const WALK = [[0, 3], [1, 3], [1, 2], [2, 3], [2, 2], [0, 2]];
 
 function refsForDay(d) {
   const day = getOfficeDay(d);
   const out = [];
+  const ot = [];
   for (const side of ["morning", "evening"]) {
     const lect = getLectionaryReadings(day, side);
     for (const key of ["lesson1", "lesson2", "lesson3"]) {
       const raw = lect[key];
       if (typeof raw !== "string" || !raw.trim() || /^-+$/.test(raw.trim())) continue;
       const ref = norm(raw);
-      // OT lessons are dropped HERE rather than after a winner is chosen —
-      // filtering the winner would leave the week empty and fall through to
-      // the rotation, which is a work related to nothing at all.
-      if (!isNewTestament(ref)) continue;
-      out.push(ref);
+      // SORTED, not dropped: Old Testament lessons are the last readings a week
+      // is matched on (owner, 2026-09-14), after the gospel and the epistle.
+      if (isPsalmRef(ref)) continue;
+      (isNewTestament(ref) ? out : ot).push(ref);
     }
     /**
      * NO PSALMS (owner: "we dont want anything that doesnt have a
@@ -163,7 +190,7 @@ function refsForDay(d) {
      * the psalm it replaced.
      */
   }
-  return [...new Set(out)];
+  return { nt: [...new Set(out)], ot: [...new Set(ot)] };
 }
 
 /**
@@ -215,7 +242,7 @@ function build() {
   const rows = [];
   /** weekStartYmd → the artwork id that whole week shows. */
   const weekPick = new Map();
-  const stats = { days: 0, curated: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, middle: 0, psalm: 0, book: 0, rotation: 0, sameHandAsLastWeek: 0, thirdStraightBroken: 0 };
+  const stats = { days: 0, curated: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, epistle: 0, ot: 0, exact: 0, chapter: 0, book: 0, rotation: 0, sameHandAsLastWeek: 0, thirdStraightBroken: 0 };
   /** The last ARTIST_GAP_WEEKS weeks' artists, newest first, across year ends. */
   const recentHands = [];
   let lastWeekId = null;
@@ -287,13 +314,24 @@ function build() {
      */
     const rcl = RCL_SUNDAYS[weekKey];
     if (rcl) {
-      refs = [rcl.gospel, ...(rcl.nt ?? [])].filter(Boolean).map(norm);
+      refs = {
+        nt: [rcl.gospel, ...(rcl.nt ?? [])].filter(Boolean).map(norm),
+        ot: (rcl.ot ?? []).map(norm).filter((r) => !isPsalmRef(r) && !isNewTestament(r)),
+      };
     } else {
       try { refs = refsForDay(sunday); } catch { continue; }
     }
     stats.days++;
 
-    const tiers = rankedTiers(refs);
+    // The week's readings, sorted into gospel / epistle (Acts rides here through
+    // Eastertide) / Old Testament. See WALK for the order they are asked in.
+    const tiers = TIER_NAMES.map((name) => ({ name, refs: [] }));
+    for (const r of refs.nt) (isGospelRef(r) ? tiers[0] : tiers[1]).refs.push(r);
+    tiers[2].refs.push(...refs.ot);
+    /** Works whose match against one reading is EXACTLY `score`. */
+    const groupAt = (t, score) => tiers[t].refs.length
+      ? ACT_CATALOGUE.filter((a) => matchScore(a.refs, tiers[t].refs) === score)
+      : [];
     let chosen = null;
     let movedTier = false;
 
@@ -323,16 +361,16 @@ function build() {
     const pickVaried = (best, respectCap, essayRunnerUp = []) =>
       pickFrom(best, respectCap, essayRunnerUp, true) ?? pickFrom(best, respectCap, essayRunnerUp, false);
 
-    // PASS 1 — the cap respected. Tiers in order; within a tier, an equally
-    // good painting of the SAME reading is tried before dropping a tier,
-    // since a worse reading is a bigger loss than a different brush.
-    for (let t = 0; t < tiers.length; t++) {
-      const { refs: tierRefs, best, top, essayRunnerUp } = tiers[t];
-      if (top < 2 || !best.length) continue;
-      const pick = pickVaried(best, true, essayRunnerUp);
+    // PASS 1 — the cap respected, WALK in order. Within a step, an equally good
+    // painting of the same reading is tried before moving on, since a less
+    // apt reading is a bigger loss than a different brush.
+    for (const [t, score] of WALK) {
+      const group = groupAt(t, score);
+      if (!group.length) continue;
+      const pick = pickVaried(group, true);
       if (!pick) { movedTier = true; continue; }   // this reading is spent
-      chosen = { art: pick, tierRefs, top };
-      stats[t === 0 ? "gospel" : t === 1 ? "middle" : "psalm"]++;
+      chosen = { art: pick, tierRefs: tiers[t].refs, top: score };
+      stats[TIER_NAMES[t]]++;
       break;
     }
 
@@ -350,14 +388,14 @@ function build() {
      * it." The cap is a preference; this is where it yields.
      */
     if (!chosen) {
-      for (let t = 0; t < tiers.length; t++) {
-        const { refs: tierRefs, best, top } = tiers[t];
-        if (top < 2 || !best.length) continue;
-        const pick = pickVaried(best, false);
+      for (const [t, score] of WALK) {
+        const group = groupAt(t, score);
+        if (!group.length) continue;
+        const pick = pickVaried(group, false);
         if (!pick) continue;
-        chosen = { art: pick, tierRefs, top };
+        chosen = { art: pick, tierRefs: tiers[t].refs, top: score };
         stats.overCap++;
-        stats[t === 0 ? "gospel" : t === 1 ? "middle" : "psalm"]++;
+        stats[TIER_NAMES[t]]++;
         break;
       }
     }
@@ -383,7 +421,7 @@ function build() {
       // `tiers` is already computed at the top of this week's loop.
       let scored = [];
       let top = 0;
-      let tierRefsHere = refs;
+      let tierRefsHere = [...refs.nt, ...refs.ot];
       for (const tier of tiers) {
         const s2 = ACT_CATALOGUE
           .map((art) => ({ art, score: matchScore(art.refs, tier.refs) }))
@@ -434,26 +472,19 @@ function build() {
      * where one artist is the only one who painted the passage at that
      * closeness. The Mafa series was exactly that for Matthew 18:15-20, 18:21-35
      * and 20:1-16, three Sundays running. A third consecutive week is where
-     * variety is worth a step of closeness: first a chapter-level painting of
-     * the same reading by another hand, then the week's other reading, tiers in
-     * the owner's order. Never below chapter level, and the card only names the
+     * variety is worth a step of closeness: another hand's painting, looked for
+     * in the same order as any week's (WALK), at worst the same chapter. Never below chapter level, and the card only names the
      * verses when the replacement genuinely depicts them — `top` is the
      * replacement's own score, so followsToday is recomputed from it. If nothing
      * else reaches chapter level, the run stands.
      */
     if (thirdStraight(chosen.art)) {
       let replacement = null;
-      for (const tier of tiers) {
-        const scored = ACT_CATALOGUE
-          .map((cand) => ({ cand, score: matchScore(cand.refs, tier.refs) }))
-          .filter((x) => x.score >= 2 && handOf(x.cand) !== handOf(chosen.art) && countFor(year, x.cand.id) < CAP);
-        for (const score of [3, 2]) {
-          const group = scored.filter((x) => x.score === score).map((x) => x.cand);
-          if (!group.length) continue;
-          const pick = pickFrom(group, true);
-          if (pick) { replacement = { art: pick, tierRefs: tier.refs, top: score }; break; }
-        }
-        if (replacement) break;
+      for (const [t, score] of WALK) {
+        const group = groupAt(t, score).filter((cand) => handOf(cand) !== handOf(chosen.art) && countFor(year, cand.id) < CAP);
+        if (!group.length) continue;
+        const pick = pickFrom(group, true);
+        if (pick) { replacement = { art: pick, tierRefs: tiers[t].refs, top: score }; break; }
       }
       if (replacement) { chosen = replacement; stats.thirdStraightBroken++; }
     }
@@ -483,6 +514,7 @@ function build() {
     // the cap counts a WEEK as one appearance rather than seven.
     weekPick.set(weekKey, entry);
     bump(year, art.id);
+    if (top >= 3) stats.exact++; else if (top === 2) stats.chapter++;
     if (recentHand(art)) stats.sameHandAsLastWeek++;
     recentHands.unshift(handOf(art));
     recentHands.length = Math.min(recentHands.length, Math.max(ARTIST_GAP_WEEKS, 2));
@@ -510,6 +542,10 @@ const header = `// GENERATED by artifacts/api-server/src/build-visio-week-schedu
 // lectionary is server-only, so the whole schedule is resolved here rather
 // than per-device — still a pure function of the date, so everyone praying in
 // a given week sees the same picture.
+//
+// Readings: the gospel's own verses first; otherwise the epistle (with Acts in
+// Eastertide), then the Old Testament, each exact before its chapter; only then
+// a painting of the gospel's chapter. Psalms are never used (owner, 2026-09-14).
 //
 // A different artist each week where the reading allows: the same hand is not
 // chosen for back-to-back weeks if another artist painted the same reading, and
