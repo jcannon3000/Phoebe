@@ -80,6 +80,28 @@ const ACT_CATALOGUE = (() => {
 /** How many times one work may appear in a calendar year. Owner: three. */
 const CAP = 3;
 
+/**
+ * A DIFFERENT HAND EACH WEEK.
+ *
+ * Owner, 2026-09-14: "in the visio lectionary, make sure there is a variance of
+ * artists, not just Jesus Mafa, which we like, but its been them 3 weeks
+ * straight." Measured on the schedule then shipping: 53 of 157 weeks repeated
+ * the previous week's artist, one run lasted 13 weeks, and the Mafa series held
+ * 68 weeks. The cap could not see it — it counts WORKS, and the Vie de Jesus
+ * Mafa series has a painting for most gospel scenes, so a different Mafa work
+ * every week never tripped it.
+ *
+ * Two rules, in order of cost. BACK-TO-BACK weeks by one artist (or one work)
+ * are avoided whenever another hand painted the same reading equally well —
+ * tried inside the tier that already won, so it costs nothing. THREE STRAIGHT
+ * weeks by one artist are broken even at a step of closeness: a chapter-level
+ * painting of the same reading by another hand, then the week's other reading,
+ * never below chapter level (see the note at the break in build()). Where
+ * nothing else reaches chapter level the run stands — a picture of this
+ * Sunday's reading beats a stranger. Both bend like the cap.
+ */
+const ARTIST_GAP_WEEKS = 1;
+
 /** Generate this many days forward from the start of the current year. */
 const START = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
 const DAYS = 365 * 3 + 1; // three years, so it doesn't quietly run out
@@ -193,7 +215,14 @@ function build() {
   const rows = [];
   /** weekStartYmd → the artwork id that whole week shows. */
   const weekPick = new Map();
-  const stats = { days: 0, curated: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, middle: 0, psalm: 0, book: 0, rotation: 0 };
+  const stats = { days: 0, curated: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, middle: 0, psalm: 0, book: 0, rotation: 0, sameHandAsLastWeek: 0, thirdStraightBroken: 0 };
+  /** The last ARTIST_GAP_WEEKS weeks' artists, newest first, across year ends. */
+  const recentHands = [];
+  let lastWeekId = null;
+  const handOf = (art) => (art?.artist ?? "").trim().toLowerCase();
+  const recentHand = (art) => art.id === lastWeekId || (!!handOf(art) && recentHands.slice(0, ARTIST_GAP_WEEKS).includes(handOf(art)));
+  /** Would this be the SAME artist a third week running? */
+  const thirdStraight = (art) => { const h = handOf(art); return !!h && recentHands[0] === h && recentHands[1] === h; };
 
   for (let i = 0; i < DAYS; i++) {
     /**
@@ -281,8 +310,8 @@ function build() {
      * first and only falling back, rather than by sorting, so the cap and the
      * rotation still see the full candidate list on the second pass.
      */
-    const pickFrom = (best, respectCap, essayRunnerUp = []) => {
-      const allow = (cand) => !respectCap || countFor(year, cand.id) < CAP;
+    const pickFrom = (best, respectCap, essayRunnerUp = [], varied = false) => {
+      const allow = (cand) => (!respectCap || countFor(year, cand.id) < CAP) && (!varied || !recentHand(cand));
       const curated = best.filter((a) => a.curated);
       if (curated.length) {
         const pick = pickFromTier(ymd, curated, allow, essayRunnerUp.filter((a) => a.curated));
@@ -290,6 +319,9 @@ function build() {
       }
       return pickFromTier(ymd, best, allow, essayRunnerUp);
     };
+    /** A different hand from last week if this same tier has one; else the repeat. */
+    const pickVaried = (best, respectCap, essayRunnerUp = []) =>
+      pickFrom(best, respectCap, essayRunnerUp, true) ?? pickFrom(best, respectCap, essayRunnerUp, false);
 
     // PASS 1 — the cap respected. Tiers in order; within a tier, an equally
     // good painting of the SAME reading is tried before dropping a tier,
@@ -297,7 +329,7 @@ function build() {
     for (let t = 0; t < tiers.length; t++) {
       const { refs: tierRefs, best, top, essayRunnerUp } = tiers[t];
       if (top < 2 || !best.length) continue;
-      const pick = pickFrom(best, true, essayRunnerUp);
+      const pick = pickVaried(best, true, essayRunnerUp);
       if (!pick) { movedTier = true; continue; }   // this reading is spent
       chosen = { art: pick, tierRefs, top };
       stats[t === 0 ? "gospel" : t === 1 ? "middle" : "psalm"]++;
@@ -321,7 +353,7 @@ function build() {
       for (let t = 0; t < tiers.length; t++) {
         const { refs: tierRefs, best, top } = tiers[t];
         if (top < 2 || !best.length) continue;
-        const pick = pickFrom(best, false);
+        const pick = pickVaried(best, false);
         if (!pick) continue;
         chosen = { art: pick, tierRefs, top };
         stats.overCap++;
@@ -376,7 +408,7 @@ function build() {
        * through to the rotation costs a weak thread and buys a fresh work,
        * which is the better trade at this depth.
        */
-      const pick = pickFrom(best, true);
+      const pick = pickVaried(best, true);
       if (pick) { chosen = { art: pick, tierRefs: tierRefsHere, top }; stats.book++; }
     }
 
@@ -384,6 +416,7 @@ function build() {
       let leastId = rotationForDay(ymd).id;
       let leastN = Infinity;
       for (const art of ACT_CATALOGUE) {
+        if (recentHand(art)) continue; // a different hand from last week, even here
         const n = countFor(year, art.id);
         if (n < leastN) { leastN = n; leastId = art.id; }
         if (n === 0) break;
@@ -391,6 +424,38 @@ function build() {
       const art = ACT_CATALOGUE.find((a) => a.id === leastId);
       chosen = { art, tierRefs: [], top: 0 };
       stats.rotation++;
+    }
+
+    /**
+     * NEVER THREE WEEKS STRAIGHT (owner: "its been them 3 weeks straight").
+     *
+     * The swap inside pickVaried costs nothing — it only changes which equally
+     * good painting of the SAME reading is shown — so it cannot break a run
+     * where one artist is the only one who painted the passage at that
+     * closeness. The Mafa series was exactly that for Matthew 18:15-20, 18:21-35
+     * and 20:1-16, three Sundays running. A third consecutive week is where
+     * variety is worth a step of closeness: first a chapter-level painting of
+     * the same reading by another hand, then the week's other reading, tiers in
+     * the owner's order. Never below chapter level, and the card only names the
+     * verses when the replacement genuinely depicts them — `top` is the
+     * replacement's own score, so followsToday is recomputed from it. If nothing
+     * else reaches chapter level, the run stands.
+     */
+    if (thirdStraight(chosen.art)) {
+      let replacement = null;
+      for (const tier of tiers) {
+        const scored = ACT_CATALOGUE
+          .map((cand) => ({ cand, score: matchScore(cand.refs, tier.refs) }))
+          .filter((x) => x.score >= 2 && handOf(x.cand) !== handOf(chosen.art) && countFor(year, x.cand.id) < CAP);
+        for (const score of [3, 2]) {
+          const group = scored.filter((x) => x.score === score).map((x) => x.cand);
+          if (!group.length) continue;
+          const pick = pickFrom(group, true);
+          if (pick) { replacement = { art: pick, tierRefs: tier.refs, top: score }; break; }
+        }
+        if (replacement) break;
+      }
+      if (replacement) { chosen = replacement; stats.thirdStraightBroken++; }
     }
 
     if (movedTier) stats.tierMoved++;
@@ -418,6 +483,10 @@ function build() {
     // the cap counts a WEEK as one appearance rather than seven.
     weekPick.set(weekKey, entry);
     bump(year, art.id);
+    if (recentHand(art)) stats.sameHandAsLastWeek++;
+    recentHands.unshift(handOf(art));
+    recentHands.length = Math.min(recentHands.length, Math.max(ARTIST_GAP_WEEKS, 2));
+    lastWeekId = art.id;
   }
 
   // How often the cap actually bit.
@@ -441,6 +510,12 @@ const header = `// GENERATED by artifacts/api-server/src/build-visio-week-schedu
 // lectionary is server-only, so the whole schedule is resolved here rather
 // than per-device — still a pure function of the date, so everyone praying in
 // a given week sees the same picture.
+//
+// A different artist each week where the reading allows: the same hand is not
+// chosen for back-to-back weeks if another artist painted the same reading, and
+// a third straight week by one artist is broken even at a step of closeness — a
+// chapter-level painting, or the week's epistle — never below chapter level
+// (owner, 2026-09-14: "make sure there is a variance of artists").
 //
 // Covers ${rows[0]?.[0]} … ${rows[rows.length - 1]?.[0]}. A date outside this
 // range falls back to live matching in chooseArtwork, which is exactly the
