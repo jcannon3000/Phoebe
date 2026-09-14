@@ -14,7 +14,7 @@ import {
   setPsalmCycle, setSideCustomName, OFFICE_PREFS_EVENT, OFFICE_LEVELS_SET, type OfficeLevel,
   type ReflectionSource,
   setSideContemplationKind, setSideDayRules, setDaySwapSuppressed, clearSideDaySwap,
-  TRACKED_REFLECTION_SOURCES,
+  TRACKED_REFLECTION_SOURCES, UNOFFERED_REFLECTION_SOURCES,
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin, predatesSeedStamp } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset, type OfficeSideKey } from "@/lib/rulePresets";
@@ -850,7 +850,13 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
           {row("Newsletter", newsletter, [
             // FDD and SSJE moved to the bottom of the list (owner).
             { value: "cac", label: "CAC Daily Meditation" },
-            { value: "sojo", label: "Sojourners Daily Devotion" },
+            // Sojourners is NOT offered while Verse and Voice is paused (owner,
+            // 2026-09-12; UNOFFERED_REFLECTION_SOURCES). Kept for someone whose
+            // current pick it already is, exactly like VTS below — dropping it
+            // from under their choice would silently reset their newsletter.
+            ...(!UNOFFERED_REFLECTION_SOURCES.has("sojo") || newsletter === "sojo"
+              ? [{ value: "sojo", label: "Sojourners Daily Devotion" }]
+              : []),
             { value: "nouwen", label: "Nouwen Daily Devotion" },
             { value: "fdd", label: "Forward Day by Day" },
             { value: "ssje", label: "SSJE — Brother, Give Us a Word" },

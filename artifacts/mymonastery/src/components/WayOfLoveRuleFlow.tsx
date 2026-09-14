@@ -3317,10 +3317,11 @@ export default function WayOfLoveRuleFlow({
      * contemplative practice", and minutes only enter for the practice that was
      * actually asked about them.
      */
-    // RELATIONAL, then the free-form customs. It sits here because it is a
-    // CATEGORY of ready-made practices, like the contemplative and newsletter
-    // slides above it — and "create your own" belongs last, after every list
-    // we can offer has been offered.
+    // NO "relational" STEP. Relational practices were retired 2026-09-10, and the
+    // owner asked again on 2026-09-14 that the full customizer carry no Relational
+    // slide. Its renderer further down is unreachable: nothing in this list names
+    // it, and the review rows that did are filtered to this list. Do not add it
+    // back. "Create your own" belongs last, after every list we can offer.
     "custom",
     // The weekly Way of Love rhythm (Commune / Go / Bless / Rest) closes the
     // flow — restored per owner (2026-07-09): a rule of life turns weekly too.
