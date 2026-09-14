@@ -13,6 +13,9 @@ import { PracticeSwitcher } from "@/components/PracticeSwitcher";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { artworkById } from "@/lib/visioSelect";
+import { tidyArtist, tidyDate, safeArtUrl } from "@/lib/artistName";
+import { guidedPrayerArtIds, guidedPrayerArtRatio } from "@/lib/guidedPrayerArt";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 
@@ -39,6 +42,8 @@ const ACCENT = "rgba(206,158,143,0.5)";
 const EYEBROW = "rgba(206,158,143,0.75)";
 const DOT_ON = "#C99384";
 const DOT_OFF = "rgba(168,108,96,0.32)";
+/** The first slide's Visio Divina switch, remembered on this device. */
+const VISIO_PREF_KEY = "phoebe:guided-prayer-visio";
 // The Kearns/office frosted-pill recipe (CobreatheHowToIntro.tsx:242).
 const PILL: CSSProperties = {
   background: "rgba(9,26,16,0.42)",
@@ -133,8 +138,10 @@ export default function GuidedPrayerPage() {
   const { t } = useTranslation();
   const MOVEMENTS = useMovements();
   const [, setLocation] = useLocation();
-  // step 0 = intro, 1..4 = movements, 5 = closing.
+  // step 0 = intro; movement n's words are step 2n−1 and its picture step 2n;
+  // the closing follows the last picture, then the prayer list.
   const [step, setStep] = useState(0);
+  const closingStep = MOVEMENTS.length * 2 + 1;
   // A still landscape backdrop, picked once per mount — a wide photo on web,
   // a bundled leaf on native (pickWideBackground returns null there).
   const backdropPhoto = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
@@ -167,6 +174,71 @@ export default function GuidedPrayerPage() {
     return new Date().getHours() >= 17 ? "evening" : "morning";
   })();
 
+  /**
+   * A PICTURE AFTER EACH MOVEMENT'S WORDS (owner, 2026-09-14: "after every
+   * slide in simple guided, we have a picture that goes with it … just a slide
+   * with the picture and the stage such as praise under it … just so people
+   * can visualize").
+   *
+   * The four are chosen once, together, so no hand repeats — see
+   * lib/guidedPrayerArt. All four are fetched the moment the prayer opens: the
+   * first is a whole movement away, time enough on any connection there is.
+   *
+   * A picture that can't come — offline, a refusing host, or nothing within
+   * 12s — is not a slide at all: the words go straight on to the next
+   * movement, so the prayer never waits on the network or sits on an empty
+   * frame. One that lands late is there if you step back to it.
+   */
+  const movementArt = useMemo(
+    () => guidedPrayerArtIds(side, artworkById).map((id) => (id ? artworkById(id) : null)),
+    // Once per sitting — a picture must not change under someone mid-prayer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  /**
+   * VISIO DIVINA, ON OR OFF — the switch on the first slide (owner: "a toggle
+   * that says 'Visio Divina' in an eyebrow above, and then on or off … that
+   * would have the pictures in or out"). On by default, remembered on this
+   * device. Off means no picture slides AND nothing fetched for them.
+   */
+  const [visioOn, setVisioOn] = useState<boolean>(() => {
+    try { return localStorage.getItem(VISIO_PREF_KEY) !== "off"; } catch { return true; }
+  });
+  const chooseVisio = (on: boolean) => {
+    setVisioOn(on);
+    try { localStorage.setItem(VISIO_PREF_KEY, on ? "on" : "off"); } catch { /* private mode — this sitting only */ }
+  };
+  const [pictureState, setPictureState] = useState<Array<"loading" | "ready" | "failed">>(
+    () => movementArt.map((a) => (a?.img ? "loading" : "failed")),
+  );
+  const markPicture = (i: number, s: "ready" | "failed" | "late") =>
+    setPictureState((prev) => {
+      // Arrived stays arrived; "late" only gives up on one still loading.
+      if (prev[i] === "ready" || prev[i] === s) return prev;
+      if (s === "late" && prev[i] !== "loading") return prev;
+      const next = prev.slice();
+      next[i] = s === "late" ? "failed" : s;
+      return next;
+    });
+  useEffect(() => {
+    if (!visioOn) return;
+    const timers = movementArt.map((a, i) => {
+      if (!a?.img) return 0;
+      try {
+        const img = new Image();
+        img.decoding = "async";
+        img.onload = () => markPicture(i, "ready");
+        img.onerror = () => markPicture(i, "failed");
+        img.src = safeArtUrl(a.img);
+      } catch {
+        markPicture(i, "failed");
+      }
+      return window.setTimeout(() => markPicture(i, "late"), 12_000);
+    });
+    return () => timers.forEach((t) => window.clearTimeout(t));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visioOn]);
+
   // Simple Guided Prayer / the Examen (via this page) is open to everyone —
   // signed in or not, same as examen.tsx. It used to bounce a signed-out
   // visitor to "/" and render bare null while auth resolved, which meant
@@ -181,7 +253,7 @@ export default function GuidedPrayerPage() {
       try { playOpeningSwell(); } catch { /* non-fatal */ }
     }
     // The closing gets the resolving submit feedback (swell + haptic).
-    if (step === MOVEMENTS.length + 1) {
+    if (step === closingStep) {
       try { triggerSubmitFeedback(); } catch { /* non-fatal */ }
       // Reaching the closing = THIS side's prayer is prayed today. On evening
       // this screen doubles as the Examen (relabeled "Simple Guided Prayer"
@@ -266,11 +338,11 @@ export default function GuidedPrayerPage() {
   const showDeanOffer = false;
 
   const isIntro = step === 0;
-  const isClosing = step === MOVEMENTS.length + 1;
+  const isClosing = step === closingStep;
   // The what's-next slide used to sit here, between the closing and the tail.
   // With it gone the prayer list (and then the collect) follow the closing
   // directly.
-  const prayerListStep = MOVEMENTS.length + 2;
+  const prayerListStep = closingStep + 1;
   /**
    * ONE PRAYER PER SLIDE, held for the amen — not a list to read past.
    *
@@ -297,9 +369,17 @@ export default function GuidedPrayerPage() {
   /** Last of the tail — after the collect, the way a reading follows prayer. */
   const deanStep = collectStep + (showCollect ? 1 : 0);
   const isDean = showDeanOffer && step === deanStep;
-  const movement = !isIntro && !isClosing && !isPrayerList && !isDean ? MOVEMENTS[step - 1] : null;
-
-  const isLastMovement = movement != null && movement.n === MOVEMENTS.length;
+  /** The movement a step belongs to: its words on the odd step, its picture on the even. */
+  const stage = step >= 1 && step < closingStep ? (MOVEMENTS[Math.ceil(step / 2) - 1] ?? null) : null;
+  const isPictureStep = (s: number) => s >= 1 && s < closingStep && s % 2 === 0;
+  /** A picture that couldn't come — or Visio Divina switched off — is stepped over, both ways. */
+  const skipped = (s: number) => isPictureStep(s) && (!visioOn || pictureState[s / 2 - 1] === "failed");
+  const nextStep = (s: number) => { let n = s + 1; while (skipped(n)) n += 1; return n; };
+  const prevStep = (s: number) => { let p = s - 1; while (p > 0 && skipped(p)) p -= 1; return p; };
+  const movement = stage && !isPictureStep(step) ? stage : null;
+  const pictureOf = stage && isPictureStep(step) ? stage : null;
+  const pictureArt = pictureOf ? (movementArt[pictureOf.n - 1] ?? null) : null;
+  const pictureReady = pictureOf ? pictureState[pictureOf.n - 1] === "ready" : false;
   const hasTail = showPrayerList || showCollect || showDeanOffer;
   // One primary action per slide, in the office's bottom control band.
   const primary = isIntro
@@ -325,7 +405,9 @@ export default function GuidedPrayerPage() {
          * big green button would make declining it the awkward choice.
          */
         ? { label: t("common.done", { defaultValue: "Done" }), onClick: () => setLocation("/dashboard") }
-      : { label: isLastMovement ? t("guided_prayer.amen") : t("guided_prayer.continue"), onClick: () => setStep((s) => s + 1) };
+      // Amen on whichever slide hands on to the closing — Supplication's
+      // picture, or its words when the picture couldn't come.
+      : { label: nextStep(step) === closingStep ? t("guided_prayer.amen") : t("guided_prayer.continue"), onClick: () => setStep((s) => nextStep(s)) };
 
   return (
     <div
@@ -355,8 +437,8 @@ export default function GuidedPrayerPage() {
         <AnimatedBackground base={BG} variant="subtle" />
       )}
       {/* Top bar — back exits to the offices picker, the same place Guided
-          Prayer is reached from. On a movement slide, Back steps one
-          movement instead of leaving, so a discreet ✕ on the right always
+          Prayer is reached from. On a movement or picture slide, Back
+          steps one slide instead of leaving, so a discreet ✕ on the right always
           offers a one-tap exit. */}
       <header
         className="px-5 pb-2 flex items-center justify-between"
@@ -365,7 +447,7 @@ export default function GuidedPrayerPage() {
         <button
           type="button"
           onClick={() => {
-            if (step > 0 && step < MOVEMENTS.length + 1) setStep((s) => s - 1);
+            if (step > 0 && step < closingStep) setStep((s) => prevStep(s));
             // HOME, not the offices picker — same fix as the Examen's exit.
             // Owner: "when i x out of the examen, it goes to daily prayer, it
             // should go home … make sure this is not happening on simple
@@ -387,7 +469,7 @@ export default function GuidedPrayerPage() {
         >
           {t("guided_prayer.back")}
         </button>
-        {step > 0 && step < MOVEMENTS.length + 1 && (
+        {step > 0 && step < closingStep && (
           <button
             type="button"
             onClick={() => setLocation("/dashboard")}
@@ -413,8 +495,13 @@ export default function GuidedPrayerPage() {
         className="flex flex-col items-center text-center px-6 w-full"
         style={{
           maxWidth: 560, margin: "0 auto", minHeight: "var(--app-dvh)", justifyContent: "center",
-          paddingTop: "clamp(24px, 6dvh, 72px)",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 168px)",
+          // BALANCED: the column centres in the space BETWEEN the header and
+          // the bottom control band, with the same breathing room on each
+          // side (owner: "make sure the content is vertically centered and
+          // balanced"). It used to centre between the screen's top edge and a
+          // tall bottom reserve, which sat every slide visibly high.
+          paddingTop: "calc(max(1.25rem, calc(var(--safe-top) + 0.5rem)) + 64px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 116px)",
           position: "relative", zIndex: 1,
         }}
       >
@@ -445,6 +532,38 @@ export default function GuidedPrayerPage() {
               <div style={{ marginTop: 22 }}>
                 <PracticeSwitcher side={side} current={isExamen ? "examen" : "guided-prayer"} />
               </div>
+              {/* Visio Divina — pictures in or out of this prayer. */}
+              <div className="flex flex-col items-center" style={{ marginTop: 26 }}>
+                <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 11, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", margin: "0 0 10px" }}>
+                  {t("guided_prayer.visio_eyebrow", { defaultValue: "Visio Divina" })}
+                </p>
+                <div
+                  role="radiogroup"
+                  aria-label={t("guided_prayer.visio_eyebrow", { defaultValue: "Visio Divina" })}
+                  className="inline-flex rounded-full"
+                  style={{ padding: 3, background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: `1px solid ${ACCENT}` }}
+                >
+                  {[true, false].map((on) => (
+                    <button
+                      key={on ? "on" : "off"}
+                      type="button"
+                      role="radio"
+                      aria-checked={visioOn === on}
+                      onClick={() => chooseVisio(on)}
+                      className="rounded-full"
+                      style={{
+                        padding: "7px 20px", minWidth: 64, border: "none", cursor: "pointer",
+                        fontFamily: FONT, fontSize: 14, fontWeight: 600,
+                        background: visioOn === on ? "rgba(201,147,132,0.30)" : "transparent",
+                        color: visioOn === on ? WARM : "rgba(240,237,230,0.6)",
+                        transition: "background 200ms ease-out, color 200ms ease-out",
+                      }}
+                    >
+                      {on ? t("guided_prayer.visio_on", { defaultValue: "On" }) : t("guided_prayer.visio_off", { defaultValue: "Off" })}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </motion.div>
           )}
 
@@ -472,6 +591,70 @@ export default function GuidedPrayerPage() {
               <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15.5px, 4.2vw, 18px)", lineHeight: 1.55 }}>
                 {movement.body}
               </p>
+            </motion.div>
+          )}
+
+          {pictureOf && (
+            <motion.div
+              key={`picture-${pictureOf.n}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="flex flex-col items-center"
+              style={{ width: "100%", maxWidth: 480, textAlign: "center" }}
+            >
+              {/* The movement as an eyebrow, the picture, then the work itself —
+                  its title where the movement's name used to stand and its
+                  credit right beneath (owner: "Put the credits for each picture
+                  on their slide", "Have the title of the image instead of just
+                  suplication"). No frame round the painting.
+
+                  The box takes the work's measured shape before the image
+                  arrives, so a late picture fades into place instead of moving
+                  the words. The height allowance is the column (header and
+                  bottom-band clearance — see <main>) less the eyebrow, a
+                  two-line title, the artist line and a three-line credit, so the
+                  whole stack stays centred on every phone. */}
+              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", margin: "0 0 14px" }}>
+                {pictureOf.title}
+              </p>
+              {pictureArt?.img && pictureState[pictureOf.n - 1] !== "failed" && (
+                <img
+                  src={safeArtUrl(pictureArt.img)}
+                  alt={`${pictureArt.title}${pictureArt.artist ? ` — ${tidyArtist(pictureArt.artist)}` : ""}`}
+                  decoding="async"
+                  onLoad={() => markPicture(pictureOf.n - 1, "ready")}
+                  onError={() => markPicture(pictureOf.n - 1, "failed")}
+                  style={{
+                    display: "block",
+                    width: `min(100%, calc((var(--app-dvh) - var(--safe-top) - env(safe-area-inset-bottom, 0px) - 372px) * ${guidedPrayerArtRatio(pictureArt.id)}))`,
+                    aspectRatio: String(guidedPrayerArtRatio(pictureArt.id)),
+                    height: "auto",
+                    objectFit: "contain",
+                    opacity: pictureReady ? 1 : 0,
+                    transition: "opacity 480ms ease-out",
+                  }}
+                />
+              )}
+              {pictureArt && (
+                <>
+                  <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 600, fontSize: "clamp(18px, 4.8vw, 21px)", lineHeight: 1.25, letterSpacing: "-0.005em", margin: "16px 0 0" }}>
+                    {pictureArt.title}
+                  </h2>
+                  {(pictureArt.artist || pictureArt.date) && (
+                    <p style={{ color: "rgba(240,237,230,0.72)", fontFamily: FONT, fontSize: 13.5, lineHeight: 1.4, margin: "6px 0 0" }}>
+                      {[pictureArt.artist ? tidyArtist(pictureArt.artist) : null, pictureArt.date ? tidyDate(pictureArt.date) : null].filter(Boolean).join(", ")}
+                    </p>
+                  )}
+                  {/* The credit the library asks for: whose it is (above), the
+                      project it comes through, and the licence it's offered
+                      under — the non-commercial grants require exactly this. */}
+                  <p style={{ color: "rgba(240,237,230,0.5)", fontFamily: FONT, fontSize: 11, lineHeight: 1.45, margin: "6px auto 0", maxWidth: 360 }}>
+                    {["Art in the Christian Tradition, Vanderbilt Divinity Library", pictureArt.licence].filter(Boolean).join(" · ")}
+                  </p>
+                </>
+              )}
             </motion.div>
           )}
 
@@ -549,13 +732,13 @@ export default function GuidedPrayerPage() {
           puts its "X of Y" counter, then the frosted pill
           (CobreatheHowToIntro.tsx:234-244). */}
       <div className="absolute left-0 right-0 flex flex-col items-center" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 22px)", zIndex: 2 }}>
-        {movement && (
+        {stage && (
           <div className="flex items-center justify-center gap-1.5" style={{ marginBottom: 16 }}>
             {MOVEMENTS.map((m) => (
               <span
                 key={m.n}
                 className="block rounded-full"
-                style={{ width: 6, height: 6, background: m.n <= movement.n ? DOT_ON : DOT_OFF }}
+                style={{ width: 6, height: 6, background: m.n <= stage.n ? DOT_ON : DOT_OFF }}
               />
             ))}
           </div>
