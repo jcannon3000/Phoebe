@@ -6,9 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
-import { markGuidedPrayerPrayed, VTS_TODAY_URL, isVtsPublishingDay, recordVtsOpened } from "@/lib/cacReadState";
-import { useRhythmState } from "@/hooks/useRhythmState";
-import { openExternal } from "@/lib/openExternal";
+import { markGuidedPrayerPrayed } from "@/lib/cacReadState";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { getSideLevel } from "@/lib/officePrefs";
 import { PracticeSwitcher } from "@/components/PracticeSwitcher";
@@ -257,27 +255,15 @@ export default function GuidedPrayerPage() {
   const showCollect = false;
 
   /**
-   * THE DEAN'S COMMENTARY, offered at the end — but only to someone who is
-   * actually waiting for it.
-   *
-   * Owner: "if they're subscribed to The VTS Dean Commentary, let's have a
-   * slide that says would you like to read the Dean commentary? Only if they
-   * haven't read it yet. And so they could go straight from the simple guided
-   * prayer to the Dean's commentary."
-   *
-   * Three gates, and each one is the difference between an offer and a nag:
-   *   • SUBSCRIBED — `reflections` from useRhythmState is the set the reader
-   *     actually keeps, which is the same value the home card reads. Deriving
-   *     "do they have VTS" any other way is how the card and the slide come to
-   *     disagree, which this app has done five times.
-   *   • NOT READ YET — the same set carries `done`, so the slide disappears
-   *     the moment they read it, wherever they read it from.
-   *   • A PUBLISHING DAY — VTS posts on weekdays. Offering it on a Sunday
-   *     sends someone to Friday's commentary as if it were today's.
+   * THE DEAN'S COMMENTARY OFFER IS GONE (owner, 2026-09-14: "take out the
+   * last slide of simple guided when someone is subscribed to the Dean's
+   * Commentary where it invites them to read it"). It was the last slide for
+   * a reader who kept VTS and hadn't read today's; the reading now waits on
+   * its own home card, and the prayer ends where its shape ends. Like
+   * showCollect, the constant keeps the tail arithmetic honest rather than
+   * unpicking it by hand.
    */
-  const { reflections } = useRhythmState();
-  const vtsUnread = reflections.some((r) => r.source === "vts" && !r.done);
-  const showDeanOffer = vtsUnread && isVtsPublishingDay();
+  const showDeanOffer = false;
 
   const isIntro = step === 0;
   const isClosing = step === MOVEMENTS.length + 1;
@@ -555,47 +541,7 @@ export default function GuidedPrayerPage() {
               the end of the slideshow." Removed with its fetch; see
               showCollect above for why the step arithmetic still names it. */}
 
-          {/* The Dean's Commentary offer — the last slide, and only for a
-              reader who keeps it and hasn't read it today. See showDeanOffer. */}
-          {isDean && (
-            <motion.div
-              key="dean"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "center" }}
-            >
-              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
-                {t("guided_prayer.dean_eyebrow", { defaultValue: "Virginia Theological Seminary" })}
-              </p>
-              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(20px, 5vw, 28px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 14 }}>
-                {t("guided_prayer.dean_title", { defaultValue: "Would you like to read the Dean's Commentary?" })}
-              </h2>
-              <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: FONT, fontSize: "clamp(15px, 4vw, 17px)", lineHeight: 1.6 }}>
-                {t("guided_prayer.dean_body", { defaultValue: "Today's has not been read yet." })}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  // Marks it read and opens it — the same call the home card
-                  // makes, so the card, the anchor and this slide can never
-                  // disagree about whether today's was read.
-                  recordVtsOpened();
-                  openExternal(VTS_TODAY_URL, { reader: true });
-                }}
-                className="rounded-full py-3 px-8 transition-opacity hover:opacity-90 active:scale-[0.99]"
-                style={{
-                  marginTop: 24, background: "rgba(9,26,16,0.42)",
-                  backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
-                  border: "1px solid rgba(168,197,160,0.5)", color: WARM,
-                  fontFamily: FONT, fontSize: 16, fontWeight: 700, cursor: "pointer",
-                }}
-              >
-                {t("guided_prayer.dean_open", { defaultValue: "Read it now" })} &rarr;
-              </button>
-            </motion.div>
-          )}
+          {/* (The Dean's Commentary offer went with its slide — see showDeanOffer.) */}
         </AnimatePresence>
       </main>
 
