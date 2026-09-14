@@ -3089,8 +3089,11 @@ export default function WayOfLoveRuleFlow({
     // The top bar carries Back and the Layout X only. The primary action sits
     // at the BOTTOM (see ctaButton), and the two whole-routine actions are
     // rows at the foot of the list — both back where the owner asked for them.
+    // data-frost-ring: every frosted, bordered box inside gets its ring
+    // painted ABOVE its frost — see the block in index.css (owner audit,
+    // 2026-09-14: the rows had the home cards' half-stroke).
     return (
-    <div style={{ flex: 1, minHeight: 0, minWidth: 0, background: "transparent", position: "relative", isolation: "isolate", display: "flex", flexDirection: "column" }}>
+    <div data-frost-ring="" style={{ flex: 1, minHeight: 0, minWidth: 0, background: "transparent", position: "relative", isolation: "isolate", display: "flex", flexDirection: "column" }}>
       <div className="px-4 sm:px-6 md:px-8" style={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0, display: "flex", flexDirection: "column", paddingTop: 24, paddingBottom: SHELL_PAD_BOTTOM }}>
         {/* BACK, pinned at the very top, sharing the row with the Layout X.
             (Next lived here too until the owner asked for Continue back at the

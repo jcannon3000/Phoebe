@@ -932,3 +932,28 @@ a:active,
 [style*="backdrop-filter: blur(22px)"][style*="border"]:not([aria-hidden="true"]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; isolation: isolate; }
 [style*="backdrop-filter: blur(22px)"][style*="border"]:not([aria-hidden="true"]):not([style*="position"]):not(.fixed):not(.absolute):not(.sticky):not(.relative) { position: relative; }
 [style*="backdrop-filter: blur(22px)"][style*="border"]:not([aria-hidden="true"])::before { content: ""; position: absolute; inset: 2px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+
+/* THE CUSTOMIZER'S RING, PAINTED ABOVE ITS FROST (owner audit, 2026-09-14:
+   "audit the cards in the customizer to make sure they aren't having the
+   same issue the home cards were having" — they were: measured at device
+   resolution, one step's five option rows read 4/4, 3/4, 2/1, 4/2 device
+   px top over bottom, the selected row's bright stroke four rows on top and
+   two at the bottom). Same cause as the home cards: the ::before frost above
+   sits at z -1, which is ABOVE the box's own border in paint order, and its
+   blur runs over whichever border edge its layer overruns.
+
+   Same fix, done once for the whole wizard rather than per site (22 frosted,
+   bordered boxes in WayOfLoveRuleFlow, every one CARD_B or CARD_B_ACTIVE):
+   inside [data-frost-ring], the box's own border goes transparent, its tint
+   stops at the padding edge, and an ::after ring at z 1 — above the frost —
+   carries the stroke. Where the box clips its children (overflow: hidden —
+   the option rows, for their accent bar) the ring sits at inset 0, just
+   inside the old border; elsewhere it sits exactly over it. Two colours only,
+   matched from the inline style; add a third here if the wizard ever uses
+   one. Widen the scope with the attribute, not by removing it: outside the
+   wizard the same rule would recolour every other border in the app. */
+[data-frost-ring] [style*="backdrop-filter"][style*="border: 1px solid"]:not([aria-hidden="true"]) { border-color: transparent !important; background-clip: padding-box !important; }
+[data-frost-ring] [style*="backdrop-filter"][style*="border: 1px solid"]:not([aria-hidden="true"])::after { content: ""; position: absolute; inset: -1.5px; z-index: 1; pointer-events: none; border-radius: inherit; border: 1.5px solid rgba(46,107,64,0.4); }
+[data-frost-ring] [style*="backdrop-filter"][style*="border: 1px solid"][style*="overflow: hidden"]:not([aria-hidden="true"])::after { inset: 0; }
+[data-frost-ring] [style*="backdrop-filter"][style*="border: 1px solid"][style*="rgba(168, 197, 160, 0.7)"]:not([aria-hidden="true"])::after,
+[data-frost-ring] [style*="backdrop-filter"][style*="border: 1px solid"][style*="rgba(168,197,160,0.7)"]:not([aria-hidden="true"])::after { border-color: rgba(168,197,160,0.7); }

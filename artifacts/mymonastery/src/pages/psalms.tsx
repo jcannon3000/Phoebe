@@ -460,9 +460,25 @@ export default function PsalmsPage() {
             ], (v) => setFormat(v as "screen" | "book" | "listen"))}
           </div>
         </div>
-        <div style={{ flexShrink: 0, padding: "10px 28px max(1.25rem, env(safe-area-inset-bottom))", display: "flex", justifyContent: "center" }}>
-          <button onClick={beginFromIntro} style={{ width: "100%", maxWidth: 380, background: "rgba(var(--ot-green, 46,107,64),0.6)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.45)", color: WARM, borderRadius: 999, padding: "14px 24px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}>
-            Begin <span aria-hidden>→</span>
+        {/* THE FOOT OF THE INTRO, built like the office's own "Before you
+            begin" page (owner, 2026-09-14: "the first slide of praying the
+            psalms is inconsistent with other UI, especially the bottom bar").
+            This was a ROW: Begin and the practice switcher side by side, the
+            switcher wrapping to three lines. The office stacks them — one
+            full-width frosted Begin (its exact style), the switcher centred
+            beneath as a quiet pill, the way the office's chooser places it. */}
+        <div style={{ flexShrink: 0, padding: "10px 28px max(1.25rem, env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+          <button
+            onClick={beginFromIntro}
+            style={{
+              width: "100%", maxWidth: 380,
+              background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+              border: "1px solid rgba(var(--ot-fern, 168,197,160),0.45)",
+              borderRadius: 999, color: WARM, fontFamily: FONT, fontSize: 15, fontWeight: 600, letterSpacing: "0.02em",
+              cursor: "pointer", padding: "14px 24px",
+            }}
+          >
+            Begin
           </button>
           {/* A different practice, just for today (owner) — swaps this side's
               anchor for the day and walks into the chosen one. */}
