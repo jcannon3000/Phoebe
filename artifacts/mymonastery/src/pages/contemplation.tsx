@@ -166,12 +166,17 @@ function avgPerDay(seconds: number, days: number): string {
 
 // Always plain minutes — "75 min", "<1 min", "—" for zero. (Per product
 // direction the contemplation times read in minutes, not h/m: 1h 15m → 75.)
+//
+// WHOLE MINUTES SAT, rounded DOWN — the same count the goal bar and the home
+// card use (owner, 2026-09-14, comparing them: this tile read "20 min" beside
+// "19 of 60 min today" for the same 19½ minutes). A minute not yet sat is
+// never shown as sat.
 function humanMinutes(seconds: number): string {
   if (!seconds || seconds < 60) return seconds > 0 ? "<1 min" : "—";
-  const m = Math.round(seconds / 60);
+  const m = Math.floor(seconds / 60);
   // Past ~1000 minutes the count reads better in hours — an all-time total of
   // "1,240 min" is clearer as "21 hr".
-  if (m >= 1000) return `${Math.round(m / 60)} hr`;
+  if (m >= 1000) return `${Math.floor(m / 60)} hr`;
   return `${m} min`;
 }
 
