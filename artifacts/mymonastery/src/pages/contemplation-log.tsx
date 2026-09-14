@@ -35,7 +35,7 @@ export default function ContemplationLogPage() {
   const queryClient = useQueryClient();
   const { contemplationMin, contemplationGoalMin } = useRhythmState();
   /** What is in the box. A string so it can be empty mid-edit; see the field. */
-  const [minutesText, setMinutesText] = useState("20");
+  const [minutesText, setMinutesText] = useState("10"); // owner, 2026-09-14: prefill 10
   const minutes = parseInt(minutesText, 10) || 0;
   const [when, setWhen] = useState<"today" | "yesterday">("today");
   const [justLogged, setJustLogged] = useState(false);
@@ -141,7 +141,7 @@ export default function ContemplationLogPage() {
               pattern="[0-9]*"
               value={minutesText}
               onChange={(e) => setMinutesText(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
-              placeholder="20"
+              placeholder="10"
               aria-label="How many minutes"
               style={fieldStyle}
             />

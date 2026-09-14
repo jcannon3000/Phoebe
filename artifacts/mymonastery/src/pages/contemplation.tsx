@@ -635,7 +635,7 @@ export default function ContemplationPage() {
   const [logOpen, setLogOpen] = useState(false);
   // Free string so the field can be cleared to blank and retyped; parsed to a
   // number where one's needed (mutation + submit-enabled check).
-  const [logMinutes, setLogMinutes] = useState("5");
+  const [logMinutes, setLogMinutes] = useState("10"); // owner, 2026-09-14: prefill 10, same as the Log Prayer Time page
   const [logWhen, setLogWhen] = useState(() => localDatetimeValue(new Date()));
   const inputStyle = {
     background: "rgba(0,0,0,0.25)",
@@ -703,7 +703,7 @@ export default function ContemplationPage() {
       }
       refreshContemplation();
       setLogOpen(false);
-      setLogMinutes("20");
+      setLogMinutes("10");
       setLogWhen(localDatetimeValue(new Date()));
     },
   });
