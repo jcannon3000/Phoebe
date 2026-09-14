@@ -410,29 +410,30 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
     }
 
     /**
-     * TWO DIFFERENT QUESTIONS, TWO DIFFERENT SUMS.
+     * EVERY CONTEMPLATIVE SIT COUNTS, BREATHING TOGETHER INCLUDED (owner,
+     * 2026-09-14: "breathing together minutes show up in stats but not on the
+     * home routine card").
      *
-     * `silentOnly` is what the SILENCE GOAL is measured against: a Breathing
-     * Together breath must not fill a goal the person set for silence. That is
-     * why the exclusion exists and it stays.
+     * These totals were split on 2026-08-26 (ba994e6b). An audit of the
+     * Creation-vs-Contemplative mix-ups rightly kept a breath from ticking the
+     * SILENT per-side card, then extended that to "a breath must not fill the
+     * minutes goal" and made the bare keys silent-only. The Contemplation page
+     * later read a separate `withBreath` block (1f57c8c6), so one morning
+     * showed 20 minutes in Stats, 19 on the page's goal bar and 14 on the home
+     * card. Breathing Together has counted toward the daily goal since it
+     * shipped: reaching the 12th breath logs a contemplation sit.
      *
-     * But it is not the answer to "how long have I spent in contemplation" —
-     * and the Contemplation page's own comment has always said its cumulative
-     * tiles include the breath. Owner: "Breathing together time didn't show up
-     * in my overall contemplation time even though it's in my history." So the
-     * totals are computed BOTH ways and the response carries both: the bare
-     * keys stay silent-only for the goal, `withBreath` is what the page shows.
+     * The per-side line still holds where it belongs. Which SIDE was kept, and
+     * by which practice, is /me/contemplation-sides-today's `kind` filter; a
+     * breath never marks the silent side done. Minutes are minutes. The silence
+     * ladder and the weekly practice sums (users.ts) count the same way, so the
+     * card, the rung and the week can't disagree. `withBreath` is kept,
+     * identical, for builds that already read it.
      */
-    const windowStats = async (
-      since: Date | null,
-      silentOnly = true,
-    ): Promise<{ seconds: number; count: number; days: number }> => {
+    const windowStats = async (since: Date | null): Promise<{ seconds: number; count: number; days: number }> => {
       const conds = [
         eq(prayerSessionsTable.userId, sessionUserId),
         eq(prayerSessionsTable.surface, "contemplation"),
-        ...(silentOnly
-          ? [sql`(${prayerSessionsTable.source} IS NULL OR ${prayerSessionsTable.source} <> 'cobreathe')`]
-          : []),
       ];
       if (since) conds.push(gte(prayerSessionsTable.endedAt, since));
       const [row] = await db
@@ -452,16 +453,12 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
     // Contemplation totals derive ONLY from the viewer's in-app sits
     // (prayer_sessions, surface="contemplation"). Apple Health / external
     // mindful minutes are no longer read or folded in.
-    const [today, week, all, todayAll, weekAll, allAll] = await Promise.all([
+    const [today, week, all] = await Promise.all([
       windowStats(todaySince),
       windowStats(weekAgo),
       windowStats(null),
-      windowStats(todaySince, false),
-      windowStats(weekAgo, false),
-      windowStats(null, false),
     ]);
-
-    res.json({
+    const totals = {
       todaySeconds: today.seconds,
       todayCount: today.count,
       // Today is one local day — a sit means 1 day, not the UTC-split
@@ -473,21 +470,8 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
       totalSeconds: all.seconds,
       sessionCount: all.count,
       totalDays: all.days,
-      // The same three windows counting EVERY contemplative sit, breath
-      // included — what the Contemplation page's cumulative and average tiles
-      // report. See the note above windowStats for why both exist.
-      withBreath: {
-        todaySeconds: todayAll.seconds,
-        todayCount: todayAll.count,
-        todayDays: todayAll.count > 0 ? 1 : 0,
-        weekSeconds: weekAll.seconds,
-        weekCount: weekAll.count,
-        weekDays: weekAll.days,
-        totalSeconds: allAll.seconds,
-        sessionCount: allAll.count,
-        totalDays: allAll.days,
-      },
-    });
+    };
+    res.json({ ...totals, withBreath: totals });
   } catch (err) {
     console.error("[/me/contemplation-stats GET] failed:", err);
     res.status(500).json({ error: "internal_error" });
