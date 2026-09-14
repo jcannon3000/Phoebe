@@ -14,7 +14,7 @@ import { useLocation } from "wouter";
 import { motion, useInView } from "framer-motion";
 import { Play } from "lucide-react";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { useCourseProgress, isCourseHiddenFromHome, COURSE_HIDDEN_EVENT, snapshotProgress } from "@/lib/courseProgress";
+import { useCourseProgress, useAnyCourseProgressTick, isCourseHiddenFromHome, COURSE_HIDDEN_EVENT, snapshotProgress } from "@/lib/courseProgress";
 import {
   CENTERING_PRAYER,
   CENTERING_INDEX,
@@ -62,7 +62,9 @@ function videoCourseCard(
     title: course.title,
     nextLabel: nextVid ? videoLabel(nextVid) : "",
     href: nextVid ? `${href}?v=${nextVid.id}` : href,
-    done: completedCount,
+    // Only THIS course's current videos count: an id completed under an older
+    // syllabus must not make a course look finished early, or read "9 of 8".
+    done: index.videos.filter((v) => completed.has(v.id)).length,
     total: index.total,
     // "Started" = an explicit play/open (markStarted) or real progress — NEVER
     // a mere page visit (lastId is stamped on visits for resume, so it can't
@@ -77,6 +79,19 @@ export function HomeLearnSection() {
   const centering = useCourseProgress(CENTERING_PRAYER.id);
   const journey = useCourseProgress(SPIRITUAL_JOURNEY.id);
   const wol = useCourseProgress(WAY_OF_LOVE.id);
+  /**
+   * RE-RENDER ON ANY COURSE'S PROGRESS (owner, 2026-09-14: "when someone is
+   * finished with a course, make sure it disappears from the home screen …
+   * make sure things are not stuck").
+   *
+   * The three hooks above are reactive, but the CAC season cards below read
+   * progress through snapshotProgress() at render, so nothing told this
+   * section when a season's last episode finished. Audio keeps playing on the
+   * home in the mini-player, so a season could end right here and its card sit
+   * on, finished, until something unrelated re-rendered. This tick is that
+   * signal. Above the early return, like every hook here.
+   */
+  useAnyCourseProgressTick();
 
   /**
    * CAC seasons appear here too, once someone is actually listening (owner:
@@ -110,7 +125,8 @@ export function HomeLearnSection() {
       // Text only — no lesson emoji on the course cards (owner).
       nextLabel: nextLesson ? nextLesson.practice : "",
       href: "/way-of-love-course",
-      done: wol.completedCount,
+      // The current lessons only, for the same reason as the video courses.
+      done: WOL_LESSONS.filter((l) => wol.completed.has(l.key)).length,
       total: WOL_TOTAL,
       started: wol.completedCount > 0 || wol.started,
       updatedAt: snapshotProgress(WAY_OF_LOVE.id).updatedAt ?? 0,

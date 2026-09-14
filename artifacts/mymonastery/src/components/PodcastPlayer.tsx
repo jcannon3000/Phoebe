@@ -356,6 +356,9 @@ function officeYmdLocal(): string {
 }
 // Fraction of the episode a listen must reach to count the office as prayed.
 const OFFICE_CREDIT_FRACTION = 0.6;
+// A course lesson counts as heard at 90%: the closing music and a few seconds
+// of grace, not half the lesson. See the course credit in the time handler.
+const COURSE_COMPLETE_FRACTION = 0.9;
 
 export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const [, setLocation] = useLocation();
@@ -470,6 +473,8 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // ≥60% office credit fires exactly once per listen.
   const officeCreditedRef = useRef<string | null>(null);
   const weeklyCreditedRef = useRef<string | null>(null);
+  // The episodeId of the course lesson already credited this play (≥90% heard).
+  const courseCreditedRef = useRef<string | null>(null);
   // Whether THIS podcast play has already credited the Podcasts daily practice
   // (so the ≥2-min credit fires once per episode play).
   const podcastCreditedRef = useRef(false);
@@ -563,6 +568,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         ? { surface: `${officeSide}-office-podcast`, creditMode: officeSide }
         : { surface: ep.sessionSurface ?? "podcast", creditMode: ep.creditMode };
       officeCreditedRef.current = null;
+      courseCreditedRef.current = null;
       podcastCreditedRef.current = false;
       outroTriggeredRef.current = false;
       // A segment request (startAtSeconds) wins; else resume the saved spot;
@@ -899,6 +905,29 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       apiRequest("POST", `/api/groups/${groupSlug}/weekly-plan/complete`, { itemId, done: true })
         .then(() => queryClient.invalidateQueries({ queryKey: [`/api/groups/${groupSlug}/weekly-plan`] }))
         .catch(() => { /* best-effort — the manual circle-tap still works */ });
+    }
+    /**
+     * A COURSE LESSON IS DONE WHEN IT HAS BEEN HEARD, not only when the audio
+     * element fires `ended` (owner, 2026-09-14: "when someone is finished with a
+     * course, make sure it disappears from the home screen … make sure things
+     * are not stuck").
+     *
+     * onEndedEv was the only writer. Stop during the closing music, close the
+     * player a few seconds early, or let iOS suspend playback so `ended` never
+     * arrives, and the last lesson stayed unfinished: the course never reached
+     * N of N and sat on the home screen for good. ≥90% heard marks it, once per
+     * play. The office and weekly-plan credits above use 60% for the same
+     * outro-and-grace reason; a lesson asks for more. onEndedEv still marks
+     * too, and markComplete is idempotent.
+     */
+    if (
+      current.courseComplete &&
+      courseCreditedRef.current !== current.episodeId &&
+      isFinite(a.duration) && a.duration > 0 &&
+      a.currentTime / a.duration >= COURSE_COMPLETE_FRACTION
+    ) {
+      courseCreditedRef.current = current.episodeId;
+      markCourseLessonComplete(current.courseComplete.courseId, current.courseComplete.lessonKey);
     }
     // Podcast practice credit: ≥2 min of ACTUAL listening (accumulated play
     // time, so skipping ahead doesn't count) to a real podcast — not an office
