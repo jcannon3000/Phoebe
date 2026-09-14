@@ -29,10 +29,11 @@ import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   getSideDaySwap, setSideDaySwap, clearSideDaySwap, getSideLevel, getSideCustomName,
-  getExplicitSideLevel, getSideExtra,
+  getExplicitSideLevel, getSideExtra, getSideContemplationKind, baseSideCustomName,
   type OfficeSide, type OfficeLevel,
 } from "@/lib/officePrefs";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { anchorPracticeFor } from "@/lib/anchorPractices";
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
@@ -45,7 +46,11 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
  * practice already in my routine").
  */
 const SWITCHABLE: Array<{
+  /** What the practice IS, for the already-in-your-routine filter. Defaults to the level. */
+  id?: string;
   level: OfficeLevel;
+  /** For level "custom": the named practice today's swap carries. */
+  customName?: string;
   emoji: (side: OfficeSide) => string;
   name: (side: OfficeSide) => string;
   href: (side: OfficeSide) => string;
@@ -69,6 +74,20 @@ const SWITCHABLE: Array<{
   { level: "examen", emoji: () => "🌗", name: () => "The Examen", href: (s) => `/examen?side=${s}` },
   { level: "compline", emoji: () => "🌙", name: () => "Compline", href: () => "/bcp/daily-office?mode=compline" },
   { level: "reflect-sit", emoji: () => "🕯️", name: () => "Contemplative Prayer", href: () => "/contemplation?begin=1" },
+  /**
+   * BREATHING TOGETHER AND LECTIO DIVINA (owner, 2026-09-14: "make sure
+   * breathing together and lectio divina are available when someone hits
+   * choose a different practice"). Neither is a side LEVEL, so they ride the
+   * named-practice anchor: the swap sets the side to "custom" with the
+   * practice's name, anchorPracticeFor maps the name to the real practice,
+   * and the side is kept when that practice is (Lectio through
+   * creditAnchorPractice, Breathing Together through today's breath). The
+   * href is the anchor table's, so the swapped card opens the same page.
+   * (The note below about "creation" is the Season-of-Creation LEVEL — a
+   * different thing from Breathing Together.)
+   */
+  { id: "cobreathe", level: "custom", customName: "Breathing Together", emoji: () => "🌍", name: () => "Breathing Together", href: () => "/cobreathe" },
+  { id: "lectio", level: "custom", customName: "Lectio Divina", emoji: () => "📜", name: () => "Lectio Divina", href: () => "/lectio" },
   /**
    * NO "creation" entry, on purpose (audit). A swap sets the SIDE'S LEVEL,
    * and level "creation" cannot complete: the creation-devotion deck flags
@@ -111,7 +130,9 @@ export function swapLevelName(level: OfficeLevel | null, side: OfficeSide): stri
 export function daySwapNote(side: OfficeSide): string | null {
   const swap = getSideDaySwap(side);
   if (!swap) return null;
-  const from = swapLevelName(swap.from, side);
+  // From a named practice, say ITS name: getSideCustomName now answers with
+  // the swap's, which would read "Switched from Lectio Divina".
+  const from = swap.from === "custom" ? (swap.fromName || "your own practice") : swapLevelName(swap.from, side);
   return from ? `Switched from ${from}` : null;
 }
 
@@ -125,7 +146,11 @@ export function PracticeSwitcher({ side, current }: {
   const [open, setOpen] = useState(false);
   // What the routine already keeps — silence comes from the same computation
   // every other surface reads (the one-computation rule).
-  const { silenceActive } = useRhythmState();
+  const {
+    soloSilenceActive, morningContemplationActive, eveningContemplationActive,
+    morningContemplationKind, eveningContemplationKind,
+    examenActive, complineActive, lectioActive, cobreatheActive,
+  } = useRhythmState();
 
   /**
    * The menu = every switchable practice MINUS what their routine already
@@ -135,18 +160,41 @@ export function PracticeSwitcher({ side, current }: {
    * either side's extra, an active silence goal (reflect-sit), an active
    * Breathing Together card. "ask" (no explicit anchor) excludes nothing.
    */
-  const kept = new Set<OfficeLevel | null>([
+  /**
+   * NOTHING ALREADY IN THE ROUTINE (owner, 2026-09-14: "don't show any
+   * practice in that choose a different if it is already in the routine").
+   * Kept is judged by what a practice IS, not by its level: a side set to
+   * Contemplative Practice is Lectio or Breathing Together by its KIND, a
+   * side's own practice is Lectio or Breathing Together by its NAME, and the
+   * Examen, Compline, Lectio and Breathing Together each have home cards of
+   * their own. Both a side's rule and today's swap count.
+   */
+  const kindId = (kind: string): string =>
+    kind === "creation" ? "cobreathe" : kind === "lectio" ? "lectio" : kind === "silent" ? "reflect-sit" : `kind:${kind}`;
+  const levelId = (s: OfficeSide, level: OfficeLevel | null, customName: string): string | null => {
+    if (!level) return null;
+    if (level === "custom") return anchorPracticeFor(customName)?.key ?? `custom:${customName.trim().toLowerCase()}`;
+    if (level === "reflect-sit") return kindId(getSideContemplationKind(s));
+    return level;
+  };
+  const kept = new Set<string | null>([
     current,
-    getExplicitSideLevel("morning"), getExplicitSideLevel("evening"),
+    levelId("morning", getExplicitSideLevel("morning"), baseSideCustomName("morning")),
+    levelId("evening", getExplicitSideLevel("evening"), baseSideCustomName("evening")),
+    levelId("morning", getSideLevel("morning"), getSideCustomName("morning")),
+    levelId("evening", getSideLevel("evening"), getSideCustomName("evening")),
     getSideExtra("morning"), getSideExtra("evening"),
+    morningContemplationActive ? kindId(morningContemplationKind) : null,
+    eveningContemplationActive ? kindId(eveningContemplationKind) : null,
+    soloSilenceActive ? "reflect-sit" : null,
+    examenActive ? "examen" : null,
+    complineActive ? "compline" : null,
+    lectioActive ? "lectio" : null,
+    cobreatheActive ? "cobreathe" : null,
   ]);
-  const options = SWITCHABLE.filter((p) => {
-    if (kept.has(p.level)) return false;
-    if (p.level === "reflect-sit" && silenceActive) return false;
-    return true;
-  });
+  const options = SWITCHABLE.filter((p) => !kept.has(p.id ?? p.level));
 
-  const choose = (level: OfficeLevel, href: string) => {
+  const choose = (level: OfficeLevel, href: string, customName?: string) => {
     setOpen(false);
     /**
      * Picking what today WOULD have been clears the swap instead of recording
@@ -156,8 +204,10 @@ export function PracticeSwitcher({ side, current }: {
      */
     const standing = getSideDaySwap(side);
     const base = standing ? standing.from : getSideLevel(side);
-    if (level === base) clearSideDaySwap(side);
-    else setSideDaySwap(side, level);
+    const baseName = (standing ? (standing.fromName ?? "") : getSideCustomName(side)).trim().toLowerCase();
+    const sameAsBase = level === base && (level !== "custom" || (customName ?? "").trim().toLowerCase() === baseName);
+    if (sameAsBase) clearSideDaySwap(side);
+    else setSideDaySwap(side, level, customName);
     setLocation(href);
   };
 
@@ -222,9 +272,9 @@ export function PracticeSwitcher({ side, current }: {
               <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
                 {options.map((p) => (
                   <button
-                    key={p.level}
+                    key={p.id ?? p.level}
                     type="button"
-                    onClick={() => choose(p.level, p.href(side))}
+                    onClick={() => choose(p.level, p.href(side), p.customName)}
                     className="w-full text-left flex items-center gap-3 rounded-2xl px-3.5 py-3"
                     style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(143,175,150,0.3)", cursor: "pointer" }}
                   >

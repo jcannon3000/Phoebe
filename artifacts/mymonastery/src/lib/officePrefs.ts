@@ -427,7 +427,10 @@ export function getSideBaseLevel(side: OfficeSide): OfficeLevel | null {
  * begin-prayer's routing, the done-signal, and creditSideAnchor's undo-lift
  * all follow today's practice with no further wiring.
  */
-type SideDaySwap = { ymd: string; level: OfficeLevel; from: OfficeLevel | null };
+// customName: today's named practice when the swap is to "custom" (Lectio
+// Divina, Breathing Together — see PracticeSwitcher). fromName: the name the
+// side had before, so "Switched from …" can say it after the name changes.
+type SideDaySwap = { ymd: string; level: OfficeLevel; from: OfficeLevel | null; customName?: string; fromName?: string };
 const daySwapKey = (side: OfficeSide) => `phoebe:office:day-swap:${side}`;
 /**
  * THE CUSTOMIZER MUST NOT SEE THE SWAP — suppressed wholesale while it's
@@ -448,10 +451,15 @@ export function getSideDaySwap(side: OfficeSide): SideDaySwap | null {
     const v = JSON.parse(raw) as Partial<SideDaySwap>;
     if (v?.ymd !== new Date().toLocaleDateString("en-CA")) return null; // stale = absent
     if (typeof v.level !== "string" || !(OFFICE_LEVELS as string[]).includes(v.level)) return null;
-    return { ymd: v.ymd, level: coerceRetiredLevel(v.level as OfficeLevel), from: (typeof v.from === "string" && (OFFICE_LEVELS as string[]).includes(v.from)) ? coerceRetiredLevel(v.from as OfficeLevel) : null };
+    const name = (x: unknown): string | undefined => (typeof x === "string" && x.trim() ? x.trim().slice(0, 80) : undefined);
+    return {
+      ymd: v.ymd, level: coerceRetiredLevel(v.level as OfficeLevel),
+      from: (typeof v.from === "string" && (OFFICE_LEVELS as string[]).includes(v.from)) ? coerceRetiredLevel(v.from as OfficeLevel) : null,
+      customName: name(v.customName), fromName: name(v.fromName),
+    };
   } catch { return null; }
 }
-export function setSideDaySwap(side: OfficeSide, level: OfficeLevel): void {
+export function setSideDaySwap(side: OfficeSide, level: OfficeLevel, customName?: string): void {
   try {
     // `from` is what TODAY would have been without the swap — the day-rule's
     // answer on a Chapel Saturday, not the stored base — so the card's
@@ -461,7 +469,12 @@ export function setSideDaySwap(side: OfficeSide, level: OfficeLevel): void {
     // stand-in the original.
     const existing = getSideDaySwap(side);
     const from = existing ? existing.from : getSideLevel(side);
-    localStorage.setItem(daySwapKey(side), JSON.stringify({ ymd: new Date().toLocaleDateString("en-CA"), level, from }));
+    const fromName = existing ? (existing.fromName ?? null) : (from === "custom" ? (baseSideCustomName(side).trim() || null) : null);
+    localStorage.setItem(daySwapKey(side), JSON.stringify({
+      ymd: new Date().toLocaleDateString("en-CA"), level, from,
+      ...(fromName ? { fromName } : {}),
+      ...(level === "custom" && customName ? { customName } : {}),
+    }));
     window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
   } catch { /* private mode */ }
 }
@@ -690,6 +703,14 @@ export function setSideReflection(side: OfficeSide, v: ReflectionSource): void {
 // the morning/evening way-step). Only meaningful when getSideLevel(side) ===
 // "custom"; otherwise stale/unset.
 export function getSideCustomName(side: OfficeSide): string {
+  // A day SWAP to a named practice is today's name, ahead of the day rule —
+  // the same order getSideLevel consults them in.
+  const swap = getSideDaySwap(side);
+  if (swap?.level === "custom" && swap.customName) return swap.customName;
+  return baseSideCustomName(side);
+}
+/** A side's own-practice name WITHOUT today's swap — what the rule says. */
+export function baseSideCustomName(side: OfficeSide): string {
   // A day rule that names its own practice wins for today — otherwise Sunday's
   // Worship would inherit the weekday name and the card would say "Chapel".
   const today = sideRuleForDay(side);

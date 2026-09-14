@@ -21,7 +21,7 @@
  */
 export type AnchorPractice = {
   /** The rhythm key this practice completes as. */
-  key: "listening" | "cobreathe" | "walk" | "visio";
+  key: "listening" | "cobreathe" | "walk" | "visio" | "lectio";
   emoji: string;
   /** Where the card goes. Empty = no page of its own; tap logs it instead. */
   href: string;
@@ -39,6 +39,11 @@ const BY_NAME: Record<string, AnchorPractice> = {
   // stored a name that resolved to no practice — a bare tap-to-mark card
   // called "Visio Divina" that had nothing to do with the real one.
   "visio divina": { key: "visio", emoji: "🖼️", href: "/visio" },
+  // Choose a different practice offers these two for a day (owner,
+  // 2026-09-14). The swap stores the NAME; this table is what makes a side
+  // named "Lectio Divina" the real practice — opened, and kept when it is.
+  "breathing together": { key: "cobreathe", emoji: "🌍", href: "/cobreathe" },
+  "lectio divina": { key: "lectio", emoji: "📜", href: "/lectio" },
 };
 
 /** The practice a side's custom anchor NAMES, if it names one at all. */

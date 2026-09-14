@@ -1737,7 +1737,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // the card says what done cards say.
       blurb: morningDone ? prayed : (daySwapNote("morning") ?? morningBlurb),
       blurbCycle: (morningDone || !cycleFor("morning")) ? undefined : [morningBlurb, ...officeCycle],
-      cta: getSideLevel("morning") === "custom" ? t("rhythm.log", { defaultValue: "Log" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+      cta: getSideLevel("morning") === "custom" && !anchorPracticeFor(getSideCustomName("morning"))?.href ? t("rhythm.log", { defaultValue: "Log" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
     /**
      * A side's SECOND practice — a real card that opens the real practice.
@@ -1800,7 +1800,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         ? prayed
         : (daySwapNote("evening") ?? eveningBlurb),
       blurbCycle: (eveningDone || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycle],
-      cta: getSideLevel("evening") === "custom" ? t("rhythm.log", { defaultValue: "Log" }) : t("rhythm.begin", { defaultValue: "Begin" }),
+      cta: getSideLevel("evening") === "custom" && !anchorPracticeFor(getSideCustomName("evening"))?.href ? t("rhythm.log", { defaultValue: "Log" }) : t("rhythm.begin", { defaultValue: "Begin" }),
       /**
        * "Later" until the evening opens (owner, 2026-09-05: "let's bring
        * back having the evening practice saying later and becoming available

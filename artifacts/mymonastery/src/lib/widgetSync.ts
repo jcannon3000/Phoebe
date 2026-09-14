@@ -485,7 +485,7 @@ export function useWidgetSync(): void {
       if (STATIC_HREF[key]) return STATIC_HREF[key]!;
       for (const side of ["morning", "evening"] as const) {
         // A side set to "Create your own" is logged on the home, not opened.
-        if (key === side) return getSideLevel(side) === "custom" ? "" : `/begin-prayer?side=${side}`;
+        if (key === side) return getSideLevel(side) === "custom" ? (anchorPracticeFor(getSideCustomName(side))?.href ?? "") : `/begin-prayer?side=${side}`;
         if (key === `extra-${side}`) {
           const lvl = side === "morning" ? r.morningExtraLevel : r.eveningExtraLevel;
           return lvl ? `/begin-prayer?side=${side}&practice=${lvl}` : "";

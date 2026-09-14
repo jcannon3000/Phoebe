@@ -36,6 +36,7 @@ import { isFirstOpen } from "@/lib/firstOpen";
 import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
@@ -2647,7 +2648,16 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
     };
   }, [side]);
   const title = getSideCustomName(side).trim() || "Your Practice";
-  const onClick = () => markCustomPrayed(side);
+  // A side whose own practice NAMES a real one (Lectio Divina, Breathing
+  // Together, Visio …) opens that practice and reads ITS completion — the
+  // rules the home's row card already follows. The hero showed "Log", which
+  // marked the side done without the practice.
+  const [, setLocation] = useLocation();
+  const { morningDone, eveningDone } = useRhythmState();
+  const named = anchorPracticeFor(title);
+  const namedHref = named?.href || "";
+  const shownDone = namedHref ? (side === "morning" ? morningDone : eveningDone) : done;
+  const onClick = namedHref ? () => setLocation(namedHref) : () => markCustomPrayed(side);
   // Tapping again once done UN-marks it — a real toggle, not a one-way stamp.
   // Without this, "Not today" had no path back to undone and the header
   // pill's dot never cleared (the underlying day-flag never actually reset).
@@ -2661,8 +2671,8 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
           <p className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate" style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}>
             {side === "morning" ? "Morning" : "Evening"}
           </p>
-          <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>✨ {title}</p>
-          {done ? (
+          <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{named?.emoji ?? "✨"} {title}</p>
+          {shownDone ? (
             <div
               role="button"
               tabIndex={0}
@@ -2679,7 +2689,7 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
             // full-width pill — and it is the ONLY tap target ("if i just tap
             // the chapel card it goes to done, it should just be on the cta").
             <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="mt-4 w-full text-center rounded-full cursor-pointer" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600, padding: "12px 12px" }}>
-              Log <span aria-hidden>→</span>
+              {namedHref ? "Begin" : "Log"} <span aria-hidden>→</span>
             </div>
           )}
         </div>
@@ -2698,7 +2708,7 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3 min-w-0">
         <div className="min-w-0">
           <p className="font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}>
-            ✨ {title}
+            {named?.emoji ?? "✨"} {title}
           </p>
           <p className="truncate" style={{ color: "#D8C2BA", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12.5 }}>
             {side === "morning" ? "Your morning practice" : "Your evening practice"}
@@ -2707,8 +2717,8 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
         <div
           role="button"
           tabIndex={0}
-          onClick={done ? onUnmark : onClick}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") (done ? onUnmark() : onClick()); }}
+          onClick={shownDone ? onUnmark : onClick}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") (shownDone ? onUnmark() : onClick()); }}
           className="rounded-full text-center shrink-0 cursor-pointer"
           style={{
             background: `rgba(${rgb},0.28)`, color: "#F0EDE6",
@@ -2716,7 +2726,7 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
             padding: "6px 14px", border: `1px solid rgba(${rgb},0.50)`, whiteSpace: "nowrap", minWidth: 84,
           }}
         >
-          {done ? "Done ✓" : "Log →"}
+          {shownDone ? "Done ✓" : namedHref ? "Begin →" : "Log →"}
         </div>
       </div>
     </div>
