@@ -42,6 +42,8 @@ const DEFAULT_HIDDEN_MODULES = [
   // v8 (2026-09-05): Forward Day by Day is the default's newsletter now, so
   // CAC joins the hidden list and "fdd" stays out of it.
   "cac",
+  // v11 (2026-09-14): NOT "hagiography" — Feast Day Hagiographies are part of
+  // the default, and a key missing from this list comes back visible.
 ];
 
 /** Every module a rhythm may or may not carry — what an admin-set default is
@@ -50,7 +52,7 @@ const DEFAULT_HIDDEN_MODULES = [
 const ALL_OPTIONAL_MODULES = [
   "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen",
   "visio", "icons", "lectio", "rosary", "taize", "andrews", "spirituals", "cac", "fdd", "ssje", "vts",
-  "nouwen", "sojo", "grist", "ncmp", "podcasts", "prayer-list",
+  "nouwen", "sojo", "grist", "hagiography", "ncmp", "podcasts", "prayer-list",
 ];
 
 export async function resetRoutineToDefault(opts: {

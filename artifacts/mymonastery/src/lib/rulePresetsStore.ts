@@ -159,10 +159,11 @@ import type { RoutineSpec } from "@/components/WayOfLoveRuleFlow";
 /** The default that ships in the app (guestSeed's seed v7), as data — what the
  *  editor opens on before an admin has ever saved one. */
 export const SEED_DEFAULT_FALLBACK: DefaultSeed = {
-  // v8 (owner, 2026-09-05): Simple Guided · Forward Day by Day · Express
-  // Gratitude · Visio Divina · the Examen in the evening.
+  // v11 (owner, 2026-09-14): "Morning: Simple · Evening: Examen · Visio · Feast
+  // Day Hagiographies · Forward Day by Day". The hagiography card only shows on
+  // days the Forward Movement calendar carries a commemoration.
   morning: "guided-prayer", evening: "examen", reflection: "fdd",
-  cards: ["fdd", "visio"], relational: ["gratitude"], silenceMin: 0,
+  cards: ["fdd", "visio", "hagiography"], relational: ["gratitude"], silenceMin: 0,
   slots: { visio: "anytime" }, version: 0,
 };
 

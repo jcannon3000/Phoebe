@@ -627,7 +627,7 @@ function ResetRoutineSettings() {
     <>
       <SectionHeader label="Reset routine to default" />
       <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        Start over with the standard daily rhythm — Simple Guided Prayer in the morning, the Examen in the evening, Forward Day by Day, a moment of gratitude, and Visio Divina. Your custom practices and any changes are cleared; what you&rsquo;ve already prayed stays.
+        Start over with the standard daily rhythm — Simple Guided Prayer in the morning, the Examen in the evening, Visio Divina, the lives of the saints on their feast days, and Forward Day by Day. Your custom practices and any changes are cleared; what you&rsquo;ve already prayed stays.
       </p>
       <SettingsCard>
         {!confirming ? (

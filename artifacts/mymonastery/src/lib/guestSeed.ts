@@ -69,7 +69,10 @@ export function predatesSeedStamp(): boolean {
 // to re-run migrateStaleSeed on devices already stamped "8", because those are
 // the ones carrying two newsletters (see the note in the migration). A version
 // bump is the only way to reach a device that already thinks it is current.
-const SEED_VERSION = "10";
+// v11 (owner, 2026-09-14): "Morning: Simple · Evening: Examen · Visio · Feast
+// Day Hagiographies · Forward Day by Day". Adds the hagiography card, and takes
+// Lectio back off the devices the old admin override put it on (migrateStaleSeed).
+const SEED_VERSION = "11";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never
 // remove: the whole point is recognizing rules we ourselves wrote.
@@ -126,9 +129,24 @@ export function clearGuestSeed(): void {
  * the home LAYOUT decides the practice is on, and phoebe:slot:visio only says
  * when it rides. A slot with no layout entry is a practice nothing renders.
  */
-function seedVisio(): void {
+function seedVisio(opts?: { respectRemoval?: boolean }): void {
   setPracticeSlot("visio", "anytime");
-  const { layout, changed } = addHomeCard(readCachedHomeLayout(), "visio");
+  const { layout, changed } = addHomeCard(readCachedHomeLayout(), "visio", opts);
+  if (changed) cacheHomeLayoutLocalOnly(layout);
+}
+
+/**
+ * FEAST DAY HAGIOGRAPHIES, as part of the default (owner, v11).
+ *
+ * A layout entry like Visio's — but it only ever RENDERS on a day the Forward
+ * Movement calendar carries a commemoration (useRhythmState's hagiographyShown
+ * asks both), so turning it on adds a card to feast days and nothing to the
+ * rest. It is NOT a newsletter: applyDefaultSeed's one-newsletter sweep does
+ * not list it and must not, or it would strip this card from every default
+ * that also carries Forward Day by Day.
+ */
+function seedHagiography(opts?: { respectRemoval?: boolean }): void {
+  const { layout, changed } = addHomeCard(readCachedHomeLayout(), "hagiography", opts);
   if (changed) cacheHomeLayoutLocalOnly(layout);
 }
 
@@ -421,9 +439,30 @@ function migrateStaleSeed(): void {
       // VISIO DIVINA, as the EVENING practice (owner, v7). Slotted to evening
       // rather than the practice's own "anytime" default, because the ask was
       // specifically "Visio Divina as the evening practice."
-      seedVisio();
+      // respectRemoval: a card someone deliberately took off stays off — the
+      // same promise applyDefaultSeed's migrate already keeps.
+      seedVisio({ respectRemoval: true });
       // Any time of day now that the Examen has the evening (v8).
       setPracticeSlot("visio", "anytime");
+      // FEAST DAY HAGIOGRAPHIES join the default (v11), never forced back onto
+      // a home that hid the card.
+      seedHagiography({ respectRemoval: true });
+      /**
+       * LECTIO COMES BACK OFF — but only where WE put it (v11). The code seed has
+       * never carried Lectio; it reached untouched devices solely through the
+       * admin `__default__` override, whose cards named it (owner: "lectio
+       * should not be in the default … i even deleted the app and re-installed").
+       * A device that applied that override has a nonzero applied-default
+       * version. One that never did added Lectio itself, from Practices, and
+       * keeps it.
+       */
+      if (appliedDefaultVersion() >= 1) {
+        const current = readCachedHomeLayout();
+        if (current) {
+          const r = removeHomeCard(current, "lectio");
+          if (r.changed) cacheHomeLayoutLocalOnly(r.layout);
+        }
+      }
       // The v6 default's 5-minute silence goal is gone — Visio replaces it as
       // the contemplative practice. Only cleared for a device still on that
       // OLD goal (or none); someone's own chosen goal is never overwritten.
@@ -530,9 +569,9 @@ export function seedGuestRule(): void {
       if (!getExplicitSideEntry(side)) setSideEntry(side, "read");
     }
     setSideLevel("morning", "guided-prayer");
-    // THE DEFAULT, v8 (owner, 2026-09-05): "Morning: Simple · Newsletter:
-    // Forward · Share Gratitude · Visio Divina · Evening: Examen". The Examen
-    // takes the evening anchor again; Forward Day by Day is the day's word.
+    // THE DEFAULT, v11 (owner, 2026-09-14): "Morning: Simple · Evening: Examen
+    // · Visio · Feast Day Hagiographies · Forward Day by Day". The Examen holds
+    // the evening anchor; Forward Day by Day is the day's word.
     setSideLevel("evening", "examen");
     setReflectionSource("fdd");
     setSideReflection("morning", "fdd");
@@ -541,6 +580,8 @@ export function seedGuestRule(): void {
     // Visio Divina rides any time of day now that the Examen has the evening.
     seedVisio();
     setPracticeSlot("visio", "anytime");
+    // Feast Day Hagiographies — a card on feast days only (v11).
+    seedHagiography();
     localStorage.setItem(SEED_KEY, todayYmd());
     // Freshly seeded devices are already current — stamp so migrateStaleSeed
     // never has anything to do for them.
