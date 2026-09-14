@@ -156,16 +156,50 @@ export function readingUrl(ref: string): string | null {
   return `https://bible.oremus.org/?passage=${encodeURIComponent(passage)}`;
 }
 
+/**
+ * THE DAILY OFFICE ABBREVIATES, AND ACT SPELLS BOOKS OUT.
+ *
+ * matchScore compares book names exactly, and the two sources never agreed:
+ * the lectionary writes "Matt. 20:1-16", "1 Cor.", "Isa.", "Heb."; ACT writes
+ * "Matthew", "1 Corinthians", "Isaiah", "Hebrews". So on every week chosen from
+ * the Daily Office (outside the RCL table) the Late-arriving Workers — ACT's own
+ * "Matthew 20:1-16" — scored 0 against "Matt. 20:1-16", and ten Sundays in
+ * 2026–28 fell through to a picture unrelated to anything read (owner,
+ * 2026-09-14: "if its nothing, can you guess as to an image that would be
+ * relevant" — most of those weeks were never nothing). Measured: 61 of the 102
+ * book names the lectionaries produce had no identical catalogue name; these
+ * are the abbreviations among them, mapped onto the name ACT uses. A leading
+ * numeral stays with the book ("1 cor" → "1 corinthians"). Books ACT simply
+ * has no paintings of (Sirach, Revelation, Jude …) are named here anyway, so a
+ * future harvest matches them without another round of this.
+ */
+const BOOK_ALIASES: Record<string, string> = {
+  gen: "genesis", exod: "exodus", ex: "exodus", lev: "leviticus", num: "numbers", deut: "deuteronomy",
+  josh: "joshua", judg: "judges", sam: "samuel", kgs: "kings", chron: "chronicles", neh: "nehemiah",
+  esth: "esther", ps: "psalm", psalms: "psalm", prov: "proverbs", eccles: "ecclesiastes", song: "song of solomon",
+  isa: "isaiah", jer: "jeremiah", lam: "lamentations", ezek: "ezekiel", dan: "daniel", hos: "hosea",
+  obad: "obadiah", mic: "micah", nah: "nahum", hab: "habakkuk", zeph: "zephaniah", hag: "haggai",
+  zech: "zechariah", mal: "malachi", wisd: "wisdom", ecclus: "sirach", ecclesiasticus: "sirach",
+  macc: "maccabees", matt: "matthew", mk: "mark", lk: "luke", jn: "john", rom: "romans", cor: "corinthians",
+  gal: "galatians", eph: "ephesians", phil: "philippians", col: "colossians", thess: "thessalonians",
+  tim: "timothy", tit: "titus", philem: "philemon", heb: "hebrews", jas: "james", pet: "peter", rev: "revelation",
+};
+
 export function parseRef(ref: string): RefParts | null {
   if (!ref) return null;
-  const cleaned = ref.trim().replace(/\s+/g, " ").replace(/\./g, "");
+  // "--" and "—" are the lectionary's cross-chapter range ("Gen. 1:1--2:3");
+  // left alone, the span regex below stopped at the first hyphen and read that
+  // reading as the single verse 1:1.
+  const cleaned = ref.trim().replace(/\s+/g, " ").replace(/\./g, "").replace(/\s*(?:--|\u2014)\s*/g, "-");
   // A LEADING numeral belongs to the name ("1 Samuel"), so peel it off before
   // looking for the chapter — otherwise the book name ends at the first digit
   // and every epistle collapses to the empty string.
   const lead = /^([123])\s+/.exec(cleaned);
   const rest = lead ? cleaned.slice(lead[0].length) : cleaned;
   const digit = rest.search(/\d/);
-  const name = (digit < 0 ? rest : rest.slice(0, digit)).replace(/[,\s]+$/, "").trim();
+  // A bracket before the numbers is not part of the name: "Matt. (1:1-17); 3:1-6"
+  // gave the book "matt (", and the psalm field "[53]" gave "[".
+  const name = (digit < 0 ? rest : rest.slice(0, digit)).replace(/[,\s([]+$/, "").trim();
   if (!name) return null;
   const nums = digit < 0 ? "" : rest.slice(digit);
 
@@ -175,6 +209,9 @@ export function parseRef(ref: string): RefParts | null {
   const roman = /^(.*?)\s+(i{1,3})$/.exec(book);
   if (roman) book = `${roman[2]!.length} ${roman[1]}`;
   else if (lead) book = `${lead[1]} ${book}`;
+  const numbered = /^([123]) (.+)$/.exec(book);
+  const full = BOOK_ALIASES[numbered ? numbered[2]! : book];
+  if (full) book = numbered ? `${numbered[1]} ${full}` : full;
 
   // chapter[:verse][ - chapter:verse | verse]
   const m = /^(\d+)(?::(\d+))?(?:\s*[-\u2013]\s*(?:(\d+):)?(\d+))?/.exec(nums);
