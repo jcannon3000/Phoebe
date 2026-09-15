@@ -3,6 +3,7 @@ import { sendPasswordResetEmail, sendAccountExistsNotice } from "../lib/email";
 import { Router, type IRouter, type Request } from "express";
 import passport from "passport";
 import { loginFreshSession } from "../lib/session";
+import { noteAnonymousMerge } from "../lib/anonymousMerge";
 import { google } from "googleapis";
 import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlistTable, persistentAuthTokensTable } from "@workspace/db";
 import { eq, and, or, gt, sql, isNull, inArray } from "drizzle-orm";
@@ -1130,6 +1131,9 @@ router.post(
     res.status(401).json({ error: "Incorrect email or password." }); return;
   }
 
+  // Signing in on a phone that holds its anonymous device user: note that the
+  // two are one person, before the session is replaced (lib/anonymousMerge).
+  await noteAnonymousMerge(req, user.id);
   loginFreshSession(req, user as Express.User, (err) => {
     if (err) { res.status(500).json({ error: "Login failed." }); return; }
     req.session.save(() => res.json({ ok: true }));

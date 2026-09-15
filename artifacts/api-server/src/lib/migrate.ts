@@ -3587,6 +3587,8 @@ export async function migrate() {
     // PUBLIC no-login version: anonymous device users (silently provisioned on
     // first guest boot so push/reminders/prefs-sync work with no credentials).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_anonymous BOOLEAN NOT NULL DEFAULT false`);
+    // A device user that then signed in to an existing account → that account.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS merged_into_user_id INTEGER`);
 
     // ── CAC daily reflection: read presence + shared journal ────────────────
     // cac_reads: one row per (user, local day) recording that they opened the

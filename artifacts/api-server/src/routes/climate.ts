@@ -14,6 +14,7 @@ import { eq, and, sql, gte, asc, desc, isNotNull } from "drizzle-orm";
 import { hashPassword } from "./auth";
 import { rateLimit } from "../lib/rate-limit";
 import { loginFreshSession } from "../lib/session";
+import { noteAnonymousMerge } from "../lib/anonymousMerge";
 import crypto from "crypto";
 
 const router = Router();
@@ -166,6 +167,8 @@ router.post(
     // Regenerate the session id on auth to defeat session fixation — an
     // attacker who planted a known session id pre-signup must not inherit the
     // authenticated session.
+    // A phone that held its anonymous device user is now this account.
+    await noteAnonymousMerge(req, user.id);
     loginFreshSession(req, user as Express.User, (err) => {
       if (err) { res.status(500).json({ error: "Login failed after signup." }); return; }
       req.session.save(() => res.json({ ok: true }));

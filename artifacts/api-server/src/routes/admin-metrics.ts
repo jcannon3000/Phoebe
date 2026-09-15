@@ -116,7 +116,14 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
     const sinceTs = new Date(Date.UTC(sinceY, sinceM - 1, sinceD) - 24 * 60 * 60 * 1000).toISOString();
 
     const q = await pool.query(`
-      WITH session_candidates AS (
+      -- ONE PERSON, ONE ID. A phone's anonymous device user that later signed
+      -- in to an existing account points at it (users.merged_into_user_id,
+      -- lib/anonymousMerge.ts); every user id below is read through this, so
+      -- what they prayed before and after signing in is one person.
+      WITH people AS (
+        SELECT id AS user_id, COALESCE(merged_into_user_id, id) AS person FROM users
+      ),
+      session_candidates AS (
         -- Same definition as the community-scoped metrics endpoint,
         -- minus the members CTE: a "prayer event" candidate is an
         -- Amen tap OR an office / devotion completion that reached
@@ -124,7 +131,7 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         -- (examen / prayer-list / contemplation — see the file header
         -- for why these three were missing). NULL slides_completed =
         -- legacy row pre-dating the column; treat as qualifying.
-        SELECT user_id, occurred_at FROM (
+        SELECT p.person AS user_id, c.occurred_at FROM (
           SELECT a.user_id, a.prayed_at AS occurred_at
           FROM prayer_request_amens a
           WHERE a.prayed_at IS NOT NULL
@@ -164,6 +171,7 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
               OR (ps.surface = 'national-cathedral' AND ps.duration_seconds >= 180)
             )
         ) c
+        JOIN people p ON p.user_id = c.user_id
       ),
       session_with_lag AS (
         SELECT
@@ -193,16 +201,19 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         -- the day the phone recorded, like the Dean's rows below.
         --   Readings: Forward Day by Day, the hagiographies, the Dean's
         --   Commentary, SSJE, Nouwen, Grist, Sojourners.
-        SELECT user_id, ymd AS day FROM reflection_reads WHERE ymd >= $6
+        SELECT p.person AS user_id, rr.ymd AS day FROM reflection_reads rr
+        JOIN people p ON p.user_id = rr.user_id WHERE rr.ymd >= $6
         UNION ALL
         --   The CAC daily reflection.
-        SELECT user_id, ymd AS day FROM cac_reads WHERE ymd >= $6
+        SELECT p.person AS user_id, cr.ymd AS day FROM cac_reads cr
+        JOIN people p ON p.user_id = cr.user_id WHERE cr.ymd >= $6
         UNION ALL
         --   Visio Divina, Lectio, the Rosary, icons, the walk, listening, a
         --   routine's own practices (practice_completion). The Examen and the
         --   prayer list are skipped on a day their own session already counts.
-        SELECT pc.user_id, pc.local_date AS day
+        SELECT p.person AS user_id, pc.local_date AS day
         FROM practice_completion pc
+        JOIN people p ON p.user_id = pc.user_id
         WHERE pc.local_date >= $6
           AND NOT (
             pc.section IN ('examen', 'prayer-list')
@@ -226,7 +237,7 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
       -- evening, Compline and Midday Prayer each count once a day.
       office_session_candidates AS (
         SELECT
-          ps.user_id,
+          p.person AS user_id,
           ps.ended_at AS occurred_at,
           CASE
             WHEN ps.surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
@@ -234,6 +245,7 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
             ELSE ps.surface
           END AS side
         FROM prayer_sessions ps
+        JOIN people p ON p.user_id = ps.user_id
         WHERE ps.ended_at >= $5
           AND (
             (
@@ -270,21 +282,24 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
       -- excluded here (it's a browsing action, not a timed practice).
       contemplation_examen_days AS (
         SELECT
-          ps.user_id,
+          p.person AS user_id,
           to_char((ps.ended_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') AS day
         FROM prayer_sessions ps
+        JOIN people p ON p.user_id = ps.user_id
         WHERE ps.ended_at >= $5
           AND ps.surface IN ('examen', 'contemplation')
           AND (ps.slides_completed IS NULL OR ps.slides_completed >= 3)
         UNION
         -- The Examen prayed inside Simple Guided Prayer records only a
         -- practice completion.
-        SELECT pc.user_id, pc.local_date AS day
+        SELECT p.person AS user_id, pc.local_date AS day
         FROM practice_completion pc
+        JOIN people p ON p.user_id = pc.user_id
         WHERE pc.section = 'examen' AND pc.local_date >= $6
       )
       SELECT
-        (SELECT COUNT(*) FROM users)::int AS total_users,
+        -- A merged device user is its account, not a second user.
+        (SELECT COUNT(*) FROM users WHERE merged_into_user_id IS NULL)::int AS total_users,
 
         -- ── Phones WITHOUT an account ──────────────────────────────────────
         -- The anonymous device user an install provisions (users.is_anonymous).
@@ -292,10 +307,10 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         -- the owner can see how many people use Phoebe without signing up
         -- (2026-09-15: "make sure it counts anyone who is using it on their
         -- phone but doesn't have an account").
-        (SELECT COUNT(*) FROM users WHERE is_anonymous)::int AS total_device_users,
-        (SELECT COUNT(*) FROM users WHERE is_anonymous
+        (SELECT COUNT(*) FROM users WHERE is_anonymous AND merged_into_user_id IS NULL)::int AS total_device_users,
+        (SELECT COUNT(*) FROM users WHERE is_anonymous AND merged_into_user_id IS NULL
            AND to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS new_device_users_today,
-        (SELECT COUNT(*) FROM users WHERE is_anonymous
+        (SELECT COUNT(*) FROM users WHERE is_anonymous AND merged_into_user_id IS NULL
            AND to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS new_device_users_week,
         (SELECT COUNT(DISTINCT pd.user_id) FROM prayer_days pd JOIN users u ON u.id = pd.user_id
            WHERE u.is_anonymous AND pd.day >= $1)::int AS device_prayed_today,
@@ -304,13 +319,13 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         (SELECT COUNT(DISTINCT pd.user_id) FROM prayer_days pd JOIN users u ON u.id = pd.user_id
            WHERE u.is_anonymous AND pd.day >= $4)::int AS device_prayed_month,
         (SELECT COUNT(DISTINCT ao.user_id) FROM app_opens ao JOIN users u ON u.id = ao.user_id
-           WHERE u.is_anonymous
+           WHERE u.is_anonymous AND u.merged_into_user_id IS NULL
              AND to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS device_opened_today,
         (SELECT COUNT(DISTINCT ao.user_id) FROM app_opens ao JOIN users u ON u.id = ao.user_id
-           WHERE u.is_anonymous
+           WHERE u.is_anonymous AND u.merged_into_user_id IS NULL
              AND to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS device_opened_week,
         (SELECT COUNT(DISTINCT ao.user_id) FROM app_opens ao JOIN users u ON u.id = ao.user_id
-           WHERE u.is_anonymous
+           WHERE u.is_anonymous AND u.merged_into_user_id IS NULL
              AND to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $4)::int AS device_opened_month,
 
         (SELECT COUNT(*) FROM prayer_requests)::int AS prayer_requests_total,
@@ -341,19 +356,21 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
 
         -- New signups in each window — handy app-level signal.
         (SELECT COUNT(*) FROM users
-           WHERE to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS new_users_today,
+           WHERE merged_into_user_id IS NULL
+             AND to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS new_users_today,
         (SELECT COUNT(*) FROM users
-           WHERE to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS new_users_week,
+           WHERE merged_into_user_id IS NULL
+             AND to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS new_users_week,
 
         -- App opens. Each app_opens row is already one 15-min-deduped
         -- open (unique user_id+bucket), so COUNT(DISTINCT user_id) =
         -- "people who opened" and COUNT(*) = "times opened."
-        (SELECT COUNT(DISTINCT user_id) FROM app_opens
-           WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS opened_today,
-        (SELECT COUNT(DISTINCT user_id) FROM app_opens
-           WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS opened_week,
-        (SELECT COUNT(DISTINCT user_id) FROM app_opens
-           WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $4)::int AS opened_month,
+        (SELECT COUNT(DISTINCT p.person) FROM app_opens ao JOIN people p ON p.user_id = ao.user_id
+           WHERE to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS opened_today,
+        (SELECT COUNT(DISTINCT p.person) FROM app_opens ao JOIN people p ON p.user_id = ao.user_id
+           WHERE to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS opened_week,
+        (SELECT COUNT(DISTINCT p.person) FROM app_opens ao JOIN people p ON p.user_id = ao.user_id
+           WHERE to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $4)::int AS opened_month,
 
         (SELECT COUNT(*) FROM app_opens
            WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS opens_today,
@@ -371,11 +388,11 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         -- ymd is the reader's OWN local date, written by the client, so it is
         -- compared to the day strings directly — no timezone conversion, and no
         -- dependence on users.timezone being right.
-        (SELECT COUNT(DISTINCT user_id) FROM reflection_reads
+        (SELECT COUNT(DISTINCT p.person) FROM reflection_reads rr JOIN people p ON p.user_id = rr.user_id
            WHERE source = 'vts' AND ymd = $1)::int AS deans_readers_today,
-        (SELECT COUNT(DISTINCT user_id) FROM reflection_reads
+        (SELECT COUNT(DISTINCT p.person) FROM reflection_reads rr JOIN people p ON p.user_id = rr.user_id
            WHERE source = 'vts' AND ymd >= $2)::int AS deans_readers_week,
-        (SELECT COUNT(DISTINCT user_id) FROM reflection_reads
+        (SELECT COUNT(DISTINCT p.person) FROM reflection_reads rr JOIN people p ON p.user_id = rr.user_id
            WHERE source = 'vts' AND ymd >= $4)::int AS deans_readers_month,
         (SELECT COUNT(*) FROM reflection_reads
            WHERE source = 'vts' AND ymd >= $2)::int AS deans_reads_week,

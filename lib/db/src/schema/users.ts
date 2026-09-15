@@ -28,6 +28,10 @@ export const usersTable = pgTable("users", {
   // discoverable (people search excludes), always the light app shape, swept
   // by retention when long idle. See memory "project_public_no_login".
   isAnonymous: boolean("is_anonymous").notNull().default(false),
+  // An anonymous device user whose phone then SIGNED IN to an existing
+  // account: the account's id. App Metrics counts the two as one person
+  // (api-server lib/anonymousMerge.ts). Null for everyone else.
+  mergedIntoUserId: integer("merged_into_user_id"),
   showPresence: boolean("show_presence").notNull().default(true),
   correspondenceImprintCompleted: boolean("correspondence_imprint_completed").notNull().default(false),
   gatheringImprintCompleted: boolean("gathering_imprint_completed").notNull().default(false),
