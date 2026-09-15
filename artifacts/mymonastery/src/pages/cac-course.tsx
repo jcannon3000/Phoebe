@@ -59,7 +59,11 @@ export default function CacCoursePage() {
       player.toggle();
       return;
     }
-    player.play(toPlaying(ep));
+    // The whole course, starting at this lesson — so the player's previous /
+    // next episode buttons (and the lock screen's) move through the course.
+    const queue = episodes.filter((e) => !!e.audioUrl);
+    const at = queue.findIndex((e) => e.id === ep.id);
+    player.playQueue(queue.map(toPlaying), Math.max(0, at));
     setLast(ep.id);
     markStarted();
   };

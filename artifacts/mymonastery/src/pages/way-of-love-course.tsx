@@ -85,7 +85,13 @@ export default function WayOfLoveCoursePage() {
       player.toggle();
       return;
     }
-    player.play(toPlaying(ep, lesson.key));
+    // The whole course, starting at this lesson — so the player's previous /
+    // next episode buttons (and the lock screen's) move through the course.
+    const queue = WOL_LESSONS
+      .map((l) => { const e = epMap[l.key]; return e?.audioUrl ? { key: l.key, playing: toPlaying(e, l.key) } : null; })
+      .filter((x): x is { key: string; playing: PlayingEpisode } => x !== null);
+    const at = queue.findIndex((x) => x.key === lesson.key);
+    player.playQueue(queue.map((x) => x.playing), Math.max(0, at));
     setLast(lesson.key);
     markStarted();
   };

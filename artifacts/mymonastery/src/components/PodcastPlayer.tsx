@@ -120,7 +120,9 @@ type PlayerCtx = {
   // { expand: false } to start playback in the mini-bar only — e.g. the
   // FDD reflection's "Listen" button, which keeps the reflection on screen.
   play: (ep: PlayingEpisode, opts?: { expand?: boolean }) => void;
-  playQueue: (eps: PlayingEpisode[]) => void;
+  // startIndex: begin partway through the queue (a course played from the
+  // lesson you tapped, so previous/next episode still have somewhere to go).
+  playQueue: (eps: PlayingEpisode[], startIndex?: number) => void;
   toggle: () => void;
   isCurrent: (showSlug: string, episodeId: string) => boolean;
   // Dismiss the player (stops playback, slides the mini-bar down). Used e.g. when
@@ -290,6 +292,16 @@ function IconSkip({ secs, forward }: { secs: number; forward?: boolean }) {
       </svg>
       <span style={{ position: "absolute", fontSize: 10, fontWeight: 700, fontFamily: FONT }}>{secs}</span>
     </span>
+  );
+}
+/** Previous / next episode — a bar and a triangle, the transport's own weight. */
+function IconTrack({ next }: { next?: boolean }) {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden>
+      {next
+        ? (<><path d="M5.5 5.2 15.2 12 5.5 18.8Z" fill="currentColor" /><rect x="16.6" y="5" width="2.6" height="14" rx="1.1" fill="currentColor" /></>)
+        : (<><path d="M18.5 5.2 8.8 12 18.5 18.8Z" fill="currentColor" /><rect x="4.8" y="5" width="2.6" height="14" rx="1.1" fill="currentColor" /></>)}
+    </svg>
   );
 }
 function IconPlay() {
@@ -481,6 +493,11 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // Whether the outro-trim early-finish has already fired this play (so a show
   // with outroTrimSeconds — e.g. FDD — closes out exactly once).
   const outroTriggeredRef = useRef(false);
+  // The show:episode the <audio> element was last pointed at. Between a skip
+  // (current changes) and the effect that loads the new source, the element
+  // still reports the OLD episode's time — onTimeUpdate ignores those ticks so
+  // a lesson left at 95% can't credit (or outro-end) the one after it.
+  const loadedKeyRef = useRef<string | null>(null);
   // When set, pause once playback reaches this offset — the end of a single
   // reading played via PlayingEpisode.stopAtSeconds. Cleared after it fires or
   // on a manual seek, so continuing past it plays normally.
@@ -593,12 +610,13 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     startEpisode(ep);
   }, [startEpisode]);
 
-  const playQueue = useCallback((eps: PlayingEpisode[]) => {
+  const playQueue = useCallback((eps: PlayingEpisode[], startIndex = 0) => {
     if (eps.length === 0) return;
+    const i = Math.min(Math.max(0, Math.floor(startIndex)), eps.length - 1);
     queueRef.current = eps;
-    queueIndexRef.current = 0;
+    queueIndexRef.current = i;
     setExpanded(true);
-    startEpisode(eps[0]);
+    startEpisode(eps[i]!);
   }, [startEpisode]);
 
   // Tapping the post-office "up next: Forward Day by Day" offer — fetch today's
@@ -628,6 +646,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     const a = audioRef.current;
     if (!a || !current) return;
     a.src = current.audioUrl;
+    loadedKeyRef.current = `${current.showSlug}:${current.episodeId}`;
     a.playbackRate = rate;
     a.load();
     // If a prior FM office rerouted this shared element through an AudioContext
@@ -828,8 +847,12 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     ms.setActionHandler("seekbackward", () => skip(-15));
     ms.setActionHandler("seekforward", () => skip(30));
     ms.setActionHandler("seekto", (d) => { if (d.seekTime != null) seekTo(d.seekTime); });
+    if (queueIndexRef.current >= 0 && queueRef.current.length > 1) {
+      try { ms.setActionHandler("previoustrack", () => skipToPrevious()); } catch { /* unsupported */ }
+      try { ms.setActionHandler("nexttrack", () => skipToNext()); } catch { /* unsupported */ }
+    }
     return () => {
-      for (const act of ["play", "pause", "seekbackward", "seekforward", "seekto"] as const) {
+      for (const act of ["play", "pause", "seekbackward", "seekforward", "seekto", "previoustrack", "nexttrack"] as const) {
         try { ms.setActionHandler(act, null); } catch { /* unsupported action */ }
       }
     };
@@ -863,6 +886,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   };
   const onTimeUpdate = () => {
     const a = audioRef.current; if (!a || !current) return;
+    if (loadedKeyRef.current !== `${current.showSlug}:${current.episodeId}`) return; // the old episode's last tick
     setCurrentTime(a.currentTime);
     syncMediaPosition();
     // Segment stop — when playing a single reading (stopAtSeconds), pause at its
@@ -1051,6 +1075,23 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     queueIndexRef.current = nextIdx;
     const next = queueRef.current[nextIdx];
     if (next) startEpisode(next);
+  }, [current, commitSession, startEpisode]);
+
+  /**
+   * THE EPISODE BEFORE, for the course player's back button (owner,
+   * 2026-09-14: "a back and next icon like the fast forward with the vertical
+   * line to go to the next episode or go back"). Mirrors skipToNext: keep this
+   * episode's place, close its listening session, start the one before.
+   */
+  const skipToPrevious = useCallback(() => {
+    const prevIdx = queueIndexRef.current - 1;
+    if (queueIndexRef.current < 0 || prevIdx < 0 || prevIdx >= queueRef.current.length) return;
+    const a = audioRef.current;
+    if (a && current) savePos(current, a.currentTime);
+    commitSession();
+    queueIndexRef.current = prevIdx;
+    const prev = queueRef.current[prevIdx];
+    if (prev) startEpisode(prev);
   }, [current, commitSession, startEpisode]);
 
   // ── Office source toggle (Forward Movement ↔ Church of England) ────────
@@ -1339,8 +1380,25 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // immersive player can place them in the vertical middle (podcasts/office) OR
   // down in the lower block (Listen-to-Scripture, where the centered passage
   // title takes the middle — mirroring an office lesson title slide).
+  // Previous / next episode show whenever a queue is playing (a course, a
+  // listen list); at either end the button stays in place, dimmed, so the row
+  // never shifts under a thumb.
+  const inQueue = queueIndexRef.current >= 0 && queueRef.current.length > 1;
+  const hasPrevEpisode = inQueue && queueIndexRef.current > 0;
+  const hasNextEpisode = inQueue && queueIndexRef.current + 1 < queueRef.current.length;
+  const trackBtn = (enabled: boolean) => ({
+    background: "none", border: "none", color: "#FFFFFF", padding: 4, lineHeight: 0,
+    cursor: enabled ? "pointer" : "default", opacity: enabled ? 1 : 0.35,
+  });
   const transportRow = (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 30 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: inQueue ? 16 : 30 }}>
+      {inQueue && (
+        <button type="button" onClick={skipToPrevious} disabled={!hasPrevEpisode}
+          aria-label={t("podcasts.a11y_previous", { defaultValue: "Previous episode" })}
+          style={trackBtn(hasPrevEpisode)}>
+          <IconTrack />
+        </button>
+      )}
       <button type="button" onClick={() => skip(-15)} aria-label={t("podcasts.a11y_back15")}
         style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 4, lineHeight: 0 }}>
         <IconSkip secs={15} />
@@ -1359,11 +1417,11 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 4, lineHeight: 0 }}>
         <IconSkip secs={30} forward />
       </button>
-      {queueIndexRef.current >= 0 && queueIndexRef.current + 1 < queueRef.current.length && (
-        <button type="button" onClick={skipToNext}
+      {inQueue && (
+        <button type="button" onClick={skipToNext} disabled={!hasNextEpisode}
           aria-label={t("podcasts.a11y_next", { defaultValue: "Next episode" })}
-          style={{ background: "none", border: "none", color: "#FFFFFF", fontSize: 26, lineHeight: 0, padding: 4, cursor: "pointer" }}>
-          ⏭
+          style={trackBtn(hasNextEpisode)}>
+          <IconTrack next />
         </button>
       )}
     </div>
