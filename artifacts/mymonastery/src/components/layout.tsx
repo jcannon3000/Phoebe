@@ -1515,22 +1515,24 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
           twice and sat narrower than the home cards on iOS). */}
       <main className={`flex-1 flex flex-col pb-12 max-w-7xl mx-auto w-full ${chromeless ? "pt-2" : "pt-2 px-4 sm:px-6 md:px-8"}`}>
         <motion.div
-          // The page rises up over the backdrop on entry. Deliberately gentle —
-          // a slower, taller rise reads as the new page lifting into place over
-          // what was there, rather than a quick snap.
+          // The page FADES in — it no longer rises (owner, 2026-09-14, of the
+          // cards: "a shimmy at the end of the animation … it makes the cards be
+          // un even", "after they settle some bump a nudge"). The rise (y 28 → 0
+          // over 0.85s) held the whole page on a compositing layer at a
+          // fractional offset, and the frame it ended the layer was dropped and
+          // every card, frost and ring re-rasterised at its true sub-pixel
+          // position, each rounding its own way. Measured frame by frame: on
+          // home, Done cards jumped +7, 0, +2, 0, −1, +2 device px in ONE frame
+          // 0.8s in and stayed uneven; on Practices, the whole page jumped 4
+          // device px and then re-snapped unevenly the frame after. A fade has
+          // no offset to snap out of.
           //
-          // NOT ON HOME (owner, 2026-09-14, recording: "a shimmy at the end of
-          // the animation … it makes the cards be un even", "after they settle
-          // some bump a nudge"). Measured frame by frame: 0.8s after home
-          // appeared — this rise's length — every card jumped 0–7 device px in
-          // ONE frame and stayed uneven. The rise holds the whole page on a
-          // compositing layer at a fractional offset; the frame it ends, the
-          // layer is dropped and every card, frost and ring re-rasterises at its
-          // true sub-pixel position, each rounding its own way. Home already
-          // brings its cards in with their own held fade, so it doesn't rise.
-          initial={pageLocation === "/dashboard" || pageLocation === "/" ? false : { opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
+          // Home doesn't even fade: its cards already come in with their own
+          // cascade (DailyProgressBody), and a second layer over them is one
+          // more thing to drop when it ends.
+          initial={pageLocation === "/dashboard" || pageLocation === "/" ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="flex-1 flex flex-col w-full h-full"
         >
           {children}

@@ -784,6 +784,7 @@ export function PracticeCard({
   );
 
   const restBorder = CARD_BORDER;
+  const showProgressBar = !!progress && progress.goal > 0 && (!done || !!alwaysShowProgress);
   const row = (
     // The ring is a SIBLING of the clipped card (see ringOverlay); press and
     // hover live on this wrapper so card and ring move together.
@@ -791,38 +792,64 @@ export function PracticeCard({
     <div className={`relative ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`} style={{ opacity: waiting ? 0.72 : 1 }}>
       <motion.div
         className="relative flex rounded-3xl overflow-hidden"
-        style={{ background: cardTintBg(tint), backgroundClip: "padding-box", border: `${CARD_BORDER_PX} solid transparent`, isolation: "isolate" }}
+        // A 1px LAYOUT border, not CARD_BORDER_PX. The visible stroke is the
+        // ring overlay (1.5px, drawn outside this box's clip); this border is
+        // transparent and only spaces the tint. But a 1.5px border is rounded
+        // to whole device pixels at layout time (4 of them on a 3× screen,
+        // 1.333px), which put the fraction straight back into every card's
+        // height — measured: card-to-card steps of 226–229 device px where
+        // 228 was due. 1px is whole at every density; the tint now runs 0.5px
+        // under the inside of the ring, which reads as the same stroke.
+        style={{
+          background: cardTintBg(tint), backgroundClip: "padding-box", border: "1px solid transparent", isolation: "isolate",
+          // ONE HEIGHT, SET — not arrived at (owner, 2026-09-14: "unless it has
+          // a progress bar, all cards should be the same height, and have the
+          // same vertical padding … this shouldnt be so complicated"). 1px
+          // border + 14px padding + a 37px row + 14px padding + 1px border.
+          ...(showProgressBar ? {} : { height: 67 }),
+        }}
       >
         {frost}
         <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />
         <div className="flex-1 min-w-0 px-4 py-3.5">
           {/* ONE ROW HEIGHT (owner, 2026-09-12: "make sure the cards are the same
               height unless they have a progress bar under or hero"). The row's
-              natural height is the two text lines — title (14.5px × 1.25) + 2px
-              + subtitle (12px × 1.375) — and both truncate, so nothing grows
+              natural height is the two text lines — title (an 18px line) + 2px
+              + subtitle (a 17px line) — and both truncate, so nothing grows
               past it; this floor keeps a card WITHOUT a subtitle, or one whose
               pill is the tallest thing in it, from coming up short. The progress
-              bar below still adds to the cards that carry one. */}
-          <div className="flex items-center gap-3" style={{ minHeight: "calc(14.5px * 1.25 + 2px + 12px * 1.375)" }}>
+              bar below still adds to the cards that carry one.
+
+              IN WHOLE PIXELS (owner, 2026-09-14: "it makes the cards be un
+              even"). The lines were 14.5 × 1.25 = 18.125px and 12 × 1.375 =
+              16.5px, so a card stood 67.625px tall and every card below the
+              first began at a different fraction of a device pixel. Each card's
+              frost and ring is its own compositing layer and each rounded its
+              own way — measured at rest on the Simulator: identical cards 194 to
+              198 device px tall with gaps of 27 to 31. At 18 + 2 + 17 a card is
+              67px (with the box's 1px layout border — see below) and card-to-card
+              is 75px, a whole number of device pixels at 2× and 3×, so every
+              card lands on the same fraction and rounds the same way. */}
+          <div className="flex items-center gap-3" style={{ minHeight: 37 }}>
             {/* Compact rows keep the emoji as a LEADING icon on the left (owner)
                 — only the HERO layout moves it to the right of the title. */}
             {emoji ? (
               <span className="text-[15px] leading-none flex-shrink-0" aria-hidden>{emoji}</span>
             ) : null}
             <div className="flex-1 min-w-0 overflow-hidden">
-              <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>
+              <p className="text-[14.5px] font-semibold leading-[18px] truncate" style={{ color: WARM, fontFamily: FONT }}>
                 {title}
               </p>
               {useCycle
-                ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }} />
-                : blurb ? <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }}>{blurb}</p> : null}
+                ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-[17px] truncate" style={{ color: SAGE }} />
+                : blurb ? <p className="text-[12px] mt-0.5 leading-[17px] truncate" style={{ color: SAGE }}>{blurb}</p> : null}
             </div>
             {pill}
           </div>
           {/* Progress bar spans the full width below the row — so "Begin" sits
               above it rather than beside it. Hidden once the card is DONE (a full
               bar under a ✓ is just noise). */}
-          {progress && progress.goal > 0 && (!done || alwaysShowProgress) && (
+          {showProgressBar && progress && (
             <div className="mt-3 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
               <div
                 className="h-full rounded-full"
@@ -2802,7 +2829,19 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * the last frame of the fade IS the resting frame. It is the state the
    * owner pointed at as the one to keep ("the 3.68 cards is what we want").
    */
-  const hold = { style: { willChange: "opacity" } as const };
+  /**
+   * …AND NO LONGER HELD (owner, 2026-09-14: "the spacing is not exactly
+   * uniform … there is no reason it should not be exact … i shouldnt be able
+   * to tell they are off through eyeballing it"). Logged from WebKit on the
+   * Simulator: every Done card laid out at exactly 67px, tops at exactly 0,
+   * 75, 150, 225, 300 — and yet on screen the fourth card was painted 2px
+   * below its own layout box, text, ring and all. The held layer is a
+   * compositing layer per card for the life of the page, and WebKit left one
+   * of them where the card USED to be. The card rows are whole pixels now
+   * (67px tall, 75px apart), so the end of a fade has no fraction to snap out
+   * of and there is nothing left for the hold to protect.
+   */
+  const hold = {};
   const enterUp = (i: number) => (celebrateKey ? {
     initial: false as const,
     animate: { opacity: 1 },
@@ -2854,7 +2893,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
               mt-3 = a touch more air above "Next" (owner) — the welcome/date
               stack above was crowding it. */}
           <motion.div {...enterUp(0)} className="mt-3">{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}</motion.div>
-          <div className="flex flex-col gap-2">
+          {/* ONE LAYER PER LIST (owner, 2026-09-14: "the spacing is not exactly
+              uniform … there is no reason it should not be exact"). A card's
+              frost is a backdrop blur, which WebKit always draws on its own
+              compositing layer, and the card's clipped box and its ring get
+              layers with it. Laid out, the cards were exact — logged from
+              WebKit on the Simulator: tops at 0, 75, 150, 225, 300, every
+              height 67, no transforms — yet on screen whole cards sat up to 4
+              device px off that grid, a different card each launch, because
+              each card's layers were placed from their own origin and snapped
+              to the pixel grid their own way. One compositing layer for the
+              list gives every card's layers one shared origin 75px apart, and
+              they land on the grid to within a fifth of a device pixel, frosting
+              unchanged. Done and Tomorrow do the same. */}
+          <div className="flex flex-col gap-2" style={{ willChange: "transform" }}>
             {/* The hero leads the Next list — the office, or (with no office)
                 the morning Contemplation card, above the reflection. */}
             {heroNode && <motion.div {...enterUp(0)}>{heroNode}</motion.div>}
@@ -2903,7 +2955,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       {showDoneSection && (
         <div className={doneGapCls}>
           <motion.div {...enterUp(doneBase)}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}</motion.div>
-          <div className="flex flex-col gap-2">
+          {/* One layer per list — see the Next list above. */}
+          <div className="flex flex-col gap-2" style={{ willChange: "transform" }}>
             {completedDisplay.map((c, i) => {
               // Always on — a card newly arriving in Done (from an inline
               // completion, not just the celebrate-navigation flow) needs the
@@ -2934,7 +2987,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           <motion.div {...enterUp(tomorrowBase)}>
             {sectionHeader(t("daily_progress.tomorrow_heading", { defaultValue: "Tomorrow" }))}
           </motion.div>
-          <div className="flex flex-col gap-2">
+          {/* One layer per list — see the Next list above. */}
+          <div className="flex flex-col gap-2" style={{ willChange: "transform" }}>
             {tomorrowDisplay.map((c, i) => {
               const idx = tomorrowBase + i;
               return (
