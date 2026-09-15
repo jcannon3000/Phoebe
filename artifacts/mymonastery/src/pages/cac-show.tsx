@@ -8,6 +8,8 @@ import { useMemo } from "react";
 import { Link, useParams } from "wouter";
 import { ArrowLeft, CheckCircle2, X } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { FrostLayers, frostBox } from "@/components/FrostRing";
+import { useOnline } from "@/lib/offline";
 import { useShowCourses, courseCompletion, type CacCourse } from "@/lib/cacCourses";
 import { useAnyCourseProgressTick, clearStarted } from "@/lib/courseProgress";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -16,6 +18,19 @@ import { CAC, CacFrame, useCacLeafBg } from "@/lib/cacTheme";
 
 const FROST = { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } as const;
 
+/**
+ * A season card, built like the home cards (owner, 2026-09-15: "the ui is
+ * having the animation issues on the cards").
+ *
+ * It was blur + border on one box, which the app-wide index.css rules turn
+ * into a 1.5px border under a ::before frost — the half-strokes and the
+ * settle-after-load the home cards had — and its lines summed to fractions,
+ * so the stack drifted a device pixel card to card. Now: FrostRing (a 1px
+ * transparent border, frost inset inside it, the 1.5px ring drawn above),
+ * whole-pixel lines (h-5 title row, leading-4 small text) and one compositing
+ * layer for each list below. 78px a card: 1 + 14 + 20 + 2 + 16 + 6 + 4 + 14 + 1.
+ * See reference_card_spacing_exact.
+ */
 function SeasonRow({ course }: { course: CacCourse }) {
   const { completedCount, total, isDone, isStarted } = courseCompletion(course);
   const pct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
@@ -24,11 +39,12 @@ function SeasonRow({ course }: { course: CacCourse }) {
     <Link
       href={`/cac-course/${course.id}`}
       className="relative flex items-center gap-3 rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90"
-      style={{ background: CAC.card, border: `1px solid ${CAC.border}`, opacity: isDone ? 0.7 : 1, ...FROST }}
+      style={{ ...frostBox(CAC.card), opacity: isDone ? 0.7 : 1 }}
     >
+      <FrostLayers border={CAC.border} />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <p className="truncate text-[15px] font-semibold" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
+        <div className="flex h-5 items-center gap-1.5">
+          <p className="truncate text-[15px] font-semibold leading-5" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
             {course.title}
           </p>
           {isDone && <CheckCircle2 size={14} style={{ color: CAC.gold, flexShrink: 0 }} />}
@@ -38,14 +54,14 @@ function SeasonRow({ course }: { course: CacCourse }) {
             </span>
           )}
         </div>
-        <p className="mt-0.5 text-[11.5px]" style={{ color: CAC.inkMuted }}>
+        <p className="mt-0.5 text-[11.5px] leading-4" style={{ color: CAC.inkMuted }}>
           {total} episode{total === 1 ? "" : "s"}
         </p>
         <div className="mt-1.5 h-1 w-full max-w-[220px] overflow-hidden rounded-full" style={{ background: CAC.divider }}>
           <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: CAC.gold }} />
         </div>
       </div>
-      <p className="shrink-0 text-[11px]" style={{ color: CAC.inkMuted, fontFamily: CAC.label }}>
+      <p className="shrink-0 text-[11px] leading-4" style={{ color: CAC.inkMuted, fontFamily: CAC.label }}>
         {completedCount}/{total}
       </p>
       {active && (
@@ -76,9 +92,14 @@ export default function CacShowPage() {
   // library grant. Round Table on Race (Diocese of NC) is public for everyone
   // (owner, 2026-09-11) and reads this same page.
   const isCac = data?.show.publisher === "cac";
-  const backHref = isCac ? "/cac-courses" : "/menu/learn";
-  const backLabel = isCac ? "CAC Courses" : "Courses";
+  // Back to Courses, where every show row lives now. It pointed CAC shows at
+  // /cac-courses, the "CAC Courses" folder the owner took off the Courses page
+  // ("bring them out of the folder", 2026-09-05), so Back landed somewhere
+  // the reader had never been. Admin Tools still opens that grid directly.
+  const backHref = "/menu/learn";
+  const backLabel = "Courses";
   const leafBg = useCacLeafBg();
+  const online = useOnline();
   useAnyCourseProgressTick();
 
   const seasons = useMemo(
@@ -130,8 +151,17 @@ export default function CacShowPage() {
           ) : !show ? (
             <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}`, ...FROST }}>
               <p className="text-sm leading-relaxed" style={{ color: CAC.inkMuted }}>
-                We couldn't find that show. Head back to{" "}
-                <Link href={backHref} style={{ color: CAC.gold, textDecoration: "underline" }}>{backLabel}</Link>.
+                {online ? (
+                  <>
+                    We couldn't find that show. Head back to{" "}
+                    <Link href={backHref} style={{ color: CAC.gold, textDecoration: "underline" }}>{backLabel}</Link>.
+                  </>
+                ) : (
+                  // Offline the seasons never loaded; the show isn't missing.
+                  // Courses stream and nothing of them is kept on the phone, so
+                  // say that, the way the Courses page does.
+                  "Not available offline. Courses stream from the internet, so this page loads once you're connected."
+                )}
               </p>
             </div>
           ) : (
@@ -168,7 +198,9 @@ export default function CacShowPage() {
 
               <div className="h-px" style={{ background: CAC.divider }} />
 
-              <div className="mt-5 space-y-2">
+              {/* One compositing layer per list, so every card shares its origin
+                  (see SeasonRow). */}
+              <div className="mt-5 space-y-2" style={{ willChange: "transform" }}>
                 {inProgressSeasons.map((course) => (
                   <SeasonRow key={course.id} course={course} />
                 ))}
@@ -182,7 +214,7 @@ export default function CacShowPage() {
                     </p>
                     <div className="h-px flex-1" style={{ background: CAC.divider }} />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2" style={{ willChange: "transform" }}>
                     {completedSeasons.map((course) => (
                       <SeasonRow key={course.id} course={course} />
                     ))}

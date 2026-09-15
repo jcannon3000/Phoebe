@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, Play } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { FrostLayers, frostBox } from "@/components/FrostRing";
 import { X } from "lucide-react";
 import { useCacCourses, courseCompletion, type CacCourse } from "@/lib/cacCourses";
 import { useAnyCourseProgressTick, clearStarted } from "@/lib/courseProgress";
@@ -24,14 +25,18 @@ import { CAC, CacFrame, CacBetaPill, useCacLeafBg } from "@/lib/cacTheme";
 // YouTube course.
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
+// Built like the home cards (FrostRing, whole-pixel lines, one layer for the
+// list): blur + border on one box is the half-stroke and settle-after-load the
+// home cards had. See SeasonRow in cac-show.tsx.
 function ContinueCourseRow({ course, completedCount, total, nextTitle }: { course: CacCourse; completedCount: number; total: number; nextTitle: string | null }) {
   const pct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
   return (
     <Link
       href={`/cac-course/${course.id}`}
       className="relative block w-full rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90"
-      style={{ background: "rgba(9,26,16,0.4)", border: "1px solid rgba(46,107,64,0.38)", ...FROST }}
+      style={frostBox("rgba(9,26,16,0.4)")}
     >
+      <FrostLayers border="rgba(46,107,64,0.38)" />
       <button
         type="button"
         aria-label="Remove from active courses"
@@ -47,10 +52,10 @@ function ContinueCourseRow({ course, completedCount, total, nextTitle }: { cours
       </button>
       <div className="flex items-center gap-3 pr-6">
         <div className="min-w-0 flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.7)", fontFamily: CAC.label }}>
+          <p className="truncate text-[10.5px] font-semibold uppercase tracking-widest leading-[14px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: CAC.label }}>
             Active · {course.showTitle}
           </p>
-          <p className="mt-0.5 truncate text-[15px] font-semibold" style={{ color: WARM, fontFamily: CAC.label }}>
+          <p className="mt-0.5 truncate text-[15px] font-semibold leading-5" style={{ color: WARM, fontFamily: CAC.label }}>
             {nextTitle ?? course.title}
           </p>
         </div>
@@ -61,7 +66,7 @@ function ContinueCourseRow({ course, completedCount, total, nextTitle }: { cours
       <div className="mt-3 h-1 overflow-hidden rounded-full" style={{ background: "rgba(200,212,192,0.12)" }}>
         <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg,#2D5E3F,#5FBF7F)" }} />
       </div>
-      <p className="mt-1 text-[11px]" style={{ color: SAGE }}>{completedCount} of {total}</p>
+      <p className="mt-1 text-[11px] leading-4" style={{ color: SAGE }}>{completedCount} of {total}</p>
     </Link>
   );
 }
@@ -217,7 +222,7 @@ export default function CacHomePage() {
                 <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: CAC.label }}>Courses</h3>
                 <div className="h-px flex-1" style={{ background: "rgba(200,212,192,0.15)" }} />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" style={{ willChange: "transform" }}>
                 {continueCourses.map(({ course, completedCount, total, nextTitle }) => (
                   <ContinueCourseRow key={course.id} course={course} completedCount={completedCount} total={total} nextTitle={nextTitle} />
                 ))}

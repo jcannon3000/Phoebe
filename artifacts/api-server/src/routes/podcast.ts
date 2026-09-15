@@ -1008,15 +1008,44 @@ router.get("/podcasts/show/:slug", async (req: Request, res: Response): Promise<
 // season with no single dominant subject, and a low-confidence guess there
 // would be worse than just "Season N".
 const SEASON_NAME_STOP = /^(bonus|dialogue \d+|a coaching session|listener questions|introduction|part \d+|session \d+|the practice|questions about|coming soon)/i;
+/**
+ * LETTERS IN ANY SCRIPT (owner, 2026-09-15: "in turning to the mystics there
+ * are two seasons without titles").
+ *
+ * These patterns were `[A-Z][\w.'’ ]`, and JavaScript's `\w` and `\b` are
+ * ASCII-only — even with the u flag — so a name with an accent in it could
+ * never be a candidate: every "Thérèse of Lisieux: Session 1" stopped at the
+ * é, and Season 13 fell back to a bare "Season 13". `\p{L}` is any letter.
+ * Replayed against every course show's live feed first: seasons 1–12 and
+ * every other show came out identical; only 13 and 14 gained their names.
+ */
 function seasonNameCandidates(title: string): string[] {
   const out: string[] = [];
-  const leading = title.match(/^([A-Z][\w.'’ ]{2,40}?):\s/);
+  const leading = title.match(/^(\p{Lu}[\p{L}\p{N}.'’ ]{2,40}?):\s/u);
   if (leading && !SEASON_NAME_STOP.test(leading[1])) out.push(leading[1].trim());
-  const onPhrase = title.match(/\bon ([A-Z][\w.'’]+(?: [A-Z][\w.'’]+){0,3})\b/);
+  const onPhrase = title.match(/(?<![\p{L}\p{N}_])on (\p{Lu}[\p{L}\p{N}.'’]+(?: \p{Lu}[\p{L}\p{N}.'’]+){0,3})/u);
   if (onPhrase) out.push(onPhrase[1].trim());
-  const studyingPhrase = title.match(/\bStudying ([A-Z][\w.'’]+(?: [A-Z][\w.'’]+){0,3})/);
+  const studyingPhrase = title.match(/(?<![\p{L}\p{N}_])Studying (\p{Lu}[\p{L}\p{N}.'’]+(?: \p{Lu}[\p{L}\p{N}.'’]+){0,3})/u);
   if (studyingPhrase) out.push(studyingPhrase[1].trim());
   return out;
+}
+/**
+ * The season's own announcement, for a season too new to have a majority.
+ *
+ * "Turning to the Mystics" opens each season with "Coming Soon: Turning to
+ * <the mystic>" and a welcome episode, "Turning to <the mystic>". A season
+ * whose trailer is still its only episode (Season 14, Emily Dickinson, until
+ * September 28, 2026) has one title and no majority to find, so this names it
+ * — only when the majority finds nothing, and only when every such title in
+ * the season names the same person.
+ */
+function announcedSeasonName(episodes: EpisodeFull[]): string | null {
+  const names = new Set<string>();
+  for (const ep of episodes) {
+    const m = ep.title?.match(/^(?:Coming Soon:\s*)?Turning to (\p{Lu}[\p{L}\p{N}.'’ ]{2,60})$/u);
+    if (m) names.add(m[1].trim());
+  }
+  return names.size === 1 ? [...names][0]! : null;
 }
 function deriveSeasonName(episodes: EpisodeFull[]): string | null {
   const counts = new Map<string, number>();
@@ -1036,7 +1065,7 @@ function deriveSeasonName(episodes: EpisodeFull[]): string | null {
   if (best && episodes.length > 0 && bestCount >= 3 && bestCount / episodes.length >= 0.3) {
     return best;
   }
-  return null;
+  return announcedSeasonName(episodes);
 }
 
 // ── GET /api/podcasts/cac/courses — CAC shows grouped into season "courses" ──

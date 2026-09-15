@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, useInView } from "framer-motion";
 import { Play } from "lucide-react";
+import { FrostLayers, frostBox } from "@/components/FrostRing";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useCourseProgress, useAnyCourseProgressTick, isCourseHiddenFromHome, COURSE_HIDDEN_EVENT, snapshotProgress } from "@/lib/courseProgress";
 import {
@@ -31,8 +32,6 @@ import { useBetaStatus } from "@/hooks/useDemo";
 const FONT = "'Space Grotesk', sans-serif";
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
-const FROST = { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } as const;
-
 type LearnCard = {
   key: string;
   title: string;
@@ -225,22 +224,33 @@ export function HomeLearnSection() {
         <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>Courses</h3>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
       </motion.div>
-      <div className="space-y-3">
+      {/* One compositing layer for the whole list, like the home's Next and
+          Done lists, so every card shares one origin. */}
+      <div className="space-y-3" style={{ willChange: "transform" }}>
         {show.map((c, cardIdx) => {
           const pct = Math.round((c.done / Math.max(1, c.total)) * 100);
           return (
             <motion.div key={c.key} {...enterUp(cardIdx + 1)}>
+            {/* FrostRing, not blur + border on the button (owner, 2026-09-15:
+                "the ui is having the animation issues on the cards"). The
+                app-wide index.css rules turned that into a 1.5px border under
+                a ::before frost — the half-strokes and settle-after-load the
+                home cards had. Every line is a whole pixel, so a card is 96px
+                exactly: 1 + 14 + 40 + 10 + 16 + 14 + 1. The eyebrow truncates
+                rather than wraps, so a long season name can't make one card
+                taller than the rest. See reference_card_spacing_exact. */}
             <button
               onClick={() => setLocation(c.href)}
               className="w-full text-left rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-95 active:scale-[0.99]"
-              style={{ ...FROST, background: "rgba(9,26,16,0.4)", border: "1px solid rgba(46,107,64,0.38)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              style={{ ...frostBox("rgba(9,26,16,0.4)"), boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
             >
+              <FrostLayers border="rgba(46,107,64,0.38)" />
               <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
+                  <p className="truncate text-[10.5px] font-semibold uppercase tracking-widest leading-[14px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
                     {c.started ? "Continue" : "Start course"} · {c.title}
                   </p>
-                  <p className="truncate text-[15px] font-semibold mt-0.5" style={{ color: WARM, fontFamily: FONT }}>
+                  <p className="truncate text-[15px] font-semibold mt-0.5 leading-5" style={{ color: WARM, fontFamily: FONT }}>
                     {c.nextLabel}
                   </p>
                 </div>
@@ -256,7 +266,7 @@ export function HomeLearnSection() {
                 <div className="h-1 flex-1 overflow-hidden rounded-full" style={{ background: "rgba(200,212,192,0.12)" }}>
                   <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg,#2D5E3F,#5FBF7F)" }} />
                 </div>
-                <span className="text-[11px] flex-shrink-0" style={{ color: SAGE, fontFamily: FONT }}>
+                <span className="text-[11px] leading-4 flex-shrink-0" style={{ color: SAGE, fontFamily: FONT }}>
                   {c.done} of {c.total}
                 </span>
               </div>

@@ -968,6 +968,19 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
 const GUEST_ALLOWED_PREFIX = [
   "/bcp", "/prayer-mode", "/cobreathe",
   "/rule-of-life", "/settings", "/menu/reflections/", "/menu/newsletters/",
+  /**
+   * CAC'S COURSE PAGES (ship audit, 2026-09-14: "CAC grant holders outside
+   * pilot groups get bounced").
+   *
+   * useGuestMode is true for any signed-in account that isn't beta or a
+   * community admin, and the CAC library is granted to GROUPS — so an
+   * ordinary member of a granted group saw the show rows on Courses and the
+   * season cards on their home, and every tap bounced to the dashboard. The
+   * pages gate themselves on that grant (useCacLibrary fails closed), so
+   * opening the route admits nobody the page would not. CAC's own slugs only:
+   * Round Table on Race stays off, as the owner took it off (2026-09-11).
+   */
+  "/cac-show/cac-", "/cac-course/cac-",
   // Saints index + detail pages (guest Resources → Saints).
   "/saints",
   // Prescribed-routine / preset-rule invite links (/routine/:token) — "join a

@@ -12,6 +12,7 @@ import { Link, useParams } from "wouter";
 import { ArrowLeft, CheckCircle2, Circle, ListMusic, Pause, Play } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { FrostLayers, frostBox } from "@/components/FrostRing";
+import { useOnline } from "@/lib/offline";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
 import { useCourseProgress } from "@/lib/courseProgress";
 import { useShowCourses, showSlugFromCourseId, formatDuration, type CacEpisode } from "@/lib/cacCourses";
@@ -28,6 +29,7 @@ export default function CacCoursePage() {
   const player = usePodcastPlayer();
   const { completedCount, isComplete, toggleComplete, setLast, markStarted } = useCourseProgress(id ?? "cac-unknown");
   const leafBg = useCacLeafBg();
+  const online = useOnline();
 
   const { data, isLoading } = useShowCourses(showSlugFromCourseId(id));
   const course = (data?.courses ?? []).find((c) => c.id === id) ?? null;
@@ -122,8 +124,16 @@ export default function CacCoursePage() {
           ) : !course ? (
             <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}`, ...FROST }}>
               <p className="text-sm leading-relaxed" style={{ color: CAC.inkMuted }}>
-                We couldn't find that course. Head back to{" "}
-                <Link href="/menu/learn" style={{ color: CAC.gold, textDecoration: "underline" }}>Courses</Link>.
+                {online ? (
+                  <>
+                    We couldn't find that course. Head back to{" "}
+                    <Link href="/menu/learn" style={{ color: CAC.gold, textDecoration: "underline" }}>Courses</Link>.
+                  </>
+                ) : (
+                  // Offline the season never loaded; it isn't missing (see
+                  // cac-show.tsx).
+                  "Not available offline. Courses stream from the internet, so this page loads once you're connected."
+                )}
               </p>
             </div>
           ) : (
