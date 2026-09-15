@@ -957,3 +957,31 @@ a:active,
 [data-frost-ring] [style*="backdrop-filter"][style*="border: 1px solid"][style*="overflow: hidden"]:not([aria-hidden="true"])::after { inset: 0; }
 [data-frost-ring] [style*="backdrop-filter"][style*="border: 1px solid"][style*="rgba(168, 197, 160, 0.7)"]:not([aria-hidden="true"])::after,
 [data-frost-ring] [style*="backdrop-filter"][style*="border: 1px solid"][style*="rgba(168,197,160,0.7)"]:not([aria-hidden="true"])::after { border-color: rgba(168,197,160,0.7); }
+
+/* ── Feast day glint ─────────────────────────────────────────────────────────
+   LiturgicalDateHeader wraps the feast's name in .feast-shimmer: a band of
+   light passes once across the letters, left to right, 3s after the home
+   loads. Before and after, the text is exactly its usual colour — the gradient
+   is that colour on both sides of the band. */
+.feast-shimmer {
+  background-image: linear-gradient(100deg,
+    rgba(200, 212, 192, 0.6) 0%,
+    rgba(200, 212, 192, 0.6) 40%,
+    rgba(255, 250, 236, 1) 50%,
+    rgba(200, 212, 192, 0.6) 60%,
+    rgba(200, 212, 192, 0.6) 100%);
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: feast-shimmer 1.6s ease-in-out 3s 1 both;
+}
+@keyframes feast-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feast-shimmer { animation: none; }
+}

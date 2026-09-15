@@ -183,7 +183,11 @@ export function LiturgicalDateHeader({
               display: "inline", lineHeight: 1.45,
             }}
           >
-            {secondary}
+            {/* One glint across the feast's name, left to right, 3s after the
+                home loads (owner, 2026-09-14: "if there is a feast day … have
+                the eyebrow shimmer once 3s after the load … go left to right
+                illuminated the letters"). index.css .feast-shimmer. */}
+            <span className="feast-shimmer">{secondary}</span>
             {/* An (i) in a circle, drawn rather than typed: the character ⓘ
                 renders at wildly different weights across iOS and Android, and
                 this line is 13px — it has to sit exactly on the text baseline. */}
