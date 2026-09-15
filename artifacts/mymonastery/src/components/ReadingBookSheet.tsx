@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   getReadingBook, startReadingBook, logReadingPage,
@@ -38,11 +38,16 @@ export function ReadingBookSheet({
   onSkip: () => void;
   t: (k: string, o?: Record<string, unknown>) => string;
 }) {
-  const existing = getReadingBook();
+  // The book is STATE, not a fresh read of storage each render. Starting a
+  // book writes the store, and a store write re-renders nothing: this sheet
+  // once leaned on setPage("") for that, a no-op when there is no book (page
+  // is already ""), so React bailed out and the setup form sat over a book
+  // that had been saved — and a second Start retired it to `past`.
+  const [book, setBook] = useState(() => getReadingBook());
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [pages, setPages] = useState("");
-  const [page, setPage] = useState(existing ? String(existing.currentPage || "") : "");
+  const [page, setPage] = useState(book ? String(book.currentPage || "") : "");
 
   /** Digits only. See the note above on why the keyboard hint isn't enough. */
   const digits = (v: string) => v.replace(/[^0-9]/g, "").slice(0, 6);
@@ -70,10 +75,10 @@ export function ReadingBookSheet({
   const startBook = () => {
     const n = parseInt(pages, 10);
     if (!title.trim() || !Number.isFinite(n) || n <= 0) return;
-    startReadingBook(title, author, n, todayLocalISO());
     // Straight to the page prompt rather than closing: someone setting the
-    // book up has almost certainly just read some of it.
-    setPage("");
+    // book up has almost certainly just read some of it. Setting the book is
+    // what moves the sheet there (see the note on `book` above).
+    setBook(startReadingBook(title, author, n, todayLocalISO()));
   };
 
   const logPage = () => {
@@ -83,8 +88,6 @@ export function ReadingBookSheet({
     if (updated) onLogged(updated);
     onClose();
   };
-
-  const book = existing ?? getReadingBook();
 
   return createPortal(
     <div
@@ -113,8 +116,12 @@ export function ReadingBookSheet({
           </span>
         </div>
 
+        {/* Keyed, so starting a book MOUNTS the page prompt rather than
+            reusing the setup's nodes child by child: unkeyed, the Author input
+            became the page field — never focused, since autoFocus fires only
+            on mount — and the tapped Start button stayed focused as Log it. */}
         {!book ? (
-          <>
+          <Fragment key="setup">
             <input
               value={title} onChange={(e) => setTitle(e.target.value)}
               placeholder={t("reading.field_title", { defaultValue: "Title" })}
@@ -134,9 +141,9 @@ export function ReadingBookSheet({
             <button type="button" onClick={startBook} style={{ ...primary, opacity: title.trim() && pages ? 1 : 0.45 }}>
               {t("reading.start", { defaultValue: "Start reading" })}
             </button>
-          </>
+          </Fragment>
         ) : (
-          <>
+          <Fragment key="page">
             <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14.5, margin: "0 0 12px" }}>
               {t("reading.page_prompt", { defaultValue: "What page did you read to?" })}
             </p>
@@ -156,7 +163,7 @@ export function ReadingBookSheet({
             <button type="button" onClick={() => { onSkip(); onClose(); }} style={quiet}>
               {t("rhythm.not_today", { defaultValue: "Not today" })}
             </button>
-          </>
+          </Fragment>
         )}
       </div>
     </div>,
