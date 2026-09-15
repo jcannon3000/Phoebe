@@ -22,8 +22,10 @@ const router: IRouter = Router();
 export type AppSettings = {
   /** Andrew's Version shows for everyone (true) or super admins only (false). */
   andrewsPublic: boolean;
+  /** The Living Church's commentary on This Sunday: everyone (true) or super admins only (false). */
+  livingChurchPublic: boolean;
 };
-export const APP_SETTING_DEFAULTS: AppSettings = { andrewsPublic: false };
+export const APP_SETTING_DEFAULTS: AppSettings = { andrewsPublic: false, livingChurchPublic: false };
 const KEYS = Object.keys(APP_SETTING_DEFAULTS) as Array<keyof AppSettings>;
 
 // A short in-process cache: the push cron and the GET both read this, and

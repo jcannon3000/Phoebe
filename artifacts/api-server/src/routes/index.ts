@@ -62,6 +62,7 @@ import prescribedRoutinesRouter from "./prescribed-routines";
 import routineInterviewRouter from "./routine-interview";
 import routinePresetsRouter from "./routine-presets";
 import andrewsRouter from "./andrews";
+import livingChurchRouter from "./living-church";
 import weekliesRouter from "./weeklies";
 import appSettingsRouter from "./app-settings";
 import readerPageRouter from "./reader-page";
@@ -204,6 +205,9 @@ router.use(routinePresetsRouter);
 // "Andrew's Version" — the weekly inbox practice; who sees it is the
 // "andrewsPublic" switch in app-settings (Admin Tools).
 router.use(andrewsRouter);
+// The Living Church's "Sunday's Readings" on This Sunday — titles and links
+// from its feed; who sees the card is the "livingChurchPublic" switch.
+router.use(livingChurchRouter);
 router.use(appSettingsRouter);
 // The passage text the readers open on oremus, for the device to keep offline.
 // The reading PAGE itself, for the device to keep and the reader to open.

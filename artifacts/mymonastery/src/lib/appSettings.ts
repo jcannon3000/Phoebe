@@ -13,8 +13,8 @@ import { useAuth } from "@/hooks/useAuth";
  * reads useAndrewsVisible() now, so the switch reaches them all at once and
  * none can drift.
  */
-export type AppSettings = { andrewsPublic: boolean };
-const DEFAULTS: AppSettings = { andrewsPublic: false };
+export type AppSettings = { andrewsPublic: boolean; livingChurchPublic: boolean };
+const DEFAULTS: AppSettings = { andrewsPublic: false, livingChurchPublic: false };
 export const APP_SETTINGS_KEY = ["/api/app-settings"] as const;
 
 export function useAppSettings(): AppSettings {
@@ -33,6 +33,14 @@ export function useAndrewsVisible(): boolean {
   const { user } = useAuth();
   const { andrewsPublic } = useAppSettings();
   return !!(user as { isSuperAdmin?: boolean } | null | undefined)?.isSuperAdmin || andrewsPublic;
+}
+
+/** The Living Church's commentary on This Sunday — the same rule as Andrew's
+ *  Version, on its own switch, so publishing one never publishes the other. */
+export function useLivingChurchVisible(): boolean {
+  const { user } = useAuth();
+  const { livingChurchPublic } = useAppSettings();
+  return !!(user as { isSuperAdmin?: boolean } | null | undefined)?.isSuperAdmin || livingChurchPublic;
 }
 
 /** Admin Tools: flip one switch. Optimistic on the cached settings, then the

@@ -6,8 +6,8 @@ import { Layout } from "@/components/layout";
 import { PracticeCard, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { useAndrewsVisible } from "@/lib/appSettings";
-import { usePreviousIssues } from "@/hooks/usePreviousIssues";
+import { useAndrewsVisible, useLivingChurchVisible } from "@/lib/appSettings";
+import { usePreviousIssues, PREVIOUS_ISSUES } from "@/hooks/usePreviousIssues";
 import { markAndrewsRead, type InboxItem } from "@/lib/taizeInbox";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { getDay, readLesserFeastsPref } from "@/lib/liturgical/calendar";
@@ -32,6 +32,8 @@ import { sundayLectionaryQuery, type SundayLectionary as Sunday, type SundayTrac
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
+/** The Living Church's "Sunday's Readings" column — opened when this Sunday's post isn't up yet. */
+const LIVING_CHURCH_INDEX = "https://livingchurch.org/category/scripture/sundays-readings/";
 
 function sundayLabel(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -57,6 +59,21 @@ export default function ThisSundayPage() {
     queryFn: async () => ((await apiRequest("GET", "/api/andrews/latest")) as InboxItem | null) ?? null,
   });
   const andrewsPrevious = usePreviousIssues("andrews", isAdmin);
+  // The Living Church's "Sunday's Readings" (owner, 2026-09-15: "build this
+  // just like with the McGowan Comentaries"): super admins always, everyone
+  // once its own Admin Tools switch is on. One list feeds both the card (the
+  // post for this Sunday, picked below) and the reader's "Previous" menu.
+  const livingChurchVisible = useLivingChurchVisible();
+  const livingChurchQ = useQuery<InboxItem[]>({
+    queryKey: ["/api/living-church/posts"],
+    enabled: livingChurchVisible,
+    staleTime: 15 * 60_000,
+    queryFn: async () => ((await apiRequest("GET", "/api/living-church/posts")) as InboxItem[] | null) ?? [],
+  });
+  const livingChurchPrevious = useMemo(
+    () => (livingChurchQ.data ?? []).slice(0, PREVIOUS_ISSUES).map(({ title, url }) => ({ title, url })),
+    [livingChurchQ.data],
+  );
 
   // Track 1 / Track 2 (owner: "a Track A or B toggle on the opening page that
   // would affect what readings are in the deck"). Only offered when the RCL
@@ -108,6 +125,20 @@ export default function ThisSundayPage() {
   // The toggle is offered when EITHER the live answer or the saved decks say
   // there are two tracks.
   const hasTrack2 = !!sunday?.track2 || !!savedSunday?.hasTrack2;
+  /**
+   * THIS SUNDAY'S commentary, not merely the newest (owner: "they post on
+   * monday for the coming sunday … so it should be on this sunday"). The post
+   * for a Sunday is the one published in the seven days up to it. From Monday,
+   * when this page moves on to the next Sunday, until that week's post goes
+   * up, nothing matches — and last week's commentary under "This Sunday" would
+   * be the wrong Sunday's, so the card opens the column instead.
+   */
+  const livingChurchPost = useMemo(() => {
+    const ymd = sunday?.sundayDate ?? savedSunday?.date ?? nextSundayYmdNY();
+    const [y, m, d] = ymd.split("-").map(Number);
+    const weekBefore = new Date(Date.UTC(y!, (m ?? 1) - 1, (d ?? 1) - 7)).toISOString().slice(0, 10);
+    return (livingChurchQ.data ?? []).find((p) => !!p.published && p.published > weekBefore && p.published <= ymd) ?? null;
+  }, [livingChurchQ.data, sunday, savedSunday]);
   const readingsLine = chosen
     ? [chosen.ot, chosen.psalm, chosen.nt, chosen.gospel].filter(Boolean).join(" · ")
     : (savedSunday?.readings ?? "");
@@ -146,6 +177,16 @@ export default function ThisSundayPage() {
         if (!post?.url) { openExternal("https://abmcg.substack.com/", { reader: true }); return; }
         openExternalThenMarkRead(post.url, () => markAndrewsRead(post.id), { reader: true, previous: andrewsPrevious });
       },
+    }] : []),
+    ...(livingChurchVisible ? [{
+      key: "living-church", emoji: "⛪",
+      title: t("this_sunday.living_church", { defaultValue: "The Living Church" }),
+      blurb: t("this_sunday.living_church_sub", { defaultValue: "Commentary on this Sunday's readings" }),
+      cta: t("rhythm.read", { defaultValue: "Read" }),
+      // In Phoebe's reader (owner: "lets try a reader view"), with the
+      // column's recent posts under Previous. Nothing is marked read: no other
+      // card anywhere waits on it.
+      open: () => { openExternal(livingChurchPost?.url ?? LIVING_CHURCH_INDEX, { reader: true, previous: livingChurchPrevious }); },
     }] : []),
   ];
 

@@ -266,6 +266,20 @@ export default function AdminToolsPage() {
                     onToggle={() => setAppSetting.mutate({ key: "andrewsPublic", value: !appSettings.andrewsPublic })}
                   />
                 )}
+                {/* THE LIVING CHURCH'S COMMENTARY on This Sunday, public or
+                    admins-only (owner, 2026-09-15: "build this just like with
+                    the McGowan Comentaries"). Its own switch, so making
+                    Andrew's Version public never publishes this too. */}
+                {isAdmin && (
+                  <Toggle
+                    label={`The Living Church ${appSettings.livingChurchPublic ? "public" : "admins only"}`}
+                    description={appSettings.livingChurchPublic
+                      ? "Everyone sees its Sunday commentary on This Sunday."
+                      : "Only super admins see it on This Sunday."}
+                    enabled={appSettings.livingChurchPublic}
+                    onToggle={() => setAppSetting.mutate({ key: "livingChurchPublic", value: !appSettings.livingChurchPublic })}
+                  />
+                )}
                 {/* The starter rhythms, and the default a new device seeds
                     (owner: "an admin tool where I could edit the preset
                     routines including the default one"). */}
