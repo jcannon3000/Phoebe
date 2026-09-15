@@ -378,7 +378,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          not. It opens with the ordinary light newsletter chrome instead,
          which is what openExternal's `reader: true` -> lightChrome already
          asks for. */
-      if (!isOremus && !isSsje && !isNouwen && !isFdd && !isSojo && !isSubstack) return;
+      /* The Living Church's "Sunday's Readings" (owner, 2026-09-15: "build
+         this just like with the McGowan Comentaries", "lets try a reader
+         view") — a weekly commentary on the coming Sunday's lessons, on
+         WordPress with tagDiv's Newspaper theme. */
+      var isTlc = (h === 'livingchurch.org' || h.slice(-17) === '.livingchurch.org');
+      if (!isOremus && !isSsje && !isNouwen && !isFdd && !isSojo && !isSubstack && !isTlc) return;
 
       /**
        * KEEP ONE BLOCK, HIDE ITS SIBLINGS — the technique three of these five
@@ -405,6 +410,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                          : isNouwen ? '.blog-item-inner-wrapper'
                          : isSojo ? 'article.node-versevoice'
                          : isSubstack ? 'article.post'
+                         : isTlc ? '.tdb_single_content'
                          : null;
 
       /**
@@ -636,6 +642,67 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'article.post .captioned-image-container,article.post .captioned-image-container *{background:transparent!important;}',
         'article.post .captioned-image-container,article.post figure{margin:14px 0 1.15em!important;padding:0!important;max-width:none!important;}',
         'article.post figcaption{font-size:13px!important;line-height:1.5!important;color:rgba(200,212,192,0.62)!important;text-align:center!important;}',
+        'a,a:visited{color:#A8C5A0!important;}',
+      ] : isTlc ? [
+        /* ---- The Living Church · Sunday's Readings ------------------------
+           The commentary is ONE `.tdb_single_content` block (isolated: the
+           site header, the sidebar column, the share row, related posts and
+           the footer are its siblings on the walk up, and go). Its title and
+           byline are separate tagDiv blocks BESIDE it, hidden with the rest,
+           so tlcHead() rebuilds them above the text — the Substack treatment.
+           Kept as written: the lessons it is on, the picture and its caption,
+           the commentary, "Look It Up" and "Think About It". Measured on
+           livingchurch.org at 375px. */
+        'html,body{background:transparent!important;margin:0!important;padding:0!important;',
+        'padding-top:calc(env(safe-area-inset-top) + 8px)!important;color:#F0EDE6!important;}',
+        /* Popup Maker locks the page from <html> while a panel is up. */
+        'html,body{overflow:auto!important;position:static!important;}',
+        /* THE SPINE BY ITS MARK, NOT ITS CLASSES. tagDiv's rows and columns
+           carry generated ids (tdi_66, tdi_69) that change with the template,
+           and between them they add a 1200px measure, floats, side gutters
+           and top padding. isolate() marks every ancestor it clears, so this
+           flattens the mark — in this arm, so on this host only. */
+        '[data-phoebe-cleared]{float:none!important;width:auto!important;max-width:none!important;min-width:0!important;',
+        'margin-left:0!important;margin-right:0!important;padding-left:0!important;padding-right:0!important;}',
+        '[data-phoebe-cleared]:not(body){margin-top:0!important;padding-top:0!important;}',
+        '.tdb_single_content,.tdb_single_content .tdb-block-inner{background:transparent!important;border:none!important;box-shadow:none!important;margin:0!important;}',
+        /* The publisher's furniture inside the kept block: the "Listen to this
+           article" player, the author box (portrait, bio, links), ad slots. */
+        '.tdb_single_content .beyondwords-player,.tdb_single_content .m-a-box,.tdb_single_content .molongui-clearfix,',
+        '.tdb_single_content .g-single,.tdb_single_content [class*="adrotate"],.tdb_single_content .tdb-block-inner p:empty{display:none!important;}',
+        /* Our head: title, the writer.
+           EVERY TYPE RULE FROM HERE NAMES ITS CLASS TWICE. tagDiv writes each
+           block's type in a <style> inside the block itself —
+           `.tdi_78 .tdb-block-inner > p{font-family:Rufina!important}`, and
+           `.tdi_78 h1` and `.tdi_78 figcaption` the same — and that sheet
+           comes after ours, so at equal specificity it won: the first build
+           set the title and the commentary in the site's serif at its 16px
+           (measured). The doubled class outranks the generated one without
+           naming it. readerTextRules carries the same doubling under
+           `html body`, so the aA still outranks these. */
+        '.phoebe-tlc-head{display:block!important;padding:18px 20px 6px!important;}',
+        '.phoebe-tlc-head.phoebe-tlc-head h1{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'font-size:34px!important;line-height:1.15!important;font-weight:700!important;color:#F0EDE6!important;margin:0 0 10px!important;}',
+        '.phoebe-tlc-head.phoebe-tlc-head .phoebe-by{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'font-size:16px!important;letter-spacing:0.02em!important;color:#A8C5A0!important;margin:0 0 6px!important;}',
+        /* The text. */
+        '.tdb_single_content .tdb-block-inner{padding:0 20px 24px!important;}',
+        '.tdb_single_content.tdb_single_content .tdb-block-inner,.tdb_single_content.tdb_single_content .tdb-block-inner *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
+        '.tdb_single_content.tdb_single_content .tdb-block-inner h2,.tdb_single_content.tdb_single_content .tdb-block-inner h3,.tdb_single_content.tdb_single_content .tdb-block-inner h4{font-size:25px!important;line-height:1.25!important;font-weight:700!important;color:#F0EDE6!important;margin:1.3em 0 0.45em!important;}',
+        '.tdb_single_content.tdb_single_content .tdb-block-inner p,.tdb_single_content.tdb_single_content .tdb-block-inner li{font-size:22px!important;line-height:1.7!important;color:#F0EDE6!important;margin:0 0 1.15em!important;}',
+        '.tdb_single_content.tdb_single_content .tdb-block-inner blockquote{border-left:3px solid rgba(168,197,160,0.5)!important;margin:0 0 1.15em!important;padding:0 0 0 14px!important;color:rgba(200,212,192,0.85)!important;}',
+        /* The picture stays, full width, with its caption. WordPress writes the
+           figure's width inline (the image's own 1987px), which ran the page
+           off the side. A tap would open tagDiv's lightbox — a new <body>
+           child the isolate hides at once — so the picture takes no taps. */
+        '.tdb_single_content figure{width:auto!important;max-width:none!important;margin:14px -20px 1.15em!important;padding:0!important;background:transparent!important;}',
+        '.tdb_single_content figure a{pointer-events:none!important;}',
+        '.tdb_single_content img{display:block!important;width:100%!important;max-width:none!important;height:auto!important;border-radius:0!important;margin:0!important;}',
+        '.tdb_single_content.tdb_single_content figcaption{font-size:13px!important;line-height:1.5!important;color:rgba(200,212,192,0.62)!important;text-align:center!important;padding:6px 20px 0!important;margin:0!important;}',
+        /* The source note, in the text's 20px gutter rather than the shared
+           12px, and in our face: the block's own rule sets Rufina on itself,
+           and the note inherits from the block. */
+        '.tdb_single_content.tdb_single_content .phoebe-reader-note{padding:10px 20px 40px!important;font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
         'a,a:visited{color:#A8C5A0!important;}',
       ] : [
         /* ---- Henri Nouwen · Forward Day by Day ---------------------------
@@ -1035,6 +1102,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 : isSojo   ? 'Sojourners'
                 : isFdd    ? 'Forward Movement'
                 : isSubstack ? (substackWho() || 'the author')
+                : isTlc    ? 'The Living Church'
                            : 'Benetvision';
         var note = document.createElement('div');
         note.className = 'phoebe-reader-note';
@@ -1042,6 +1110,48 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
           '<a href="' + location.href + '">' + who + '</a>' +
           ' \\u2014 Phoebe only changes how it looks on this screen. Tap Standard for their page.';
         post.appendChild(note);
+      }
+
+      /**
+       * The Living Church's head, rebuilt: the title and the writer. Both are
+       * tagDiv blocks BESIDE the kept `.tdb_single_content`, so the isolate
+       * hides them with the rest of the page; this sets their words back above
+       * the text, as substackHead() does for a Substack post.
+       */
+      function tlcHead() {
+        if (!isTlc) return;
+        tlcTidy();
+        if (document.querySelector('.phoebe-tlc-head')) return;
+        var post = document.querySelector('.tdb_single_content');
+        var title = document.querySelector('h1.tdb-title-text');
+        /* Both, or wait for a later pass: a head built before the title is
+           parsed would be an empty one that never fills in. */
+        if (!post || !title || !title.textContent) return;
+        var by = document.querySelector('.tdb_single_author .tdb-author-name');
+        var meta = document.querySelector('meta[name="author"]');
+        var who = (by && by.textContent ? by.textContent.trim() : '') || (meta && meta.content ? meta.content : '');
+        var head = document.createElement('div');
+        head.className = 'phoebe-tlc-head';
+        /* Hidden inline; the reader sheet shows it, so Standard (the sheet
+           off) never shows it under the publisher's own title. */
+        head.style.display = 'none';
+        var h = document.createElement('h1');
+        h.textContent = title.textContent.trim();
+        head.appendChild(h);
+        if (who) { var pb = document.createElement('p'); pb.className = 'phoebe-by'; pb.textContent = who; head.appendChild(pb); }
+        post.insertBefore(head, post.firstChild);
+      }
+      /**
+       * A paragraph holding only a non-breaking space (WordPress leaves one
+       * above the picture) spent a whole line of reading type as a gap under
+       * the by-line. Hidden through hideForReader, so Standard puts it back;
+       * trim() counts U+00A0 as white space. Runs every pass, and is idempotent.
+       */
+      function tlcTidy() {
+        var ps = document.querySelectorAll('.tdb_single_content .tdb-block-inner > p');
+        for (var i = 0; i < ps.length; i++) {
+          if (!(ps[i].textContent || '').trim() && !ps[i].querySelector('img,iframe,video,audio')) hideForReader(ps[i]);
+        }
       }
 
       /** Substack's header, rebuilt: title, subtitle, the writer's name. */
@@ -1354,7 +1464,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         }
         if (sheet) sheet.media = '';
         if (isOremus) { tidy(); credit(); }
-        else { isolate(); if (isFdd) fddTrim(); if (isSubstack) substackHead(); sourceNote(); }
+        else { isolate(); if (isFdd) fddTrim(); if (isSubstack) substackHead(); if (isTlc) tlcHead(); sourceNote(); }
         masthead();
         /* Tells the native side the reader has taken the page — the loading
            veil waits for this on reader hosts (hideVeilWhenReaderReady). */
@@ -2587,7 +2697,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         func matches(_ domain: String) -> Bool { h == domain || h.hasSuffix("." + domain) }
         return matches("oremus.org") || matches("ssje.org")
             || matches("henrinouwen.org") || matches("forwardmovement.org")
-            || matches("sojo.net")
+            || matches("sojo.net") || matches("livingchurch.org")
     }
 
     private func syncChromeToPage() {
@@ -2830,6 +2940,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         (["html.phoebe-saint .pray-container ldf-liturgical-document", "html.phoebe-saint .pray-container ldf-liturgical-document *"], 21),
         (["article.node-versevoice .field-item", "article.node-versevoice .field-item p",
           "article.node-versevoice p", "article.node-versevoice li", "article.node-versevoice blockquote"], 22),
+        // The Living Church's commentary, 22px in readerJS. Its class is named
+        // twice there to outrank tagDiv's inline block styles, and twice here
+        // too, so `html body` still puts the aA on top. The rebuilt title and
+        // by-line sit outside `.tdb-block-inner`, so they keep their size.
+        ([".tdb_single_content.tdb_single_content .tdb-block-inner p", ".tdb_single_content.tdb_single_content .tdb-block-inner li"], 22),
     ]
     private static let readerFamilySelectors: [String] = [
         ".bible", ".bibletext", ".bibletext *",
@@ -2839,6 +2954,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         "html.phoebe-saint .pray-container p", "html.phoebe-saint .pray-container li", "html.phoebe-saint .pray-container .bio",
         "html.phoebe-saint .pray-container ldf-liturgical-document", "html.phoebe-saint .pray-container ldf-liturgical-document *",
         "article.node-versevoice", "article.node-versevoice *",
+        ".tdb_single_content.tdb_single_content .tdb-block-inner", ".tdb_single_content.tdb_single_content .tdb-block-inner *",
     ]
     /** The same selector, two ancestors deeper — so it outranks the readerJS
      *  rule it mirrors whatever order the two stylesheets land in. A selector
