@@ -28,36 +28,36 @@ type AppMetrics = {
 
   prayedToday: number;
   prayedThisWeek: number;
-  prayedAllTime: number;
+  prayedThisMonth: number;
 
   timesPrayedToday: number;
   timesPrayedThisWeek: number;
-  timesPrayedTotal: number;
+  timesPrayedThisMonth: number;
 
   officesToday: number;
   officesThisWeek: number;
-  officesTotal: number;
+  officesThisMonth: number;
 
   contemplationExamenToday: number;
   contemplationExamenThisWeek: number;
-  contemplationExamenTotal: number;
+  contemplationExamenThisMonth: number;
 
   deansReadersToday: number;
   deansReadersThisWeek: number;
-  deansReadersTotal: number;
+  deansReadersThisMonth: number;
   deansReadsThisWeek: number;
-  deansReadsTotal: number;
+  deansReadsThisMonth: number;
   prayerRequestsToday: number;
   prayerRequestsThisWeek: number;
   prayerRequestsTotal: number;
 
   openedToday: number;
   openedThisWeek: number;
-  openedAllTime: number;
+  openedThisMonth: number;
 
   opensToday: number;
   opensThisWeek: number;
-  opensTotal: number;
+  opensThisMonth: number;
 
   // Phones without an account (anonymous device users) — already INCLUDED in
   // the totals above; split out. Optional: an older server omits them.
@@ -66,10 +66,10 @@ type AppMetrics = {
   newDeviceUsersThisWeek?: number;
   devicePrayedToday?: number;
   devicePrayedThisWeek?: number;
-  devicePrayedAllTime?: number;
+  devicePrayedThisMonth?: number;
   deviceOpenedToday?: number;
   deviceOpenedThisWeek?: number;
-  deviceOpenedAllTime?: number;
+  deviceOpenedThisMonth?: number;
 };
 
 type FeedAuditRow = {
@@ -211,35 +211,35 @@ export default function AdminAppMetricsPage() {
               eyebrow={t("admin_user_metrics.section_people_praying")}
               caption={t("admin_user_metrics.caption_people_praying")}
             >
-              <TileRow today={data.prayedToday} week={data.prayedThisWeek} allTime={data.prayedAllTime} />
+              <TileRow today={data.prayedToday} week={data.prayedThisWeek} allTime={data.prayedThisMonth} />
             </Section>
 
             <Section
               eyebrow={t("admin_user_metrics.section_device_praying")}
               caption={t("admin_user_metrics.caption_device_praying")}
             >
-              <TileRow today={data.devicePrayedToday ?? 0} week={data.devicePrayedThisWeek ?? 0} allTime={data.devicePrayedAllTime ?? 0} />
+              <TileRow today={data.devicePrayedToday ?? 0} week={data.devicePrayedThisWeek ?? 0} allTime={data.devicePrayedThisMonth ?? 0} />
             </Section>
 
             <Section
               eyebrow={t("admin_user_metrics.section_times_prayed")}
               caption={t("admin_user_metrics.caption_times_prayed")}
             >
-              <TileRow today={data.timesPrayedToday} week={data.timesPrayedThisWeek} allTime={data.timesPrayedTotal} />
+              <TileRow today={data.timesPrayedToday} week={data.timesPrayedThisWeek} allTime={data.timesPrayedThisMonth} />
             </Section>
 
             <Section
               eyebrow={t("admin_user_metrics.section_offices")}
               caption={t("admin_user_metrics.caption_offices")}
             >
-              <TileRow today={data.officesToday} week={data.officesThisWeek} allTime={data.officesTotal} />
+              <TileRow today={data.officesToday} week={data.officesThisWeek} allTime={data.officesThisMonth} />
             </Section>
 
             <Section
               eyebrow={t("admin_user_metrics.section_contemplation_examen")}
               caption={t("admin_user_metrics.caption_contemplation_examen")}
             >
-              <TileRow today={data.contemplationExamenToday} week={data.contemplationExamenThisWeek} allTime={data.contemplationExamenTotal} />
+              <TileRow today={data.contemplationExamenToday} week={data.contemplationExamenThisWeek} allTime={data.contemplationExamenThisMonth} />
             </Section>
 
             {/* Dean's Commentary readership. Two rows on purpose: PEOPLE is
@@ -250,21 +250,21 @@ export default function AdminAppMetricsPage() {
               eyebrow={t("admin_user_metrics.section_deans", { defaultValue: "🦩 Dean's Commentary — readers" })}
               caption={t("admin_user_metrics.caption_deans", { defaultValue: "How many PEOPLE opened the Dean's Commentary. One per reader per day." })}
             >
-              <TileRow today={data.deansReadersToday} week={data.deansReadersThisWeek} allTime={data.deansReadersTotal} />
+              <TileRow today={data.deansReadersToday} week={data.deansReadersThisWeek} allTime={data.deansReadersThisMonth} />
             </Section>
 
             <Section
               eyebrow={t("admin_user_metrics.section_deans_reads", { defaultValue: "🦩 Dean's Commentary — days read" })}
               caption={t("admin_user_metrics.caption_deans_reads", { defaultValue: "Reader-days: one per person per day they opened it. Divide by the readers above for how many days each reader averages. Today's figure is the same number by definition." })}
             >
-              <TileRow today={data.deansReadersToday} week={data.deansReadsThisWeek} allTime={data.deansReadsTotal} />
+              <TileRow today={data.deansReadersToday} week={data.deansReadsThisWeek} allTime={data.deansReadsThisMonth} />
             </Section>
 
             <Section
               eyebrow={t("admin_user_metrics.section_prayer_requests")}
               caption={t("admin_user_metrics.caption_prayer_requests")}
             >
-              <TileRow today={data.prayerRequestsToday} week={data.prayerRequestsThisWeek} allTime={data.prayerRequestsTotal} />
+              <TileRow today={data.prayerRequestsToday} week={data.prayerRequestsThisWeek} allTime={data.prayerRequestsTotal} allTimeLabel={t("admin_user_metrics.total")} />
             </Section>
 
             <Section
@@ -285,21 +285,21 @@ export default function AdminAppMetricsPage() {
               eyebrow={t("admin_user_metrics.section_opened_app")}
               caption={t("admin_user_metrics.caption_opened_app")}
             >
-              <TileRow today={data.openedToday} week={data.openedThisWeek} allTime={data.openedAllTime} />
+              <TileRow today={data.openedToday} week={data.openedThisWeek} allTime={data.openedThisMonth} />
             </Section>
 
             <Section
               eyebrow={t("admin_user_metrics.section_device_opened")}
               caption={t("admin_user_metrics.caption_device_opened")}
             >
-              <TileRow today={data.deviceOpenedToday ?? 0} week={data.deviceOpenedThisWeek ?? 0} allTime={data.deviceOpenedAllTime ?? 0} />
+              <TileRow today={data.deviceOpenedToday ?? 0} week={data.deviceOpenedThisWeek ?? 0} allTime={data.deviceOpenedThisMonth ?? 0} />
             </Section>
 
             <Section
               eyebrow={t("admin_user_metrics.section_times_opened")}
               caption={t("admin_user_metrics.caption_times_opened")}
             >
-              <TileRow today={data.opensToday} week={data.opensThisWeek} allTime={data.opensTotal} />
+              <TileRow today={data.opensToday} week={data.opensThisWeek} allTime={data.opensThisMonth} />
             </Section>
           </>
         )}
@@ -530,7 +530,7 @@ function TileRow({
     <div className="grid grid-cols-3 gap-3">
       <Tile label={t("admin_user_metrics.tile_today")} value={today} />
       <Tile label={t("admin_user_metrics.tile_this_week")} value={week} />
-      <Tile label={allTimeLabel ?? t("admin_user_metrics.tile_all_time")} value={allTime} />
+      <Tile label={allTimeLabel ?? t("admin_user_metrics.tile_this_month")} value={allTime} />
     </div>
   );
 }

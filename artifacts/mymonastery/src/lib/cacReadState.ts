@@ -20,6 +20,10 @@ function postOrQueue(id: string, url: string, body: Record<string, unknown>): vo
     void flushWrites();
   });
 }
+// Every side CREDIT posted through here is tagged `source: "credit:<practice>"`.
+// It is saved exactly like an office prayed from the book (60s, 99 slides,
+// completed), so without the tag App Metrics could not tell Simple Guided
+// Prayer, Psalms or a reading from an office (2026-09-15).
 function postSessionOrQueue(body: Record<string, unknown>): void {
   void apiRequest("POST", "/api/prayer-sessions", body).catch(() => { enqueueSession(body); });
 }
@@ -292,14 +296,14 @@ const sojoTracker = makeDailyReadTracker(
 /**
  * THE DAY'S COMMEMORATION — the life behind the feast.
  *
- * Kept locally only: there is no server `source` for it (the reflections route
- * validates against a fixed set), and it does not need one — this is a
- * per-device day-flag exactly like the practice completions, and nothing
- * cross-device depends on it yet. Add a source and a sync here if it ever does.
+ * Synced as reflection_reads source "hagiography" (2026-09-15). It was a
+ * device-only day-flag, which kept it off App Metrics entirely — owner: "Someone
+ * who only keeps those doesn't show as praying … Fix this." Nothing reads it
+ * back across devices yet; the flag here still drives the card.
  */
 const hagiographyTracker = makeDailyReadTracker(
   "phoebe:hagiography:last-read-day", "phoebe:hagiography-read",
-  () => { /* local only — see above */ },
+  (ymd) => { postOrQueue(`reflect-read:hagiography:${ymd}`, "/api/reflections/read", { source: "hagiography", ymd }); },
   "hagiography",
 );
 export const HAGIOGRAPHY_READ_EVENT = hagiographyTracker.eventName;
@@ -415,6 +419,7 @@ function syncPsalmsSession(side: "morning" | "evening"): void {
   const now = new Date();
   postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    source: "credit:psalms",
     durationSeconds: 60,
     // Clears the "actually prayed an office" (>=3 slides) filter the community
     // rollups apply.
@@ -445,6 +450,7 @@ function syncGuidedPrayerSession(side: "morning" | "evening"): void {
   const now = new Date();
   postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    source: "credit:guided-prayer",
     durationSeconds: 60,
     slidesCompleted: 99,
     completed: true,
@@ -468,6 +474,7 @@ function syncCustomPrayerSession(side: "morning" | "evening"): void {
   const now = new Date();
   postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    source: "credit:custom",
     durationSeconds: 60,
     slidesCompleted: 99,
     completed: true,
@@ -528,6 +535,7 @@ function syncFddSession(side: "morning" | "evening"): void {
   const now = new Date();
   postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    source: "credit:fdd",
     durationSeconds: 60,
     slidesCompleted: 99,
     completed: true,
@@ -568,6 +576,7 @@ function syncCacSession(side: "morning" | "evening"): void {
   const now = new Date();
   postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    source: "credit:cac",
     durationSeconds: 60, slidesCompleted: 99, completed: true,
     startedAt: now.toISOString(), endedAt: now.toISOString(),
   });
@@ -584,6 +593,7 @@ function syncSsjeSession(side: "morning" | "evening"): void {
   const now = new Date();
   postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    source: "credit:ssje",
     durationSeconds: 60, slidesCompleted: 99, completed: true,
     startedAt: now.toISOString(), endedAt: now.toISOString(),
   });
@@ -600,6 +610,7 @@ function syncVtsSession(side: "morning" | "evening"): void {
   const now = new Date();
   postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    source: "credit:vts",
     durationSeconds: 60, slidesCompleted: 99, completed: true,
     startedAt: now.toISOString(), endedAt: now.toISOString(),
   });
@@ -707,6 +718,7 @@ function syncReadingsSession(side: "morning" | "evening"): void {
   const now = new Date();
   postSessionOrQueue({
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    source: "credit:readings",
     durationSeconds: 60,
     slidesCompleted: 99,
     completed: true,

@@ -28,7 +28,8 @@ function isValidYmd(s: string): boolean {
 // joined when they became choosable in the customizer — without them here the
 // POST 400s and the read is never recorded anywhere but this one device, which
 // is precisely "it didn't save".
-const SOURCES = new Set(["fdd", "ssje", "vts", "nouwen", "sojo", "grist"]);
+// "hagiography" (2026-09-15): the feast-day life, so App Metrics can count it.
+const SOURCES = new Set(["fdd", "ssje", "vts", "nouwen", "sojo", "grist", "hagiography"]);
 
 function uid(req: Request): number | null {
   const u = req.user as { id?: number } | undefined;

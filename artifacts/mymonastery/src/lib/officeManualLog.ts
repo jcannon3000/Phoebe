@@ -296,6 +296,10 @@ export function markOfficeBookComplete(
     // High enough to clear the "actually prayed an office" (>=3 slides) filter.
     slidesCompleted: 99,
     completed: true,
+    // An office prayed from the book or on Venite. The practice credits in
+    // cacReadState are saved the same way; this tag is how App Metrics tells
+    // an office from them.
+    source: "attest:manual",
     startedAt: now.toISOString(),
     endedAt: now.toISOString(),
   };

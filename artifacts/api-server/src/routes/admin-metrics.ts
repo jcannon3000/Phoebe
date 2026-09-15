@@ -104,6 +104,16 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
     ));
     todayUTC.setUTCDate(todayUTC.getUTCDate() - 6);
     const weekStartStr = todayUTC.toISOString().slice(0, 10);
+    // "This month" = the ET calendar month to date. Owner, 2026-09-15: "Show
+    // this month" — the old "All time" wasn't: app_opens is pruned at 90 days,
+    // prayer sessions and reading history at a year.
+    const monthStartStr = `${tyStr}-${tmStr}-01`;
+    // Every source is read only as far back as the earlier window needs (a
+    // week can reach into last month), and sessions one day further so the
+    // 15-minute dedup sees the event just before the window.
+    const sinceYmd = weekStartStr < monthStartStr ? weekStartStr : monthStartStr;
+    const [sinceY, sinceM, sinceD] = sinceYmd.split("-").map((n) => parseInt(n, 10));
+    const sinceTs = new Date(Date.UTC(sinceY, sinceM - 1, sinceD) - 24 * 60 * 60 * 1000).toISOString();
 
     const q = await pool.query(`
       WITH session_candidates AS (
@@ -118,12 +128,14 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
           SELECT a.user_id, a.prayed_at AS occurred_at
           FROM prayer_request_amens a
           WHERE a.prayed_at IS NOT NULL
+            AND a.prayed_at >= $5
 
           UNION ALL
 
           SELECT ps.user_id, ps.ended_at AS occurred_at
           FROM prayer_sessions ps
-          WHERE ps.surface IN (
+          WHERE ps.ended_at >= $5
+            AND ps.surface IN (
               'morning-prayer',
               'evening-prayer',
               'compline',
@@ -135,6 +147,22 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
               'contemplation'
             )
             AND (ps.slides_completed IS NULL OR ps.slides_completed >= 3)
+            -- A reading kept as a side's prayer also writes a side CREDIT row;
+            -- the reading is counted from its own record below, so its credit
+            -- is left out rather than counted twice.
+            AND COALESCE(ps.source, '') NOT IN ('credit:fdd', 'credit:cac', 'credit:ssje', 'credit:vts')
+
+          UNION ALL
+
+          -- The offices listened to or watched, on the terms the app credits
+          -- them as the office (users.ts office-history-week).
+          SELECT ps.user_id, ps.ended_at AS occurred_at
+          FROM prayer_sessions ps
+          WHERE ps.ended_at >= $5
+            AND (
+              (ps.surface IN ('morning-office-podcast', 'evening-office-podcast') AND ps.completed = TRUE)
+              OR (ps.surface = 'national-cathedral' AND ps.duration_seconds >= 180)
+            )
         ) c
       ),
       session_with_lag AS (
@@ -155,31 +183,77 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         FROM session_with_lag
         WHERE prev_at IS NULL
            OR occurred_at - prev_at > INTERVAL '15 minutes'
+
+        UNION ALL
+
+        -- ── Practices that are not timed sessions ─────────────────────────
+        -- Owner, 2026-09-15, of Forward Day by Day, Visio, gratitude and the
+        -- hagiographies: "Someone who only keeps those doesn't show as
+        -- praying … Fix this." One event per practice, per person, per day —
+        -- the day the phone recorded, like the Dean's rows below.
+        --   Readings: Forward Day by Day, the hagiographies, the Dean's
+        --   Commentary, SSJE, Nouwen, Grist, Sojourners.
+        SELECT user_id, ymd AS day FROM reflection_reads WHERE ymd >= $6
+        UNION ALL
+        --   The CAC daily reflection.
+        SELECT user_id, ymd AS day FROM cac_reads WHERE ymd >= $6
+        UNION ALL
+        --   Visio Divina, Lectio, the Rosary, icons, the walk, listening, a
+        --   routine's own practices (practice_completion). The Examen and the
+        --   prayer list are skipped on a day their own session already counts.
+        SELECT pc.user_id, pc.local_date AS day
+        FROM practice_completion pc
+        WHERE pc.local_date >= $6
+          AND NOT (
+            pc.section IN ('examen', 'prayer-list')
+            AND EXISTS (
+              SELECT 1 FROM prayer_sessions ps
+              WHERE ps.user_id = pc.user_id
+                AND ps.surface = pc.section
+                AND ps.ended_at >= $5
+                AND to_char((ps.ended_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') = pc.local_date
+            )
+          )
       ),
       prayer_days AS (
         SELECT DISTINCT user_id, day FROM prayer_events
       ),
-      -- Offices: (user, day, side) tuples. Side is "morning"
-      -- (morning-prayer + morning-devotion) or "evening"
-      -- (evening-prayer + early-evening-devotion + compline).
-      -- Max 2 per person per day.
+      -- Offices: (user, day, office) — the FINISHED office only, on the terms
+      -- the app itself credits one (users.ts office-history-week): the
+      -- slideshow completed, the book or Venite attested, the office listened
+      -- to or watched. Owner, 2026-09-15: finished offices only, not Simple
+      -- Guided Prayer or Psalms, and the listened-to offices counted. Morning,
+      -- evening, Compline and Midday Prayer each count once a day.
       office_session_candidates AS (
         SELECT
           ps.user_id,
           ps.ended_at AS occurred_at,
           CASE
-            WHEN ps.surface IN ('morning-prayer', 'morning-devotion') THEN 'morning'
-            ELSE 'evening'
+            WHEN ps.surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
+            WHEN ps.surface IN ('evening-prayer', 'early-evening-devotion', 'evening-office-podcast') THEN 'evening'
+            ELSE ps.surface
           END AS side
         FROM prayer_sessions ps
-        WHERE ps.surface IN (
-            'morning-prayer',
-            'evening-prayer',
-            'compline',
-            'morning-devotion',
-            'early-evening-devotion'
+        WHERE ps.ended_at >= $5
+          AND (
+            (
+              ps.surface IN ('morning-prayer', 'evening-prayer', 'compline', 'noonday', 'morning-devotion', 'early-evening-devotion')
+              AND ps.completed = TRUE
+              -- Side CREDITS (Psalms, Simple Guided Prayer, a reading as the
+              -- side's prayer) ride the devotion surfaces with 99 slides.
+              -- Tagged 'credit:*' since 2026-09-15; before that, and from
+              -- phones not yet updated, an untagged 99-slide devotion row is
+              -- one of them unless it is tagged as an office from the book.
+              AND COALESCE(ps.source, '') NOT LIKE 'credit:%'
+              AND NOT (
+                ps.surface IN ('morning-devotion', 'early-evening-devotion')
+                AND ps.slides_completed = 99
+                AND COALESCE(ps.source, '') NOT LIKE 'attest:%'
+              )
+            )
+            OR (ps.surface IN ('morning-office-podcast', 'evening-office-podcast') AND ps.completed = TRUE)
+            OR (ps.surface = 'national-cathedral' AND ps.duration_seconds >= 180)
           )
-          AND (ps.slides_completed IS NULL OR ps.slides_completed >= 3)
       ),
       office_days AS (
         SELECT DISTINCT
@@ -195,12 +269,19 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
       -- general "Times prayed" total. prayer-list is deliberately
       -- excluded here (it's a browsing action, not a timed practice).
       contemplation_examen_days AS (
-        SELECT DISTINCT
+        SELECT
           ps.user_id,
           to_char((ps.ended_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') AS day
         FROM prayer_sessions ps
-        WHERE ps.surface IN ('examen', 'contemplation')
+        WHERE ps.ended_at >= $5
+          AND ps.surface IN ('examen', 'contemplation')
           AND (ps.slides_completed IS NULL OR ps.slides_completed >= 3)
+        UNION
+        -- The Examen prayed inside Simple Guided Prayer records only a
+        -- practice completion.
+        SELECT pc.user_id, pc.local_date AS day
+        FROM practice_completion pc
+        WHERE pc.section = 'examen' AND pc.local_date >= $6
       )
       SELECT
         (SELECT COUNT(*) FROM users)::int AS total_users,
@@ -221,7 +302,7 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         (SELECT COUNT(DISTINCT pd.user_id) FROM prayer_days pd JOIN users u ON u.id = pd.user_id
            WHERE u.is_anonymous AND pd.day >= $2)::int AS device_prayed_week,
         (SELECT COUNT(DISTINCT pd.user_id) FROM prayer_days pd JOIN users u ON u.id = pd.user_id
-           WHERE u.is_anonymous)::int AS device_prayed_all_time,
+           WHERE u.is_anonymous AND pd.day >= $4)::int AS device_prayed_month,
         (SELECT COUNT(DISTINCT ao.user_id) FROM app_opens ao JOIN users u ON u.id = ao.user_id
            WHERE u.is_anonymous
              AND to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS device_opened_today,
@@ -229,7 +310,8 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
            WHERE u.is_anonymous
              AND to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS device_opened_week,
         (SELECT COUNT(DISTINCT ao.user_id) FROM app_opens ao JOIN users u ON u.id = ao.user_id
-           WHERE u.is_anonymous)::int AS device_opened_all_time,
+           WHERE u.is_anonymous
+             AND to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $4)::int AS device_opened_month,
 
         (SELECT COUNT(*) FROM prayer_requests)::int AS prayer_requests_total,
         (SELECT COUNT(*) FROM prayer_requests
@@ -240,22 +322,22 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         -- Distinct users praying in each window.
         (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $1)::int AS prayed_today,
         (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $2)::int AS prayed_week,
-        (SELECT COUNT(DISTINCT user_id) FROM prayer_days)::int AS prayed_all_time,
+        (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $4)::int AS prayed_month,
 
         -- Times prayed (15-min-deduped events).
         (SELECT COUNT(*) FROM prayer_events WHERE day >= $1)::int AS times_prayed_today,
         (SELECT COUNT(*) FROM prayer_events WHERE day >= $2)::int AS times_prayed_week,
-        (SELECT COUNT(*) FROM prayer_events)::int AS times_prayed_total,
+        (SELECT COUNT(*) FROM prayer_events WHERE day >= $4)::int AS times_prayed_month,
 
         -- Offices.
         (SELECT COUNT(*) FROM office_days WHERE day >= $1)::int AS offices_today,
         (SELECT COUNT(*) FROM office_days WHERE day >= $2)::int AS offices_week,
-        (SELECT COUNT(*) FROM office_days)::int AS offices_total,
+        (SELECT COUNT(*) FROM office_days WHERE day >= $4)::int AS offices_month,
 
         -- Contemplation & Examen.
         (SELECT COUNT(*) FROM contemplation_examen_days WHERE day >= $1)::int AS contemplation_examen_today,
         (SELECT COUNT(*) FROM contemplation_examen_days WHERE day >= $2)::int AS contemplation_examen_week,
-        (SELECT COUNT(*) FROM contemplation_examen_days)::int AS contemplation_examen_total,
+        (SELECT COUNT(*) FROM contemplation_examen_days WHERE day >= $4)::int AS contemplation_examen_month,
 
         -- New signups in each window — handy app-level signal.
         (SELECT COUNT(*) FROM users
@@ -270,13 +352,15 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
            WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS opened_today,
         (SELECT COUNT(DISTINCT user_id) FROM app_opens
            WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS opened_week,
-        (SELECT COUNT(DISTINCT user_id) FROM app_opens)::int AS opened_all_time,
+        (SELECT COUNT(DISTINCT user_id) FROM app_opens
+           WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $4)::int AS opened_month,
 
         (SELECT COUNT(*) FROM app_opens
            WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS opens_today,
         (SELECT COUNT(*) FROM app_opens
            WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS opens_week,
-        (SELECT COUNT(*) FROM app_opens)::int AS opens_total,
+        (SELECT COUNT(*) FROM app_opens
+           WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $4)::int AS opens_month,
 
         -- ── Dean's Commentary (VTS) readership ──────────────────────────────
         -- reflection_reads is one row per (user, source, local day), so a
@@ -292,12 +376,12 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         (SELECT COUNT(DISTINCT user_id) FROM reflection_reads
            WHERE source = 'vts' AND ymd >= $2)::int AS deans_readers_week,
         (SELECT COUNT(DISTINCT user_id) FROM reflection_reads
-           WHERE source = 'vts')::int AS deans_readers_total,
+           WHERE source = 'vts' AND ymd >= $4)::int AS deans_readers_month,
         (SELECT COUNT(*) FROM reflection_reads
            WHERE source = 'vts' AND ymd >= $2)::int AS deans_reads_week,
         (SELECT COUNT(*) FROM reflection_reads
-           WHERE source = 'vts')::int AS deans_reads_total
-    `, [todayStr, weekStartStr, tz]);
+           WHERE source = 'vts' AND ymd >= $4)::int AS deans_reads_month
+    `, [todayStr, weekStartStr, tz, monthStartStr, sinceTs, sinceYmd]);
 
     const row = q.rows[0] ?? {};
     res.json({
@@ -307,34 +391,34 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
       newDeviceUsersThisWeek: Number(row.new_device_users_week ?? 0),
       devicePrayedToday: Number(row.device_prayed_today ?? 0),
       devicePrayedThisWeek: Number(row.device_prayed_week ?? 0),
-      devicePrayedAllTime: Number(row.device_prayed_all_time ?? 0),
+      devicePrayedThisMonth: Number(row.device_prayed_month ?? 0),
       deviceOpenedToday: Number(row.device_opened_today ?? 0),
       deviceOpenedThisWeek: Number(row.device_opened_week ?? 0),
-      deviceOpenedAllTime: Number(row.device_opened_all_time ?? 0),
+      deviceOpenedThisMonth: Number(row.device_opened_month ?? 0),
       newUsersToday: Number(row.new_users_today ?? 0),
       newUsersThisWeek: Number(row.new_users_week ?? 0),
 
       prayedToday: Number(row.prayed_today ?? 0),
       prayedThisWeek: Number(row.prayed_week ?? 0),
-      prayedAllTime: Number(row.prayed_all_time ?? 0),
+      prayedThisMonth: Number(row.prayed_month ?? 0),
 
       timesPrayedToday: Number(row.times_prayed_today ?? 0),
       timesPrayedThisWeek: Number(row.times_prayed_week ?? 0),
-      timesPrayedTotal: Number(row.times_prayed_total ?? 0),
+      timesPrayedThisMonth: Number(row.times_prayed_month ?? 0),
 
       officesToday: Number(row.offices_today ?? 0),
       officesThisWeek: Number(row.offices_week ?? 0),
-      officesTotal: Number(row.offices_total ?? 0),
+      officesThisMonth: Number(row.offices_month ?? 0),
 
       contemplationExamenToday: Number(row.contemplation_examen_today ?? 0),
       contemplationExamenThisWeek: Number(row.contemplation_examen_week ?? 0),
-      contemplationExamenTotal: Number(row.contemplation_examen_total ?? 0),
+      contemplationExamenThisMonth: Number(row.contemplation_examen_month ?? 0),
 
       deansReadersToday: Number(row.deans_readers_today ?? 0),
       deansReadersThisWeek: Number(row.deans_readers_week ?? 0),
-      deansReadersTotal: Number(row.deans_readers_total ?? 0),
+      deansReadersThisMonth: Number(row.deans_readers_month ?? 0),
       deansReadsThisWeek: Number(row.deans_reads_week ?? 0),
-      deansReadsTotal: Number(row.deans_reads_total ?? 0),
+      deansReadsThisMonth: Number(row.deans_reads_month ?? 0),
 
       prayerRequestsToday: Number(row.prayer_requests_today ?? 0),
       prayerRequestsThisWeek: Number(row.prayer_requests_week ?? 0),
@@ -342,11 +426,11 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
 
       openedToday: Number(row.opened_today ?? 0),
       openedThisWeek: Number(row.opened_week ?? 0),
-      openedAllTime: Number(row.opened_all_time ?? 0),
+      openedThisMonth: Number(row.opened_month ?? 0),
 
       opensToday: Number(row.opens_today ?? 0),
       opensThisWeek: Number(row.opens_week ?? 0),
-      opensTotal: Number(row.opens_total ?? 0),
+      opensThisMonth: Number(row.opens_month ?? 0),
     });
   } catch (err) {
     console.error("[admin/metrics] failed:", err);
