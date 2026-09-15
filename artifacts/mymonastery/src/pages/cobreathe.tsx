@@ -624,8 +624,15 @@ export default function CobreathePage() {
       const priorMinutes = already ? Math.floor(already.seconds / 60) : 0;
       const deltaMinutes = Math.floor(secondsKept / 60) - priorMinutes;
       if (deltaMinutes > 0) addGuestSilenceMinutes(deltaMinutes);
-      loggedRef.current = { seconds: secondsKept, id: null };
-      return;
+      // Signed OUT, the local tally is the only record. The ANONYMOUS DEVICE
+      // USER has a real session, so it falls through and logs the breath like
+      // any account — the POST-then-PATCH below — or a phone without an account
+      // never showed up in the admin metrics (audit, 2026-09-15). Its card
+      // still reads the local tally above.
+      if (!userRef.current) {
+        loggedRef.current = { seconds: secondsKept, id: null };
+        return;
+      }
     }
     // A longer call while the first POST is still unanswered: wait for the
     // id, then extend that row rather than opening a second one.

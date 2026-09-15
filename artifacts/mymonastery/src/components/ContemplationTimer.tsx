@@ -546,6 +546,29 @@ export function ContemplationTimer({
       addGuestSilenceMinutes(Math.floor(sat / 60));
       setDailyTotalSeconds(getGuestSilenceMinutesToday() * 60);
       setDailyGoalMin(getGuestSilenceGoalMin());
+      /**
+       * …AND THE ANONYMOUS DEVICE USER STILL LOGS THE SIT. It holds a real
+       * session, so the row is accepted; returning before the POST meant a
+       * phone without an account never appeared in the admin metrics' prayer
+       * counts, however often it sat (audit, 2026-09-15 — owner: "make sure it
+       * counts anyone who is using it on their phone but doesn't have an
+       * account"). Only the row is added: the card and this screen keep
+       * reading the local tally above, so nothing the person sees changes.
+       * Signed out (no user) there is no account to write to.
+       */
+      if (user) {
+        const endedAt = new Date();
+        const startedAt = startedAtRef.current ?? new Date(endedAt.getTime() - sat * 1000);
+        const deviceBody = {
+          surface: "contemplation",
+          durationSeconds: sat,
+          startedAt: startedAt.toISOString(),
+          endedAt: endedAt.toISOString(),
+          isPrivate,
+          contemplationSide: resolveContemplationSideForSit("silent") ?? undefined,
+        };
+        apiRequest("POST", "/api/prayer-sessions", deviceBody).catch(() => { enqueueSession(deviceBody); });
+      }
       return;
     }
     const startedAt = startedAtRef.current ?? new Date(Date.now() - sat * 1000);

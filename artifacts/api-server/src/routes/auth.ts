@@ -1050,13 +1050,16 @@ router.post(
 // user-keyed machinery while the UX stays completely login-free ("the device
 // inherently has a user id"). Anonymous users: never discoverable, always the
 // light app shape (useGuestMode), swept by retention when long idle. A later
-// real sign-in/sign-up simply replaces the session. Rate-limited per-IP —
-// device provisioning is once-ever per install, so 5/hour is ample.
+// real sign-in/sign-up simply replaces the session. Rate-limited per-IP.
+// Provisioning is once per install, but ONE IP is often many phones — carrier
+// NAT, a parish or campus Wi-Fi — and at 5/hour the sixth phone on a church's
+// network stayed sessionless, uncounted and unsynced (metrics audit,
+// 2026-09-15). 60/hour still stops a script minting rows.
 router.post(
   "/auth/anonymous",
   rateLimit({
     name: "auth_anonymous",
-    max: 5,
+    max: 60,
     windowMs: 60 * 60 * 1000,
     message: "Too many attempts from your network. Please try again in an hour.",
   }),

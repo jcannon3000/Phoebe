@@ -205,6 +205,32 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
       SELECT
         (SELECT COUNT(*) FROM users)::int AS total_users,
 
+        -- ── Phones WITHOUT an account ──────────────────────────────────────
+        -- The anonymous device user an install provisions (users.is_anonymous).
+        -- Every tile on the page already INCLUDES them; these split them out so
+        -- the owner can see how many people use Phoebe without signing up
+        -- (2026-09-15: "make sure it counts anyone who is using it on their
+        -- phone but doesn't have an account").
+        (SELECT COUNT(*) FROM users WHERE is_anonymous)::int AS total_device_users,
+        (SELECT COUNT(*) FROM users WHERE is_anonymous
+           AND to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS new_device_users_today,
+        (SELECT COUNT(*) FROM users WHERE is_anonymous
+           AND to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS new_device_users_week,
+        (SELECT COUNT(DISTINCT pd.user_id) FROM prayer_days pd JOIN users u ON u.id = pd.user_id
+           WHERE u.is_anonymous AND pd.day >= $1)::int AS device_prayed_today,
+        (SELECT COUNT(DISTINCT pd.user_id) FROM prayer_days pd JOIN users u ON u.id = pd.user_id
+           WHERE u.is_anonymous AND pd.day >= $2)::int AS device_prayed_week,
+        (SELECT COUNT(DISTINCT pd.user_id) FROM prayer_days pd JOIN users u ON u.id = pd.user_id
+           WHERE u.is_anonymous)::int AS device_prayed_all_time,
+        (SELECT COUNT(DISTINCT ao.user_id) FROM app_opens ao JOIN users u ON u.id = ao.user_id
+           WHERE u.is_anonymous
+             AND to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS device_opened_today,
+        (SELECT COUNT(DISTINCT ao.user_id) FROM app_opens ao JOIN users u ON u.id = ao.user_id
+           WHERE u.is_anonymous
+             AND to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS device_opened_week,
+        (SELECT COUNT(DISTINCT ao.user_id) FROM app_opens ao JOIN users u ON u.id = ao.user_id
+           WHERE u.is_anonymous)::int AS device_opened_all_time,
+
         (SELECT COUNT(*) FROM prayer_requests)::int AS prayer_requests_total,
         (SELECT COUNT(*) FROM prayer_requests
            WHERE to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS prayer_requests_today,
@@ -276,6 +302,15 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
     const row = q.rows[0] ?? {};
     res.json({
       totalUsers: Number(row.total_users ?? 0),
+      totalDeviceUsers: Number(row.total_device_users ?? 0),
+      newDeviceUsersToday: Number(row.new_device_users_today ?? 0),
+      newDeviceUsersThisWeek: Number(row.new_device_users_week ?? 0),
+      devicePrayedToday: Number(row.device_prayed_today ?? 0),
+      devicePrayedThisWeek: Number(row.device_prayed_week ?? 0),
+      devicePrayedAllTime: Number(row.device_prayed_all_time ?? 0),
+      deviceOpenedToday: Number(row.device_opened_today ?? 0),
+      deviceOpenedThisWeek: Number(row.device_opened_week ?? 0),
+      deviceOpenedAllTime: Number(row.device_opened_all_time ?? 0),
       newUsersToday: Number(row.new_users_today ?? 0),
       newUsersThisWeek: Number(row.new_users_week ?? 0),
 

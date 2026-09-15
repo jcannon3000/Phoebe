@@ -58,6 +58,18 @@ type AppMetrics = {
   opensToday: number;
   opensThisWeek: number;
   opensTotal: number;
+
+  // Phones without an account (anonymous device users) — already INCLUDED in
+  // the totals above; split out. Optional: an older server omits them.
+  totalDeviceUsers?: number;
+  newDeviceUsersToday?: number;
+  newDeviceUsersThisWeek?: number;
+  devicePrayedToday?: number;
+  devicePrayedThisWeek?: number;
+  devicePrayedAllTime?: number;
+  deviceOpenedToday?: number;
+  deviceOpenedThisWeek?: number;
+  deviceOpenedAllTime?: number;
 };
 
 type FeedAuditRow = {
@@ -195,8 +207,18 @@ export default function AdminAppMetricsPage() {
 
         {data && (
           <>
-            <Section eyebrow={t("admin_user_metrics.section_people_praying")}>
+            <Section
+              eyebrow={t("admin_user_metrics.section_people_praying")}
+              caption={t("admin_user_metrics.caption_people_praying")}
+            >
               <TileRow today={data.prayedToday} week={data.prayedThisWeek} allTime={data.prayedAllTime} />
+            </Section>
+
+            <Section
+              eyebrow={t("admin_user_metrics.section_device_praying")}
+              caption={t("admin_user_metrics.caption_device_praying")}
+            >
+              <TileRow today={data.devicePrayedToday ?? 0} week={data.devicePrayedThisWeek ?? 0} allTime={data.devicePrayedAllTime ?? 0} />
             </Section>
 
             <Section
@@ -245,8 +267,18 @@ export default function AdminAppMetricsPage() {
               <TileRow today={data.prayerRequestsToday} week={data.prayerRequestsThisWeek} allTime={data.prayerRequestsTotal} />
             </Section>
 
-            <Section eyebrow={t("admin_user_metrics.section_users")}>
+            <Section
+              eyebrow={t("admin_user_metrics.section_users")}
+              caption={t("admin_user_metrics.caption_users")}
+            >
               <TileRow today={data.newUsersToday} week={data.newUsersThisWeek} allTime={data.totalUsers} allTimeLabel={t("admin_user_metrics.total")} />
+            </Section>
+
+            <Section
+              eyebrow={t("admin_user_metrics.section_device_users")}
+              caption={t("admin_user_metrics.caption_device_users")}
+            >
+              <TileRow today={data.newDeviceUsersToday ?? 0} week={data.newDeviceUsersThisWeek ?? 0} allTime={data.totalDeviceUsers ?? 0} allTimeLabel={t("admin_user_metrics.total")} />
             </Section>
 
             <Section
@@ -254,6 +286,13 @@ export default function AdminAppMetricsPage() {
               caption={t("admin_user_metrics.caption_opened_app")}
             >
               <TileRow today={data.openedToday} week={data.openedThisWeek} allTime={data.openedAllTime} />
+            </Section>
+
+            <Section
+              eyebrow={t("admin_user_metrics.section_device_opened")}
+              caption={t("admin_user_metrics.caption_device_opened")}
+            >
+              <TileRow today={data.deviceOpenedToday ?? 0} week={data.deviceOpenedThisWeek ?? 0} allTime={data.deviceOpenedAllTime ?? 0} />
             </Section>
 
             <Section

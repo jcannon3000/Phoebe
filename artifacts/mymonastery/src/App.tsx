@@ -33,6 +33,7 @@ import { ReflectionReturnRedirect } from "@/components/ReflectionReturnRedirect"
 import { ReflectionPreheater } from "@/components/ReflectionPreheater";
 import { OfficeAudioPreloader } from "@/components/OfficeAudioPreloader";
 import { AppOpenTracker } from "@/components/AppOpenTracker";
+import { AnonymousDeviceProvisioner } from "@/components/AnonymousDeviceProvisioner";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { PageFadeOverlay } from "@/components/PageFadeOverlay";
@@ -1595,6 +1596,7 @@ function App() {
           <GlobalButtonHaptics />
           <LocaleSync />
           <AppOpenTracker />
+          <AnonymousDeviceProvisioner />
           <WidgetSync />
           {/* The admin's preset overlay, refreshed in the background — never
               blocking: everything reads the cache, and an empty cache is the
