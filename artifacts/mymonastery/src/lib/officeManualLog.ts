@@ -206,8 +206,9 @@ export function isOfficeLoggedToday(mode: string): boolean {
  * The noonday deck credits neither side (bcp-daily-office's creditsNoSide), so
  * it never goes through markOfficeBookComplete: that would stamp a side's
  * office, post a morning/evening surface and sweep that side's reminder. The
- * deck's prayer session already records the "noonday" surface on the server;
- * this is the instant local flag its routine card reads, and the moment.
+ * deck's own prayer session records the "noonday" surface when it is prayed on
+ * screen; this is for a hand log (the book, Venite): the instant local flag its
+ * routine card reads, the moment, and an attested server row.
  */
 export function markNoondayComplete(): void {
   const wasAlreadyLogged = isOfficeLoggedToday("noonday");
@@ -220,6 +221,21 @@ export function markNoondayComplete(): void {
     if (!wasAlreadyLogged) markRecentCompletion("noonday");
   } catch { /* private mode / quota — non-fatal */ }
   if (!wasAlreadyLogged) swellHaptic();
+  // The same attested row markOfficeBookComplete posts, outbox and all, so the
+  // office is kept on every device (office-history-week reads "noonday").
+  const now = new Date();
+  const payload = {
+    surface: "noonday" as PrayerSurface,
+    durationSeconds: 60,
+    slidesCompleted: 99,
+    completed: true,
+    source: "attest:manual",
+    startedAt: now.toISOString(),
+    endedAt: now.toISOString(),
+  };
+  void apiRequest("POST", "/api/prayer-sessions", payload).catch(() => {
+    enqueueSession(payload);
+  });
 }
 
 /** Mark a full office prayed from the physical book: flip the instant local

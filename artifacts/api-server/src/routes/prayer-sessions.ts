@@ -882,18 +882,19 @@ router.delete("/me/contemplation-sessions/:id", async (req, res): Promise<void> 
  * did happen for three minutes; retracting an office you prayed is not the
  * same act as denying you watched a service.
  */
-const UNDO_SURFACES: Record<"morning" | "evening" | "compline", string[]> = {
+const UNDO_SURFACES: Record<"morning" | "evening" | "compline" | "noonday", string[]> = {
   morning: ["morning-prayer", "morning-devotion", "morning-office-podcast"],
   evening: ["evening-prayer", "early-evening-devotion", "evening-office-podcast"],
   compline: ["compline"],
+  noonday: ["noonday"],
 };
 
 router.post("/me/office-undo", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const side = (req.body as { side?: unknown })?.side;
-  if (side !== "morning" && side !== "evening" && side !== "compline") {
-    res.status(400).json({ error: "side must be morning, evening or compline" });
+  if (side !== "morning" && side !== "evening" && side !== "compline" && side !== "noonday") {
+    res.status(400).json({ error: "side must be morning, evening, compline or noonday" });
     return;
   }
   try {

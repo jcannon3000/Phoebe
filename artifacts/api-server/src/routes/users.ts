@@ -655,6 +655,8 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
           -- client credit the right thing; folding it into 'evening' here
           -- would tick Evening Prayer for every add-on user.
           WHEN surface IN ('compline', 'compline-office-podcast') THEN 'compline'
+          -- Midday Prayer is its own office too: it credits neither side.
+          WHEN surface = 'noonday' THEN 'noonday'
         END AS side,
         -- The RAW surface too, alongside the folded side. Reported: a
         -- secondary practice (a devotion alongside a Morning Prayer anchor)
@@ -673,7 +675,7 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
           -- The office/devotion only counts once the slideshow is finished
           -- (closing Amen/Done or the book attestation set completed=TRUE).
           -- A partial sit that auto-commits on unmount has completed=FALSE.
-          (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion', 'compline') AND completed = TRUE)
+          (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion', 'compline', 'noonday') AND completed = TRUE)
           OR (surface = 'national-cathedral' AND duration_seconds >= 180)
           -- Listening to the read-aloud office podcast counts once the listener
           -- crosses 60% — the client posts that row with completed = TRUE.
@@ -681,25 +683,26 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
         )
         AND ended_at >= NOW() - INTERVAL '8 days'
     `);
-    const byDay = new Map<string, { morning: boolean; evening: boolean; compline: boolean; surfaces: string[] }>();
+    const byDay = new Map<string, { morning: boolean; evening: boolean; compline: boolean; noonday: boolean; surfaces: string[] }>();
     for (const r of rows.rows) {
-      const slot = byDay.get(r.day) ?? { morning: false, evening: false, compline: false, surfaces: [] };
+      const slot = byDay.get(r.day) ?? { morning: false, evening: false, compline: false, noonday: false, surfaces: [] };
       if (r.side === "morning") slot.morning = true;
       if (r.side === "evening") slot.evening = true;
       if (r.side === "compline") slot.compline = true;
+      if (r.side === "noonday") slot.noonday = true;
       if (r.surface && !slot.surfaces.includes(r.surface)) slot.surfaces.push(r.surface);
       byDay.set(r.day, slot);
     }
     // Build the 7-day window in user-tz, oldest first.
     const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
     const [ty, tm, td] = todayYmd.split("-").map((n) => parseInt(n, 10));
-    const days: { ymd: string; morning: boolean; evening: boolean; compline: boolean; surfaces: string[] }[] = [];
+    const days: { ymd: string; morning: boolean; evening: boolean; compline: boolean; noonday: boolean; surfaces: string[] }[] = [];
     for (let i = 6; i >= 0; i--) {
       const dt = new Date(Date.UTC(ty, tm - 1, td));
       dt.setUTCDate(dt.getUTCDate() - i);
       const ymd = dt.toISOString().slice(0, 10);
-      const slot = byDay.get(ymd) ?? { morning: false, evening: false, compline: false, surfaces: [] };
-      days.push({ ymd, morning: slot.morning, evening: slot.evening, compline: slot.compline, surfaces: slot.surfaces });
+      const slot = byDay.get(ymd) ?? { morning: false, evening: false, compline: false, noonday: false, surfaces: [] };
+      days.push({ ymd, morning: slot.morning, evening: slot.evening, compline: slot.compline, noonday: slot.noonday, surfaces: slot.surfaces });
     }
     res.json({ days });
   } catch (err) {

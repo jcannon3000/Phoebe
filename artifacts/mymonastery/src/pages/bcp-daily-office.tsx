@@ -75,9 +75,9 @@ import { getOfficeCacheEntry, getOfficeCacheEntryForDay, putOfficeCacheEntry } f
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
-import { markOfficeBookComplete } from "@/lib/officeManualLog";
+import { markOfficeBookComplete, markNoondayComplete } from "@/lib/officeManualLog";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
-import { canPrayOnVenite, veniteOfficeUrl } from "@/lib/venite";
+import { canPrayOnVenite, veniteOfficeUrl, veniteNoondayUrl } from "@/lib/venite";
 import { PointedLine } from "@/components/PointedLine";
 import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 import { DeckAnnouncer } from "@/components/DeckAnnouncer";
@@ -808,8 +808,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const completedCardKey = (() => {
     // A reading has no office card to animate.
     if (isReadingDeck) return readingCompletionKey;
-    // Midday Prayer has no card on the home to animate.
-    if (isNoonday) return "";
+    // Midday Prayer's own card — it can be kept in the routine now.
+    if (isNoonday) return "noonday";
     // Compline has its own card — finishing it animated Evening Prayer's.
     if (resolvedMode === "compline") return "compline";
     const extra = getSideExtra(officeSide);
@@ -1185,7 +1185,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // Stamp the side for the browser's Options menu. Without this the menu read
     // a stale value (or defaulted to morning), so "Listen to the office" from
     // an EVENING hand-off opened the morning podcast.
-    try { sessionStorage.setItem("phoebe:venite-side", officeSide); } catch { /* private mode */ }
+    // The browser's Options menu routes by this side. Midday Prayer has none.
+    if (!isNoonday) { try { sessionStorage.setItem("phoebe:venite-side", officeSide); } catch { /* private mode */ } }
     setVeniteForm(form);
     /**
      * The hand-off veil is an iOS thing only.
@@ -1201,7 +1202,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     const nativeHandoff = hasNativeBrowser();
     if (nativeHandoff) setVeniteHandingOff(true);
     veniteLeftAtRef.current = Date.now();
-    const opened = openExternal(veniteOfficeUrl(officeSide, new Date(), form));
+    const opened = openExternal(isNoonday ? veniteNoondayUrl(new Date()) : veniteOfficeUrl(officeSide, new Date(), form));
     /**
      * Reported: "there is an issue with a pop-up blocker on web and then it
      * just goes to a green screen." On web, a blocked window.open() returns
@@ -1256,6 +1257,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // all correct for an office and all wrong for the lectionary's
         // readings, which are a practice of their own.
         if (!creditsNoSide) markOfficeBookComplete(officeSide, resolvedMode, completedCardKey);
+        else if (isNoonday) markNoondayComplete();
         // Home, not Daily progress. Owner: "Venite goes back to the daily
         // progress page instead of the home screen" — and earlier, of this same
         // return: "it should go back to the home screen, where the office is
@@ -3038,7 +3040,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // bubble to the slide tap-nav.
     const wayLabel = wayToPray === "intercessions" ? "Community Intercessions" : wayToPray === "psalms" ? "Today's Psalms" : wayToPray === "devotion" ? `${sideWord} Devotion` : `${sideWord} Prayer`;
     const methodValue = screenOnly ? "screen" : prayMethod;
-    const methodLabel = methodValue === "screen" ? "On screen" : methodValue === "listen" ? "Listen" : methodValue === "watch" ? "Watch" : methodValue === "venite" ? "Venite Digital" : "Physical BCP";
+    const methodLabel = methodValue === "screen" ? "Digital Slideshow" : methodValue === "listen" ? "Listen" : methodValue === "watch" ? "Watch" : methodValue === "venite" ? "Venite Digital" : "Physical BCP";
 
     // A screen-wide settings pill: CATEGORY on the left, the chosen value +
     // chevron on the right (the singing-bowl / Insight-Timer pattern). The
@@ -3115,7 +3117,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         {canChoose && (
           <>
             {/* Row 1 — the way to pray. Compline has only the one way, so it
-                gets the How row alone (On screen · Listen · Physical BCP). */}
+                gets the How row alone (Digital Slideshow · Listen · Physical BCP). */}
             {resolvedMode !== "compline" && dropdown("way-to-pray", wayToPray, wayLabel, "Practice", (v) => {
               const w = v as WayToPray;
               setWayToPray(w);
@@ -3143,11 +3145,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             {/* Row 2 — the method, based on the way. Intercessions + Psalms = digital only. */}
             {dropdown("pray-method", methodValue, methodLabel, "How", (v) => setPrayMethod(v as PrayMethod), (
               screenOnly ? (
-                <option value="screen">On screen</option>
+                <option value="screen">Digital Slideshow</option>
               ) : (
                 <>
                   <option value="book">Physical BCP</option>
-                  <option value="screen">On screen</option>
+                  <option value="screen">Digital Slideshow</option>
                   {/* Offline the three that need a connection are not offered —
                       see OfficeMethodCard's note. */}
                   {/* Owner: "make it the third option in the dropdowns after
@@ -3172,7 +3174,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             type="button"
             // resolvedMode, not just the side — this slide belongs to whichever
             // office is open, and a side can carry two.
-            onClick={(e) => { e.stopPropagation(); if (!creditsNoSide) markOfficeBookComplete(officeSide, resolvedMode, completedCardKey); setViewerLocation("/dashboard"); }}
+            onClick={(e) => { e.stopPropagation(); if (!creditsNoSide) markOfficeBookComplete(officeSide, resolvedMode, completedCardKey); else if (isNoonday) markNoondayComplete(); setViewerLocation("/dashboard"); }}
             style={{
               width: "100%",
               background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
@@ -6545,7 +6547,10 @@ export default function BcpDailyOfficePage() {
   // ── "Before you begin" builder state (the Daily Office landing now reads as
   // an office's opening slide: Time of day · Practice · How → Begin). ──
   const __h = new Date().getHours();
-  const [todPick, setTodPick] = useState<OfficeSide>(__h >= 14 && __h < 20 ? "evening" : "morning");
+  // Morning · Midday · Evening · Night (owner, 2026-09-15). Midday is Midday
+  // Prayer and Night is Compline — each one practice of its own.
+  type TimeOfDay = OfficeSide | "midday" | "night";
+  const [todPick, setTodPick] = useState<TimeOfDay>(__h >= 20 ? "night" : __h >= 14 ? "evening" : __h >= 11 ? "midday" : "morning");
   // The Practice the landing opens on, seeded from this side's saved level —
   // "psalms" (Praying the Psalms) and "full" (the office) round-trip through
   // getSideLevel; everything else reads as the short devotion.
@@ -6782,7 +6787,20 @@ export default function BcpDailyOfficePage() {
   // St John's stream). methodPick is clamped to a valid one for Begin.
   // Physical BCP leads the list, then On screen · Listen · Watch (morning
   // weekdays only, when the Cathedral streams).
-  const howOptions: DefaultOfficeEntry[] = practicePick === "psalms"
+  // Night is Compline, which is still beta-only (its endpoint is gated); for
+  // anyone else a clock-chosen "night" reads as Evening.
+  const todEff: TimeOfDay = todPick === "night" && !rawIsBeta ? "evening" : todPick;
+  const todSide: OfficeSide | null = todEff === "morning" || todEff === "evening" ? todEff : null;
+  const howOptions: DefaultOfficeEntry[] = todEff === "midday"
+    // Midday Prayer (owner: Digital Slideshow · Physical · Venite). Venite's
+    // Noonday page renders (veniteNoondayUrl); there is no recording to hear.
+    ? ["read", "book", ...(chooserOnline ? (["venite"] as const) : [])]
+    : todEff === "night"
+    // Compline (owner: Digital Slideshow · Physical · Audio · Venite). Audio is
+    // Forward Movement's Compline. No Venite: no Compline link on venite.app
+    // renders (lib/venite.ts).
+    ? ["read", "book", ...(chooserOnline ? (["listen"] as const) : [])]
+    : practicePick === "psalms"
     // Praying the Psalms: only on-screen (the slideshow) or Physical BCP (a
     // page-number guide) — no Listen / Watch.
     ? ["book", "read"]
@@ -6797,13 +6815,14 @@ export default function BcpDailyOfficePage() {
         // a website, Listen a podcast, Watch a live stream; the slideshow is
         // saved and Physical BCP is page numbers. The clamp below turns a
         // saved preference for one of the three into the slideshow.
-        ...(canPrayOnVenite(todPick) && chooserOnline ? (["venite"] as const) : []),
+        ...(todSide && canPrayOnVenite(todSide) && chooserOnline ? (["venite"] as const) : []),
         ...(chooserOnline ? (["listen"] as const) : []),
-        ...(todPick === "morning" && weekday && chooserOnline ? (["watch"] as const) : []),
+        ...(todEff === "morning" && weekday && chooserOnline ? (["watch"] as const) : []),
       ];
-  // Match the first-slide labels ("On screen", not "Digital Slideshow").
+  // "Digital Slideshow" (owner, 2026-09-15) — here and on the office's own first
+  // slide, which said "On screen", so the two still match.
   const HOW_LABEL: Record<DefaultOfficeEntry, string> = {
-    read: "On screen",
+    read: "Digital Slideshow",
     venite: "Venite Digital",
     listen: "Listen",
     watch: "Watch",
@@ -6811,19 +6830,31 @@ export default function BcpDailyOfficePage() {
   };
   const effMethod: DefaultOfficeEntry = howOptions.includes(methodPick) ? methodPick : "read";
   const beginOffice = () => {
+    if (todEff === "midday" || todEff === "night") {
+      const mode: LiturgyMode = todEff === "midday" ? "noonday" : "compline";
+      if (effMethod === "listen" && mode === "compline") { setLocation("/podcast/compline"); return; }
+      // Venite through the deck, as the offices do: the hand-off, the credit on
+      // return and the Options menu all live there.
+      if (effMethod === "venite" && mode === "noonday") { setLocation("/bcp/daily-office?mode=noonday&venite=1"); return; }
+      setShowBook(effMethod === "book");
+      setStartSlide(1); // skip the office's welcome — the picker already was it
+      setShowMode(mode);
+      return;
+    }
+    const side: OfficeSide = todSide ?? "morning";
     if (practicePick === "psalms") {
       // On screen → the slideshow; Physical BCP → the page-number guide.
       // begin=1: the lectionary + format were just chosen here, so skip the
       // psalms "before you begin" intro and drop straight in.
-      setLocation(`/psalms?office=${todPick}${effMethod === "book" ? "&book=1" : ""}&begin=1`);
+      setLocation(`/psalms?office=${side}${effMethod === "book" ? "&book=1" : ""}&begin=1`);
       return;
     }
     if (practicePick === "devotion") {
-      const mode = todPick === "morning" ? "morning-devotion" : "early-evening-devotion";
+      const mode = side === "morning" ? "morning-devotion" : "early-evening-devotion";
       const m = (effMethod === "book" || effMethod === "watch" || effMethod === "venite") ? effMethod : "read";
       launchDevotion(mode, m);
     } else {
-      launchOffice(todPick, effMethod);
+      launchOffice(side, effMethod);
     }
   };
   // Frosted-glass rows — the leaf backdrop blurs through a faint dark tint, with a
@@ -6854,19 +6885,22 @@ export default function BcpDailyOfficePage() {
             Daily Prayer
           </h1>
           <p style={{ color: "rgba(var(--ot-ink3, 240,237,230),0.85)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 16, lineHeight: 1.55, maxWidth: 440, marginBottom: 24 }}>
-            Morning and Evening Prayer, kept at the hinges of the day — the full office or the short devotion.
+            Morning, Midday and Evening Prayer, kept at the hinges of the day.
           </p>
 
           <div className="w-full" style={{ maxWidth: 460 }}>
             <div style={{ height: 1, background: "rgba(var(--ot-mist, 200,212,192),0.14)", marginBottom: 14 }} />
             <div style={officeRow}>
               <span style={officeRowLabel}>Time of day</span>
-              <span style={officeRowValue}>{todPick === "morning" ? "Morning" : "Evening"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
-              <select value={todPick} onChange={(e) => { const s = e.target.value as OfficeSide; setTodPick(s); setPracticePick(practiceForLevel(getSideLevel(s))); }} style={officeRowSelect} aria-label="Time of day">
+              <span style={officeRowValue}>{todEff === "morning" ? "Morning" : todEff === "midday" ? "Midday" : todEff === "evening" ? "Evening" : "Night"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
+              <select value={todEff} onChange={(e) => { const s = e.target.value as TimeOfDay; setTodPick(s); if (s === "morning" || s === "evening") setPracticePick(practiceForLevel(getSideLevel(s))); }} style={officeRowSelect} aria-label="Time of day">
                 <option value="morning">Morning</option>
+                <option value="midday">Midday</option>
                 <option value="evening">Evening</option>
+                {rawIsBeta && <option value="night">Night</option>}
               </select>
             </div>
+            {todSide ? (
             <div style={officeRow}>
               <span style={officeRowLabel}>Practice</span>
               <span style={officeRowValue}>{practicePick === "psalms" ? "Today's Psalms" : practicePick === "devotion" ? "Devotion (short)" : "Full Office"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
@@ -6878,7 +6912,7 @@ export default function BcpDailyOfficePage() {
                   // TODAY only — a day swap, not the rule (see
                   // chooseTodaysPractice). Praying the Psalms round-trips
                   // through getSideLevel + the home cards, which read the swap.
-                  chooseTodaysPractice(todPick, p === "psalms" ? "psalms" : p === "full" ? "office" : "devotion");
+                  chooseTodaysPractice(todSide, p === "psalms" ? "psalms" : p === "full" ? "office" : "devotion");
                 }}
                 style={officeRowSelect}
                 aria-label="Practice"
@@ -6888,7 +6922,14 @@ export default function BcpDailyOfficePage() {
                 <option value="full">Full Office</option>
               </select>
             </div>
-            {/* "How" — Physical BCP / On screen (+ Listen / Watch for the full
+            ) : (
+              // Midday and Night are one practice each, so the row just names it.
+              <div style={officeRow}>
+                <span style={officeRowLabel}>Practice</span>
+                <span style={officeRowValue}>{todEff === "midday" ? "Midday Prayer" : "Compline"}</span>
+              </div>
+            )}
+            {/* "How" — Physical BCP / Digital Slideshow (+ Listen / Watch for the full
                 office). Praying the Psalms offers Physical BCP (a page guide) or
                 On screen (the slideshow). */}
             <div style={officeRow}>
@@ -6908,7 +6949,15 @@ export default function BcpDailyOfficePage() {
                 the in-app deck or guide at all. Mirrors markOfficeBookComplete's
                 existing use (BookOfficeLogSheet), just surfaced directly here. */}
             <button
-              onClick={() => { markOfficeBookComplete(todPick); setLocation("/dashboard"); }}
+              onClick={() => {
+                // Each time of day logs its own office: Midday Prayer its own
+                // flag and row, Compline the way its welcome slide logs it,
+                // Morning and Evening the side's office.
+                if (todEff === "midday") markNoondayComplete();
+                else if (todEff === "night") markOfficeBookComplete("evening", "compline", "compline");
+                else markOfficeBookComplete(todSide ?? "morning");
+                setLocation("/dashboard");
+              }}
               className="w-full rounded-2xl py-3 text-center transition-opacity hover:opacity-90 active:scale-[0.99] mb-3"
               style={{ background: "rgba(var(--ot-deep, 9,26,16), 0.297)", ...FROST_BLUR, color: "var(--oh-fern, #A8C5A0)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 14, fontWeight: 600, border: "1px solid rgba(var(--ot-mint, 200,225,210),0.22)", cursor: "pointer" }}
             >
@@ -6931,16 +6980,6 @@ export default function BcpDailyOfficePage() {
                 Shape your rhythm
               </Link>
             </div>
-            {/* Midday Prayer — a quiet link below, like Compline's, for everyone. */}
-            <div className="flex justify-center mt-3">
-              <OptionButton opt={noonday} />
-            </div>
-            {/* Compline (beta) — the night office, kept as a quiet link below. */}
-            {rawIsBeta && (
-              <div className="flex justify-center mt-3">
-                <OptionButton opt={compline} />
-              </div>
-            )}
           </div>
         </div>
       </div>

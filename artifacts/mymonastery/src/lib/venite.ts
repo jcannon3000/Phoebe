@@ -16,9 +16,13 @@
 //     it: braces and quotes percent-encoded, but ':' and ',' left literal. A
 //     plain encodeURIComponent (which also escapes those two) renders a BLANK
 //     page — verified against the live site, so this is not cosmetic.
-//   • MORNING AND EVENING ONLY. `compline` renders a blank page on Venite with
-//     this path shape (checked directly), so Compline never offers this
-//     option — see canPrayOnVenite.
+//   • MORNING, NOONDAY AND EVENING. `compline` renders a blank page on Venite
+//     in every shape tried (Rite-II and Rite-I; empty options, the office
+//     options, no options, `an-order-for-compline` — checked 2026-09-15), so
+//     Compline never offers this option — see canPrayOnVenite.
+//     `noonday-prayer` renders, but ONLY with EMPTY options ({}): the office's
+//     second-reading option leaves it blank, so it has its own builder,
+//     veniteNoondayUrl.
 //   • THE DAILY DEVOTIONS ARE A {version}, NOT AN {office}. Owner: "make sure
 //     that we are integrating Venite for the devotions too." The natural guess
 //     — an office slug like `family-morning-prayer` — renders a blank page;
@@ -59,4 +63,11 @@ export function veniteOfficeUrl(
     .replace(/%3A/g, ":")
     .replace(/%2C/g, ",");
   return `https://www.venite.app/pray/en/${version}/bcp1979/${y}/${m}/${d}/${office}/false/${opts}`;
+}
+
+/** Deep link to today's Noonday Prayer (Midday Prayer) on venite.app, for the
+ *  reader's local date. Its own builder because the office options blank this
+ *  page — see the note above. */
+export function veniteNoondayUrl(now: Date = new Date()): string {
+  return `https://www.venite.app/pray/en/Rite-II/bcp1979/${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}/noonday-prayer/false/%7B%7D`;
 }
