@@ -3967,6 +3967,10 @@ export default function WayOfLoveRuleFlow({
       // straight from the rule-config — so a deleted walk came back on the next
       // visit even though its home card was hidden.
       try { localStorage.removeItem(`phoebe:slot:${key}`); } catch { /* private mode */ }
+    } else if (id === "card:hagiography") {
+      // Read on the Learn step beside the newsletters, but not one of them —
+      // it has its own switch there.
+      setHagiographyOn(false);
     } else if (id.startsWith("card:")) {
       setNewsletters((prev) => prev.filter((n) => n !== id.slice("card:".length)));
     } else if (id.startsWith("custom:")) {

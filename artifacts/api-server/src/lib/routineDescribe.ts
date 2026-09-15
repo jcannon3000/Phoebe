@@ -334,6 +334,12 @@ export function describeSpec(spec: {
     if (!NEWSLETTER_LABEL[key] || hidden.has(key)) continue;
     rows.push({ id: `card:${key}`, emoji: key === "vts" ? "🦩" : "📖", label: NEWSLETTER_LABEL[key], sub: "Each day", section: "newsletters" });
   }
+  // The saint's life on feast days — chosen on the customizer's Learn step with
+  // the newsletters, so it reads back with them (owner: the hagiographies were
+  // "not in the routine customizer"). A card: id sends its gear to that step.
+  if (spec.homeLayout.order.includes("hagiography") && !hidden.has("hagiography")) {
+    rows.push({ id: "card:hagiography", emoji: "📜", label: "Feast Day Hagiographies", sub: "On days the calendar keeps a saint", section: "newsletters" });
+  }
 
   /**
    * DRIVEN BY THE LAYOUT, NOT BY THE SLOT KEYS.
