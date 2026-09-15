@@ -105,6 +105,13 @@ export function getStoredDefaultSeed(): DefaultSeed | null {
   return hasAnything ? d : null;
 }
 
+/** True when a FETCHED presets cache says there is no admin default — the
+ *  override was taken back ("Back to the built-in default") — as opposed to
+ *  a device that simply hasn't fetched the presets yet. */
+export function defaultSeedWithdrawn(): boolean {
+  return readCache() !== null && getStoredDefaultSeed() === null;
+}
+
 /** Refresh the cache. Fire-and-forget on boot; never throws, never blocks. */
 export async function refreshRoutinePresets(force = false): Promise<void> {
   try {
@@ -285,7 +292,12 @@ export function specToDefaultSeed(spec: RoutineSpec, base: DefaultSeed): Default
     morning: rc["phoebe:office:level:morning"] ?? "ask",
     evening: rc["phoebe:office:level:evening"] ?? "ask",
     reflection: (rc["phoebe:office:reflection-source"] as DefaultSeed["reflection"]) ?? base.reflection,
-    cards: visibleCards(spec),
+    // Feast Day Hagiographies aren't a row in the customizer, so a spec never
+    // names them; a default that carried the card keeps it (audit, 2026-09-14).
+    cards: (() => {
+      const cards = visibleCards(spec);
+      return base.cards?.includes("hagiography") && !cards.includes("hagiography") ? [...cards, "hagiography"] : cards;
+    })(),
     relational: spec.relational ?? base.relational ?? [],
     silenceMin: spec.officePrefs?.contemplationGoalMinutes ?? 0,
     ...(Object.keys(slots).length > 0 ? { slots: slots as DefaultSeed["slots"] } : {}),

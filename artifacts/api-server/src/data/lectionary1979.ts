@@ -341,7 +341,7 @@ export const lectionary: Record<string, LectionaryEntry> = {
     lesson2_y1: "Rev. 1:1-8",
     lesson3_y1: "John 7:37-52",
     lesson1_y2: "2 Samuel 23:13-17b",
-    lesson2_y2: "2 John -13",
+    lesson2_y2: "2 John 1-13",
     lesson3_y2: "John 2:1-11",
   },
   christmas_dec30: {

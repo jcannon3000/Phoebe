@@ -7,6 +7,7 @@
  * Visio's picture — so the page says what is actually on the phone, not
  * what the prefetch intends.
  */
+import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
@@ -136,24 +137,25 @@ export default function OfflinePracticesPage() {
     <Layout bgPhoto={bg}>
       <div style={{ position: "relative", isolation: "isolate", minHeight: "var(--app-dvh)" }}>
         <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", color: WARM, fontFamily: FONT, paddingBottom: 48 }}>
-          <button type="button" onClick={() => setLocation("/menu")} style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 14 }}>
+          <button type="button" onClick={() => setLocation("/menu")} style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, lineHeight: "20px", cursor: "pointer", padding: 0, marginBottom: 14, display: "block", width: "fit-content" }}>
             ← {t("menu.title", { defaultValue: "Menu" })}
           </button>
           <h1 style={{ fontSize: 28, fontWeight: 700, margin: "0 0 6px", letterSpacing: "-0.01em" }}>{t("offline.title", { defaultValue: "Available offline" })}</h1>
-          <p style={{ color: "rgba(200,212,192,0.8)", fontSize: 15, lineHeight: 1.5, margin: "0 0 18px" }}>
+          <p style={{ color: "rgba(200,212,192,0.8)", fontSize: 15, lineHeight: "23px", margin: "0 0 18px" }}>
             {online
               ? (isNativeShell()
                   ? t("offline.intro_online", { defaultValue: "Everything here works with no connection. The offices, the readings and the coming weeks' pictures are saved to your phone whenever the app opens on Wi-Fi." })
                   : t("offline.intro_online_web", { defaultValue: "These practices keep working with no connection once you have opened them here. Saving the coming weeks ahead of time happens in the app." }))
               : t("offline.intro_offline", { defaultValue: "You're offline. Everything here still works; anything else in your routine waits until you're back." })}
             {!isNativeShell() && (
-              <span style={{ display: "block", marginTop: 6, color: "rgba(143,175,150,0.8)", fontSize: 13 }}>
+              <span style={{ display: "block", marginTop: 6, color: "rgba(143,175,150,0.8)", fontSize: 13, lineHeight: "20px" }}>
                 {t("offline.web_note", { defaultValue: "Saving ahead happens in the iPhone app; on the web, what you have opened recently stays available." })}
               </span>
             )}
           </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {OFFLINE_PRACTICES.map((p) => (
+          {/* Whole-pixel lines above, and one compositing layer for the list, as on home. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, willChange: "transform" }}>
+            {OFFLINE_PRACTICES.filter((p) => COMMUNITY_FEATURES_ENABLED || p.key !== "prayer-list-card").map((p) => (
               <PracticeCard
                 key={p.key}
                 href={p.href}

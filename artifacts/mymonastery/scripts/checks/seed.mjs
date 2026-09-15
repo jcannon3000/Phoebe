@@ -19,6 +19,11 @@ const cases = [
   ["v10 device seeded by the old override, override deleted", { ...base, "phoebe:guest-seed-version": "10", "phoebe:guest-seed-default-version": "1", "phoebe:home-layout": lay(["requests","office","contemplation","fdd","lectio","feeds"]), "phoebe:routine-presets": JSON.stringify(NO_DEFAULT) }, { news: ["fdd"], entry: "read", on: ["fdd","visio","hagiography"], off: ["lectio"] }],
   ["v10 device that added Lectio itself — kept", { ...base, "phoebe:guest-seed-version": "10", "phoebe:home-layout": lay(["fdd","visio","lectio"]), "phoebe:routine-presets": JSON.stringify(NO_DEFAULT) }, { news: ["fdd"], entry: "read", on: ["fdd","visio","hagiography","lectio"] }],
   ["v10 device that hid hagiography — stays hidden", { ...base, "phoebe:guest-seed-version": "10", "phoebe:guest-seed-default-version": "1", "phoebe:home-layout": lay(["fdd","visio"], ["hagiography"]), "phoebe:routine-presets": JSON.stringify(NO_DEFAULT) }, { news: ["fdd"], entry: "read", on: ["fdd","visio"], off: ["hagiography"] }],
+  // The override applied on THIS build (stamped 11), then deleted by the owner.
+  ["v11 device seeded by the override, override deleted", { ...base, "phoebe:guest-seed-version": "11", "phoebe:guest-seed-default-version": "1", "phoebe:home-layout": lay(["requests","office","contemplation","fdd","lectio","feeds"]), "phoebe:routine-presets": JSON.stringify(NO_DEFAULT) }, { news: ["fdd"], entry: "read", on: ["fdd","visio","hagiography"], off: ["lectio"] }],
+  // …and while the override is still there, it stays (no flip-flop).
+  // (The override set the office entries to "read" when it applied; a no-op leaves them.)
+  ["v11 device on the override, override still live", { ...base, "phoebe:guest-seed-version": "11", "phoebe:guest-seed-default-version": "1", "phoebe:office:entry:morning": "read", "phoebe:office:entry:evening": "read", "phoebe:home-layout": lay(["requests","office","contemplation","fdd","lectio","feeds"]), "phoebe:routine-presets": JSON.stringify(PRESETS) }, { news: ["fdd"], entry: "read", on: ["fdd","lectio"] }],
 ];
 let fail = 0;
 for (const [label, state, want] of cases) {

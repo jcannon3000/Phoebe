@@ -618,21 +618,47 @@ export function useWidgetSync(): void {
    */
   useEffect(() => {
     if (!native || !r.ready) return;
+    // A side whose practice is ONLY its contemplation (no anchor level: the
+    // VTS shape, a Visio or a walk as the evening) is done when that
+    // contemplation is kept. morningDone/eveningDone name anchors only, so its
+    // reminder stayed all evening (audit, 2026-09-14).
+    const sideKept = (side: "morning" | "evening"): boolean => side === "morning"
+      ? r.morningDone || (getSideLevel("morning") === null && r.morningContemplationActive && r.morningContemplationDone)
+      : r.eveningDone || (getSideLevel("evening") === null && r.eveningContemplationActive && r.eveningContemplationDone);
     const threads = [
-      ...(r.morningDone ? ["parish-office-morning", "bell"] : []),
-      ...(r.eveningDone ? ["parish-office-evening", "bell"] : []),
+      ...(sideKept("morning") ? ["parish-office-morning", "bell"] : []),
+      ...(sideKept("evening") ? ["parish-office-evening", "bell"] : []),
       ...(r.silenceGoalCardDone ? ["contemplation-goal"] : []),
     ];
     if (threads.length === 0) return;
+    // These flags describe the day they were read on. The first open after
+    // midnight fires appactive before the rhythm state re-reads, and
+    // yesterday's "morning done" took this morning's fresh reminder with it
+    // (audit, 2026-09-14). A listener from an earlier day clears nothing; the
+    // effect runs again once the new day's flags arrive.
+    const day = localDayKey();
     const clear = () => {
+      if (localDayKey() !== day) return;
       for (const threadId of new Set(threads)) {
         try { window.dispatchEvent(new CustomEvent("phoebe:clear-notifications", { detail: { threadId } })); } catch { /* non-fatal */ }
       }
     };
     clear();
+    // phoebe:reminders-recheck: a completion surface just finished something
+    // (lib/officeReminders). Which side's reminder goes is decided here.
     window.addEventListener("phoebe:appactive", clear);
-    return () => window.removeEventListener("phoebe:appactive", clear);
-  }, [native, r.ready, r.morningDone, r.eveningDone, r.silenceGoalCardDone]);
+    window.addEventListener("phoebe:reminders-recheck", clear);
+    return () => {
+      window.removeEventListener("phoebe:appactive", clear);
+      window.removeEventListener("phoebe:reminders-recheck", clear);
+    };
+  }, [native, r.ready, r.morningDone, r.eveningDone, r.silenceGoalCardDone,
+    r.morningContemplationActive, r.morningContemplationDone, r.eveningContemplationActive, r.eveningContemplationDone]);
+}
+
+/** The local calendar day, as a key: the reminder watcher's flags belong to one. */
+function localDayKey(d = new Date()): string {
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
 
 export function WidgetSync(): null {

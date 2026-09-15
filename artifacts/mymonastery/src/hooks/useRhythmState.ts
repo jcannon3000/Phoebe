@@ -65,7 +65,7 @@ import { useEntitlements } from "@/hooks/useEntitlements";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
-import { getGuestSilenceMinutesToday, GUEST_SILENCE_EVENT } from "@/lib/guestSilenceLog";
+import { getGuestSilenceMinutesToday, guestBreathKeptToday, GUEST_SILENCE_EVENT } from "@/lib/guestSilenceLog";
 import { readCachedHomeLayout } from "@/lib/homeLayoutCache";
 import { NOVENAS_ENABLED } from "@/lib/novenaFlag";
 
@@ -1129,7 +1129,7 @@ export function useRhythmState(): RhythmState {
    * group. The route answers 204 when there is nothing, which arrives here as
    * an empty body; `?? null` keeps that out of the card.
    */
-  const { data: groupReflectionRaw } = useQuery<{
+  const { data: groupReflectionQueried } = useQuery<{
     id: string; reflectionId: number; title: string; body: string;
     authorName: string | null; groupName: string | null; published: string | null;
     url: string | null; openExternally: boolean; ctaLabel: string | null; read: boolean;
@@ -1137,8 +1137,12 @@ export function useRhythmState(): RhythmState {
     queryKey: ["/api/me/group-reflection/latest"],
     queryFn: () => apiRequest("GET", "/api/me/group-reflection/latest"),
     staleTime: 10 * 60_000,
-    enabled: !guest,
+    enabled: !guest && COMMUNITY_FEATURES_ENABLED,
   });
+  // A group's reflection is a community feature: with the switch off there is
+  // no card, not even from a cached answer — every tap bounced home (audit,
+  // 2026-09-14).
+  const groupReflectionRaw: typeof groupReflectionQueried = COMMUNITY_FEATURES_ENABLED ? groupReflectionQueried : null;
 
   const { data: taizeLatest } = useQuery<InboxItem | null>({
     queryKey: ["/api/taize/latest"],
@@ -1307,7 +1311,8 @@ export function useRhythmState(): RhythmState {
     if (getSideLevel(side) !== "custom") return false;
     const practice = anchorPracticeFor(getSideCustomName(side));
     if (!practice) return false;
-    if (practice.key === "cobreathe") return cobreathe?.done ?? false;
+    // A guest's breath is kept on the device (lib/guestSilenceLog).
+    if (practice.key === "cobreathe") return (cobreathe?.done ?? false) || (guest && guestBreathKeptToday());
     return practiceLocal[practice.key] || serverDone(practice.key);
   };
 
@@ -1457,7 +1462,7 @@ export function useRhythmState(): RhythmState {
   // case where the two should credit each other.
   const complineDone = complineActive && (officeLocal.compline || (!officeUndone.compline && !!todayOffice?.compline));
   // Co-Breathe is kept once a sit is completed today (server-tracked).
-  const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);
+  const cobreatheDone = cobreatheActive && ((cobreathe?.done ?? false) || (guest && guestBreathKeptToday()));
 
   // The four core anchors plus whichever optional practices the user added.
   // Evening is an OPT-IN anchor — off by default (evening office pref "none"),

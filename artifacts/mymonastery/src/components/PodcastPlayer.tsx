@@ -498,6 +498,15 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // still reports the OLD episode's time — onTimeUpdate ignores those ticks so
   // a lesson left at 95% can't credit (or outro-end) the one after it.
   const loadedKeyRef = useRef<string | null>(null);
+  // The 400ms pause between a lesson ending and the next one starting
+  // (onEndedEv). Anything the listener does in that pause — close, skip, pick
+  // another episode — cancels it; otherwise the timer started the old "next"
+  // over their choice and left the queue index a lesson ahead (audit,
+  // 2026-09-14).
+  const advanceTimerRef = useRef<number | null>(null);
+  const cancelAdvance = () => {
+    if (advanceTimerRef.current !== null) { window.clearTimeout(advanceTimerRef.current); advanceTimerRef.current = null; }
+  };
   // When set, pause once playback reaches this offset — the end of a single
   // reading played via PlayingEpisode.stopAtSeconds. Cleared after it fires or
   // on a manual seek, so continuing past it plays normally.
@@ -571,7 +580,9 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         if (a && ep.startAtSeconds != null) { a.currentTime = ep.startAtSeconds; setCurrentTime(ep.startAtSeconds); }
         segmentStopRef.current = ep.stopAtSeconds ?? null;
         a?.play().catch(() => { /* gesture-gated */ });
-        return prev;
+        // Same audio, but keep what the new caller knows about it: a course
+        // lesson first opened from its show page gains its course credit here.
+        return ep.courseComplete && !prev.courseComplete ? { ...prev, courseComplete: ep.courseComplete } : prev;
       }
       const a = audioRef.current;
       if (a && prev) savePos(prev, a.currentTime);
@@ -604,6 +615,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const play = useCallback((ep: PlayingEpisode, opts?: { expand?: boolean }) => {
     // User-initiated tap: clear any running queue. Open full-screen unless
     // the caller asked to stay in the mini-bar (expand: false).
+    cancelAdvance();
     queueRef.current = [];
     queueIndexRef.current = -1;
     setExpanded(opts?.expand !== false);
@@ -612,6 +624,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
 
   const playQueue = useCallback((eps: PlayingEpisode[], startIndex = 0) => {
     if (eps.length === 0) return;
+    cancelAdvance();
     const i = Math.min(Math.max(0, Math.floor(startIndex)), eps.length - 1);
     queueRef.current = eps;
     queueIndexRef.current = i;
@@ -1015,7 +1028,15 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     if (nextIdx > 0 && nextIdx < queueRef.current.length) {
       queueIndexRef.current = nextIdx;
       const next = queueRef.current[nextIdx];
-      if (next) setTimeout(() => startEpisode(next), 400);
+      if (next) {
+        cancelAdvance();
+        advanceTimerRef.current = window.setTimeout(() => {
+          advanceTimerRef.current = null;
+          // Anything that moved the queue in the pause wins over this advance.
+          if (queueIndexRef.current !== nextIdx) return;
+          startEpisode(next);
+        }, 400);
+      }
       return;
     }
     // Post-playback hand-off (the daily office → its closing flow / whatever
@@ -1066,6 +1087,9 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     const a = audioRef.current; if (a) a.playbackRate = next;
   };
   const skipToNext = useCallback(() => {
+    // An end-of-lesson advance still waiting to start: the lesson on screen
+    // is the one that just ended, so "next" means the one that was queued.
+    if (advanceTimerRef.current !== null) { cancelAdvance(); queueIndexRef.current -= 1; }
     const nextIdx = queueIndexRef.current + 1;
     // nextIdx <= 0 means no queue was loaded (queueIndexRef starts at -1).
     if (nextIdx <= 0 || nextIdx >= queueRef.current.length) return;
@@ -1084,6 +1108,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
    * episode's place, close its listening session, start the one before.
    */
   const skipToPrevious = useCallback(() => {
+    if (advanceTimerRef.current !== null) { cancelAdvance(); queueIndexRef.current -= 1; }
     const prevIdx = queueIndexRef.current - 1;
     if (queueIndexRef.current < 0 || prevIdx < 0 || prevIdx >= queueRef.current.length) return;
     const a = audioRef.current;
@@ -1159,6 +1184,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   }, [current, play]);
 
   const closePlayer = useCallback(() => {
+    cancelAdvance();
     const a = audioRef.current;
     if (a && current) savePos(current, a.currentTime);
     wasPlayingRef.current = false;

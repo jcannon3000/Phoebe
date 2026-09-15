@@ -77,7 +77,7 @@ export function markContemplationSideDone(side: ContemplationSide, kind?: Contem
     // Owner: completing a side's chosen prayer should clear that side's
     // reminder from the notification center — see cacReadState.ts's
     // clearReminderIfAnchor for the sibling side-anchor practices.
-    clearOfficeReminderNotifications();
+    clearOfficeReminderNotifications(side);
   } catch {
     /* private mode / quota — non-fatal */
   }

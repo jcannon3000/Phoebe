@@ -1,5 +1,5 @@
 import { getQueryClient, apiRequest } from "@/lib/queryClient";
-import { enqueueWrite, flushWrites } from "@/lib/writeOutbox";
+import { enqueueWrite, flushWrites, dropWrite } from "@/lib/writeOutbox";
 import { enqueueSession } from "@/lib/sessionOutbox";
 import { getSideLevel, getSideReflectionExplicit } from "@/lib/officePrefs";
 import { markRecentCompletion } from "@/lib/recentCompletion";
@@ -74,7 +74,7 @@ function sideIsSetTo(side: "morning" | "evening", level: string): boolean {
 function creditSideAnchor(side: "morning" | "evening", level: string): void {
   if (!sideIsSetTo(side, level)) return;
   clearOfficeUndoToday(side);
-  clearOfficeReminderNotifications();
+  clearOfficeReminderNotifications(side);
 }
 
 // Tracks whether the user has tapped a daily-reflection link today,
@@ -348,6 +348,10 @@ export function unlogReflectionToday(source: TrackedReflection): void {
   const ymd = todayLocalISO();
   const tracker = DAY_TRACKERS[source];
   tracker.unmarkRead();
+  // A read that failed to post is still waiting in the outbox under this id;
+  // take it back too, or the next flush marks the day read again on every
+  // device (audit, 2026-09-14). Same ids as postOrQueue's callers above.
+  dropWrite(source === "cac" ? `cac-read:${ymd}` : `reflect-read:${source}:${ymd}`);
   try { localStorage.removeItem(`phoebe:${source}:last-read-day:synced`); } catch { /* non-fatal */ }
   const del = source === "cac"
     ? () => apiRequest("DELETE", "/api/cac/read", { ymd })

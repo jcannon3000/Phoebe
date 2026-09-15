@@ -15,6 +15,7 @@
 // callers keep their normal POST and only enqueue when that POST fails, so the
 // success path is completely unchanged.
 import { apiRequest, ApiError } from "./queryClient";
+import { isReallyOnline } from "./offline";
 
 const KEY = "phoebe:session-outbox";
 /** Bound the queue so a long offline stretch can't fill localStorage. Oldest
@@ -66,14 +67,19 @@ let flushing = false;
  *  replaying a payload the server rejected will never succeed. */
 export async function flushSessions(): Promise<void> {
   if (flushing) return;
+  // No radio, or a request just failed: the POSTs would hang until URLSession
+  // gives up. The next online / app-active flush will send them.
+  if (!isReallyOnline()) return;
   const list = read();
   if (list.length === 0) return;
   flushing = true;
   try {
-    const survivors: Pending[] = [];
+    /** Sent, or refused for good: the ids this flush may remove. */
+    const settled = new Set<string>();
     for (const entry of list) {
       try {
         await apiRequest("POST", "/api/prayer-sessions", entry.body);
+        settled.add(entry.id);
       } catch (err) {
         /**
          * Keep it only if this looks retryable — read the STATUS.
@@ -88,10 +94,14 @@ export async function flushSessions(): Promise<void> {
          * 50-entry cap. Silent, but a standing request storm.
          */
         const permanent = err instanceof ApiError && err.status >= 400 && err.status < 500;
-        if (!permanent) survivors.push(entry);
+        if (permanent) settled.add(entry.id);
       }
     }
-    write(survivors);
+    // RE-READ BEFORE WRITING (audit, 2026-09-14). Writing back the snapshot
+    // this flush started from erased any session queued while it was awaiting,
+    // and on a dead radio that wait can last minutes: a prayer finished
+    // mid-flush never reached the account.
+    write(read().filter((p) => !settled.has(p.id)));
   } finally {
     flushing = false;
   }

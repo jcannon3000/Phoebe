@@ -154,6 +154,10 @@ router.delete("/users/me", async (req, res): Promise<void> => {
         sql`LOWER(${userConnectionsCacheTable.userEmail}) = ${emailLower} OR LOWER(${userConnectionsCacheTable.contactEmail}) = ${emailLower}`,
       );
       await tx.delete(waitlistTable).where(sql`LOWER(${waitlistTable.email}) = ${emailLower}`);
+      // user_client_state has no FK to users (added with the icon history,
+      // dbbd8365): the history and the typed names of physical icons would
+      // otherwise outlive the account (audit, 2026-09-14).
+      await tx.delete(userClientStateTable).where(eq(userClientStateTable.userId, user.id));
 
       // 3c) group_posts.author_user_id is ON DELETE SET NULL — right for the
       //     row (a group's post history is shared parish content, not this

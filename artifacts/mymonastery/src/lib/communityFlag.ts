@@ -22,4 +22,7 @@ export const COMMUNITY_FEATURES_ENABLED = false;
 export const COMMUNITY_ROUTE_PREFIXES = [
   "/prayer-list", "/pray-request", "/prayer-requests", "/communities", "/events",
   "/gatherings", "/feed/", "/group-reflection/", "/people/",
+  // Shared practices, and the prayer-request pages that pushes and share
+  // links still opened (audit, 2026-09-14).
+  "/moments/", "/my-prayer-requests", "/p/",
 ] as const;

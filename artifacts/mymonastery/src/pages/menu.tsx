@@ -1,6 +1,8 @@
+import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
+import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useGroupFeatures } from "@/hooks/useGroupFeatures";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -8,6 +10,7 @@ import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 import { MenuHub, type MenuHubGroup } from "@/components/MenuHub";
+import { sundayLectionaryQuery } from "@/lib/sundayLectionary";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useTranslation } from "react-i18next";
 
@@ -35,6 +38,11 @@ export default function MenuPage() {
   const signedUp = !!user && !user.isAnonymous;
   const prayerListEnabled = usePrayerListEnabled();
   const { hasEventsGroup } = useGroupFeatures();
+  // Warm This Sunday's lectionary (lib/sundayLectionary), so that page has its
+  // Track 1 / Track 2 row on its first frame instead of pushing its cards
+  // down when the answer arrives.
+  const queryClient = useQueryClient();
+  useEffect(() => { void queryClient.prefetchQuery(sundayLectionaryQuery); }, [queryClient]);
 
   const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
     queryKey: ["/api/groups"],
@@ -135,7 +143,9 @@ export default function MenuPage() {
   const explore: MenuHubGroup = { header: t("menu.hdr_explore"), items: [] };
   // Community + Events — hidden in pilot AND guest (personal-only, no community).
   if (!officesOnly && !isPilot && !isGuest) {
-    explore.items.push({ emoji: "🏘️", label: t("menu.communities"), sub: t("menu.communities_sub"), onClick: () => go("/communities") });
+    // Communities go with the community features (lib/communityFlag): the row
+    // still showed for super admins and pilot members, and bounced home.
+    if (COMMUNITY_FEATURES_ENABLED) explore.items.push({ emoji: "🏘️", label: t("menu.communities"), sub: t("menu.communities_sub"), onClick: () => go("/communities") });
     // Events only when a community has them switched on (owner, 2026-09-05).
     if (hasEventsGroup) explore.items.push({ emoji: "📅", label: t("menu.events", { defaultValue: "Events" }), sub: t("menu.events_sub", { defaultValue: "Services, gatherings & practices" }), onClick: () => go("/events") });
   }

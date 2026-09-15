@@ -22,7 +22,7 @@ import { getEffectiveRulePresets } from "@/lib/rulePresetsStore";
 import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot, type SlottedPractice, type CustomSlot, isRelationalAnchor, activeRelationalPractices, setRelationalPractices, RELATIONAL_PRACTICES, type RelationalPracticeId } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
-import { enqueueWrite } from "@/lib/writeOutbox";
+import { enqueueWrite, dropWrite } from "@/lib/writeOutbox";
 
 // ── /customize — the BASIC customizer for logged-out / device-local sessions ─
 //
@@ -699,6 +699,9 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
       qc.setQueryData(["/api/me/office-prefs"], (old: Record<string, unknown> | undefined) =>
         ({ ...(old ?? {}), contemplationGoalMinutes: min }));
       void apiRequest("PUT", "/api/me/office-prefs", { contemplationGoalMinutes: min })
+        // A goal saved now retires any older one still queued, or the next
+        // flush would put it back (audit, 2026-09-14).
+        .then(() => { dropWrite("office-prefs:contemplationGoalMinutes"); })
         // Offline: last write wins in the outbox; the account catches up.
         .catch(() => { enqueueWrite("office-prefs:contemplationGoalMinutes", "PUT", "/api/me/office-prefs", { contemplationGoalMinutes: min }); });
     }
@@ -754,7 +757,7 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(0.75rem, var(--safe-top)) 20px 4px", flexShrink: 0 }}>
         <button onClick={() => setLocation("/dashboard")} style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 15, cursor: "pointer", padding: 6 }}>← Back</button>
       </div>
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px max(2rem, env(safe-area-inset-bottom))", opacity: entered ? 1 : 0, transform: entered ? "translateY(0)" : "translateY(14px)", transition: "opacity 420ms ease, transform 420ms ease" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px max(2rem, env(safe-area-inset-bottom))", opacity: entered ? 1 : 0, transition: "opacity 420ms ease" }}>
         <p style={{ color: "rgba(143,175,150,0.7)", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "18px 0 6px", fontWeight: 600 }}>Your daily rhythm</p>
         <h1 style={{ fontFamily: FONT, fontSize: "clamp(30px, 7vw, 44px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: "0 0 10px", textAlign: "center" }}>Customize</h1>
         <p style={{ fontSize: 15, lineHeight: 1.6, fontFamily: FONT, color: "rgba(200,212,192,0.85)", margin: "0 0 24px", textAlign: "center", maxWidth: 420 }}>

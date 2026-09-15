@@ -1009,13 +1009,18 @@ const WEB_CUSTOMIZER_ROUTES = new Set<string>([
  */
 function CommunityGate({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
+  const blocked = !COMMUNITY_FEATURES_ENABLED
+    && COMMUNITY_ROUTE_PREFIXES.some((p) => location === p || location.startsWith(p.endsWith("/") ? p : p + "/") || location.startsWith(p + "?"));
   useEffect(() => {
-    if (COMMUNITY_FEATURES_ENABLED) return;
-    if (COMMUNITY_ROUTE_PREFIXES.some((p) => location === p || location.startsWith(p.endsWith("/") ? p : p + "/") || location.startsWith(p + "?"))) {
-      setLocation("/", { replace: true });
-    }
-  }, [location, setLocation]);
-  return <>{children}</>;
+    // Straight to the home, REPLACING this entry. "/" pushes /dashboard for a
+    // signed-in person, so Back returned to "/" and bounced forever (audit,
+    // 2026-09-14).
+    if (blocked) setLocation("/dashboard", { replace: true });
+  }, [blocked, location, setLocation]);
+  // …and never mount the community page on the way out. Rendered, an invite
+  // link opened a second time joined the community in its own effect before
+  // this redirect ran (audit, 2026-09-14).
+  return blocked ? null : <>{children}</>;
 }
 
 function GuestGate({ children }: { children: ReactNode }) {

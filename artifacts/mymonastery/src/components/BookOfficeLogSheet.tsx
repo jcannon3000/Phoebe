@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { markOfficeBookComplete } from "@/lib/officeManualLog";
 
 const WARM = "#F0EDE6";
@@ -10,6 +11,13 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 // Opened from the hero's "Log" pill (dashboard.tsx's PrayerOfficeCard),
 // which is the component that actually renders the visible home hero when
 // the office leads.
+//
+// PORTALED TO <body> (audit, 2026-09-14). The hero that opens it sits in the
+// home's Next list, and that list is one compositing layer (will-change:
+// transform — see DailyProgressBody), which also makes it the containing block
+// for anything position:fixed inside it. Rendered in place, this sheet's
+// `fixed inset-0` took the LIST's box: the scrim dimmed the cards only, and
+// the panel docked to the bottom of the list instead of the screen.
 export function BookOfficeLogSheet({
   side,
   title,
@@ -23,7 +31,7 @@ export function BookOfficeLogSheet({
   onOpenGuide: () => void;
   t: (k: string, o?: Record<string, unknown>) => string;
 }) {
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[120] flex items-end justify-center"
       style={{ background: "rgba(6,18,11,0.6)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)" }}
@@ -57,6 +65,7 @@ export function BookOfficeLogSheet({
           {t("rhythm.book_page_guide", { defaultValue: "Page numbers and readings" })}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

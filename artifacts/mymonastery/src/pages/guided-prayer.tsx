@@ -628,7 +628,10 @@ export default function GuidedPrayerPage() {
                   onError={() => markPicture(pictureOf.n - 1, "failed")}
                   style={{
                     display: "block",
-                    width: `min(100%, calc((var(--app-dvh) - var(--safe-top) - env(safe-area-inset-bottom, 0px) - 372px) * ${guidedPrayerArtRatio(pictureArt.id)}))`,
+                    // Floored at 120px: in a short window (a phone held sideways on
+                    // the web) the allowance went negative and drew the painting
+                    // at 0×0 (audit, 2026-09-14).
+                    width: `min(100%, max(120px, calc((var(--app-dvh) - var(--safe-top) - env(safe-area-inset-bottom, 0px) - 404px) * ${guidedPrayerArtRatio(pictureArt.id)})))`,
                     aspectRatio: String(guidedPrayerArtRatio(pictureArt.id)),
                     height: "auto",
                     objectFit: "contain",
@@ -647,11 +650,16 @@ export default function GuidedPrayerPage() {
                       {[pictureArt.artist ? tidyArtist(pictureArt.artist) : null, pictureArt.date ? tidyDate(pictureArt.date) : null].filter(Boolean).join(", ")}
                     </p>
                   )}
-                  {/* The credit the library asks for: whose it is (above), the
-                      project it comes through, and the licence it's offered
-                      under — the non-commercial grants require exactly this. */}
+                  {/* THE CREDIT THE LIBRARY ASKS FOR, WORD FOR WORD: the work,
+                      the project it comes through, and the original source (a
+                      photographer's page, for a mosaic), then the licence. The
+                      hand-built "Art in the Christian Tradition · licence" line
+                      named no source at all, and the non-commercial grants
+                      depend on that attribution (audit, 2026-09-14). The same
+                      text the Rosary's and Visio's closing slides print. The
+                      picture's height allowance above counts its extra lines. */}
                   <p style={{ color: "rgba(240,237,230,0.5)", fontFamily: FONT, fontSize: 11, lineHeight: 1.45, margin: "6px auto 0", maxWidth: 360 }}>
-                    {["Art in the Christian Tradition, Vanderbilt Divinity Library", pictureArt.licence].filter(Boolean).join(" · ")}
+                    {pictureArt.attribution}{pictureArt.where ? ` ${pictureArt.where}.` : ""}{pictureArt.licence ? ` ${pictureArt.licence}.` : ""}
                   </p>
                 </>
               )}

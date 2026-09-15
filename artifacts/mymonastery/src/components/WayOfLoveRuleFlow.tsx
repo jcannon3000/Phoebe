@@ -2585,6 +2585,15 @@ export default function WayOfLoveRuleFlow({
     // requests (pinned) → Return (contemplation) → Pray (the office card) → ALL
     // chosen reflections. Unselected reflections + secondary panels hidden.
     const others = TRACKED_REFLECTION_SOURCES.filter((n) => !newsletters.includes(n));
+    // FEAST DAY HAGIOGRAPHIES aren't a row in this customizer (they're toggled
+    // from Reflections → Manage subscriptions), but v11 made them a default
+    // card, and a key Save leaves out is stored HIDDEN: the server backfills it
+    // into hidden. Carry the card's current state through Save, on or off
+    // (audit, 2026-09-14).
+    const hagiographyOn = (() => {
+      const l = seedLayout(user);
+      return !!l && l.order.includes("hagiography") && !l.hidden.includes("hagiography");
+    })();
     // Added optional practices are surfaced (in order, not hidden); unselected
     // ones go to the hidden tail like the other opt-in modules.
     // Examen, Audio Divina (listening), and Co-Breathe come from the
@@ -2647,6 +2656,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.rosary ? ["rosary"] : []),
       ...(contemplative.reading ? ["reading"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
+      ...(hagiographyOn ? ["hagiography"] : []),
     ];
     const offKeys = [
       ...(extras.prayerList ? [] : ["prayer-list"]),
@@ -2665,6 +2675,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.rosary ? [] : ["rosary"]),
       ...(contemplative.reading ? [] : ["reading"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
+      ...(hagiographyOn ? [] : ["hagiography"]),
     ];
     // No hardcoded "podcasts" here — extras.podcasts already routes it through
     // onKeys/offKeys, and the template copy meant every saved layout carried

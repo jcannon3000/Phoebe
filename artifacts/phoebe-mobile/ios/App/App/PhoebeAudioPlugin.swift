@@ -296,7 +296,15 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
      */
     private func ensureSessionActive(bell: Bool = false) throws {
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(bell ? .playback : .ambient, mode: .default, options: [.mixWithOthers])
+        // A bell still waiting to ring keeps the category that lets it ring.
+        // The sit's keep-awake handler primes AFTER a round trip, so its
+        // prime() (or an effect's playNow) could land after scheduleBellAt and
+        // set .ambient under the pending bell: silent on mute, and with the
+        // phone locked the keep-alive loop lost its background licence (audit,
+        // 2026-09-14). The cleanup timer is valid from scheduling until ~10s
+        // after the bell, when it relaxes the session itself.
+        let bellPending = cleanupTimer?.isValid ?? false
+        try session.setCategory(bell || bellPending ? .playback : .ambient, mode: .default, options: [.mixWithOthers])
         try session.setActive(true, options: [])
         sessionPrimed = true
     }

@@ -17,7 +17,7 @@ import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal, openExternalThenMarkRead, openOfficeReading, preloadExternal, hasNativeBrowser } from "@/lib/openExternal";
 import { openReadingPage } from "@/lib/openExternal";
 import { toast } from "@/hooks/use-toast";
-import { isOnline, useOnline } from "@/lib/offline";
+import { isOnline, osSaysOnline, useOnline } from "@/lib/offline";
 import { nextSundayYmdNY } from "@/lib/sundayDate";
 import { FDD_TODAY_URL, markFddRead, recordReadingsOpened, hasPrayedReadingsToday } from "@/lib/cacReadState";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
@@ -1018,7 +1018,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   useEffect(() => {
     setSlides((prev) => {
       const ppIdx = prev.findIndex((s) => s.type === "prayer_prompts");
-      if (!signedUp) {
+      // Community features are off (lib/communityFlag): this slide shared a
+      // request with the community and saved to a prayer list that shows
+      // nowhere, so it isn't offered at all (audit, 2026-09-14).
+      if (!signedUp || !COMMUNITY_FEATURES_ENABLED) {
         if (ppIdx < 0) return prev;
         setSlideIdx((cur) => (cur > ppIdx ? cur - 1 : cur));
         return prev.filter((s) => s.type !== "prayer_prompts");
@@ -1639,8 +1642,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
          * answer to "I have this saved", and the only one that keeps the promise
          * offline.
          */
+        /**
+         * …BUT WITH A CONNECTION, ONLY THE EXACT KEY (audit, 2026-09-14). The
+         * day-level near-match answered online too, so This Sunday's Track 2
+         * opened Track 1's saved readings, and a confession just switched off
+         * was still there on the next open. Online, a near-miss goes to the
+         * network; the near-match is what's read if that fails.
+         */
         const savedFirst = (await getOfficeCacheEntry(cacheKey))
-          ?? (await getOfficeCacheEntryForDay(resolvedMode, requestDate));
+          ?? (!isOnline() ? await getOfficeCacheEntryForDay(resolvedMode, requestDate) : null);
         if (savedFirst) {
           data = savedFirst;
           if (isOnline()) {
@@ -1656,7 +1666,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               } catch { /* the saved deck is already on screen */ }
             })();
           }
-        } else if (!isOnline()) {
+        } else if (!osSaysOnline()) {
           /**
            * OFFLINE AND NOT SAVED: SAY SO NOW, DON'T SPEND THE TIMEOUT.
            *
@@ -1670,15 +1680,21 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           throw new Error("This office isn't saved on the phone yet");
         } else {
           try {
+            // The OS says the radio is on but a request failed in the last 20 s
+            // (the "offline" verdict): ask anyway, briefly, rather than refuse
+            // an office the network could bring (audit, 2026-09-14). Airplane
+            // Mode is the branch above, where the OS itself says offline.
+            const fetchBound = isOnline() ? OFFICE_FETCH_TIMEOUT_MS : OFFICE_RETRY_TIMEOUT_MS;
             const res = await withTimeout(
               fetch(`${endpoint}${sep}date=${requestDate}&locale=${locale}${confParam}${creationSingleParam}${partsParam}${trackParam}`),
-              OFFICE_FETCH_TIMEOUT_MS,
+              fetchBound,
             );
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            data = await withTimeout(res.json(), OFFICE_FETCH_TIMEOUT_MS);
+            data = await withTimeout(res.json(), fetchBound);
             void putOfficeCacheEntry(cacheKey, data);
           } catch (fetchErr) {
-            const cached = await getOfficeCacheEntry(cacheKey);
+            const cached = (await getOfficeCacheEntry(cacheKey))
+              ?? (await getOfficeCacheEntryForDay(resolvedMode, requestDate));
             if (!cached) throw fetchErr;
             data = cached;
           }
@@ -2177,7 +2193,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   }
       localStorage.removeItem(officeProgressKey(resolvedMode, officeTodayKey(), trackVariant));
     } catch { /* non-fatal */ }
-    if (!isSecondPracticeRun) clearOfficeReminderNotifications();
+    if (!isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
     if (onComplete) { onComplete(); return; }
     if (officesOnlyViewer) { setViewerLocation("/parish"); return; }
     // Same warm-cache handoff as amen()/handleEnd — closingOnly=1 can't
@@ -2381,7 +2397,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // sweep the morning office's lock-screen reminders away: this deck borrows
     // the office renderer, and every side-effect in it assumed an office. The
     // reading is not the office, and the reminder still has a job.
-    if (!isReadingDeck && !isSecondPracticeRun) clearOfficeReminderNotifications();
+    if (!isReadingDeck && !isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
     // Public /pray page: hand off to its own sign-up close.
     if (onComplete) { onComplete(); return; }
     if (parishOnly) {
@@ -2796,7 +2812,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // only cleared "bell", so a parish-office reminder kept sitting on
     // the lock screen for the rest of the day even after the user had
     // prayed the office — exactly the bug just reported.
-    if (!isSecondPracticeRun) clearOfficeReminderNotifications();
+    if (!isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
     if (amenPromise && waitForAmen) await amenPromise;
     if (!atEnd) {
       // Same chapel chime Next/tap/swipe play — the Amen button is just
@@ -2879,7 +2895,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         try {
           stampCompleted();
         } catch { /* private mode — non-fatal */ }
-        if (!isSecondPracticeRun) clearOfficeReminderNotifications();
+        if (!isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
         const watched = {
           surface: "national-cathedral", durationSeconds, completed: true,
           startedAt: new Date(openedAt).toISOString(), endedAt: endedAt.toISOString(),
@@ -3208,7 +3224,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         fontFamily: SPACE_GROTESK,
         position: "relative",
         isolation: "isolate",
-        // Gentle fade-up entrance (see @keyframes office-enter) so opening the
+        // Gentle fade-in entrance (see @keyframes office-enter) so opening the
         // office / devotion from the home card fades in instead of flashing.
         animation: "office-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) backwards",
       }}
@@ -6343,6 +6359,8 @@ function DevotionMethodCard(props: {
  * which is up to a minute of veil (see the note in load()).
  */
 const OFFICE_FETCH_TIMEOUT_MS = 6000;
+/** The brief second try while a recent failure has the app saying "offline". */
+const OFFICE_RETRY_TIMEOUT_MS = 2500;
 
 export default function BcpDailyOfficePage() {
   const { user, isLoading } = useAuth();

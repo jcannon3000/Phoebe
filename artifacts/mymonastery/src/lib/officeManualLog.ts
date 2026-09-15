@@ -281,7 +281,7 @@ export function markOfficeBookComplete(
    */
   const devotionMode = side === "morning" ? "morning-devotion" : "early-evening-devotion";
   const isSecondPractice = mode === devotionMode && getSideLevel(side) === "office";
-  if (!isSecondPractice) clearOfficeReminderNotifications();
+  if (!isSecondPractice) clearOfficeReminderNotifications(side);
   const now = new Date();
   // This POST is the ENTIRE cross-device record of the office. The local flag
   // above credits the logging device no matter what, so a dropped request was

@@ -17,28 +17,44 @@ import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, ApiError } from "@/lib/queryClient";
 import { enqueueWrite } from "@/lib/writeOutbox";
 import { isOnline } from "@/lib/offline";
 import { attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { getSideContemplationExplicit } from "@/lib/officePrefs";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { useAuth } from "@/hooks/useAuth";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { addGuestSilenceMinutes } from "@/lib/guestSilenceLog";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const BG = "#091A10";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
+/** The server's cap on one logged sit (manualLogSchema: 12 hours). */
+const MAX_MINUTES = 720;
 
 
 export default function ContemplationLogPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  /**
+   * A DEVICE GUEST LOGS TO THE DEVICE (audit, 2026-09-14). The public no-login
+   * app's home card, the goal box below and the widget all read the device
+   * tally — the one the timer and Breathing Together write — so a server POST
+   * either 401'd with nothing shown or landed where none of them look. Same
+   * rule as ContemplationTimer. The tally only holds today, so a guest isn't
+   * offered "Yesterday".
+   */
+  const guest = isDeviceLocalGuest(user);
   const { contemplationMin, contemplationGoalMin } = useRhythmState();
   /** What is in the box. A string so it can be empty mid-edit; see the field. */
   const [minutesText, setMinutesText] = useState("10"); // owner, 2026-09-14: prefill 10
-  const minutes = parseInt(minutesText, 10) || 0;
+  const minutes = Math.min(parseInt(minutesText, 10) || 0, MAX_MINUTES);
   const [when, setWhen] = useState<"today" | "yesterday">("today");
   const [justLogged, setJustLogged] = useState(false);
+  const canLog = minutes >= 1;
 
   const explicitSide = (() => {
     try {
@@ -49,9 +65,17 @@ export default function ContemplationLogPage() {
 
   const logMutation = useMutation({
     mutationFn: async () => {
-      const now = new Date();
-      const occurredAt = when === "yesterday" ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
+      // A logged sit is one that has just ENDED (or ended at this time
+      // yesterday). The server stores endedAt = occurredAt + duration, so
+      // sending "now" as the start put a 23:50 log's end in tomorrow and
+      // counted it on both days (audit, 2026-09-14).
+      const end = when === "yesterday" ? Date.now() - 24 * 60 * 60 * 1000 : Date.now();
+      const occurredAt = new Date(end - minutes * 60 * 1000);
       const body = { durationSeconds: minutes * 60, occurredAt: occurredAt.toISOString() };
+      if (guest) {
+        if (when === "today") addGuestSilenceMinutes(minutes);
+        return;
+      }
       /**
        * OFFLINE, REMEMBER IT INSTEAD OF LOSING IT (owner: "make sure
        * contemplation sessions are saving offline").
@@ -66,7 +90,15 @@ export default function ContemplationLogPage() {
         enqueueWrite(`contemplation_${Date.now()}`, "POST", "/api/me/contemplation-sessions", body);
         return;
       }
-      await apiRequest("POST", "/api/me/contemplation-sessions", body);
+      try {
+        await apiRequest("POST", "/api/me/contemplation-sessions", body);
+      } catch (err) {
+        // The connection failed while the app still believed it was online
+        // (weak signal): queue it like the offline path rather than drop the
+        // sit. An answer from the server (ApiError) is a real refusal.
+        if (err instanceof ApiError) throw err;
+        enqueueWrite(`contemplation_${Date.now()}`, "POST", "/api/me/contemplation-sessions", body);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
@@ -131,16 +163,20 @@ export default function ContemplationLogPage() {
 
               Held as a STRING while editing so the field can be empty as you
               clear it — a number state forces a 0 in the box the moment the
-              last digit goes, and you end up typing around it. Non-digits are
-              stripped rather than rejected, so a stray keystroke does nothing
-              visible instead of blocking the field. */}
+              last digit goes, and you end up typing around it. Whole minutes
+              only: a decimal keeps its whole part ("12.5" is 12, where stripping
+              the point made it 125), and the box stops at the server's 12-hour
+              cap instead of taking a number it would refuse. */}
           <div style={{ position: "relative", marginBottom: 20 }}>
             <input
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
               value={minutesText}
-              onChange={(e) => setMinutesText(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
+              onChange={(e) => {
+                const whole = (e.target.value.split(/[.,]/)[0] ?? "").replace(/[^0-9]/g, "").slice(0, 3);
+                setMinutesText(whole && Number(whole) > MAX_MINUTES ? String(MAX_MINUTES) : whole);
+              }}
               placeholder="10"
               aria-label="How many minutes"
               style={fieldStyle}
@@ -161,7 +197,7 @@ export default function ContemplationLogPage() {
               style={fieldStyle}
             >
               <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
+              {!guest && <option value="yesterday">Yesterday</option>}
             </select>
             <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
           </div>
@@ -169,10 +205,10 @@ export default function ContemplationLogPage() {
           <button
             type="button"
             onClick={() => logMutation.mutate()}
-            // Nothing to log with an empty box or a zero.
-            disabled={logMutation.isPending || justLogged || minutes < 1}
+            // Nothing to log with an empty box or a zero — and it looks it.
+            disabled={logMutation.isPending || justLogged || !canLog}
             className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, padding: 15, cursor: "pointer", opacity: logMutation.isPending || justLogged ? 0.6 : 1 }}
+            style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, padding: 15, cursor: canLog && !logMutation.isPending && !justLogged ? "pointer" : "default", opacity: logMutation.isPending || justLogged || !canLog ? 0.6 : 1 }}
           >
             {justLogged ? "Logged ✓" : logMutation.isPending ? "Logging…" : "Add time"}
           </button>

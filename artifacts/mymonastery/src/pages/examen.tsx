@@ -121,7 +121,7 @@ export default function ExamenPage() {
         // Owner: completing a side's chosen prayer should clear that side's
         // reminder from the notification center — see cacReadState.ts's
         // clearReminderIfAnchor for the sibling side-anchor practices.
-        try { clearOfficeReminderNotifications(); } catch { /* non-fatal */ }
+        try { clearOfficeReminderNotifications(explicitSide ?? (eveningOwnsExamen ? "evening" : null)); } catch { /* non-fatal */ }
       }
     }
   }, [step]);

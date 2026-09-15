@@ -26,7 +26,8 @@ import { verifyAtPlace, BUILT_IN_PLACES, type BreathPlace, type PlaceVerificatio
 import { resolvePlacePhotos, BUNDLED_SET_PREFIX } from "@/lib/breathPlacePhotos";
 import { attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { getSideContemplation, getSideLevel, getSideContemplationKind } from "@/lib/officePrefs";
-import { addGuestSilenceMinutes } from "@/lib/guestSilenceLog";
+import { addGuestSilenceMinutes, markGuestBreathKeptToday } from "@/lib/guestSilenceLog";
+import { creditAnchorPractice } from "@/lib/officeManualLog";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
@@ -749,6 +750,14 @@ export default function CobreathePage() {
     if (reached) {
       logSit(secondsKept);          // credit the contemplation sit (full set only)
       record.mutate(secondsKept);   // count you in today's communal breath + mark done
+      /**
+       * A BREATH CAN BE A SIDE'S PRACTICE (audit, 2026-09-14): swapped in from
+       * "Choose a different practice", the side is kept when today's breath
+       * is. A guest has no /breath/today to ask, so the device keeps its own
+       * stamp; and for everyone, keeping it lifts an earlier un-log of that side.
+       */
+      if (isDeviceLocalGuest(userRef.current)) markGuestBreathKeptToday();
+      try { creditAnchorPractice("cobreathe"); } catch { /* non-fatal */ }
     }
     /**
      * THE PLACE'S TALLY COUNTS EVERY BREATH — partial sets included (owner,

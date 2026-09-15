@@ -3233,7 +3233,9 @@ export default function PrayerModePage() {
   // Real signed-up account (not guest/anonymous) — the "7 category" prayer
   // prompts slide (PrayerPromptsSlide) saves into /api/prayer-intentions,
   // which needs a real account. Mirrors bcp-daily-office.tsx's `signedUp`.
-  const promptsEligible = !!user && !user.isAnonymous;
+  // Off with the community features: the prompts share requests and save to
+  // the prayer list (lib/communityFlag; audit, 2026-09-14).
+  const promptsEligible = COMMUNITY_FEATURES_ENABLED && !!user && !user.isAnonymous;
   // Land on the prompts slide after the last prayer, then its own
   // Continue/Skip moves on to the normal closing summary. Owner: "we need
   // back after the last prayer request in slideshows the 7 category of

@@ -23,7 +23,7 @@ import { setSideLevel, setSideEntry, setReflectionSource, setSideReflection, get
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, cacheHomeLayoutLocalOnly, addHomeCard, removeHomeCard } from "@/lib/homeLayoutCache";
 import { setPracticeSlot, setRelationalPractices, activeRelationalPractices } from "@/lib/customAnchors";
 import { clearRoutineSyncClock } from "@/lib/routineSync";
-import { getStoredDefaultSeed, type DefaultSeed } from "@/lib/rulePresetsStore";
+import { getStoredDefaultSeed, defaultSeedWithdrawn, type DefaultSeed } from "@/lib/rulePresetsStore";
 
 const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 
@@ -352,7 +352,16 @@ function migrateStaleSeed(): void {
     // moved — that's what the stored version is for. Without this the overlay
     // would only ever apply to installs that had never opened the app.
     const adminMoved = !!stored && (stored.version ?? 1) > appliedDefaultVersion();
-    if (localStorage.getItem(SEED_VERSION_KEY) === SEED_VERSION && !adminMoved) return;
+    /**
+     * …AND AN ADMIN DEFAULT TAKEN BACK REACHES IT TOO (audit, 2026-09-14). A
+     * device that applied the override while opening this build was stamped
+     * with SEED_VERSION on the admin path, so once the owner chose "Back to the
+     * built-in default" nothing here ran again: it kept the override's cards
+     * (Lectio, no Visio or hagiographies) for good. Only a fetched cache that
+     * says "no default" counts, never a device that hasn't fetched yet.
+     */
+    const adminReverted = !stored && appliedDefaultVersion() >= 1 && defaultSeedWithdrawn();
+    if (localStorage.getItem(SEED_VERSION_KEY) === SEED_VERSION && !adminMoved && !adminReverted) return;
     const morning = getExplicitSideLevel("morning");
     const evening = getExplicitSideLevel("evening");
     const untouched = STALE_SEEDS.some(([m, e]) => m === morning && e === evening);
@@ -479,6 +488,10 @@ function migrateStaleSeed(): void {
       // up to an account on sign-in, so zero the clock the setters just bumped.
       clearRoutineSyncClock();
     }
+    // The withdrawn override is dealt with (or the rule was the person's own):
+    // forget its version, so this doesn't run again and a future override
+    // reaches the device as new.
+    if (adminReverted) localStorage.removeItem(DEFAULT_SEED_VERSION_KEY);
     // Stamp either way — a customized device shouldn't be re-checked on every
     // boot for the rest of its life.
     localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);

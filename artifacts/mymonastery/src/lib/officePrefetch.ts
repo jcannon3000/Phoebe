@@ -664,11 +664,19 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
   const hidden = new Set(hl?.hidden ?? []);
   // Same membership test the cards use: in the order, not hidden.
   const followed = REFLECTION_SOURCES.filter((src) => order.includes(src) && !hidden.has(src));
+  /**
+   * A PAGE THAT CAN'T BE KEPT IS GIVEN UP FOR THE DAY (audit, 2026-09-14). A
+   * withphoebe.app redirect (CAC, VTS, Nouwen, Grist, Sojourners) is refused by
+   * the reader proxy every time, and each refusal counted as a fetch, so the
+   * walk never finished and re-ran on every foreground.
+   */
+  const newsletterGivenUp = failedPagesToday();
   const newsletterJobs = followed.map((src) => async () => {
     const url = reflectionSourceUrl(src);
-    if (!url || (await getSavedPageToday(url))) return;
+    if (!url || newsletterGivenUp.has(url) || (await getSavedPageToday(url))) return;
     ctx.noteFetched();
     if (await cachePageForToday(url)) ctx.noteSaved();
+    else notePageFailedToday(url);
   });
   if (newsletterJobs.length > 0) await runQueue(newsletterJobs);
   /**
@@ -693,7 +701,14 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
    * invariant again: sweep to a set only under the same condition that filled
    * it.
    */
-  if (harvest.officeStoreAnswered && harvest.dayListsComplete && pageUrls.size >= 8) void prunePagesExcept(pageUrls);
+  // Today's newsletter copies are kept too — FDD's and SSJE's were saved above
+  // and deleted by this sweep in the same pass (audit, 2026-09-14). Added to a
+  // copy, so the size check still counts only the harvested set.
+  if (harvest.officeStoreAnswered && harvest.dayListsComplete && pageUrls.size >= 8) {
+    const keep = new Set(pageUrls);
+    for (const src of followed) { const u = reflectionSourceUrl(src); if (u) keep.add(u); }
+    void prunePagesExcept(keep);
+  }
   // The extracted text every device saved earlier today goes — it should not
   // have been stored at all.
   void purgeExtractedPassages();

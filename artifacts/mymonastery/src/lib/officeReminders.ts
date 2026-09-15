@@ -14,20 +14,29 @@
 // slideshow only cleared "bell" — so completing prayer there left the real
 // office reminder sitting on the lock screen.
 //
-// Clearing BOTH sides regardless of which office was prayed is intentional: a
-// stray evening reminder shouldn't survive a morning office and vice versa once
-// the user has engaged with prayer for the day. The native shell listens for
-// `phoebe:clear-notifications` and removes any delivered push whose thread-id
-// matches; it's a no-op on web (no listener) and idempotent if the notification
-// was already dismissed.
-const OFFICE_REMINDER_THREADS = ["bell", "parish-office-morning", "parish-office-evening"] as const;
+// ONLY THE SIDE THAT WAS PRAYED (audit, 2026-09-14). This used to clear BOTH
+// sides' threads from every surface, "a stray evening reminder shouldn't
+// survive a morning office". While the native matcher never matched, that did
+// nothing; once clearing worked (b2db2970), praying the morning at 6:30 PM
+// took the still-undone evening's reminder with it. Now a caller that knows
+// the side clears that side's threads, and every call also asks the reminder
+// watcher (lib/widgetSync) to look again. The watcher reads the one
+// completion computation, so it catches whatever the caller couldn't name.
+// The native shell listens for `phoebe:clear-notifications` and removes any
+// delivered push whose thread-id matches; no-op on web, idempotent if the
+// notification was already dismissed.
+const SIDE_REMINDER_THREADS = {
+  morning: ["parish-office-morning", "bell"],
+  evening: ["parish-office-evening", "bell"],
+} as const;
 
-export function clearOfficeReminderNotifications(): void {
-  for (const threadId of OFFICE_REMINDER_THREADS) {
+export function clearOfficeReminderNotifications(side?: "morning" | "evening" | null): void {
+  for (const threadId of side ? SIDE_REMINDER_THREADS[side] : []) {
     try {
       window.dispatchEvent(new CustomEvent("phoebe:clear-notifications", { detail: { threadId } }));
     } catch {
       /* non-fatal — web build has no listener; the OS drops the push later */
     }
   }
+  try { window.dispatchEvent(new Event("phoebe:reminders-recheck")); } catch { /* non-fatal */ }
 }

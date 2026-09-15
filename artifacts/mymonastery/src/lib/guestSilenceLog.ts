@@ -28,6 +28,23 @@ export function getGuestSilenceMinutesToday(): number {
   } catch { return 0; }
 }
 
+/**
+ * TODAY'S BREATH, KEPT ON THE DEVICE (audit, 2026-09-14). Breathing Together
+ * can be a side's practice ("Choose a different practice"), and the side is
+ * kept when today's breath is. An account asks /breath/today; a guest has no
+ * account, so a full set stamps the local day here instead.
+ */
+const BREATH_KEPT_KEY = "phoebe:guest-breath-kept";
+export function markGuestBreathKeptToday(): void {
+  try {
+    localStorage.setItem(BREATH_KEPT_KEY, todayYmd());
+    window.dispatchEvent(new Event(GUEST_SILENCE_EVENT));
+  } catch { /* private mode — the breath still happened */ }
+}
+export function guestBreathKeptToday(): boolean {
+  try { return localStorage.getItem(BREATH_KEPT_KEY) === todayYmd(); } catch { return false; }
+}
+
 /** Add a finished sit's WHOLE minutes to today's tally (0/negative = no-op). */
 export function addGuestSilenceMinutes(min: number): void {
   const add = Math.floor(min);

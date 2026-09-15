@@ -84,12 +84,21 @@ function recentlyFailed(): boolean {
   return lastNetworkFailureAt > 0 && Date.now() - lastNetworkFailureAt < RECENT_FAILURE_MS;
 }
 /** A fetch failed for a network reason — a refused connection, a timeout. */
+let verdictLapse: ReturnType<typeof setTimeout> | null = null;
 export function noteNetworkFailure(): void {
   const was = recentlyFailed();
   lastNetworkFailureAt = Date.now();
   // Tell the screens: useOnline() holds this in state, so without an event a
   // component that mounted while "online" never learns otherwise.
   if (!was) emitConnectionChanged();
+  // …and tell them again when the verdict lapses. Nothing else fires then,
+  // so a home that heard "offline" kept its cards in Not available after the
+  // connection came back, until some unrelated event (audit, 2026-09-14).
+  if (verdictLapse) clearTimeout(verdictLapse);
+  verdictLapse = setTimeout(() => {
+    verdictLapse = null;
+    if (!recentlyFailed()) emitConnectionChanged();
+  }, RECENT_FAILURE_MS + 50);
 }
 /** Something reached the server — whatever it answered, we have a connection. */
 export function noteNetworkSuccess(): void {
