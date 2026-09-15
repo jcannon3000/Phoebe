@@ -665,6 +665,9 @@ async function sendOneApns(deviceToken: string, payload: PushPayload): Promise<A
     // and by the clear-notifications matcher to identify which
     // delivered push to remove (see PushPayload.data).
     ...(payload.path ? { path: payload.path } : {}),
+    // The thread again, outside aps: a delivered notification's userInfo is
+    // all the web layer can read back, and aps is easy to lose on the way.
+    ...(!payload.silent && payload.threadId ? { "thread-id": payload.threadId } : {}),
     ...(payload.data ?? {}),
   });
 

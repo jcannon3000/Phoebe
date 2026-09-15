@@ -603,6 +603,36 @@ export function useWidgetSync(): void {
     customSig, orderSig, r.prayerKind, r.streak, r.contemplationMin, r.contemplationGoalMin,
     prayerReqsQ.data, cacMetaQ.data,
   ]);
+
+  /**
+   * A SIDE THAT'S DONE TAKES ITS REMINDER WITH IT (owner, 2026-09-14: "make
+   * sure that morning and evening notifications disappear from someone's
+   * notification center once the practice is done"). Clearing used to be a
+   * call each completion surface had to remember, and most didn't — nor could
+   * any of them see a practice finished on another device, or a reminder that
+   * landed after the practice was already done. This watches the ONE
+   * completion computation (useRhythmState, the same flags the home card and
+   * the widget read), so every practice counts, and it re-checks each time the
+   * app comes to the front. The goal nudge goes once the goal is met.
+   * Native only; the shell ignores it elsewhere.
+   */
+  useEffect(() => {
+    if (!native || !r.ready) return;
+    const threads = [
+      ...(r.morningDone ? ["parish-office-morning", "bell"] : []),
+      ...(r.eveningDone ? ["parish-office-evening", "bell"] : []),
+      ...(r.silenceGoalCardDone ? ["contemplation-goal"] : []),
+    ];
+    if (threads.length === 0) return;
+    const clear = () => {
+      for (const threadId of new Set(threads)) {
+        try { window.dispatchEvent(new CustomEvent("phoebe:clear-notifications", { detail: { threadId } })); } catch { /* non-fatal */ }
+      }
+    };
+    clear();
+    window.addEventListener("phoebe:appactive", clear);
+    return () => window.removeEventListener("phoebe:appactive", clear);
+  }, [native, r.ready, r.morningDone, r.eveningDone, r.silenceGoalCardDone]);
 }
 
 export function WidgetSync(): null {

@@ -27,6 +27,7 @@ public class PhoebeBadgePlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "PhoebeBadge"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "setBadge", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "clearThreads", returnType: CAPPluginReturnPromise),
     ]
 
     @objc func setBadge(_ call: CAPPluginCall) {
@@ -52,6 +53,33 @@ public class PhoebeBadgePlugin: CAPPlugin, CAPBridgedPlugin {
                 UIApplication.shared.applicationIconBadgeNumber = clamped
             }
             call.resolve()
+        }
+    }
+
+    // Removes delivered notifications whose APNs thread-id is one of
+    // `threadIds`. The Capacitor push plugin can't do this: its
+    // getDeliveredNotifications() returns id/title/body/userInfo but not the
+    // thread identifier (APNs keeps "thread-id" inside "aps"), so the web
+    // layer's matcher never found a morning or evening reminder and nothing
+    // was ever removed — "even the offices were not disappearing" (owner,
+    // 2026-09-14). Asking UNUserNotificationCenter directly reads the real
+    // threadIdentifier, and it isn't gated on the plugin's
+    // didRegisterForRemoteNotifications flag either.
+    @objc func clearThreads(_ call: CAPPluginCall) {
+        let wanted = Set((call.getArray("threadIds", String.self) ?? []).filter { !$0.isEmpty })
+        if wanted.isEmpty {
+            call.resolve(["removed": 0])
+            return
+        }
+        let center = UNUserNotificationCenter.current()
+        center.getDeliveredNotifications { notifications in
+            let ids = notifications
+                .filter { wanted.contains($0.request.content.threadIdentifier) }
+                .map { $0.request.identifier }
+            if !ids.isEmpty {
+                center.removeDeliveredNotifications(withIdentifiers: ids)
+            }
+            call.resolve(["removed": ids.count])
         }
     }
 }

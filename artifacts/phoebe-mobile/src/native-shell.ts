@@ -400,6 +400,17 @@ function wireClearNotifications() {
   window.addEventListener("phoebe:clear-notifications", async e => {
     const detail = (e as CustomEvent).detail as { threadId?: string } | undefined;
     const threadId = detail?.threadId;
+    // A plain thread (a morning/evening reminder, the bell, the goal nudge)
+    // is removed natively by its real thread identifier — see
+    // PhoebeBadgePlugin.clearThreads. The plugin path below can't see
+    // thread ids, which is why these reminders never went away. It still runs
+    // after, for the prayer-request matching that keys off data fields.
+    if (threadId && !/^prayer-request-\d+$/.test(threadId)) {
+      try {
+        const cap = (window as { Capacitor?: { Plugins?: Record<string, { clearThreads?: (o: { threadIds: string[] }) => Promise<unknown> }> } }).Capacitor;
+        await cap?.Plugins?.PhoebeBadge?.clearThreads?.({ threadIds: [threadId] });
+      } catch { /* older native build — fall through to the plugin path */ }
+    }
     try {
       const list = await PushNotifications.getDeliveredNotifications();
       const items = list.notifications ?? [];
@@ -426,7 +437,10 @@ function wireClearNotifications() {
             const tid =
               (anyN["threadIdentifier"] as string | undefined)
               ?? (anyN["thread-id"] as string | undefined)
-              ?? ((anyN["data"] as Record<string, unknown> | undefined)?.["thread-id"] as string | undefined);
+              ?? ((anyN["data"] as Record<string, unknown> | undefined)?.["thread-id"] as string | undefined)
+              // APNs puts thread-id INSIDE aps, and the plugin hands userInfo
+              // back as `data` — so this is where it actually is.
+              ?? (((anyN["data"] as Record<string, unknown> | undefined)?.["aps"] as Record<string, unknown> | undefined)?.["thread-id"] as string | undefined);
             if (tid === threadId) return true;
 
             // Per-request fallback: when targeting "prayer-request-N",
