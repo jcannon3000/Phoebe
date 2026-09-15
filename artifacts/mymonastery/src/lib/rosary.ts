@@ -33,6 +33,11 @@ export type Mystery = {
    * the Dominican booklets): reverent, inside the scene, never wry. Audited
    * against them 2026-09-10 (owner: "most in line with tradition"); six
    * lines that stepped outside the scene to comment were rewritten.
+   *
+   * Audited again 2026-09-15, after the owner found a Joyful line that "didn't
+   * make sense" (the Finding's "and keeps it anyway"). The rules since: name
+   * who is in the scene (the line is read on its own, under the title), say
+   * what happens rather than what it means, and paraphrase — no quoted verse.
    */
   meditation: string;
   /** The virtue the decade has traditionally been offered for — the
@@ -99,15 +104,15 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
     blurb: "The coming of Christ, and the ordinary lives that carried him.",
     mysteries: [
       { n: 1, title: "The Annunciation", ref: "Luke 1:26-38", artIds: [48278, 59673, 59234], fruit: "Humility",
-        meditation: "Gabriel comes to a young woman in an unimportant town, and she says yes without knowing what it will cost." },
-      { n: 2, title: "The Visitation", ref: "Luke 1:39-56", artIds: [48279, 59190, 58365], fruit: "Love of neighbour",
-        meditation: "Mary goes in haste to Elizabeth. The child leaps in the womb, the older woman cries out in blessing, and Mary sings: my soul magnifies the Lord." },
+        meditation: "The angel Gabriel brings God's message to Mary in Nazareth, and she gives her yes, offering herself as the servant of the Lord." },
+      { n: 2, title: "The Visitation", ref: "Luke 1:39-56", artIds: [48279, 59190, 58365], fruit: "Love of neighbor",
+        meditation: "Mary goes in haste to her kinswoman Elizabeth. The child in Elizabeth's womb leaps for joy, Elizabeth calls Mary blessed, and Mary praises God." },
       { n: 3, title: "The Nativity", ref: "Luke 2:1-20", artIds: [48387, 59201, 57108], fruit: "Poverty of spirit",
         meditation: "Born in a stable, laid in a manger, because there was no room for them. The news goes first to shepherds keeping watch in the night." },
       { n: 4, title: "The Presentation in the Temple", ref: "Luke 2:22-38", artIds: [54414, 59646, 59769], fruit: "Obedience",
-        meditation: "Two old people have been waiting their whole lives, and they recognise him at once." },
+        meditation: "Mary and Joseph present the child Jesus in the Temple. Simeon takes him in his arms and blesses God, and the prophet Anna gives thanks for him." },
       { n: 5, title: "The Finding in the Temple", ref: "Luke 2:41-52", artIds: [59224, 48280, 59221], fruit: "Joy in finding Jesus",
-        meditation: "Three days of looking, and he is where his Father is. His mother does not understand, and keeps it anyway." },
+        meditation: "After three days of searching, Mary and Joseph find Jesus in the Temple, in his Father's house. Mary treasures all these things in her heart." },
     ],
   },
   sorrowful: {
@@ -118,15 +123,15 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
     blurb: "The passion — what love was willing to bear.",
     mysteries: [
       { n: 1, title: "The Agony in the Garden", ref: "Matthew 26:36-46", artIds: [48391, 56551, 59717], fruit: "Sorrow for sin",
-        meditation: "He asks for it to pass. He is not pretending. And still: not what I want, but what you want." },
+        meditation: "In the garden of Gethsemane, while his disciples sleep, Jesus prays in anguish that the cup might pass from him, and gives himself to his Father's will." },
       { n: 2, title: "The Scourging at the Pillar", ref: "Matthew 27:26", artIds: [48274, 59143, 58357], fruit: "Purity",
-        meditation: "The body God took is the body that is struck. He is silent under the lash, and offers it for us." },
+        meditation: "Pilate has Jesus scourged. He bears the blows in silence, and suffers them for our sake." },
       { n: 3, title: "The Crowning with Thorns", ref: "Matthew 27:27-31", artIds: [46134, 58355], fruit: "Moral courage",
-        meditation: "They dress him as a king to mock him, and are more right than they know." },
+        meditation: "The soldiers put a scarlet robe on Jesus, press a crown of thorns onto his head, and kneel before him in mockery as King of the Jews." },
       { n: 4, title: "The Carrying of the Cross", ref: "John 19:17", artIds: [59353, 59166, 59352], fruit: "Patience",
-        meditation: "He carries it as far as he can, and then a stranger from the crowd is made to help." },
+        meditation: "Jesus goes out carrying his cross to the place of the Skull, and Simon of Cyrene is made to carry it with him." },
       { n: 5, title: "The Crucifixion", ref: "John 19:18-30", artIds: [48390, 59218, 58356, 56778], fruit: "Perseverance",
-        meditation: "He gives his mother a son and his friend a mother, and then he says it is finished." },
+        meditation: "Jesus is crucified. From the cross he gives his mother to the beloved disciple, and the disciple to her, and then he says it is finished." },
     ],
   },
   glorious: {
@@ -137,11 +142,11 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
     blurb: "Easter and what followed — death undone, and the Church begun.",
     mysteries: [
       { n: 1, title: "The Resurrection", ref: "Matthew 28:1-10", artIds: [48301, 59213, 59246], fruit: "Faith",
-        meditation: "The women come to care for a body and find the grave empty and the guards undone." },
+        meditation: "At dawn the women come to the tomb and find it empty. An angel tells them that Jesus has been raised, as he said." },
       { n: 2, title: "The Ascension", ref: "Acts 1:6-11", artIds: [48398, 59720, 57474], fruit: "Hope",
         meditation: "He is taken up before their eyes, and a cloud receives him. He goes to prepare a place, and sends them to be his witnesses." },
       { n: 3, title: "The Descent of the Holy Spirit", ref: "Acts 2:1-13", artIds: [59680, 48388, 59681], fruit: "Love of God",
-        meditation: "Wind and fire, and a frightened room becomes a church that can be understood in every language." },
+        meditation: "With Mary among them, the apostles are filled with the Holy Spirit in wind and fire, and proclaim God's mighty works in every tongue." },
       /* ── The two Marian mysteries. Written as what the tradition holds and
        *    what scripture pictures, not as doctrine an Anglican is asked to
        *    assert — see the file header. The owner may want to reword, replace
@@ -151,17 +156,17 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
        *    THE CORONATION IS THE ONE DELIBERATE DEPARTURE IN THE WHOLE DECK
        *    (tradition audit, 2026-09-08 — everything else, every fruit and
        *    every reference, matches a received pairing). The manuals give
-       *    Revelation 12:1, "on her head a crown of twelve stars", and a fruit
-       *    of trust in Mary's intercession. This gives the Magnificat and
-       *    "trust in God's promise" instead — the same mystery read as the
-       *    finishing of what she sang rather than as a coronation an Anglican
-       *    is asked to affirm. That is a choice, not drift; it is written down
-       *    here so nobody later "fixes" it back. Reverting is two fields:
-       *    ref → "Revelation 12:1", fruit → "Trust in Mary's intercession". */
+       *    Revelation 12:1, "on her head a crown of twelve stars". This gives
+       *    the Magnificat instead — the same mystery read as the finishing of
+       *    what she sang rather than as a coronation an Anglican is asked to
+       *    affirm. That is a choice, not drift; it is written down here so
+       *    nobody later "fixes" it back. The fruit went back to the standard
+       *    list on 2026-09-10, so reverting is now one field:
+       *    ref → "Revelation 12:1". */
       { n: 4, title: "The Assumption of Mary", ref: "Revelation 12:1-6", artIds: [57111, 59249, 59657], fruit: "The grace of a happy death",
-        meditation: "The tradition holds that the one who carried him was carried home. We pray with her, at the end of her long yes." },
+        meditation: "The Church's tradition holds that when her earthly life was complete, Mary, the mother of the Lord, was taken up body and soul into heaven." },
       { n: 5, title: "The Coronation of Mary", ref: "Luke 1:46-55", artIds: [58434, 57112], fruit: "Trust in Mary's intercession",
-        meditation: "He has lifted up the lowly. What was promised in her song is finished in her." },
+        meditation: "The tradition sees Mary crowned in heaven: the lowly servant who sang of God's mercy, lifted up in glory." },
     ],
   },
   luminous: {
@@ -172,15 +177,15 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
     blurb: "The ministry — the years between the manger and the cross.",
     mysteries: [
       { n: 1, title: "The Baptism in the Jordan", ref: "Matthew 3:13-17", artIds: [48290, 59682, 59675], fruit: "Openness to the Spirit",
-        meditation: "He stands in the river with everyone else, and heaven says: this one, beloved." },
+        meditation: "Jesus is baptized by John in the Jordan. The heavens open, the Spirit comes down like a dove, and the Father's voice calls him his beloved Son." },
       { n: 2, title: "The Wedding at Cana", ref: "John 2:1-11", artIds: [59676, 48305, 58825], fruit: "To Jesus through Mary",
         meditation: "The wine runs out. His mother sees it before anyone and says only, they have no wine. Then, to the servants: do whatever he tells you." },
       { n: 3, title: "The Proclamation of the Kingdom", ref: "Mark 1:14-15", artIds: [48379, 57121, 48284, 59266], fruit: "Repentance",
-        meditation: "The time is fulfilled and the kingdom of God is at hand. Repent, he says, and believe the good news." },
+        meditation: "Jesus goes through Galilee proclaiming the good news of God: the kingdom is near, so turn back to God and believe." },
       { n: 4, title: "The Transfiguration", ref: "Matthew 17:1-8", artIds: [48307, 57114, 59679], fruit: "Desire for holiness",
-        meditation: "For a moment they see him as he is, and Peter wants to build something and stay." },
+        meditation: "On the mountain Jesus is transfigured before Peter, James and John, his face shining like the sun, and the Father's voice tells them to listen to him." },
       { n: 5, title: "The Institution of the Eucharist", ref: "Matthew 26:26-30", artIds: [58334, 48272], fruit: "Adoration",
-        meditation: "On the night before he suffered, he took bread — and it has not stopped being given since." },
+        meditation: "On the night before he suffered, Jesus takes bread and wine, gives thanks, and gives them to his disciples as his body and blood." },
     ],
   },
 };
