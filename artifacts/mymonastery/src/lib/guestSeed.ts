@@ -25,6 +25,7 @@ import { setPracticeSlot, setRelationalPractices, activeRelationalPractices } fr
 import { clearRoutineSyncClock } from "@/lib/routineSync";
 import { getStoredDefaultSeed, defaultSeedWithdrawn, type DefaultSeed } from "@/lib/rulePresetsStore";
 import { isInboxReadStateKey } from "@/lib/taizeInbox";
+import { isDailyReadStateKey } from "@/lib/cacReadState";
 
 const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 
@@ -703,12 +704,13 @@ export function resetDeviceRuleForLogout(): void {
       "phoebe:visio-",            // Visio Divina: history, week pick
       "phoebe:weekly-",           // Way of Love weekly log (done/day, distinct from the
                                    // synced phoebe:weekly-practices, already covered below)
-      // Per-source devotional read-state — "did I open today's word", one
-      // per reflection source. (Taizé, Andrew's Version and the publications
-      // keep inbox read-state instead — isInboxReadStateKey, below.)
-      "phoebe:cac-", "phoebe:fdd-", "phoebe:ssje-", "phoebe:vts-",
-      "phoebe:grist-", "phoebe:sojo-", "phoebe:nouwen-",
-      "phoebe:psalms-read", "phoebe:readings-prayed", "phoebe:guided-prayer-read",
+      // Per-source devotional read-state — "did I open today's word", and each
+      // side's Psalms, Simple Guided Prayer or readings kept today — is asked
+      // of isDailyReadStateKey, below. The prefixes listed here were the
+      // trackers' event names ("phoebe:cac-read"), not their keys
+      // ("phoebe:cac:last-read-day"), and matched none of them. Taizé, Andrew's
+      // Version and the publications keep inbox read-state instead —
+      // isInboxReadStateKey.
     ];
     /**
      * DERIVED from ROUTINE_KEYS, not hand-listed beside it.
@@ -739,7 +741,7 @@ export function resetDeviceRuleForLogout(): void {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k) continue;
-      if (EXACT.has(k) || PREFIXES.some((p) => k.startsWith(p)) || isInboxReadStateKey(k)) toRemove.push(k);
+      if (EXACT.has(k) || PREFIXES.some((p) => k.startsWith(p)) || isInboxReadStateKey(k) || isDailyReadStateKey(k)) toRemove.push(k);
     }
     for (const k of toRemove) localStorage.removeItem(k);
   } catch { /* private mode — nothing to reset */ }

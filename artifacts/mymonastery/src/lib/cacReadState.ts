@@ -127,7 +127,28 @@ function readStamp(key: string): string | null {
   }
 }
 
+/**
+ * EVERY KEY A DAY TRACKER OWNS, collected as each tracker is made.
+ *
+ * The logout wipe (resetDeviceRuleForLogout) asks isDailyReadStateKey instead
+ * of listing them. The prefixes it listed — "phoebe:cac-", "phoebe:psalms-read"
+ * and the rest — were this factory's EVENT names, hyphenated where the keys
+ * have colons, so they matched nothing: the next account signed in on a phone
+ * that day inherited the last person's reads, cards already in Done, and the
+ * surviving `:synced` stamp made that account's own first read skip its POST.
+ * A tracker writes its storage key and `${storageKey}:<suffix>` (`:synced`,
+ * `:dwell`), so a new tracker or suffix is wiped without anyone remembering to.
+ */
+const TRACKER_STORAGE_KEYS = new Set<string>();
+export function isDailyReadStateKey(key: string): boolean {
+  for (const k of TRACKER_STORAGE_KEYS) {
+    if (key === k || key.startsWith(`${k}:`)) return true;
+  }
+  return false;
+}
+
 function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (ymd: string) => void | Promise<unknown>, cardKey?: string) {
+  TRACKER_STORAGE_KEYS.add(storageKey);
   // The day the SERVER has acknowledged, kept apart from the day the reader
   // tapped — see markRead's note on why conflating them lost reads.
   const syncedKey = `${storageKey}:synced`;

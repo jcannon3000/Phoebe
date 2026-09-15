@@ -4,8 +4,10 @@
 // inherit the visitor's pre-signup prayer ("Morning Psalms already prayed",
 // "today's reflection read") and the home then hid those anchors as done.
 //
-// Call this on every successful account creation (and on logout) so a new /
-// switched account starts with a genuinely empty day.
+// Call this on every successful account creation so a new account starts with
+// a genuinely empty day. Logout has its own wipe — resetDeviceRuleForLogout
+// (lib/guestSeed), run by useLogout and again at the next boot — which clears
+// the day read trackers through isDailyReadStateKey (lib/cacReadState).
 
 const PREFIXES = [
   "phoebe:office-completed",        // office/devotion finished today (per mode)
