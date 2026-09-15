@@ -258,7 +258,11 @@ export function togglePracticeDoneToday(section: OptionalPractice): void {
 // skipped day isn't meaningful history to carry across devices.
 const SKIP_PREFIX = "phoebe:practice-skip:";
 
-export function hasPracticeSkippedToday(section: OptionalPractice): boolean {
+/** Read in ONE place — useRhythmState's homeCardActive, which every practice
+ *  card's *Active flag goes through — so the card, the pill dot, the count and
+ *  the widget drop a skipped practice together. Takes any card key: only an
+ *  OptionalPractice is ever stamped, so every other key reads false. */
+export function hasPracticeSkippedToday(section: string): boolean {
   try {
     return localStorage.getItem(SKIP_PREFIX + section) === todayLocalISO();
   } catch {

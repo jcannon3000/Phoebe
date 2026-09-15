@@ -412,6 +412,19 @@ function homeCardActive(
   const hidden = new Set(homeLayout.hidden ?? []);
   if (!order.includes(key) || hidden.has(key)) return false;
   /**
+   * "NOT TODAY" — a practice skipped for the day leaves the day. Folded in
+   * here for the same reason as the weekday rule below: every optional
+   * practice's *Active flag reads this helper, so the card, its pill dot, the
+   * day's count and the widget drop it together, and a skip neither counts as
+   * done nor holds the day open.
+   *
+   * The skip used to be read per practice (a `walkSkipped` flag beside
+   * walkActive), so when the Reading sheet began writing one, nothing read it:
+   * "Not today" did nothing and the card stayed in Next. The stamp carries its
+   * date, so it lapses at midnight.
+   */
+  if (hasPracticeSkippedToday(key)) return false;
+  /**
    * Days of the week (owner: "all routine cards can be specified as to what
    * days of the week"). Folded in HERE, at the one helper every optional
    * practice's *Active flag reads, so the card and its dot can never disagree
@@ -590,7 +603,6 @@ export function useRhythmState(): RhythmState {
     lectio: hasPracticeDoneToday("lectio"),
     podcasts: hasPracticeDoneToday("podcasts"),
     walk: hasPracticeDoneToday("walk"),
-    walkSkipped: hasPracticeSkippedToday("walk"),
     visio: hasPracticeDoneToday("visio"),
     icons: hasPracticeDoneToday("icons"),
     rosary: hasPracticeDoneToday("rosary"),
@@ -605,7 +617,6 @@ export function useRhythmState(): RhythmState {
     lectio: hasPracticeDoneToday("lectio"),
       podcasts: hasPracticeDoneToday("podcasts"),
       walk: hasPracticeDoneToday("walk"),
-      walkSkipped: hasPracticeSkippedToday("walk"),
       visio: hasPracticeDoneToday("visio"),
     icons: hasPracticeDoneToday("icons"),
     rosary: hasPracticeDoneToday("rosary"),
@@ -835,11 +846,9 @@ export function useRhythmState(): RhythmState {
   const readingActive = homeCardActive(hl, "reading");
   const podcastsActive = homeCardActive(hl, "podcasts");
   // Contemplative Walk — a slotted contemplative practice, logged like reading.
-  // "Not today" (practiceLocal.walkSkipped) drops it out for the rest of the
-  // day, same as a skipped custom anchor — every consumer of walkActive
-  // treats it as "should this show today", so folding the skip in here
-  // (rather than threading a separate flag through each) keeps them in sync.
-  const walkActive = homeCardActive(hl, "walk") && !practiceLocal.walkSkipped;
+  // "Not today" drops it out for the rest of the day, same as a skipped custom
+  // anchor; homeCardActive folds that skip in for every practice card.
+  const walkActive = homeCardActive(hl, "walk");
   // Visio Divina — praying with an artwork. Same shape as the other standing
   // practices: on when its home card is, kept by finishing the deck.
   const visioActive = homeCardActive(hl, "visio");
