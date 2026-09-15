@@ -49,8 +49,10 @@ const READ_KEY_FOR: Record<"taize" | "andrews", string> = {
   // new one is posted.
   andrews: "phoebe:andrews:read-ids",
 };
+/** Every other source's keys start here: `phoebe:inbox:w:<slug>:read-ids`. */
+const INBOX_KEY_PREFIX = "phoebe:inbox:";
 function readKey(source: InboxSource): string {
-  return source === "taize" || source === "andrews" ? READ_KEY_FOR[source] : `phoebe:inbox:${source}:read-ids`;
+  return source === "taize" || source === "andrews" ? READ_KEY_FOR[source] : `${INBOX_KEY_PREFIX}${source}:read-ids`;
 }
 /** How many ids to remember. Only the newest is ever asked about; the rest are
  *  kept so re-reading an older one doesn't resurrect it in the list view. */
@@ -67,7 +69,21 @@ const READ_DAY_KEY_FOR: Record<"taize" | "andrews", string> = {
   andrews: "phoebe:andrews:read-days",
 };
 function readDayKey(source: InboxSource): string {
-  return source === "taize" || source === "andrews" ? READ_DAY_KEY_FOR[source] : `phoebe:inbox:${source}:read-days`;
+  return source === "taize" || source === "andrews" ? READ_DAY_KEY_FOR[source] : `${INBOX_KEY_PREFIX}${source}:read-days`;
+}
+/**
+ * Is this localStorage key inbox read-state? The logout wipe
+ * (resetDeviceRuleForLogout) asks here instead of listing the keys itself: its
+ * hand-written "phoebe:taize-" had a hyphen where these keys have a colon, so it
+ * matched none of them, and the next account signed in on a phone inherited the
+ * last person's read marks — cards already read, sitting in Done, or hidden.
+ * Built from the same maps and prefix as the keys, so a new source is wiped
+ * without anyone having to remember to.
+ */
+export function isInboxReadStateKey(key: string): boolean {
+  return key.startsWith(INBOX_KEY_PREFIX)
+    || Object.values(READ_KEY_FOR).includes(key)
+    || Object.values(READ_DAY_KEY_FOR).includes(key);
 }
 function localDay(): string {
   const d = new Date();

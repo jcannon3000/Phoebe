@@ -24,6 +24,7 @@ import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, cacheHomeLayoutLoca
 import { setPracticeSlot, setRelationalPractices, activeRelationalPractices } from "@/lib/customAnchors";
 import { clearRoutineSyncClock } from "@/lib/routineSync";
 import { getStoredDefaultSeed, defaultSeedWithdrawn, type DefaultSeed } from "@/lib/rulePresetsStore";
+import { isInboxReadStateKey } from "@/lib/taizeInbox";
 
 const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 
@@ -703,9 +704,10 @@ export function resetDeviceRuleForLogout(): void {
       "phoebe:weekly-",           // Way of Love weekly log (done/day, distinct from the
                                    // synced phoebe:weekly-practices, already covered below)
       // Per-source devotional read-state — "did I open today's word", one
-      // per reflection source.
+      // per reflection source. (Taizé, Andrew's Version and the publications
+      // keep inbox read-state instead — isInboxReadStateKey, below.)
       "phoebe:cac-", "phoebe:fdd-", "phoebe:ssje-", "phoebe:vts-",
-      "phoebe:grist-", "phoebe:sojo-", "phoebe:nouwen-", "phoebe:taize-",
+      "phoebe:grist-", "phoebe:sojo-", "phoebe:nouwen-",
       "phoebe:psalms-read", "phoebe:readings-prayed", "phoebe:guided-prayer-read",
     ];
     /**
@@ -737,7 +739,7 @@ export function resetDeviceRuleForLogout(): void {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k) continue;
-      if (EXACT.has(k) || PREFIXES.some((p) => k.startsWith(p))) toRemove.push(k);
+      if (EXACT.has(k) || PREFIXES.some((p) => k.startsWith(p)) || isInboxReadStateKey(k)) toRemove.push(k);
     }
     for (const k of toRemove) localStorage.removeItem(k);
   } catch { /* private mode — nothing to reset */ }
