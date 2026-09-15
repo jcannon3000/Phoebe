@@ -78,8 +78,14 @@ const ACT_CATALOGUE = (() => {
   return [...byId.values()];
 })();
 
-/** How many times one work may appear in a calendar year. Owner: three. */
-const CAP = 3;
+/**
+ * NO PER-YEAR CAP (owner, 2026-09-15: "no take off the 3 cap", then "lets just
+ * prioritize making sure it matches the gospel"). It was three appearances a
+ * year, moving a capped work's weeks to the next reading. Infinity keeps the
+ * walk's code paths intact while no work is ever capped: the painting that
+ * best matches the Sunday's gospel is shown, however often it has been.
+ */
+const CAP = Infinity;
 
 /**
  * A DIFFERENT HAND EACH WEEK.
@@ -92,14 +98,11 @@ const CAP = 3;
  * Mafa series has a painting for most gospel scenes, so a different Mafa work
  * every week never tripped it.
  *
- * Two rules, in order of cost. BACK-TO-BACK weeks by one artist (or one work)
- * are avoided whenever another hand painted the same reading equally well —
- * tried inside the tier that already won, so it costs nothing. THREE STRAIGHT
- * weeks by one artist are broken even at a step of closeness: a chapter-level
- * painting of the same reading by another hand, then the week's other reading,
- * never below chapter level (see the note at the break in build()). Where
- * nothing else reaches chapter level the run stands — a picture of this
- * Sunday's reading beats a stranger. Both bend like the cap.
+ * BACK-TO-BACK weeks by one artist (or one work) are avoided whenever another
+ * hand painted the same reading equally well — tried inside the tier that
+ * already won, so it costs nothing. That is now the ONLY variety rule: the
+ * three-straight break that walked to another reading was removed on
+ * 2026-09-15 (see the note where it lived in build()) — the gospel comes first.
  */
 const ARTIST_GAP_WEEKS = 1;
 
@@ -158,7 +161,17 @@ const TIER_NAMES = ["gospel", "epistle", "ot"];
  * behind" reflection runner-up the tie-break used to allow — and the card's
  * "this week's reading" is always the pick's own score.
  */
-const WALK = [[0, 3], [1, 3], [1, 2], [2, 3], [2, 2], [0, 2]];
+/*
+ * EXACT MATCHES FIRST, THE GOSPEL FIRST AT EACH (owner, 2026-09-15: "lets just
+ * prioritize making sure it matches the gospel", then "the priority is exact
+ * matches"). A painting of a reading's own verses — the gospel's, then the
+ * epistle's, then the Old Testament's — before any same-chapter painting; and
+ * among same-chapter paintings, the gospel's first. Trying the gospel's
+ * chapter before the other readings' exact verses was measured and rejected:
+ * exact weeks fell from 130 to 113, and Masaccio's Tribute Money (Matthew
+ * 22:15-22) covered three Sundays running.
+ */
+const WALK = [[0, 3], [1, 3], [2, 3], [0, 2], [1, 2], [2, 2]];
 
 /**
  * How many verses two references share — same book, same chapter; a whole
@@ -325,14 +338,12 @@ function build() {
   const rows = [];
   /** weekStartYmd → the artwork id that whole week shows. */
   const weekPick = new Map();
-  const stats = { days: 0, curated: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, epistle: 0, ot: 0, exact: 0, chapter: 0, parallel: 0, sundayAssigned: 0, book: 0, rotation: 0, sameHandAsLastWeek: 0, thirdStraightBroken: 0 };
+  const stats = { days: 0, curated: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, epistle: 0, ot: 0, exact: 0, chapter: 0, parallel: 0, sundayAssigned: 0, book: 0, rotation: 0, sameHandAsLastWeek: 0 };
   /** The last ARTIST_GAP_WEEKS weeks' artists, newest first, across year ends. */
   const recentHands = [];
   let lastWeekId = null;
   const handOf = (art) => (art?.artist ?? "").trim().toLowerCase();
   const recentHand = (art) => art.id === lastWeekId || (!!handOf(art) && recentHands.slice(0, ARTIST_GAP_WEEKS).includes(handOf(art)));
-  /** Would this be the SAME artist a third week running? */
-  const thirdStraight = (art) => { const h = handOf(art); return !!h && recentHands[0] === h && recentHands[1] === h; };
 
   for (let i = 0; i < DAYS; i++) {
     /**
@@ -565,29 +576,16 @@ function build() {
     }
 
     /**
-     * NEVER THREE WEEKS STRAIGHT (owner: "its been them 3 weeks straight").
-     *
-     * The swap inside pickVaried costs nothing — it only changes which equally
-     * good painting of the SAME reading is shown — so it cannot break a run
-     * where one artist is the only one who painted the passage at that
-     * closeness. The Mafa series was exactly that for Matthew 18:15-20, 18:21-35
-     * and 20:1-16, three Sundays running. A third consecutive week is where
-     * variety is worth a step of closeness: another hand's painting, looked for
-     * in the same order as any week's (WALK), at worst the same chapter. Never below chapter level, and the card only names the
-     * verses when the replacement genuinely depicts them — `top` is the
-     * replacement's own score, so followsToday is recomputed from it. If nothing
-     * else reaches chapter level, the run stands.
+     * NO FORCED CHANGE OF ARTIST (owner, 2026-09-15). A third straight week by
+     * one hand used to be broken by walking to another reading — which put an
+     * Old Testament picture (Swanson's Jonah) on 20 September in place of the
+     * Mafa painting of that Sunday's gospel. Owner: "if there is a Jesus Mafa
+     * for the Gospel and no other image, lets use that over using an OT related
+     * image", then "lets just prioritize making sure it matches the gospel".
+     * Variety now happens only inside pickVaried, where it costs nothing: an
+     * equally good painting of the SAME reading by another hand. Don't bring
+     * the break back without the owner asking.
      */
-    if (thirdStraight(chosen.art)) {
-      let replacement = null;
-      for (const [t, score] of WALK) {
-        const group = groupAt(t, score).filter((cand) => handOf(cand) !== handOf(chosen.art) && countFor(year, cand.id) < CAP);
-        if (!group.length) continue;
-        const pick = pickFrom(group, true);
-        if (pick) { replacement = { art: pick, tierRefs: tiers[t].refs, top: score }; break; }
-      }
-      if (replacement) { chosen = replacement; stats.thirdStraightBroken++; }
-    }
 
     if (movedTier) stats.tierMoved++;
     const { art, tierRefs, top } = chosen;
@@ -634,26 +632,23 @@ const header = `// GENERATED by artifacts/api-server/src/build-visio-week-schedu
 // carries the same entry; the file is still keyed by day so the client can
 // stay a plain date lookup.
 //
-// The cap is ${CAP} appearances per calendar year, and an appearance is now a
-// WEEK — so a capped work can be on screen for up to ${CAP * 7} days of a year
-// (owner: "if you have something that is shown more than three times
-// throughout the year, go to matching for a different reading", written when
-// an appearance was a single day). The cap needs a year-wide view and the
-// lectionary is server-only, so the whole schedule is resolved here rather
-// than per-device — still a pure function of the date, so everyone praying in
-// a given week sees the same picture.
+// No per-year cap and no forced change of artist (owner, 2026-09-15: "take off
+// the 3 cap", "lets just prioritize making sure it matches the gospel"): a
+// painting of the Sunday's gospel is shown whenever one exists, even if that
+// work or artist appeared recently. The lectionary is server-only, so the
+// schedule is still resolved here rather than per-device — a pure function of
+// the date, so everyone praying in a given week sees the same picture.
 //
-// Readings: the gospel's own verses first; otherwise the epistle (with Acts in
-// Eastertide), then the Old Testament, each exact before its chapter; only then
-// a painting of the gospel's chapter. Psalms are never used (owner, 2026-09-14).
+// Readings: exact verses first — the gospel's, then the epistle's (with Acts in
+// Eastertide), then the Old Testament's — and only then a same-chapter
+// painting, the gospel's first (owner, 2026-09-15: "the priority is exact
+// matches", "prioritize making sure it matches the gospel"). Psalms are never used (owner, 2026-09-14).
 // When no reading is painted: the same story in another gospel, then a work ACT
 // assigns to that Sunday; a same-book picture only after both.
 //
-// A different artist each week where the reading allows: the same hand is not
-// chosen for back-to-back weeks if another artist painted the same reading, and
-// a third straight week by one artist is broken even at a step of closeness — a
-// chapter-level painting, or the week's epistle — never below chapter level
-// (owner, 2026-09-14: "make sure there is a variance of artists").
+// A different artist each week only where it costs nothing: if another artist
+// painted the same reading equally well, that one is chosen over last week's.
+// A run of one artist is never broken by moving to a less apt reading.
 //
 // Covers ${rows[0]?.[0]} … ${rows[rows.length - 1]?.[0]}. A date outside this
 // range falls back to live matching in chooseArtwork, which is exactly the

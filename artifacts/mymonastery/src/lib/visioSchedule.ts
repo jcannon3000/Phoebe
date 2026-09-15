@@ -5,26 +5,23 @@
 // carries the same entry; the file is still keyed by day so the client can
 // stay a plain date lookup.
 //
-// The cap is 3 appearances per calendar year, and an appearance is now a
-// WEEK — so a capped work can be on screen for up to 21 days of a year
-// (owner: "if you have something that is shown more than three times
-// throughout the year, go to matching for a different reading", written when
-// an appearance was a single day). The cap needs a year-wide view and the
-// lectionary is server-only, so the whole schedule is resolved here rather
-// than per-device — still a pure function of the date, so everyone praying in
-// a given week sees the same picture.
+// No per-year cap and no forced change of artist (owner, 2026-09-15: "take off
+// the 3 cap", "lets just prioritize making sure it matches the gospel"): a
+// painting of the Sunday's gospel is shown whenever one exists, even if that
+// work or artist appeared recently. The lectionary is server-only, so the
+// schedule is still resolved here rather than per-device — a pure function of
+// the date, so everyone praying in a given week sees the same picture.
 //
-// Readings: the gospel's own verses first; otherwise the epistle (with Acts in
-// Eastertide), then the Old Testament, each exact before its chapter; only then
-// a painting of the gospel's chapter. Psalms are never used (owner, 2026-09-14).
+// Readings: exact verses first — the gospel's, then the epistle's (with Acts in
+// Eastertide), then the Old Testament's — and only then a same-chapter
+// painting, the gospel's first (owner, 2026-09-15: "the priority is exact
+// matches", "prioritize making sure it matches the gospel"). Psalms are never used (owner, 2026-09-14).
 // When no reading is painted: the same story in another gospel, then a work ACT
 // assigns to that Sunday; a same-book picture only after both.
 //
-// A different artist each week where the reading allows: the same hand is not
-// chosen for back-to-back weeks if another artist painted the same reading, and
-// a third straight week by one artist is broken even at a step of closeness — a
-// chapter-level painting, or the week's epistle — never below chapter level
-// (owner, 2026-09-14: "make sure there is a variance of artists").
+// A different artist each week only where it costs nothing: if another artist
+// painted the same reading equally well, that one is chosen over last week's.
+// A run of one artist is never broken by moving to a less apt reading.
 //
 // Covers 2026-01-01 … 2028-12-31. A date outside this
 // range falls back to live matching in chooseArtwork, which is exactly the
@@ -144,20 +141,20 @@ export const VISIO_SCHEDULE: Record<string, VisioScheduleEntry> = {
   "2026-04-17": { id: 59160, ref: "Luke 24:13-35", followsToday: true },
   "2026-04-18": { id: 59160, ref: "Luke 24:13-35", followsToday: true },
   "2026-04-19": { id: 59160, ref: "Luke 24:13-35", followsToday: true },
-  "2026-04-20": { id: 59680, ref: "Acts 2:1-21", followsToday: false },
-  "2026-04-21": { id: 59680, ref: "Acts 2:1-21", followsToday: false },
-  "2026-04-22": { id: 59680, ref: "Acts 2:1-21", followsToday: false },
-  "2026-04-23": { id: 59680, ref: "Acts 2:1-21", followsToday: false },
-  "2026-04-24": { id: 59680, ref: "Acts 2:1-21", followsToday: false },
-  "2026-04-25": { id: 59680, ref: "Acts 2:1-21", followsToday: false },
-  "2026-04-26": { id: 59680, ref: "Acts 2:1-21", followsToday: false },
-  "2026-04-27": { id: 59262, ref: "John 14:8-17, (25-27)", followsToday: true },
-  "2026-04-28": { id: 59262, ref: "John 14:8-17, (25-27)", followsToday: true },
-  "2026-04-29": { id: 59262, ref: "John 14:8-17, (25-27)", followsToday: true },
-  "2026-04-30": { id: 59262, ref: "John 14:8-17, (25-27)", followsToday: true },
-  "2026-05-01": { id: 59262, ref: "John 14:8-17, (25-27)", followsToday: true },
-  "2026-05-02": { id: 59262, ref: "John 14:8-17, (25-27)", followsToday: true },
-  "2026-05-03": { id: 59262, ref: "John 14:8-17, (25-27)", followsToday: true },
+  "2026-04-20": { id: 48288, ref: "John 10:11-18", followsToday: false },
+  "2026-04-21": { id: 48288, ref: "John 10:11-18", followsToday: false },
+  "2026-04-22": { id: 48288, ref: "John 10:11-18", followsToday: false },
+  "2026-04-23": { id: 48288, ref: "John 10:11-18", followsToday: false },
+  "2026-04-24": { id: 48288, ref: "John 10:11-18", followsToday: false },
+  "2026-04-25": { id: 48288, ref: "John 10:11-18", followsToday: false },
+  "2026-04-26": { id: 48288, ref: "John 10:11-18", followsToday: false },
+  "2026-04-27": { id: 59651, ref: "John 14:1-14", followsToday: true },
+  "2026-04-28": { id: 59651, ref: "John 14:1-14", followsToday: true },
+  "2026-04-29": { id: 59651, ref: "John 14:1-14", followsToday: true },
+  "2026-04-30": { id: 59651, ref: "John 14:1-14", followsToday: true },
+  "2026-05-01": { id: 59651, ref: "John 14:1-14", followsToday: true },
+  "2026-05-02": { id: 59651, ref: "John 14:1-14", followsToday: true },
+  "2026-05-03": { id: 59651, ref: "John 14:1-14", followsToday: true },
   "2026-05-04": { id: 59262, ref: "John 14:8-17, (25-27)", followsToday: true },
   "2026-05-05": { id: 59262, ref: "John 14:8-17, (25-27)", followsToday: true },
   "2026-05-06": { id: 59262, ref: "John 14:8-17, (25-27)", followsToday: true },
@@ -291,13 +288,13 @@ export const VISIO_SCHEDULE: Record<string, VisioScheduleEntry> = {
   "2026-09-11": { id: 48396, ref: "Matthew 18:21-35", followsToday: true },
   "2026-09-12": { id: 48396, ref: "Matthew 18:21-35", followsToday: true },
   "2026-09-13": { id: 48396, ref: "Matthew 18:21-35", followsToday: true },
-  "2026-09-14": { id: 56549, ref: "Jonah 3:10-4:11", followsToday: true },
-  "2026-09-15": { id: 56549, ref: "Jonah 3:10-4:11", followsToday: true },
-  "2026-09-16": { id: 56549, ref: "Jonah 3:10-4:11", followsToday: true },
-  "2026-09-17": { id: 56549, ref: "Jonah 3:10-4:11", followsToday: true },
-  "2026-09-18": { id: 56549, ref: "Jonah 3:10-4:11", followsToday: true },
-  "2026-09-19": { id: 56549, ref: "Jonah 3:10-4:11", followsToday: true },
-  "2026-09-20": { id: 56549, ref: "Jonah 3:10-4:11", followsToday: true },
+  "2026-09-14": { id: 57561, ref: "Matthew 20:1-16", followsToday: true },
+  "2026-09-15": { id: 57561, ref: "Matthew 20:1-16", followsToday: true },
+  "2026-09-16": { id: 57561, ref: "Matthew 20:1-16", followsToday: true },
+  "2026-09-17": { id: 57561, ref: "Matthew 20:1-16", followsToday: true },
+  "2026-09-18": { id: 57561, ref: "Matthew 20:1-16", followsToday: true },
+  "2026-09-19": { id: 57561, ref: "Matthew 20:1-16", followsToday: true },
+  "2026-09-20": { id: 57561, ref: "Matthew 20:1-16", followsToday: true },
   "2026-09-21": { id: 59243, ref: "Matthew 21:23-32", followsToday: true },
   "2026-09-22": { id: 59243, ref: "Matthew 21:23-32", followsToday: true },
   "2026-09-23": { id: 59243, ref: "Matthew 21:23-32", followsToday: true },
@@ -515,20 +512,20 @@ export const VISIO_SCHEDULE: Record<string, VisioScheduleEntry> = {
   "2027-04-23": { id: 55553, ref: "John 15:1-8", followsToday: true },
   "2027-04-24": { id: 55553, ref: "John 15:1-8", followsToday: true },
   "2027-04-25": { id: 55553, ref: "John 15:1-8", followsToday: true },
-  "2027-04-26": { id: 59250, ref: "Acts 10:17-20", followsToday: false },
-  "2027-04-27": { id: 59250, ref: "Acts 10:17-20", followsToday: false },
-  "2027-04-28": { id: 59250, ref: "Acts 10:17-20", followsToday: false },
-  "2027-04-29": { id: 59250, ref: "Acts 10:17-20", followsToday: false },
-  "2027-04-30": { id: 59250, ref: "Acts 10:17-20", followsToday: false },
-  "2027-05-01": { id: 59250, ref: "Acts 10:17-20", followsToday: false },
-  "2027-05-02": { id: 59250, ref: "Acts 10:17-20", followsToday: false },
-  "2027-05-03": { id: 58395, ref: "Acts 1:1-11", followsToday: false },
-  "2027-05-04": { id: 58395, ref: "Acts 1:1-11", followsToday: false },
-  "2027-05-05": { id: 58395, ref: "Acts 1:1-11", followsToday: false },
-  "2027-05-06": { id: 58395, ref: "Acts 1:1-11", followsToday: false },
-  "2027-05-07": { id: 58395, ref: "Acts 1:1-11", followsToday: false },
-  "2027-05-08": { id: 58395, ref: "Acts 1:1-11", followsToday: false },
-  "2027-05-09": { id: 58395, ref: "Acts 1:1-11", followsToday: false },
+  "2027-04-26": { id: 58387, ref: "John 15:1-8", followsToday: false },
+  "2027-04-27": { id: 58387, ref: "John 15:1-8", followsToday: false },
+  "2027-04-28": { id: 58387, ref: "John 15:1-8", followsToday: false },
+  "2027-04-29": { id: 58387, ref: "John 15:1-8", followsToday: false },
+  "2027-04-30": { id: 58387, ref: "John 15:1-8", followsToday: false },
+  "2027-05-01": { id: 58387, ref: "John 15:1-8", followsToday: false },
+  "2027-05-02": { id: 58387, ref: "John 15:1-8", followsToday: false },
+  "2027-05-03": { id: 48314, ref: "John 17:20-26", followsToday: false },
+  "2027-05-04": { id: 48314, ref: "John 17:20-26", followsToday: false },
+  "2027-05-05": { id: 48314, ref: "John 17:20-26", followsToday: false },
+  "2027-05-06": { id: 48314, ref: "John 17:20-26", followsToday: false },
+  "2027-05-07": { id: 48314, ref: "John 17:20-26", followsToday: false },
+  "2027-05-08": { id: 48314, ref: "John 17:20-26", followsToday: false },
+  "2027-05-09": { id: 48314, ref: "John 17:20-26", followsToday: false },
   "2027-05-10": { id: 59681, ref: "Acts 2:1-21", followsToday: true },
   "2027-05-11": { id: 59681, ref: "Acts 2:1-21", followsToday: true },
   "2027-05-12": { id: 59681, ref: "Acts 2:1-21", followsToday: true },
@@ -550,13 +547,13 @@ export const VISIO_SCHEDULE: Record<string, VisioScheduleEntry> = {
   "2027-05-28": { id: 59653, ref: "Corinthians II, 4:3-6", followsToday: true },
   "2027-05-29": { id: 59653, ref: "Corinthians II, 4:3-6", followsToday: true },
   "2027-05-30": { id: 59653, ref: "Corinthians II, 4:3-6", followsToday: true },
-  "2027-05-31": { id: 58405, ref: "Corinthians II, 3:12-4:2", followsToday: false },
-  "2027-06-01": { id: 58405, ref: "Corinthians II, 3:12-4:2", followsToday: false },
-  "2027-06-02": { id: 58405, ref: "Corinthians II, 3:12-4:2", followsToday: false },
-  "2027-06-03": { id: 58405, ref: "Corinthians II, 3:12-4:2", followsToday: false },
-  "2027-06-04": { id: 58405, ref: "Corinthians II, 3:12-4:2", followsToday: false },
-  "2027-06-05": { id: 58405, ref: "Corinthians II, 3:12-4:2", followsToday: false },
-  "2027-06-06": { id: 58405, ref: "Corinthians II, 3:12-4:2", followsToday: false },
+  "2027-05-31": { id: 58443, ref: "Genesis 3:8-15", followsToday: true },
+  "2027-06-01": { id: 58443, ref: "Genesis 3:8-15", followsToday: true },
+  "2027-06-02": { id: 58443, ref: "Genesis 3:8-15", followsToday: true },
+  "2027-06-03": { id: 58443, ref: "Genesis 3:8-15", followsToday: true },
+  "2027-06-04": { id: 58443, ref: "Genesis 3:8-15", followsToday: true },
+  "2027-06-05": { id: 58443, ref: "Genesis 3:8-15", followsToday: true },
+  "2027-06-06": { id: 58443, ref: "Genesis 3:8-15", followsToday: true },
   "2027-06-07": { id: 58432, ref: "Samuel I, 16:1-13", followsToday: true },
   "2027-06-08": { id: 58432, ref: "Samuel I, 16:1-13", followsToday: true },
   "2027-06-09": { id: 58432, ref: "Samuel I, 16:1-13", followsToday: true },
@@ -613,13 +610,13 @@ export const VISIO_SCHEDULE: Record<string, VisioScheduleEntry> = {
   "2027-07-30": { id: 59258, ref: "Ephesians 4:1-16", followsToday: true },
   "2027-07-31": { id: 59258, ref: "Ephesians 4:1-16", followsToday: true },
   "2027-08-01": { id: 59258, ref: "Ephesians 4:1-16", followsToday: true },
-  "2027-08-02": { id: 46764, ref: "Ephesians 5:8-14", followsToday: false },
-  "2027-08-03": { id: 46764, ref: "Ephesians 5:8-14", followsToday: false },
-  "2027-08-04": { id: 46764, ref: "Ephesians 5:8-14", followsToday: false },
-  "2027-08-05": { id: 46764, ref: "Ephesians 5:8-14", followsToday: false },
-  "2027-08-06": { id: 46764, ref: "Ephesians 5:8-14", followsToday: false },
-  "2027-08-07": { id: 46764, ref: "Ephesians 5:8-14", followsToday: false },
-  "2027-08-08": { id: 46764, ref: "Ephesians 5:8-14", followsToday: false },
+  "2027-08-02": { id: 55613, ref: "Kings I, 19:1-18", followsToday: true },
+  "2027-08-03": { id: 55613, ref: "Kings I, 19:1-18", followsToday: true },
+  "2027-08-04": { id: 55613, ref: "Kings I, 19:1-18", followsToday: true },
+  "2027-08-05": { id: 55613, ref: "Kings I, 19:1-18", followsToday: true },
+  "2027-08-06": { id: 55613, ref: "Kings I, 19:1-18", followsToday: true },
+  "2027-08-07": { id: 55613, ref: "Kings I, 19:1-18", followsToday: true },
+  "2027-08-08": { id: 55613, ref: "Kings I, 19:1-18", followsToday: true },
   "2027-08-09": { id: 58581, ref: "John 6:56-69", followsToday: true },
   "2027-08-10": { id: 58581, ref: "John 6:56-69", followsToday: true },
   "2027-08-11": { id: 58581, ref: "John 6:56-69", followsToday: true },
@@ -711,13 +708,13 @@ export const VISIO_SCHEDULE: Record<string, VisioScheduleEntry> = {
   "2027-11-05": { id: 48392, ref: "Mark 12:38-44", followsToday: true },
   "2027-11-06": { id: 48392, ref: "Mark 12:38-44", followsToday: true },
   "2027-11-07": { id: 48392, ref: "Mark 12:38-44", followsToday: true },
-  "2027-11-08": { id: 58433, ref: "Hebrews 10:5-10", followsToday: false },
-  "2027-11-09": { id: 58433, ref: "Hebrews 10:5-10", followsToday: false },
-  "2027-11-10": { id: 58433, ref: "Hebrews 10:5-10", followsToday: false },
-  "2027-11-11": { id: 58433, ref: "Hebrews 10:5-10", followsToday: false },
-  "2027-11-12": { id: 58433, ref: "Hebrews 10:5-10", followsToday: false },
-  "2027-11-13": { id: 58433, ref: "Hebrews 10:5-10", followsToday: false },
-  "2027-11-14": { id: 58433, ref: "Hebrews 10:5-10", followsToday: false },
+  "2027-11-08": { id: 56539, ref: "Daniel 12:1-3", followsToday: true },
+  "2027-11-09": { id: 56539, ref: "Daniel 12:1-3", followsToday: true },
+  "2027-11-10": { id: 56539, ref: "Daniel 12:1-3", followsToday: true },
+  "2027-11-11": { id: 56539, ref: "Daniel 12:1-3", followsToday: true },
+  "2027-11-12": { id: 56539, ref: "Daniel 12:1-3", followsToday: true },
+  "2027-11-13": { id: 56539, ref: "Daniel 12:1-3", followsToday: true },
+  "2027-11-14": { id: 56539, ref: "Daniel 12:1-3", followsToday: true },
   "2027-11-15": { id: 59166, ref: "John 18:1-19:42", followsToday: true },
   "2027-11-16": { id: 59166, ref: "John 18:1-19:42", followsToday: true },
   "2027-11-17": { id: 59166, ref: "John 18:1-19:42", followsToday: true },
@@ -837,13 +834,13 @@ export const VISIO_SCHEDULE: Record<string, VisioScheduleEntry> = {
   "2028-03-10": { id: 48306, ref: "John 5:17-26", followsToday: true },
   "2028-03-11": { id: 48306, ref: "John 5:17-26", followsToday: true },
   "2028-03-12": { id: 48306, ref: "John 5:17-26", followsToday: true },
-  "2028-03-13": { id: 59239, ref: "John 5:1-9", followsToday: false },
-  "2028-03-14": { id: 59239, ref: "John 5:1-9", followsToday: false },
-  "2028-03-15": { id: 59239, ref: "John 5:1-9", followsToday: false },
-  "2028-03-16": { id: 59239, ref: "John 5:1-9", followsToday: false },
-  "2028-03-17": { id: 59239, ref: "John 5:1-9", followsToday: false },
-  "2028-03-18": { id: 59239, ref: "John 5:1-9", followsToday: false },
-  "2028-03-19": { id: 59239, ref: "John 5:1-9", followsToday: false },
+  "2028-03-13": { id: 48306, ref: "John 5:17-26", followsToday: true },
+  "2028-03-14": { id: 48306, ref: "John 5:17-26", followsToday: true },
+  "2028-03-15": { id: 48306, ref: "John 5:17-26", followsToday: true },
+  "2028-03-16": { id: 48306, ref: "John 5:17-26", followsToday: true },
+  "2028-03-17": { id: 48306, ref: "John 5:17-26", followsToday: true },
+  "2028-03-18": { id: 48306, ref: "John 5:17-26", followsToday: true },
+  "2028-03-19": { id: 48306, ref: "John 5:17-26", followsToday: true },
   "2028-03-20": { id: 55893, ref: "John 6:1-21", followsToday: false },
   "2028-03-21": { id: 55893, ref: "John 6:1-21", followsToday: false },
   "2028-03-22": { id: 55893, ref: "John 6:1-21", followsToday: false },
