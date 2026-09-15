@@ -168,9 +168,10 @@ export default function ThisSundayPage() {
     ...(isAdmin ? [{
       key: "commentary", emoji: "📰",
       // Owner (2026-09-15): "have McGowan say "Yale Divinity Commentary" with
-      // his name in the second line" (it was "Scripture Commentary").
+      // his name in the second line" (it was "Scripture Commentary"), then
+      // "have it say a commentary by Dr. ....".
       title: t("this_sunday.commentary", { defaultValue: "Yale Divinity Commentary" }),
-      blurb: t("this_sunday.commentary_sub", { defaultValue: "Dr. Andrew McGowan" }),
+      blurb: t("this_sunday.commentary_sub", { defaultValue: "A commentary by Dr. Andrew McGowan" }),
       cta: t("rhythm.read", { defaultValue: "Read" }),
       open: () => {
         const post = andrewsQ.data;
