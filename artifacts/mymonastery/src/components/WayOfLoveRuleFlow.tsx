@@ -15,7 +15,7 @@
  */
 
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
-import { useState, useEffect, useRef, type ReactNode, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, type ReactNode, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -686,6 +686,19 @@ const DEFAULT_REMINDER_TIME = "07:00";
  * button floated a padding's worth above the bottom edge.
  */
 const SHELL_PAD_BOTTOM = 40;
+/**
+ * The gap between the top chrome (Back, the Layout ✕) and a slide's first
+ * line — the Back row's bottom margin. ALSO how far the page scrolls before
+ * the top band is fully on: across this gap nothing is under the pills yet.
+ * One constant for the same reason as SHELL_PAD_BOTTOM.
+ */
+const TOP_CHROME_GAP = 10;
+/**
+ * How far the top band reaches below the pills: 5px more solid ground, then
+ * ctaButton's fade mirrored — its stops over its ~151px box land at 51px
+ * (solid), 30px (0.9) and 14px (0.45) from the clear edge.
+ */
+const TOP_BAND_TAIL = 56;
 
 // Is a home module currently surfaced? Mirrors the dashboard's gate: only a
 // current-version layout counts, and the key must be in `order` and not
@@ -3104,6 +3117,57 @@ export default function WayOfLoveRuleFlow({
     </p>
   ) : null);
 
+  /**
+   * The ground behind the top chrome: Back, the Layout ✕ and the status bar.
+   *
+   * Owner, 2026-09-15 (Daily Reflection step, 17 Pro simulator): scrolled up,
+   * the rows ran straight under the clock and the Back pill with nothing
+   * behind either — the CAC row's checkmark, emoji and title sat on top of
+   * both. Continue has always had its fade (ctaButton); the top had nothing.
+   *
+   * So the top gets Continue's fade, mirrored: solid page ground behind the
+   * status bar and the pills, then the same ramp to clear (TOP_BAND_TAIL). A
+   * row leaves under the top exactly the way it leaves under Continue.
+   *
+   * Only once something is under it. At rest nothing is — the progress bar
+   * starts TOP_CHROME_GAP below the pills — and the leaf photo runs to the top
+   * of the screen, as it does under Layout's own header. So the band's opacity
+   * follows the page scroll across that gap: 0 at rest, 1 by the time the
+   * progress bar reaches the pills. It is written straight onto the element,
+   * never through state, so scrolling doesn't re-render the wizard; and it has
+   * no transition, so it tracks the finger rather than animating.
+   *
+   * While it shows it takes the taps. A row hidden under it must not toggle
+   * when a thumb misses Back (a weekly publication subscribes on tap), and
+   * Continue's fade blocks taps the same way. At rest it lets them through, so
+   * it can never be an invisible dead band.
+   *
+   * Built like the page backdrop — an absolute layer at z -1 in an isolated
+   * host, never position:fixed (reference_page_backdrop_pattern).
+   */
+  const topBandEl = useRef<HTMLDivElement | null>(null);
+  const topBandShown = useRef(-1);
+  const syncTopBand = useCallback(() => {
+    const el = topBandEl.current;
+    if (!el) return;
+    const shown = Math.min(1, Math.max(0, window.scrollY) / TOP_CHROME_GAP);
+    if (shown === topBandShown.current) return;
+    topBandShown.current = shown;
+    el.style.opacity = String(shown);
+    el.style.pointerEvents = shown > 0 ? "auto" : "none";
+  }, []);
+  // A fresh element starts from its own style, so sync it as it mounts rather
+  // than waiting for the next scroll.
+  const topBandRef = useCallback((el: HTMLDivElement | null) => {
+    topBandEl.current = el;
+    topBandShown.current = -1;
+    syncTopBand();
+  }, [syncTopBand]);
+  useEffect(() => {
+    window.addEventListener("scroll", syncTopBand, { passive: true });
+    return () => window.removeEventListener("scroll", syncTopBand);
+  }, [syncTopBand]);
+
   const shell = (children: ReactNode) => {
     // The top bar carries Back and the Layout X only. The primary action sits
     // at the BOTTOM (see ctaButton), and the two whole-routine actions are
@@ -3127,11 +3191,28 @@ export default function WayOfLoveRuleFlow({
         <div
           style={{
             position: "sticky", top: 0, zIndex: 15, pointerEvents: "none",
+            // The isolated host the top band's z -1 layer paints in.
+            isolation: "isolate",
             marginTop: "calc(-68px - var(--top-chrome, 0px))",
             paddingTop: "var(--top-chrome, 0px)",
-            marginBottom: 10,
+            marginBottom: TOP_CHROME_GAP,
           }}
         >
+          {/* The top band (see topBandRef): from the viewport top, behind the
+              status bar, to TOP_BAND_TAIL past the pills. Full bleed — this
+              row sits inside the shell's gutters (and main's max width on
+              desktop), so the band is centred on it at 120vw. Not 100vw:
+              Android web zooms body to 0.9, which paints vw at 90% and would
+              leave both edges of the screen uncovered. */}
+          <div
+            ref={topBandRef}
+            aria-hidden
+            style={{
+              position: "absolute", top: 0, bottom: -TOP_BAND_TAIL,
+              left: "calc(50% - 60vw)", right: "calc(50% - 60vw)", zIndex: -1,
+              background: "linear-gradient(to bottom, rgba(9,26,16,1) 0, rgba(9,26,16,1) calc(100% - 51px), rgba(9,26,16,0.9) calc(100% - 30px), rgba(9,26,16,0.45) calc(100% - 14px), rgba(9,26,16,0) 100%)",
+            }}
+          />
           <div style={{ display: "flex", alignItems: "center", gap: 10, height: 36, paddingRight: 46 }}>
             <button
               type="button"
