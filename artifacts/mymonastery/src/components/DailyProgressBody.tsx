@@ -345,7 +345,7 @@ function StreakCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 export function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, alwaysShowProgress, hero, eyebrow, onClick, ctaOnly, onOpen, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate, onCheckClick, secondaryCta, onSecondary,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, alwaysShowProgress, hero, eyebrow, onClick, ctaOnly, onOpen, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate, onCheckClick, glintTitle, secondaryCta, onSecondary,
 }: {
   /**
    * OPTIONAL. A card with neither `href` nor `onClick` is inert by design —
@@ -416,6 +416,10 @@ export function PracticeCard({
    *  reaching the card's own href/onClick and calls this instead, so tapping
    *  the check anywhere else on the card still opens the practice as normal. */
   onCheckClick?: () => void;
+  /** One glint across the title, half a second after the card lands — only the
+   *  Dean's Commentary card asks for it (owner, 2026-09-14: "do a glint on the
+   *  deans comentary title when it loads"). index.css .title-glint. */
+  glintTitle?: boolean;
 }) {
   const waiting = !!later && !done;
   // Hold the pre-completion pill for a beat so the swap is something the user
@@ -838,7 +842,14 @@ export function PracticeCard({
             ) : null}
             <div className="flex-1 min-w-0 overflow-hidden">
               <p className="text-[14.5px] font-semibold leading-[18px] truncate" style={{ color: WARM, fontFamily: FONT }}>
-                {title}
+                {/* blurDelay is the card's cascade delay + 0.25s and the fade
+                    takes 0.55s, so +0.8s is half a second after it lands. */}
+                <span
+                  className={glintTitle ? "title-glint" : undefined}
+                  style={glintTitle ? { animationDelay: `${(blurDelay ?? 0.25) + 0.8}s` } : undefined}
+                >
+                  {title}
+                </span>
               </p>
               {useCycle
                 ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-[17px] truncate" style={{ color: SAGE }} />
@@ -2741,6 +2752,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       pulseOnLoad={splashCleared}
       blurDelay={blurDelay}
       celebrate={celebrating && c.key === celebrateKey}
+      // The class goes on when the cascade starts (splashCleared), so its
+      // delay counts from the same moment as the card's own fade. Not on a
+      // return from a practice — the cards are already there then.
+      glintTitle={c.key === "reflect-vts" && splashCleared && !celebrateKey}
       onCheckClick={
         "onUnlog" in c && c.onUnlog
           ? () => setUnlogTarget({ title: c.title, emoji: c.emoji, onUnlog: c.onUnlog as () => void })
