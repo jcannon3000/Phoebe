@@ -655,17 +655,31 @@ const PERSISTED_QUERY_KEYS = [
    * THE THREE THE HOME ACTUALLY WAITS ON.
    *
    * useRhythmState's first-paint gate holds the skeleton until taizeLatest,
-   * andrewsLatest and weeklyLatest have resolved — and none of them was
-   * persisted, so for anyone with Taizé, Andrew's or a weekly in their rhythm
-   * the "instant home" waited on a live round-trip on every cold open. The
-   * offline escape in that gate doesn't fire on flaky-but-connected cellular,
-   * where a GET has twelve seconds to answer. This is the whole point of the
-   * persister, and these were the keys outside it.
+   * andrewsLatest and weeklyLatest have resolved, so any of them outside the
+   * persister makes the "instant home" wait on a live round-trip on every cold
+   * open. The offline escape in that gate doesn't fire on flaky-but-connected
+   * cellular, where a GET has twelve seconds to answer. This is the whole
+   * point of the persister.
+   *
+   * The Publications (lib/weeklies) need BOTH their keys. The gate waits on
+   * /api/weeklies/latest only when /api/weeklies says something is followed,
+   * so with neither persisted a cold open painted without the card, the list
+   * came back, and the gate shut on the latest until it answered too. With the
+   * latest alone the card still arrives after the paint. The one prefix below
+   * covers both, and the reader's per-Publication "Previous" lists with them;
+   * all are titles and links, a few hundred bytes per Publication. The list
+   * carries THIS account's `subscribed` flags, so, like /api/auth/me, it is
+   * only safe because logout drops the whole blob — useLogout, and the
+   * wipe-on-boot check below.
+   *
+   * (/api/me/group-reflection/latest sat here before, but it isn't in the gate.
+   * weeklyLatest had been mistaken for the group's weekly reflection.)
    */
   "/api/taize/latest",
   "/api/andrews/latest",
-  "/api/me/group-reflection/latest",
+  "/api/weeklies",
   // Read by the home's own cards on the same paint.
+  "/api/me/group-reflection/latest",
   "/api/me/contemplation-sides-today",
   "/api/me/novena",
   "/api/vts/today-meta",
