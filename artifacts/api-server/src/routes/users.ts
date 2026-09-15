@@ -654,7 +654,7 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
           -- only the client knows which. Reporting it separately lets the
           -- client credit the right thing; folding it into 'evening' here
           -- would tick Evening Prayer for every add-on user.
-          WHEN surface = 'compline' THEN 'compline'
+          WHEN surface IN ('compline', 'compline-office-podcast') THEN 'compline'
         END AS side,
         -- The RAW surface too, alongside the folded side. Reported: a
         -- secondary practice (a devotion alongside a Morning Prayer anchor)
@@ -677,7 +677,7 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
           OR (surface = 'national-cathedral' AND duration_seconds >= 180)
           -- Listening to the read-aloud office podcast counts once the listener
           -- crosses 60% — the client posts that row with completed = TRUE.
-          OR (surface IN ('morning-office-podcast', 'evening-office-podcast') AND completed = TRUE)
+          OR (surface IN ('morning-office-podcast', 'evening-office-podcast', 'compline-office-podcast') AND completed = TRUE)
         )
         AND ended_at >= NOW() - INTERVAL '8 days'
     `);
@@ -797,7 +797,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
             WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
             WHEN surface IN ('evening-prayer', 'early-evening-devotion', 'evening-office-podcast') THEN 'evening'
             -- Its own side, never folded into 'evening' — see office-history-week.
-            WHEN surface = 'compline' THEN 'compline'
+            WHEN surface IN ('compline', 'compline-office-podcast') THEN 'compline'
           END AS side,
           surface
         FROM prayer_sessions
@@ -808,7 +808,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
             -- office-history-week and yesterday-order already count the audio
             -- offices; practice-week did not, so the card read "Prayed today"
             -- beside an empty dot in the weekly grid.
-            OR (surface IN ('morning-office-podcast', 'evening-office-podcast') AND completed = TRUE)
+            OR (surface IN ('morning-office-podcast', 'evening-office-podcast', 'compline-office-podcast') AND completed = TRUE)
           )
           AND ended_at >= NOW() - INTERVAL '8 days'
       `),
@@ -1106,7 +1106,7 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
           CASE
             WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
             WHEN surface IN ('evening-prayer', 'early-evening-devotion', 'evening-office-podcast') THEN 'evening'
-            WHEN surface = 'compline' THEN 'compline'
+            WHEN surface IN ('compline', 'compline-office-podcast') THEN 'compline'
           END AS side,
           surface,
           AVG(EXTRACT(EPOCH FROM (((ended_at) AT TIME ZONE ${tz})::time)))::float8 AS at
@@ -1115,7 +1115,7 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
           AND (
             (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion', 'compline') AND completed = TRUE)
             OR (surface = 'national-cathedral' AND duration_seconds >= 180)
-            OR (surface IN ('morning-office-podcast', 'evening-office-podcast') AND completed = TRUE)
+            OR (surface IN ('morning-office-podcast', 'evening-office-podcast', 'compline-office-podcast') AND completed = TRUE)
           )
           AND (ended_at AT TIME ZONE ${tz})::date BETWEEN ${windowStartYmd}::date AND ${yesterdayYmd}::date
         GROUP BY 1, surface

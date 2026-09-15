@@ -290,6 +290,7 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
     // streak credit while the local office-completed flag still flips.
     "morning-office-podcast",
     "evening-office-podcast",
+    "compline-office-podcast",
   ]);
   if (!FLOOR_BYPASS_SURFACES.has(surface) && durationSeconds < MIN_SESSION_SECONDS) {
     // Drop silently — too short to count as a real prayer session.

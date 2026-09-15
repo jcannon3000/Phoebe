@@ -165,7 +165,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
 // player. They have their own home there, so we keep them OUT of the
 // Discover browse + search — the SHOWS entries stay (so
 // /podcast/:show/today still serves them), they're just not listed.
-const HIDDEN_FROM_DISCOVER = new Set<string>(["morning-office", "evening-office", "ssje-sermons"]);
+const HIDDEN_FROM_DISCOVER = new Set<string>(["morning-office", "evening-office", "compline", "ssje-sermons"]);
 
 // Individual episodes hidden by title (matched apostrophe- and
 // whitespace-insensitively). Filtered out when the feed is parsed, so
@@ -237,6 +237,18 @@ export const SHOWS: Record<string, Show> = {
     artist: "Forward Movement",
     publisher: "forward-movement",
     feedUrl: "https://feeds.megaphone.fm/FDMV2784874884",
+    artwork: null,
+  },
+  // Compline, read by Forward Movement (Fr. Wiley Ammons, the voice of "An
+  // Evening at Prayer"). Owner, 2026-09-15: "I want the forward version." One
+  // episode a night, titled by weekday and season ("Compline, Mondays in
+  // Ordinary Time"); /today picks tonight's, not simply the newest.
+  "compline": {
+    slug: "compline",
+    title: "Compline",
+    artist: "Forward Movement",
+    publisher: "forward-movement",
+    feedUrl: "https://feeds.megaphone.fm/FDMV3439145045",
     artwork: null,
   },
   // ── Center for Action and Contemplation ─────────────────────────────
@@ -760,6 +772,38 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
   const show = SHOWS[slug];
   if (!show) { res.status(404).json({ error: "Unknown show" }); return; }
   res.setHeader("Cache-Control", "public, max-age=600");
+
+  // Compline: TONIGHT'S episode, not the newest. It posts about 5:30 PM
+  // Eastern, so at midday the newest item is still last night's. Match the
+  // episode published on the listener's own date (?date=YYYY-MM-DD); before it
+  // posts, the same weekday from last week in the same season (the weekly
+  // order repeats), then any episode for that weekday, then the newest.
+  if (slug === "compline") {
+    const feed = await loadFeed(show, 14);
+    const eps = feed.episodes;
+    const rawDate = String(req.query.date ?? "");
+    const nyYmd = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(d);
+    const ymd = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : nyYmd(new Date());
+    let ep = eps.find((e) => !!e.publishedAt && nyYmd(new Date(e.publishedAt)) === ymd) ?? null;
+    if (!ep) {
+      const days = `${new Date(`${ymd}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })}s`;
+      const season = /(?:Sundays|Mondays|Tuesdays|Wednesdays|Thursdays|Fridays|Saturdays)\s+(.+)$/i.exec(eps[0]?.title ?? "")?.[1] ?? null;
+      const titled = (e: { title?: string | null }) => (e.title ?? "").toLowerCase();
+      ep = (season ? eps.find((e) => titled(e).includes(`${days} ${season}`.toLowerCase())) : undefined)
+        ?? eps.find((e) => titled(e).includes(days.toLowerCase()))
+        ?? eps[0]
+        ?? null;
+    }
+    res.json({
+      feedTitle: feed.feedTitle ?? show.title,
+      title: ep?.title ?? null,
+      audioUrl: ep?.audioUrl ?? null,
+      durationSeconds: ep?.durationSeconds ?? null,
+      publishedAt: ep?.publishedAt ?? null,
+      imageUrl: feed.feedImage ?? ep?.imageUrl ?? null,
+    });
+    return;
+  }
 
   const source = String(req.query.source ?? "forward-movement");
   const isOffice = slug === "morning-office" || slug === "evening-office";

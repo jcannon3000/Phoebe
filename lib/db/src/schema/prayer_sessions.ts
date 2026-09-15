@@ -82,6 +82,9 @@ export const prayerSurfaces = [
   // Midday Prayer (bcp-daily-office mode "noonday"). Its own office: it
   // credits neither side, so the office-history gates do not read it.
   "noonday",
+  // Compline listened to (Forward Movement's recording, ≥60% heard) — counts
+  // as Compline, like the morning/evening office podcasts count as theirs.
+  "compline-office-podcast",
 ] as const;
 export type PrayerSurface = (typeof prayerSurfaces)[number];
 

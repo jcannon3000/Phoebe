@@ -950,7 +950,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // (begin-prayer's flow=daily hand-off) and the watch-medium pages (the
   // office + devotion viewers hand off to these) — audio/video INSIDE the
   // offices, which the public spec keeps.
-  "/podcast/morning-office", "/podcast/evening-office",
+  "/podcast/morning-office", "/podcast/evening-office", "/podcast/compline",
   "/devotion/watch", "/ncmp/watch",
   // Reference content the guest Resources menu links to.
   "/building-faith",
@@ -1175,6 +1175,7 @@ function Router() {
       <Route path="/devotion/watch" component={DevotionWatchPage} />
       <Route path="/podcast/morning-office" component={OfficePodcastPage} />
       <Route path="/podcast/evening-office" component={OfficePodcastPage} />
+      <Route path="/podcast/compline" component={OfficePodcastPage} />
       {/* Beta: the follow-along office (glowing liturgy-part title + podcast bar) */}
       <Route path="/office/:side/pray-along" component={OfficePrayAlongPage} />
       <Route path="/menu" component={MenuPage} />

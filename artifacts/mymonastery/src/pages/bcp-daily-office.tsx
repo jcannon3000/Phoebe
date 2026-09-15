@@ -810,6 +810,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (isReadingDeck) return readingCompletionKey;
     // Midday Prayer has no card on the home to animate.
     if (isNoonday) return "";
+    // Compline has its own card — finishing it animated Evening Prayer's.
+    if (resolvedMode === "compline") return "compline";
     const extra = getSideExtra(officeSide);
     if (!extra) return officeSide;
     return extraOfficeMode(officeSide, extra) === resolvedMode ? `extra-${officeSide}` : officeSide;
@@ -1469,7 +1471,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // the Psalms in the customizer opens as "Pray psalms" here, and holds). For
   // devotion/office the ROUTE stays the intent (see note above).
   const [wayToPray, setWayToPray] = useState<WayToPray>(() =>
-    getSideLevel(officeSide) === "psalms" ? "psalms" : (isDevotion ? "devotion" : "office"),
+    // Compline and Midday Prayer are offices of their own with no other way to
+    // pray them. Seeding them from the SIDE's level sent a reader whose evening
+    // (or morning) is the Psalms off to /psalms when they tapped Next on the
+    // intro — Next runs launchWay there.
+    resolvedMode === "compline" || resolvedMode === "noonday" ? "office"
+      : getSideLevel(officeSide) === "psalms" ? "psalms" : (isDevotion ? "devotion" : "office"),
   );
   // How they want to pray it — the second row of the welcome chooser. Depends
   // on the way above: Community Intercessions is on-screen only. "watch" is a
@@ -2964,7 +2971,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // The same three, guarded at the point of departure too: a state seeded
     // while online and launched after the signal dropped would otherwise still
     // leave for a website, a podcast or a livestream (audit, 2026-09-06).
-    if (method === "listen" && isOnline()) { setViewerLocation(`/podcast/${officeSide}-office`); return; }
+    // Compline listens to Forward Movement's own Compline, not the evening office.
+    if (method === "listen" && isOnline()) { setViewerLocation(resolvedMode === "compline" ? "/podcast/compline" : `/podcast/${officeSide}-office`); return; }
     if (method === "watch" && isOnline()) { goToWatch(); return; }
     if (method === "venite" && isOnline()) { goToVenite(way === "devotion" ? "devotion" : "office"); return; }
     const onThisSurface = (way === "devotion" && isDevotion) || (way === "office" && !isDevotion);
@@ -3106,8 +3114,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       >
         {canChoose && (
           <>
-            {/* Row 1 — the way to pray. */}
-            {dropdown("way-to-pray", wayToPray, wayLabel, "Practice", (v) => {
+            {/* Row 1 — the way to pray. Compline has only the one way, so it
+                gets the How row alone (On screen · Listen · Physical BCP). */}
+            {resolvedMode !== "compline" && dropdown("way-to-pray", wayToPray, wayLabel, "Practice", (v) => {
               const w = v as WayToPray;
               setWayToPray(w);
               // Intercessions + Psalms are on-screen only — snap the method back.
@@ -5143,6 +5152,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           {/* Office welcome slide — same chooser, defaulting to the full Office
               (the reader can drop to a Devotion or the Intercessions feed). */}
           {(resolvedMode === "morning" || resolvedMode === "evening") && slideIdx === 0 && !onComplete && renderWayChooser()}
+          {/* Compline's welcome now carries How (with Listen — Forward
+              Movement's recording, owner 2026-09-15) and Begin, like the offices. */}
+          {resolvedMode === "compline" && slideIdx === 0 && !onComplete && renderWayChooser()}
           {/* A different practice, just for today (owner) — the one-day anchor
               swap, on the welcome slide alongside the way-chooser. The chooser
               above picks HOW to pray THIS office; this picks a different
@@ -6715,7 +6727,9 @@ export default function BcpDailyOfficePage() {
           if (opt.navigateTo) { setLocation(opt.navigateTo); return; }
           // Devotions + Compline always open as the slide deck (the
           // full offices' book guide is reached via OfficeMethodCard).
-          if (opt.mode) { setShowBook(false); setStartSlide(1); setShowMode(opt.mode); }
+          // Compline opens on its welcome slide: that is where How (and Listen)
+          // lives now. The devotions' way was already chosen on this page.
+          if (opt.mode) { setShowBook(false); setStartSlide(opt.mode === "compline" ? 0 : 1); setShowMode(opt.mode); }
         }}
         className="w-full text-left rounded-2xl overflow-hidden flex transition-all hover:shadow-md active:scale-[0.99]"
         style={{

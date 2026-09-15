@@ -63,7 +63,7 @@ export type PlayingEpisode = {
   sessionSurface?: string;
   // When set, a session >= 180s stamps the local office-completed flag
   // (phoebe:office-completed:<mode>:<date>) so the dashboard lights up.
-  creditMode?: "morning" | "evening";
+  creditMode?: "morning" | "evening" | "compline";
   // Skip the listening-history write — the daily office changes every day
   // and is tracked via prayer-sessions, not the podcast history.
   skipHistory?: boolean;
@@ -337,8 +337,11 @@ function fmtClock(t: number): string {
 // Audio library plays the same feed under its own slug "morning-office"/
 // "evening-office". Either maps to the office side — so listening to ≥60% of the
 // office credits the day no matter which screen opened it.
-function officeSideFromSlug(slug: string | null | undefined): "morning" | "evening" | null {
+function officeSideFromSlug(slug: string | null | undefined): "morning" | "evening" | "compline" | null {
   if (!slug) return null;
+  // Compline is its own office (Forward Movement's recording), credited as
+  // Compline — never folded into the evening.
+  if (slug === "office-compline" || slug === "compline") return "compline";
   if (slug === "office-morning" || slug === "morning-office") return "morning";
   if (slug === "office-evening" || slug === "evening-office") return "evening";
   return null;
@@ -480,7 +483,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // Surface + office-credit mode for the CURRENTLY accumulating session.
   // Set when an episode starts; read by commitSession (which can't close
   // over `current`). Defaults to the podcast surface.
-  const sessionMetaRef = useRef<{ surface: string; creditMode?: "morning" | "evening" }>({ surface: "podcast" });
+  const sessionMetaRef = useRef<{ surface: string; creditMode?: "morning" | "evening" | "compline" }>({ surface: "podcast" });
   // The episodeId of the office episode we've already credited this play, so the
   // ≥60% office credit fires exactly once per listen.
   const officeCreditedRef = useRef<string | null>(null);
@@ -547,7 +550,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // office-completed flag (instant dashboard flip) and POSTs a completed=TRUE
   // office-podcast prayer-session that the office-history rollup counts (so it
   // survives a refetch / other device + feeds the streak). Fires once per play.
-  const creditOfficePodcast = useCallback((side: "morning" | "evening", playedSeconds: number, startedAt: Date | null) => {
+  const creditOfficePodcast = useCallback((side: "morning" | "evening" | "compline", playedSeconds: number, startedAt: Date | null) => {
     try { localStorage.setItem(`phoebe:office-completed:${side}:${officeYmdLocal()}`, "1"); } catch { /* non-fatal */ }
     if (user) {
       const ended = new Date();
@@ -1051,7 +1054,8 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     // No explicit handoff: if a daily office just finished (and we're still in
     // the full-screen player), gently offer Forward Day by Day next — an
     // optional "up next" banner, never an auto-play.
-    if (expanded && /office-podcast$/.test(current?.sessionSurface ?? "")) {
+    // Not after Compline: the day is done, and Day by Day is a morning reading.
+    if (expanded && /^(morning|evening)-office-podcast$/.test(current?.sessionSurface ?? "")) {
       setFddOffer(true);
     }
   };
@@ -1250,7 +1254,8 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // Reverb engages only for the Forward Movement office. Build the graph + ramp
   // the wet signal in; for everything else (other podcasts, CoE office) the wet
   // gain rides to 0 so playback is the untouched dry signal.
-  const reverbOn = OFFICE_REVERB_ENABLED && officeSide !== null && officeAudioSource === "forward-movement";
+  // Compline is always Forward Movement's recording, whatever the office source.
+  const reverbOn = OFFICE_REVERB_ENABLED && officeSide !== null && (officeSide === "compline" || officeAudioSource === "forward-movement");
   useEffect(() => {
     if (reverbOn) ensureReverbGraph();
     const ctx = audioCtxRef.current;
@@ -1298,7 +1303,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       return WIDE_PHOTOS[hashStr(seed) % WIDE_PHOTOS.length]!;
     }
     if (officeSide) {
-      const dedicated = dedicatedOfficeBg(officeSide);
+      const dedicated = dedicatedOfficeBg(officeSide === "compline" ? "evening" : officeSide);
       if (dedicated) return dedicated;
     }
     if (OFFICE_BG_PHOTOS.length === 0) return null;
@@ -1350,7 +1355,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // Forward Movement is aligned; Church of England gracefully falls back to the
   // episode title.
   // Reuses the unified `officeSide` derived above (covers both launch paths).
-  const alignSide: "morning" | "evening" = officeSide ?? "morning";
+  const alignSide: "morning" | "evening" = officeSide === "evening" || officeSide === "compline" ? "evening" : "morning";
   const { data: alignData } = useQuery<{ status: string; sections: AlignSection[] }>({
     queryKey: [`/api/podcast/office/${alignSide}/timestamps`],
     queryFn: () => apiRequest("GET", `/api/podcast/office/${alignSide}/timestamps`),
@@ -1659,8 +1664,9 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                 </button>
               )}
 
-              {officeSide !== null ? (
-                /* Forward Movement ↔ Church of England ↔ Gregory — offices only */
+              {officeSide === "compline" ? null : officeSide !== null ? (
+                /* Forward Movement ↔ Church of England ↔ Gregory — offices only.
+                   Compline has one recording, so no picker. */
                 <div
                   role="tablist"
                   aria-label={t("podcasts.office_tradition_aria", { defaultValue: "Prayer tradition" })}

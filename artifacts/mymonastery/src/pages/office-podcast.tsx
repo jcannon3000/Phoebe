@@ -31,12 +31,12 @@ import { useTranslation } from "react-i18next";
 //   immediately, and the server independently treats a >=180s row as
 //   that office (see users.ts), so credit survives a refetch / device.
 
-type ShowKey = "morning-office" | "evening-office";
+type ShowKey = "morning-office" | "evening-office" | "compline";
 
 const SHOWS: Record<ShowKey, {
   apiSlug: string;
   surface: string;
-  side: "morning" | "evening";
+  side: "morning" | "evening" | "compline";
   headerLabel: string;
   fallbackTitle: string;
 }> = {
@@ -53,6 +53,16 @@ const SHOWS: Record<ShowKey, {
     side: "evening",
     headerLabel: "🎧 Evening Prayer",
     fallbackTitle: "An Evening at Prayer",
+  },
+  // Compline — Forward Movement's nightly recording (owner: "I want the forward
+  // version"). One source, so no tradition picker; the server picks tonight's
+  // episode by the listener's own date.
+  "compline": {
+    apiSlug: "compline",
+    surface: "compline-office-podcast",
+    side: "compline",
+    headerLabel: "🎧 Compline",
+    fallbackTitle: "Compline",
   },
 };
 
@@ -106,18 +116,25 @@ type Episode = {
 
 export default function OfficePodcastPage() {
   const [location, setLocation] = useLocation();
-  const showKey: ShowKey = location.includes("evening") ? "evening-office" : "morning-office";
+  const showKey: ShowKey = location.includes("compline") ? "compline" : location.includes("evening") ? "evening-office" : "morning-office";
   const show = SHOWS[showKey];
 
   const { officeAudioSource } = useOfficePrefs();
   const sourceMeta = SOURCE_META[officeAudioSource];
   const { t } = useTranslation();
-  const blurb = t(`podcasts.office_blurb_${SOURCE_BLURB_KEY[officeAudioSource]}_${show.side}`, { defaultValue: sourceMeta.blurb(show.side) });
+  const blurb = show.side === "compline"
+    ? t("podcasts.office_blurb_compline", { defaultValue: "Compline from the Book of Common Prayer, read aloud by Forward Movement. A new recording every night." })
+    : t(`podcasts.office_blurb_${SOURCE_BLURB_KEY[officeAudioSource]}_${show.side}`, { defaultValue: sourceMeta.blurb(show.side) });
+  // Compline has one source, and tonight's episode depends on the listener's
+  // own date; the offices follow the chosen tradition.
+  const todayQuery = show.side === "compline"
+    ? `date=${new Date().toLocaleDateString("en-CA")}`
+    : `source=${encodeURIComponent(officeAudioSource)}`;
 
   const { data: episode, isLoading } = useQuery<Episode>({
-    queryKey: [`/api/podcast/${show.apiSlug}/today`, officeAudioSource],
+    queryKey: [`/api/podcast/${show.apiSlug}/today`, todayQuery],
     queryFn: () =>
-      apiRequest("GET", `/api/podcast/${show.apiSlug}/today?source=${encodeURIComponent(officeAudioSource)}`),
+      apiRequest("GET", `/api/podcast/${show.apiSlug}/today?${todayQuery}`),
     staleTime: 30 * 60_000,
   });
 

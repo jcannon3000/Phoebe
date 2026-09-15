@@ -1196,6 +1196,7 @@ export const en = {
     office_blurb_coe_evening: "Common Worship Evening Prayer from the Church of England, read aloud. A new recording every day.",
     office_blurb_gregory_morning: "Morning Prayer from the Book of Common Prayer, sung in plainchant. A new recording every day.",
     office_blurb_gregory_evening: "Evening Prayer from the Book of Common Prayer, sung in plainchant. A new recording every day.",
+    office_blurb_compline: "Compline from the Book of Common Prayer, read aloud by Forward Movement. A new recording every night.",
   },
   // Beta Messages (pages/messages*.tsx).
   messages: {

@@ -167,7 +167,7 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
           FROM prayer_sessions ps
           WHERE ps.ended_at >= $5
             AND (
-              (ps.surface IN ('morning-office-podcast', 'evening-office-podcast') AND ps.completed = TRUE)
+              (ps.surface IN ('morning-office-podcast', 'evening-office-podcast', 'compline-office-podcast') AND ps.completed = TRUE)
               OR (ps.surface = 'national-cathedral' AND ps.duration_seconds >= 180)
             )
         ) c
@@ -242,6 +242,7 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
           CASE
             WHEN ps.surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
             WHEN ps.surface IN ('evening-prayer', 'early-evening-devotion', 'evening-office-podcast') THEN 'evening'
+            WHEN ps.surface = 'compline-office-podcast' THEN 'compline'
             ELSE ps.surface
           END AS side
         FROM prayer_sessions ps
@@ -263,7 +264,7 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
                 AND COALESCE(ps.source, '') NOT LIKE 'attest:%'
               )
             )
-            OR (ps.surface IN ('morning-office-podcast', 'evening-office-podcast') AND ps.completed = TRUE)
+            OR (ps.surface IN ('morning-office-podcast', 'evening-office-podcast', 'compline-office-podcast') AND ps.completed = TRUE)
             OR (ps.surface = 'national-cathedral' AND ps.duration_seconds >= 180)
           )
       ),
