@@ -11,6 +11,7 @@
 import { Link, useParams } from "wouter";
 import { ArrowLeft, CheckCircle2, Circle, ListMusic, Pause, Play } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { FrostLayers, frostBox } from "@/components/FrostRing";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
 import { useCourseProgress } from "@/lib/courseProgress";
 import { useShowCourses, showSlugFromCourseId, formatDuration, type CacEpisode } from "@/lib/cacCourses";
@@ -161,7 +162,8 @@ export default function CacCoursePage() {
 
               <div className="h-px" style={{ background: CAC.divider }} />
 
-              <div className="mt-5 space-y-2">
+              {/* Exact rows: FrostRing borders, whole-pixel lines, one layer for the list. */}
+              <div className="mt-5 space-y-2" style={{ willChange: "transform" }}>
                 {episodes.map((ep, i) => {
                   const done = isComplete(ep.id);
                   const playing = player.isCurrent(course.showSlug, ep.id) && player.isPlaying;
@@ -170,8 +172,9 @@ export default function CacCoursePage() {
                     <div
                       key={ep.id}
                       className="flex items-center gap-3 rounded-2xl px-3 py-3"
-                      style={{ background: isUpNext ? CAC.cardHi : CAC.card, border: `1px solid ${isUpNext ? CAC.gold : CAC.border}`, ...FROST }}
+                      style={frostBox(isUpNext ? CAC.cardHi : CAC.card)}
                     >
+                      <FrostLayers border={isUpNext ? CAC.gold : CAC.border} />
                       <button
                         onClick={() => playEpisode(ep)}
                         disabled={!ep.audioUrl}
@@ -183,7 +186,7 @@ export default function CacCoursePage() {
                       </button>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex h-5 items-center gap-1.5">
                           <span className="shrink-0 text-[11px]" style={{ color: CAC.inkMuted }}>{i + 1}.</span>
                           <p className="truncate text-sm font-semibold" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
                             {ep.title ?? "Untitled episode"}
@@ -195,7 +198,7 @@ export default function CacCoursePage() {
                           )}
                         </div>
                         {ep.durationSeconds ? (
-                          <p className="mt-0.5 text-[11px]" style={{ color: CAC.inkMuted }}>
+                          <p className="mt-0.5 text-[11px] leading-4" style={{ color: CAC.inkMuted }}>
                             {formatDuration(ep.durationSeconds)}
                           </p>
                         ) : null}

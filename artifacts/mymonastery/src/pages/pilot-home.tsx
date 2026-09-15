@@ -52,8 +52,8 @@ export default function PilotHomePage() {
     <Layout>
       <div className="w-full max-w-md mx-auto px-1 pt-6 pb-16">
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.4 }}
           className="mb-6 px-1"
         >
@@ -101,7 +101,7 @@ function HomeCard({ href, emoji, title, blurb, delay, muted }: {
   href: string; emoji: ReactNode; title: string; blurb: string; delay: number; muted?: boolean;
 }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay }}>
       <Link
         href={href}
         className="block rounded-2xl px-5 py-5 transition-opacity hover:opacity-95 active:scale-[0.99]"

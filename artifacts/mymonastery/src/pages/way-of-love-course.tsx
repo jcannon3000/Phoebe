@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, Circle, ListMusic, Pause, Play } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
+import { FrostLayers, frostBox } from "@/components/FrostRing";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
 import { useCourseProgress } from "@/lib/courseProgress";
@@ -157,8 +158,9 @@ export default function WayOfLoveCoursePage() {
               onClick={playSeries}
               disabled={isLoading || episodes.length === 0}
               className="flex items-center justify-center gap-1.5 rounded-2xl px-4 py-3 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
-              style={{ background: C.greenSoft, color: C.sage, border: `1px solid ${C.border}`, ...FROST }}
+              style={{ ...frostBox(C.greenSoft), color: C.sage }}
             >
+              <FrostLayers border={C.border} />
               <ListMusic size={15} /> Play all
             </button>
           </div>
@@ -199,7 +201,8 @@ export default function WayOfLoveCoursePage() {
                     </span>
                   </div>
 
-                  <div className="space-y-2">
+                  {/* Exact rows: FrostRing borders, whole-pixel lines, one layer for the list. */}
+                  <div className="space-y-2" style={{ willChange: "transform" }}>
                     {unit.lessons.map((lesson) => {
                       const ep = epMap[lesson.key];
                       const done = isComplete(lesson.key);
@@ -209,12 +212,9 @@ export default function WayOfLoveCoursePage() {
                         <div
                           key={lesson.key}
                           className="flex items-center gap-3 rounded-2xl px-3 py-3"
-                          style={{
-                            background: isUpNext ? C.cardHi : C.card,
-                            border: `1px solid ${isUpNext ? "rgba(95,191,127,0.4)" : C.border}`,
-                            ...FROST,
-                          }}
+                          style={frostBox(isUpNext ? C.cardHi : C.card)}
                         >
+                          <FrostLayers border={isUpNext ? "rgba(95,191,127,0.4)" : C.border} />
                           {/* Play / pause */}
                           <button
                             onClick={() => playLesson(lesson)}
@@ -228,7 +228,8 @@ export default function WayOfLoveCoursePage() {
 
                           {/* Text */}
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
+                            {/* h-5: an emoji's own font metrics can stand a line a hair past its 20px. */}
+                            <div className="flex h-5 items-center gap-1.5">
                               <span className="text-sm">{lesson.emoji}</span>
                               <p className="truncate text-sm font-semibold" style={{ color: C.text, fontFamily: C.font }}>
                                 {lesson.practice}
@@ -239,11 +240,11 @@ export default function WayOfLoveCoursePage() {
                                 </span>
                               )}
                             </div>
-                            <p className="mt-0.5 truncate text-[12px] leading-snug" style={{ color: C.sage }}>
+                            <p className="mt-0.5 truncate text-[12px] leading-[17px]" style={{ color: C.sage }}>
                               {lesson.blurb}
                             </p>
                             {ep?.durationSeconds ? (
-                              <p className="mt-0.5 text-[11px]" style={{ color: "rgba(143,175,150,0.55)" }}>
+                              <p className="mt-0.5 text-[11px] leading-4" style={{ color: "rgba(143,175,150,0.55)" }}>
                                 {formatDuration(ep.durationSeconds)}
                               </p>
                             ) : null}

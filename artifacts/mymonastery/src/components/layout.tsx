@@ -1357,7 +1357,6 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
     return () => cancelAnimationFrame(id1);
   }, []);
   const { user } = useAuth();
-  const [pageLocation] = useLocation();
   // Water home theme: tint the browser toolbar / status bar blue to match the
   // page (the meta must be a literal hex — CSS var() is ignored there). Restore
   // the app green when the theme is off / on unmount.
@@ -1514,29 +1513,22 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
           px-4 is the ONLY padding (otherwise the customizer cards were inset
           twice and sat narrower than the home cards on iOS). */}
       <main className={`flex-1 flex flex-col pb-12 max-w-7xl mx-auto w-full ${chromeless ? "pt-2" : "pt-2 px-4 sm:px-6 md:px-8"}`}>
-        <motion.div
-          // The page FADES in — it no longer rises (owner, 2026-09-14, of the
-          // cards: "a shimmy at the end of the animation … it makes the cards be
-          // un even", "after they settle some bump a nudge"). The rise (y 28 → 0
-          // over 0.85s) held the whole page on a compositing layer at a
-          // fractional offset, and the frame it ended the layer was dropped and
-          // every card, frost and ring re-rasterised at its true sub-pixel
-          // position, each rounding its own way. Measured frame by frame: on
-          // home, Done cards jumped +7, 0, +2, 0, −1, +2 device px in ONE frame
-          // 0.8s in and stayed uneven; on Practices, the whole page jumped 4
-          // device px and then re-snapped unevenly the frame after. A fade has
-          // no offset to snap out of.
-          //
-          // Home doesn't even fade: its cards already come in with their own
-          // cascade (DailyProgressBody), and a second layer over them is one
-          // more thing to drop when it ends.
-          initial={pageLocation === "/dashboard" || pageLocation === "/" ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="flex-1 flex flex-col w-full h-full"
-        >
+        {/* NO PAGE ANIMATION, ON ANY PAGE (owner, 2026-09-14: "i am seeing it
+            on this sunday", "i see the shift up even on the practices page").
+            The page used to rise (y 28 → 0 over 0.85s), which held the whole
+            page on a compositing layer at a fractional offset; the frame it
+            ended, the layer was dropped and every card, frost and ring
+            re-rasterised at its true sub-pixel position, each rounding its own
+            way. Measured frame by frame: on home, Done cards jumped +7, 0, +2,
+            0, −1, +2 device px in ONE frame 0.8s in and stayed uneven; on
+            Practices, the whole page jumped 4 device px and then re-snapped
+            unevenly the frame after. A fade alone still drops its layer when
+            it ends, and anything laid out on a fraction snaps a device pixel as
+            it does — so, as home already did, no page animation at all. A page
+            that wants an entrance carries its own, fading in place. */}
+        <div className="flex-1 flex flex-col w-full h-full">
           {children}
-        </motion.div>
+        </div>
       </main>
 
       {/* Create "+" FAB, bottom-right (Menu lives top-right in the header).

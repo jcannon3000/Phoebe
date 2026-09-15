@@ -435,7 +435,8 @@ export default function MenuNewslettersPage() {
           <button
             type="button"
             onClick={() => setLocation(group ? "/menu/newsletters" : "/menu")}
-            style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6 }}
+            // A block-level box with a 20px line, so the page starts on a whole pixel.
+            style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, lineHeight: "20px", cursor: "pointer", padding: 0, marginBottom: 14, display: "flex", width: "fit-content", alignItems: "center", gap: 6 }}
           >
             ← {group ? t("menu.newsletters", { defaultValue: "Reflections" }) : t("menu.title", { defaultValue: "Menu" })}
           </button>
@@ -450,7 +451,7 @@ export default function MenuNewslettersPage() {
             <button
               type="button"
               onClick={manage}
-              style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, whiteSpace: "nowrap", textDecoration: "underline", textUnderlineOffset: 3 }}
+              style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, lineHeight: "20px", cursor: "pointer", padding: 0, whiteSpace: "nowrap", textDecoration: "underline", textUnderlineOffset: 3 }}
             >
               {t("newsletters.manage", { defaultValue: "Manage subscriptions" })}
             </button>
@@ -463,11 +464,14 @@ export default function MenuNewslettersPage() {
                 : t("menu.newsletters_sub_long", { defaultValue: "Daily words and publications, from across the church." })}
           </p>
 
+          {/* Each list is one compositing layer, as on home (DailyProgressBody):
+              every card's frost is its own layer, and a shared origin lands
+              them on the pixel grid together. */}
           <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
             <div>
               {sectionHeader(t("newsletters.subscriptions", { defaultValue: "Subscriptions" }))}
               {subscribed.length > 0 ? (
-                <div className="flex flex-col gap-2">{subscribed.map((e, i) => card(e, i, subscribed.length))}</div>
+                <div className="flex flex-col gap-2" style={{ willChange: "transform" }}>{subscribed.map((e, i) => card(e, i, subscribed.length))}</div>
               ) : (
                 <p style={{ fontSize: 14, color: SAGE, margin: "6px 0 0", lineHeight: 1.5 }}>
                   {t("newsletters.none_yet", { defaultValue: "You're not following any yet. Pick some in Manage subscriptions and they'll have a card on your home." })}
@@ -477,7 +481,7 @@ export default function MenuNewslettersPage() {
             {others.length > 0 && (
               <div>
                 {sectionHeader(t("newsletters.all", { defaultValue: "All" }))}
-                <div className="flex flex-col gap-2">{others.map((e, i) => card(e, i, others.length))}</div>
+                <div className="flex flex-col gap-2" style={{ willChange: "transform" }}>{others.map((e, i) => card(e, i, others.length))}</div>
               </div>
             )}
           </div>

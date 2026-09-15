@@ -4,6 +4,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { playOpeningSwell } from "@/lib/amenFeedback";
+import { FrostLayers, frostBox } from "@/components/FrostRing";
 
 // ── MenuHub — the shared "list of cards" page ───────────────────────────────
 //
@@ -11,6 +12,13 @@ import { playOpeningSwell } from "@/lib/amenFeedback";
 // a titled page with an optional back link and groups of tappable cards
 // (emoji · title · optional subtitle · chevron). Mirrors the Daily Offices
 // page style. Used by /menu and every category page under it.
+//
+// WHOLE PIXELS, TOP TO BOTTOM (owner, 2026-09-14: "i see the shift up even on
+// the practices page"). Every line box above and inside the cards is a whole
+// number of pixels (13px text on the inherited 1.5 was a 19.5px line, the
+// subtitles 17.55px), each card's border adds no fraction (FrostRing), and
+// each list is one compositing layer. The same three things made the home
+// cards exact.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -94,7 +102,9 @@ export function MenuHub({
           <button
             type="button"
             onClick={() => setLocation(backHref)}
-            style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6 }}
+            // A block-level box with a 20px line: inline, it sat in a line box
+            // sized by the page's own 24px strut and its baseline.
+            style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, lineHeight: "20px", cursor: "pointer", padding: 0, marginBottom: 14, display: "flex", width: "fit-content", alignItems: "center", gap: 6 }}
           >
             ← {backLabel ?? "Back"}
           </button>
@@ -113,30 +123,31 @@ export function MenuHub({
           {groups.map((g, gi) => (
             <div key={gi}>
               {g.header && (
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: FAINT, margin: "0 0 10px" }}>
+                <p style={{ fontSize: 11, lineHeight: "16px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: FAINT, margin: "0 0 10px" }}>
                   {g.header}
                 </p>
               )}
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, willChange: "transform" }}>
                 {g.items.map((it, ii) => (
                   <div key={ii}>
                   <button
                     type="button"
                     onClick={() => { playOpeningSwell(2); it.onClick(); }}
                     className="w-full transition-opacity hover:opacity-90"
-                    style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", background: CARD_BG, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${CARD_BORDER}`, borderRadius: 16, padding: "16px 18px", opacity: it.muted ? 0.62 : 1 }}
+                    style={{ ...frostBox(CARD_BG), display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", borderRadius: 16, padding: "16px 18px", opacity: it.muted ? 0.62 : 1 }}
                   >
+                    <FrostLayers border={CARD_BORDER} />
                     <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, width: 28, textAlign: "center" }} aria-hidden>{it.emoji}</span>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 16, fontWeight: 700, color: WARM }}>{it.label}</span>
+                        <span style={{ fontSize: 16, lineHeight: "24px", fontWeight: 700, color: WARM }}>{it.label}</span>
                         {it.badge && (
                           <span style={{ fontSize: 9.5, fontWeight: 600, color: FAINT, border: `1px solid ${CARD_BORDER}`, borderRadius: 999, padding: "1px 7px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                             {it.badge}
                           </span>
                         )}
                       </span>
-                      {it.sub && <span style={{ display: "block", fontSize: 13, color: SAGE, marginTop: 3, lineHeight: 1.35 }}>{it.sub}</span>}
+                      {it.sub && <span style={{ display: "block", fontSize: 13, color: SAGE, marginTop: 3, lineHeight: "18px" }}>{it.sub}</span>}
                     </span>
                     {it.dot && (
                       <span aria-label="new" style={{ width: 9, height: 9, borderRadius: 999, background: "#6FAF85", boxShadow: "0 0 0 3px rgba(111,175,133,0.22)", flexShrink: 0 }} />
@@ -155,7 +166,7 @@ export function MenuHub({
                             type="button"
                             onClick={a.onClick}
                             className="inline-flex items-center gap-1.5 transition-opacity hover:opacity-90"
-                            style={{ background: p.bg, border: `1px solid ${p.border}`, color: p.color, borderRadius: 999, padding: "7px 14px", fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+                            style={{ background: p.bg, border: `1px solid ${p.border}`, color: p.color, borderRadius: 999, padding: "7px 14px", fontSize: 13, lineHeight: "20px", fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
                           >
                             <span aria-hidden>{a.emoji}</span>
                             <span>{a.label}</span>

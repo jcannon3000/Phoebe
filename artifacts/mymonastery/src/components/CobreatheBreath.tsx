@@ -921,13 +921,16 @@ export function CobreatheBreath({
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
         paddingTop: "calc(var(--safe-top) + 28px)",
         paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
-        // Entrance — the whole breath fades + slides up gently on mount, so
-        // arriving from the contemplation card (or an office slide) is a smooth
-        // rise rather than a hard cut. Combined into one transition with the
-        // slower background cross-fade so neither clobbers the other.
+        // Entrance — the whole breath fades in on mount, so arriving from the
+        // contemplation card (or an office slide) isn't a hard cut. It no longer
+        // rises (owner, 2026-09-14: "the shift up"): a rise ends by dropping its
+        // layer, and everything on it snaps. The transform stays, at 0, so the
+        // box is the same containing block it always was once it had landed.
+        // Combined into one transition with the slower background cross-fade so
+        // neither clobbers the other.
         opacity: entered ? 1 : 0,
-        transform: entered ? "translateY(0)" : "translateY(14px)",
-        transition: `opacity 0.55s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), ${backgroundImage ? "background-image" : "background-color"} 1.6s ease`,
+        transform: "translateY(0)",
+        transition: `opacity 0.55s ease, ${backgroundImage ? "background-image" : "background-color"} 1.6s ease`,
         willChange: "opacity, transform",
       }}
     >

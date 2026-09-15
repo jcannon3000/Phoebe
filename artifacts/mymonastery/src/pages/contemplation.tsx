@@ -918,8 +918,10 @@ export default function ContemplationPage() {
     <Layout>
       <motion.div
         className="max-w-xl mx-auto w-full"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
+        // Fades in where it is. No rise (owner, 2026-09-14: "the shift up"):
+        // a rise ends by dropping its layer, and the page snaps as it does.
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="flex items-start gap-3 mb-5">

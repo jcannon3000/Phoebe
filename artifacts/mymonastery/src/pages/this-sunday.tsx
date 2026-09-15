@@ -13,6 +13,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { getDay, readLesserFeastsPref } from "@/lib/liturgical/calendar";
 import { getOfficeCacheEntry } from "@/lib/officeOfflineCache";
 import { nextSundayYmdNY } from "@/lib/sundayDate";
+import { sundayLectionaryQuery, type SundayLectionary as Sunday, type SundayTrack as Track } from "@/lib/sundayLectionary";
 
 /**
  * /this-sunday — under Learn (owner, 2026-09-04): "a menu option that says
@@ -32,13 +33,6 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
-type Track = { ot: string | null; psalm: string | null; nt: string | null; gospel: string | null };
-type Sunday = {
-  sundayDate: string; name: string | null; url: string;
-  gospel: string | null; psalm: string | null; nt: string[]; ot: string[];
-  track1: Track | null; track2: Track | null;
-};
-
 function sundayLabel(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   const date = new Date(y!, (m ?? 1) - 1, d ?? 1);
@@ -53,13 +47,8 @@ export default function ThisSundayPage() {
   const isAdmin = useAndrewsVisible();
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
-  const sundayQ = useQuery<Sunday | null>({
-    queryKey: ["/api/lectionary/sunday", 2],
-    staleTime: 10 * 60_000,
-    // ?v=2 busts the WebView's HTTP cache of the pre-tracks body (served
-    // with an hour's max-age); harmless once every cache has rolled over.
-    queryFn: async () => ((await apiRequest("GET", "/api/lectionary/sunday?v=2")) as Sunday | null) ?? null,
-  });
+  // Shared with the Menu, which warms it (lib/sundayLectionary).
+  const sundayQ = useQuery<Sunday | null>(sundayLectionaryQuery);
   const sunday = sundayQ.data ?? null;
   const andrewsQ = useQuery<InboxItem | null>({
     queryKey: ["/api/andrews/latest"],
@@ -167,7 +156,8 @@ export default function ThisSundayPage() {
           <button
             type="button"
             onClick={() => setLocation("/menu")}
-            style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6 }}
+            // A block-level box with a 20px line, so the page starts on a whole pixel.
+            style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, lineHeight: "20px", cursor: "pointer", padding: 0, marginBottom: 14, display: "flex", width: "fit-content", alignItems: "center", gap: 6 }}
           >
             ← {t("menu.title", { defaultValue: "Menu" })}
           </button>
@@ -193,7 +183,10 @@ export default function ThisSundayPage() {
               })}
             </div>
           )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* One compositing layer for the list, as on home (DailyProgressBody):
+              each card's frost is its own layer, and a shared origin lands
+              them on the pixel grid together. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, willChange: "transform" }}>
             {cards.map((c, i) => (
               <PracticeCard
                 key={c.key}

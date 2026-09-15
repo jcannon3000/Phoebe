@@ -162,8 +162,8 @@ export default function PrayerChooserPage() {
     return (
       <motion.div
         key={card.key}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ duration: 0.35, delay: 0.06 * (i + 1), ease: "easeOut" }}
       >
         <div
@@ -255,8 +255,8 @@ export default function PrayerChooserPage() {
           Wide web keeps the centered composition. */}
       <main className="flex-1 flex flex-col items-center justify-start md:justify-center px-5 pt-6 md:pt-0 pb-12">
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.45, ease: "easeOut" }}
           className="w-full max-w-md"
         >
