@@ -961,6 +961,17 @@ a:active,
 [data-frost-ring] [style*="backdrop-filter"][style*="border: 1px solid"][style*="overflow: hidden"]:not([aria-hidden="true"])::after { inset: 0; }
 [data-frost-ring] [style*="backdrop-filter"][style*="border: 1px solid"][style*="rgba(168, 197, 160, 0.7)"]:not([aria-hidden="true"])::after,
 [data-frost-ring] [style*="backdrop-filter"][style*="border: 1px solid"][style*="rgba(168,197,160,0.7)"]:not([aria-hidden="true"])::after { border-color: rgba(168,197,160,0.7); }
+/* …AND ITS DROPDOWNS (owner, 2026-09-15, of the extra practices' slides: the
+   rows have the ring "not this … around the drop down, so they kind of get
+   lost"). A <select> can draw neither the frost nor the ring, so the box that
+   holds it (each select sits alone in a relative wrapper with its ▾) carries
+   the same tint, frost and 1.5px ring as the rows, and the select goes clear. */
+/* Only a box holding nothing but the select and its aria-hidden ▾: a label or a
+   field beside the select would otherwise end up inside the frost. */
+[data-frost-ring] div:has(> select):not(:has(> :not(select):not([aria-hidden]))) { position: relative; isolation: isolate; border-radius: 12px; background: rgba(9,26,16,0.297); }
+[data-frost-ring] div:has(> select):not(:has(> :not(select):not([aria-hidden])))::before { content: ""; position: absolute; inset: 2px; z-index: -1; border-radius: inherit; pointer-events: none; backdrop-filter: blur(11.34px); -webkit-backdrop-filter: blur(11.34px); -webkit-mask-image: -webkit-radial-gradient(white, black); }
+[data-frost-ring] div:has(> select):not(:has(> :not(select):not([aria-hidden])))::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; border-radius: inherit; border: 1.5px solid rgba(46,107,64,0.4); }
+[data-frost-ring] div:has(> select):not(:has(> :not(select):not([aria-hidden]))) > select { background: transparent !important; border-color: transparent !important; }
 
 /* ── Feast day glint ─────────────────────────────────────────────────────────
    LiturgicalDateHeader wraps the feast's name in .feast-shimmer: a band of

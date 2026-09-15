@@ -36,7 +36,7 @@ import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePreset
 // The presets WITH the admin's edits laid over them (lib/rulePresetsStore).
 // RULE_PRESETS stays imported: it is the fallback this returns when there is
 // no overlay, and the type still comes from there.
-import { getEffectiveRulePresets, resolveAdoptPreset } from "@/lib/rulePresetsStore";
+import { getEffectiveRulePresets, resolveAdoptPreset, getStoredDefaultSeed, SEED_DEFAULT_FALLBACK } from "@/lib/rulePresetsStore";
 import { RELATIONAL_PRACTICES, activeRelationalPractices, setRelationalPractices, isRelationalAnchor, addCustomRelationalPractice, type RelationalPracticeId, getCustomAnchors, addCustomAnchor, removeCustomAnchor, updateCustomAnchor, flushCustomAnchorPush, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type SlottedPractice, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues, flushRoutineConfig } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly, readCachedHomeLayout, applyCachedHomeLayout, type HomeLayout } from "@/lib/homeLayoutCache";
@@ -94,6 +94,7 @@ import {
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useAndrewsVisible } from "@/lib/appSettings";
+import { FrostLayers, frostBox } from "@/components/FrostRing";
 import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
 import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
 
@@ -1212,6 +1213,13 @@ export default function WayOfLoveRuleFlow({
     const r = getReflectionSource();
     return r && r !== "none" ? [r] : ["fdd"];
   });
+  /**
+   * FEAST DAY HAGIOGRAPHIES, offered beside the newsletters (owner, 2026-09-15:
+   * "they're not in the routine customizer either"). Not a ReflectionSource —
+   * no anchor, no per-side read — so it is its own home card, the same one
+   * Reflections → Manage subscriptions switches, seeded from the layout.
+   */
+  const [hagiographyOn, setHagiographyOn] = useState<boolean>(() => homeCardOn(seedLayout(user), "hagiography"));
   // When to nudge them to pray, per side. Finishing turns the matching reminder
   // pref ON (pref != "none") so the server's daily push actually fires.
   // NULL means "not known yet" — not the default. Owner: "i had notifications
@@ -1408,6 +1416,7 @@ export default function WayOfLoveRuleFlow({
     // cac+fdd+ssje selection would otherwise collapse to one on re-open.
     const fromLayout = TRACKED_REFLECTION_SOURCES.filter((s) => homeCardOn(seedLayout(user), s));
     if (fromLayout.length > 0) setNewsletters([...fromLayout]);
+    setHagiographyOn(homeCardOn(seedLayout(user), "hagiography"));
     // Contemplative Prayer + the Examen are add-ons now (not office anchors), so
     // seed them from the saved office LEVEL (reflect-sit / examen) — plus the
     // examen home card — rather than from prayBySide.
@@ -2285,6 +2294,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.rosary ? ["rosary"] : []),
       ...(contemplative.reading ? ["reading"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
+      ...(hagiographyOn ? ["hagiography"] : []),
     ];
     const offKeys = [
       ...(extras.prayerList ? [] : ["prayer-list"]),
@@ -2302,6 +2312,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.rosary ? [] : ["rosary"]),
       ...(contemplative.reading ? [] : ["reading"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
+      ...(hagiographyOn ? [] : ["hagiography"]),
     ];
     // No hardcoded "podcasts" here — extras.podcasts already routes it through
     // onKeys/offKeys, and the template copy meant every saved layout carried
@@ -2585,15 +2596,8 @@ export default function WayOfLoveRuleFlow({
     // requests (pinned) → Return (contemplation) → Pray (the office card) → ALL
     // chosen reflections. Unselected reflections + secondary panels hidden.
     const others = TRACKED_REFLECTION_SOURCES.filter((n) => !newsletters.includes(n));
-    // FEAST DAY HAGIOGRAPHIES aren't a row in this customizer (they're toggled
-    // from Reflections → Manage subscriptions), but v11 made them a default
-    // card, and a key Save leaves out is stored HIDDEN: the server backfills it
-    // into hidden. Carry the card's current state through Save, on or off
-    // (audit, 2026-09-14).
-    const hagiographyOn = (() => {
-      const l = seedLayout(user);
-      return !!l && l.order.includes("hagiography") && !l.hidden.includes("hagiography");
-    })();
+    // Feast Day Hagiographies ride their own row now (the Learn step) — and a
+    // key Save leaves out is stored HIDDEN, so both lists name it, on or off.
     // Added optional practices are surfaced (in order, not hidden); unselected
     // ones go to the hidden tail like the other opt-in modules.
     // Examen, Audio Divina (listening), and Co-Breathe come from the
@@ -2981,6 +2985,10 @@ export default function WayOfLoveRuleFlow({
       evening: presetSitsSilent && preset.goalMin >= 5 && preset.goalMin <= 30 ? preset.goalMin : 15,
     });
     setNewsletters(preset.reflections);
+    // Editing the default rhythm (/admin/presets): its own cards decide the
+    // hagiographies, not the editor's home. An ordinary rule has no opinion on
+    // them, so the person's own setting stands.
+    if (preset.id === "__default__") setHagiographyOn((getStoredDefaultSeed() ?? SEED_DEFAULT_FALLBACK).cards.includes("hagiography"));
     // A side whose ANCHOR reads a different newsletter from the rule's own —
     // held in state so commit() can honour it (see anchorReflectionBySide).
     // Cleared first, like the practices above, so nothing carries over.
@@ -6006,7 +6014,10 @@ export default function WayOfLoveRuleFlow({
             {t("wol_rule.extra_eyebrow_label", { defaultValue: "Additional practice" })}
           </p>
           {extraBySide[side] ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "12px 14px" }}>
+            // Frosted and ringed like the rows around it (owner, 2026-09-15: the
+            // extra practice "kind of get[s] lost" as a flat box on this slide).
+            <div style={{ ...frostBox(CARD), display: "flex", alignItems: "center", gap: 10, borderRadius: 14, padding: "12px 14px" }}>
+              <FrostLayers border={CARD_B} />
               <span aria-hidden style={{ fontSize: 18 }}>{EXTRA_PRACTICE_EMOJI[extraBySide[side]!] ?? "🌿"}</span>
               <span style={{ flex: 1, minWidth: 0, color: CREAM, fontSize: 15, fontFamily: FONT }}>{extraBySide[side]}</span>
               <button
@@ -6070,6 +6081,10 @@ export default function WayOfLoveRuleFlow({
               return (
                 <div key={day} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <label style={{ color: CREAM, fontFamily: FONT, fontSize: 14, fontWeight: 500 }}>{label}</label>
+                  {/* The select alone in its own box, with its ▾, like every other
+                      dropdown here: that box carries the frost and the ring, and
+                      the day's label stays above it rather than inside it. */}
+                  <div style={{ position: "relative" }}>
                   <select
                     value={alt ? alt.choice : ""}
                     onChange={(e) => {
@@ -6084,6 +6099,8 @@ export default function WayOfLoveRuleFlow({
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
+                  <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+                  </div>
                   {/* Its own name, the way the weekday custom practice has one —
                       "Worship", "Eucharist", whatever they actually keep. */}
                   {alt?.choice === "ownPractice" && (
@@ -6174,6 +6191,15 @@ export default function WayOfLoveRuleFlow({
                 : n.sub;
               return choiceRow(newsletters.includes(n.id), n.label, sub, () => toggleNewsletter(n.id));
             })}
+          {/* FEAST DAY HAGIOGRAPHIES — a card on days the calendar keeps a
+              saint, from Forward Movement. The same switch as Reflections →
+              Manage subscriptions. */}
+          {choiceRow(
+            hagiographyOn,
+            `📜 ${t("wol_rule.learn_hagiography", { defaultValue: "Feast Day Hagiographies" })}`,
+            t("wol_rule.learn_hagiography_sub", { defaultValue: "The life of the saint, on days the calendar keeps one — from Forward Movement." }),
+            () => { touchedRef.current = true; setHagiographyOn((v) => !v); },
+          )}
           {/* TAIZÉ SITS HERE TOO (owner: "not seeing taize in the reflections
               option of the full customizer").
               It is NOT a NEWSLETTERS entry, and deliberately so: that list is

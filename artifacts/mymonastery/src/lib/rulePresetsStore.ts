@@ -292,12 +292,9 @@ export function specToDefaultSeed(spec: RoutineSpec, base: DefaultSeed): Default
     morning: rc["phoebe:office:level:morning"] ?? "ask",
     evening: rc["phoebe:office:level:evening"] ?? "ask",
     reflection: (rc["phoebe:office:reflection-source"] as DefaultSeed["reflection"]) ?? base.reflection,
-    // Feast Day Hagiographies aren't a row in the customizer, so a spec never
-    // names them; a default that carried the card keeps it (audit, 2026-09-14).
-    cards: (() => {
-      const cards = visibleCards(spec);
-      return base.cards?.includes("hagiography") && !cards.includes("hagiography") ? [...cards, "hagiography"] : cards;
-    })(),
+    // Feast Day Hagiographies have their own row in the customizer now, seeded
+    // from this default's cards, so the spec names them either way.
+    cards: visibleCards(spec),
     relational: spec.relational ?? base.relational ?? [],
     silenceMin: spec.officePrefs?.contemplationGoalMinutes ?? 0,
     ...(Object.keys(slots).length > 0 ? { slots: slots as DefaultSeed["slots"] } : {}),
