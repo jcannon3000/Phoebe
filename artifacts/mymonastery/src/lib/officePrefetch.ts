@@ -87,6 +87,7 @@ const MODE_ENDPOINT: Record<LiturgyMode, string> = {
   "morning": "/api/office/morning",
   "evening": "/api/office/evening",
   "compline": "/api/office/compline",
+  "noonday": "/api/office/noonday",
   "morning-devotion": "/api/devotion/morning",
   "early-evening-devotion": "/api/devotion/early-evening",
   "creation-morning": "/api/devotion/creation-morning",
@@ -405,6 +406,8 @@ export async function runOfficePrefetch(opts?: { force?: boolean }): Promise<voi
       // Compline has no side/level of its own — always available every
       // evening, so always warmed regardless of either side's rule.
       jobs.push(async () => { if (await fetchAndCacheOneCounting("compline", date, "", { noteFetched })) noteSaved(); });
+      // Midday Prayer, on the same footing: no side of its own, open every day.
+      jobs.push(async () => { if (await fetchAndCacheOneCounting("noonday", date, "", { noteFetched })) noteSaved(); });
       /**
        * The Daily Scripture Reading, on the same footing as Compline.
        *
@@ -501,6 +504,7 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
     const entries: OfficeCacheKey[] = [];
     for (const m of modes) if (m) entries.push({ mode: m, date, confession: confessionFor(m, m.startsWith("evening") || m === "early-evening-devotion" || m === "creation-evening" ? "evening" : "morning"), ...(isSingleSidedCreation(m) ? { single: "1" } : {}) });
     entries.push({ mode: "compline", date, confession: "" });
+    entries.push({ mode: "noonday", date, confession: "" });
     const parts = getScriptureParts();
     const partsValue = parts && parts.length < 4 ? parts.join(",") : "";
     entries.push({ mode: "scripture", date, confession: "", ...(partsValue ? { parts: partsValue } : {}) });

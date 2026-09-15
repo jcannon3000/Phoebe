@@ -178,7 +178,7 @@ export type OfflinePractice = {
  * daily prefetch (on Wi-Fi, for the coming weeks).
  */
 export const OFFLINE_PRACTICES: OfflinePractice[] = [
-  { key: "office", emoji: "📖", title: "Daily Offices", sub: "Morning and Evening Prayer, Compline and the devotions — saved for the coming month", href: "/bcp/daily-office", how: "saved" },
+  { key: "office", emoji: "📖", title: "Daily Offices", sub: "Morning, Midday and Evening Prayer, Compline and the devotions — saved for the coming month", href: "/bcp/daily-office", how: "saved" },
   { key: "scripture", emoji: "📜", title: "Scripture Reading", sub: "The day's lessons, with the passages saved to read here", href: "/bcp/daily-office?mode=scripture", how: "saved" },
   { key: "lectio", emoji: "📜", title: "Lectio Divina", sub: "Three slow readings of a passage saved on your phone", href: "/lectio", how: "saved" },
   { key: "guided-prayer", emoji: "🙌🏽", title: "Simple Guided Prayer", sub: "Three minutes to start your day", href: "/guided-prayer", how: "bundled" },

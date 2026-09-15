@@ -79,6 +79,9 @@ export const prayerSurfaces = [
   "compline",
   "examen",
   "scripture",
+  // Midday Prayer (bcp-daily-office mode "noonday"). Its own office: it
+  // credits neither side, so the office-history gates do not read it.
+  "noonday",
 ] as const;
 export type PrayerSurface = (typeof prayerSurfaces)[number];
 

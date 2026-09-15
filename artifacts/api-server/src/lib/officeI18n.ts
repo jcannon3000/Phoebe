@@ -37,6 +37,7 @@ export const TITLES = {
   morning_prayer: { en: "Morning Prayer", es: "Oración Matutina" },
   evening_prayer: { en: "Evening Prayer", es: "Oración Vespertina" },
   compline: { en: "Compline", es: "Completas" },
+  noonday: { en: "Midday Prayer", es: "Oración del Mediodía" },
   morning_devotion: { en: "Morning Devotion", es: "Devoción Matutina" },
   early_evening_devotion: { en: "Early Evening Devotion", es: "Devoción Vespertina" },
   before_you_begin: { en: "Before you begin", es: "Antes de comenzar" },

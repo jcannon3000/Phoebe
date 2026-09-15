@@ -127,6 +127,7 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
               'morning-prayer',
               'evening-prayer',
               'compline',
+              'noonday',
               'morning-devotion',
               'early-evening-devotion',
               'examen',

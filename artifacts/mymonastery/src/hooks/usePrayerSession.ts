@@ -39,6 +39,8 @@ export type PrayerSurface =
   // session enums must also include this value for the session to
   // be picked up by the prayed-today calculations.
   | "compline"
+  // Midday Prayer (BCP pp. 103-107) — its own office; credits neither side.
+  | "noonday"
   | "morning-devotion"
   | "early-evening-devotion"
   // "examen" — the Ignatian Daily Examen, a guided five-movement

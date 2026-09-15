@@ -16,6 +16,7 @@ import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
 import { assembleCreationDevotion } from "../lib/assembleCreationDevotion";
 import { CREATION_COLLECTS, CREATION_PRAYERS, CREATION_BLESSINGS, CREATION_READINGS, CREATION_QUOTES, CREATION_CANTICLES, CREATION_AFFIRMATIONS, CREATION_LITANIES } from "../lib/creationLibrary";
 import { assembleCompline } from "../lib/assembleCompline";
+import { assembleNoonday } from "../lib/assembleNoonday";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { getLectionaryReadings } from "../lib/lectionary";
 import { buildOfficeOrdoDay, getOrdoCommonTexts } from "../lib/officeOrdo";
@@ -229,6 +230,32 @@ router.get("/office/evening", async (req, res) => {
       cacheDate: date.toISOString().slice(0, 10),
       isEmergency: true,
     });
+  }
+});
+
+// GET /office/noonday — Midday Prayer, the BCP's Order of Service for Noonday
+// (pp. 103-107). Public like /office/morning: no sign-in and no beta gate.
+// Same response shape as every office.
+router.get("/office/noonday", async (req, res) => {
+  let date: Date;
+  try {
+    date = parseOfficeDate(req.query.date);
+    if (isNaN(date.getTime())) throw new Error("Invalid date");
+  } catch {
+    date = new Date();
+  }
+  try {
+    const locale = resolveLocale(req.query.locale);
+    const { slides, officeDay } = await assembleNoonday(date, locale);
+    return res.json({
+      slides,
+      officeDay: { ...officeDay, totalSlides: slides.length },
+      fromCache: false,
+      cacheDate: date.toISOString().slice(0, 10),
+    });
+  } catch (err) {
+    console.error("Noonday assembly failed:", err);
+    return res.status(500).json({ error: "Midday Prayer is not available right now." });
   }
 });
 

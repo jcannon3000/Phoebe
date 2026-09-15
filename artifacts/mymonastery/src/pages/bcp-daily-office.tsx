@@ -121,6 +121,8 @@ export type LiturgyMode =
   | "morning"
   | "evening"
   | "compline"
+  // Midday Prayer — the BCP's Order of Service for Noonday (pp. 103-107).
+  | "noonday"
   | "morning-devotion"
   | "early-evening-devotion"
   | "creation-morning"
@@ -570,6 +572,7 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
   morning: { endpoint: "/api/office/morning", title: "Morning Prayer" },
   evening: { endpoint: "/api/office/evening", title: "Evening Prayer" },
   compline: { endpoint: "/api/office/compline", title: "Compline" },
+  noonday: { endpoint: "/api/office/noonday", title: "Midday Prayer" },
   "morning-devotion": { endpoint: "/api/devotion/morning", title: "Morning Devotion" },
   "early-evening-devotion": { endpoint: "/api/devotion/early-evening", title: "Early Evening Devotion" },
   "creation-morning": { endpoint: "/api/devotion/creation-morning", title: "Creation Prayer · Morning" },
@@ -781,6 +784,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    */
   const isReadingDeck = resolvedMode === "scripture" || resolvedMode === "sunday";
   /**
+   * MIDDAY PRAYER BELONGS TO NEITHER SIDE. Nothing names it evening, so
+   * officeSide falls through to "morning" — and everything that credits a side
+   * (the Morning Prayer card's completion moment, the morning reminder sweep,
+   * the book attestation) would credit Morning Prayer for it. It is its own
+   * office, told apart here exactly as the reading deck already is.
+   */
+  const isNoonday = resolvedMode === "noonday";
+  const creditsNoSide = isReadingDeck || isNoonday;
+  /**
    * WHICH CARD A FINISHED READING ANIMATES — and for the Sunday readings,
    * none.
    *
@@ -796,6 +808,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const completedCardKey = (() => {
     // A reading has no office card to animate.
     if (isReadingDeck) return readingCompletionKey;
+    // Midday Prayer has no card on the home to animate.
+    if (isNoonday) return "";
     const extra = getSideExtra(officeSide);
     if (!extra) return officeSide;
     return extraOfficeMode(officeSide, extra) === resolvedMode ? `extra-${officeSide}` : officeSide;
@@ -962,7 +976,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // personal short forms, so they stay label-less either way. isFullOffice
   // also decides whether the ⚙ sheet even offers the toggle.
   const isFullOffice =
-    resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline";
+    resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline" || resolvedMode === "noonday";
   const communal = display.prayingMode === "communal" && isFullOffice;
   // The reader's own private prayer list (see prayer_intentions / /intentions)
   // — only fetched for a real signed-up account, and only feeds the splice
@@ -1239,7 +1253,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // anchor, clears its reminder push and counts it in Daily progress —
         // all correct for an office and all wrong for the lectionary's
         // readings, which are a practice of their own.
-        if (!isReadingDeck) markOfficeBookComplete(officeSide, resolvedMode, completedCardKey);
+        if (!creditsNoSide) markOfficeBookComplete(officeSide, resolvedMode, completedCardKey);
         // Home, not Daily progress. Owner: "Venite goes back to the daily
         // progress page instead of the home screen" — and earlier, of this same
         // return: "it should go back to the home screen, where the office is
@@ -1973,6 +1987,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       ? { text: "Let my prayer rise before you as incense, the lifting up of my hands as the evening sacrifice.", cite: "Psalm 141:2" }
       : resolvedMode === "compline"
         ? { text: "The Lord grant us a quiet night and a peaceful end.", cite: "Compline" }
+        : resolvedMode === "noonday"
+          ? { text: "O God, make speed to save us. O Lord, make haste to help us.", cite: "Psalm 70:1" }
         : { text: "O Lord, open my lips, and my mouth shall proclaim your praise.", cite: "Psalm 51:15" };
   // The held-breath veil. Default is the fixed splash leaf (owner) so opening
   // an office reads as a continuation of the launch screen. But a user who
@@ -2193,7 +2209,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   }
       localStorage.removeItem(officeProgressKey(resolvedMode, officeTodayKey(), trackVariant));
     } catch { /* non-fatal */ }
-    if (!isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
+    if (!creditsNoSide && !isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
     if (onComplete) { onComplete(); return; }
     if (officesOnlyViewer) { setViewerLocation("/parish"); return; }
     // Same warm-cache handoff as amen()/handleEnd — closingOnly=1 can't
@@ -2328,7 +2344,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    */
   const lessonReadUrl = (() => {
     if (currentSlide.type !== "lesson" && currentSlide.type !== "lesson_title") return null;
-    if (currentSlide.type === "lesson" && currentSlide.metadata?.compline) return null;
+    if (currentSlide.type === "lesson" && (currentSlide.metadata?.compline || currentSlide.metadata?.noonday)) return null;
     const inlineWeb = currentSlide.type === "lesson_title" && currentSlide.metadata?.inlineWeb === true;
     if (inlineWeb) return null; // the WEB text is already on screen — nothing to jump out to
     const meta = currentSlide.metadata as { readUrl?: unknown } | undefined;
@@ -2397,7 +2413,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // sweep the morning office's lock-screen reminders away: this deck borrows
     // the office renderer, and every side-effect in it assumed an office. The
     // reading is not the office, and the reminder still has a job.
-    if (!isReadingDeck && !isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
+    if (!creditsNoSide && !isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
     // Public /pray page: hand off to its own sign-up close.
     if (onComplete) { onComplete(); return; }
     if (parishOnly) {
@@ -2812,7 +2828,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // only cleared "bell", so a parish-office reminder kept sitting on
     // the lock screen for the rest of the day even after the user had
     // prayed the office — exactly the bug just reported.
-    if (!isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
+    if (!creditsNoSide && !isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
     if (amenPromise && waitForAmen) await amenPromise;
     if (!atEnd) {
       // Same chapel chime Next/tap/swipe play — the Amen button is just
@@ -2895,7 +2911,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         try {
           stampCompleted();
         } catch { /* private mode — non-fatal */ }
-        if (!isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
+        if (!creditsNoSide && !isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
         const watched = {
           surface: "national-cathedral", durationSeconds, completed: true,
           startedAt: new Date(openedAt).toISOString(), endedAt: endedAt.toISOString(),
@@ -3147,7 +3163,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             type="button"
             // resolvedMode, not just the side — this slide belongs to whichever
             // office is open, and a side can carry two.
-            onClick={(e) => { e.stopPropagation(); if (!isReadingDeck) markOfficeBookComplete(officeSide, resolvedMode, completedCardKey); setViewerLocation("/dashboard"); }}
+            onClick={(e) => { e.stopPropagation(); if (!creditsNoSide) markOfficeBookComplete(officeSide, resolvedMode, completedCardKey); setViewerLocation("/dashboard"); }}
             style={{
               width: "100%",
               background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
@@ -3538,6 +3554,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               </p>
               <h1
                 className="title-glow-breathe"
+                data-glint={currentSlide.title ?? ""}
                 style={{
                   fontFamily: SPACE_GROTESK,
                   // A shade smaller than TITLE_LG on this slide only: it is the
@@ -3558,7 +3575,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   the threshold slide — the long description is dropped
                   (owner). Other intros (devotion, etc.) still show their
                   line. */}
-              {currentSlide.content && !(resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline") && (
+              {currentSlide.content && !(resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline" || resolvedMode === "noonday") && (
                 <p
                   style={{
                     // Owner: "make sure this is fitting, maybe make the
@@ -3595,7 +3612,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   liturgy, which has none), so it was offering a mismatched
                   alternate rather than a real one. Physical-BCP page numbers
                   are already printed inline on each slide (bcpReference). */}
-              {!(isDevotion || resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline") && (
+              {!(isDevotion || resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline" || resolvedMode === "noonday") && (
               <div
                 style={{
                   display: "flex",
@@ -3855,6 +3872,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             >
               <h1
                 className="title-glow-breathe"
+                data-glint={"Intercessions"}
                 style={{
                   fontFamily: SPACE_GROTESK,
                   fontSize: TITLE_XL,
@@ -3899,11 +3917,19 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 .replace(/\b[a-z]/g, (c) => c.toUpperCase());
               const isEvening =
                 resolvedMode === "evening" || resolvedMode === "early-evening-devotion";
+              // Midday Prayer and Compline appoint their psalm by the day of
+              // the week from their own order in the prayer book — not the
+              // morning/evening lectionary, so neither line below fits them.
+              const ownOrder = resolvedMode === "noonday" || resolvedMode === "compline";
               const subtitle = isInvitatory
                 ? "The Invitatory Psalm"
-                : isEvening
-                  ? "The Psalm Appointed For This Evening"
-                  : "The Psalm Appointed For This Morning";
+                : resolvedMode === "noonday"
+                  ? "The Psalm Appointed For Midday"
+                  : resolvedMode === "compline"
+                    ? "The Psalm Appointed For Tonight"
+                    : isEvening
+                      ? "The Psalm Appointed For This Evening"
+                      : "The Psalm Appointed For This Morning";
               return (
                 <div
                   style={{
@@ -3930,6 +3956,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   </p>
                   <h1
                     className="title-glow-breathe"
+                    data-glint={headline}
                     style={{
                       fontFamily: SPACE_GROTESK,
                       fontSize: TITLE_XL,
@@ -3942,7 +3969,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   >
                     {headline}
                   </h1>
-                  {!isInvitatory && (
+                  {!isInvitatory && !ownOrder && (
                     <p
                       style={{
                         fontSize: 19,
@@ -4002,6 +4029,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   </p>
                   <h1
                     className="title-glow-breathe"
+                    data-glint={headline}
                     style={{
                       fontFamily: SPACE_GROTESK,
                       fontSize: TITLE_XL,
@@ -4082,6 +4110,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   </p>
                   <h1
                     className="title-glow-breathe"
+                    data-glint={reference}
                     style={{
                       fontFamily: SPACE_GROTESK,
                       fontSize: TITLE_MD,
@@ -4135,7 +4164,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 </div>
               );
             })()
-          ) : currentSlide.type === "lesson" && currentSlide.metadata?.compline ? (
+          ) : currentSlide.type === "lesson" && (currentSlide.metadata?.compline || currentSlide.metadata?.noonday) ? (
             // Compline short lesson — full scripture text rendered
             // inline. The four BCP-appointed Compline lessons are
             // 1–3 verses each (Jer 14:9, Matt 11:28-30, Heb 13:20-21,
@@ -4252,6 +4281,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   </p>
                   <h1
                     className="title-glow-breathe"
+                    data-glint={(currentSlide.title ?? "").replace(/\s*-{2,}\s*/g, "–")}
                     style={{
                       fontFamily: SPACE_GROTESK,
                       fontSize: TITLE_MD,
@@ -5292,6 +5322,7 @@ const MODE_START_PAGE: Record<LiturgyMode, string> = {
   morning: "p. 75",
   evening: "p. 115",
   compline: "p. 127",
+  noonday: "p. 103",
   "morning-devotion": "p. 137",
   "early-evening-devotion": "p. 139",
   "creation-morning": "Creation Prayer",
@@ -6442,6 +6473,9 @@ export default function BcpDailyOfficePage() {
       }
       return;
     }
+    // Midday Prayer opens straight into its deck: it has no way-to-pray default
+    // to honour and, unlike Compline, no beta gate.
+    if (mode === "noonday") { setShowMode("noonday"); return; }
     // The scripture reading opens straight into its deck: it has no "way to
     // pray" to honour (no listen/venite variants) and no beta gate, so none of
     // the branching below applies to it.
@@ -6601,6 +6635,15 @@ export default function BcpDailyOfficePage() {
     label: "Compline",
     sub: "The night office · BCP p. 127",
     now: isNight,
+  };
+  // Midday Prayer — the BCP's Order of Service for Noonday. For everyone
+  // (Compline's card is beta-only); "Available now" from 11 AM to 3 PM.
+  const noonday: OfficeOption = {
+    mode: "noonday",
+    emoji: "☀️",
+    label: "Midday Prayer",
+    sub: "A short office for noon · BCP p. 103",
+    now: hour >= 11 && hour < 15,
   };
 
   // Per-side default highlight — only the Devotion cards are badged via
@@ -6873,6 +6916,10 @@ export default function BcpDailyOfficePage() {
               >
                 Shape your rhythm
               </Link>
+            </div>
+            {/* Midday Prayer — a quiet link below, like Compline's, for everyone. */}
+            <div className="flex justify-center mt-3">
+              <OptionButton opt={noonday} />
             </div>
             {/* Compline (beta) — the night office, kept as a quiet link below. */}
             {rawIsBeta && (

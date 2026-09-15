@@ -64,7 +64,7 @@ async function savedStatus(key: string): Promise<string | null> {
      * both sides was told nothing was saved with thirty days on the device.
      */
     const confessions = ["", "1", "0"] as const;
-    const modes = ["morning", "evening", "compline", "morning-devotion", "early-evening-devotion", "creation-morning", "creation-evening"] as const;
+    const modes = ["morning", "evening", "compline", "noonday", "morning-devotion", "early-evening-devotion", "creation-morning", "creation-evening"] as const;
     let any = false;
     outer: for (const mode of modes) {
       for (const confession of confessions) {
