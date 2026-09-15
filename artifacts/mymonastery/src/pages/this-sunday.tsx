@@ -230,8 +230,20 @@ export default function ThisSundayPage() {
           )}
           {/* One compositing layer for the list, as on home (DailyProgressBody):
               each card's frost is its own layer, and a shared origin lands
-              them on the pixel grid together. */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, willChange: "transform" }}>
+              them on the pixel grid together.
+
+              REBUILT WHEN THE READINGS ARRIVE (keyed on where they came from).
+              Opened before the answer, the page paints "Finding the readings…";
+              the answer then adds the Track row above, moving the list, in the
+              same frame the first card's blurb changes, and WebKit moves the
+              cards' composited layers without repainting that text. "Finding
+              the readings…" stayed on screen under the loaded subtitle
+              (2026-09-15). It happens without the list's layer too, and on a
+              one-track Sunday a reserved Track row would collapse and move the
+              list just the same. New layers are painted whole where they land:
+              measured on the Simulator, the right blurb in every frame after
+              the move, card to card still 231 device px. */}
+          <div key={sunday ? "live" : savedSunday ? "saved" : "loading"} style={{ display: "flex", flexDirection: "column", gap: 10, willChange: "transform" }}>
             {cards.map((c, i) => (
               <PracticeCard
                 key={c.key}
