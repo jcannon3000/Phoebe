@@ -6699,7 +6699,13 @@ export default function BcpDailyOfficePage() {
     // devotion side serve the devotion, which the hard-coded call here never
     // could.
     if (method === "venite" && canPrayOnVenite(side)) {
+      // Same path, new query — and this page's ?mode= effect doesn't re-run for
+      // that, so the route alone left the landing on screen and Venite never
+      // opened. The flag goes in the URL, then the deck mounts and reads it.
       setLocation(`/bcp/daily-office?mode=${side}&venite=1`);
+      setShowBook(false);
+      setStartSlide(0);
+      setShowMode(side === "morning" ? "morning" : "evening");
       return;
     }
     setShowBook(method === "book");
@@ -6835,7 +6841,7 @@ export default function BcpDailyOfficePage() {
       if (effMethod === "listen" && mode === "compline") { setLocation("/podcast/compline"); return; }
       // Venite through the deck, as the offices do: the hand-off, the credit on
       // return and the Options menu all live there.
-      if (effMethod === "venite" && mode === "noonday") { setLocation("/bcp/daily-office?mode=noonday&venite=1"); return; }
+      if (effMethod === "venite" && mode === "noonday") { setLocation("/bcp/daily-office?mode=noonday&venite=1"); setShowBook(false); setStartSlide(0); setShowMode("noonday"); return; }
       setShowBook(effMethod === "book");
       setStartSlide(1); // skip the office's welcome — the picker already was it
       setShowMode(mode);
