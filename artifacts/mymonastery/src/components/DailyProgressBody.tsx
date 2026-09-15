@@ -984,7 +984,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeShown, taizeDone, taizeWaiting, taizeLatest, andrewsActive, andrewsShown, andrewsDone, andrewsWaiting, andrewsLatest, weeklies, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, rosaryActive, rosaryDone, lectioActive, lectioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, prayerListCardActive, hagiographyShown, hagiographyDone, hagiographyUrl, hagiographyName, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, morningContemplationKind, eveningContemplationKind, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, spiritualsActive, spiritualsDone, taizeActive, taizeShown, taizeDone, taizeWaiting, taizeLatest, andrewsActive, andrewsShown, andrewsDone, andrewsWaiting, andrewsLatest, weeklies, groupReflection, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, iconsActive, iconsDone, rosaryActive, rosaryDone, lectioActive, lectioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, noondayActive, noondayDone, prayerListDone, prayerListCardActive, hagiographyShown, hagiographyDone, hagiographyUrl, hagiographyName, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1634,6 +1634,16 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: complineDone ? kept : t("rhythm.blurb_compline", { defaultValue: "The night office" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false, // never later (owner: all available)
   };
+  // Midday Prayer — the prayer book's short office for noon, an opt-in card on
+  // Compline's pattern: its own done flag (the noonday deck credits neither
+  // side), never "Later", and fixed at midday in the list below.
+  const noondayCard = {
+    key: "noonday", emoji: "☀️", rgb: "110,150,140", done: noondayDone, href: "/bcp/daily-office?mode=noonday",
+    onUnlog: () => undoOfficeToday("noonday"),
+    title: t("rhythm.card_noonday", { defaultValue: "Midday Prayer" }),
+    blurb: noondayDone ? kept : t("rhythm.blurb_noonday", { defaultValue: "The noonday office" }),
+    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+  };
   // Every rhythm card carries the time of day it belongs to (its CustomSlot).
   // We assemble them in a sensible base order, then STABLE-sort by that slot so
   // the list ALWAYS reads morning → midday → afternoon → evening, whatever mix
@@ -2036,6 +2046,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // complineActive already folds in the after-7pm gate (useRhythmState.ts)
     // — fixed to "evening" since there's no earlier time it could ever show.
     ...(complineActive ? [{ ...complineCard, slot: "evening" as CustomSlot }] : []),
+    ...(noondayActive ? [{ ...noondayCard, slot: "midday" as CustomSlot }] : []),
     // `anchorOnDay` — a custom practice can be scoped to weekdays (a community
     // meal, say). On an off day it simply isn't part of the rhythm — no card,
     // and nothing downstream counting a dot it can never fill.

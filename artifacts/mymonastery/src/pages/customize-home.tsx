@@ -34,7 +34,7 @@ const HOME_MODULES = [
   // Must match HOME_MODULE_KEYS in api-server/src/routes/prayer.ts. "feeds" was
   // missing here, so saving from this page silently stripped it and the server
   // re-appended it at the end — quietly moving the user's feeds card. Keep in sync.
-  "office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "andrews", "examen", "visio", "taize", "spirituals",
+  "office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "noonday", "andrews", "examen", "visio", "taize", "spirituals",
   // `icons` and `prayer-list` are in the server's list and were missing here,
   // which is the same fault the note above records for `feeds` — and worse
   // than losing them: saving this page dropped them from `order`, the server
@@ -128,7 +128,7 @@ const HOME_LAYOUT_VERSION = 2;
 // requests (pinned) → community prayers (office) →
 // Forward Day by Day. Everything else is hidden but addable.
 const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "fdd", "contemplation", "listening", "examen", "cac", "ssje", "vts", "ncmp", "podcasts"];
-const DEFAULT_HIDDEN: HomeModule[] = ["andrews", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "taize", "spirituals", "lectio", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts"];
+const DEFAULT_HIDDEN: HomeModule[] = ["andrews", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "noonday", "examen", "visio", "taize", "spirituals", "lectio", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts"];
 
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
   const { t } = useTranslation();
@@ -141,6 +141,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     walk:         { label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶🏽", sub: t("customize_home.module_walk_sub", { defaultValue: "A prayerful walk, counted as you go" }) },
     visio:        { label: t("rhythm.row_visio", { defaultValue: "Visio Divina" }), emoji: "🖼️", sub: t("customize_home.module_visio_sub", { defaultValue: "Pray with the day's image, slowly" }) },
     compline:     { label: t("rhythm.card_compline", { defaultValue: "Compline" }), emoji: "🌙", sub: t("customize_home.module_compline_sub", { defaultValue: "The night office · available from 7pm" }) },
+    noonday:      { label: t("rhythm.card_noonday", { defaultValue: "Midday Prayer" }), emoji: "☀️", sub: t("customize_home.module_noonday_sub", { defaultValue: "A short office for noon · BCP p. 103" }) },
     taize:        { label: t("rhythm.card_taize", { defaultValue: "Taizé meditation" }), emoji: "🕯️", sub: t("customize_home.module_taize_sub", { defaultValue: "The newest meditation from Taizé · waits until you've read it" }) },
     andrews:      { label: t("rhythm.card_andrews", { defaultValue: "Andrew's Version" }), emoji: "📰", sub: t("customize_home.andrews_sub", { defaultValue: "A lectionary commentary from Yale Divinity School — it waits until you read it" }) },
     icons:        { label: t("rhythm.card_icons", { defaultValue: "Praying with Icons" }), emoji: "🪟", sub: t("customize_home.module_icons_sub", { defaultValue: "One icon for the week" }) },

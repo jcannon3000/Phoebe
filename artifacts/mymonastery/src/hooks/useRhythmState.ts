@@ -297,6 +297,8 @@ export type RhythmState = {
   /** Compline (the night office) as an opt-in add-on card — only ever true
    *  from 7pm local on, since it's the office for the end of the day. */
   complineActive: boolean;
+  /** Midday Prayer (the noonday office) as an opt-in routine card. */
+  noondayActive: boolean;
   cobreatheActive: boolean;
   prayerListActive: boolean;
   /** The card/dot/count gate — see where it is computed. */
@@ -332,6 +334,7 @@ export type RhythmState = {
   spiritualsActive: boolean;
   spiritualsDone: boolean;
   complineDone: boolean;
+  noondayDone: boolean;
   cobreatheDone: boolean;
   prayerListDone: boolean;
   /** The personal prayer list ("intentions") — real per-item counts for the
@@ -664,6 +667,8 @@ export function useRhythmState(): RhythmState {
     // done-flag independent of the evening anchor (which compline also
     // satisfies, hence its presence in BOTH lists).
     compline: officeLocalDone(["compline"]),
+    // Midday Prayer likewise — an add-on card that is no side's anchor.
+    noonday: officeLocalDone(["noonday"]),
     // A side's SECOND practice completes on its own mode flag — which is a
     // different flag from the anchor's whenever the two run through different
     // office modes (see extraModesFor). That separation is the whole reason a
@@ -679,6 +684,7 @@ export function useRhythmState(): RhythmState {
     morning: isOfficeUndoneToday("morning"),
     evening: isOfficeUndoneToday("evening"),
     compline: isOfficeUndoneToday("compline"),
+    noonday: isOfficeUndoneToday("noonday"),
   }));
   useEffect(() => {
     const recheck = () => {
@@ -686,6 +692,7 @@ export function useRhythmState(): RhythmState {
         morning: officeLocalDone(anchorModesFor("morning")),
         evening: officeLocalDone(anchorModesFor("evening")),
         compline: officeLocalDone(["compline"]),
+        noonday: officeLocalDone(["noonday"]),
         morningExtra: officeLocalDone(extraModesFor("morning")),
         eveningExtra: officeLocalDone(extraModesFor("evening")),
       });
@@ -693,6 +700,7 @@ export function useRhythmState(): RhythmState {
         morning: isOfficeUndoneToday("morning"),
         evening: isOfficeUndoneToday("evening"),
         compline: isOfficeUndoneToday("compline"),
+        noonday: isOfficeUndoneToday("noonday"),
       });
     };
     window.addEventListener(OFFICE_DONE_EVENT, recheck);
@@ -755,7 +763,7 @@ export function useRhythmState(): RhythmState {
     };
   }, []);
 
-  const { data: officeHistory } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean; compline: boolean; surfaces?: string[] }> }>({
+  const { data: officeHistory } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean; compline: boolean; noonday?: boolean; surfaces?: string[] }> }>({
     // Date-scoped so a day rollover always re-fetches instead of serving the
     // pre-midnight cached week (same reasoning as contemplation-stats' key).
     // Without `day` here, an app backgrounded overnight came back holding
@@ -891,6 +899,9 @@ export function useRhythmState(): RhythmState {
   // on/off toggle that makes the card vanish, which read as "it isn't
   // holding" when it was actually just correctly absent before 7pm.
   const complineActive = homeCardActive(hl, "compline");
+  // Midday Prayer — the noonday office as an opt-in card, on the same terms as
+  // Compline: on when the layout keeps it, never time-gated.
+  const noondayActive = homeCardActive(hl, "noonday");
   // Co-Breathe as a standalone anchor — added from the customizer's contemplative
   // step at a chosen time of day (separate from picking Co-Breathe as a side's
   // contemplation STYLE). Its done-state comes from /api/breath/today below.
@@ -918,7 +929,7 @@ export function useRhythmState(): RhythmState {
   // invisible for every current user, treat it as active unless explicitly
   // hidden — the customizer can still turn it off from here.
   const prayerListActive = COMMUNITY_FEATURES_ENABLED && !(new Set(hl?.hidden ?? []).has("prayer-list"));
-  const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || visioActive || complineActive || prayerListActive;
+  const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || visioActive || complineActive || noondayActive || prayerListActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -1461,6 +1472,9 @@ export function useRhythmState(): RhythmState {
   // satisfies eveningDone below and complineActive is false — so there's no
   // case where the two should credit each other.
   const complineDone = complineActive && (officeLocal.compline || (!officeUndone.compline && !!todayOffice?.compline));
+  // Midday Prayer the same way, from ONLY its own flag: its deck credits
+  // neither side, so it can't tick Morning or Evening Prayer, nor they it.
+  const noondayDone = noondayActive && (officeLocal.noonday || (!officeUndone.noonday && !!todayOffice?.noonday));
   // Co-Breathe is kept once a sit is completed today (server-tracked).
   const cobreatheDone = cobreatheActive && ((cobreathe?.done ?? false) || (guest && guestBreathKeptToday()));
 
@@ -1865,6 +1879,7 @@ export function useRhythmState(): RhythmState {
     ...(hagiographyShown ? [hagiographyDone] : []),
     ...(lectioActive && !(morningContemplationKind === "lectio" || eveningContemplationKind === "lectio") ? [lectioDone] : []),
     ...(complineActive ? [complineDone] : []),
+    ...(noondayActive ? [noondayDone] : []),
     // Only an anchor when there IS a list. The layout check alone counted it
     // for everyone — including guests, whose intentions query never runs — so
     // totalAnchors carried a practice with no card and no dot, doneCount
@@ -2002,6 +2017,7 @@ export function useRhythmState(): RhythmState {
     weeklies,
     groupReflection,
     complineActive,
+    noondayActive,
     cobreatheActive,
     prayerListActive,
     prayerListCardActive,
@@ -2024,6 +2040,7 @@ export function useRhythmState(): RhythmState {
     spiritualsActive,
     spiritualsDone,
     complineDone,
+    noondayDone,
     cobreatheDone,
     prayerListDone,
     intentionsTotalCount,

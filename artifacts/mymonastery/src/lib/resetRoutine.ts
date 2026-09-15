@@ -35,7 +35,7 @@ const DEFAULT_HIDDEN_MODULES = [
   // evening). seedGuestRule() below writes both into the layout; hiding
   // them here undid the seed on the very next line, so a signed-in reset
   // landed on a home with no newsletter and no Visio — reset ≠ default.
-  "listening", "reading", "walk", "cobreathe", "compline",
+  "listening", "reading", "walk", "cobreathe", "compline", "noonday",
   "examen", "ssje", "vts", "prayer-list",
   "ncmp", "podcasts", "contemplation",
   "icons", "taize", "andrews", "nouwen", "sojo", "grist", "spirituals", "lectio",
@@ -50,7 +50,7 @@ const DEFAULT_HIDDEN_MODULES = [
  *  measured against. (The staples the home always shows are excluded where
  *  this is used.) */
 const ALL_OPTIONAL_MODULES = [
-  "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen",
+  "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "noonday", "examen",
   "visio", "icons", "lectio", "rosary", "taize", "andrews", "spirituals", "cac", "fdd", "ssje", "vts",
   "nouwen", "sojo", "grist", "hagiography", "ncmp", "podcasts", "prayer-list",
 ];

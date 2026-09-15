@@ -717,7 +717,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // queries only fire when the pill is actually rendered (signed-in).
 function DailyProgressPill() {
   const { t } = useTranslation();
-  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, spiritualsActive, spiritualsDone, iconsActive, iconsDone, rosaryActive, rosaryDone, hagiographyShown, hagiographyDone, taizeShown, taizeDone, andrewsShown, andrewsDone, weeklies, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, visioActive, visioDone, prayerListDone, prayerListCardActive, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, spiritualsActive, spiritualsDone, iconsActive, iconsDone, rosaryActive, rosaryDone, hagiographyShown, hagiographyDone, taizeShown, taizeDone, andrewsShown, andrewsDone, weeklies, walkActive, walkDone, complineActive, complineDone, noondayActive, noondayDone, cobreatheStandaloneActive, cobreatheDone, visioActive, visioDone, prayerListDone, prayerListCardActive, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -849,6 +849,8 @@ function DailyProgressPill() {
     ...weeklies.filter((w) => w.shown).map((w) => ({ key: w.key, done: w.done })),
     ...cDots("anytime"),
     ...cDots("midday"),
+    // Midday Prayer keeps the middle of the day — its own dot and done flag.
+    ...(noondayActive ? [{ key: "noonday", done: noondayDone }] : []),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
     // Standalone Co-Breathe only — when per-side Breathing Together cards replace
     // the standalone card, its dot would have no card (theirs are above).

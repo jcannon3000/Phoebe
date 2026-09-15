@@ -86,7 +86,7 @@ const PRACTICE_LABEL: Record<string, string> = {
    * loop's own comment records for Visio, one list further down (audit
    * 2026-09-03). Keep in step with HOME_MODULE_KEYS.
    */
-  compline: "Compline", icons: "Praying with Icons", taize: "Taizé meditation",
+  compline: "Compline", noonday: "Midday Prayer", icons: "Praying with Icons", taize: "Taizé meditation",
   andrews: "Andrew's Version",
   spirituals: "Meditating on Spirituals", podcasts: "Podcasts", lectio: "Lectio Divina",
   // The Prayer List card had no row either (audit 2026-09-04).
@@ -115,7 +115,7 @@ const PRACTICE_EMOJI: Record<string, string> = {
   // visio is in PRACTICE_LABEL; without it here the row fell back to ✨.
   cobreathe: "🌍", listening: "🎵", walk: "🚶🏽", reading: "📖", examen: "🌗",
   visio: "🖼️",
-  compline: "🌙", icons: "🪟", taize: "🕯️", spirituals: "🎶", podcasts: "🎙️", lectio: "📜", andrews: "📰",
+  compline: "🌙", noonday: "☀️", icons: "🪟", taize: "🕯️", spirituals: "🎶", podcasts: "🎙️", lectio: "📜", andrews: "📰",
 };
 
 const ALWAYS_ANYTIME = new Set(["cobreathe", "listening", "examen", "walk"]);

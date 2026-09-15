@@ -112,6 +112,7 @@ export default function BeginPrayerPage() {
           if (k === "examen") return `/examen?side=${side}`;
           if (k === "cobreathe") return "/cobreathe";
           if (k === "compline") return "/bcp/daily-office?mode=compline";
+          if (k === "noonday") return "/bcp/daily-office?mode=noonday";
           return null;
         }
         if (id === "contemplation" || id.startsWith("contemplation:")) return "/contemplation?begin=1";

@@ -63,7 +63,7 @@ const UNDO_MODE_PREFIX = "phoebe:office-undone-mode:";
 export function isOfficeModeUndoneToday(mode: string): boolean {
   try { return localStorage.getItem(UNDO_MODE_PREFIX + mode) === todayKey(); } catch { return false; }
 }
-export type OfficeUndoSide = "morning" | "evening" | "compline";
+export type OfficeUndoSide = "morning" | "evening" | "compline" | "noonday";
 
 export function isOfficeUndoneToday(side: OfficeUndoSide): boolean {
   try { return localStorage.getItem(UNDO_PREFIX + side) === todayKey(); } catch { return false; }
@@ -92,7 +92,7 @@ export function undoOfficeToday(side: OfficeUndoSide, onlyMode?: string): void {
     // wiped a second practice's flag as collateral).
     const modes = onlyMode
       ? [onlyMode]
-      : side === "compline" ? ["compline"] : anchorModesFor(side);
+      : side === "compline" || side === "noonday" ? [side] : anchorModesFor(side);
     for (const mode of modes) {
       localStorage.removeItem(`phoebe:office-completed:${mode}:${todayKey()}`);
     }
@@ -154,7 +154,7 @@ export function undoOfficeToday(side: OfficeUndoSide, onlyMode?: string): void {
  */
 export function clearOfficeUndoToday(side: OfficeUndoSide): void {
   try {
-    const modes = side === "compline" ? ["compline"] : anchorModesFor(side);
+    const modes = side === "compline" || side === "noonday" ? [side] : anchorModesFor(side);
     localStorage.removeItem(UNDO_PREFIX + side);
     for (const mode of modes) localStorage.removeItem(UNDO_MODE_PREFIX + mode);
     window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
@@ -198,6 +198,28 @@ export function creditAnchorPractice(section: string): void {
 /** True if this office has already been logged/prayed today (local flag). */
 export function isOfficeLoggedToday(mode: string): boolean {
   try { return localStorage.getItem(flagKey(mode)) !== null; } catch { return false; }
+}
+
+/**
+ * Midday Prayer finished — its own office, so its own flag and nothing else.
+ *
+ * The noonday deck credits neither side (bcp-daily-office's creditsNoSide), so
+ * it never goes through markOfficeBookComplete: that would stamp a side's
+ * office, post a morning/evening surface and sweep that side's reminder. The
+ * deck's prayer session already records the "noonday" surface on the server;
+ * this is the instant local flag its routine card reads, and the moment.
+ */
+export function markNoondayComplete(): void {
+  const wasAlreadyLogged = isOfficeLoggedToday("noonday");
+  try {
+    localStorage.setItem(flagKey("noonday"), "1");
+    // A deliberate re-pray outranks an earlier undo today.
+    localStorage.removeItem(UNDO_PREFIX + "noonday");
+    localStorage.removeItem(UNDO_MODE_PREFIX + "noonday");
+    window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
+    if (!wasAlreadyLogged) markRecentCompletion("noonday");
+  } catch { /* private mode / quota — non-fatal */ }
+  if (!wasAlreadyLogged) swellHaptic();
 }
 
 /** Mark a full office prayed from the physical book: flip the instant local

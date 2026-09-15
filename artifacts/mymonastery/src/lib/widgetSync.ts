@@ -347,6 +347,8 @@ export function useWidgetSync(): void {
       // Compline rides the evening slot — same fixed placement the home card
       // and the header dot use (it IS the night office, so no slot picker).
       { active: r.complineActive, done: r.complineDone, slot: "evening", key: "compline", emoji: "🌙", title: "Compline", eyebrow: "The night office", subtitle: "The night office", cta: "Begin", kind: "office" },
+      // Midday Prayer, fixed at midday for the same reason.
+      { active: r.noondayActive, done: r.noondayDone, slot: "midday", key: "noonday", emoji: "☀️", title: "Midday Prayer", eyebrow: "The noonday office", subtitle: "A short office for noon", cta: "Begin", kind: "office" },
       { active: r.readingActive, done: r.readingDone, slot: getPracticeSlot("reading"), key: "reading", emoji: "📚", title: "Reading", eyebrow: "Your reading rule", subtitle: "Log what you read", cta: "Log", kind: "office" },
       // Prayer List is NOT a routine anchor here either — same exclusion as
       // DailyProgressBody.tsx (see its comment there): it's woven into the
@@ -582,7 +584,7 @@ export function useWidgetSync(): void {
     r.eveningContemplationActive, r.eveningContemplationDone,
     r.silenceActive, r.silenceDone, r.reflectActive, reflSig,
     r.cobreatheActive, r.cobreatheDone, r.listeningActive, r.listeningDone,
-    r.walkActive, r.walkDone, r.visioActive, r.visioDone, r.rosaryActive, r.rosaryDone, r.lectioActive, r.lectioDone, r.complineActive, r.complineDone,
+    r.walkActive, r.walkDone, r.visioActive, r.visioDone, r.rosaryActive, r.rosaryDone, r.lectioActive, r.lectioDone, r.complineActive, r.complineDone, r.noondayActive, r.noondayDone,
     // podcastsActive/Done are READ by this effect (the Way of Love item) and
     // were missing here, while prayerListActive/Done were listed but never
     // read — the Prayer List is deliberately excluded from the widget's items.

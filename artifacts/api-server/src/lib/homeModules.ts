@@ -29,6 +29,8 @@ export const HOME_MODULE_KEYS = [
   "walk",
   "cobreathe",
   "compline",
+  // Midday Prayer — the prayer book's short office for noon (BCP p. 103).
+  "noonday",
   "examen",
   "visio",
   // Praying with Icons — one icon a week, sat with daily.

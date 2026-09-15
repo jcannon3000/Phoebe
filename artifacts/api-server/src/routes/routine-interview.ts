@@ -161,6 +161,7 @@ const CATALOGUE: Record<string, CatalogueEntry> = {
   icons:           { kind: "practice", label: "Praying with Icons — one icon for the week", hint: "" },
   taize:           { kind: "practice", label: "the Taizé meditation (weekly)", hint: "" },
   andrews:         { kind: "practice", label: "Andrew's Version — a weekly comment on the lectionary", hint: "abmcg.substack.com; admin-only for now" },
+  noonday:         { kind: "practice", label: "Midday Prayer — the prayer book's short office for noon (BCP p. 103)", hint: "\"noonday prayer\", \"the midday office\"; its own card, not a morning or evening prayer form" },
   hagiography:     { kind: "practice", label: "Feast Day Hagiographies — the life of the day's saint, from Forward Movement", hint: "\"lives of the saints\"; appears only on days the calendar keeps a commemoration" },
   spirituals:      { kind: "practice", label: "Meditating on Spirituals — a spiritual sung as prayer", hint: "" },
   lectio:          { kind: "practice", label: "Lectio Divina — a passage read slowly three times", hint: "" },

@@ -1448,6 +1448,7 @@ export default function WayOfLoveRuleFlow({
       andrews: homeCardOn(seedLayout(user), "andrews"),
       spirituals: homeCardOn(seedLayout(user), "spirituals"),
       compline: homeCardOn(seedLayout(user), "compline"),
+      noonday: homeCardOn(seedLayout(user), "noonday"),
       lectio: homeCardOn(seedLayout(user), "lectio"),
     });
     // Per-side Contemplative Prayer — re-seed once the home layout lands.
@@ -1469,7 +1470,7 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; andrews: boolean; spirituals: boolean; compline: boolean; reading: boolean; lectio: boolean; rosary: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; andrews: boolean; spirituals: boolean; compline: boolean; noonday: boolean; reading: boolean; lectio: boolean; rosary: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: !creationHeldBySide() && homeCardOn(seedLayout(user), "cobreathe"),
     audio: homeCardOn(seedLayout(user), "listening"),
@@ -1483,6 +1484,7 @@ export default function WayOfLoveRuleFlow({
     spirituals: homeCardOn(seedLayout(user), "spirituals"),
     // Seeded the same way as every sibling — the layout key IS the switch.
     compline: homeCardOn(seedLayout(user), "compline"),
+    noonday: homeCardOn(seedLayout(user), "noonday"),
     // Reading moved here from the unreachable "extras" step — same seeding as
     // its siblings, and now the ONLY writer of the "reading" key (extras no
     // longer carries it, so the two can't disagree).
@@ -1493,7 +1495,7 @@ export default function WayOfLoveRuleFlow({
     lectio: homeCardOn(seedLayout(user), "lectio"),
     rosary: homeCardOn(seedLayout(user), "rosary"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "andrews" | "spirituals" | "compline" | "reading" | "lectio" | "rosary") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "andrews" | "spirituals" | "compline" | "noonday" | "reading" | "lectio" | "rosary") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -2278,6 +2280,7 @@ export default function WayOfLoveRuleFlow({
       ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
       ...(wantComplineCard ? ["compline"] : []),
+      ...(contemplative.noonday ? ["noonday"] : []),
       ...(wantExamenCard ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
@@ -2313,6 +2316,7 @@ export default function WayOfLoveRuleFlow({
       ...(extras.prayerList ? [] : ["prayer-list"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
       ...(wantComplineCard ? [] : ["compline"]),
+      ...(contemplative.noonday ? [] : ["noonday"]),
       ...(wantExamenCard ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
@@ -2638,6 +2642,7 @@ export default function WayOfLoveRuleFlow({
       ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
       ...(wantComplineCard ? ["compline"] : []),
+      ...(contemplative.noonday ? ["noonday"] : []),
       ...(wantExamenCard ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
@@ -2679,6 +2684,7 @@ export default function WayOfLoveRuleFlow({
       ...(extras.prayerList ? [] : ["prayer-list"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
       ...(wantComplineCard ? [] : ["compline"]),
+      ...(contemplative.noonday ? [] : ["noonday"]),
       ...(wantExamenCard ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
@@ -2876,7 +2882,7 @@ export default function WayOfLoveRuleFlow({
     // wants Visio Divina and a Contemplative Walk gets exactly those, and
     // nothing survives from the rule being replaced.
     setContemplative({
-      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, andrews: false, spirituals: false, compline: false, reading: false, lectio: false, rosary: false,
+      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, andrews: false, spirituals: false, compline: false, noonday: false, reading: false, lectio: false, rosary: false,
       ...(preset.practices ?? {}),
     });
     /**
@@ -4388,12 +4394,12 @@ export default function WayOfLoveRuleFlow({
           afterAdd();
         },
       }));
-    const practiceItem = (key: SlottedPractice | "compline", emoji: string, name: string): AddItem => ({
+    const practiceItem = (key: SlottedPractice | "compline" | "noonday", emoji: string, name: string): AddItem => ({
       key: `practice:${key}`, emoji, name,
       inRoutine: () => homeCardOn(seedLayout(user), key === "listening" ? "listening" : key),
       add: () => {
         unhideCard(key);
-        if (key !== "compline") setPracticeSlot(key as SlottedPractice, "anytime");
+        if (key !== "compline" && key !== "noonday") setPracticeSlot(key as SlottedPractice, "anytime");
         afterAdd();
       },
     });
@@ -4414,6 +4420,7 @@ export default function WayOfLoveRuleFlow({
           ...sideItems("devotion", "Morning Devotion", "Evening Devotion", "🕊️"),
           ...sideItems("psalms", "Morning Psalms", "Evening Psalms", "📜"),
           ...sideItems("readings", "Morning Scripture Readings", "Evening Scripture Readings", "📖"),
+          practiceItem("noonday", "☀️", "Midday Prayer"),
           practiceItem("compline", "🌙", "Compline"),
         ],
       },
@@ -4923,6 +4930,10 @@ export default function WayOfLoveRuleFlow({
               }
             },
           )}
+          {/* Midday Prayer — the prayer book's short office for noon, an
+              add-on card like Compline (it is no side's prayer, so there is
+              nothing for it to duplicate). */}
+          {choiceRow(contemplative.noonday, `☀️ ${t("wol_rule.cp_noonday", { defaultValue: "Midday Prayer" })}`, t("wol_rule.cp_noonday_sub", { defaultValue: "A short office for noon, from the prayer book." }), () => toggleContemplative("noonday"))}
           {!complineAlreadyPrimary && choiceRow(contemplative.compline, `🌙 ${t("wol_rule.cp_compline", { defaultValue: "Compline" })}`, t("wol_rule.cp_compline_sub", { defaultValue: "The night office — available from 7pm." }), () => toggleContemplative("compline"))}
           {!anchoredAsForm("audio") && choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Connecting with God through music." }), () => toggleContemplative("audio"))}
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
@@ -7079,6 +7090,7 @@ export default function WayOfLoveRuleFlow({
     // No time-of-day sub-label anymore — these add-ons are just available
     // all day (see the "contemplative" step for the "with your prayer"
     // exception, when Breathing Together IS the side's primary sit style).
+    ...(contemplative.noonday ? [{ emoji: "☀️", label: "Midday Prayer", sub: "The noonday office", step: "contemplative" as Step, editId: "slot:noonday", remove: () => toggleContemplative("noonday") }] : []),
     ...(contemplative.compline ? [{ emoji: "🌙", label: "Compline", sub: "Available from 7pm", step: "contemplative" as Step, editId: "slot:compline", remove: () => toggleContemplative("compline") }] : []),
     /**
      * The standing Breathing Together add-on — but NOT when a side already lists
