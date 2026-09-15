@@ -167,10 +167,10 @@ export default function ThisSundayPage() {
     },
     ...(isAdmin ? [{
       key: "commentary", emoji: "📰",
-      // Owner (2026-09-04): "call Yale commentary on This Sunday Scripture
-      // Commentary"; the second line still names Dr. McGowan.
-      title: t("this_sunday.commentary", { defaultValue: "Scripture Commentary" }),
-      blurb: t("this_sunday.commentary_sub", { defaultValue: "Dr. Andrew McGowan's commentary on the lectionary" }),
+      // Owner (2026-09-15): "have McGowan say "Yale Divinity Commentary" with
+      // his name in the second line" (it was "Scripture Commentary").
+      title: t("this_sunday.commentary", { defaultValue: "Yale Divinity Commentary" }),
+      blurb: t("this_sunday.commentary_sub", { defaultValue: "Dr. Andrew McGowan" }),
       cta: t("rhythm.read", { defaultValue: "Read" }),
       open: () => {
         const post = andrewsQ.data;
@@ -180,8 +180,11 @@ export default function ThisSundayPage() {
     }] : []),
     ...(livingChurchVisible ? [{
       key: "living-church", emoji: "⛪",
-      title: t("this_sunday.living_church", { defaultValue: "The Living Church" }),
-      blurb: t("this_sunday.living_church_sub", { defaultValue: "Commentary on this Sunday's readings" }),
+      // Owner (2026-09-15): "have the living church say "Living Church
+      // Comentary" with a discription under". The second line is short enough
+      // to show whole on an iPhone 17 Pro; the old one ran into the Read pill.
+      title: t("this_sunday.living_church", { defaultValue: "Living Church Commentary" }),
+      blurb: t("this_sunday.living_church_sub", { defaultValue: "Weekly reflection on the readings" }),
       cta: t("rhythm.read", { defaultValue: "Read" }),
       // In Phoebe's reader (owner: "lets try a reader view"), with the
       // column's recent posts under Previous. Nothing is marked read: no other
