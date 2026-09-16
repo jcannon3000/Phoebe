@@ -447,7 +447,7 @@ export default function PsalmsPage() {
         {header(goHome)}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "8px 28px", gap: 16 }}>
           <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>Before you begin</p>
-          <h1 className="title-glow-breathe" data-glint={sideLabel} style={{ fontFamily: FONT, fontSize: "clamp(40px, 8vw, 72px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: 0, lineHeight: 1.05 }}>{sideLabel}</h1>
+          <h1 className="title-glow-breathe" style={{ fontFamily: FONT, fontSize: "clamp(40px, 8vw, 72px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: 0, lineHeight: 1.05 }}>{sideLabel}</h1>
           <p style={{ fontSize: 16, lineHeight: 1.6, fontFamily: FONT, color: "rgba(var(--ot-mist, 200,212,192),0.85)", margin: "0 0 8px" }}>The psalms appointed for today, from the Book of Common Prayer.</p>
           <div style={{ width: "100%", maxWidth: 380, display: "flex", flexDirection: "column", gap: 10 }}>
             {pill("Lectionary", cycle, [

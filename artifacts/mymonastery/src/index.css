@@ -1037,42 +1037,7 @@ a:active,
   .title-glint { animation: none; background-image: none; -webkit-text-fill-color: currentColor; color: rgb(240, 237, 230); }
 }
 
-/* ── Title-slide glint ───────────────────────────────────────────────────────
-   Owner, 2026-09-15: "add a glint to title slide titles .3s after load and
-   rise". A practice deck's title card rises in with .title-glow-breathe (a
-   0.7s fade and 6px rise, then the breathing halo); one pale-gold band then
-   crosses the letters 0.3s after the rise lands — 1s in — and is gone.
-
-   An OVERLAY, not the title's own paint. Clipping the title's background to
-   its text would put the breathing text-shadow over the letters and dim every
-   title for good. ::after lays a copy of the words (data-glint) over them,
-   transparent except for the band, so the title and its halo look exactly as
-   they did before and after. The copy inherits the title's font and box, so
-   it wraps line for line. The "/ ''" alt text keeps screen readers from
-   hearing the title twice where it is understood. */
-.title-glow-breathe[data-glint] { position: relative; }
-.title-glow-breathe[data-glint]::after {
-  content: attr(data-glint);
-  content: attr(data-glint) / "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  text-shadow: none;
-  background-image: linear-gradient(100deg,
-    rgba(255, 226, 160, 0) 0%,
-    rgba(255, 226, 160, 0) 40%,
-    rgba(255, 226, 160, 0.95) 50%,
-    rgba(255, 226, 160, 0) 60%,
-    rgba(255, 226, 160, 0) 100%);
-  background-size: 250% 100%;
-  background-position: 100% 0;
-  background-repeat: no-repeat;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-  animation: title-glint 1.1s ease-in-out 1s 1 both;
-}
-@media (prefers-reduced-motion: reduce) {
-  .title-glow-breathe[data-glint]::after { content: none; animation: none; }
-}
+/* The title-slide glint was removed (owner, 2026-09-16: "take out the glint on
+   slide titles"). Deck titles keep .title-glow-breathe — the 0.7s fade, the 6px
+   rise and the breathing halo. The .title-glint class above is a different
+   thing and still in use: the Dean's Commentary card's title. */

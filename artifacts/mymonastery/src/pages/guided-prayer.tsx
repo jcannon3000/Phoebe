@@ -581,7 +581,6 @@ export default function GuidedPrayerPage() {
               </p>
               <h2
                 className="title-glow-breathe"
-                data-glint={movement.title}
                 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 14 }}
               >
                 {movement.title}

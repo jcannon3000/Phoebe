@@ -3565,7 +3565,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               </p>
               <h1
                 className="title-glow-breathe"
-                data-glint={currentSlide.title ?? ""}
                 style={{
                   fontFamily: SPACE_GROTESK,
                   // A shade smaller than TITLE_LG on this slide only: it is the
@@ -3883,7 +3882,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             >
               <h1
                 className="title-glow-breathe"
-                data-glint={"Intercessions"}
                 style={{
                   fontFamily: SPACE_GROTESK,
                   fontSize: TITLE_XL,
@@ -3967,7 +3965,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   </p>
                   <h1
                     className="title-glow-breathe"
-                    data-glint={headline}
                     style={{
                       fontFamily: SPACE_GROTESK,
                       fontSize: TITLE_XL,
@@ -4040,7 +4037,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   </p>
                   <h1
                     className="title-glow-breathe"
-                    data-glint={headline}
                     style={{
                       fontFamily: SPACE_GROTESK,
                       fontSize: TITLE_XL,
@@ -4121,7 +4117,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   </p>
                   <h1
                     className="title-glow-breathe"
-                    data-glint={reference}
                     style={{
                       fontFamily: SPACE_GROTESK,
                       fontSize: TITLE_MD,
@@ -4292,7 +4287,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   </p>
                   <h1
                     className="title-glow-breathe"
-                    data-glint={(currentSlide.title ?? "").replace(/\s*-{2,}\s*/g, "–")}
                     style={{
                       fontFamily: SPACE_GROTESK,
                       fontSize: TITLE_MD,

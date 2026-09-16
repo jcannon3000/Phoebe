@@ -698,7 +698,6 @@ export default function RosaryPage() {
               </p>
               <h1
                 className="title-glow-breathe"
-                data-glint={formName}
                 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: TITLE_LG, lineHeight: 1.05, letterSpacing: "-0.02em", margin: 0 }}
               >
                 {formName}
@@ -837,7 +836,6 @@ export default function RosaryPage() {
               </p>
               <h2
                 className="title-glow-breathe"
-                data-glint={beat.mystery.title}
                 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: TITLE_MD, lineHeight: 1.08, letterSpacing: "-0.02em", margin: 0 }}
               >
                 {beat.mystery.title}
@@ -1038,7 +1036,6 @@ export default function RosaryPage() {
               </p>
               <h2
                 className="title-glow-breathe"
-                data-glint={circle < ANGLICAN_CIRCLES ? t("rosary.round_again_title", { defaultValue: "Round again" }) : t("rosary.circle_last", { defaultValue: "Three times round" })}
                 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: TITLE_MD, lineHeight: 1.08, letterSpacing: "-0.02em", margin: 0 }}
               >
                 {circle < ANGLICAN_CIRCLES
@@ -1072,7 +1069,6 @@ export default function RosaryPage() {
               <p style={{ fontSize: 40, margin: 0 }} aria-hidden>📿</p>
               <h2
                 className="title-glow-breathe"
-                data-glint={isAnglican ? t("rosary.closing_title_ang", { defaultValue: "The circle is prayed" }) : t("rosary.closing_title", { defaultValue: "The rosary is prayed" })}
                 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: TITLE_MD, lineHeight: 1.08, letterSpacing: "-0.02em", margin: 0 }}
               >
                 {isAnglican

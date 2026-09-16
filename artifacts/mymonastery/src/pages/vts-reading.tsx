@@ -301,7 +301,6 @@ export default function VtsReadingPage() {
             </p>
             <h1
               className="title-glow-breathe"
-              data-glint={data?.title || "Today's commentary"}
               style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(40px, 8vw, 72px)", lineHeight: 1.05, letterSpacing: "-0.02em", margin: 0 }}
             >
               {data?.title || "Today's commentary"}
