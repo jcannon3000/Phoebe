@@ -211,7 +211,18 @@ export function parseRef(ref: string): RefParts | null {
     // "Matthew 15: (10-20), 21-28" normalises to "15:, 10-20, 21-28" upstream,
     // and the chapter then read as a WHOLE chapter — which handed a print of
     // 15:1-2 an exact match on a Sunday reading 15:10-20, 21-28.
-    .replace(/:\s*,\s*/g, ":");
+    .replace(/:\s*,\s*/g, ":")
+    /**
+     * LECTIONARY BRACKETS ARE VERSES, NOT DECORATION. ACT tags a Nativity
+     * "Luke 2:(1-7), 8-20" and a prologue "John 1:(1-9), 10-18"; the bracket
+     * stopped the verse regex dead, so the reference read as the WHOLE chapter
+     * and the work then matched every verse in it. Measured on the schedule
+     * before this line: 5 Sundays said "this week's reading" over a picture that
+     * does not paint them — a Nativity on John 1:29-42 and on John 1:43-51, the
+     * birth with shepherds on Luke 2:22-40 (the Presentation), and two more.
+     * 21 works across the catalogues carry a tag written this way.
+     */
+    .replace(/[()[\]]/g, "");
   // A LEADING numeral belongs to the name ("1 Samuel"), so peel it off before
   // looking for the chapter — otherwise the book name ends at the first digit
   // and every epistle collapses to the empty string.
@@ -235,7 +246,7 @@ export function parseRef(ref: string): RefParts | null {
   if (full) book = numbered ? `${numbered[1]} ${full}` : full;
 
   // chapter[:verse][ - chapter:verse | verse]
-  const m = /^(\d+)(?::(\d+))?(?:\s*[-\u2013]\s*(?:(\d+):)?(\d+))?/.exec(nums);
+  const m = /^(\d+)(?::\s*(\d+))?(?:\s*[-\u2013]\s*(?:(\d+):)?(\d+))?/.exec(nums);
   if (!m) return { book, spans: [] };
   const ch1 = parseInt(m[1]!, 10);
   const v1 = m[2] ? parseInt(m[2], 10) : 0;          // 0 = from the chapter's start

@@ -243,6 +243,13 @@ const THEME_PICKS = {
   // owner asked for. This one DOES paint the reading, so the card still names
   // the verses; it is here because a hand-chosen picture should win the tie.
   "Luke 4:16-30": 9129869,
+  // The Baptism of the Lord, both years (owner: "use Holy Baptism ... instead
+  // of river"). Swanson's River had taken these two Sundays on a tie-break
+  // after an unrelated week changed; both works are tagged to the reading, so
+  // the card still names the verses. NOT 2027-12-12, whose gospel is Luke
+  // 3:7-18 — River carries that reference and Holy Baptism does not.
+  "Matthew 3:13-17": 59682,
+  "Mark 1:4-11": 59682,
   // Jesus Mafa's own painting of the treasure in the field — the library held it
   // all along. Its tag, "Matthew 13:31-33, 44-52", reads as the mustard seed to
   // a parser that takes only a reference's FIRST verse group, which is how a
