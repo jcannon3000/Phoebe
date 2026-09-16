@@ -300,18 +300,21 @@
   "for": "Mark 13:24-37 (theme: the Son of Man coming in glory)"
  },
  {
-  "file": "File:Carl Bloch - Christ and Child.jpg",
-  "refs": [],
-  "title": "Christ and the Child",
-  "artist": "Carl Bloch",
-  "for": "Mark 9:30-37 (theme: he took a child and put it among them)"
- },
- {
   "file": "File:Enrique Simonet - Flevit super illam - 1892.jpg",
   "refs": [],
   "title": "Flevit super illam",
   "artist": "Enrique Simonet",
   "where": "Museo del Prado, Madrid",
   "for": "Mark 13:1-8 (theme: on the Mount of Olives opposite the temple)"
+ },
+ {
+  "file": "File:Christus stelt zijn discipelen een kind tot voorbeeld, RP-P-OB-46.005.jpg",
+  "refs": [
+   "Mark 9:33-37"
+  ],
+  "title": "Christ Takes a Child in His Arms",
+  "artist": "Jan Luyken",
+  "where": "Rijksmuseum, Amsterdam",
+  "for": "Mark 9:30-37"
  }
 ]

@@ -218,11 +218,14 @@ const THEME_PICKS = {
   "John 6:27-40": 58334,
   // "They were like sheep without a shepherd."
   "Mark 6:30-34, 53-56": 57121,
-  // Christ's hand on the child's head: "he took a child and put it among them".
-  // The owner rejected the van der Borcht print here (figures small in a wide
-  // landscape, a handwritten French caption), and the one true scene on Commons
-  // — Gotha panel 89 — is 40% handwritten German cartouche uncropped.
-  "Mark 9:30-37": 9594107,
+  // Jesus has sat down, the twelve are round him and the child is in his arms:
+  // the literal choreography of Mark 9:35-36, with no lettering inside the
+  // plate. Two pictures were sent back before it — the van der Borcht print
+  // (figures small in a wide landscape, a handwritten French caption) and
+  // Bloch's Christ and the Child. The one other true scene on Commons, Gotha
+  // panel 89, is 40% handwritten German cartouche uncropped, and the Ottheinrich
+  // Bible has no Mark 9 folio there at all.
+  "Mark 9:30-37": 9826666,
   // The Mount of Olives opposite the temple, which is where Mark 13 is spoken.
   // The owner rejected the de Vos engraving for its Latin caption block, and
   // every scene-literal picture on Commons is another engraving of that family.

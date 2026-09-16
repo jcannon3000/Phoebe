@@ -248,22 +248,6 @@ export const COMMONS_VISIO_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Jan Luyken. The Faithful Steward. Original source: Wikimedia Commons."
  },
  {
-  "id": 9594107,
-  "title": "Christ and the Child",
-  "artist": "Carl Bloch",
-  "date": "1873",
-  "where": null,
-  "img": "https://upload.wikimedia.org/wikipedia/commons/4/4a/Carl_Bloch_-_Christ_and_Child.jpg",
-  "refs": [],
-  "days": [],
-  "people": [],
-  "subjects": [],
-  "essay": "",
-  "act": "https://commons.wikimedia.org/wiki/File:Carl_Bloch_-_Christ_and_Child.jpg",
-  "licence": "Public domain",
-  "attribution": "Carl Bloch. Christ and the Child. Original source: Wikimedia Commons."
- },
- {
   "id": 9604476,
   "title": "Christ the Vine",
   "artist": "Angelos Akotantos",
@@ -424,6 +408,24 @@ export const COMMONS_VISIO_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://commons.wikimedia.org/wiki/File:Enrique_Simonet_-_Flevit_super_illam_-_1892.jpg",
   "licence": "Public domain",
   "attribution": "Enrique Simonet. Flevit super illam. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 9826666,
+  "title": "Christ Takes a Child in His Arms",
+  "artist": "Jan Luyken",
+  "date": "1712",
+  "where": "Rijksmuseum, Amsterdam",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/Christus_stelt_zijn_discipelen_een_kind_tot_voorbeeld%2C_RP-P-OB-46.005.jpg/1920px-Christus_stelt_zijn_discipelen_een_kind_tot_voorbeeld%2C_RP-P-OB-46.005.jpg",
+  "refs": [
+   "Mark 9:33-37"
+  ],
+  "days": [],
+  "people": [],
+  "subjects": [],
+  "essay": "",
+  "act": "https://commons.wikimedia.org/wiki/File:Christus_stelt_zijn_discipelen_een_kind_tot_voorbeeld,_RP-P-OB-46.005.jpg",
+  "licence": "CC0",
+  "attribution": "Jan Luyken. Christ Takes a Child in His Arms. Original source: Wikimedia Commons."
  },
  {
   "id": 9844748,
