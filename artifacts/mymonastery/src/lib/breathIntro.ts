@@ -21,6 +21,7 @@ const LAST_SHOWN_KEY = "phoebe:breath-intro-at";
 const STARTED_KEY = "phoebe:breath-intro-started";
 const DEADLINE_KEY = "phoebe:breath-intro-deadline";
 const ENDED_KEY = "phoebe:breath-intro-ended";
+const ELIGIBLE_KEY = "phoebe:breath-intro-eligible";
 
 /** Three breaths (owner). */
 export const BREATH_INTRO_BREATHS = 3;
@@ -80,4 +81,21 @@ export function breathIntroStartedAt(): number | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Whether the person last signed in on this device gets the intro, kept for the
+ * splash's FIRST frame. The sign-in record isn't there yet then: the persisted
+ * query cache is restored in an effect after the first render, and on the
+ * first open of a day it's discarded altogether (App.tsx's day buster), so
+ * the record waits on /api/auth/me. The splash decides from this whether
+ * to show the Phoebe icon at all, and the beat's end falls back to it until
+ * the record arrives, so the two can't disagree.
+ */
+export function rememberBreathIntroEligible(eligible: boolean): void {
+  try { localStorage.setItem(ELIGIBLE_KEY, eligible ? "1" : "0"); } catch { /* ignore */ }
+}
+
+export function breathIntroRememberedEligible(): boolean {
+  try { return localStorage.getItem(ELIGIBLE_KEY) === "1"; } catch { return false; }
 }

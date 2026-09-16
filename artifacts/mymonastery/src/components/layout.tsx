@@ -24,6 +24,7 @@ import { CYCLE_MS } from "@/lib/breathRings";
 import {
   BREATH_INTRO_BREATHS, BREATH_INTRO_SLACK_MS,
   breathIntroDueNow, beginBreathIntro, endBreathIntro, isBreathIntroActive, breathIntroStartedAt,
+  rememberBreathIntroEligible, breathIntroRememberedEligible,
 } from "@/lib/breathIntro";
 import { FirstOpenOnboarding } from "@/components/FirstOpenOnboarding";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -1031,7 +1032,7 @@ function DailyProgressPill() {
 // once per app launch. Signed-out visitors see it too since 2026-09-04: the
 // beat starts on mount rather than after the sign-in check (see below).
 function OpeningSplash() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, settled: authSettled } = useAuth();
   const native = isNativeShell();
   const [phase, setPhase] = useState<"in" | "breath" | "out" | "gone">(() => {
     if (typeof window === "undefined") return "gone";
@@ -1057,11 +1058,32 @@ function OpeningSplash() {
   // hiding the intro from exactly the people it is for. Honours the beta-view
   // toggle like every other admin-only surface.
   const [betaView] = useBetaViewToggle();
+  // Kept for the next launch's first frame, when the record isn't in yet.
+  useEffect(() => {
+    if (!native) return;
+    if (user) rememberBreathIntroEligible(!!user.isSuperAdmin);
+    else if (authSettled) rememberBreathIntroEligible(false);
+  }, [native, user, authSettled]);
   const breathEligibleRef = useRef(false);
-  breathEligibleRef.current = native && !!user?.isSuperAdmin && betaView;
+  // Until the record is in, go by what this device last knew: the answer the
+  // icon below was hidden on, so a launch that hid it for the breaths breathes.
+  breathEligibleRef.current = native && betaView && (user ? !!user.isSuperAdmin : !authSettled && breathIntroRememberedEligible());
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const breathStartedAtRef = useRef<number | null>(breathIntroStartedAt());
+  /**
+   * NO ICON ON A LAUNCH THAT BREATHES (owner, 2026-09-16: "For people who have
+   * the 3 breath intro in there, dont load the phoebe icon on the splsh" ·
+   * "cause they get in the way"). The icon used to hold for the beat and then
+   * fade out under the rings as they came in, and fade back in over the
+   * splash's own fade once they ended. Decided on the first frame, before the
+   * icon would paint, from the same answer the beat's end acts on; a launch
+   * that turns out to breathe anyway (the device had never been told) drops
+   * the icon the moment the breaths begin.
+   */
+  const [breathLaunch, setBreathLaunch] = useState(
+    () => phase === "breath" || (phase === "in" && breathEligibleRef.current && breathIntroDueNow()),
+  );
 
   // Start the auto-dismiss once auth has resolved (user present) — NOT on a
   // bare mount. On a native cold start `user` is null while /api/auth/me
@@ -1091,6 +1113,7 @@ function OpeningSplash() {
       // Enter button below goes straight home; it has waited long enough.
       if (breathEligibleRef.current && breathIntroDueNow()) {
         breathStartedAtRef.current = beginBreathIntro(BREATH_INTRO_BREATHS * CYCLE_MS + BREATH_INTRO_SLACK_MS);
+        setBreathLaunch(true);
         setPhase("breath");
         return;
       }
@@ -1261,16 +1284,17 @@ function OpeningSplash() {
           backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
         }}
       />
-      <motion.img
-        src="/phoebe-app-icon.png"
-        alt=""
-        aria-hidden
-        initial={{ opacity: 0, scale: 0.92 }}
-        // The icon gives way to the breaths rather than sitting under the rings.
-        animate={{ opacity: phase === "breath" ? 0 : 1, scale: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        style={{ width: 96, height: 96, borderRadius: 22, boxShadow: "0 8px 32px rgba(0,0,0,0.35)" }}
-      />
+      {!breathLaunch && (
+        <motion.img
+          src="/phoebe-app-icon.png"
+          alt=""
+          aria-hidden
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          style={{ width: 96, height: 96, borderRadius: 22, boxShadow: "0 8px 32px rgba(0,0,0,0.35)" }}
+        />
+      )}
       {phase === "breath" && breathStartedAtRef.current != null && (
         <BreathIntro startedAt={breathStartedAtRef.current} breaths={BREATH_INTRO_BREATHS} onDone={finishBreath} />
       )}
