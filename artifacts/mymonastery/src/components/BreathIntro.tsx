@@ -8,31 +8,50 @@
  * button at the bottom" and "have the circles ui the same as breathing
  * together".
  *
- * SAME RINGS, OWN CLOCK. The colours, radii, stroke, frost mask and globe box
- * all come from lib/breathRings — the module Creation Prayer's breath draws
- * from — so the two cannot drift apart. What is deliberately different is time:
- * that breath rides the server clock so the world breathes together; this one
- * starts on an inhale the moment it appears, because nobody is waiting on it.
+ * SAME RINGS, OWN CLOCK. The colours, radii, stroke, frost mask, ring box and
+ * the per-breath haptic all come from lib/breathRings — the module Creation
+ * Prayer's breath draws from — so the two cannot drift apart. What is
+ * deliberately different is time: that breath rides the server clock so the
+ * world breathes together; this one starts on an inhale the moment it appears,
+ * because nobody is waiting on it.
+ *
+ * Also different, by the owner's word (2026-09-16): no globe in the middle
+ * ("take globe out"), and the rings sit at the screen's vertical centre ("move
+ * the circles to the verticle center") rather than on Creation Prayer's
+ * golden-ratio line. Haptics as Creation Prayer has them ("make sure there are
+ * haptics on the intro breathing"); still no sound.
+ *
+ * ONE NAME OF GOD PER BREATH, under the rings (owner, 2026-09-16: "with each
+ * of the three breaths do Creator / Sustainer / Redeemer … under the circles,
+ * balanced with the text on top … they stay for the whole breath … on the in
+ * and out"). The word holds for its whole breath and rises and falls with each
+ * half of it, as "Breathe In / Breathe Out" does on Creation Prayer — so it
+ * changes at the bottom of the exhale, while it is invisible.
  *
  * It only breathes, counts and says when it is done. Whether it appears at all,
  * and what happens afterwards, belong to OpeningSplash (components/layout.tsx).
- * No sound and no haptics: this is the first thing someone meets on opening the
- * app, and it should be quiet.
  */
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { CenteredGlobe } from "@/components/CenteredGlobe";
 import {
   INHALE_MS, EXHALE_MS, CYCLE_MS,
   RING_IN, RING_OUT, RING_GLOW, RING_R, RING_CIRC, RING_SW,
   SESSION_RING, SESSION_R, SESSION_CIRC, SESSION_TRACK, BREATH_RING_MASK,
-  breathGlobeBoxPx,
+  breathGlobeBoxPx, breathHaptic,
 } from "@/lib/breathRings";
 
 const WARM = "#F0EDE6";
 const TEXT_DIM = "rgba(182,210,188,0.72)";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
+/** The word under the rings for breath 1, 2 and 3. */
+const BREATH_NAMES = [
+  { key: "breath_intro.creator", word: "Creator" },
+  { key: "breath_intro.sustainer", word: "Sustainer" },
+  { key: "breath_intro.redeemer", word: "Redeemer" },
+] as const;
+/** The invitation above the rings and the name below sit this far from them (of the screen's height). */
+const TEXT_GAP = "8%";
 
 type Readout = { inhale: boolean; breath: number };
 
@@ -50,6 +69,8 @@ export function BreathIntro({
   const ringInRef = useRef<SVGCircleElement>(null);
   const ringOutRef = useRef<SVGCircleElement>(null);
   const sessionRingRef = useRef<SVGCircleElement>(null);
+  const phaseWordRef = useRef<HTMLSpanElement>(null);
+  const nameRef = useRef<HTMLParagraphElement>(null);
   const doneRef = useRef(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
@@ -78,6 +99,19 @@ export function BreathIntro({
   // actually change — twice a breath.
   useEffect(() => {
     let raf = 0;
+    // HAPTICS AS CREATION PRAYER HAS THEM: a soft swell as each inhale begins
+    // and a 1.618× stronger one as each exhale begins, then that breath's own
+    // payoff swell once all three are kept. The first inhale gets its haptic
+    // only on a fresh start — a splash remounting mid-breath (see OpeningSplash)
+    // picks up silently rather than buzzing out of step.
+    let lastInhale: boolean | null = null;
+    let lastBreath = 0;
+    {
+      const since = Math.max(0, Date.now() - startedAt);
+      if (since < 400) breathHaptic(false);
+      lastInhale = since % CYCLE_MS < INHALE_MS;
+      lastBreath = Math.floor(since / CYCLE_MS);
+    }
     const setOffsets = (fIn: number, fOut: number, fSession: number) => {
       if (ringInRef.current) ringInRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fIn)).toFixed(2);
       if (ringOutRef.current) ringOutRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fOut)).toFixed(2);
@@ -90,11 +124,29 @@ export function BreathIntro({
         // Rest on the last exhale, rings full, while the splash fades away —
         // never snap back to empty under the fade.
         setOffsets(1, 1, 1);
-        if (!doneRef.current) { doneRef.current = true; onDoneRef.current("complete"); }
+        if (!doneRef.current) {
+          doneRef.current = true;
+          try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "breath-complete" } })); } catch { /* web */ }
+          onDoneRef.current("complete");
+        }
         return;
       }
       const pos = since % CYCLE_MS;
       const inhale = pos < INHALE_MS;
+      // Up from nothing at the start of each half-breath, down to nothing at
+      // the turn — the same curve as Creation Prayer's phase word.
+      const rise = Math.sin(Math.PI * (inhale ? pos / INHALE_MS : (pos - INHALE_MS) / EXHALE_MS)).toFixed(4);
+      if (phaseWordRef.current) phaseWordRef.current.style.opacity = rise;
+      if (nameRef.current) nameRef.current.style.opacity = rise;
+      const breathIdx = Math.floor(since / CYCLE_MS);
+      // A turn of the breath — including the start of the next breath's inhale,
+      // which a frame that skips the whole exhale (a stalled tab) would miss if
+      // this compared the phase alone.
+      if (inhale !== lastInhale || breathIdx !== lastBreath) {
+        lastInhale = inhale;
+        lastBreath = breathIdx;
+        if (!doneRef.current) breathHaptic(!inhale);
+      }
       setOffsets(
         inhale ? pos / INHALE_MS : 1,
         inhale ? 0 : (pos - INHALE_MS) / EXHALE_MS,
@@ -123,9 +175,12 @@ export function BreathIntro({
       transition={{ duration: 0.8, ease: "easeInOut" }}
       style={{ position: "absolute", inset: 0 }}
     >
+      {/* Anchored by its BOTTOM edge a TEXT_GAP above the rings, mirroring the
+          name below them, so the two stay balanced about the circles whatever
+          the screen height (and however many lines the invitation wraps to). */}
       <p
         style={{
-          position: "absolute", left: 28, right: 28, top: "22%", margin: 0,
+          position: "absolute", left: 28, right: 28, bottom: `calc(50% + ${boxPx / 2}px + ${TEXT_GAP})`, margin: 0,
           color: WARM, fontFamily: SPACE_GROTESK, fontSize: "clamp(20px, 5.8vw, 25px)", lineHeight: 1.5,
           textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)", textWrap: "balance",
         }}
@@ -133,12 +188,12 @@ export function BreathIntro({
         {t("breath_intro.invite", { defaultValue: "Take three breaths before you enter" })}
       </p>
 
-      {/* The rings and the globe — the same drawing as Creation Prayer's breath,
-          centred on the golden-ratio line (61.8%) as that screen is. */}
+      {/* The rings — the same drawing as Creation Prayer's breath, without its
+          globe, at the screen's vertical centre (owner). */}
       <div
         aria-hidden="true"
         style={{
-          position: "absolute", left: "50%", top: "61.8%", width: boxPx, height: boxPx,
+          position: "absolute", left: "50%", top: "50%", width: boxPx, height: boxPx,
           transform: "translate(-50%, -50%)", pointerEvents: "none",
         }}
       >
@@ -161,16 +216,19 @@ export function BreathIntro({
           <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_RING} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
             style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
         </svg>
-        <div
-          style={{
-            position: "absolute", inset: 0, pointerEvents: "none",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            filter: "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 0 14px rgba(8,30,18,0.6))",
-          }}
-        >
-          <CenteredGlobe px={boxPx} glyph="🌍" />
-        </div>
       </div>
+
+      <p
+        ref={nameRef}
+        style={{
+          position: "absolute", left: 28, right: 28, top: `calc(50% + ${boxPx / 2}px + ${TEXT_GAP})`, margin: 0,
+          color: WARM, fontFamily: SPACE_GROTESK, fontSize: "clamp(20px, 5.8vw, 25px)", lineHeight: 1.5,
+          letterSpacing: "0.04em", textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)",
+          opacity: 0, willChange: "opacity",
+        }}
+      >
+        {(() => { const n = BREATH_NAMES[Math.min(BREATH_NAMES.length, readout.breath) - 1]!; return t(n.key, { defaultValue: n.word }); })()}
+      </p>
 
       {/* Breathe In / Breathe Out on the left, "n of 3" on the right — the same
           bottom row as Creation Prayer, lifted to leave room for Skip. */}
@@ -182,8 +240,9 @@ export function BreathIntro({
         }}
       >
         <span
+          ref={phaseWordRef}
           aria-live="polite"
-          style={{
+          style={{ willChange: "opacity",
             flex: 1, minWidth: 0, color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15.2, fontWeight: 600,
             letterSpacing: "0.04em", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "nowrap",
           }}

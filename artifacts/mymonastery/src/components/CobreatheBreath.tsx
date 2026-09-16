@@ -11,7 +11,7 @@ import {
   INHALE_MS, EXHALE_MS, CYCLE_MS,
   RING_IN, RING_OUT, RING_GLOW, RING_R, RING_CIRC, RING_SW,
   SESSION_RING, SESSION_R, SESSION_CIRC, SESSION_TRACK, BREATH_RING_MASK,
-  breathGlobeBoxPx,
+  breathGlobeBoxPx, breathHaptic,
 } from "@/lib/breathRings";
 
 // ── CobreatheBreath ─────────────────────────────────────────────────────────
@@ -96,27 +96,7 @@ function phaseAt(pos: number): Phase {
 const FIELD_DIM = "#040D08";          // before sync — near-black green
 const FIELD_LIVE = "#0B2014";         // live — a touch lighter/greener
 
-// Per-breath haptic. The exhale ("out") is EXACTLY 1.618× as strong as the
-// inhale ("in") — the golden ratio, felt. Uses the native Core-Haptics plugin
-// (PhoebeAudio.smoothSwell, which takes a numeric peak intensity) so the ratio
-// is precise; falls back to Capacitor's discrete impact (light vs medium) on
-// web / older shells where only fixed styles exist.
-const HAPTIC_IN = 0.44;                       // inhale intensity (0–1) — 20% softer
-const HAPTIC_OUT = Math.min(1, HAPTIC_IN * 1.618); // exhale — 1.618× stronger (also 20% softer)
-function breathHaptic(out: boolean): void {
-  const peak = out ? HAPTIC_OUT : HAPTIC_IN;
-  try {
-    const audio = (window as unknown as {
-      Capacitor?: { Plugins?: { PhoebeAudio?: { smoothSwell?: (o: { durationMs: number; peak: number; sharpness: number }) => Promise<unknown> } } };
-    }).Capacitor?.Plugins?.PhoebeAudio;
-    if (audio?.smoothSwell) {
-      const r = audio.smoothSwell({ durationMs: 150, peak, sharpness: 0.5 });
-      if (r && typeof (r as Promise<unknown>).catch === "function") (r as Promise<unknown>).catch(() => {});
-      return;
-    }
-  } catch { /* fall through to discrete impact */ }
-  try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: out ? "medium" : "light" } })); } catch { /* web — silent */ }
-}
+// Per-breath haptic (breathHaptic): lib/breathRings, shared with the launch intro.
 // Vertical centre of the breath text — lowered toward the bottom third of the
 // screen so the breath sits low and there's room above.
 const BREATH_Y = "63%";

@@ -46,6 +46,30 @@ export const SESSION_TRACK = "rgba(215,212,205,0.34)";
 export const BREATH_RING_MASK =
   "radial-gradient(circle closest-side, transparent 0 50%, #000 51% 61%, transparent 62% 84%, #000 85% 96%, transparent 97%)";
 
+// Per-breath haptic. The exhale ("out") is EXACTLY 1.618× as strong as the
+// inhale ("in") — the golden ratio, felt. Uses the native Core-Haptics plugin
+// (PhoebeAudio.smoothSwell, which takes a numeric peak intensity) so the ratio
+// is precise; falls back to Capacitor's discrete impact (light vs medium) on
+// web / older shells where only fixed styles exist. Shared with the launch
+// intro (owner, 2026-09-16: "make sure there are haptics on the intro
+// breathing"), so the two breaths feel alike as well as look alike.
+const HAPTIC_IN = 0.44;                       // inhale intensity (0–1) — 20% softer
+const HAPTIC_OUT = Math.min(1, HAPTIC_IN * 1.618); // exhale — 1.618× stronger (also 20% softer)
+export function breathHaptic(out: boolean): void {
+  const peak = out ? HAPTIC_OUT : HAPTIC_IN;
+  try {
+    const audio = (window as unknown as {
+      Capacitor?: { Plugins?: { PhoebeAudio?: { smoothSwell?: (o: { durationMs: number; peak: number; sharpness: number }) => Promise<unknown> } } };
+    }).Capacitor?.Plugins?.PhoebeAudio;
+    if (audio?.smoothSwell) {
+      const r = audio.smoothSwell({ durationMs: 150, peak, sharpness: 0.5 });
+      if (r && typeof (r as Promise<unknown>).catch === "function") (r as Promise<unknown>).catch(() => {});
+      return;
+    }
+  } catch { /* fall through to discrete impact */ }
+  try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: out ? "medium" : "light" } })); } catch { /* web — silent */ }
+}
+
 /**
  * Globe box size in px. On MOBILE the page width is 2.61× the OUTER ring's
  * diameter — i.e. outer diameter = viewport width / 2.61. The outer ring is
