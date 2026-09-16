@@ -36,7 +36,16 @@ function posts(): Promise<WeeklyPost[]> {
   if (Date.now() - lastTry < MIN_GAP_MS) return Promise.resolve(lastPosts);
   lastTry = Date.now();
   inflight = feedPosts(FEED_URL)
-    .then((list) => { lastPosts = list; return list; })
+    // A STALE LIST BEATS AN EMPTY ONE, and an empty one is never remembered.
+    // feedPosts resolves [] rather than throwing when livingchurch.org is down
+    // and its own half-hour cache has expired (lib/weeklyFeed.ts). This used to
+    // assign that [] to lastPosts, so one blip upstream served "no posts" for
+    // the whole politeness minute — and the route below then stamped a
+    // fifteen-minute PUBLIC cache on it. Same shape routes/andrews.ts keeps.
+    .then((list) => {
+      if (list.length > 0) lastPosts = list;
+      return lastPosts;
+    })
     .finally(() => { inflight = null; });
   return inflight;
 }
@@ -48,7 +57,11 @@ function posts(): Promise<WeeklyPost[]> {
 // card is the "livingChurchPublic" switch in app-settings (Admin Tools).
 router.get("/living-church/posts", async (_req: Request, res: Response): Promise<void> => {
   const list = await posts();
-  res.setHeader("Cache-Control", "public, max-age=900");
+  // An empty answer must never enter a shared cache. Stamped with max-age=900
+  // it outlives the blip that caused it: every reader gets "no posts" for
+  // fifteen minutes, and This Sunday's card opens the category index instead of
+  // this Sunday's commentary.
+  res.setHeader("Cache-Control", list.length > 0 ? "public, max-age=900" : "no-store");
   res.json(list.slice(0, 10));
 });
 
