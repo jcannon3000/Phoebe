@@ -162,7 +162,11 @@ export function canonicalRef(ref: string): string {
  */
 export function readingUrl(ref: string): string | null {
   const passage = canonicalRef(ref)
-    .replace(/[()]/g, "")
+    // Both brackets leave a separator, for the reason parseRef does: deleting
+    // them fused "John 1:(29-34)35-42" into "1:29-3435-42" and asked oremus for
+    // verse 3435. The doubled commas that leaves are collapsed below.
+    .replace(/[()[\]]/g, ", ")
+    .replace(/,\s*,/g, ",")
     .replace(/--/g, "-")
     .replace(/[\u2013\u2014]/g, "-")
     .replace(/\s+/g, " ")
@@ -202,6 +206,23 @@ const BOOK_ALIASES: Record<string, string> = {
   tim: "timothy", tit: "titus", philem: "philemon", heb: "hebrews", jas: "james", pet: "peter", rev: "revelation",
 };
 
+/**
+ * The verse groups AFTER the first, appended in place — "7:1-8, 14-15, 21-23".
+ * A group carrying its own chapter switches to it ("Isaiah 40:1-11; 41:1-5"); a
+ * bare one continues the chapter it follows. Shared by both branches of
+ * parseRef, because a cross-chapter reference can carry them too.
+ */
+function addGroups(spans: Span[], startChapter: number, rest: string): void {
+  let chNow = startChapter;
+  for (const part of rest.split(/[,;]/)) {
+    const g = /^\s*(?:(\d+):)?(\d+)[a-z]?(?:\s*[-–]\s*(\d+)[a-z]?)?\s*$/.exec(part);
+    if (!g) continue;
+    if (g[1]) chNow = parseInt(g[1], 10);
+    const s = parseInt(g[2]!, 10);
+    spans.push({ chapter: chNow, start: s, end: g[3] ? parseInt(g[3], 10) : s });
+  }
+}
+
 export function parseRef(ref: string): RefParts | null {
   if (!ref) return null;
   // "--" and "—" are the lectionary's cross-chapter range ("Gen. 1:1--2:3");
@@ -228,7 +249,7 @@ export function parseRef(ref: string): RefParts | null {
     // writes both shapes — bracket after the colon ("John 1:(1-9), 10-18") and
     // bracket abutting a number ("1 Samuel 3:1-10(11-20)") — and only the comma
     // makes the second one two spans instead of verse 1011.
-    .replace(/[([]/g, "")
+    .replace(/[([]/g, ", ")
     .replace(/[)\]]/g, ", ")
     .replace(/,\s*,/g, ",")
     .replace(/:\s*,\s*/g, ":")
@@ -272,6 +293,11 @@ export function parseRef(ref: string): RefParts | null {
     const spans: Span[] = [{ chapter: ch1, start: v1, end: Infinity }];
     for (let c = ch1 + 1; c < crossCh && spans.length < 80; c++) spans.push({ chapter: c, start: 0, end: Infinity });
     spans.push({ chapter: crossCh, start: 0, end: tail ?? Infinity });
+    // A cross-chapter reference can carry groups after it: the Daily Office
+    // writes "Matthew 9:35-10:8(9-23)". Returning here read as far as 10:8 and
+    // dropped 10:9-23 entirely, so a work painting those verses scored one step
+    // low. They continue in the LAST chapter, which is where they belong.
+    addGroups(spans, crossCh, nums.slice(m[0].length));
     return { book, spans };
   }
   // One chapter: "10:38-42" — the 42 is a verse, not a chapter.
@@ -288,14 +314,7 @@ export function parseRef(ref: string): RefParts | null {
    * and one more card can name its verses honestly.
    */
   const spans: Span[] = [{ chapter: ch1, start: v1, end: tail ?? (m[2] ? v1 : Infinity) }];
-  let chNow = ch1;
-  for (const part of nums.slice(m[0].length).split(/[,;]/)) {
-    const g = /^\s*(?:(\d+):)?(\d+)[a-z]?(?:\s*[-–]\s*(\d+)[a-z]?)?\s*$/.exec(part);
-    if (!g) continue;
-    if (g[1]) chNow = parseInt(g[1], 10);
-    const s = parseInt(g[2]!, 10);
-    spans.push({ chapter: chNow, start: s, end: g[3] ? parseInt(g[3], 10) : s });
-  }
+  addGroups(spans, ch1, nums.slice(m[0].length));
   return { book, spans };
 }
 

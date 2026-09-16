@@ -211,6 +211,24 @@ export const COMMONS_VISIO_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Master of Antwerp. Christ Is Sought by His Mother and Brothers. Original source: Wikimedia Commons."
  },
  {
+  "id": 9524017,
+  "title": "Philip and Nathanael",
+  "artist": "J. Morgan",
+  "date": "1910",
+  "where": null,
+  "img": "https://upload.wikimedia.org/wikipedia/commons/d/dc/Philip_und_Nathanael.jpg",
+  "refs": [
+   "John 1:45-46"
+  ],
+  "days": [],
+  "people": [],
+  "subjects": [],
+  "essay": "",
+  "act": "https://commons.wikimedia.org/wiki/File:Philip_und_Nathanael.jpg",
+  "licence": "Public domain",
+  "attribution": "J. Morgan. Philip and Nathanael. Original source: Wikimedia Commons."
+ },
+ {
   "id": 9529226,
   "title": "Christ and the Sons of Zebedee",
   "artist": "Paolo Veronese",

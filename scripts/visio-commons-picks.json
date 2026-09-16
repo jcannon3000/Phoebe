@@ -316,5 +316,15 @@
   "artist": "Jan Luyken",
   "where": "Rijksmuseum, Amsterdam",
   "for": "Mark 9:30-37"
+ },
+ {
+  "file": "File:Philip und Nathanael.jpg",
+  "refs": [
+   "John 1:45-46"
+  ],
+  "title": "Philip and Nathanael",
+  "artist": "J. Morgan",
+  "date": "1910",
+  "for": "John 1:43-51"
  }
 ]
