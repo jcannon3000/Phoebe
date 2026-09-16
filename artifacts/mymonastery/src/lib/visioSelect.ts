@@ -207,7 +207,11 @@ export function parseRef(ref: string): RefParts | null {
   // "--" and "—" are the lectionary's cross-chapter range ("Gen. 1:1--2:3");
   // left alone, the span regex below stopped at the first hyphen and read that
   // reading as the single verse 1:1.
-  const cleaned = ref.trim().replace(/\s+/g, " ").replace(/\./g, "").replace(/\s*(?:--|\u2014)\s*/g, "-");
+  const cleaned = ref.trim().replace(/\s+/g, " ").replace(/\./g, "").replace(/\s*(?:--|\u2014)\s*/g, "-")
+    // "Matthew 15: (10-20), 21-28" normalises to "15:, 10-20, 21-28" upstream,
+    // and the chapter then read as a WHOLE chapter — which handed a print of
+    // 15:1-2 an exact match on a Sunday reading 15:10-20, 21-28.
+    .replace(/:\s*,\s*/g, ":");
   // A LEADING numeral belongs to the name ("1 Samuel"), so peel it off before
   // looking for the chapter — otherwise the book name ends at the first digit
   // and every epistle collapses to the empty string.
@@ -250,7 +254,28 @@ export function parseRef(ref: string): RefParts | null {
     return { book, spans };
   }
   // One chapter: "10:38-42" — the 42 is a verse, not a chapter.
-  return { book, spans: [{ chapter: ch1, start: v1, end: tail ?? (m[2] ? v1 : Infinity) }] };
+  /**
+   * EVERY verse group, not only the first. A work is tagged with all the verses
+   * it shows — "Matthew 13:31-33, 44-52" is the mustard seed AND the hidden
+   * treasure — and reading the first group alone scored Jesus Mafa's own
+   * Hidden Treasure as a chapter match on the Sunday that reads 13:44-52, so a
+   * Commons wood engraving took the week instead. A later group without its own
+   * chapter continues the current one ("7:1-8, 14-15, 21-23"); one with a
+   * chapter of its own switches ("Isaiah 40:1-11; 41:1-5").
+   *
+   * Measured over 2026-28: two weeks move, each to an equally exact picture,
+   * and one more card can name its verses honestly.
+   */
+  const spans: Span[] = [{ chapter: ch1, start: v1, end: tail ?? (m[2] ? v1 : Infinity) }];
+  let chNow = ch1;
+  for (const part of nums.slice(m[0].length).split(/[,;]/)) {
+    const g = /^\s*(?:(\d+):)?(\d+)[a-z]?(?:\s*[-–]\s*(\d+)[a-z]?)?\s*$/.exec(part);
+    if (!g) continue;
+    if (g[1]) chNow = parseInt(g[1], 10);
+    const s = parseInt(g[2]!, 10);
+    spans.push({ chapter: chNow, start: s, end: g[3] ? parseInt(g[3], 10) : s });
+  }
+  return { book, spans };
 }
 
 /**

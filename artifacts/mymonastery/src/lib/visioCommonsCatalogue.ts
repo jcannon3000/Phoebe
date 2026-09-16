@@ -14,6 +14,22 @@ import type { CatalogueArtwork } from "./visioCatalogue";
 
 export const COMMONS_VISIO_CATALOGUE: CatalogueArtwork[] = [
  {
+  "id": 9006577,
+  "title": "Christ in Majesty",
+  "artist": "Master of Taüll",
+  "date": "c. 1123",
+  "where": "Museu Nacional d'Art de Catalunya, Barcelona",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ed/Meister_aus_Tahull_001.jpg/1920px-Meister_aus_Tahull_001.jpg",
+  "refs": [],
+  "days": [],
+  "people": [],
+  "subjects": [],
+  "essay": "",
+  "act": "https://commons.wikimedia.org/wiki/File:Meister_aus_Tahull_001.jpg",
+  "licence": "Public domain",
+  "attribution": "Master of Taüll. Christ in Majesty. Original source: Wikimedia Commons."
+ },
+ {
   "id": 9091299,
   "title": "The Feeding of the Five Thousand",
   "artist": "Hans Leonhard Schäufelein",
@@ -49,6 +65,24 @@ export const COMMONS_VISIO_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://commons.wikimedia.org/wiki/File:Christus_zendt_de_twaalf_apostelen_uit,_RP-P-OB-45.991.jpg",
   "licence": "CC0",
   "attribution": "Jan Luyken. Christ Sends Out the Twelve Apostles. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 9129869,
+  "title": "Jesus in the Synagogue at Nazareth",
+  "artist": "Joakim Skovgaard",
+  "date": "1914",
+  "where": null,
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Joakim_Skovgaard_-_Jesus_i_Synagogen_-_1914_-_B_426.jpg/1920px-Joakim_Skovgaard_-_Jesus_i_Synagogen_-_1914_-_B_426.jpg",
+  "refs": [
+   "Luke 4:16-30"
+  ],
+  "days": [],
+  "people": [],
+  "subjects": [],
+  "essay": "",
+  "act": "https://commons.wikimedia.org/wiki/File:Joakim_Skovgaard_-_Jesus_i_Synagogen_-_1914_-_B_426.jpg",
+  "licence": "Public domain",
+  "attribution": "Joakim Skovgaard. Jesus in the Synagogue at Nazareth. Original source: Wikimedia Commons."
  },
  {
   "id": 9180489,
@@ -123,24 +157,6 @@ export const COMMONS_VISIO_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Adriaen Collaert. Christ Warns against the Scribes and Pharisees. Original source: Wikimedia Commons."
  },
  {
-  "id": 9473527,
-  "title": "The Hidden Treasure",
-  "artist": "John Everett Millais",
-  "date": "1864",
-  "where": "The Metropolitan Museum of Art, New York",
-  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/The_Hidden_Treasure_%28The_Parables_of_Our_Lord_and_Saviour_Jesus_Christ%29_MET_DP835794.jpg/1920px-The_Hidden_Treasure_%28The_Parables_of_Our_Lord_and_Saviour_Jesus_Christ%29_MET_DP835794.jpg",
-  "refs": [
-   "Matthew 13:44"
-  ],
-  "days": [],
-  "people": [],
-  "subjects": [],
-  "essay": "",
-  "act": "https://commons.wikimedia.org/wiki/File:The_Hidden_Treasure_(The_Parables_of_Our_Lord_and_Saviour_Jesus_Christ)_MET_DP835794.jpg",
-  "licence": "CC0",
-  "attribution": "John Everett Millais. The Hidden Treasure. Original source: Wikimedia Commons."
- },
- {
   "id": 9474950,
   "title": "They Take Up Stones against Christ",
   "artist": "Maerten de Vos",
@@ -157,25 +173,6 @@ export const COMMONS_VISIO_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://commons.wikimedia.org/wiki/File:Joden_in_de_tempel_gooien_stenen_naar_Christus_Gebeurtenissen_in_en_rond_de_tempel_Theatrum_biblicum_(serietitel),_RP-P-1974-192.jpg",
   "licence": "CC0",
   "attribution": "Maerten de Vos. They Take Up Stones against Christ. Original source: Wikimedia Commons."
- },
- {
-  "id": 9486626,
-  "title": "Christ Foretells the Destruction of the Temple",
-  "artist": "Maerten de Vos",
-  "date": "1643",
-  "where": "Rijksmuseum, Amsterdam",
-  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Christus_voorspelt_de_verwoesting_van_de_tempel_Gebeurtenissen_in_en_rond_de_tempel_%28serietitel%29_Theatrum_Biblicum_Hoc_Est_Historiae_Sacrae_Veteris_et_Novi_Testamenti_Tabulis_Aeneis_Expressae_%28serie%2C_RP-P-1976-30-355.jpg/1920px-thumbnail.jpg",
-  "refs": [
-   "Mark 13:1-2",
-   "Matthew 24:1-2"
-  ],
-  "days": [],
-  "people": [],
-  "subjects": [],
-  "essay": "",
-  "act": "https://commons.wikimedia.org/wiki/File:Christus_voorspelt_de_verwoesting_van_de_tempel_Gebeurtenissen_in_en_rond_de_tempel_(serietitel)_Theatrum_Biblicum_Hoc_Est_Historiae_Sacrae_Veteris_et_Novi_Testamenti_Tabulis_Aeneis_Expressae_(serie,_RP-P-1976-30-355.jpg",
-  "licence": "CC0",
-  "attribution": "Maerten de Vos. Christ Foretells the Destruction of the Temple. Original source: Wikimedia Commons."
  },
  {
   "id": 9500464,
@@ -251,23 +248,20 @@ export const COMMONS_VISIO_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Jan Luyken. The Faithful Steward. Original source: Wikimedia Commons."
  },
  {
-  "id": 9594404,
-  "title": "Christ Sets a Child before His Disciples",
-  "artist": "Pieter van der Borcht",
-  "date": "1582",
-  "where": "Rijksmuseum, Amsterdam",
-  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f4/Christus_stelt_zijn_discipelen_een_kind_tot_voorbeeld_Humilitatis_summum_praemium_%28titel_op_object%29_Emblemata_Novi_Testamenti_%28serietitel%29_Emblemata_Sacra_%C3%A8_praecipuis_utriusque_testamenti_historiis_concinnata_%28Nieuwe%2C_BI-1919-77-78.jpg/1920px-thumbnail.jpg",
-  "refs": [
-   "Luke 9:46-48",
-   "Mark 9:33-37"
-  ],
+  "id": 9594107,
+  "title": "Christ and the Child",
+  "artist": "Carl Bloch",
+  "date": "1873",
+  "where": null,
+  "img": "https://upload.wikimedia.org/wikipedia/commons/4/4a/Carl_Bloch_-_Christ_and_Child.jpg",
+  "refs": [],
   "days": [],
   "people": [],
   "subjects": [],
   "essay": "",
-  "act": "https://commons.wikimedia.org/wiki/File:Christus_stelt_zijn_discipelen_een_kind_tot_voorbeeld_Humilitatis_summum_praemium_(titel_op_object)_Emblemata_Novi_Testamenti_(serietitel)_Emblemata_Sacra_%C3%A8_praecipuis_utriusque_testamenti_historiis_concinnata_(Nieuwe,_BI-1919-77-78.jpg",
-  "licence": "CC0",
-  "attribution": "Pieter van der Borcht. Christ Sets a Child before His Disciples. Original source: Wikimedia Commons."
+  "act": "https://commons.wikimedia.org/wiki/File:Carl_Bloch_-_Christ_and_Child.jpg",
+  "licence": "Public domain",
+  "attribution": "Carl Bloch. Christ and the Child. Original source: Wikimedia Commons."
  },
  {
   "id": 9604476,
@@ -414,6 +408,22 @@ export const COMMONS_VISIO_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://commons.wikimedia.org/wiki/File:De_discipelen_plukken_en_eten_aren_op_de_sabbat,_RP-P-1961-721.jpg",
   "licence": "CC0",
   "attribution": "Master of Antwerp. The Disciples Pluck Grain on the Sabbath. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 9805260,
+  "title": "Flevit super illam",
+  "artist": "Enrique Simonet",
+  "date": "1892",
+  "where": "Museo del Prado, Madrid",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Enrique_Simonet_-_Flevit_super_illam_-_1892.jpg/1920px-Enrique_Simonet_-_Flevit_super_illam_-_1892.jpg",
+  "refs": [],
+  "days": [],
+  "people": [],
+  "subjects": [],
+  "essay": "",
+  "act": "https://commons.wikimedia.org/wiki/File:Enrique_Simonet_-_Flevit_super_illam_-_1892.jpg",
+  "licence": "Public domain",
+  "attribution": "Enrique Simonet. Flevit super illam. Original source: Wikimedia Commons."
  },
  {
   "id": 9844748,

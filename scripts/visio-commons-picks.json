@@ -91,16 +91,6 @@
   "for": "Mark 1:21-27"
  },
  {
-  "file": "File:The Hidden Treasure (The Parables of Our Lord and Saviour Jesus Christ) MET DP835794.jpg",
-  "refs": [
-   "Matthew 13:44"
-  ],
-  "title": "The Hidden Treasure",
-  "artist": "John Everett Millais",
-  "where": "The Metropolitan Museum of Art, New York",
-  "for": "Matt. 13:44-52"
- },
- {
   "file": "File:Wee de schriftgeleerden en de farizeeën Feria III. Post Domin. II. Qvadrages (titel op object), RP-P-BI-6080K.jpg",
   "refs": [
    "Matthew 23:1-7"
@@ -166,28 +156,6 @@
   "artist": "Jan Luyken",
   "where": "Rijksmuseum, Amsterdam",
   "for": "Mark 7:1-8, 14-15, 21-23"
- },
- {
-  "file": "File:Christus stelt zijn discipelen een kind tot voorbeeld Humilitatis summum praemium (titel op object) Emblemata Novi Testamenti (serietitel) Emblemata Sacra è praecipuis utriusque testamenti historiis concinnata (Nieuwe, BI-1919-77-78.jpg",
-  "refs": [
-   "Luke 9:46-48",
-   "Mark 9:33-37"
-  ],
-  "title": "Christ Sets a Child before His Disciples",
-  "artist": "Pieter van der Borcht",
-  "where": "Rijksmuseum, Amsterdam",
-  "for": "Mark 9:30-37"
- },
- {
-  "file": "File:Christus voorspelt de verwoesting van de tempel Gebeurtenissen in en rond de tempel (serietitel) Theatrum Biblicum Hoc Est Historiae Sacrae Veteris et Novi Testamenti Tabulis Aeneis Expressae (serie, RP-P-1976-30-355.jpg",
-  "refs": [
-   "Mark 13:1-2",
-   "Matthew 24:1-2"
-  ],
-  "title": "Christ Foretells the Destruction of the Temple",
-  "artist": "Maerten de Vos",
-  "where": "Rijksmuseum, Amsterdam",
-  "for": "Mark 13:1-8"
  },
  {
   "file": "File:Frederic Shields - Christ leads the Blind Man Out of Bethsaida - Christie's.jpg",
@@ -312,5 +280,38 @@
   "title": "The Sermon on the Mount",
   "where": "Convent of San Marco, Florence",
   "for": "Matt. 5:21-26 (chapter only: the sermon, not the verses)"
+ },
+ {
+  "file": "File:Joakim Skovgaard - Jesus i Synagogen - 1914 - B 426.jpg",
+  "refs": [
+   "Luke 4:16-30"
+  ],
+  "title": "Jesus in the Synagogue at Nazareth",
+  "artist": "Joakim Skovgaard",
+  "for": "Luke 4:16-30"
+ },
+ {
+  "file": "File:Meister aus Tahull 001.jpg",
+  "refs": [],
+  "title": "Christ in Majesty",
+  "artist": "Master of Taüll",
+  "where": "Museu Nacional d'Art de Catalunya, Barcelona",
+  "date": "c. 1123",
+  "for": "Mark 13:24-37 (theme: the Son of Man coming in glory)"
+ },
+ {
+  "file": "File:Carl Bloch - Christ and Child.jpg",
+  "refs": [],
+  "title": "Christ and the Child",
+  "artist": "Carl Bloch",
+  "for": "Mark 9:30-37 (theme: he took a child and put it among them)"
+ },
+ {
+  "file": "File:Enrique Simonet - Flevit super illam - 1892.jpg",
+  "refs": [],
+  "title": "Flevit super illam",
+  "artist": "Enrique Simonet",
+  "where": "Museo del Prado, Madrid",
+  "for": "Mark 13:1-8 (theme: on the Mount of Olives opposite the temple)"
  }
 ]

@@ -189,20 +189,27 @@ const WALK = [[0, 3], [1, 3], [2, 3], [0, 2], [1, 2], [2, 2]];
  *
  * Keyed by the week's GOSPEL as the lectionary writes it — so the same Sunday
  * keeps its picture in every year it comes round — or by the Sunday itself
- * where the table has no gospel at all. Tried AFTER a painting of the gospel's
- * own verses and BEFORE the epistle and the Old Testament, because each one was
- * chosen for this gospel by hand. A theme pick never claims the passage: `top`
- * stays 0, so the card doesn't say "this week's reading".
+ * where the table has no gospel at all. Tried FIRST, ahead of the whole walk,
+ * because a picture chosen by hand for this reading is the one the owner wants
+ * shown. What it may CLAIM is decided by its own matchScore, down in build():
+ * a theme picture matches nothing, or only the chapter, and so never says
+ * "this week's reading"; a scene chosen for its own passage still does.
  *
  * An icon named here is reachable by id alone; the icon harvest is NOT in the
  * pool, so it appears on the week it was chosen for and nowhere else.
  */
 const THEME_PICKS = {
-  // Keep awake: the prepared throne, the Louvre ivory tagged with Matthew's
-  // telling of the same charge (24:36-44).
-  "Mark 13:24-37": 55565,
-  // The bread of life — known in the breaking of the bread.
-  "John 6:41-47": 56885,
+  // Christ in Majesty from Sant Climent de Taüll, the open book lettered EGO
+  // SUM LUX MUNDI: the Son of Man coming in glory. The owner rejected the
+  // Louvre hetimasia ivory that stood here (monochrome, small in scale), and
+  // the two Commons pictures of the Parousia itself can't be used as they are —
+  // every photograph of the Santa Prassede apse has a Baroque canopy across the
+  // middle of it, and the Armenian Second Coming leaf shows its facing page.
+  "Mark 13:24-37": 9006577,
+  // The bread of life: the icon of Christ feeding the multitude, the sign that
+  // opens this very chapter (owner: "even consider the icons"). Nothing on
+  // Commons depicts the discourse itself — searched twice.
+  "John 6:41-47": 57436,
   // "Our ancestors ate the manna in the wilderness" (6:31).
   "John 6:24-35": 55968,
   // "The bread that I will give for the life of the world is my flesh."
@@ -211,6 +218,15 @@ const THEME_PICKS = {
   "John 6:27-40": 58334,
   // "They were like sheep without a shepherd."
   "Mark 6:30-34, 53-56": 57121,
+  // Christ's hand on the child's head: "he took a child and put it among them".
+  // The owner rejected the van der Borcht print here (figures small in a wide
+  // landscape, a handwritten French caption), and the one true scene on Commons
+  // — Gotha panel 89 — is 40% handwritten German cartouche uncropped.
+  "Mark 9:30-37": 9594107,
+  // The Mount of Olives opposite the temple, which is where Mark 13 is spoken.
+  // The owner rejected the de Vos engraving for its Latin caption block, and
+  // every scene-literal picture on Commons is another engraving of that family.
+  "Mark 13:1-8": 9805260,
   // He calls those he wants, and appoints twelve to be with him.
   "Mark 3:7-19": 48379,
   // "Whoever sees me sees him who sent me."
@@ -220,6 +236,15 @@ const THEME_PICKS = {
   "Luke 10:17-24": 59245,
   // "First be reconciled to your brother or sister."
   "Matt. 5:21-26": 54666,
+  // Jesus standing with the book in the synagogue at Nazareth — the scene the
+  // owner asked for. This one DOES paint the reading, so the card still names
+  // the verses; it is here because a hand-chosen picture should win the tie.
+  "Luke 4:16-30": 9129869,
+  // Jesus Mafa's own painting of the treasure in the field — the library held it
+  // all along. Its tag, "Matthew 13:31-33, 44-52", reads as the mustard seed to
+  // a parser that takes only a reference's FIRST verse group, which is how a
+  // Commons wood engraving won this Sunday instead.
+  "Matt. 13:44-52": 48286,
   // The Pharisee who tithes mint and dill and misses justice and mercy.
   "Matt. 23:13-24": 59165,
   // The crowds who went out into the wilderness to see John.
@@ -524,8 +549,24 @@ function build() {
     // PASS 1 — the cap respected, WALK in order. Within a step, an equally good
     // painting of the same reading is tried before moving on, since a less
     // apt reading is a bigger loss than a different brush.
+    /**
+     * A PICTURE THE OWNER CHOSE FOR THIS READING WINS, and is scored honestly.
+     *
+     * It used to be tried only after the library failed to paint the gospel's
+     * verses, which left the owner's choice losing a TIE: on 2028-05-14 the
+     * Skovgaard synagogue scene he asked for and a work that merely shares
+     * Luke 4 both matched exactly, and curated-first handed the Sunday to the
+     * other one. The pick's own matchScore still decides the label, so a
+     * theme picture — which matches nothing, or only the chapter — claims
+     * nothing, while a scene chosen for its own passage still says "this
+     * week's reading".
+     */
     const themeArt = THEME_ART.get(THEME_PICKS[tiers[0].refs.join("; ")] ?? THEME_PICKS[weekKey]) ?? null;
-    for (const [t, score] of WALK) {
+    if (themeArt) {
+      chosen = { art: themeArt, tierRefs: tiers[0].refs, top: matchScore(themeArt.refs, tiers[0].refs) };
+      stats.theme++;
+    }
+    if (!chosen) for (const [t, score] of WALK) {
       const group = groupAt(t, score);
       const pick = group.length ? pickVaried(group, true) : null;
       if (pick) {
@@ -534,13 +575,6 @@ function build() {
         break;
       }
       if (group.length) movedTier = true;          // this reading is spent
-      // Nothing paints the gospel's own verses: the hand-chosen theme picture
-      // for this gospel comes before the epistle and the Old Testament.
-      if (t === 0 && score === 3 && themeArt) {
-        chosen = { art: themeArt, tierRefs: [], top: 0 };
-        stats.theme++;
-        break;
-      }
     }
 
     /**
