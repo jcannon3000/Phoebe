@@ -3866,6 +3866,19 @@ export async function migrate() {
       )
     `);
 
+    // ── simulator_marks — (user, Eastern day) pairs that came from the iOS
+    // Simulator or the Android emulator (lib/simulatorMarks.ts). App Metrics
+    // leaves those out (owner, 2026-09-16: "make sure simulator sessions are
+    // not being counted"). Nothing else references this table.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS simulator_marks (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day TEXT NOT NULL,
+        first_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, day)
+      )
+    `);
+
     // ── listening_entries (Audio Divina log — account-wide) ─────────────────
     // Append log of "sacred listening" sittings (what + how), one row per log.
     await run(client, `

@@ -21,3 +21,21 @@ export function isNativeShell(): boolean {
   return !!(window as { PhoebeNative?: { isNative?: () => boolean } })
     .PhoebeNative?.isNative?.();
 }
+
+/**
+ * Is this the iOS Simulator or the Android emulator — a test run, not a
+ * person? The shell knows (native-shell's isSimulator: a flag the Simulator
+ * build injects; the emulator's own user agent). apiRequest tells the API
+ * with X-Phoebe-Simulator so App Metrics can leave the run out (owner,
+ * 2026-09-16: "make sure simulator sessions are not being counted"). Always
+ * false on the web and on a phone.
+ */
+export function isSimulatorShell(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return (window as { PhoebeNative?: { isSimulator?: () => boolean } })
+      .PhoebeNative?.isSimulator?.() === true;
+  } catch {
+    return false;
+  }
+}

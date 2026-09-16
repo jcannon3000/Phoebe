@@ -1,41 +1,26 @@
 /**
  * Admin App Metrics
  *
- * GET /api/admin/metrics — whole-app Today / This Week / All Time
- * tile data. Mirrors the per-community metrics dashboard exactly:
+ * GET /api/admin/metrics — the whole app, cut three ways: today, the last
+ * seven days and the month to date, in Eastern time. Everyone using Phoebe is
+ * counted, with an account or without (a phone gets a private device user
+ * after its third signed-out day).
  *
- *   People praying          — distinct users with a prayer event
- *   Times prayed            — total prayer events (15-min dedup, no admin cap)
- *   Offices                 — (user, day, morning|evening) office completions
- *                              (Daily Office / Devotion ≥3 slides)
- *   Contemplation & Examen  — (user, day) tuples for a silent sit, Creation
- *                              Prayer, or the Examen
- *   Prayer requests         — total requests created (feature currently OFF
- *                              for all users — historical totals only)
+ * What is counted, and how, lives in lib/appMetricsSql.ts: one unit for
+ * everything prayed — a practice KEPT, one per person, per practice, per day
+ * — grouped into families that add up to the total. This file holds the gate
+ * and the response.
  *
- * Same SQL semantics as /api/groups/:slug/metrics but without the
- * `members` scope — we don't filter to one community, we roll across
- * every user. The community-side ADMIN_DAILY_PRAYER_CAP is intentionally
- * skipped: the whole point of an admin dashboard is to see real
- * engagement totals, and there's no single "admin" identity in an
- * app-wide rollup.
+ * Also here: the prayer-feed audit and repair tools (community features are
+ * off for everyone; the page shows them folded away) and the pilot-group
+ * switch.
  *
- * The `session_candidates` surface whitelist below MUST be kept in sync
- * with the `PrayerSurface` type (hooks/usePrayerSession.ts) and every
- * other direct POST /api/prayer-sessions call site — that type's own
- * comments document "examen" and "prayer-list" as surfaces meant to count
- * toward this dashboard, and Contemplation/Creation Prayer (surface
- * "contemplation", the latter tagged source:"cobreathe") were never added
- * at all. All three were silently excluded from "People praying" / "Times
- * prayed" — undercounting real engagement, most consequentially for the
- * Examen, which is now the default evening anchor for new users. Audited
- * and fixed alongside the identical bug in /api/groups/:slug/metrics.
- *
- * Gated to beta admins (beta_users.is_admin) — same gate the Newsletter
- * / Pilot Users / Reports tools use.
+ * Gated to beta admins (beta_users.is_admin) — same gate the Newsletter /
+ * Pilot Users / Reports tools use.
  */
 
 import { Router, type IRouter } from "express";
+import { APP_METRICS_SQL, appMetricsParams, appMetricsWindows, shapeAppMetrics, type AppMetricsResponse } from "../lib/appMetricsSql";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import {
   db,
@@ -75,6 +60,58 @@ async function isBetaAdmin(userId: number): Promise<boolean> {
   }
 }
 
+/**
+ * The frozen iOS bundle's App Metrics page still reads the flat fields the
+ * endpoint answered with before 2026-09-16. They are derived from the new
+ * shape so that page keeps working until the owner rebuilds in Xcode; remove
+ * once no shipped client reads them.
+ */
+function legacyFields(m: AppMetricsResponse): Record<string, number> {
+  const { people, opens, practices, deans, community } = m;
+  return {
+    totalUsers: people.accounts.total + people.withoutAccount.total,
+    newUsersToday: people.accounts.today + people.withoutAccount.today,
+    newUsersThisWeek: people.accounts.week + people.withoutAccount.week,
+    totalDeviceUsers: people.withoutAccount.total,
+    newDeviceUsersToday: people.withoutAccount.today,
+    newDeviceUsersThisWeek: people.withoutAccount.week,
+    devicePrayedToday: people.prayedWithoutAccount.today,
+    devicePrayedThisWeek: people.prayedWithoutAccount.week,
+    devicePrayedThisMonth: people.prayedWithoutAccount.month,
+    deviceOpenedToday: people.openedWithoutAccount.today,
+    deviceOpenedThisWeek: people.openedWithoutAccount.week,
+    deviceOpenedThisMonth: people.openedWithoutAccount.month,
+    prayedToday: people.prayed.today,
+    prayedThisWeek: people.prayed.week,
+    prayedThisMonth: people.prayed.month,
+    timesPrayedToday: practices.all.today,
+    timesPrayedThisWeek: practices.all.week,
+    timesPrayedThisMonth: practices.all.month,
+    officesToday: practices.offices.today,
+    officesThisWeek: practices.offices.week,
+    officesThisMonth: practices.offices.month,
+    contemplationExamenToday: practices.contemplation.today + practices.examen.today,
+    contemplationExamenThisWeek: practices.contemplation.week + practices.examen.week,
+    contemplationExamenThisMonth: practices.contemplation.month + practices.examen.month,
+    deansReadersToday: deans.readers.today,
+    deansReadersThisWeek: deans.readers.week,
+    deansReadersThisMonth: deans.readers.month,
+    deansReadsThisWeek: deans.readerDays.week,
+    deansReadsThisMonth: deans.readerDays.month,
+    prayerRequestsToday: community.prayerRequestsToday,
+    prayerRequestsThisWeek: community.prayerRequestsWeek,
+    prayerRequestsTotal: community.prayerRequestsTotal,
+    openedToday: people.opened.today,
+    openedThisWeek: people.opened.week,
+    openedThisMonth: people.opened.month,
+    opensToday: opens.today,
+    opensThisWeek: opens.week,
+    opensThisMonth: opens.month,
+  };
+}
+
+// GET /api/admin/metrics — see lib/appMetricsSql.ts for what is counted and
+// how. Gated to beta admins (beta_users.is_admin), like every tool here.
 router.get("/admin/metrics", async (req, res): Promise<void> => {
   const session = getUser(req);
   if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -84,372 +121,12 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
   }
 
   try {
-    // Bucket "today" / "this week" in Eastern Time — Phoebe runs out
-    // of ET and admin intuition for "today" is the ET calendar day.
-    // Matches the per-community endpoint's choice so the two pages
-    // tell the same story.
-    const tz = "America/New_York";
-    const ymdFmt = new Intl.DateTimeFormat("en-CA", {
-      timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-    const todayStr = ymdFmt.format(new Date());
-    const [tyStr, tmStr, tdStr] = todayStr.split("-");
-    const todayUTC = new Date(Date.UTC(
-      parseInt(tyStr, 10),
-      parseInt(tmStr, 10) - 1,
-      parseInt(tdStr, 10),
-    ));
-    todayUTC.setUTCDate(todayUTC.getUTCDate() - 6);
-    const weekStartStr = todayUTC.toISOString().slice(0, 10);
-    // "This month" = the ET calendar month to date. Owner, 2026-09-15: "Show
-    // this month" — the old "All time" wasn't: app_opens is pruned at 90 days,
-    // prayer sessions and reading history at a year.
-    const monthStartStr = `${tyStr}-${tmStr}-01`;
-    // Every source is read only as far back as the earlier window needs (a
-    // week can reach into last month), and sessions one day further so the
-    // 15-minute dedup sees the event just before the window.
-    const sinceYmd = weekStartStr < monthStartStr ? weekStartStr : monthStartStr;
-    const [sinceY, sinceM, sinceD] = sinceYmd.split("-").map((n) => parseInt(n, 10));
-    const sinceTs = new Date(Date.UTC(sinceY, sinceM - 1, sinceD) - 24 * 60 * 60 * 1000).toISOString();
-
-    const q = await pool.query(`
-      -- ONE PERSON, ONE ID. A phone's anonymous device user that later signed
-      -- in to an existing account points at it (users.merged_into_user_id,
-      -- lib/anonymousMerge.ts); every user id below is read through this, so
-      -- what they prayed before and after signing in is one person.
-      WITH people AS (
-        SELECT id AS user_id, COALESCE(merged_into_user_id, id) AS person FROM users
-      ),
-      session_candidates AS (
-        -- Same definition as the community-scoped metrics endpoint,
-        -- minus the members CTE: a "prayer event" candidate is an
-        -- Amen tap OR an office / devotion completion that reached
-        -- ≥3 slides, OR a qualifying non-office practice session
-        -- (examen / prayer-list / contemplation — see the file header
-        -- for why these three were missing). NULL slides_completed =
-        -- legacy row pre-dating the column; treat as qualifying.
-        SELECT p.person AS user_id, c.occurred_at FROM (
-          SELECT a.user_id, a.prayed_at AS occurred_at
-          FROM prayer_request_amens a
-          WHERE a.prayed_at IS NOT NULL
-            AND a.prayed_at >= $5
-
-          UNION ALL
-
-          SELECT ps.user_id, ps.ended_at AS occurred_at
-          FROM prayer_sessions ps
-          WHERE ps.ended_at >= $5
-            AND ps.surface IN (
-              'morning-prayer',
-              'evening-prayer',
-              'compline',
-              'noonday',
-              'morning-devotion',
-              'early-evening-devotion',
-              'examen',
-              'prayer-list',
-              'contemplation'
-            )
-            AND (ps.slides_completed IS NULL OR ps.slides_completed >= 3)
-            -- A reading kept as a side's prayer also writes a side CREDIT row;
-            -- the reading is counted from its own record below, so its credit
-            -- is left out rather than counted twice.
-            AND COALESCE(ps.source, '') NOT IN ('credit:fdd', 'credit:cac', 'credit:ssje', 'credit:vts')
-
-          UNION ALL
-
-          -- The offices listened to or watched, on the terms the app credits
-          -- them as the office (users.ts office-history-week).
-          SELECT ps.user_id, ps.ended_at AS occurred_at
-          FROM prayer_sessions ps
-          WHERE ps.ended_at >= $5
-            AND (
-              (ps.surface IN ('morning-office-podcast', 'evening-office-podcast', 'compline-office-podcast') AND ps.completed = TRUE)
-              OR (ps.surface = 'national-cathedral' AND ps.duration_seconds >= 180)
-            )
-        ) c
-        JOIN people p ON p.user_id = c.user_id
-      ),
-      session_with_lag AS (
-        SELECT
-          sc.user_id, sc.occurred_at,
-          to_char((sc.occurred_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') AS day,
-          LAG(sc.occurred_at) OVER (
-            PARTITION BY sc.user_id ORDER BY sc.occurred_at
-          ) AS prev_at
-        FROM session_candidates sc
-      ),
-      -- 15-min dedup so a tap-in / tap-out / tap-in burst stays
-      -- one event. No admin cap (the community page caps because
-      -- a single noisy admin can dominate a small group; at the
-      -- app level we want the true total).
-      prayer_events AS (
-        SELECT user_id, day
-        FROM session_with_lag
-        WHERE prev_at IS NULL
-           OR occurred_at - prev_at > INTERVAL '15 minutes'
-
-        UNION ALL
-
-        -- ── Practices that are not timed sessions ─────────────────────────
-        -- Owner, 2026-09-15, of Forward Day by Day, Visio, gratitude and the
-        -- hagiographies: "Someone who only keeps those doesn't show as
-        -- praying … Fix this." One event per practice, per person, per day —
-        -- the day the phone recorded, like the Dean's rows below.
-        --   Readings: Forward Day by Day, the hagiographies, the Dean's
-        --   Commentary, SSJE, Nouwen, Grist, Sojourners.
-        SELECT p.person AS user_id, rr.ymd AS day FROM reflection_reads rr
-        JOIN people p ON p.user_id = rr.user_id WHERE rr.ymd >= $6
-        UNION ALL
-        --   The CAC daily reflection.
-        SELECT p.person AS user_id, cr.ymd AS day FROM cac_reads cr
-        JOIN people p ON p.user_id = cr.user_id WHERE cr.ymd >= $6
-        UNION ALL
-        --   Visio Divina, Lectio, the Rosary, icons, the walk, listening, a
-        --   routine's own practices (practice_completion). The Examen and the
-        --   prayer list are skipped on a day their own session already counts.
-        SELECT p.person AS user_id, pc.local_date AS day
-        FROM practice_completion pc
-        JOIN people p ON p.user_id = pc.user_id
-        WHERE pc.local_date >= $6
-          AND NOT (
-            pc.section IN ('examen', 'prayer-list')
-            AND EXISTS (
-              SELECT 1 FROM prayer_sessions ps
-              WHERE ps.user_id = pc.user_id
-                AND ps.surface = pc.section
-                AND ps.ended_at >= $5
-                AND to_char((ps.ended_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') = pc.local_date
-            )
-          )
-      ),
-      prayer_days AS (
-        SELECT DISTINCT user_id, day FROM prayer_events
-      ),
-      -- Offices: (user, day, office) — the FINISHED office only, on the terms
-      -- the app itself credits one (users.ts office-history-week): the
-      -- slideshow completed, the book or Venite attested, the office listened
-      -- to or watched. Owner, 2026-09-15: finished offices only, not Simple
-      -- Guided Prayer or Psalms, and the listened-to offices counted. Morning,
-      -- evening, Compline and Midday Prayer each count once a day.
-      office_session_candidates AS (
-        SELECT
-          p.person AS user_id,
-          ps.ended_at AS occurred_at,
-          CASE
-            WHEN ps.surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
-            WHEN ps.surface IN ('evening-prayer', 'early-evening-devotion', 'evening-office-podcast') THEN 'evening'
-            WHEN ps.surface = 'compline-office-podcast' THEN 'compline'
-            ELSE ps.surface
-          END AS side
-        FROM prayer_sessions ps
-        JOIN people p ON p.user_id = ps.user_id
-        WHERE ps.ended_at >= $5
-          AND (
-            (
-              ps.surface IN ('morning-prayer', 'evening-prayer', 'compline', 'noonday', 'morning-devotion', 'early-evening-devotion')
-              AND ps.completed = TRUE
-              -- Side CREDITS (Psalms, Simple Guided Prayer, a reading as the
-              -- side's prayer) ride the devotion surfaces with 99 slides.
-              -- Tagged 'credit:*' since 2026-09-15; before that, and from
-              -- phones not yet updated, an untagged 99-slide devotion row is
-              -- one of them unless it is tagged as an office from the book.
-              AND COALESCE(ps.source, '') NOT LIKE 'credit:%'
-              AND NOT (
-                ps.surface IN ('morning-devotion', 'early-evening-devotion')
-                AND ps.slides_completed = 99
-                AND COALESCE(ps.source, '') NOT LIKE 'attest:%'
-              )
-            )
-            OR (ps.surface IN ('morning-office-podcast', 'evening-office-podcast', 'compline-office-podcast') AND ps.completed = TRUE)
-            OR (ps.surface = 'national-cathedral' AND ps.duration_seconds >= 180)
-          )
-      ),
-      office_days AS (
-        SELECT DISTINCT
-          user_id,
-          side,
-          to_char((occurred_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') AS day
-        FROM office_session_candidates
-      ),
-      -- Contemplation & Examen: (user, day) tuples for a silent sit,
-      -- Creation Prayer, or the Examen — the practices that replaced
-      -- the office as the default anchor for many users this session,
-      -- surfaced as their own rollup rather than buried in the
-      -- general "Times prayed" total. prayer-list is deliberately
-      -- excluded here (it's a browsing action, not a timed practice).
-      contemplation_examen_days AS (
-        SELECT
-          p.person AS user_id,
-          to_char((ps.ended_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') AS day
-        FROM prayer_sessions ps
-        JOIN people p ON p.user_id = ps.user_id
-        WHERE ps.ended_at >= $5
-          AND ps.surface IN ('examen', 'contemplation')
-          AND (ps.slides_completed IS NULL OR ps.slides_completed >= 3)
-        UNION
-        -- The Examen prayed inside Simple Guided Prayer records only a
-        -- practice completion.
-        SELECT p.person AS user_id, pc.local_date AS day
-        FROM practice_completion pc
-        JOIN people p ON p.user_id = pc.user_id
-        WHERE pc.section = 'examen' AND pc.local_date >= $6
-      )
-      SELECT
-        -- A merged device user is its account, not a second user.
-        (SELECT COUNT(*) FROM users WHERE merged_into_user_id IS NULL)::int AS total_users,
-
-        -- ── Phones WITHOUT an account ──────────────────────────────────────
-        -- The anonymous device user an install provisions (users.is_anonymous).
-        -- Every tile on the page already INCLUDES them; these split them out so
-        -- the owner can see how many people use Phoebe without signing up
-        -- (2026-09-15: "make sure it counts anyone who is using it on their
-        -- phone but doesn't have an account").
-        (SELECT COUNT(*) FROM users WHERE is_anonymous AND merged_into_user_id IS NULL)::int AS total_device_users,
-        (SELECT COUNT(*) FROM users WHERE is_anonymous AND merged_into_user_id IS NULL
-           AND to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS new_device_users_today,
-        (SELECT COUNT(*) FROM users WHERE is_anonymous AND merged_into_user_id IS NULL
-           AND to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS new_device_users_week,
-        (SELECT COUNT(DISTINCT pd.user_id) FROM prayer_days pd JOIN users u ON u.id = pd.user_id
-           WHERE u.is_anonymous AND pd.day >= $1)::int AS device_prayed_today,
-        (SELECT COUNT(DISTINCT pd.user_id) FROM prayer_days pd JOIN users u ON u.id = pd.user_id
-           WHERE u.is_anonymous AND pd.day >= $2)::int AS device_prayed_week,
-        (SELECT COUNT(DISTINCT pd.user_id) FROM prayer_days pd JOIN users u ON u.id = pd.user_id
-           WHERE u.is_anonymous AND pd.day >= $4)::int AS device_prayed_month,
-        (SELECT COUNT(DISTINCT ao.user_id) FROM app_opens ao JOIN users u ON u.id = ao.user_id
-           WHERE u.is_anonymous AND u.merged_into_user_id IS NULL
-             AND to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS device_opened_today,
-        (SELECT COUNT(DISTINCT ao.user_id) FROM app_opens ao JOIN users u ON u.id = ao.user_id
-           WHERE u.is_anonymous AND u.merged_into_user_id IS NULL
-             AND to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS device_opened_week,
-        (SELECT COUNT(DISTINCT ao.user_id) FROM app_opens ao JOIN users u ON u.id = ao.user_id
-           WHERE u.is_anonymous AND u.merged_into_user_id IS NULL
-             AND to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $4)::int AS device_opened_month,
-
-        (SELECT COUNT(*) FROM prayer_requests)::int AS prayer_requests_total,
-        (SELECT COUNT(*) FROM prayer_requests
-           WHERE to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS prayer_requests_today,
-        (SELECT COUNT(*) FROM prayer_requests
-           WHERE to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS prayer_requests_week,
-
-        -- Distinct users praying in each window.
-        (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $1)::int AS prayed_today,
-        (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $2)::int AS prayed_week,
-        (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $4)::int AS prayed_month,
-
-        -- Times prayed (15-min-deduped events).
-        (SELECT COUNT(*) FROM prayer_events WHERE day >= $1)::int AS times_prayed_today,
-        (SELECT COUNT(*) FROM prayer_events WHERE day >= $2)::int AS times_prayed_week,
-        (SELECT COUNT(*) FROM prayer_events WHERE day >= $4)::int AS times_prayed_month,
-
-        -- Offices.
-        (SELECT COUNT(*) FROM office_days WHERE day >= $1)::int AS offices_today,
-        (SELECT COUNT(*) FROM office_days WHERE day >= $2)::int AS offices_week,
-        (SELECT COUNT(*) FROM office_days WHERE day >= $4)::int AS offices_month,
-
-        -- Contemplation & Examen.
-        (SELECT COUNT(*) FROM contemplation_examen_days WHERE day >= $1)::int AS contemplation_examen_today,
-        (SELECT COUNT(*) FROM contemplation_examen_days WHERE day >= $2)::int AS contemplation_examen_week,
-        (SELECT COUNT(*) FROM contemplation_examen_days WHERE day >= $4)::int AS contemplation_examen_month,
-
-        -- New signups in each window — handy app-level signal.
-        (SELECT COUNT(*) FROM users
-           WHERE merged_into_user_id IS NULL
-             AND to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS new_users_today,
-        (SELECT COUNT(*) FROM users
-           WHERE merged_into_user_id IS NULL
-             AND to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS new_users_week,
-
-        -- App opens. Each app_opens row is already one 15-min-deduped
-        -- open (unique user_id+bucket), so COUNT(DISTINCT user_id) =
-        -- "people who opened" and COUNT(*) = "times opened."
-        (SELECT COUNT(DISTINCT p.person) FROM app_opens ao JOIN people p ON p.user_id = ao.user_id
-           WHERE to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS opened_today,
-        (SELECT COUNT(DISTINCT p.person) FROM app_opens ao JOIN people p ON p.user_id = ao.user_id
-           WHERE to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS opened_week,
-        (SELECT COUNT(DISTINCT p.person) FROM app_opens ao JOIN people p ON p.user_id = ao.user_id
-           WHERE to_char((ao.opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $4)::int AS opened_month,
-
-        (SELECT COUNT(*) FROM app_opens
-           WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS opens_today,
-        (SELECT COUNT(*) FROM app_opens
-           WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS opens_week,
-        (SELECT COUNT(*) FROM app_opens
-           WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $4)::int AS opens_month,
-
-        -- ── Dean's Commentary (VTS) readership ──────────────────────────────
-        -- reflection_reads is one row per (user, source, local day), so a
-        -- DISTINCT user_id is "how many people read it" and a plain COUNT(*) is
-        -- "how many readings". Both are worth having: the first is reach, the
-        -- second is whether the same people come back.
-        --
-        -- ymd is the reader's OWN local date, written by the client, so it is
-        -- compared to the day strings directly — no timezone conversion, and no
-        -- dependence on users.timezone being right.
-        (SELECT COUNT(DISTINCT p.person) FROM reflection_reads rr JOIN people p ON p.user_id = rr.user_id
-           WHERE source = 'vts' AND ymd = $1)::int AS deans_readers_today,
-        (SELECT COUNT(DISTINCT p.person) FROM reflection_reads rr JOIN people p ON p.user_id = rr.user_id
-           WHERE source = 'vts' AND ymd >= $2)::int AS deans_readers_week,
-        (SELECT COUNT(DISTINCT p.person) FROM reflection_reads rr JOIN people p ON p.user_id = rr.user_id
-           WHERE source = 'vts' AND ymd >= $4)::int AS deans_readers_month,
-        (SELECT COUNT(*) FROM reflection_reads
-           WHERE source = 'vts' AND ymd >= $2)::int AS deans_reads_week,
-        (SELECT COUNT(*) FROM reflection_reads
-           WHERE source = 'vts' AND ymd >= $4)::int AS deans_reads_month
-    `, [todayStr, weekStartStr, tz, monthStartStr, sinceTs, sinceYmd]);
-
-    const row = q.rows[0] ?? {};
-    res.json({
-      totalUsers: Number(row.total_users ?? 0),
-      totalDeviceUsers: Number(row.total_device_users ?? 0),
-      newDeviceUsersToday: Number(row.new_device_users_today ?? 0),
-      newDeviceUsersThisWeek: Number(row.new_device_users_week ?? 0),
-      devicePrayedToday: Number(row.device_prayed_today ?? 0),
-      devicePrayedThisWeek: Number(row.device_prayed_week ?? 0),
-      devicePrayedThisMonth: Number(row.device_prayed_month ?? 0),
-      deviceOpenedToday: Number(row.device_opened_today ?? 0),
-      deviceOpenedThisWeek: Number(row.device_opened_week ?? 0),
-      deviceOpenedThisMonth: Number(row.device_opened_month ?? 0),
-      newUsersToday: Number(row.new_users_today ?? 0),
-      newUsersThisWeek: Number(row.new_users_week ?? 0),
-
-      prayedToday: Number(row.prayed_today ?? 0),
-      prayedThisWeek: Number(row.prayed_week ?? 0),
-      prayedThisMonth: Number(row.prayed_month ?? 0),
-
-      timesPrayedToday: Number(row.times_prayed_today ?? 0),
-      timesPrayedThisWeek: Number(row.times_prayed_week ?? 0),
-      timesPrayedThisMonth: Number(row.times_prayed_month ?? 0),
-
-      officesToday: Number(row.offices_today ?? 0),
-      officesThisWeek: Number(row.offices_week ?? 0),
-      officesThisMonth: Number(row.offices_month ?? 0),
-
-      contemplationExamenToday: Number(row.contemplation_examen_today ?? 0),
-      contemplationExamenThisWeek: Number(row.contemplation_examen_week ?? 0),
-      contemplationExamenThisMonth: Number(row.contemplation_examen_month ?? 0),
-
-      deansReadersToday: Number(row.deans_readers_today ?? 0),
-      deansReadersThisWeek: Number(row.deans_readers_week ?? 0),
-      deansReadersThisMonth: Number(row.deans_readers_month ?? 0),
-      deansReadsThisWeek: Number(row.deans_reads_week ?? 0),
-      deansReadsThisMonth: Number(row.deans_reads_month ?? 0),
-
-      prayerRequestsToday: Number(row.prayer_requests_today ?? 0),
-      prayerRequestsThisWeek: Number(row.prayer_requests_week ?? 0),
-      prayerRequestsTotal: Number(row.prayer_requests_total ?? 0),
-
-      openedToday: Number(row.opened_today ?? 0),
-      openedThisWeek: Number(row.opened_week ?? 0),
-      openedThisMonth: Number(row.opened_month ?? 0),
-
-      opensToday: Number(row.opens_today ?? 0),
-      opensThisWeek: Number(row.opens_week ?? 0),
-      opensThisMonth: Number(row.opens_month ?? 0),
-    });
+    const windows = appMetricsWindows();
+    const q = await pool.query(APP_METRICS_SQL, appMetricsParams(windows));
+    const shaped = shapeAppMetrics(q.rows[0] ?? {}, windows);
+    // Live numbers for one admin; the WebView must not hold yesterday's.
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ ...legacyFields(shaped), ...shaped });
   } catch (err) {
     console.error("[admin/metrics] failed:", err);
     res.status(500).json({ error: "internal_error" });

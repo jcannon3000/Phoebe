@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { isOnline, noteNetworkFailure, noteNetworkSuccess } from "@/lib/offline";
+import { isSimulatorShell } from "@/lib/isNativeShell";
 
 /**
  * The app's QueryClient, registered by App.tsx at creation so plain libs
@@ -72,10 +73,15 @@ export async function apiRequest<T = unknown>(
      * and the signal stays on for the web build, where abort does work and
      * does free the socket.
      */
+    // A test run says so, so App Metrics can leave it out (lib/isNativeShell).
+    const headers: Record<string, string> = {
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(isSimulatorShell() ? { "X-Phoebe-Simulator": "1" } : {}),
+    };
     const req = fetch(url, {
       method,
       credentials: "include",
-      headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: controller?.signal,
     });

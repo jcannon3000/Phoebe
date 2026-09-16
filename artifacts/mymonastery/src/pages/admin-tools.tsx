@@ -314,7 +314,7 @@ export default function AdminToolsPage() {
                 <LinkRow
                   emoji="📊"
                   label="App Metrics"
-                  description="Today / This week / All time, across every user"
+                  description="People, practices kept, readings — today, the last 7 days, this month"
                   onClick={() => setLocation("/admin/users")}
                 />
                 <LinkRow
@@ -362,7 +362,7 @@ export default function AdminToolsPage() {
                 <LinkRow
                   emoji="🚩"
                   label="Reports"
-                  description="Engagement metrics"
+                  description="Content reports from users — the moderation queue"
                   onClick={() => setLocation("/admin/reports")}
                 />
                 <LinkRow

@@ -59,6 +59,24 @@ class MainViewController: CAPBridgeViewController {
         // with a bare ✕ and a toolbar that collapses on scroll: the custom
         // controller built to avoid exactly that has been dead code.
         bridge?.registerPluginInstance(BibleBrowserPlugin())
+
+        // A SIMULATOR SAYS SO. App Metrics must not count test runs (owner,
+        // 2026-09-16: "make sure simulator sessions are not being counted"),
+        // and nothing else tells the Simulator's WKWebView from a phone's — the
+        // same user agent, the same screen. This flag is read by native-shell's
+        // isSimulator(); the web app then sends X-Phoebe-Simulator on every API
+        // request, and the server keeps those days out of the metrics
+        // (api-server lib/simulatorMarks.ts). Compiled out of device builds, so
+        // a phone can never set it. capacitorDidLoad runs from loadView, before
+        // the first page load, so the first load already carries it.
+        #if targetEnvironment(simulator)
+        let simulatorFlag = WKUserScript(
+            source: "window.__phoebeSimulator = true;",
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        webView?.configuration.userContentController.addUserScript(simulatorFlag)
+        #endif
     }
 
     // Edge-to-edge: render the WebView UNDER a transparent status bar

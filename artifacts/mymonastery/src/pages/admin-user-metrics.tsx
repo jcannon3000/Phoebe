@@ -7,69 +7,61 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { apiRequest } from "@/lib/queryClient";
 
-// Admin App Metrics — whole-app Today / This Week / All Time tile
-// view, mirroring the per-community metrics dashboard layout exactly
-// so the two surfaces tell the same story at different scopes.
-//
-// Gated to beta admins (server-side gate via /api/admin/metrics; we
-// ALSO hide the page client-side so a non-admin opening the URL
-// directly doesn't see a 403 toast). Layout conventions match the
-// other admin tools (Reports / Pilot Users / Waitlist).
+/**
+ * Admin App Metrics — /admin/users.
+ *
+ * Owner (2026-09-16): "there are just a lot of overlapping categories and
+ * redundancies and it's confusing, simplify it and make it clearer what each
+ * is." The page had thirteen sections of three tiles: every "without an
+ * account" section repeated the one above it as a subset, the Dean's "days
+ * read" repeated "readers", and People praying / Times prayed / Offices /
+ * Contemplation were four units side by side with nothing saying so.
+ *
+ * Now three groups, each in ONE unit, and the unit is on the tile:
+ *   People       — who opened the app, who kept a practice, accounts; phones
+ *                  without an account are a line under each number, not a
+ *                  section of their own.
+ *   Practices    — a practice KEPT, once per person, per practice, per day
+ *                  (lib/appMetricsSql.ts on the server); the total, then a
+ *                  breakdown whose rows add up to it.
+ *   The Dean's Commentary — its readers, with reader-days as a line under.
+ * Community tools (prayer requests, the feed audit and repair) are folded
+ * away: the features are off for everyone.
+ *
+ * Gated to beta admins server-side (/api/admin/metrics); hidden client-side
+ * too so a non-admin opening the URL doesn't meet a 403 toast.
+ */
 
 const SPACE_GROTESK = "'Space Grotesk', sans-serif";
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FAINT = "rgba(143,175,150,0.55)";
 
+type Window3 = { today: number; week: number; month: number };
+type Totals3 = { today: number; week: number; total: number };
+
 type AppMetrics = {
-  totalUsers: number;
-  newUsersToday: number;
-  newUsersThisWeek: number;
-
-  prayedToday: number;
-  prayedThisWeek: number;
-  prayedThisMonth: number;
-
-  timesPrayedToday: number;
-  timesPrayedThisWeek: number;
-  timesPrayedThisMonth: number;
-
-  officesToday: number;
-  officesThisWeek: number;
-  officesThisMonth: number;
-
-  contemplationExamenToday: number;
-  contemplationExamenThisWeek: number;
-  contemplationExamenThisMonth: number;
-
-  deansReadersToday: number;
-  deansReadersThisWeek: number;
-  deansReadersThisMonth: number;
-  deansReadsThisWeek: number;
-  deansReadsThisMonth: number;
-  prayerRequestsToday: number;
-  prayerRequestsThisWeek: number;
-  prayerRequestsTotal: number;
-
-  openedToday: number;
-  openedThisWeek: number;
-  openedThisMonth: number;
-
-  opensToday: number;
-  opensThisWeek: number;
-  opensThisMonth: number;
-
-  // Phones without an account (anonymous device users) — already INCLUDED in
-  // the totals above; split out. Optional: an older server omits them.
-  totalDeviceUsers?: number;
-  newDeviceUsersToday?: number;
-  newDeviceUsersThisWeek?: number;
-  devicePrayedToday?: number;
-  devicePrayedThisWeek?: number;
-  devicePrayedThisMonth?: number;
-  deviceOpenedToday?: number;
-  deviceOpenedThisWeek?: number;
-  deviceOpenedThisMonth?: number;
+  windows: { tz: string; today: string; weekStart: string; monthStart: string };
+  people: {
+    opened: Window3;
+    openedWithoutAccount: Window3;
+    prayed: Window3;
+    prayedWithoutAccount: Window3;
+    accounts: Totals3;
+    withoutAccount: Totals3;
+  };
+  opens: Window3;
+  practices: {
+    all: Window3;
+    offices: Window3;
+    contemplation: Window3;
+    examen: Window3;
+    readings: Window3;
+    prayerList: Window3;
+    other: Window3;
+  };
+  deans: { readers: Window3; readerDays: { week: number; month: number } };
+  community: { prayerRequestsTotal: number; prayerRequestsToday: number; prayerRequestsWeek: number };
 };
 
 type FeedAuditRow = {
@@ -117,11 +109,14 @@ export default function AdminAppMetricsPage() {
     staleTime: 60_000,
   });
 
+  // Community tools are off for everyone; the audit is fetched only when the
+  // admin unfolds them.
+  const [showCommunity, setShowCommunity] = useState(false);
   const queryClient = useQueryClient();
   const { data: audit } = useQuery<FeedAudit>({
     queryKey: ["/api/admin/feed-audit"],
     queryFn: () => apiRequest("GET", "/api/admin/feed-audit"),
-    enabled: !!user && rawIsAdmin,
+    enabled: !!user && rawIsAdmin && showCommunity,
     staleTime: 60_000,
   });
 
@@ -169,6 +164,10 @@ export default function AdminAppMetricsPage() {
     );
   }
 
+  const without = (n: number) => t("admin_user_metrics.sub_without_account", { count: n });
+  const perReader = (days: number, readers: number) =>
+    t("admin_user_metrics.sub_reader_days", { count: days, avg: readers > 0 ? (days / readers).toFixed(1) : "0" });
+
   return (
     <Layout>
       <div className="max-w-3xl mx-auto w-full pb-20">
@@ -207,100 +206,92 @@ export default function AdminAppMetricsPage() {
 
         {data && (
           <>
-            <Section
-              eyebrow={t("admin_user_metrics.section_people_praying")}
-              caption={t("admin_user_metrics.caption_people_praying")}
-            >
-              <TileRow today={data.prayedToday} week={data.prayedThisWeek} allTime={data.prayedThisMonth} />
-            </Section>
+            {/* ── People ─────────────────────────────────────────────── */}
+            <Group title={t("admin_user_metrics.group_people")}>
+              <Row
+                label={t("admin_user_metrics.row_opened")}
+                caption={t("admin_user_metrics.caption_opened")}
+                unit={t("admin_user_metrics.unit_people")}
+                tiles={windowTiles(t, data.people.opened, data.people.openedWithoutAccount, without)}
+              />
+              <Row
+                label={t("admin_user_metrics.row_prayed")}
+                caption={t("admin_user_metrics.caption_prayed")}
+                unit={t("admin_user_metrics.unit_people")}
+                tiles={windowTiles(t, data.people.prayed, data.people.prayedWithoutAccount, without)}
+              />
+              <Row
+                label={t("admin_user_metrics.row_accounts")}
+                caption={t("admin_user_metrics.caption_accounts")}
+                unit={t("admin_user_metrics.unit_people")}
+                tiles={[
+                  { label: t("admin_user_metrics.tile_today"), value: data.people.accounts.today, sub: t("admin_user_metrics.sub_new_devices", { count: data.people.withoutAccount.today }) },
+                  { label: t("admin_user_metrics.tile_week"), value: data.people.accounts.week, sub: t("admin_user_metrics.sub_new_devices", { count: data.people.withoutAccount.week }) },
+                  { label: t("admin_user_metrics.total"), value: data.people.accounts.total, sub: t("admin_user_metrics.sub_new_devices", { count: data.people.withoutAccount.total }) },
+                ]}
+              />
+              <Row
+                label={t("admin_user_metrics.row_opens")}
+                caption={t("admin_user_metrics.caption_opens")}
+                unit={t("admin_user_metrics.unit_opens")}
+                tiles={windowTiles(t, data.opens)}
+              />
+            </Group>
 
-            <Section
-              eyebrow={t("admin_user_metrics.section_device_praying")}
-              caption={t("admin_user_metrics.caption_device_praying")}
-            >
-              <TileRow today={data.devicePrayedToday ?? 0} week={data.devicePrayedThisWeek ?? 0} allTime={data.devicePrayedThisMonth ?? 0} />
-            </Section>
+            {/* ── Practices kept ─────────────────────────────────────── */}
+            <Group title={t("admin_user_metrics.group_practices")} caption={t("admin_user_metrics.caption_practices")}>
+              <Row
+                label={t("admin_user_metrics.row_all_practices")}
+                unit={t("admin_user_metrics.unit_practices")}
+                tiles={windowTiles(t, data.practices.all)}
+              />
+              <Breakdown
+                rows={[
+                  { label: t("admin_user_metrics.fam_offices"), caption: t("admin_user_metrics.caption_offices"), values: data.practices.offices },
+                  { label: t("admin_user_metrics.fam_contemplation"), caption: t("admin_user_metrics.caption_contemplation"), values: data.practices.contemplation },
+                  { label: t("admin_user_metrics.fam_examen"), caption: t("admin_user_metrics.caption_examen"), values: data.practices.examen },
+                  { label: t("admin_user_metrics.fam_readings"), caption: t("admin_user_metrics.caption_readings"), values: data.practices.readings },
+                  { label: t("admin_user_metrics.fam_prayer_list"), caption: t("admin_user_metrics.caption_prayer_list"), values: data.practices.prayerList },
+                  { label: t("admin_user_metrics.fam_other"), caption: t("admin_user_metrics.caption_other"), values: data.practices.other },
+                ]}
+              />
+            </Group>
 
-            <Section
-              eyebrow={t("admin_user_metrics.section_times_prayed")}
-              caption={t("admin_user_metrics.caption_times_prayed")}
-            >
-              <TileRow today={data.timesPrayedToday} week={data.timesPrayedThisWeek} allTime={data.timesPrayedThisMonth} />
-            </Section>
+            {/* ── The Dean's Commentary ──────────────────────────────── */}
+            <Group title={t("admin_user_metrics.group_deans")}>
+              <Row
+                label={t("admin_user_metrics.row_deans_readers")}
+                caption={t("admin_user_metrics.caption_deans")}
+                unit={t("admin_user_metrics.unit_people")}
+                tiles={[
+                  { label: t("admin_user_metrics.tile_today"), value: data.deans.readers.today },
+                  { label: t("admin_user_metrics.tile_week"), value: data.deans.readers.week, sub: perReader(data.deans.readerDays.week, data.deans.readers.week) },
+                  { label: t("admin_user_metrics.tile_this_month"), value: data.deans.readers.month, sub: perReader(data.deans.readerDays.month, data.deans.readers.month) },
+                ]}
+              />
+            </Group>
 
-            <Section
-              eyebrow={t("admin_user_metrics.section_offices")}
-              caption={t("admin_user_metrics.caption_offices")}
-            >
-              <TileRow today={data.officesToday} week={data.officesThisWeek} allTime={data.officesThisMonth} />
-            </Section>
-
-            <Section
-              eyebrow={t("admin_user_metrics.section_contemplation_examen")}
-              caption={t("admin_user_metrics.caption_contemplation_examen")}
-            >
-              <TileRow today={data.contemplationExamenToday} week={data.contemplationExamenThisWeek} allTime={data.contemplationExamenThisMonth} />
-            </Section>
-
-            {/* Dean's Commentary readership. Two rows on purpose: PEOPLE is
-                reach, READINGS is whether the same people come back. One row of
-                "reads" alone would flatter a handful of daily readers into
-                looking like a congregation. */}
-            <Section
-              eyebrow={t("admin_user_metrics.section_deans", { defaultValue: "🦩 Dean's Commentary — readers" })}
-              caption={t("admin_user_metrics.caption_deans", { defaultValue: "How many PEOPLE opened the Dean's Commentary. One per reader per day." })}
-            >
-              <TileRow today={data.deansReadersToday} week={data.deansReadersThisWeek} allTime={data.deansReadersThisMonth} />
-            </Section>
-
-            <Section
-              eyebrow={t("admin_user_metrics.section_deans_reads", { defaultValue: "🦩 Dean's Commentary — days read" })}
-              caption={t("admin_user_metrics.caption_deans_reads", { defaultValue: "Reader-days: one per person per day they opened it. Divide by the readers above for how many days each reader averages. Today's figure is the same number by definition." })}
-            >
-              <TileRow today={data.deansReadersToday} week={data.deansReadsThisWeek} allTime={data.deansReadsThisMonth} />
-            </Section>
-
-            <Section
-              eyebrow={t("admin_user_metrics.section_prayer_requests")}
-              caption={t("admin_user_metrics.caption_prayer_requests")}
-            >
-              <TileRow today={data.prayerRequestsToday} week={data.prayerRequestsThisWeek} allTime={data.prayerRequestsTotal} allTimeLabel={t("admin_user_metrics.total")} />
-            </Section>
-
-            <Section
-              eyebrow={t("admin_user_metrics.section_users")}
-              caption={t("admin_user_metrics.caption_users")}
-            >
-              <TileRow today={data.newUsersToday} week={data.newUsersThisWeek} allTime={data.totalUsers} allTimeLabel={t("admin_user_metrics.total")} />
-            </Section>
-
-            <Section
-              eyebrow={t("admin_user_metrics.section_device_users")}
-              caption={t("admin_user_metrics.caption_device_users")}
-            >
-              <TileRow today={data.newDeviceUsersToday ?? 0} week={data.newDeviceUsersThisWeek ?? 0} allTime={data.totalDeviceUsers ?? 0} allTimeLabel={t("admin_user_metrics.total")} />
-            </Section>
-
-            <Section
-              eyebrow={t("admin_user_metrics.section_opened_app")}
-              caption={t("admin_user_metrics.caption_opened_app")}
-            >
-              <TileRow today={data.openedToday} week={data.openedThisWeek} allTime={data.openedThisMonth} />
-            </Section>
-
-            <Section
-              eyebrow={t("admin_user_metrics.section_device_opened")}
-              caption={t("admin_user_metrics.caption_device_opened")}
-            >
-              <TileRow today={data.deviceOpenedToday ?? 0} week={data.deviceOpenedThisWeek ?? 0} allTime={data.deviceOpenedThisMonth ?? 0} />
-            </Section>
-
-            <Section
-              eyebrow={t("admin_user_metrics.section_times_opened")}
-              caption={t("admin_user_metrics.caption_times_opened")}
-            >
-              <TileRow today={data.opensToday} week={data.opensThisWeek} allTime={data.opensThisMonth} />
-            </Section>
+            {/* ── Community tools, folded away ───────────────────────── */}
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setShowCommunity((v) => !v)}
+                className="text-[12px] font-medium px-3 py-2 rounded-xl transition-opacity hover:opacity-90"
+                style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)", color: SAGE, fontFamily: SPACE_GROTESK }}
+              >
+                {showCommunity ? t("admin_user_metrics.community_hide") : t("admin_user_metrics.community_show")}
+              </button>
+              {showCommunity && (
+                <div className="mt-4">
+                  <p className="text-[13px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.55 }}>
+                    {t("admin_user_metrics.community_note")}
+                  </p>
+                  <p className="text-[13px] mt-2" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                    {t("admin_user_metrics.prayer_requests_line", { total: data.community.prayerRequestsTotal, week: data.community.prayerRequestsWeek })}
+                  </p>
+                </div>
+              )}
+            </div>
           </>
         )}
 
@@ -308,8 +299,8 @@ export default function AdminAppMetricsPage() {
             /token reconciliation so the "Manage shows 2 feeds" and
             "people praying without being subscribed" issues are
             diagnosable at a glance. */}
-        {audit && (
-          <div className="mt-10">
+        {showCommunity && audit && (
+          <div className="mt-8">
             <div className="flex items-center gap-3 mb-2">
               <p
                 className="text-[10px] uppercase tracking-[0.18em] font-semibold"
@@ -481,31 +472,35 @@ export default function AdminAppMetricsPage() {
   );
 }
 
-function Section({
-  eyebrow,
-  caption,
-  children,
-}: {
-  eyebrow: string;
-  caption?: string;
-  children: React.ReactNode;
-}) {
+type TileSpec = { label: string; value: number; sub?: string };
+
+/** Today / last 7 days / this month, with an optional "without an account" line under each. */
+function windowTiles(
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  w: Window3,
+  under?: Window3,
+  subFor?: (n: number) => string,
+): TileSpec[] {
+  const sub = (n: number | undefined) => (under && subFor && typeof n === "number" ? subFor(n) : undefined);
+  return [
+    { label: t("admin_user_metrics.tile_today"), value: w.today, sub: sub(under?.today) },
+    { label: t("admin_user_metrics.tile_week"), value: w.week, sub: sub(under?.week) },
+    { label: t("admin_user_metrics.tile_this_month"), value: w.month, sub: sub(under?.month) },
+  ];
+}
+
+/** A group of rows under one eyebrow. */
+function Group({ title, caption, children }: { title: string; caption?: string; children: React.ReactNode }) {
   return (
-    <div className="mb-8">
-      <div className="flex items-center gap-3 mb-2">
-        <p
-          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: FAINT, fontFamily: SPACE_GROTESK }}
-        >
-          {eyebrow}
+    <div className="mb-10">
+      <div className="flex items-center gap-3 mb-3">
+        <p className="text-[10px] uppercase tracking-[0.18em] font-semibold" style={{ color: FAINT, fontFamily: SPACE_GROTESK }}>
+          {title}
         </p>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.10)" }} />
       </div>
       {caption && (
-        <p
-          className="text-[13px] mb-3"
-          style={{ color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.55 }}
-        >
+        <p className="text-[13px] mb-4" style={{ color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.55 }}>
           {caption}
         </p>
       )}
@@ -514,48 +509,77 @@ function Section({
   );
 }
 
-function TileRow({
-  today,
-  week,
-  allTime,
-  allTimeLabel,
-}: {
-  today: number;
-  week: number;
-  allTime: number;
-  allTimeLabel?: string;
-}) {
-  const { t } = useTranslation();
+/** One measure: its name, what it counts, its unit, and three tiles. */
+function Row({ label, caption, unit, tiles }: { label: string; caption?: string; unit: string; tiles: TileSpec[] }) {
   return (
-    <div className="grid grid-cols-3 gap-3">
-      <Tile label={t("admin_user_metrics.tile_today")} value={today} />
-      <Tile label={t("admin_user_metrics.tile_this_week")} value={week} />
-      <Tile label={allTimeLabel ?? t("admin_user_metrics.tile_this_month")} value={allTime} />
+    <div className="mb-6">
+      <div className="flex items-baseline justify-between gap-3 mb-1">
+        <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{label}</p>
+        <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: FAINT, fontFamily: SPACE_GROTESK }}>{unit}</p>
+      </div>
+      {caption && (
+        <p className="text-[13px] mb-3" style={{ color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.55 }}>
+          {caption}
+        </p>
+      )}
+      <div className="grid grid-cols-3 gap-3">
+        {tiles.map((tile) => <Tile key={tile.label} {...tile} />)}
+      </div>
     </div>
   );
 }
 
-function Tile({ label, value }: { label: string; value: number }) {
+function Tile({ label, value, sub }: TileSpec) {
   return (
-    <div
-      className="rounded-xl px-4 py-5 text-center"
-      style={{
-        background: "rgba(46,107,64,0.10)",
-        border: "1px solid rgba(46,107,64,0.22)",
-      }}
-    >
-      <p
-        className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-2"
-        style={{ color: FAINT, fontFamily: SPACE_GROTESK }}
-      >
+    <div className="rounded-xl px-3 py-4 text-center" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
+      <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-2" style={{ color: FAINT, fontFamily: SPACE_GROTESK }}>
         {label}
       </p>
-      <p
-        className="text-[32px] font-semibold tabular-nums"
-        style={{ color: WARM, fontFamily: SPACE_GROTESK, lineHeight: 1 }}
-      >
+      <p className="text-[30px] font-semibold tabular-nums" style={{ color: WARM, fontFamily: SPACE_GROTESK, lineHeight: 1 }}>
         {value.toLocaleString()}
       </p>
+      {/* Reserved whether or not there is a line, so the three tiles stay level. */}
+      <p className="text-[11px] mt-2 tabular-nums" style={{ color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: "15px", minHeight: 15 }}>
+        {sub ?? ""}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The families a total splits into — a compact table whose rows add up to the
+ * row above it. Each row is the name with its three numbers, then the caption
+ * on a line of its own across the full width: with the caption beside the
+ * numbers, a phone squeezed it into a column a few words wide.
+ */
+const BREAKDOWN_COLUMNS = "minmax(0,1fr) 3.25rem 3.25rem 3.25rem";
+function Breakdown({ rows }: { rows: Array<{ label: string; caption: string; values: Window3 }> }) {
+  const { t } = useTranslation();
+  const cols: Array<keyof Window3> = ["today", "week", "month"];
+  const heads = [t("admin_user_metrics.col_today"), t("admin_user_metrics.col_week"), t("admin_user_metrics.col_month")];
+  return (
+    <div className="rounded-xl px-4 py-2" style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.18)" }}>
+      <div className="grid items-baseline gap-x-2 py-2" style={{ gridTemplateColumns: BREAKDOWN_COLUMNS }}>
+        <span />
+        {heads.map((h) => (
+          <span key={h} className="text-[10px] uppercase tracking-[0.12em] font-semibold text-right" style={{ color: FAINT, fontFamily: SPACE_GROTESK }}>{h}</span>
+        ))}
+      </div>
+      {rows.map((r) => (
+        <div
+          key={r.label}
+          className="grid items-baseline gap-x-2 py-3"
+          style={{ gridTemplateColumns: BREAKDOWN_COLUMNS, borderTop: "1px solid rgba(200,212,192,0.08)" }}
+        >
+          <p className="text-[14px] font-semibold min-w-0" style={{ color: WARM, fontFamily: SPACE_GROTESK, lineHeight: "20px" }}>{r.label}</p>
+          {cols.map((c) => (
+            <span key={c} className="text-[18px] font-semibold tabular-nums text-right" style={{ color: WARM, fontFamily: SPACE_GROTESK, lineHeight: "20px" }}>
+              {r.values[c].toLocaleString()}
+            </span>
+          ))}
+          <p className="text-[12px] mt-1" style={{ gridColumn: "1 / -1", color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.5 }}>{r.caption}</p>
+        </div>
+      ))}
     </div>
   );
 }

@@ -1410,6 +1410,10 @@ declare global {
         heroDeepLink?: string | null;
       }) => void;
       isNative: () => boolean;
+      // True in the iOS Simulator and the Android emulator, so the web app can
+      // tell the API (X-Phoebe-Simulator) and App Metrics can leave test runs
+      // out. Never true on a phone.
+      isSimulator?: () => boolean;
       // Synchronous front door for Browser.open. The previous bridge
       // dispatched a `phoebe:open-url` event whose listener then called
       // Browser.open — which dropped the iOS user-gesture context and
@@ -1570,6 +1574,14 @@ function exposePublicApi() {
     },
     isNative() {
       return Capacitor.isNativePlatform();
+    },
+    isSimulator() {
+      // iOS: MainViewController injects this flag in Simulator builds only —
+      // the WKWebView itself is identical to a phone's. Android: the emulator
+      // names itself in the WebView's user agent ("sdk_gphone64_arm64").
+      if ((window as unknown as { __phoebeSimulator?: boolean }).__phoebeSimulator === true) return true;
+      return Capacitor.getPlatform() === "android"
+        && /sdk_gphone|Android SDK built for|google_sdk|\bEmulator\b/i.test(navigator.userAgent);
     },
     async openInAppBrowser(url: string, opts?: { savedHtml?: string; lightChrome?: boolean; backChrome?: boolean; officeChrome?: boolean; officeTitle?: string; slideLabel?: string; sectionLabel?: string; previous?: { title: string; url: string }[] }) {
       if (!url) return;

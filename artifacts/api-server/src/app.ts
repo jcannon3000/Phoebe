@@ -21,6 +21,7 @@ import { fileURLToPath } from "url";
 import fs from "fs";
 import { db, groupsTable, prayerRequestsTable, usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
+import { simulatorMarkMiddleware } from "./lib/simulatorMarks";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -152,6 +153,11 @@ app.use((req, _res, next) => {
   }
   next();
 });
+
+// A request from the iOS Simulator or the Android emulator says so
+// (X-Phoebe-Simulator); the day is recorded so App Metrics can leave test
+// runs out. After passport.session so req.user is known.
+app.use(simulatorMarkMiddleware);
 
 // Scheduler ownership. This deploy runs ONLY the web process (index.mjs) —
 // there is no separate worker service (see nixpacks.toml). So the schedulers
