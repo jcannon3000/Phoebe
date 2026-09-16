@@ -11,7 +11,7 @@
 import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { warmedHtml, warmPages } from "@/lib/warmedPages";
 import { markHagiographyRead, unmarkHagiographyToday } from "@/lib/cacReadState";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence, type TargetAndTransition, type Transition } from "framer-motion";
 import { ReadingBookSheet } from "@/components/ReadingBookSheet";
@@ -942,15 +942,27 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * to point at /reading-log, which redirects to /dashboard, so the tap landed
    * on the home with no sheet and nothing logged (audit, 2026-09-16).
    */
+  // KEYED ON THE QUERY, not on mount. A mount-only effect misses the case that
+  // matters: the app is already on /dashboard and the deep link only changes
+  // the query, so nothing remounts and the sheet never opens — measured on the
+  // simulator, where the param also sat un-stripped in the URL. The widget
+  // lands exactly that way (native-shell pushes the deep link after the app has
+  // mounted at "/"), and so does the Available Offline row. useSearch re-renders
+  // on a query change with the path unchanged; the dashboard's own ?readings=
+  // hand-off is mount-only and gets away with it because it always arrives from
+  // another route.
+  const search = useSearch();
   useEffect(() => {
     try {
       const u = new URL(window.location.href);
       if (u.searchParams.get("log") !== "reading") return;
       setReadingSheetOpen(true);
+      // Stripped so a reload, or a Back to here, doesn't reopen the sheet. The
+      // re-run this triggers returns at the check above.
       u.searchParams.delete("log");
       window.history.replaceState({}, "", u.pathname + (u.search ? u.search : ""));
     } catch { /* ignore */ }
-  }, []);
+  }, [search]);
   const [readingBook, setReadingBook] = useState(() => getReadingBook());
   // ── The just-completed moment ────────────────────────────────────────────
   // Coming back from a practice, the card is already Done in state — so
