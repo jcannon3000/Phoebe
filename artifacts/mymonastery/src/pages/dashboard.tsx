@@ -34,6 +34,7 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
+import { isBreathIntroActive } from "@/lib/breathIntro";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
@@ -4753,7 +4754,7 @@ function PrayerListCarousel({
     // While the first-open intro is still up (a slow read), keep waiting rather
     // than un-gating the cascade behind it.
     let id = window.setTimeout(function fb() {
-      if (isFirstOpenOnboardingActive()) { id = window.setTimeout(fb, 4000); return; }
+      if (isFirstOpenOnboardingActive() || isBreathIntroActive()) { id = window.setTimeout(fb, 4000); return; }
       clear();
     }, 12000);
     return () => { window.removeEventListener("phoebe:splash-done", clear); window.removeEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear); window.clearTimeout(id); };
@@ -5559,7 +5560,7 @@ function TimeSection({
     window.addEventListener("phoebe:splash-done", clear);
     window.addEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear);
     let id = window.setTimeout(function fb() {
-      if (isFirstOpenOnboardingActive()) { id = window.setTimeout(fb, 4000); return; }
+      if (isFirstOpenOnboardingActive() || isBreathIntroActive()) { id = window.setTimeout(fb, 4000); return; }
       clear();
     }, 12000);
     return () => { window.removeEventListener("phoebe:splash-done", clear); window.removeEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear); window.clearTimeout(id); };
@@ -6078,7 +6079,7 @@ function useSplashCleared(): boolean {
     window.addEventListener("phoebe:splash-done", clear);
     window.addEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear);
     let id = window.setTimeout(function fb() {
-      if (isFirstOpenOnboardingActive()) { id = window.setTimeout(fb, 4000); return; }
+      if (isFirstOpenOnboardingActive() || isBreathIntroActive()) { id = window.setTimeout(fb, 4000); return; }
       clear();
     }, 12000);
     return () => { window.removeEventListener("phoebe:splash-done", clear); window.removeEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear); window.clearTimeout(id); };

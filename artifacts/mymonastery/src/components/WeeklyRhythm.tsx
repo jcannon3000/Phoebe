@@ -23,6 +23,7 @@ import { ROUTINE_SYNCED_EVENT, pushRoutineConfig } from "@/lib/routineSync";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
+import { isBreathIntroActive } from "@/lib/breathIntro";
 import {
   WEEKLY_PRACTICES,
   WEEKDAY_LABELS,
@@ -149,7 +150,7 @@ export function WeeklyRhythm({ cascadeBaseDelay = 0 }: { cascadeBaseDelay?: numb
     // Fallback only if the event is missed — must outlast the splash, and keep
     // waiting while the first-open intro is still up.
     let id = window.setTimeout(function fb() {
-      if (isFirstOpenOnboardingActive()) { id = window.setTimeout(fb, 4000); return; }
+      if (isFirstOpenOnboardingActive() || isBreathIntroActive()) { id = window.setTimeout(fb, 4000); return; }
       clear();
     }, 12000);
     return () => { window.removeEventListener("phoebe:splash-done", clear); window.removeEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear); window.clearTimeout(id); };

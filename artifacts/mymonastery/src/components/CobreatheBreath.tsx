@@ -7,6 +7,12 @@ import { buildCanonical, photoForGlobalIndex, randomSeed, type Canonical } from 
 import { syncedNow, ensureClockSynced } from "@/lib/serverClock";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { openingSentenceForToday } from "@/lib/creationLiturgy";
+import {
+  INHALE_MS, EXHALE_MS, CYCLE_MS,
+  RING_IN, RING_OUT, RING_GLOW, RING_R, RING_CIRC, RING_SW,
+  SESSION_RING, SESSION_R, SESSION_CIRC, SESSION_TRACK, BREATH_RING_MASK,
+  breathGlobeBoxPx,
+} from "@/lib/breathRings";
 
 // ── CobreatheBreath ─────────────────────────────────────────────────────────
 //
@@ -31,18 +37,14 @@ const WARM = "#F0EDE6";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
-// Breath pacing — a simple in / out breath, 6s each: a slow inhale and an
-// equally slow exhale, no holds (five breaths a minute). 12s per cycle; twelve
-// cycles ≈ 2:24. The synced schedule below is derived from CYCLE_MS, so changing
-// these here re-times the global breath for everyone at once.
-const INHALE_MS = 6000;
-// Inhale and exhale are equal — a symmetric 6s in / 6s out. The scale + ring
-// fills below derive from INHALE_MS/EXHALE_MS separately, so this stays correct.
-const EXHALE_MS = 6000;
+// Breath pacing (INHALE_MS / EXHALE_MS / CYCLE_MS) and the rings' geometry live
+// in lib/breathRings, shared with the three-breath intro after the app-open
+// splash, so the two can never draw different circles. Changing the pacing
+// there still re-times the global breath for everyone at once.
 // Each phase (in, out) is one PHASE_MS slice of the cycle — used to derive a
 // globally-synced octave that rotates 0→1→2→3 across phases.
 const PHASE_MS = INHALE_MS;
-export const CYCLE_MS = INHALE_MS + EXHALE_MS;
+export { CYCLE_MS };
 export const DEFAULT_TOTAL_BREATHS = 12;
 
 // Glow scale endpoints (relative to its base): collapsed at full exhale,
@@ -125,22 +127,8 @@ const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
 // (The old Weil/Merton/MLK/Teresa sync quotes are replaced by the Season of
 // Creation opening sentences — see CREATION_OPENING_SENTENCES.)
-// Frosted-glass rings — back to the ORIGINAL warm-white tones. Two tones: the
-// inhale fills with the light warm-white and HOLDS; the much-darker base sweeps
-// over it on the exhale, settling the ring back to its dark resting tone (a
-// strong contrast between the two rings).
-const RING_IN = "#EFECE4";               // original light warm-white — the inhale fill
-const RING_OUT = "#4A473F";              // a lot darker — the base / exhale sweep
-// Soft glow used by every ring's drop-shadow.
-const RING_GLOW = "rgba(240,237,230,0.45)";
-const RING_R = 58;                       // outer ring radius (viewBox 128)
-const RING_CIRC = 2 * Math.PI * RING_R;
-const RING_SW = 3.36;                    // stroke width — 30% thinner; inner ring matches it (same thickness)
-// Inner SESSION ring — ONE slow circle filling once across the whole set of
-// breaths, in the SAME card-surface green glass as the breath fill.
-const SESSION_RING = "#EFECE4";
-const SESSION_R = RING_R / 1.618;         // inner radius — the outer (RING_R) is 1.618× (golden ratio) bigger
-const SESSION_CIRC = 2 * Math.PI * SESSION_R;
+// The rings' colours, radii, stroke and frost mask — and the globe box they
+// sit in — come from lib/breathRings (imported above), with their history.
 
 // The bundled photo library — every image under src/assets/cobreathe is glob-
 // imported here so the breath ALWAYS has pictures, no matter which surface
@@ -273,13 +261,7 @@ export function CobreatheBreath({
   // diameter — i.e. outer diameter = viewport width / 2.61. The outer ring is
   // 2·RING_R of the 128 viewBox, so the box (the full viewBox) = outer·128/116.
   // Desktop keeps the fixed 158 box.
-  const globeBoxPx = (vw: number): number => {
-    if (vw > 0 && vw <= 600) {
-      const outer = vw / 2.61;
-      return Math.round(outer * (128 / (2 * RING_R)));
-    }
-    return 158;
-  };
+  const globeBoxPx = (vw: number): number => breathGlobeBoxPx(vw);
   const [globePx, setGlobePx] = useState<number>(() => {
     try { return globeBoxPx(window.innerWidth); } catch { return 158; }
   });
@@ -1185,8 +1167,8 @@ export function CobreatheBreath({
             // frosted-glass card surface instead of a flat stroke. The mask also
             // trims the per-stroke glows to the bands.
             backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-            WebkitMaskImage: "radial-gradient(circle closest-side, transparent 0 50%, #000 51% 61%, transparent 62% 84%, #000 85% 96%, transparent 97%)",
-            maskImage: "radial-gradient(circle closest-side, transparent 0 50%, #000 51% 61%, transparent 62% 84%, #000 85% 96%, transparent 97%)",
+            WebkitMaskImage: BREATH_RING_MASK,
+            maskImage: BREATH_RING_MASK,
           }}
         >
           {/* TWO frosted tones only. The resting BASE ring — the base sage tone
@@ -1205,7 +1187,7 @@ export function CobreatheBreath({
             style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
           {/* inner session ring — a faint frosted track (so the two rings read as
               concentric even at rest) + slow fill, thickness matched to the outer */}
-          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(215,212,205,0.34)" strokeWidth={RING_SW} />
+          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_TRACK} strokeWidth={RING_SW} />
           <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_RING} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
             style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
         </svg>

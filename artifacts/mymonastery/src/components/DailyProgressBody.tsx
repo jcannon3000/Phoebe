@@ -40,6 +40,7 @@ import { playRoutineCompleteSwell } from "@/lib/amenFeedback";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
+import { isBreathIntroActive } from "@/lib/breathIntro";
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
@@ -2716,7 +2717,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // 12s (owner: "the cards didn't load"). While the first-open intro is
     // still up (a slow read), keep waiting rather than un-gating behind it.
     let id = window.setTimeout(function fb() {
-      if (isFirstOpenOnboardingActive()) { id = window.setTimeout(fb, 4000); return; }
+      if (isFirstOpenOnboardingActive() || isBreathIntroActive()) { id = window.setTimeout(fb, 4000); return; }
       clear();
     }, 3500);
     return () => { window.removeEventListener("phoebe:splash-done", clear); window.removeEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear); window.clearTimeout(id); };
