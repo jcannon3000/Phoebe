@@ -16,11 +16,12 @@
 // Eastertide), then the Old Testament's — and only then a same-chapter
 // painting, the gospel's first (owner, 2026-09-15: "the priority is exact
 // matches", "prioritize making sure it matches the gospel"). Psalms are never used (owner, 2026-09-14).
-// Where nothing paints the gospel's verses and a picture was chosen BY HAND for
-// that gospel's theme (owner, 2026-09-15: "consider in the vanderbelt library
-// what might touch on a theme from reading ... even consider the icons"), the
-// hand-chosen one comes next — before the epistle and the Old Testament, and
-// without ever claiming the passage. See THEME_PICKS in the builder.
+// A picture the owner chose BY HAND for a reading (THEME_PICKS in the builder)
+// is tried FIRST, ahead of the whole walk, and wins — that is the point of
+// choosing it. Measured against no hand picks at all: 10 weeks trade a
+// verse-level epistle or Old Testament label for a picture chosen for the
+// gospel, which is exactly the trade the owner asked for on those Sundays. What
+// it may CLAIM is still its own matchScore, so a theme picture says nothing.
 // When no reading is painted at all: the same story in another gospel, then a
 // work ACT assigns to that Sunday; a same-book picture only after both.
 //
@@ -37,10 +38,10 @@
 export type VisioScheduleEntry = { id: number; ref: string; followsToday: boolean };
 
 export const VISIO_SCHEDULE: Record<string, VisioScheduleEntry> = {
-  "2026-01-01": { id: 57436, ref: "John 6:1-21", followsToday: false },
-  "2026-01-02": { id: 57436, ref: "John 6:1-21", followsToday: false },
-  "2026-01-03": { id: 57436, ref: "John 6:1-21", followsToday: false },
-  "2026-01-04": { id: 57436, ref: "John 6:1-21", followsToday: false },
+  "2026-01-01": { id: 59199, ref: "Matthew 2:13-23", followsToday: true },
+  "2026-01-02": { id: 59199, ref: "Matthew 2:13-23", followsToday: true },
+  "2026-01-03": { id: 59199, ref: "Matthew 2:13-23", followsToday: true },
+  "2026-01-04": { id: 59199, ref: "Matthew 2:13-23", followsToday: true },
   "2026-01-05": { id: 59682, ref: "Matthew 3:13-17", followsToday: true },
   "2026-01-06": { id: 59682, ref: "Matthew 3:13-17", followsToday: true },
   "2026-01-07": { id: 59682, ref: "Matthew 3:13-17", followsToday: true },
@@ -391,20 +392,20 @@ export const VISIO_SCHEDULE: Record<string, VisioScheduleEntry> = {
   "2026-12-18": { id: 59673, ref: "Luke 1:26-38", followsToday: true },
   "2026-12-19": { id: 59673, ref: "Luke 1:26-38", followsToday: true },
   "2026-12-20": { id: 59673, ref: "Luke 1:26-38", followsToday: true },
-  "2026-12-21": { id: 57106, ref: "Matthew 1:18-25", followsToday: true },
-  "2026-12-22": { id: 57106, ref: "Matthew 1:18-25", followsToday: true },
-  "2026-12-23": { id: 57106, ref: "Matthew 1:18-25", followsToday: true },
-  "2026-12-24": { id: 57106, ref: "Matthew 1:18-25", followsToday: true },
-  "2026-12-25": { id: 57106, ref: "Matthew 1:18-25", followsToday: true },
-  "2026-12-26": { id: 57106, ref: "Matthew 1:18-25", followsToday: true },
-  "2026-12-27": { id: 57106, ref: "Matthew 1:18-25", followsToday: true },
-  "2026-12-28": { id: 57436, ref: "John 6:1-21", followsToday: false },
-  "2026-12-29": { id: 57436, ref: "John 6:1-21", followsToday: false },
-  "2026-12-30": { id: 57436, ref: "John 6:1-21", followsToday: false },
-  "2026-12-31": { id: 57436, ref: "John 6:1-21", followsToday: false },
-  "2027-01-01": { id: 57436, ref: "John 6:1-21", followsToday: false },
-  "2027-01-02": { id: 57436, ref: "John 6:1-21", followsToday: false },
-  "2027-01-03": { id: 57436, ref: "John 6:1-21", followsToday: false },
+  "2026-12-21": { id: 59246, ref: "John 1:1-14", followsToday: true },
+  "2026-12-22": { id: 59246, ref: "John 1:1-14", followsToday: true },
+  "2026-12-23": { id: 59246, ref: "John 1:1-14", followsToday: true },
+  "2026-12-24": { id: 59246, ref: "John 1:1-14", followsToday: true },
+  "2026-12-25": { id: 59246, ref: "John 1:1-14", followsToday: true },
+  "2026-12-26": { id: 59246, ref: "John 1:1-14", followsToday: true },
+  "2026-12-27": { id: 59246, ref: "John 1:1-14", followsToday: true },
+  "2026-12-28": { id: 48313, ref: "Matthew 2:13-23", followsToday: true },
+  "2026-12-29": { id: 48313, ref: "Matthew 2:13-23", followsToday: true },
+  "2026-12-30": { id: 48313, ref: "Matthew 2:13-23", followsToday: true },
+  "2026-12-31": { id: 48313, ref: "Matthew 2:13-23", followsToday: true },
+  "2027-01-01": { id: 48313, ref: "Matthew 2:13-23", followsToday: true },
+  "2027-01-02": { id: 48313, ref: "Matthew 2:13-23", followsToday: true },
+  "2027-01-03": { id: 48313, ref: "Matthew 2:13-23", followsToday: true },
   "2027-01-04": { id: 59682, ref: "Mark 1:4-11", followsToday: true },
   "2027-01-05": { id: 59682, ref: "Mark 1:4-11", followsToday: true },
   "2027-01-06": { id: 59682, ref: "Mark 1:4-11", followsToday: true },
@@ -531,13 +532,13 @@ export const VISIO_SCHEDULE: Record<string, VisioScheduleEntry> = {
   "2027-05-07": { id: 9909280, ref: "John 17:1-26", followsToday: true },
   "2027-05-08": { id: 9909280, ref: "John 17:1-26", followsToday: true },
   "2027-05-09": { id: 9909280, ref: "John 17:1-26", followsToday: true },
-  "2027-05-10": { id: 59681, ref: "Acts 2:1-21", followsToday: true },
-  "2027-05-11": { id: 59681, ref: "Acts 2:1-21", followsToday: true },
-  "2027-05-12": { id: 59681, ref: "Acts 2:1-21", followsToday: true },
-  "2027-05-13": { id: 59681, ref: "Acts 2:1-21", followsToday: true },
-  "2027-05-14": { id: 59681, ref: "Acts 2:1-21", followsToday: true },
-  "2027-05-15": { id: 59681, ref: "Acts 2:1-21", followsToday: true },
-  "2027-05-16": { id: 59681, ref: "Acts 2:1-21", followsToday: true },
+  "2027-05-10": { id: 57123, ref: "John 16:12-15", followsToday: true },
+  "2027-05-11": { id: 57123, ref: "John 16:12-15", followsToday: true },
+  "2027-05-12": { id: 57123, ref: "John 16:12-15", followsToday: true },
+  "2027-05-13": { id: 57123, ref: "John 16:12-15", followsToday: true },
+  "2027-05-14": { id: 57123, ref: "John 16:12-15", followsToday: true },
+  "2027-05-15": { id: 57123, ref: "John 16:12-15", followsToday: true },
+  "2027-05-16": { id: 57123, ref: "John 16:12-15", followsToday: true },
   "2027-05-17": { id: 57503, ref: "John 3:1-17", followsToday: true },
   "2027-05-18": { id: 57503, ref: "John 3:1-17", followsToday: true },
   "2027-05-19": { id: 57503, ref: "John 3:1-17", followsToday: true },
@@ -594,13 +595,13 @@ export const VISIO_SCHEDULE: Record<string, VisioScheduleEntry> = {
   "2027-07-09": { id: 9696581, ref: "Mark 6:21-22", followsToday: true },
   "2027-07-10": { id: 9696581, ref: "Mark 6:21-22", followsToday: true },
   "2027-07-11": { id: 9696581, ref: "Mark 6:21-22", followsToday: true },
-  "2027-07-12": { id: 57121, ref: "Psalm 23", followsToday: false },
-  "2027-07-13": { id: 57121, ref: "Psalm 23", followsToday: false },
-  "2027-07-14": { id: 57121, ref: "Psalm 23", followsToday: false },
-  "2027-07-15": { id: 57121, ref: "Psalm 23", followsToday: false },
-  "2027-07-16": { id: 57121, ref: "Psalm 23", followsToday: false },
-  "2027-07-17": { id: 57121, ref: "Psalm 23", followsToday: false },
-  "2027-07-18": { id: 57121, ref: "Psalm 23", followsToday: false },
+  "2027-07-12": { id: 57121, ref: "John 10:11-18", followsToday: false },
+  "2027-07-13": { id: 57121, ref: "John 10:11-18", followsToday: false },
+  "2027-07-14": { id: 57121, ref: "John 10:11-18", followsToday: false },
+  "2027-07-15": { id: 57121, ref: "John 10:11-18", followsToday: false },
+  "2027-07-16": { id: 57121, ref: "John 10:11-18", followsToday: false },
+  "2027-07-17": { id: 57121, ref: "John 10:11-18", followsToday: false },
+  "2027-07-18": { id: 57121, ref: "John 10:11-18", followsToday: false },
   "2027-07-19": { id: 56553, ref: "John 6:1-21", followsToday: true },
   "2027-07-20": { id: 56553, ref: "John 6:1-21", followsToday: true },
   "2027-07-21": { id: 56553, ref: "John 6:1-21", followsToday: true },
@@ -755,13 +756,13 @@ export const VISIO_SCHEDULE: Record<string, VisioScheduleEntry> = {
   "2027-12-17": { id: 59193, ref: "Luke 1:46b-55", followsToday: true },
   "2027-12-18": { id: 59193, ref: "Luke 1:46b-55", followsToday: true },
   "2027-12-19": { id: 59193, ref: "Luke 1:46b-55", followsToday: true },
-  "2027-12-20": { id: 59652, ref: "Luke 2:22-40", followsToday: true },
-  "2027-12-21": { id: 59652, ref: "Luke 2:22-40", followsToday: true },
-  "2027-12-22": { id: 59652, ref: "Luke 2:22-40", followsToday: true },
-  "2027-12-23": { id: 59652, ref: "Luke 2:22-40", followsToday: true },
-  "2027-12-24": { id: 59652, ref: "Luke 2:22-40", followsToday: true },
-  "2027-12-25": { id: 59652, ref: "Luke 2:22-40", followsToday: true },
-  "2027-12-26": { id: 59652, ref: "Luke 2:22-40", followsToday: true },
+  "2027-12-20": { id: 59238, ref: "John 1:1-14", followsToday: true },
+  "2027-12-21": { id: 59238, ref: "John 1:1-14", followsToday: true },
+  "2027-12-22": { id: 59238, ref: "John 1:1-14", followsToday: true },
+  "2027-12-23": { id: 59238, ref: "John 1:1-14", followsToday: true },
+  "2027-12-24": { id: 59238, ref: "John 1:1-14", followsToday: true },
+  "2027-12-25": { id: 59238, ref: "John 1:1-14", followsToday: true },
+  "2027-12-26": { id: 59238, ref: "John 1:1-14", followsToday: true },
   "2027-12-27": { id: 57436, ref: "John 6:1-21", followsToday: false },
   "2027-12-28": { id: 57436, ref: "John 6:1-21", followsToday: false },
   "2027-12-29": { id: 57436, ref: "John 6:1-21", followsToday: false },

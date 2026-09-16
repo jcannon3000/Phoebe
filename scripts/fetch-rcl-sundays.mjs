@@ -67,7 +67,12 @@ async function sundaysOf(year) {
     }
     if (!part.startsWith("<td")) continue;
     const day = /^\s*(?:<[^>]+>\s*)*(\d{1,2})\b/.exec(part.replace(/&nbsp;/g, " "));
-    const link = /href="([^"]+_RCL\.html)"/.exec(part);
+    // The two Sundays after Christmas are linked to the OLDER all-years pages
+    // ("YearABC/Christmas/Christmas1.html"), not to an _RCL page — so an
+    // _RCL-only filter dropped exactly two Sundays a year, silently. 2026-01-04
+    // and 2026-12-27 were missing for this reason, and those weeks fell back to
+    // the Daily Office while the Eucharist read the prologue.
+    const link = /href="([^"]+(?:_RCL|\/Christmas[12])\.html)"/.exec(part);
     if (!day || !link || !month) continue;
     const d = new Date(Date.UTC(year, month - 1, Number(day[1])));
     if (d.getUTCMonth() !== month - 1) continue;      // guards a stray number
@@ -104,14 +109,22 @@ const NT_OTHER = new RegExp(
  */
 function readingsFrom(html) {
   const lines = text(html).split("\n").map((l) => l.trim()).filter(Boolean);
-  const start = lines.findIndex((l) => /^RCL$/i.test(l));
+  // The all-years Christmas pages have no "RCL" heading — their lessons sit
+  // under "All Years" instead. Without this they parsed as nothing at all.
+  let start = lines.findIndex((l) => /^RCL$/i.test(l));
+  if (start < 0) start = lines.findIndex((l) => /^all years$/i.test(l));
   if (start < 0) return null;
   // Brackets belong to the citation: the lectionary marks optional verses as
   // "1 Corinthians 2:1-12, [13-16]" and "Isaiah 58:1-9a, [9b-12]". Leaving
   // them out of the class made those lines fail to match at all, so the whole
   // reading vanished rather than arriving imperfectly — 2026-02-08 came back
   // with a gospel and a psalm and no epistle.
-  const cite = /^((?:[123]\s+)?[A-Z][A-Za-z]+\.?\s+\d+[:\d\-–,\s()\[\]a-z*]*)$/;
+  // A SEMICOLON IS PART OF A CITATION, not the end of one. The Day of Pentecost
+  // reads "John 15:26-27; 16:4b-15" on one line; without ";" in the class the
+  // whole line failed to match, so that Sunday came back with gospel: null and
+  // the Visio schedule fell through to its epistle. Same shape as the bracket
+  // note above: an unmatched line is a reading that vanishes silently.
+  const cite = /^((?:[123]\s+)?[A-Z][A-Za-z]+\.?\s+\d+[:\d\-–,;\s()\[\]a-z*]*)$/;
   const found = [];
   for (let i = start + 1; i < lines.length; i++) {
     const l = lines[i];
@@ -145,7 +158,11 @@ async function mapLimit(items, limit, fn) {
       while (i < items.length) {
         const n = i++;
         try { out[n] = await fn(items[n]); }
-        catch (err) { out[n] = { err: String(err) }; }
+        // The caller destructures every slot as [ymd, readings], so a failure
+        // has to keep that shape. Storing a bare object here meant one page
+        // erroring took the whole run down with "is not iterable" — after every
+        // other page had already been fetched.
+        catch (err) { out[n] = [items[n]?.[0] ?? null, { err: String(err) }]; }
       }
     }),
   );

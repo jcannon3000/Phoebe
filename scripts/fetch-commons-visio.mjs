@@ -113,6 +113,14 @@ const main = async () => {
     if (namesSomeone && !`${metaArtist ?? ""} ${plain(m.ImageDescription?.value)} ${plain(m.Credit?.value)}`.toLowerCase().includes(pick.artist.toLowerCase().split(" ").pop())) {
       dropped.push([pick.file, `artist "${pick.artist}" not named in the file's metadata`]); continue;
     }
+    // The check above passes on the LAST WORD, which for "Master of Antwerp" or
+    // "Master of Taüll" is a place a museum description carries for its own
+    // reasons. Not tightened — requiring the full name would drop a legitimate
+    // pick like Bruegel, whose description says only "invented by Bruegel" —
+    // but a pick resting on the weak half says so now, so a later run can look.
+    if (namesSomeone && !`${metaArtist ?? ""} ${plain(m.ImageDescription?.value)} ${plain(m.Credit?.value)}`.toLowerCase().includes(pick.artist.toLowerCase())) {
+      console.log(`WEAK ARTIST ${pick.file}: "${pick.artist}" matched only on "${pick.artist.toLowerCase().split(" ").pop()}", not the full name`);
+    }
     const artist = pick.artist || metaArtist;
     const title = pick.title || cleanField(m.ObjectName?.value) || pick.file.replace(/^File:/, "").replace(/\.[a-z]+$/i, "");
     const filePage = ii.descriptionurl || `https://commons.wikimedia.org/wiki/${encodeURIComponent(pick.file.replace(/ /g, "_"))}`;

@@ -222,7 +222,17 @@ export function parseRef(ref: string): RefParts | null {
      * birth with shepherds on Luke 2:22-40 (the Presentation), and two more.
      * 21 works across the catalogues carry a tag written this way.
      */
-    .replace(/[()[\]]/g, "");
+    // A bracket leaves a SEPARATOR, never a hole. Deleting it glued the digits
+    // either side: "Matthew 9:35-10:8(9-23)" became "10:89-23" and claimed an
+    // exact match on Matthew 10:40-42 that it does not have. The lectionary
+    // writes both shapes — bracket after the colon ("John 1:(1-9), 10-18") and
+    // bracket abutting a number ("1 Samuel 3:1-10(11-20)") — and only the comma
+    // makes the second one two spans instead of verse 1011.
+    .replace(/[([]/g, "")
+    .replace(/[)\]]/g, ", ")
+    .replace(/,\s*,/g, ",")
+    .replace(/:\s*,\s*/g, ":")
+    .replace(/,\s*$/, "");
   // A LEADING numeral belongs to the name ("1 Samuel"), so peel it off before
   // looking for the chapter — otherwise the book name ends at the first digit
   // and every epistle collapses to the empty string.

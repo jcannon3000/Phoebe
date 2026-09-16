@@ -35,9 +35,14 @@ import { chooseArtwork, type Chosen } from "@/lib/visioSelect";
  */
 function normalizeRef(r: string): string {
   // Parens become a separated list item ("63:1-8(9-11)" → "63:1-8, 9-11"),
-  // never bare unwrapping — that glued the digits into "1-89-11". The parser
-  // reads the first span, which is the appointed core either way.
-  return r.replace(/[\[\]]/g, "").replace(/\(([^)]*)\)/g, ", $1").replace(/\s+,/g, ",").replace(/\s+/g, " ").trim();
+  // never bare unwrapping — that glued the digits into "1-89-11". A separator
+  // is needed on BOTH sides for the same reason: the office also writes
+  // "John 1:(29-34)35-42", and closing with nothing fused those into
+  // "1:, 29-3435-42", read as verse 3435. The trailing ":," is then collapsed
+  // so the chapter keeps its first verse instead of reading as a whole chapter.
+  return r.replace(/[\[\]]/g, "").replace(/\(([^)]*)\)/g, ", $1, ")
+    .replace(/,\s*,/g, ",").replace(/:\s*,\s*/g, ":")
+    .replace(/\s+,/g, ",").replace(/\s+/g, " ").replace(/,\s*$/, "").trim();
 }
 
 /** One side's appointed refs — lessons AND psalms, normalized. */
