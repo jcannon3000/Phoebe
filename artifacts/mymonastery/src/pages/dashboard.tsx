@@ -19,6 +19,7 @@ import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { HomeLearnSection } from "@/components/HomeLearnSection";
+import { HomePracticesSection } from "@/components/HomePracticesSection";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
@@ -7450,6 +7451,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           every animated property, which would silently shorten
                           the 0.55s fade to the layout's 0.32s. */}
                       {SHOW_COURSES && <motion.div layout initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.3, layout: HOME_REFLOW_TRANSITION }}><HomeLearnSection /></motion.div>}
+                      {/* Practices — every practice on a ticker, right after
+                          Courses (owner). Held for the splash like Courses, but
+                          opacity only: entrances fade in place, never rise. */}
+                      <motion.div layout initial={{ opacity: 0 }} animate={ownReqSplashCleared ? { opacity: 1 } : { opacity: 0 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.4, layout: HOME_REFLOW_TRANSITION }}><HomePracticesSection /></motion.div>
                     </div>
                   );
                 }
@@ -7505,6 +7510,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         transition.layout — a top-level transition would drive
                         the fade-in too and shorten it from 0.55s to 0.32s. */}
                     {SHOW_COURSES && <motion.div layout {...enterUp(3)} transition={{ ...enterUp(3).transition, layout: HOME_REFLOW_TRANSITION }}><HomeLearnSection /></motion.div>}
+                    {/* Practices ticker after Courses — see the no-events branch. */}
+                    <motion.div layout {...enterUp(4)} transition={{ ...enterUp(4).transition, layout: HOME_REFLOW_TRANSITION }}><HomePracticesSection /></motion.div>
                   </div>
                 );
               })() : (
@@ -7552,6 +7559,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     web-only; the iOS shell shows only the Way of Love (audio).
                     See HomeLearnSection. */}
                 {SHOW_COURSES && <motion.div layout transition={HOME_REFLOW_TRANSITION}><HomeLearnSection /></motion.div>}
+                {/* Practices — every practice on a ticker, right after Courses
+                    (owner, 2026-09-16). See HomePracticesSection. */}
+                <motion.div layout transition={HOME_REFLOW_TRANSITION}><HomePracticesSection /></motion.div>
                 </>
               )}
             </div>
