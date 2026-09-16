@@ -39,3 +39,15 @@ export function isSimulatorShell(): boolean {
     return false;
   }
 }
+
+/**
+ * An Android device — the shell or a browser. Read from the user agent, which
+ * Android WebViews and browsers both carry ("Android"), so it holds for the
+ * Play build and the web alike. Used for platform copy and glyphs only (the
+ * CTA pills drop their arrow: owner, 2026-09-16, "take out the arrows on cta
+ * pills on android"), never for behaviour that should differ by shell.
+ */
+export function isAndroidDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android/i.test(navigator.userAgent);
+}

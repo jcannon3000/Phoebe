@@ -37,7 +37,7 @@ import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentComplet
 import { logCelebrationEvent } from "@/lib/celebrationDebugLog";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { playRoutineCompleteSwell } from "@/lib/amenFeedback";
-import { isNativeShell } from "@/lib/isNativeShell";
+import { isNativeShell, isAndroidDevice } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
 import { isBreathIntroActive } from "@/lib/breathIntro";
@@ -343,6 +343,17 @@ function StreakCard() {
 }
 
 
+/**
+ * The "→" a CTA pill ends with — on iOS and the web. On Android the pills say
+ * the word alone (owner, 2026-09-16: "take out the arrows on cta pills on
+ * android"); the leading space travels with the arrow so a pill without one
+ * doesn't keep a trailing gap.
+ */
+function CtaArrow({ className }: { className?: string }) {
+  if (isAndroidDevice()) return null;
+  return <> <span aria-hidden className={className}>→</span></>;
+}
+
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 export function PracticeCard({
@@ -612,7 +623,7 @@ export function PracticeCard({
               className="absolute inset-0 w-full text-center rounded-full text-[15px] font-semibold flex items-center justify-center"
               style={{ background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT }}
             >
-              {cta} <span aria-hidden className="ml-1">→</span>
+              {cta}<CtaArrow className="ml-1" />
             </motion.div>
           ) : (
             <motion.div
@@ -634,7 +645,7 @@ export function PracticeCard({
         onClick={ctaOnly && onClick ? (e) => { e.preventDefault(); e.stopPropagation(); onOpen?.(); onClick(); } : undefined}
         onKeyDown={ctaOnly && onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onClick(); } } : undefined}
         className="mt-4 w-full text-center rounded-full text-[15px] font-semibold py-3" style={{ background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT, cursor: ctaOnly && onClick ? "pointer" : undefined }}>
-        {cta} <span aria-hidden className="ml-1">→</span>
+        {cta}<CtaArrow className="ml-1" />
       </div>
     );
     const heroRow = (
@@ -725,7 +736,7 @@ export function PracticeCard({
             className="absolute inset-0 rounded-full text-[12px] font-semibold flex items-center justify-center whitespace-nowrap"
             style={{ background: `rgba(${rgb},0.85)`, color: WARM }}
           >
-            {cta} <span aria-hidden className="ml-0.5">→</span>
+            {cta}<CtaArrow className="ml-0.5" />
           </motion.span>
         ) : (
           <motion.span
@@ -746,7 +757,7 @@ export function PracticeCard({
         className="flex-shrink-0 inline-flex items-center gap-1 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
         style={{ background: `rgba(${rgb},0.85)`, color: WARM }}
       >
-        <span aria-hidden style={{ opacity: 0.85 }}>✓</span> {doneCta} <span aria-hidden>→</span>
+        <span aria-hidden style={{ opacity: 0.85 }}>✓</span> {doneCta}<CtaArrow />
       </span>
     ) : (
       <span
@@ -783,7 +794,7 @@ export function PracticeCard({
         className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
         style={{ minWidth: 84, background: `rgba(${rgb},0.85)`, color: WARM, cursor: ctaOnly && onClick ? "pointer" : undefined }}
       >
-        {cta} <span aria-hidden>→</span>
+        {cta}<CtaArrow />
       </span>
     </span>
   );

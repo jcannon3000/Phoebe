@@ -1,8 +1,11 @@
 package app.withphoebe.mobile;
 
+import android.app.Activity;
 import android.content.Intent;
+import android.os.Build;
 
 import com.getcapacitor.Bridge;
+import com.getcapacitor.JSArray;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -87,7 +90,17 @@ public class BibleBrowserPlugin extends Plugin {
         i.putExtra(ReaderActivity.EXTRA_OFFICE_TITLE, call.getString("officeTitle", ""));
         i.putExtra(ReaderActivity.EXTRA_SLIDE_LABEL, call.getString("slideLabel", ""));
         i.putExtra(ReaderActivity.EXTRA_SECTION_LABEL, call.getString("sectionLabel", ""));
+        /*
+         * "Previous" — the last issues of a newsletter or commentary, newest
+         * first, as [{title, url}]. Carried as JSON text: an Intent extra can't
+         * hold a JSArray, and ReaderActivity only needs to list and load them.
+         */
+        JSArray previous = call.getArray("previous");
+        if (previous != null && previous.length() > 0) {
+            i.putExtra(ReaderActivity.EXTRA_PREVIOUS, previous.toString());
+        }
         getContext().startActivity(i);
+        cutNotSlide();
         call.resolve();
     }
 
@@ -101,7 +114,22 @@ public class BibleBrowserPlugin extends Plugin {
         Intent i = new Intent(getContext(), ReaderActivity.class);
         i.putExtra(ReaderActivity.EXTRA_URL, url);
         getContext().startActivity(i);
+        cutNotSlide();
         call.resolve();
+    }
+
+    /**
+     * Open the reader with a cut, not the system's slide — the owner's call
+     * for Android (2026-09-16); iOS keeps its slide-from-the-right on purpose.
+     * Below API 34 the transition is the LAUNCHER's to override, right after
+     * startActivity; from 34 the started activity sets its own
+     * (ReaderActivity.onCreate) and this call is a no-op, so it is skipped.
+     */
+    @SuppressWarnings("deprecation")
+    private void cutNotSlide() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return;
+        Activity a = getActivity();
+        if (a != null) a.overridePendingTransition(0, 0);
     }
 
     @PluginMethod

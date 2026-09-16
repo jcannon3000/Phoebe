@@ -33,6 +33,27 @@
     </style>
 
 
+    <!-- THE READER OPENS WITH A CUT. iOS slides the reader in from the right
+         on purpose (BibleWebViewController's slideDelegate, "next-slide
+         feel"); on Android the owner asked for no transition at all
+         (2026-09-16: "we don't want slide transition into the reader on
+         android"). windowAnimationStyle is the declarative half — it nulls
+         the four activity animations so the system's own open/close (a slide
+         or scale, OEM-dependent) never plays; ReaderActivity.onCreate and
+         BibleBrowserPlugin.open are the programmatic half, for the API
+         levels that consult the caller instead of the theme. Both ways: a
+         reader that arrives at once and leaves at once. -->
+    <style name="AppTheme.NoActionBar.Reader">
+        <item name="android:windowAnimationStyle">@style/PhoebeReaderNoTransition</item>
+    </style>
+    <style name="PhoebeReaderNoTransition" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@null</item>
+        <item name="android:activityOpenExitAnimation">@null</item>
+        <item name="android:activityCloseEnterAnimation">@null</item>
+        <item name="android:activityCloseExitAnimation">@null</item>
+    </style>
+
+
     <!-- THE COLD-START SPLASH.
          From Android 12 the system draws the launch screen itself: it ignores
          android:background and uses windowSplashScreenBackground plus the app

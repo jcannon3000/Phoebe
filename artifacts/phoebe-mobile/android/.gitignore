@@ -107,3 +107,7 @@ app/src/main/assets/public
 app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
+
+# The reader view script, generated from the Swift literal by
+# scripts/extract-reader-js.mjs on every cap:sync:android.
+app/src/main/assets/phoebe-reader.js

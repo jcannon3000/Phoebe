@@ -43,6 +43,20 @@ function isIOSWeb(): boolean {
   return true;
 }
 
+/**
+ * An Android browser. There is no Play listing to send this person to yet
+ * (the app is in closed testing; testers join through Play's own opt-in
+ * link), so the invitation's first door is the web app, and the App Store
+ * is named only as where the iPhone version lives. Once the listing is
+ * public, the button can point at
+ * https://play.google.com/store/apps/details?id=app.withphoebe.mobile.
+ */
+function isAndroidWeb(): boolean {
+  if (typeof navigator === "undefined") return false;
+  if (isNativeShell()) return false;
+  return /Android/i.test(navigator.userAgent);
+}
+
 export default function InvitePage() {
   const { t } = useTranslation();
   // Redirect immediately, not on a delay — this page's whole job on iOS is
@@ -92,18 +106,35 @@ export default function InvitePage() {
                 "Phoebe is a quiet way to keep a daily prayer rhythm — the Book of Common Prayer, contemplation, the Examen — and to share that rhythm with your church community. Someone invited you into their prayer life; Phoebe is how they keep it, and how you can join them in it.",
             })}
           </p>
-          <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-full px-8 py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98] mb-4"
-            style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)" }}
-          >
-            {t("invite.get_the_app", { defaultValue: "Get Phoebe on the App Store" })}
-          </a>
-          <Link href="/" className="text-[13px] underline" style={{ color: "rgba(143,175,150,0.75)" }}>
-            {t("invite.continue_web", { defaultValue: "Continue on the web instead" })}
-          </Link>
+          {isAndroidWeb() ? (
+            <>
+              <Link
+                href="/"
+                className="rounded-full px-8 py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98] mb-4"
+                style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)" }}
+              >
+                {t("invite.open_web", { defaultValue: "Open Phoebe on the web" })}
+              </Link>
+              <p className="text-[13px]" style={{ color: "rgba(143,175,150,0.75)" }}>
+                {t("invite.iphone_note", { defaultValue: "On an iPhone, Phoebe is on the App Store." })}
+              </p>
+            </>
+          ) : (
+            <>
+              <a
+                href={APP_STORE_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full px-8 py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98] mb-4"
+                style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)" }}
+              >
+                {t("invite.get_the_app", { defaultValue: "Get Phoebe on the App Store" })}
+              </a>
+              <Link href="/" className="text-[13px] underline" style={{ color: "rgba(143,175,150,0.75)" }}>
+                {t("invite.continue_web", { defaultValue: "Continue on the web instead" })}
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </div>

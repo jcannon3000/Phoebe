@@ -2,11 +2,15 @@ package app.withphoebe.mobile;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -16,9 +20,26 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 
 /**
  * THE READING, WITH THE LITURGY STILL AROUND IT — Android's half of
@@ -39,13 +60,25 @@ import android.widget.TextView;
  *      Custom Tab can only take a URL, so offline every reading failed to load
  *      while the app insisted it had them saved.
  *
- * Deliberately NOT a line-for-line port of the 3,200-line iOS controller. This
- * is the contract the web layer actually depends on: load a saved page or a
- * URL, keep a Done button pinned (the reason the iOS side stopped using
- * SFSafariViewController at all), carry the office pill when asked, and fire
+ * THE READER VIEW (2026-09-16). iOS restyles the publisher's page in place —
+ * oremus, SSJE, Nouwen, Day by Day, Sojourners, The Living Church — with one
+ * script, `readerJS` in BibleWebViewController.swift, injected at document
+ * start. The same script is extracted at build time into the asset
+ * phoebe-reader.js (scripts/extract-reader-js.mjs; `pnpm run
+ * cap:sync:android`) and injected here the same way, so the two platforms
+ * cannot drift. The script decides whether a page is one it dresses: it
+ * defines window.__phoebeReaderSet only on those hosts, and that — not a
+ * second host list kept here — is what shows the Reader/Standard button.
+ * Reader mode paints the page transparent, so the deck's leaf photograph
+ * sits behind the WebView under a heavy wash, as on iOS. Text size is the
+ * WebView's own zoom (the aA button), remembered across readings. "Previous"
+ * lists a newsletter's earlier issues and loads them in place, so Done still
+ * finishes the reading. Not ported: the loading veil and deep-link scrolling.
+ *
+ * This is the contract the web layer depends on: load a saved page or a URL,
+ * keep a Done button pinned, carry the office pill when asked, and fire
  * phoebe:browserfinished on the way out so a newsletter marks read when it is
- * CLOSED rather than when it is opened. Reader-mode restyling, the Previous
- * menu, deep-link scrolling and the veil are iOS-only for now.
+ * CLOSED rather than when it is opened.
  */
 public class ReaderActivity extends Activity {
 
@@ -56,6 +89,8 @@ public class ReaderActivity extends Activity {
     public static final String EXTRA_SLIDE_LABEL = "slideLabel";
     public static final String EXTRA_SECTION_LABEL = "sectionLabel";
     public static final String EXTRA_BACK_CHROME = "backChrome";
+    /** JSON: [{"title": …, "url": …}, …], newest first. */
+    public static final String EXTRA_PREVIOUS = "previous";
 
     // The deck's own tokens (capacitor.config.ts android.backgroundColor and
     // index.css --oh-ink / --ot-sage), so the reader reads as the same app.
@@ -65,8 +100,27 @@ public class ReaderActivity extends Activity {
     private static final int PILL_BG = Color.parseColor("#152B1D");
     private static final int PILL_BORDER = Color.parseColor("#2E6B40");
     private static final int CTA_BG = Color.parseColor("#2D5E3F");
+    /** The leaf under a heavy wash — the reader's ground, as the decks have it. */
+    private static final int WASH = Color.parseColor("#CC091A10");
+
+    private static final String PREFS = "phoebe-reader";
+    private static final String PREF_TEXT_ZOOM = "text-zoom";
+    private static final String PREF_READER_ON = "reader-on";
+    /** The aA steps, as WebView text zoom percentages. */
+    private static final int[] TEXT_ZOOMS = { 100, 115, 130, 145 };
 
     private WebView web;
+    private View backdrop;
+    private TextView readerToggle;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    /** The reader script, or null when the asset wasn't generated (a build
+     *  that skipped cap:sync:android): the page then shows as published. */
+    private String readerJs;
+    private boolean injectedAtStart = false;
+    /** Reader mode on (Phoebe's view) or off (the page as published). Remembered. */
+    private boolean readerOn = true;
+    /** Whether the CURRENT page is one the script dresses. */
+    private boolean readerActive = false;
     /** Fired exactly once, whichever way the reader leaves. */
     private boolean finishedEventSent = false;
 
@@ -79,6 +133,18 @@ public class ReaderActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        /*
+         * No transition in or out (owner, 2026-09-16). The theme's
+         * windowAnimationStyle (styles.xml, PhoebeReaderNoTransition) covers
+         * the window manager's default; from API 34 an activity may also set
+         * its own open/close override, which wins over anything the launcher
+         * asked for — so both are zeroed here too. Below 34 the launcher's
+         * overridePendingTransition(0, 0) in BibleBrowserPlugin does the same.
+         */
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, 0, 0);
+            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0);
+        }
 
         Bundle x = getIntent().getExtras();
         final String url = x != null ? x.getString(EXTRA_URL, "") : "";
@@ -88,8 +154,13 @@ public class ReaderActivity extends Activity {
         final String officeTitle = x != null ? x.getString(EXTRA_OFFICE_TITLE, "") : "";
         final String slideLabel = x != null ? x.getString(EXTRA_SLIDE_LABEL, "") : "";
         final String sectionLabel = x != null ? x.getString(EXTRA_SECTION_LABEL, "") : "";
+        final List<String[]> previous = parsePrevious(x != null ? x.getString(EXTRA_PREVIOUS, null) : null);
 
         if ((url == null || url.isEmpty()) && savedHtml == null) { finish(); return; }
+
+        SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        readerOn = prefs.getBoolean(PREF_READER_ON, true);
+        readerJs = loadReaderJs(this);
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(BG);
@@ -99,17 +170,24 @@ public class ReaderActivity extends Activity {
         root.addView(column, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        column.addView(buildTopBar(officeTitle, backChrome), new LinearLayout.LayoutParams(
+        column.addView(buildTopBar(officeTitle, backChrome, previous), new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // The page area: the leaf and its wash first, then a transparent
+        // WebView over them. A page as published paints its own ground over
+        // the leaf; reader mode leaves the page transparent so it shows.
+        FrameLayout page = new FrameLayout(this);
+        backdrop = buildBackdrop();
+        page.addView(backdrop, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         ProgressBar spinner = new ProgressBar(this);
         spinner.setIndeterminate(true);
         FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(dp(36), dp(36));
         sp.gravity = Gravity.CENTER;
-        root.addView(spinner, sp);
 
         web = new WebView(this);
-        web.setBackgroundColor(BG);
+        web.setBackgroundColor(Color.TRANSPARENT);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -121,10 +199,27 @@ public class ReaderActivity extends Activity {
         s.setBuiltInZoomControls(true);
         s.setDisplayZoomControls(false);
         s.setMediaPlaybackRequiresUserGesture(true);
-        // Follow the app's dark ground where the page supports it, rather than
-        // flashing white between the deck and the reading.
+        s.setTextZoom(prefs.getInt(PREF_TEXT_ZOOM, 100));
+        // NO algorithmic darkening. It used to be on so a light page didn't
+        // flash white between the deck and the reading, but it recolours the
+        // page — oremus came up black with orange headings under "Standard",
+        // which is meant to be the page as published (owner: "the standard
+        // option for all readers need to show the actual page un edited").
+        // The reader view is dark by its own design, and the leaf backdrop
+        // covers the load, so nothing is lost.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            s.setAlgorithmicDarkeningAllowed(true);
+            s.setAlgorithmicDarkeningAllowed(false);
+        }
+        /*
+         * THE READER SCRIPT, AT DOCUMENT START — the same moment iOS's
+         * WKUserScript runs, so the publisher's own design never flashes
+         * first. Older WebViews without the feature get it on the first
+         * commit instead; the script tolerates arriving late (it re-runs on
+         * DOMContentLoaded and on a settle interval), at the cost of a flash.
+         */
+        if (readerJs != null && WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addDocumentStartJavaScript(web, readerJs, new HashSet<>(Collections.singletonList("*")));
+            injectedAtStart = true;
         }
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -136,11 +231,32 @@ public class ReaderActivity extends Activity {
                 return scheme != null && !scheme.equals("http") && !scheme.equals("https");
             }
             @Override
-            public void onPageFinished(WebView v, String u) { spinner.setVisibility(View.GONE); }
+            public void onPageStarted(WebView v, String u, android.graphics.Bitmap favicon) {
+                // A new page: nothing is known about it until the script says.
+                setReaderActive(false);
+                probesLeft = 12;
+            }
+            @Override
+            public void onPageCommitVisible(WebView v, String u) {
+                if (!injectedAtStart && readerJs != null) v.evaluateJavascript(readerJs, null);
+                // The script has run by now (document start); the page's word
+                // on whether it dresses it is available long before the ads
+                // and iframes that hold up onPageFinished — a Living Church
+                // post sat dressed for a minute with no Standard button.
+                probeReader();
+            }
+            @Override
+            public void onPageFinished(WebView v, String u) {
+                spinner.setVisibility(View.GONE);
+                probeReader();
+            }
         });
-        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(
+        page.addView(web, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        page.addView(spinner, sp);
+        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
-        column.addView(web, wp);
+        column.addView(page, pp);
 
         if (officeChrome) {
             root.addView(buildOfficePill(slideLabel, sectionLabel));
@@ -162,7 +278,109 @@ public class ReaderActivity extends Activity {
         }
     }
 
-    private View buildTopBar(String title, boolean backChrome) {
+    /** The reader script from the generated asset, or null when it isn't there. */
+    private static String loadReaderJs(Context c) {
+        try (InputStream in = c.getAssets().open("phoebe-reader.js")) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buf = new byte[16 * 1024];
+            int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            return out.toString(StandardCharsets.UTF_8.name());
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private static List<String[]> parsePrevious(String json) {
+        List<String[]> out = new ArrayList<>();
+        if (json == null || json.isEmpty()) return out;
+        try {
+            JSONArray arr = new JSONArray(json);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.optJSONObject(i);
+                if (o == null) continue;
+                String title = o.optString("title", "");
+                String url = o.optString("url", "");
+                if (!title.isEmpty() && url.startsWith("http")) out.add(new String[] { title, url });
+            }
+        } catch (Exception ignored) {
+            // A malformed list is no list.
+        }
+        return out;
+    }
+
+    /**
+     * Ask the page whether the reader script took it. The script defines
+     * window.__phoebeReaderSet only on the hosts it dresses, and stamps
+     * data-phoebe-reader-applied once its sheet is on — so the button and
+     * the backdrop follow the page's own word, not a host list kept here.
+     * Asked again as the page settles: SSJE streams its post in late.
+     */
+    private void probeReader() {
+        if (web == null || readerJs == null) return;
+        web.evaluateJavascript("typeof window.__phoebeReaderSet === 'function'", v -> {
+            boolean active = "true".equals(v);
+            if (active == readerActive) return;
+            setReaderActive(active);
+            if (active) applyReaderState();
+        });
+        // Ask again as the page settles (SSJE streams its post in late), but
+        // not forever: the probe is cheap, the loop is not.
+        if (probesLeft > 0) {
+            probesLeft--;
+            handler.postDelayed(() -> { if (web != null && !readerActive) probeReader(); }, 900);
+        }
+    }
+    private int probesLeft = 12;
+
+    /**
+     * A second `open` while a reading is showing (singleTop) arrives here
+     * rather than in onCreate. Rebuilding on the new Intent is the simplest
+     * honest answer: the old page, its reader state and its Previous list
+     * all belonged to the reading that was replaced.
+     */
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        recreate();
+    }
+
+    private void setReaderActive(boolean active) {
+        readerActive = active;
+        if (readerToggle != null) readerToggle.setVisibility(active ? View.VISIBLE : View.GONE);
+        syncBackdrop();
+    }
+
+    /** Tell the page which view is wanted, and name the button after what tapping it will do. */
+    private void applyReaderState() {
+        if (web == null) return;
+        web.evaluateJavascript("window.__phoebeReaderSet && window.__phoebeReaderSet(" + readerOn + ")", null);
+        if (readerToggle != null) readerToggle.setText(readerOn ? "Standard" : "Reader");
+        syncBackdrop();
+    }
+
+    /** The leaf belongs to reader mode only — Standard shows the site's own ground. */
+    private void syncBackdrop() {
+        if (backdrop != null) backdrop.setVisibility(readerActive && readerOn ? View.VISIBLE : View.INVISIBLE);
+    }
+
+    private View buildBackdrop() {
+        FrameLayout f = new FrameLayout(this);
+        ImageView leaf = new ImageView(this);
+        leaf.setImageResource(R.drawable.splash);
+        leaf.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        f.addView(leaf, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        View wash = new View(this);
+        wash.setBackgroundColor(WASH);
+        f.addView(wash, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        f.setVisibility(View.INVISIBLE);
+        return f;
+    }
+
+    private View buildTopBar(String title, boolean backChrome, List<String[]> previous) {
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
@@ -172,12 +390,7 @@ public class ReaderActivity extends Activity {
         int top = dp(14) + statusBarHeight();
         bar.setPadding(dp(14), top, dp(14), dp(10));
 
-        TextView done = new TextView(this);
-        done.setText(backChrome ? "Back" : "Done");
-        done.setTextColor(WARM);
-        done.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        done.setTypeface(Typeface.DEFAULT_BOLD);
-        // A text button still needs a finger-sized box.
+        TextView done = barButton(backChrome ? "Back" : "Done");
         done.setPadding(dp(4), dp(10), dp(16), dp(10));
         done.setOnClickListener(v -> finish());
         bar.addView(done);
@@ -192,11 +405,59 @@ public class ReaderActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         bar.addView(t, tp);
 
-        // A spacer the same width as Done, so the title sits centred rather
-        // than pushed right by the button (the office header's 1fr/auto/1fr).
-        View spacer = new View(this);
-        bar.addView(spacer, new LinearLayout.LayoutParams(dp(56), 1));
+        // Right-hand controls, as iOS orders them: aA · Standard/Reader · Previous.
+        TextView aa = barButton("aA");
+        aa.setOnClickListener(v -> cycleTextZoom());
+        bar.addView(aa);
+
+        readerToggle = barButton(readerOn ? "Standard" : "Reader");
+        readerToggle.setVisibility(View.GONE);
+        readerToggle.setOnClickListener(v -> {
+            readerOn = !readerOn;
+            getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(PREF_READER_ON, readerOn).apply();
+            applyReaderState();
+        });
+        bar.addView(readerToggle);
+
+        if (!previous.isEmpty()) {
+            TextView prev = barButton("Previous");
+            prev.setOnClickListener(v -> {
+                PopupMenu menu = new PopupMenu(this, prev);
+                for (int i = 0; i < previous.size(); i++) menu.getMenu().add(0, i, i, previous.get(i)[0]);
+                menu.setOnMenuItemClickListener(item -> {
+                    String[] issue = previous.get(item.getItemId());
+                    if (web != null) web.loadUrl(issue[1]);
+                    return true;
+                });
+                menu.show();
+            });
+            bar.addView(prev);
+        }
         return bar;
+    }
+
+    private TextView barButton(String text) {
+        TextView b = new TextView(this);
+        b.setText(text);
+        b.setTextColor(WARM);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        // A text button still needs a finger-sized box.
+        b.setPadding(dp(10), dp(10), dp(10), dp(10));
+        b.setMaxLines(1);
+        return b;
+    }
+
+    /** aA: step the WebView's text zoom through the sizes, remembered across readings. */
+    private void cycleTextZoom() {
+        if (web == null) return;
+        int current = web.getSettings().getTextZoom();
+        int next = TEXT_ZOOMS[0];
+        for (int i = 0; i < TEXT_ZOOMS.length; i++) {
+            if (TEXT_ZOOMS[i] == current) { next = TEXT_ZOOMS[(i + 1) % TEXT_ZOOMS.length]; break; }
+        }
+        web.getSettings().setTextZoom(next);
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(PREF_TEXT_ZOOM, next).apply();
     }
 
     /**
@@ -297,6 +558,7 @@ public class ReaderActivity extends Activity {
             finishedEventSent = true;
             BibleBrowserPlugin.fireWindowEvent("phoebe:browserfinished");
         }
+        handler.removeCallbacksAndMessages(null);
         if (web != null) {
             web.stopLoading();
             ((ViewGroup) web.getParent()).removeView(web);
