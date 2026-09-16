@@ -8,6 +8,11 @@
 // PLATFORM: the video courses (Centering Prayer, The Spiritual Journey) are
 // web/desktop-only (YouTube IFrame player) — on the iOS shell only Bishop
 // Budde's Way of Love (an audio course on the podcast player) appears.
+//
+// FOURTEEN DAYS (owner, 2026-09-16): a course nobody has engaged with for two
+// weeks leaves the home — the "Start course" offer of the Way of Love too,
+// counted from the day it was first offered. See selectHomeCourses and
+// courseProgress.ts (COURSE_HOME_STALE_MS).
 
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -15,7 +20,16 @@ import { motion, useInView } from "framer-motion";
 import { Play } from "lucide-react";
 import { FrostLayers, frostBox } from "@/components/FrostRing";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { useCourseProgress, useAnyCourseProgressTick, isCourseHiddenFromHome, COURSE_HIDDEN_EVENT, snapshotProgress } from "@/lib/courseProgress";
+import {
+  useCourseProgress,
+  useAnyCourseProgressTick,
+  isCourseHiddenFromHome,
+  COURSE_HIDDEN_EVENT,
+  snapshotProgress,
+  isCourseStaleForHome,
+  courseOfferedSince,
+  markCourseOffered,
+} from "@/lib/courseProgress";
 import {
   CENTERING_PRAYER,
   CENTERING_INDEX,
@@ -32,7 +46,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 const FONT = "'Space Grotesk', sans-serif";
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
-type LearnCard = {
+export type LearnCard = {
   key: string;
   title: string;
   nextLabel: string;
@@ -70,6 +84,37 @@ function videoCourseCard(
     // count here or browsing the Learn tab fills the home with Continue cards).
     started: completedCount > 0 || progress.started,
   };
+}
+
+/**
+ * WHICH COURSES THE HOME SHOWS — pure, so it can be tested without React.
+ *
+ * Active courses (started, unfinished, engaged within 14 days), most recently
+ * engaged first. With nothing active, the one quiet "Start course" offer —
+ * the Way of Love — as long as it is not itself lapsed: a started one that
+ * went quiet for 14 days is gone like any other, and a never-started one
+ * lapses 14 days after the home first offered it (`wolOfferedAt`, 0 = never
+ * offered yet, so it shows and gets stamped).
+ */
+export function selectHomeCourses(
+  onHome: LearnCard[],
+  wolId: string,
+  wolOfferedAt: number,
+  now: number = Date.now(),
+): LearnCard[] {
+  const fresh = (c: LearnCard) => !isCourseStaleForHome(c.updatedAt, now);
+  // MOST RECENTLY LISTENED FIRST (owner, 2026-09-05: "order the courses on
+  // the home screen based on which one was listened to last"). Playing an
+  // episode stamps the course's progress, so the one you had on last leads;
+  // ties (never played, or equal stamps) keep the list's own order.
+  const active = onHome
+    .filter((c) => c.started && c.done < c.total && fresh(c))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  if (active.length > 0) return active;
+  const wol = onHome.find((c) => c.key === wolId);
+  if (!wol || wol.done >= wol.total) return [];
+  if (wol.started) return fresh(wol) ? [wol] : [];
+  return wolOfferedAt === 0 || !isCourseStaleForHome(wolOfferedAt, now) ? [wol] : [];
 }
 
 export function HomeLearnSection() {
@@ -192,15 +237,15 @@ export function HomeLearnSection() {
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { once: true, amount: 0.25 });
   const onHome = cards.filter((c) => !isCourseHiddenFromHome(c.key));
-  // MOST RECENTLY LISTENED FIRST (owner, 2026-09-05: "order the courses on
-  // the home screen based on which one was listened to last"). Playing an
-  // episode stamps the course's progress, so the one you had on last leads;
-  // ties (never played, or equal stamps) keep the list's own order.
-  const active = onHome
-    .filter((c) => c.started && c.done < c.total)
-    .sort((a, b) => b.updatedAt - a.updatedAt);
-  const wolCard = onHome.find((c) => c.key === WAY_OF_LOVE.id);
-  const show = active.length > 0 ? active : wolCard && wolCard.done < wolCard.total ? [wolCard] : [];
+  const show = selectHomeCourses(onHome, WAY_OF_LOVE.id, courseOfferedSince(WAY_OF_LOVE.id));
+  // The never-started offer starts its 14-day clock the first time it is
+  // actually shown. An effect (not a write during render), and above the
+  // early return like every hook here; markCourseOffered is a no-op after
+  // the first stamp.
+  const offeringWol = show.length === 1 && show[0].key === WAY_OF_LOVE.id && !show[0].started;
+  useEffect(() => {
+    if (offeringWol) markCourseOffered(WAY_OF_LOVE.id);
+  }, [offeringWol]);
   if (show.length === 0) return null;
 
   // Fade-up cascade like the rhythm cards — the header rises first, each course

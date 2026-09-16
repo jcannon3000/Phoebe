@@ -248,6 +248,59 @@ export function useAnyCourseProgressTick(): number {
  * shows, not what you've done, so your progress is untouched and the course is
  * still there in Learn whenever you want it back.
  */
+/**
+ * FOURTEEN DAYS WITHOUT ENGAGEMENT AND A COURSE LEAVES THE HOME (owner,
+ * 2026-09-16: "if someone hasn't engaged in a course in 14 days, including
+ * the Way of Love one, have it disappear from the home screen").
+ *
+ * "Engaged" is any progress write — opening a lesson (setLast), pressing play
+ * (markStarted), finishing one (markComplete) — which is exactly what stamps
+ * `updatedAt`, so one clock serves every course kind (video, Way of Love,
+ * CAC seasons). Engaging again restarts it and the card comes back; the
+ * course itself stays in the Learn tab and This Sunday's Courses tab.
+ * Progress written before `updatedAt` existed has no stamp and counts as
+ * stale until touched.
+ */
+export const COURSE_HOME_STALE_MS = 14 * 24 * 60 * 60 * 1000;
+
+export function isCourseStaleForHome(updatedAt: number | undefined, now: number = Date.now()): boolean {
+  return now - (updatedAt ?? 0) >= COURSE_HOME_STALE_MS;
+}
+
+/**
+ * The never-started flagship offer ("Start course · Way of Love") has no
+ * progress to stamp, so the home stamps the day it FIRST offered it and the
+ * offer lapses on the same 14-day clock. Starting the course writes progress
+ * and takes over from here. Per device, like the rest of course progress.
+ */
+const OFFERED_KEY = "phoebe:course-offered";
+
+function readOffered(): Record<string, number> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(OFFERED_KEY) || "{}");
+    return raw && typeof raw === "object" ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+/** When the home first offered this course, in ms; 0 if it never has. */
+export function courseOfferedSince(courseId: string): number {
+  const v = readOffered()[courseId];
+  return typeof v === "number" ? v : 0;
+}
+
+/** Stamp the first offer; a later call is a no-op so the clock never resets. */
+export function markCourseOffered(courseId: string, now: number = Date.now()): void {
+  const all = readOffered();
+  if (typeof all[courseId] === "number") return;
+  try {
+    localStorage.setItem(OFFERED_KEY, JSON.stringify({ ...all, [courseId]: now }));
+  } catch {
+    /* non-fatal (private mode / quota) */
+  }
+}
+
 const HIDDEN_KEY = "phoebe:course-hidden";
 
 function readHidden(): Set<string> {
