@@ -27,6 +27,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ACT_CATALOGUE } from "@/lib/visioCatalogue";
 import { ACT_COMMENTARY_CATALOGUE } from "@/lib/visioCommentaryCatalogue";
+import { COMMONS_VISIO_CATALOGUE } from "@/lib/visioCommonsCatalogue";
 import { ICON_CATALOGUE } from "@/lib/iconCatalogue";
 import {
   ACT_OVERRIDES_EVENT, actOverrideFor, isActHidden, setActOverride, refreshActOverrides,
@@ -80,6 +81,17 @@ const WORKS: Work[] = (() => {
   for (const a of ACT_COMMENTARY_CATALOGUE) {
     const existing = map.get(a.id);
     if (existing) { existing.inCommentary = true; continue; }
+    map.set(a.id, {
+      id: a.id, title: a.title, artist: a.artist, date: a.date, where: a.where,
+      img: a.img, act: a.act, licence: a.licence, attribution: a.attribution,
+      refs: a.refs, days: a.days, people: a.people, subjects: a.subjects,
+      essay: a.essay, inLibrary: false, harvestIcon: false, inCommentary: true,
+    });
+  }
+  // Wikimedia Commons scenes (owner, 2026-09-15). In the Visio pool, so they
+  // can be deleted here like any other work that can appear.
+  for (const a of COMMONS_VISIO_CATALOGUE) {
+    if (map.has(a.id)) continue;
     map.set(a.id, {
       id: a.id, title: a.title, artist: a.artist, date: a.date, where: a.where,
       img: a.img, act: a.act, licence: a.licence, attribution: a.attribution,
@@ -268,7 +280,7 @@ export default function AdminArtLibraryPage() {
               {error && <p style={{ color: "#d8a0a0", fontFamily: FONT, fontSize: 12.5, margin: "8px 0 0" }}>{error}</p>}
 
               {/* The metadata a search can land on — the owner asked to see it. */}
-              {meta("ACT id", String(open.id))}
+              {meta(open.act.startsWith("https://commons.wikimedia.org/") ? "Commons id" : "ACT id", String(open.id))}
               {meta("People", open.people.join(" · "))}
               {meta("Subjects", open.subjects.join(" · "))}
               {meta("Scriptures", open.refs.join(" · "))}
@@ -281,7 +293,7 @@ export default function AdminArtLibraryPage() {
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
                 <button type="button" onClick={() => openExternal(open.act, { reader: false })}
                   style={{ flex: 1, background: "rgba(240,237,230,0.06)", border: `1px solid ${BORDER}`, color: SAGE, borderRadius: 999, padding: "11px 16px", fontSize: 13.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-                  Open on ACT ↗
+                  {open.act.startsWith("https://commons.wikimedia.org/") ? "Open on Wikimedia Commons ↗" : "Open on ACT ↗"}
                 </button>
                 <button type="button" onClick={() => setOpenId(null)}
                   style={{ flex: 1, background: "rgba(46,107,64,0.55)", border: `1px solid ${BORDER}`, color: WARM, borderRadius: 999, padding: "11px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>

@@ -21,6 +21,8 @@
  */
 import { ACT_CATALOGUE, type CatalogueArtwork } from "./visioCatalogue";
 import { ACT_COMMENTARY_CATALOGUE } from "./visioCommentaryCatalogue";
+import { COMMONS_VISIO_CATALOGUE } from "./visioCommonsCatalogue";
+import { ICON_CATALOGUE } from "./iconCatalogue";
 
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
 import { isActHidden } from "@/lib/actOverrides";
@@ -30,7 +32,19 @@ import { isActHidden } from "@/lib/actOverrides";
  * prayed with last month still opens from their history even though the pool
  * it was drawn from is no longer the one we choose from.
  */
-const BY_ID = new Map([...ACT_CATALOGUE, ...ACT_COMMENTARY_CATALOGUE].map((a) => [a.id, a]));
+const BY_ID = new Map<number, CatalogueArtwork>(
+  [
+    // Icons FIRST: 89 of the 120 are also ACT records and the icon harvest
+    // carries no essay, so the fuller record must overwrite them. They are here
+    // to be NAMED, not to be chosen — the pool below is unchanged. The week
+    // schedule's theme picks may name one (owner, 2026-09-15: "even consider
+    // the icons").
+    ...ICON_CATALOGUE.map((a) => ({ ...a, essay: "" })),
+    ...ACT_CATALOGUE,
+    ...ACT_COMMENTARY_CATALOGUE,
+    ...COMMONS_VISIO_CATALOGUE,
+  ].map((a) => [a.id, a]),
+);
 
 /**
  * The library minus the owner's runtime DELETIONS (the admin art-library
@@ -71,6 +85,9 @@ const UNIONED_CATALOGUE: CatalogueArtwork[] = (() => {
     if (existing) byId.set(a.id, { ...existing, essay: existing.essay || a.essay });
     else byId.set(a.id, { ...a, curated: false });
   }
+  // Wikimedia Commons scenes the ACT library has no painting of (owner,
+  // 2026-09-15). Never curated, so an ACT work that matches as well wins a tie.
+  for (const a of COMMONS_VISIO_CATALOGUE) if (!byId.has(a.id)) byId.set(a.id, { ...a, curated: false });
   return [...byId.values()];
 })();
 

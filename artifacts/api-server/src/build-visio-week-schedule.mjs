@@ -48,6 +48,8 @@ import { GOSPEL_PARALLELS } from "./data/gospelParallels.ts";
 import { pickFromTier, matchScore, rotationForDay, parseRef } from "../../mymonastery/src/lib/visioSelect.ts";
 import { ACT_CATALOGUE as CURATED_CATALOGUE } from "../../mymonastery/src/lib/visioCatalogue.ts";
 import { ACT_COMMENTARY_CATALOGUE } from "../../mymonastery/src/lib/visioCommentaryCatalogue.ts";
+import { COMMONS_VISIO_CATALOGUE } from "../../mymonastery/src/lib/visioCommonsCatalogue.ts";
+import { ICON_CATALOGUE } from "../../mymonastery/src/lib/iconCatalogue.ts";
 
 /**
  * THE POOL, REOPENED. Owner: "using images that don't have commentaries …
@@ -75,6 +77,9 @@ const ACT_CATALOGUE = (() => {
     if (existing) byId.set(a.id, { ...existing, essay: existing.essay || a.essay });
     else byId.set(a.id, { ...a, curated: false });
   }
+  // Wikimedia Commons scenes the ACT library has no painting of (owner,
+  // 2026-09-15). Never curated, so an ACT work that matches as well wins a tie.
+  for (const a of COMMONS_VISIO_CATALOGUE) if (!byId.has(a.id)) byId.set(a.id, { ...a, curated: false });
   return [...byId.values()];
 })();
 
@@ -172,6 +177,67 @@ const TIER_NAMES = ["gospel", "epistle", "ot"];
  * 22:15-22) covered three Sundays running.
  */
 const WALK = [[0, 3], [1, 3], [2, 3], [0, 2], [1, 2], [2, 2]];
+
+/**
+ * THE WEEKS NOTHING DEPICTS — A PICTURE CHOSEN BY HAND FOR THE THEME.
+ *
+ * Owner, 2026-09-15, looking at the Sundays still without a picture of their
+ * gospel: "For these consider in the vanderbelt library what might touch on a
+ * theme from reading ... even consider the icons ... they might not be
+ * associated with the readings in the lectionary, but they could be relevant if
+ * you consider the theme."
+ *
+ * Keyed by the week's GOSPEL as the lectionary writes it — so the same Sunday
+ * keeps its picture in every year it comes round — or by the Sunday itself
+ * where the table has no gospel at all. Tried AFTER a painting of the gospel's
+ * own verses and BEFORE the epistle and the Old Testament, because each one was
+ * chosen for this gospel by hand. A theme pick never claims the passage: `top`
+ * stays 0, so the card doesn't say "this week's reading".
+ *
+ * An icon named here is reachable by id alone; the icon harvest is NOT in the
+ * pool, so it appears on the week it was chosen for and nowhere else.
+ */
+const THEME_PICKS = {
+  // Keep awake: the prepared throne, the Louvre ivory tagged with Matthew's
+  // telling of the same charge (24:36-44).
+  "Mark 13:24-37": 55565,
+  // The bread of life — known in the breaking of the bread.
+  "John 6:41-47": 56885,
+  // "Our ancestors ate the manna in the wilderness" (6:31).
+  "John 6:24-35": 55968,
+  // "The bread that I will give for the life of the world is my flesh."
+  "John 6:35, 41-51": 56552,
+  // "The bread of God is that which comes down from heaven."
+  "John 6:27-40": 58334,
+  // "They were like sheep without a shepherd."
+  "Mark 6:30-34, 53-56": 57121,
+  // He calls those he wants, and appoints twelve to be with him.
+  "Mark 3:7-19": 48379,
+  // "Whoever sees me sees him who sent me."
+  "John 12:44-50": 48051,
+  // "Hidden from the wise and revealed to infants" — Matthew 11:25-30, the same
+  // saying, is what this painting is tagged to.
+  "Luke 10:17-24": 59245,
+  // "First be reconciled to your brother or sister."
+  "Matt. 5:21-26": 54666,
+  // The Pharisee who tithes mint and dill and misses justice and mercy.
+  "Matt. 23:13-24": 59165,
+  // The crowds who went out into the wilderness to see John.
+  "Luke 7:28-35": 58375,
+  // "He must increase, but I must decrease."
+  "John 3:22-30": 59675,
+  // Palm Sunday 2028: the Daily Office fallback gives this Sunday no gospel at
+  // all, so the key is the day.
+  "2028-04-09": 58329,
+};
+
+/** Every work a theme pick may name: the pool, and the icon harvest beside it. */
+const THEME_ART = new Map(
+  [...ICON_CATALOGUE.map((a) => ({ ...a, essay: "" })), ...ACT_CATALOGUE].map((a) => [a.id, a]),
+);
+for (const [key, id] of Object.entries(THEME_PICKS)) {
+  if (!THEME_ART.has(id)) throw new Error(`theme pick "${key}": no work with id ${id}`);
+}
 
 /**
  * How many verses two references share — same book, same chapter; a whole
@@ -338,7 +404,7 @@ function build() {
   const rows = [];
   /** weekStartYmd → the artwork id that whole week shows. */
   const weekPick = new Map();
-  const stats = { days: 0, curated: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, epistle: 0, ot: 0, exact: 0, chapter: 0, parallel: 0, sundayAssigned: 0, book: 0, rotation: 0, sameHandAsLastWeek: 0 };
+  const stats = { days: 0, curated: 0, capped: 0, tierMoved: 0, overCap: 0, gospel: 0, epistle: 0, ot: 0, exact: 0, chapter: 0, parallel: 0, sundayAssigned: 0, book: 0, rotation: 0, sameHandAsLastWeek: 0, theme: 0 };
   /** The last ARTIST_GAP_WEEKS weeks' artists, newest first, across year ends. */
   const recentHands = [];
   let lastWeekId = null;
@@ -458,14 +524,23 @@ function build() {
     // PASS 1 — the cap respected, WALK in order. Within a step, an equally good
     // painting of the same reading is tried before moving on, since a less
     // apt reading is a bigger loss than a different brush.
+    const themeArt = THEME_ART.get(THEME_PICKS[tiers[0].refs.join("; ")] ?? THEME_PICKS[weekKey]) ?? null;
     for (const [t, score] of WALK) {
       const group = groupAt(t, score);
-      if (!group.length) continue;
-      const pick = pickVaried(group, true);
-      if (!pick) { movedTier = true; continue; }   // this reading is spent
-      chosen = { art: pick, tierRefs: tiers[t].refs, top: score };
-      stats[TIER_NAMES[t]]++;
-      break;
+      const pick = group.length ? pickVaried(group, true) : null;
+      if (pick) {
+        chosen = { art: pick, tierRefs: tiers[t].refs, top: score };
+        stats[TIER_NAMES[t]]++;
+        break;
+      }
+      if (group.length) movedTier = true;          // this reading is spent
+      // Nothing paints the gospel's own verses: the hand-chosen theme picture
+      // for this gospel comes before the epistle and the Old Testament.
+      if (t === 0 && score === 3 && themeArt) {
+        chosen = { art: themeArt, tierRefs: [], top: 0 };
+        stats.theme++;
+        break;
+      }
     }
 
     /**
@@ -643,8 +718,13 @@ const header = `// GENERATED by artifacts/api-server/src/build-visio-week-schedu
 // Eastertide), then the Old Testament's — and only then a same-chapter
 // painting, the gospel's first (owner, 2026-09-15: "the priority is exact
 // matches", "prioritize making sure it matches the gospel"). Psalms are never used (owner, 2026-09-14).
-// When no reading is painted: the same story in another gospel, then a work ACT
-// assigns to that Sunday; a same-book picture only after both.
+// Where nothing paints the gospel's verses and a picture was chosen BY HAND for
+// that gospel's theme (owner, 2026-09-15: "consider in the vanderbelt library
+// what might touch on a theme from reading ... even consider the icons"), the
+// hand-chosen one comes next — before the epistle and the Old Testament, and
+// without ever claiming the passage. See THEME_PICKS in the builder.
+// When no reading is painted at all: the same story in another gospel, then a
+// work ACT assigns to that Sunday; a same-book picture only after both.
 //
 // A different artist each week only where it costs nothing: if another artist
 // painted the same reading equally well, that one is chosen over last week's.

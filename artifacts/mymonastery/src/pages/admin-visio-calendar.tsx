@@ -25,6 +25,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
 import { ACT_CATALOGUE } from "@/lib/visioCatalogue";
 import { ACT_COMMENTARY_CATALOGUE } from "@/lib/visioCommentaryCatalogue";
+import { COMMONS_VISIO_CATALOGUE } from "@/lib/visioCommonsCatalogue";
+import { ICON_CATALOGUE } from "@/lib/iconCatalogue";
 import { canonicalRef } from "@/lib/visioSelect";
 
 const BG = "#0A1A10";
@@ -72,6 +74,13 @@ export default function AdminVisioCalendarPage() {
       const prev = m.get(a.id);
       if (prev) m.set(a.id, { ...prev, essay: prev.essay || a.essay });
       else m.set(a.id, { title: a.title, artist: a.artist, img: a.img, essay: a.essay, curated: false });
+    }
+    for (const a of COMMONS_VISIO_CATALOGUE) {
+      if (!m.has(a.id)) m.set(a.id, { title: a.title, artist: a.artist, img: a.img, essay: a.essay, curated: false });
+    }
+    // A theme pick can name an icon the two catalogues above don't hold.
+    for (const a of ICON_CATALOGUE) {
+      if (!m.has(a.id)) m.set(a.id, { title: a.title, artist: a.artist, img: a.img, essay: "", curated: false });
     }
     return m;
   }, []);
