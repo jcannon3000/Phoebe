@@ -10,10 +10,17 @@
  * Every one SHOWS the movement being done — people singing, dancing and
  * adoring; a publican at the back of the temple, a son come home, Peter
  * weeping; a healed man turning back to give thanks, bread blessed at table;
- * Christ praying in the garden, a woman reaching for his hem, Job praying for
- * his friends. Each was looked at before it went in.
+ * Christ praying in the garden, a woman on her knees before him, Job praying
+ * for his friends. Each was looked at before it went in.
  *
- * All from the ACT library Visio and the Rosary already pray with: the same
+ * SUPPLICATION IS STRICTER STILL (owner, 2026-09-15): every picture there is
+ * people PRAYING TO GOD. A scene of someone asking anyone else — Abigail
+ * kneeling to David — misses the movement however well it fits the word, and
+ * so does a miracle nobody in the frame is praying through. See the note on
+ * that list.
+ *
+ * All from the libraries Visio and the Rosary already pray with (the ACT
+ * library, and the Wikimedia Commons picks behind it): the same
  * rights (a free licence, or the artist's non-commercial grant with
  * attribution) and the same credit line on the closing slide. `ratio` is the
  * measured width ÷ height (2026-09-14, over the wire). Every one sits inside
@@ -67,18 +74,30 @@ export const GUIDED_PRAYER_ART: Record<1 | 2 | 3 | 4, GuidedPrayerArt[]> = {
     { id: 48272, ratio: 1.48 }, // JESUS MAFA, The Lord's Supper — the cup lifted
     { id: 58334, ratio: 0.717 }, // Roberti, Institution of the Eucharist
   ],
-  // Supplication
+  // Supplication — ONLY people praying to God (owner, 2026-09-15). Five went
+  // for showing something else, however apt the passage: Abigail Begging
+  // David (a woman on her knees to a king, not to God — the plainest miss),
+  // Rembrandt's Storm on the Sea of Galilee and MAFA's Jesus Heals a
+  // Paralyzed Man (miracles, with nobody at prayer in them), Wesley's Woman
+  // with the Flow of Blood detail (a hand reaching through a crowd) and
+  // Runge's Christ Walking on the Water (Christ hauling Peter out, his doing
+  // rather than ours). What stays shows the asking itself.
   4: [
-    { id: 48391, ratio: 1.476 }, // JESUS MAFA, Christ on Gethsemane
-    { id: 58468, ratio: 1.268 }, // Gauguin, Vision of the Sermon — women at prayer, Jacob wrestling for a blessing
-    { id: 59649, ratio: 0.985 }, // Wesley, Woman with the Flow of Blood (detail) — hands reaching for him
-    { id: 57953, ratio: 0.804 }, // Rembrandt, Storm on the Sea of Galilee
-    { id: 48306, ratio: 1.515 }, // JESUS MAFA, Jesus Heals a Paralyzed Man — lowered by his friends
+    // ORDER IS LOAD-BEARING, and not only for the neighbours rule: Praise and
+    // Confession are eight long too, and both always take their start index,
+    // so a hand that sits at index i THERE can never be chosen at index i
+    // here — the sitting has already used it by the time Supplication picks.
+    // Christ on Gethsemane opened this list and MAFA opens Confession, so it
+    // was never once shown (the check caught it). MAFA now sits at 4, Wesley
+    // (Confession 1·4·7) at 2, and Swanson (Praise 0·2·5) at 6.
+    { id: 58468, ratio: 1.268 }, // Gauguin, Vision of the Sermon — the Breton women, eyes closed, hands folded
+    { id: 9235894, ratio: 1.279 }, // Drouais, Christ and the Canaanite Woman — on her knees, hands joined, asking him
+    { id: 59261, ratio: 0.9 }, // Wesley, The Hand of God is My Refuge — face lifted into the light
     { id: 57729, ratio: 0.794 }, // Blake, Sacrifice of Job — "my servant Job shall pray for you"
-    { id: 59237, ratio: 1.146 }, // Wesley, Abigail Begging David
-    { id: 59677, ratio: 0.741 }, // Miller, Peter Walking on Water — "Lord, save me"
-    { id: 57962, ratio: 1.501 }, // Sant'Apollinare Nuovo, Heals the Woman with a Hemorrhage
-    { id: 59351, ratio: 1.375 }, // Runge, Christ Walking on the Water
+    { id: 48391, ratio: 1.476 }, // JESUS MAFA, Christ on Gethsemane — kneeling, hands up to the Father
+    { id: 59677, ratio: 0.741 }, // Miller, Peter Walking on Water — both arms up to Christ, "Lord, save me"
+    { id: 56539, ratio: 1.399 }, // Swanson, Daniel — both hands raised among the lions
+    { id: 57962, ratio: 1.501 }, // Sant'Apollinare Nuovo, the woman with a hemorrhage — prostrate at his feet
   ],
 };
 
