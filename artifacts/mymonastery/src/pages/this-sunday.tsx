@@ -167,6 +167,16 @@ export default function ThisSundayPage() {
       open: () => setLocation(`/bcp/daily-office?mode=sunday&track=${track}`),
     },
     {
+      // Owner (2026-09-16): Lectio Divina on any of this Sunday's readings, in
+      // the daily Lectio's own deck, "above the visio divina card". Carries
+      // the track so the picker offers the readings this page is showing.
+      key: "lectio", emoji: "📜",
+      title: t("this_sunday.lectio", { defaultValue: "Lectio Divina" }),
+      blurb: t("this_sunday.lectio_sub", { defaultValue: "Meditate on this Sunday's readings" }),
+      cta: t("rhythm.begin", { defaultValue: "Begin" }),
+      open: () => setLocation(`/lectio?sunday=1&track=${track}`),
+    },
+    {
       key: "visio", emoji: "🖼️",
       title: t("this_sunday.visio", { defaultValue: "Visio Divina" }),
       blurb: t("this_sunday.visio_sub", { defaultValue: "Meditate on an image for this Sunday" }),

@@ -29,6 +29,7 @@ import { isReallyOnline } from "@/lib/offline";
 import { getSideLevel, getSideExtra, getSideConfession, getScriptureParts, type OfficeSide } from "@/lib/officePrefs";
 import { putOfficeCacheEntry, pruneOfficeCacheBefore, getOfficeCacheEntry, type OfficeCacheKey } from "@/lib/officeOfflineCache";
 import { sundayYmdsNY, todayYmdNY } from "@/lib/sundayDate";
+import { sundayPsalmReadUrl } from "@/lib/sundayLectio";
 import { passageRefFromUrl, purgeExtractedPassages } from "@/lib/passageCache";
 import { cachePage, hasSavedPage, prunePagesExcept, prunePages } from "@/lib/pageCache";
 import { cacheImage, hasCachedImage, pruneImages, pruneImagesExcept } from "@/lib/imageCache";
@@ -518,13 +519,18 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
       }
     }
     for (const key of entries) {
-      const data = (await getOfficeCacheEntry(key)) as { slides?: Array<{ metadata?: { readUrl?: unknown; gospelReadUrl?: unknown } }> } | null;
+      const data = (await getOfficeCacheEntry(key)) as { slides?: Array<{ type?: string; metadata?: { readUrl?: unknown; gospelReadUrl?: unknown; psalmRef?: unknown } }> } | null;
       // One real answer proves the office database is open and readable; a
       // store that timed out returns null for every key and would otherwise
       // look exactly like "no decks are saved".
       if (data) harvest.officeStoreAnswered = true;
       for (const s of data?.slides ?? []) {
-        for (const u of [s?.metadata?.readUrl, s?.metadata?.gospelReadUrl]) {
+        // THE SUNDAY PSALM AS A PAGE. The Sunday deck prays its psalm as
+        // office slides, so it carries no readUrl — but Lectio on this
+        // Sunday's readings opens the psalm on oremus (lib/sundayLectio), and
+        // offline that page has to be here too.
+        const psalmUrl = key.mode === "sunday" && s?.type === "psalm_title" ? sundayPsalmReadUrl(typeof s?.metadata?.psalmRef === "string" ? s.metadata.psalmRef : null) : null;
+        for (const u of [s?.metadata?.readUrl, s?.metadata?.gospelReadUrl, psalmUrl]) {
           // passageRefFromUrl is only the test for "is this a reading link";
           // what we save is the URL itself.
           if (typeof u === "string" && passageRefFromUrl(u)) pageUrls.add(u);

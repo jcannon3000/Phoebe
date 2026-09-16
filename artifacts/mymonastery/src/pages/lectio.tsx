@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { cachedDayGet } from "@/lib/dayContentCache";
@@ -15,6 +15,10 @@ import { X } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 import { DeckAnnouncer } from "@/components/DeckAnnouncer";
+import { sundayLectionaryQuery, type SundayLectionary } from "@/lib/sundayLectionary";
+import { sundayLectioOptions, sundayLectioOptionsFromDeck, type LectioOption } from "@/lib/sundayLectio";
+import { getOfficeCacheEntry } from "@/lib/officeOfflineCache";
+import { nextSundayYmdNY } from "@/lib/sundayDate";
 
 // Lectio Divina — sit with one of today's three lessons (Old Testament,
 // New Testament, Gospel). Owner's corrected order: pick a lesson → the
@@ -48,12 +52,19 @@ const FROST_CTA = {
   border: "1px solid rgba(200,212,192,0.28)",
 } as const;
 
-type LessonOption = { kind: "oldTestament" | "newTestament" | "gospel"; reference: string; readUrl: string };
+type LessonOption = LectioOption;
 const KIND_LABEL: Record<LessonOption["kind"], string> = {
   oldTestament: "Old Testament",
+  psalm: "Psalm",
   newTestament: "New Testament",
   gospel: "Gospel",
 };
+/** The eyebrow over a reading. In Eastertide the RCL reads Acts in the Old
+ *  Testament's place, and a Sunday picker must not call Acts the Old Testament. */
+function kindLabel(o: LessonOption): string {
+  if (o.kind === "oldTestament" && /^acts\b/i.test(o.reference)) return "Acts";
+  return KIND_LABEL[o.kind];
+}
 
 const PROMPTS = [
   "As you read the passage for the first time, pay attention to any word or phrase that might be touching your heart.",
@@ -94,6 +105,21 @@ export default function LectioPage() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(PICK);
   const [chosen, setChosen] = useState<LessonOption | null>(null);
+  /**
+   * THIS SUNDAY'S READINGS — `/lectio?sunday=1&track=1|2`, from This Sunday's
+   * Lectio Divina card (owner, 2026-09-16: "they could do lectio divina for any
+   * of the readings this coming sunday … same ui as the daily lectio divina").
+   * The whole deck is the daily one; only the picker's readings differ (see
+   * lib/sundayLectio). Read through useSearch so the mode follows the URL
+   * rather than whatever it was on mount (reference_query_only_navigation).
+   */
+  const search = useSearch();
+  const { sundayMode, sundayTrack } = useMemo(() => {
+    const q = new URLSearchParams(search);
+    return { sundayMode: q.get("sunday") === "1", sundayTrack: (q.get("track") === "2" ? 2 : 1) as 1 | 2 };
+  }, [search]);
+  // A change of mode is a different picker: start again from it.
+  useEffect(() => { setChosen(null); setStep(PICK); }, [sundayMode, sundayTrack]);
   // Leaf backgrounds specifically (owner) — not the general wide-background
   // pool, which can surface unrelated photos.
   const deckBackdrop = useMemo(
@@ -115,14 +141,45 @@ export default function LectioPage() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   })();
-  const { data, isLoading } = useQuery<{ date: string | null; options: LessonOption[] }>({
+  const { data, isLoading: dailyLoading } = useQuery<{ date: string | null; options: LessonOption[] }>({
     queryKey: ["/api/lectio/today", lectioDate],
     // Through the day cache: it keeps each day's readings as they are fetched
     // and serves the saved copy when there's no connection, so the picker is
     // never empty on a device that has been opened this month.
     queryFn: () => cachedDayGet<{ date: string | null; options: LessonOption[] }>(`/api/lectio/today?date=${lectioDate}`) as Promise<{ date: string | null; options: LessonOption[] }>,
+    enabled: !sundayMode,
   });
-  const options = data?.options ?? [];
+
+  // Sunday: the live lectionary This Sunday itself reads (usually already in
+  // the query cache from that page), and the SAVED Sunday deck for when it
+  // can't be asked — the offline walk keeps four Sundays of both tracks.
+  const sundayQ = useQuery<SundayLectionary | null>({ ...sundayLectionaryQuery, enabled: sundayMode });
+  const [savedSundayOptions, setSavedSundayOptions] = useState<LessonOption[] | null>(null);
+  useEffect(() => {
+    setSavedSundayOptions(null);
+    if (!sundayMode) return;
+    let cancelled = false;
+    const date = nextSundayYmdNY();
+    void getOfficeCacheEntry({ mode: "sunday", date, confession: "", track: String(sundayTrack) })
+      .then((deck) => { if (!cancelled) setSavedSundayOptions(sundayLectioOptionsFromDeck(deck as Parameters<typeof sundayLectioOptionsFromDeck>[0])); })
+      .catch(() => { if (!cancelled) setSavedSundayOptions([]); });
+    return () => { cancelled = true; };
+  }, [sundayMode, sundayTrack]);
+  const liveSundayOptions = useMemo(() => {
+    const sunday = sundayQ.data;
+    if (!sunday) return [];
+    // Track 2 only where the Sunday has one — the deck makes the same fallback.
+    return sundayLectioOptions(sundayTrack === 2 && sunday.track2 ? sunday.track2 : sunday.track1);
+  }, [sundayQ.data, sundayTrack]);
+
+  const options = sundayMode
+    ? (liveSundayOptions.length > 0 ? liveSundayOptions : (savedSundayOptions ?? []))
+    : (data?.options ?? []);
+  // Sunday is still finding its readings while the live answer is pending AND
+  // the saved deck hasn't been read — either one is enough to show the picker.
+  const isLoading = sundayMode
+    ? options.length === 0 && (sundayQ.isLoading || savedSundayOptions === null)
+    : dailyLoading;
 
   const atStart = step === PICK;
   // CLAMPED in the updater, not by the closure's `step` (audit, 2026-09-06).
@@ -423,7 +480,10 @@ export default function LectioPage() {
           stays the first option; before this the else-branch was a flat
           #091A10, the one screen in the app with a dead-still ground. */}
       {/* Says the beat out loud when it changes — see DeckAnnouncer. */}
-      <DeckAnnouncer label={`${sectionLabelFor(step)}, ${step + 1} of ${LAST}`} />
+      {/* The beats count from 1 already (PICK is 0), so the announcement says
+          the same "3 of 7" the pill shows — it said "4 of 7", and "8 of 7" on
+          the closing slide. The chooser has no beat to name. */}
+      <DeckAnnouncer label={atStart ? "Lectio Divina" : `${sectionLabelFor(step)}, ${step} of ${LAST}`} />
       {deckBackdrop ? (
         <>
           <img src={deckBackdrop} alt="" aria-hidden style={{
@@ -508,7 +568,7 @@ export default function LectioPage() {
                   Lectio Divina
                 </h1>
                 <p style={{ color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 16, lineHeight: 1.6, margin: "0 0 24px" }}>
-                  Meditate on today's readings.
+                  {sundayMode ? "Meditate on this Sunday's readings." : "Meditate on today's readings."}
                 </p>
                 {/* A brief splash while today's readings resolve (owner) —
                     the deck's own chrome rather than a bare line of text,
@@ -519,17 +579,17 @@ export default function LectioPage() {
                       width: 28, height: 28, borderRadius: "50%",
                       border: `2px solid ${DECK_BORDER}`, borderTopColor: SAGE,
                     }} />
-                    <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 13 }}>Finding today's readings…</p>
+                    <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 13 }}>{sundayMode ? "Finding this Sunday's readings…" : "Finding today's readings…"}</p>
                     <style>{"@keyframes lectio-spin { to { transform: rotate(360deg); } } .lectio-spin { animation: lectio-spin 0.8s linear infinite; }"}</style>
                   </div>
                 )}
                 {!isLoading && options.length === 0 && (
-                  <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 14 }}>No readings could be found for today.</p>
+                  <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 14 }}>{sundayMode ? "No readings could be found for this Sunday." : "No readings could be found for today."}</p>
                 )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {options.map((o) => (
                     <button
-                      key={o.kind}
+                      key={`${o.kind}:${o.reference}`}
                       onClick={() => pickLesson(o)}
                       style={{
                         userSelect: "none", WebkitTapHighlightColor: "transparent",
@@ -540,7 +600,7 @@ export default function LectioPage() {
                       }}
                     >
                       <span style={{ display: "block", color: DECK_FAINT, fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 4 }}>
-                        {KIND_LABEL[o.kind]}
+                        {kindLabel(o)}
                       </span>
                       <span style={{ display: "block", color: WARM, fontSize: 16, fontWeight: 600 }}>{o.reference}</span>
                     </button>
