@@ -885,7 +885,13 @@ router.delete("/me/contemplation-sessions/:id", async (req, res): Promise<void> 
 const UNDO_SURFACES: Record<"morning" | "evening" | "compline" | "noonday", string[]> = {
   morning: ["morning-prayer", "morning-devotion", "morning-office-podcast"],
   evening: ["evening-prayer", "early-evening-devotion", "evening-office-podcast"],
-  compline: ["compline"],
+  // Compline's podcast surface belongs here for the same reason morning's and
+  // evening's do: users.ts folds `compline-office-podcast` into side "compline"
+  // and counts it as a prayed office, so an undo that cleared only "compline"
+  // left a listened Compline standing — hidden behind the local tombstone on
+  // the phone that undid it, still "kept" on every other device and in the
+  // month's count (audit, 2026-09-16).
+  compline: ["compline", "compline-office-podcast"],
   noonday: ["noonday"],
 };
 

@@ -477,7 +477,10 @@ export function useWidgetSync(): void {
       if (kind === "audio") return "/listening";
       if (kind === "visio") return "/visio";
       if (kind === "lectio") return "/lectio";
-      if (kind === "reading") return "/reading-log";
+      // The home, with the hand-off that opens Reading's sheet. /reading-log was
+      // retired in b14a6fb0 and redirects to /dashboard, so the widget's Reading
+      // tap landed on the home with no sheet (audit, 2026-09-16).
+      if (kind === "reading") return "/dashboard?log=reading";
       if (kind === "rosary") return "/rosary";
       if (kind === "icons") return "/icon-prayer";
       if (kind === "creation") return `/cobreathe?side=${side}`;

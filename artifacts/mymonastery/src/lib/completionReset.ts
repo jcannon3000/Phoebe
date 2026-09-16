@@ -14,6 +14,11 @@ const PREFIXES = [
   "phoebe:office-done",
   "phoebe:slideshow-completed",     // prayer-list slideshow walked today
   "phoebe:practice-done",           // optional practices (gratitude/examen/listening/…)
+  "phoebe:practice-skip",           // …and "Not today" for those same practices. A
+                                    // visitor who skipped a card before signing up
+                                    // handed the new account a day with that card
+                                    // already gone — the opposite of the "genuinely
+                                    // empty day" above (audit, 2026-09-16).
   "phoebe:contemplation-session-done",
   "phoebe:custom-done",             // custom anchors kept today (+ -hist)
   "phoebe:custom-anchor-done",

@@ -216,7 +216,10 @@ export const OFFLINE_PRACTICES: OfflinePractice[] = [
   { key: "listening", emoji: "🎵", title: "Audio Divina", sub: "Log what you listened to by name; searching the library needs a connection", href: "/listening", how: "bundled" },
   { key: "gratitude", emoji: "🙏🏽", title: "Express gratitude", sub: "Logged here, sent when you're back online", href: "/dashboard", how: "bundled" },
   { key: "walk", emoji: "🚶🏽", title: "Contemplative Walk", sub: "Logged here, sent when you're back online", href: "/dashboard", how: "bundled" },
-  { key: "reading", emoji: "📚", title: "Reading", sub: "Logged here, sent when you're back online", href: "/reading-log", how: "bundled" },
+  // The sheet, via the home's hand-off — /reading-log was retired in b14a6fb0
+  // and redirects to /dashboard, so this row promised a log and delivered the
+  // home screen (audit, 2026-09-16).
+  { key: "reading", emoji: "📚", title: "Reading", sub: "Logged here, sent when you're back online", href: "/dashboard?log=reading", how: "bundled" },
 ];
 
 /**

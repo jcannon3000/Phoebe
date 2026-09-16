@@ -676,6 +676,14 @@ export function resetDeviceRuleForLogout(): void {
       "phoebe:office:",           // per-side levels/entries/reflections/minutes/etc.
       "phoebe:office-completed:", // today's office done flags
       "phoebe:practice-done:",    // today's optional-practice done flags
+      // "NOT TODAY" — the other half of the pair above, and the half that was
+      // missing. 8e7829b1 made the skip stamp load-bearing for Reading, so the
+      // next person to sign in on a shared device inherited A's skipped card:
+      // gone from the home, the pill dot and the widget until midnight (audit,
+      // 2026-09-16). The near-miss note below says it exactly — the prefix list
+      // held "practice-done:" and nothing caught that "practice-skip:" wasn't
+      // beside it.
+      "phoebe:practice-skip:",
       "phoebe:contemplation",     // per-side sit done flags + style
       "phoebe:slot:",             // practice time-of-day slots
       "phoebe:guest-",            // guest silence/step goals, seed marker, welcome, migrated

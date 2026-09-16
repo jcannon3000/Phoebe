@@ -934,6 +934,23 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // The reading book, re-read whenever its sheet closes so the card's page
   // number and bar move the moment a page is logged.
   const [readingSheetOpen, setReadingSheetOpen] = useState(false);
+  /**
+   * ?log=reading OPENS THE SHEET — the only way in from outside the home, since
+   * the log is a popup rather than a page. Read once, act, strip, exactly as
+   * the dashboard handles its ?readings=<side> hand-off. The iOS widget's
+   * Reading deep link and the Available Offline row both point here; they used
+   * to point at /reading-log, which redirects to /dashboard, so the tap landed
+   * on the home with no sheet and nothing logged (audit, 2026-09-16).
+   */
+  useEffect(() => {
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.get("log") !== "reading") return;
+      setReadingSheetOpen(true);
+      u.searchParams.delete("log");
+      window.history.replaceState({}, "", u.pathname + (u.search ? u.search : ""));
+    } catch { /* ignore */ }
+  }, []);
   const [readingBook, setReadingBook] = useState(() => getReadingBook());
   // ── The just-completed moment ────────────────────────────────────────────
   // Coming back from a practice, the card is already Done in state — so
@@ -1689,7 +1706,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     audio: { emoji: "🎵", title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }), blurb: t("rhythm.blurb_listening", { defaultValue: "Connecting with God through music" }), href: "/listening" },
     visio: { emoji: "🖼️", title: t("rhythm.card_visio", { defaultValue: "Visio Divina" }), blurb: t("rhythm.blurb_visio", { defaultValue: "Pray with the day's image" }), href: "/visio" },
     lectio: { emoji: "📜", title: t("rhythm.card_lectio", { defaultValue: "Lectio Divina" }), blurb: t("rhythm.blurb_lectio", { defaultValue: "Read a passage slowly, three times" }), href: "/lectio" },
-    reading: { emoji: "📚", title: t("rhythm.card_reading", { defaultValue: "Reading" }), blurb: t("rhythm.blurb_reading_side", { defaultValue: "A page a day" }), href: "/reading-log" },
+    // No href, like the walk above: Reading's log is a POPUP, so the card opens
+    // ReadingBookSheet (the onClick below). It pointed at /reading-log, retired
+    // in b14a6fb0 and now a redirect to /dashboard — so a side whose practice is
+    // Reading bounced to the home, logged nothing, and sat in Next all evening
+    // (audit, 2026-09-16).
+    reading: { emoji: "📚", title: t("rhythm.card_reading", { defaultValue: "Reading" }), blurb: t("rhythm.blurb_reading_side", { defaultValue: "A page a day" }), href: "" },
     rosary: { emoji: "📿", title: t("rhythm.card_rosary", { defaultValue: "The Rosary" }), blurb: t("rhythm.blurb_rosary", { defaultValue: "Pray today's mysteries" }), href: "/rosary" },
     icons: { emoji: "🪟", title: t("rhythm.card_icons", { defaultValue: "Praying with Icons" }), blurb: t("rhythm.blurb_icons_side", { defaultValue: "This week's icon" }), href: "/icon-prayer" },
   };
@@ -1929,6 +1951,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       href: namedSide("morning") ? namedSide("morning")!.href
         : sideIsCreation("morning") || contemplationLogMethod === "timer" ? (sideIsCreation("morning") ? "/cobreathe?side=morning" : `/contemplation?begin=1&side=morning&sit=${sideSitMin("morning")}`) : "",
       ...(!sideIsCreation("morning") && contemplationLogMethod === "manual" ? { onClick: () => markContemplationSideDone("morning", "silent") } : {}),
+      // Reading is logged in its sheet, not by marking the sit done — so this
+      // spread comes AFTER the manual one and wins for that kind.
+      ...(sideKind("morning") === "reading" ? { onClick: () => setReadingSheetOpen(true) } : {}),
       title: namedSide("morning")?.title ?? (sideIsCreation("morning") ? creationTitle("morning") : t("rhythm.card_morning_contemplation", { defaultValue: "Morning Contemplation" })),
       blurb: namedSide("morning")?.blurb ?? (sideIsCreation("morning") ? creationBlurb(morningContemplationDone) : contemplationBlurbFor(morningContemplationDone, sideSitMin("morning"))),
       cta: !sideIsCreation("morning") && contemplationLogMethod === "manual" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
@@ -1947,6 +1972,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       href: namedSide("evening") ? namedSide("evening")!.href
         : sideIsCreation("evening") || contemplationLogMethod === "timer" ? (sideIsCreation("evening") ? "/cobreathe?side=evening" : `/contemplation?begin=1&side=evening&sit=${sideSitMin("evening")}`) : "",
       ...(!sideIsCreation("evening") && contemplationLogMethod === "manual" ? { onClick: () => markContemplationSideDone("evening", "silent") } : {}),
+      // Reading is logged in its sheet, not by marking the sit done — so this
+      // spread comes AFTER the manual one and wins for that kind.
+      ...(sideKind("evening") === "reading" ? { onClick: () => setReadingSheetOpen(true) } : {}),
       title: namedSide("evening")?.title ?? (sideIsCreation("evening") ? creationTitle("evening") : t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" })),
       blurb: namedSide("evening")?.blurb ?? (sideIsCreation("evening") ? creationBlurb(eveningContemplationDone) : contemplationBlurbFor(eveningContemplationDone, sideSitMin("evening"))),
       cta: !sideIsCreation("evening") && contemplationLogMethod === "manual" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), ...eveningLater,

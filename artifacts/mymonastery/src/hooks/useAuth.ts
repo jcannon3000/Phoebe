@@ -11,6 +11,8 @@ import { clearCustomAnchorStorage } from "@/lib/customAnchors";
 import { resetDeviceRuleForLogout } from "@/lib/guestSeed";
 import { clearSpotifyToken } from "@/lib/spotify";
 import { flushRoutineConfig } from "@/lib/routineSync";
+import { flushWrites } from "@/lib/writeOutbox";
+import { flushSessions } from "@/lib/sessionOutbox";
 import { applyCachedHomeLayout } from "@/lib/homeLayoutCache";
 
 // Phoebe Parish — derived server-side from beta_users + group_members
@@ -222,6 +224,18 @@ export function useLogout() {
     // the session, so a flush after it would 401 and lose an edit made within
     // the 800ms push debounce. Awaited so it completes before the session dies.
     try { await flushRoutineConfig(); } catch { /* best-effort */ }
+    /**
+     * THE TWO OUTBOXES, for the same reason and in the same breath. Both are
+     * device-local queues of activity POSTs that failed, and both flush at the
+     * next BOOT — under whoever is signed in then. So A prayed offline, logged
+     * out, and B signed in on the same phone: A's queued sit and A's kept
+     * practices posted under B's session (audit, 2026-09-16). Flushed HERE,
+     * while A's cookie is still valid, they land on A's own account; anything
+     * that still fails is cleared by resetDeviceRuleForLogout below rather than
+     * following the next person.
+     */
+    try { await flushWrites(); } catch { /* best-effort */ }
+    try { await flushSessions(); } catch { /* best-effort */ }
     // Send our device's persistent token so the server can revoke just
     // this device. Other signed-in devices keep their tokens; only this
     // one stops being able to recover its session.

@@ -117,14 +117,22 @@ export default function ThisSundayPage() {
         .filter((sl) => typeof sl.type === "string" && sl.type.includes("title") && sl.title)
         .map((sl) => sl.title!)
         .join(" · ");
-      setSavedSunday({ date: deck.officeDay?.sundayDate ?? date, readings, hasTrack2: !!t2 || !!deck.officeDay?.hasTrack2 });
+      // ONLY the deck's own flag says whether this Sunday has two tracks.
+      // "A deck exists at the track-2 key" does not: /api/office/sunday serves
+      // track 1's slides for ?track=2 when the Sunday has one track
+      // (assembleScriptureReading, `track === 2 && tracks.track2 ? … : track1`),
+      // so the offline walk saves a track-2 deck every week and `!!t2` was
+      // always true — a Track 1/2 row on a one-track Sunday whose Track 2 tap
+      // changed nothing (audit, 2026-09-16).
+      setSavedSunday({ date: deck.officeDay?.sundayDate ?? date, readings, hasTrack2: !!deck.officeDay?.hasTrack2 });
     })();
     return () => { cancelled = true; };
   }, [sunday]);
 
-  // The toggle is offered when EITHER the live answer or the saved decks say
-  // there are two tracks.
-  const hasTrack2 = !!sunday?.track2 || !!savedSunday?.hasTrack2;
+  // The live answer decides once it is here; the saved decks only speak for
+  // the Sunday while it is not. (They used to be OR'd, so a stale saved flag
+  // kept the row up after the live answer said one track.)
+  const hasTrack2 = sunday ? !!sunday.track2 : !!savedSunday?.hasTrack2;
   /**
    * THIS SUNDAY'S commentary, not merely the newest (owner: "they post on
    * monday for the coming sunday … so it should be on this sunday"). The post
