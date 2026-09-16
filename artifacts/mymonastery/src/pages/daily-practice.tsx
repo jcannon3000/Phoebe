@@ -13,6 +13,7 @@ import { Link, useLocation } from "wouter";
 import { ChevronLeft } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // ── Design tokens (match WayOfLoveStep) ─────────────────────────────────
 const BG_CARD  = "rgba(46,107,64,0.10)";
@@ -55,7 +56,7 @@ export default function DailyPracticePage() {
           className="block text-center mb-7 rounded-xl px-4 py-3 font-semibold transition-opacity hover:opacity-90"
           style={{ background: CTA, color: WARM, fontFamily: FONT }}
         >
-          Shape your rule of life →
+          Shape your rule of life<CtaArrow />
         </Link>
 
         {/* Prayer settings shortcuts */}

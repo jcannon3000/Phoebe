@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef, isValidElement } from "react";
 import { HeroCardShell } from "@/components/HeroCardShell";
+import { CtaArrow } from "@/components/CtaArrow";
 import { Link, useLocation } from "wouter";
 import { Plus, X, Camera } from "lucide-react";
 import { LEAF_PHOTOS, HOME_LEAF_PHOTOS, WATER_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
@@ -1697,7 +1698,7 @@ function GatheringDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
                 className="rounded-xl px-4 py-3 text-center font-semibold text-sm cursor-pointer transition-opacity hover:opacity-90"
                 style={{ background: "#2D5E3F", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)" }}
               >
-                📹 Join video call →
+                📹 Join video call<CtaArrow />
               </button>
             )}
             {description.trim() && (
@@ -1950,7 +1951,7 @@ export function ConsolidatedServiceCard({
             className="text-[12px] mt-1"
             style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            See times for your communities →
+            See times for your communities<CtaArrow />
           </p>
         </div>
       </motion.div>
@@ -2155,7 +2156,7 @@ function NewPrayerRequestsCard({
                 border: "1px solid rgba(111,175,133,0.45)",
               }}
             >
-              Respond <span aria-hidden>→</span>
+              Respond<CtaArrow />
             </div>
           </div>
         </div>
@@ -2347,7 +2348,7 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
                   DailyProgressBody first and this copy kept saying "Sit again",
                   which is the second-renderer drift this repo keeps getting
                   caught by: the same card exists twice and only one was fixed. */}
-              {met ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span>&nbsp;{isCreation ? "Kept" : "Kept"}</> : "Begin"} <span aria-hidden>→</span>
+              {met ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span>&nbsp;{isCreation ? "Kept" : "Kept"}</> : "Begin"}<CtaArrow />
             </div>
           )}
         </div>
@@ -2405,7 +2406,7 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
             }}
           >
             {/* See the hero layout above — the same card, the same check. */}
-            {met ? <>✓ {isCreation ? "Kept" : "Kept"}</> : "Begin"} <span aria-hidden>→</span>
+            {met ? <>✓ {isCreation ? "Kept" : "Kept"}</> : "Begin"}<CtaArrow />
           </div>
         )}
       </div>
@@ -2459,7 +2460,7 @@ function PracticeHomeCard({
               whiteSpace: "nowrap",
             }}
           >
-            {cta} <span aria-hidden>→</span>
+            {cta}<CtaArrow />
           </div>
         </div>
       </div>
@@ -2523,7 +2524,7 @@ function ExamenHomeCard({ hero = false }: { hero?: boolean } = {}) {
                 border: `1px solid rgba(${rgb},0.45)`,
               }}
             >
-              Begin <span aria-hidden>→</span>
+              Begin<CtaArrow />
             </div>
           </div>
         </HeroCardShell>
@@ -2587,12 +2588,12 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
                 Prayer completed <span aria-hidden>✓</span>
               </div>
               <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="flex-1 rounded-xl text-center cursor-pointer" style={{ background: `rgba(${rgb},0.22)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.45)` }}>
-                Pray again <span aria-hidden>→</span>
+                Pray again<CtaArrow />
               </div>
             </div>
           ) : (
             <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="mt-[12px] w-full rounded-xl text-center cursor-pointer" style={{ background: `rgba(${rgb},0.22)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.45)` }}>
-              Begin prayer <span aria-hidden>→</span>
+              Begin prayer<CtaArrow />
             </div>
           )}
         </div>
@@ -2626,7 +2627,7 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
             padding: "6px 14px", border: `1px solid rgba(${rgb},0.50)`, whiteSpace: "nowrap",
           }}
         >
-          {done ? "Prayed ✓" : "Pray"} <span aria-hidden>→</span>
+          {done ? "Prayed ✓" : "Pray"}<CtaArrow />
         </div>
       </div>
     </div>
@@ -2690,7 +2691,7 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
             // full-width pill — and it is the ONLY tap target ("if i just tap
             // the chapel card it goes to done, it should just be on the cta").
             <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="mt-4 w-full text-center rounded-full cursor-pointer" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600, padding: "12px 12px" }}>
-              {namedHref ? "Begin" : "Log"} <span aria-hidden>→</span>
+              {namedHref ? "Begin" : "Log"}<CtaArrow />
             </div>
           )}
         </div>
@@ -2727,7 +2728,7 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
             padding: "6px 14px", border: `1px solid rgba(${rgb},0.50)`, whiteSpace: "nowrap", minWidth: 84,
           }}
         >
-          {shownDone ? "Done ✓" : namedHref ? "Begin →" : "Log →"}
+          {shownDone ? "Done ✓" : namedHref ? <>Begin<CtaArrow /></> : <>Log<CtaArrow /></>}
         </div>
       </div>
     </div>
@@ -2774,7 +2775,7 @@ function CreationHomeCard({ side, hero = false }: { side: "morning" | "evening";
                 border: `1px solid rgba(${rgb},0.45)`,
               }}
             >
-              Begin <span aria-hidden>→</span>
+              Begin<CtaArrow />
             </div>
           </div>
         </HeroCardShell>
@@ -2923,7 +2924,7 @@ export function CacHomeCard() {
             whiteSpace: "nowrap",
           }}
         >
-          {hasRead ? "Read again" : "Read"} <span aria-hidden>→</span>
+          {hasRead ? "Read again" : "Read"}<CtaArrow />
         </div>
       </div>
     </div>
@@ -3018,7 +3019,7 @@ function VtsHomeCard() {
             whiteSpace: "nowrap",
           }}
         >
-          {hasRead ? "Read again" : "Read"} <span aria-hidden>→</span>
+          {hasRead ? "Read again" : "Read"}<CtaArrow />
         </div>
       </div>
     </div>
@@ -3279,7 +3280,7 @@ function FddHomeCard() {
             whiteSpace: "nowrap",
           }}
         >
-          {pillLabel} <span aria-hidden>→</span>
+          {pillLabel}<CtaArrow />
         </div>
       </div>
     </div>
@@ -3398,7 +3399,7 @@ function ReadingsHomeCard({ side = "morning", hero = false }: { side?: "morning"
             className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
             style={{ background: `rgba(${rgb},0.22)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.45)` }}
           >
-            {hasRead ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span>&nbsp;Read again</> : "Read"} <span aria-hidden>→</span>
+            {hasRead ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span>&nbsp;Read again</> : "Read"}<CtaArrow />
           </div>
         </div>
       </HeroCardShell>
@@ -3444,7 +3445,7 @@ function ReadingsHomeCard({ side = "morning", hero = false }: { side?: "morning"
             whiteSpace: "nowrap",
           }}
         >
-          {hasRead ? "✓ Read again" : "Read"} <span aria-hidden>→</span>
+          {hasRead ? "✓ Read again" : "Read"}<CtaArrow />
         </div>
       </div>
     </div>
@@ -3531,12 +3532,12 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
                 Prayer completed <span aria-hidden>✓</span>
               </div>
               <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="flex-1 rounded-xl text-center cursor-pointer" style={{ background: "rgba(46,107,64,0.22)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: "1px solid rgba(46,107,64,0.45)" }}>
-                Pray again <span aria-hidden>→</span>
+                Pray again<CtaArrow />
               </div>
             </div>
           ) : (
             <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="mt-[12px] w-full rounded-xl text-center cursor-pointer" style={{ background: "rgba(46,107,64,0.22)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 500, padding: "7px 12px", border: "1px solid rgba(46,107,64,0.45)" }}>
-              Begin prayer <span aria-hidden>→</span>
+              Begin prayer<CtaArrow />
             </div>
           )}
         </div>
@@ -3571,7 +3572,7 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
             padding: "6px 14px", border: `1px solid rgba(${rgb},0.50)`, whiteSpace: "nowrap",
           }}
         >
-          {done ? "Prayed ✓" : "Pray"} <span aria-hidden>→</span>
+          {done ? "Prayed ✓" : "Pray"}<CtaArrow />
         </div>
       </div>
     </div>
@@ -3657,7 +3658,7 @@ function SsjeHomeCard() {
             whiteSpace: "nowrap",
           }}
         >
-          {hasRead ? "Read again" : "Read"} <span aria-hidden>→</span>
+          {hasRead ? "Read again" : "Read"}<CtaArrow />
         </div>
       </div>
     </div>
@@ -3730,7 +3731,7 @@ function NcmpHomeCard() {
             whiteSpace: "nowrap",
           }}
         >
-          {ctaLabel} <span aria-hidden>→</span>
+          {ctaLabel}<CtaArrow />
         </div>
       </div>
     </div>
@@ -4141,7 +4142,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
                 whiteSpace: "nowrap",
               }}
             >
-              {prayedToday ? <>{t("dashboard.completed")} <span aria-hidden>✓</span></> : <>{t("dashboard.begin_prayer")} <span aria-hidden>→</span></>}
+              {prayedToday ? <>{t("dashboard.completed")} <span aria-hidden>✓</span></> : <>{t("dashboard.begin_prayer")}<CtaArrow /></>}
             </div>
           </div>
         </div>
@@ -4241,7 +4242,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
                     border: "1px solid rgba(46,107,64,0.45)",
                   }}
                 >
-                  Pray again <span aria-hidden>→</span>
+                  Pray again<CtaArrow />
                 </div>
               </Link>
             </div>
@@ -4268,7 +4269,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
                     border: "1px solid rgba(46,107,64,0.45)",
                   }}
                 >
-                  Begin <span aria-hidden>→</span>
+                  Begin<CtaArrow />
                 </div>
               </Link>
               <div
@@ -4305,7 +4306,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
                   border: "1px solid rgba(46,107,64,0.45)",
                 }}
               >
-                {ctaCopy} <span aria-hidden>→</span>
+                {ctaCopy}<CtaArrow />
               </div>
             </Link>
           )}
@@ -4425,7 +4426,7 @@ export function FeedHeroCard({ feed: row }: { feed: SubscribedFeed }) {
                   border: "1px solid rgba(46,107,64,0.45)",
                 }}
               >
-                Pray again <span aria-hidden>→</span>
+                Pray again<CtaArrow />
               </div>
             </Link>
           </div>
@@ -4445,7 +4446,7 @@ export function FeedHeroCard({ feed: row }: { feed: SubscribedFeed }) {
                 border: "1px solid rgba(46,107,64,0.45)",
               }}
             >
-              Begin praying <span aria-hidden>→</span>
+              Begin praying<CtaArrow />
             </div>
           </Link>
         )}
@@ -4605,7 +4606,7 @@ export function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
             whiteSpace: "nowrap",
           }}
         >
-          {cta.label} <span aria-hidden>→</span>
+          {cta.label}<CtaArrow />
         </div>
       </div>
     </div>
@@ -5254,8 +5255,7 @@ function PrayerListCard({
                   border: "1px solid rgba(111,175,133,0.45)",
                 }}
               >
-                {isPartial ? t("dashboard.continue_short") : t("dashboard.pray_for_community")}
-                <span aria-hidden> →</span>
+                {isPartial ? t("dashboard.continue_short") : t("dashboard.pray_for_community")}<CtaArrow />
               </div>
             </div>
           )}
@@ -5274,8 +5274,7 @@ function PrayerListCard({
                   border: "1px solid rgba(111,175,133,0.35)",
                 }}
               >
-                {t("dashboard.pray_again_short")}
-                <span aria-hidden> →</span>
+                {t("dashboard.pray_again_short")}<CtaArrow />
               </div>
               <Link
                 href="/prayer-list"
@@ -5293,8 +5292,7 @@ function PrayerListCard({
                   textDecoration: "none",
                 }}
               >
-                {t("dashboard.view_list_short")}
-                <span aria-hidden> →</span>
+                {t("dashboard.view_list_short")}<CtaArrow />
                 {newPrayersCount > 0 && (
                   <span
                     aria-label={`${newPrayersCount} new prayer${newPrayersCount === 1 ? "" : "s"}`}
@@ -5393,7 +5391,7 @@ function FeedTodayCard({
               className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap"
               style={{ background: "#2D5E3F", color: "#F0EDE6" }}
             >
-              View →
+              View<CtaArrow />
             </span>
           </div>
         </div>

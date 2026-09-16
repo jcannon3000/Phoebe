@@ -17,6 +17,7 @@ import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { toast } from "@/hooks/use-toast";
 import { isOnline } from "@/lib/offline";
+import { CtaArrow } from "@/components/CtaArrow";
 import {
   MYSTERY_SETS, mysterySetForDay, artIdsForDay, type MysterySet, type Mystery,
   ANGLICAN_SETS, ANGLICAN_CIRCLES, type AnglicanSet,
@@ -896,7 +897,7 @@ export default function RosaryPage() {
                   cursor: "pointer", fontFamily: FONT, fontSize: 14.5, textDecoration: "underline", textUnderlineOffset: 4,
                 }}
               >
-                {beat.mystery.ref} →
+                {beat.mystery.ref}<CtaArrow />
               </button>
               <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 12.5, margin: 0 }}>
                 {t("rosary.fruit", { defaultValue: "Fruit of the mystery" })}: {beat.mystery.fruit}

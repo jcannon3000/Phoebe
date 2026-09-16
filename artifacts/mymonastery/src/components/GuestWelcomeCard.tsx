@@ -10,6 +10,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { hasUsedAPractice } from "@/lib/practiceOrderLearning";
+import { CtaArrow } from "@/components/CtaArrow";
 
 const FONT = "'Space Grotesk', sans-serif";
 const SEEN_KEY = "phoebe:guest-welcome-dismissed";
@@ -91,7 +92,7 @@ export function GuestWelcomeCard() {
             color: "#F0EDE6", fontFamily: FONT, fontSize: 13.5, fontWeight: 600, cursor: "pointer",
           }}
         >
-          Shape your routine →
+          Shape your routine<CtaArrow />
         </button>
       )}
     </div>

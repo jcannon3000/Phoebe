@@ -7,6 +7,7 @@ import type { TFunction } from "i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { FROST } from "@/lib/frost";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
 const C = {
@@ -677,7 +678,7 @@ function CommunityIntercessionMock() {
           className="px-5 py-1.5 rounded-full text-[11px] font-semibold"
           style={{ background: "#2D5E3F", color: C.text, fontFamily: C.font }}
         >
-          {t("church_deck.mock_intercession_amen")} →
+          {t("church_deck.mock_intercession_amen")}<CtaArrow />
         </div>
         <p
           className="text-[9px]"
@@ -1119,7 +1120,7 @@ function PrayerRhythmMock() {
             fontFamily: C.font,
           }}
         >
-          {t("church_deck.mock_rhythm_reminders")} →
+          {t("church_deck.mock_rhythm_reminders")}<CtaArrow />
         </div>
         <div
           className="px-3 py-1 rounded-full text-[10px]"
@@ -1129,7 +1130,7 @@ function PrayerRhythmMock() {
             fontFamily: C.font,
           }}
         >
-          🕯️ {t("church_deck.mock_rhythm_examen")} →
+          🕯️ {t("church_deck.mock_rhythm_examen")}<CtaArrow />
         </div>
       </div>
     </MockPhone>
@@ -1699,7 +1700,7 @@ function OfficeFddMock() {
         <div className="flex-1 px-4 py-3 flex items-center justify-between gap-2">
           <p className="text-[13px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>Forward Day by Day 📖</p>
           <div className="rounded-full text-[11px] px-3 py-1.5 shrink-0" style={{ background: `rgba(${FDD_BLUE},0.28)`, border: `1px solid rgba(${FDD_BLUE},0.5)`, color: C.text, fontFamily: C.font, fontWeight: 500, whiteSpace: "nowrap" }}>
-            Read →
+            Read<CtaArrow />
           </div>
         </div>
       </div>

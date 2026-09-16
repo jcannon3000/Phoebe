@@ -14,6 +14,7 @@ import {
   WEEKLY_SET_EVENT, WEEKLY_DONE_EVENT, getEnabledWeekly,
 } from "@/lib/weeklyRoutines";
 import { ContemplationSessionsCard } from "@/components/ContemplationSessionsCard";
+import { CtaArrow } from "@/components/CtaArrow";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -61,7 +62,7 @@ export function BetaRhythmExtras() {
                 </p>
               </div>
               <span className="shrink-0 rounded-full text-[12px] font-semibold px-3 py-1.5" style={{ background: "rgba(46,107,64,0.85)", color: WARM, fontFamily: FONT }}>
-                {weekly.length === 0 ? `${t("common.set_up", { defaultValue: "Set up" })} →` : `${t("common.open", { defaultValue: "Open" })} →`}
+                {weekly.length === 0 ? <>{t("common.set_up", { defaultValue: "Set up" })}<CtaArrow /></> : <>{t("common.open", { defaultValue: "Open" })}<CtaArrow /></>}
               </span>
             </div>
             {weekly.length > 0 && (

@@ -81,6 +81,7 @@ import { canPrayOnVenite, veniteOfficeUrl, veniteNoondayUrl } from "@/lib/venite
 import { PointedLine } from "@/components/PointedLine";
 import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 import { DeckAnnouncer } from "@/components/DeckAnnouncer";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
 // Visual chrome mirrors Lectio: dark forest background, top-bar with
@@ -3733,7 +3734,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 onClick={next}
                 style={{ padding: "13px 30px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.3)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
               >
-                Continue →
+                Continue<CtaArrow />
               </button>
               <button
                 type="button"
@@ -3783,7 +3784,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 onClick={next}
                 style={{ padding: "13px 30px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.3)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
               >
-                Continue →
+                Continue<CtaArrow />
               </button>
               <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 14, color: FAINT_GREEN, margin: "6px 0 0" }}>
                 or pause for a time of contemplative prayer
@@ -6021,7 +6022,7 @@ function PhysicalBookGuide(props: {
               color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, padding: "12px 18px", cursor: "pointer", marginBottom: 4,
             }}
           >
-            📖 {bcpGuideText("Enter Digital Slideshow")} <span aria-hidden>→</span>
+            📖 {bcpGuideText("Enter Digital Slideshow")}<CtaArrow />
           </button>
           <div style={{ textAlign: "center", marginBottom: 6 }}>
             <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>
@@ -6969,7 +6970,7 @@ export default function BcpDailyOfficePage() {
               className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
               style={{ background: "rgba(var(--ot-green, 46,107,64),0.55)", ...FROST_BLUR, color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 17, fontWeight: 700, border: "1px solid rgba(var(--ot-fern, 168,197,160),0.5)", cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}
             >
-              Begin <span aria-hidden>→</span>
+              Begin<CtaArrow />
             </button>
             <div className="flex justify-center mt-4">
               <Link

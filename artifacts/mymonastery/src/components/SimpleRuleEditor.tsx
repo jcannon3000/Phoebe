@@ -17,6 +17,7 @@
 // OFFICE_PREFS_EVENT), so useRhythmState + the home cards update live.
 
 import { useEffect, useState } from "react";
+import { CtaArrow } from "@/components/CtaArrow";
 import {
   getExplicitSideLevel,
   setSideLevel,
@@ -345,7 +346,7 @@ export default function SimpleRuleEditor({
             cursor: "pointer",
           }}
         >
-          Full customization →
+          Full customization<CtaArrow />
         </button>
       </div>
 

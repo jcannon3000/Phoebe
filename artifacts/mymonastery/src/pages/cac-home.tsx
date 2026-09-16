@@ -18,6 +18,7 @@ import { useCacDailyReflection } from "@/lib/cacDailyReflection";
 import { hasReadCacToday, CAC_READ_EVENT } from "@/lib/cacReadState";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { CAC, CacFrame, CacBetaPill, useCacLeafBg } from "@/lib/cacTheme";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // Matches HomeLearnSection.tsx's "Continue" row (the real home screen's own
 // in-progress-course card) — same frosted card, eyebrow, title, circular
@@ -110,7 +111,7 @@ function CacReflectionHomeCard({ title, blurb, loading, read }: { title: string;
                 className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
                 style={{ minWidth: 84, background: `rgba(${PHOEBE_CARD_RGB},0.85)`, color: "#F0EDE6" }}
               >
-                Read <span aria-hidden>→</span>
+                Read<CtaArrow />
               </span>
             )}
           </div>

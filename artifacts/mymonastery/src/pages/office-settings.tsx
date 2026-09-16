@@ -32,6 +32,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, ChevronLeft, Check } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { CtaArrow } from "@/components/CtaArrow";
 import {
   useOfficePrefs,
   getSideLevel,
@@ -595,7 +596,7 @@ export default function OfficeSettingsPage() {
             className="rounded-full px-7 py-3 text-[15px] font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
             style={{ background: "#2D5E3F", color: WARM, border: `1px solid ${ACCENT}`, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
           >
-            {step === 0 ? `${t("office_settings.get_started")} →` : `${t("office_settings.next")} →`}
+            {step === 0 ? <>{t("office_settings.get_started")}<CtaArrow /></> : <>{t("office_settings.next")}<CtaArrow /></>}
           </button>
         )}
       </div>

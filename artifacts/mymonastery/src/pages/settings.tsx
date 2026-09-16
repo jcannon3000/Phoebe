@@ -30,6 +30,7 @@ import {
   type OfficeAudioSource,
 } from "@/lib/officePrefs";
 import { resetRoutineToDefault } from "@/lib/resetRoutine";
+import { CtaArrow } from "@/components/CtaArrow";
 
 
 function SectionHeader({ label }: { label: string }) {
@@ -1597,7 +1598,7 @@ function NewsActionsSettings() {
           <span style={{ fontSize: 18 }}>📰</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-              Manage news sources →
+              Manage news sources<CtaArrow />
             </p>
             <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
               Follow or unfollow on the News &amp; Actions page.

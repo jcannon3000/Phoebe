@@ -24,6 +24,7 @@ import { getGuestSilenceMinutesToday, GUEST_SILENCE_EVENT } from "@/lib/guestSil
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { openExternal } from "@/lib/openExternal";
 import { primeAudio } from "@/lib/amenFeedback";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
 // centering prayer. Opened externally (SFSafariViewController on iOS via
@@ -793,7 +794,7 @@ export default function ContemplationPage() {
             cursor: "pointer",
           }}
         >
-          {t("contemplation.start_contemplation", { defaultValue: "Start contemplation" })} <span aria-hidden>→</span>
+          {t("contemplation.start_contemplation", { defaultValue: "Start contemplation" })}<CtaArrow />
         </button>
       </div>
 
@@ -808,7 +809,7 @@ export default function ContemplationPage() {
             className="text-center transition-opacity active:opacity-70"
             style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
           >
-            {t("contemplation.view_stats", { defaultValue: "View stats" })} <span aria-hidden>→</span>
+            {t("contemplation.view_stats", { defaultValue: "View stats" })}<CtaArrow />
           </button>
         </div>
       )}

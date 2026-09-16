@@ -97,6 +97,7 @@ import { useAndrewsVisible } from "@/lib/appSettings";
 import { FrostLayers, frostBox } from "@/components/FrostRing";
 import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
 import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // Set once a routine snapshot exists, so the entry slide can offer "go back
 // to a past routine" synchronously instead of racing a fetch.

@@ -18,6 +18,7 @@ import { PointedLine } from "@/components/PointedLine";
 import DeckNavPill from "@/components/DeckNavPill";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // ── /psalms — Praying the Psalms, rendered like the daily office ─────────────
 //
@@ -604,7 +605,7 @@ export default function PsalmsPage() {
             ))}
           </div>
           <button onClick={finish} style={{ marginTop: 26, background: "rgba(var(--ot-green, 46,107,64),0.6)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.4)", color: WARM, borderRadius: 999, padding: "12px 30px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-            I've prayed them <span aria-hidden>→</span>
+            I've prayed them<CtaArrow />
           </button>
         </div>
       </div>

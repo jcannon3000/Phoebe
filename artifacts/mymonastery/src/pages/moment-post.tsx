@@ -8,6 +8,7 @@ import { openExternal } from "@/lib/openExternal";
 import { useAuth } from "@/hooks/useAuth";
 import { Sprout } from "lucide-react";
 import clsx from "clsx";
+import { CtaArrow } from "@/components/CtaArrow";
 
 type TFunc = ReturnType<typeof useTranslation>["t"];
 // MorningPrayer slideshow imports removed — BCP practices use page reference approach
@@ -169,7 +170,7 @@ function BcpPracticeView({
               onClick={() => openExternal(bcpUrl)}
               className="inline-block px-5 py-2.5 rounded-full text-sm font-semibold transition-all cursor-pointer"
               style={{ background: accentColor, color: bgColor }}>
-              {t("moment_post.open_office", { office: officeName })} →
+              {t("moment_post.open_office", { office: officeName })}<CtaArrow />
             </button>
           </div>
         </div>
@@ -488,7 +489,7 @@ function IntercessionPrayerPage({
           </div>
         )}
         <button onClick={onBack} className="w-full py-4 rounded-2xl bg-[#2C1A0E] text-[#F5EDD8] text-base font-semibold hover:opacity-90 transition-opacity" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
-          {t("moment_post.continue")} →
+          {t("moment_post.continue")}<CtaArrow />
         </button>
       </div>
     </motion.div>

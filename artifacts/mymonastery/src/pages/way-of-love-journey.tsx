@@ -17,6 +17,7 @@ import { ChevronLeft } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
+import { CtaArrow } from "@/components/CtaArrow";
 import {
   WOL_DEVOTIONS, WOL_INVITATION, WOL_TOTAL_DAYS,
   loadWolProgress, saveWolProgress, dayKey, nextWolDay,
@@ -171,7 +172,7 @@ export default function WayOfLoveJourneyPage() {
             </button>
             <button type="button" onClick={nextDay} disabled={pos.week === 8 && pos.day === 5}
               style={{ background: "none", border: "none", color: SAGE, fontSize: 13, fontFamily: FONT, cursor: pos.week === 8 && pos.day === 5 ? "default" : "pointer", opacity: pos.week === 8 && pos.day === 5 ? 0.4 : 1 }}>
-              {t("wol_journey.skip", { defaultValue: "Next" })} →
+              {t("wol_journey.skip", { defaultValue: "Next" })}<CtaArrow />
             </button>
           </div>
         </div>

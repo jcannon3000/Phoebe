@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
 import { InviteStep } from "@/components/InviteStep";
+import { CtaArrow } from "@/components/CtaArrow";
 
 const STEPS = [
   { id: 1, title: "Name" },
@@ -346,7 +347,7 @@ export default function CreateRitual() {
                     Recurring gatherings with your people. Eleanor coordinates schedules and sends Google Calendar invites.
                   </p>
                   <p className="text-xs text-primary font-medium mt-3 group-hover:translate-x-1 transition-transform">
-                    Weekly dinners, run crews, book clubs →
+                    Weekly dinners, run crews, book clubs<CtaArrow />
                   </p>
                 </div>
               </div>
@@ -364,7 +365,7 @@ export default function CreateRitual() {
                     A recurring micro-ritual your whole tradition shows up to together — in a one-hour window each day or week. No login needed to participate.
                   </p>
                   <p className="text-xs text-primary font-medium mt-3 group-hover:translate-x-1 transition-transform">
-                    Morning coffee, meditation, gratitude, walks →
+                    Morning coffee, meditation, gratitude, walks<CtaArrow />
                   </p>
                 </div>
               </div>
@@ -675,7 +676,7 @@ export default function CreateRitual() {
                     : "bg-primary text-primary-foreground hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 }`}
               >
-                Continue →
+                Continue<CtaArrow />
               </button>
             ) : (
               <button

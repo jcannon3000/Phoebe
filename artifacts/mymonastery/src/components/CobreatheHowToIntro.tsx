@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CYCLE_MS } from "@/components/CobreatheBreath";
 import { CenteredGlobe } from "@/components/CenteredGlobe";
+import { CtaArrow } from "@/components/CtaArrow";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -222,7 +223,7 @@ export function CobreatheHowToIntro({ onDone, photos }: { onDone: () => void; ph
               <button type="button" onClick={(e) => { e.stopPropagation(); onDone(); }}
                 className="rounded-2xl py-4 px-10 transition-opacity hover:opacity-90 active:scale-[0.99]"
                 style={{ marginTop: 34, background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.5)", color: WARM, fontFamily: FONT, fontSize: 17, fontWeight: 700, cursor: "pointer" }}>
-                Begin breathing →
+                Begin breathing<CtaArrow />
               </button>
             )}
           </motion.div>

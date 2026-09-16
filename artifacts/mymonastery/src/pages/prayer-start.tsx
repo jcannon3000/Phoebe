@@ -7,6 +7,7 @@ import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { isOnline } from "@/lib/offline";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // ── Prayer chooser ──────────────────────────────────────────────────────────
 //
@@ -233,7 +234,7 @@ export default function PrayerStartPage() {
               textUnderlineOffset: 4,
             }}
           >
-            {fullOfficeLabel} →
+            {fullOfficeLabel}<CtaArrow />
           </button>
         </motion.div>
 

@@ -20,6 +20,7 @@ import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { WhatsNextCard } from "@/components/WhatsNextCard";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // ALL CONTEMPLATION IS PRIVATE NOW (owner direction, 2026-07-02): a silent sit
 // neither broadcasts the sitter's live presence nor displays anyone else's —
@@ -1651,7 +1652,7 @@ export function ContemplationTimer({
                 cursor: "pointer",
               }}
             >
-              {silenceMinRef.current > 0 ? "Skip to silence →" : "End reflection"}
+              {silenceMinRef.current > 0 ? <>Skip to silence<CtaArrow /></> : "End reflection"}
             </button>
           </div>
         )}

@@ -17,6 +17,7 @@ import { Layout } from "@/components/layout";
 import { DailyProgressBody } from "@/components/DailyProgressBody";
 import { HOME_LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { useAuth } from "@/hooks/useAuth";
+import { CtaArrow } from "@/components/CtaArrow";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -76,7 +77,7 @@ export default function DailyProgressPage() {
           className="inline-flex items-center gap-1.5 mb-5 transition-opacity hover:opacity-80"
           style={{ color: SAGE, fontFamily: FONT, fontSize: 13, fontWeight: 600 }}
         >
-          🖨️ {t("daily_progress.print_weekly", { defaultValue: "Print a weekly version (PDF)" })} →
+          🖨️ {t("daily_progress.print_weekly", { defaultValue: "Print a weekly version (PDF)" })}<CtaArrow />
         </Link>
 
         <DailyProgressBody mountTag="daily-progress-page" />

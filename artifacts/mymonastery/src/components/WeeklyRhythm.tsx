@@ -24,6 +24,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
 import { isBreathIntroActive } from "@/lib/breathIntro";
+import { CtaArrow } from "@/components/CtaArrow";
 import {
   WEEKLY_PRACTICES,
   WEEKDAY_LABELS,
@@ -288,7 +289,7 @@ function WeeklyCard({
               className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
               style={{ minWidth: 84, background: `rgba(${RGB},0.85)`, color: WARM, fontFamily: FONT }}
             >
-              {cta} <span aria-hidden>→</span>
+              {cta}<CtaArrow />
             </span>
           )}
         </div>

@@ -7,6 +7,7 @@ import { playOpeningSwell } from "@/lib/amenFeedback";
 import { readOfficeProgress, type LiturgyMode } from "@/pages/bcp-daily-office";
 import { useTranslation } from "react-i18next";
 import { usePilotMode } from "@/hooks/usePilotMode";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // Remembers which depth the user prayed last so the chooser can float
 // it to the top on the next visit. Plain localStorage — a soft UX hint,
@@ -212,7 +213,7 @@ export default function PrayerChooserPage() {
                 fontFamily: FONT,
               }}
             >
-              {card.verb} →
+              {card.verb}<CtaArrow />
             </span>
           </div>
         </div>

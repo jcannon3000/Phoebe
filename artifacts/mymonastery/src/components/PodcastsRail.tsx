@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // ── PodcastsRail — horizontal "podcasts available" carousel ─────────────
 //
@@ -87,7 +88,7 @@ export function PodcastsRail({ title = "🎧 Podcasts" }: { title?: string }) {
         {title}
       </h2>
       <Link href="/podcasts" className="text-sm font-semibold" style={{ color: "#A8C5A0", fontFamily: FONT }}>
-        See all →
+        See all<CtaArrow />
       </Link>
     </div>
   );

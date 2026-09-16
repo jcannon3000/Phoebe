@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { openExternal } from "@/lib/openExternal";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { CtaArrow } from "@/components/CtaArrow";
 import {
   FDD_TODAY_URL, markFddRead,
   SSJE_TODAY_URL, markSsjeRead,
@@ -68,7 +69,7 @@ export default function ReflectionReadPage() {
     if (active === "fdd") setActive("ssje");
     else openCac();
   };
-  const nextLabel = active === "fdd" ? `${t("reflection_read.next")} →` : "CAC ↗";
+  const nextLabel = active === "fdd" ? <>{t("reflection_read.next")}<CtaArrow /></> : "CAC ↗";
 
   // Edge-to-edge in the native app; a padded, rounded card on web.
   const fullBleed = isNativeShell();

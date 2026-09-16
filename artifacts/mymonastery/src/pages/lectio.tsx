@@ -19,6 +19,7 @@ import { sundayLectionaryQuery, type SundayLectionary } from "@/lib/sundayLectio
 import { sundayLectioOptions, sundayLectioOptionsFromDeck, type LectioOption } from "@/lib/sundayLectio";
 import { getOfficeCacheEntry } from "@/lib/officeOfflineCache";
 import { nextSundayYmdNY } from "@/lib/sundayDate";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // Lectio Divina — sit with one of today's three lessons (Old Testament,
 // New Testament, Gospel). Owner's corrected order: pick a lesson → the
@@ -632,7 +633,7 @@ export default function LectioPage() {
                   padding: "12px 22px", cursor: "pointer",
                 }}
               >
-                {chosen ? `Read ${chosen.reference} →` : "Read the passage →"}
+                {chosen ? <>Read {chosen.reference}<CtaArrow /></> : <>Read the passage<CtaArrow /></>}
               </button>
             )}
             {PROMPT_STEPS.includes(step) && (

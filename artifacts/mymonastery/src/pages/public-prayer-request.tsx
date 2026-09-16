@@ -3,6 +3,7 @@ import { useLocation, useRoute } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { clearDailyCompletionFlags } from "@/lib/completionReset";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // Public Prayer Request page
 //
@@ -395,7 +396,7 @@ function AmenedSignupCTA({
           marginBottom: 12,
         }}
       >
-        Become Fellows →
+        Become Fellows<CtaArrow />
       </button>
       <button
         type="button"

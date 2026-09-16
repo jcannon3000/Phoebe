@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { usePilotMode } from "@/hooks/usePilotMode";
+import { CtaArrow } from "@/components/CtaArrow";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -68,7 +69,7 @@ export function PrayerPromptsSlide({ onContinue }: { onContinue: () => void }) {
             </p>
             <button onClick={onContinue} className="w-full rounded-full py-3.5 text-[15px] font-semibold active:scale-[0.99]"
               style={{ background: "#2D5E3F", color: WARM, fontFamily: FONT }}>
-              {t("prayer_prompts.continue", { defaultValue: "Continue" })} →
+              {t("prayer_prompts.continue", { defaultValue: "Continue" })}<CtaArrow />
             </button>
             <button onClick={back} className="w-full rounded-full py-2.5 text-[13px] font-semibold active:scale-[0.99]"
               style={{ background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}>

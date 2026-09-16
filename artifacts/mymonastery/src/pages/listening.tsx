@@ -16,6 +16,7 @@ import { apiRequest, ApiError } from "@/lib/queryClient";
 import { enqueueWrite } from "@/lib/writeOutbox";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 import { openExternal } from "@/lib/openExternal";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // Audio Divina — sacred listening, kept simple as a JOURNAL/TASK (like gratitude):
 // you put on music, then note what you listened to + how, and mark it done for the
@@ -676,7 +677,7 @@ export default function ListeningPage() {
                     className="text-[14px]"
                     style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
                   >
-                    Browse the library →
+                    Browse the library<CtaArrow />
                   </button>
                   )}
                 </div>

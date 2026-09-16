@@ -7,6 +7,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { markIntentionPrayedToday } from "@/lib/intentionsPrayed";
 import { BCP_PRAYERS } from "@/lib/bcp-prayers";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // ── Personal prayer list ("intentions") ───────────────────────────────────
 // A private list of the people / things you're holding in prayer. Add free
@@ -151,7 +152,7 @@ export default function IntentionsPage() {
               className="w-full rounded-2xl flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]"
               style={{ background: `rgba(${RGB},0.85)`, color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: 16, padding: "15px 24px" }}
             >
-              {t("intentions.pray_through", { defaultValue: "Pray through your list" })} <span aria-hidden>→</span>
+              {t("intentions.pray_through", { defaultValue: "Pray through your list" })}<CtaArrow />
             </div>
           </Link>
         )}

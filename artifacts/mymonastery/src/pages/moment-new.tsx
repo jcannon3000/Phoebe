@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { InviteStep } from "@/components/InviteStep";
 import { useCommunityAdminToggle } from "@/hooks/useDemo";
 import { BCP_PRAYERS, type BcpPrayer } from "@/lib/bcp-prayers";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // ─── DrumPicker ───────────────────────────────────────────────────────────────
 // iOS-alarm-style scroll-wheel picker. Snap-scrolls to the nearest item;
@@ -2106,7 +2107,7 @@ export default function MomentNew() {
                         className="inline-block mt-1 text-sm font-semibold rounded-xl px-4 py-2.5 transition-colors"
                         style={{ background: "#2D5E3F", color: "#F0EDE6", textDecoration: "none" }}
                       >
-                        {t("moment_new.invite_community.create_community_cta")} →
+                        {t("moment_new.invite_community.create_community_cta")}<CtaArrow />
                       </a>
                     </div>
                   )}
@@ -2207,7 +2208,7 @@ export default function MomentNew() {
                           <button
                             onClick={() => { const n = Math.max(1, Math.min(60, parseInt(customDurationInput) || 20)); setContemplativeDuration(n); goNext(); }}
                             className="ml-auto py-2 px-4 rounded-xl bg-[#5C7A5F] text-white text-sm font-semibold">
-                            {t("moment_new.continue")} →
+                            {t("moment_new.continue")}<CtaArrow />
                           </button>
                         </div>
                       </div>
@@ -2345,7 +2346,7 @@ export default function MomentNew() {
                           className="w-full py-3 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-30"
                           style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                         >
-                          {t("moment_new.continue")} →
+                          {t("moment_new.continue")}<CtaArrow />
                         </button>
                       </div>
                     </div>

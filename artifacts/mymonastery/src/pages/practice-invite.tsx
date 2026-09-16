@@ -26,6 +26,7 @@ import { readCachedHomeLayout, saveHomeLayout, type HomeLayout } from "@/lib/hom
 import { setPracticeSlot, type SlottedPractice } from "@/lib/customAnchors";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { CtaArrow } from "@/components/CtaArrow";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -120,7 +121,7 @@ export default function PracticeInvitePage() {
               Its card is on your home now. Drag it wherever it belongs in your day.
             </p>
             <button type="button" onClick={() => setLocation("/dashboard")} style={{ marginTop: 18, width: "100%", background: "rgba(46,107,64,0.85)", color: WARM, border: "none", borderRadius: 999, padding: "14px 26px", fontSize: 15.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
-              See it on your home →
+              See it on your home<CtaArrow />
             </button>
           </div>
         ) : (

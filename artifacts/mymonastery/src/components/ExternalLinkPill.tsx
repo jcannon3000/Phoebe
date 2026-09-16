@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { openExternal } from "@/lib/openExternal";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // A rounded "Take action →" / "Learn more →" pill on slideshow
+// intercession slides. The label's own trailing arrow is stripped and
+// re-rendered through <CtaArrow/>, so on Android the pill reads without
+// one (owner, 2026-09-16) and callers keep their copy.
 // intercession slides. Opens the URL through openExternal so the
 // native shell uses SFSafariViewController (web build falls back to a
 // new tab). Glows gently until the user has tapped it once — that
@@ -60,7 +64,7 @@ export function ExternalLinkPill({
         textDecoration: "none",
       }}
     >
-      {label}
+      {label.replace(/\s*→\s*$/, "")}<CtaArrow />
     </a>
   );
 }

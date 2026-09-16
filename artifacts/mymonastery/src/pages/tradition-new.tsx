@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import ImprintSlideshow, { useGatheringSlides } from "@/components/ImprintSlideshow";
 import { useTranslation } from "react-i18next";
 import { useCommunityAdminToggle } from "@/hooks/useDemo";
+import { CtaArrow } from "@/components/CtaArrow";
 
 const TEMPLATE_OPTIONS = [
   { value: "coffee", emoji: "☕", label: "Coffee", tagline: "Share your first cup, again and again" },
@@ -424,7 +425,7 @@ export default function TraditionNew() {
                 className="w-full py-4 rounded-2xl text-base font-semibold"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                Continue →
+                Continue<CtaArrow />
               </button>
             </motion.div>
           )}
@@ -546,7 +547,7 @@ export default function TraditionNew() {
                 className="w-full py-4 rounded-2xl text-base font-semibold"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                Continue →
+                Continue<CtaArrow />
               </button>
             </motion.div>
           )}
@@ -592,7 +593,7 @@ export default function TraditionNew() {
                 className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                Continue →
+                Continue<CtaArrow />
               </button>
             </motion.div>
           )}
@@ -786,7 +787,7 @@ export default function TraditionNew() {
                 className="w-full mt-8 py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                {submitting ? "Starting..." : "Continue →"}
+                {submitting ? "Starting..." : <>Continue<CtaArrow /></>}
               </button>
             </motion.div>
           )}

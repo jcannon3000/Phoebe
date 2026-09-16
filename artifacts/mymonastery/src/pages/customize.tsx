@@ -23,6 +23,7 @@ import { addCustomAnchor, getCustomAnchors, removeCustomAnchor, setPracticeSlot,
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 import { enqueueWrite, dropWrite } from "@/lib/writeOutbox";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // ── /customize — the BASIC customizer for logged-out / device-local sessions ─
 //
@@ -933,7 +934,7 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
           className="mt-6 text-sm font-medium"
           style={{ color: SAGE, fontFamily: FONT }}
         >
-          Customize more fully →
+          Customize more fully<CtaArrow />
         </Link>
       </div>
     </div>

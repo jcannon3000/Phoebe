@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // ─── Palette (mirrors church-deck.tsx) ───────────────────────────────────────
 const C = {
@@ -568,7 +569,7 @@ function IntercessionMock() {
             fontFamily: C.font,
           }}
         >
-          {t("features_deck.mock_intercession_amen")} →
+          {t("features_deck.mock_intercession_amen")}<CtaArrow />
         </div>
       </div>
 

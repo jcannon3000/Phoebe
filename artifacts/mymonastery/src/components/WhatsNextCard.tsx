@@ -1,3 +1,4 @@
+import { CtaArrow } from "@/components/CtaArrow";
 // The office's "Up next" closing card (prayer-mode.tsx's PrayerCompletedSlide),
 // pulled out so every practice's closing screen hands off to the next thing in
 // the rhythm the SAME way, instead of each slideshow inventing its own look.
@@ -53,7 +54,7 @@ export function WhatsNextCard({
           className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
           style={{ minWidth: 84, background: "rgba(var(--ot-green, 46,107,64),0.85)", color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}
         >
-          {cta} <span aria-hidden>→</span>
+          {cta}<CtaArrow />
         </span>
       </div>
     </button>

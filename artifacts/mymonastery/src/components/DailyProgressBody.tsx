@@ -37,7 +37,8 @@ import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentComplet
 import { logCelebrationEvent } from "@/lib/celebrationDebugLog";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { playRoutineCompleteSwell } from "@/lib/amenFeedback";
-import { isNativeShell, isAndroidDevice } from "@/lib/isNativeShell";
+import { isNativeShell } from "@/lib/isNativeShell";
+import { CtaArrow } from "@/components/CtaArrow";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
 import { isBreathIntroActive } from "@/lib/breathIntro";
@@ -342,17 +343,6 @@ function StreakCard() {
   );
 }
 
-
-/**
- * The "→" a CTA pill ends with — on iOS and the web. On Android the pills say
- * the word alone (owner, 2026-09-16: "take out the arrows on cta pills on
- * android"); the leading space travels with the arrow so a pill without one
- * doesn't keep a trailing gap.
- */
-function CtaArrow({ className }: { className?: string }) {
-  if (isAndroidDevice()) return null;
-  return <> <span aria-hidden className={className}>→</span></>;
-}
 
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
@@ -3112,7 +3102,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
                 pill that says practices available offline ... that goes to a
                 special page where it lists all the practices they can do
                 offline" — /offline is that page. */}
-            {t("daily_progress.offline_see_all", { defaultValue: "Practices available offline" })} →
+            {t("daily_progress.offline_see_all", { defaultValue: "Practices available offline" })}<CtaArrow />
           </button>
         </div>
       )}
@@ -3382,7 +3372,7 @@ function LogSheet({
             className="w-full rounded-2xl py-3.5 mt-2 text-[15px] font-semibold active:scale-[0.99]"
             style={{ background: "rgba(46,107,64,0.28)", color: WARM, border: "1px solid rgba(46,107,64,0.5)", fontFamily: FONT }}
           >
-            {middle.label} <span aria-hidden>→</span>
+            {middle.label}<CtaArrow />
           </button>
         )}
 

@@ -1,6 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import { en } from "./en";
+import { isAndroidDevice } from "@/lib/isNativeShell";
 
 // i18n setup for Phoebe.
 //
@@ -23,9 +24,27 @@ function readInitialLocale(): SupportedLocale {
   return "en";
 }
 
+/**
+ * On Android every CTA label loses its trailing arrow (owner, 2026-09-16:
+ * "take out the arrows on cta pills on android"). Hard-coded pills render
+ * theirs through <CtaArrow/>; the ~90 translated labels that end in " →"
+ * (en.ts) go through this post-processor instead, so en.ts stays the single
+ * copy and iOS/web output is byte-identical. A lone "→" (send_arrow, an
+ * icon) is kept: the rule needs a word before the arrow.
+ */
+const androidCtaArrow = {
+  type: "postProcessor" as const,
+  name: "androidCtaArrow",
+  process(value: string): string {
+    return typeof value === "string" ? value.replace(/(\S)\s+→\s*$/, "$1") : value;
+  },
+};
+
 void i18n
+  .use(androidCtaArrow)
   .use(initReactI18next)
   .init({
+    postProcess: isAndroidDevice() ? ["androidCtaArrow"] : undefined,
     resources: {
       en: { translation: en },
     },

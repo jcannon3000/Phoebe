@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // "My Prayer Feeds" — lists every feed the caller created, INCLUDING
 // drafts and feeds turned Off (paused) that don't show in the public
@@ -134,7 +135,7 @@ export default function MyPrayerFeedsPage() {
                       fontFamily: SPACE_GROTESK,
                     }}
                   >
-                    Manage →
+                    Manage<CtaArrow />
                   </button>
                   <button
                     type="button"

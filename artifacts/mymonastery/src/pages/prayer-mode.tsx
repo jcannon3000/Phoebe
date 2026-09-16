@@ -54,6 +54,7 @@ import { useRhythmState } from "@/hooks/useRhythmState";
 import { getPracticeSlot, SLOT_RANK, EVENING_OPEN_HOUR, type CustomSlot } from "@/lib/customAnchors";
 import { isOnline } from "@/lib/offline";
 import { enqueueWrite } from "@/lib/writeOutbox";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // Drive the NATIVE iOS status-bar color (Capacitor StatusBar plugin) so the
 // strip above the WebView matches the slide background. The app sets it once
@@ -368,7 +369,7 @@ function AmenButton({ slideKey, onAdvance }: {
           display: "inline-block",
         }}
       >
-        Amen →
+        Amen<CtaArrow />
       </span>
     </button>
   );
@@ -716,7 +717,7 @@ function SlideContent({
               className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
               style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.7)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 16, fontWeight: 600, padding: 15, cursor: "pointer" }}
             >
-              Start contemplation <span aria-hidden>→</span>
+              Start contemplation<CtaArrow />
             </button>
           </div>
           {/* Breathing Together (the breath) — set apart with a space. */}
@@ -758,7 +759,7 @@ function SlideContent({
           className="w-full rounded-full mt-2.5 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
           style={{ background: "rgba(var(--ot-deep, 9,26,16),0.5)", border: "1px solid rgba(var(--ot-sage, 143,175,150),0.55)", color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 15, fontWeight: 600, cursor: "pointer", padding: 15 }}
         >
-          or continue with office <span aria-hidden>→</span>
+          or continue with office<CtaArrow />
         </button>
       </div>
     );
@@ -1428,7 +1429,7 @@ function HabitSlide({
                 cursor: "pointer",
               }}
             >
-              🕯️ Ignatian Examen →
+              🕯️ Ignatian Examen<CtaArrow />
             </button>
           </Link>
         )}
@@ -1629,7 +1630,7 @@ function ReflectionSlide({
           className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)", fontFamily: RFONT }}
         >
-          {t("common.continue", { defaultValue: "Continue" })} →
+          {t("common.continue", { defaultValue: "Continue" })}<CtaArrow />
         </button>
       </div>
     </div>
@@ -1725,7 +1726,7 @@ function HoldMeComposer() {
           className="px-5 py-2 rounded-full text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
           style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)" }}
         >
-          {create.isPending ? "Sharing…" : "Share →"}
+          {create.isPending ? "Sharing…" : <>Share<CtaArrow /></>}
         </button>
       </div>
       {create.isError && (
@@ -1927,7 +1928,7 @@ function WhatsNextSlide({
           {name}
         </span>
         <span style={{ fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 13, fontWeight: 600, color: "var(--oh-fern, #A8C5A0)", marginTop: 2 }}>
-          {t("common.read", { defaultValue: "Read" })} →
+          {t("common.read", { defaultValue: "Read" })}<CtaArrow />
         </span>
       </motion.button>
 

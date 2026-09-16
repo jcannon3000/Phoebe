@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { OfficeViewer, type LiturgyMode } from "./bcp-daily-office";
 import { isOnline } from "@/lib/offline";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // ── Daily Devotions picker ──────────────────────────────────────────────────
 //
@@ -188,7 +189,7 @@ export default function BcpDailyDevotionPage() {
             Want the full liturgy?
           </p>
           <Link href="/bcp/daily-office" className="text-xs font-semibold mt-1 inline-block" style={{ color: "#6FAF85" }}>
-            Open the Daily Office →
+            Open the Daily Office<CtaArrow />
           </Link>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { openExternal } from "@/lib/openExternal";
 import { primeAudio } from "@/lib/amenFeedback";
+import { CtaArrow } from "@/components/CtaArrow";
 
 // The Co-Breathe onboarding SLIDESHOW — a tap-through deck drawn from Laurel
 // Kearns' "Con-spiring Together: Breathing for Justice": conspire = to breathe
@@ -106,7 +107,7 @@ export default function CobreatheAboutPage() {
                 className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
                 style={{ maxWidth: 360, background: "#2D5E3F", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, border: "none", cursor: "pointer" }}
               >
-                {t("cobreathe.begin_about", { defaultValue: "Begin the breath" })} <span aria-hidden>→</span>
+                {t("cobreathe.begin_about", { defaultValue: "Begin the breath" })}<CtaArrow />
               </button>
               <button
                 type="button"

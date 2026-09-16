@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
+import { CtaArrow } from "@/components/CtaArrow";
 import {
   CONTEMPLATION_SESSIONS_EVENT, CONTEMPLATION_SESSION_DONE_EVENT,
   getMode, getSessionsToday, slotMeta, sessionLabel, toggleSessionDoneToday,
@@ -56,7 +57,7 @@ export function ContemplationSessionsCard() {
               </p>
             </div>
             <span className="shrink-0 rounded-full text-[12px] font-semibold px-3 py-1.5" style={{ background: `rgba(${TEAL},0.85)`, color: WARM, fontFamily: FONT }}>
-              {t("common.set_up", { defaultValue: "Set up" })} →
+              {t("common.set_up", { defaultValue: "Set up" })}<CtaArrow />
             </span>
           </div>
         </div>
@@ -119,7 +120,7 @@ export function ContemplationSessionsCard() {
                 className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5 active:scale-[0.97] transition-transform"
                 style={{ background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT }}
               >
-                {s.done ? t("contcard.again", { defaultValue: "Again" }) : t("contcard.begin", { defaultValue: "Begin" })} →
+                {s.done ? t("contcard.again", { defaultValue: "Again" }) : t("contcard.begin", { defaultValue: "Begin" })}<CtaArrow />
               </button>
             </div>
           );
