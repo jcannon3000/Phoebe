@@ -65,9 +65,11 @@ export const GUIDED_PRAYER_ART: Record<1 | 2 | 3 | 4, GuidedPrayerArt[]> = {
     // Reid's Loaves and Fishes and Latimore's Presentation went (owner,
     // 2026-09-14: "not sure how the thanksgiving one … is relevant") — neither
     // shows thanks being given at a glance. What stays does.
-    // Order matters: five days line up with Supplication's ten, so a MAFA
-    // opening here would bump its MAFA Gethsemane every single time it came
-    // round (the check caught it never being shown).
+    // Order matters here too: Thanksgiving picks BEFORE Supplication, so a
+    // MAFA opening this list takes that hand for the whole sitting and bumps
+    // Supplication's MAFA Gethsemane on every day the two line up (the check
+    // caught exactly that). This read "five against Supplication's ten" until
+    // that list became eight on 2026-09-16.
     { id: 56885, ratio: 1.406 }, // Caravaggio, Supper at Emmaus — the bread blessed
     { id: 48295, ratio: 1.532 }, // JESUS MAFA, Healing of the Ten Lepers — the one who turns back
     { id: 56568, ratio: 1.026 }, // Swanson, Rainbow — Noah's household, hands raised at the altar
