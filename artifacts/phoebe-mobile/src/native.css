@@ -47,6 +47,22 @@ html.platform-ios body {
   box-sizing: border-box;
 }
 
+/* Layout's photo backdrop runs down THROUGH that bottom padding
+   (mymonastery components/layout.tsx, LayoutBackdrop). It used to stop where
+   the page's content box ends, so the padding showed as a band of plain page
+   green under the last thing on every photo page (owner, 2026-09-16: "on
+   mobile there is a gap under about" · "where there is a differnt color").
+   The web never sets this, so there the backdrop keeps to the page.
+
+   Only where overflow-x: clip exists (iOS 16+). On iOS 15 the Layout root's
+   overflow-x: hidden fallback makes it a scroll container, and a backdrop
+   reaching past its bottom would scroll inside it. */
+@supports (overflow: clip) {
+  html.platform-ios {
+    --layout-backdrop-bleed: env(safe-area-inset-bottom);
+  }
+}
+
 /* Bottom-anchored UI (floating nav bars, sticky footers) should clear
    the keyboard when it's up. Components can opt in by adding the class
    `native-keyboard-aware`. */

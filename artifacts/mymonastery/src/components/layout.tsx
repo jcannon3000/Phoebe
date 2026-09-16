@@ -1425,10 +1425,19 @@ function LayoutBackdrop({ photo, opacity }: { photo: string; opacity: number }) 
   // Photo AND its wash fade UP together once the image decodes — so the
   // backdrop eases in as one piece rather than the dark wash flashing on
   // instantly while the photo is still loading behind it.
+  //
+  // Both reach BLEED past the bottom of the page: in the iOS app the body is
+  // padded by the home-indicator inset below this root, and a backdrop that
+  // stopped at the root left that padding a band of plain page green under the
+  // last thing on the page (owner, 2026-09-16: "on mobile there is a gap under
+  // about"). The shell's native.css sets it; everywhere else it's 0. The
+  // img needs the explicit height — an image with top and bottom set keeps
+  // its own height instead of stretching.
+  const BLEED = "var(--layout-backdrop-bleed, 0px)";
   return (
     <>
-      <img src={photo} alt="" aria-hidden onLoad={() => setLoaded(true)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: loaded ? opacity : 0, transition: "opacity 0.8s ease", zIndex: -1 }} />
-      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, opacity: loaded ? 1 : 0, transition: "opacity 0.8s ease", background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+      <img src={photo} alt="" aria-hidden onLoad={() => setLoaded(true)} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: `calc(100% + ${BLEED})`, objectFit: "cover", opacity: loaded ? opacity : 0, transition: "opacity 0.8s ease", zIndex: -1 }} />
+      <div aria-hidden style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: `calc(-1 * ${BLEED})`, zIndex: -1, opacity: loaded ? 1 : 0, transition: "opacity 0.8s ease", background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
     </>
   );
 }
