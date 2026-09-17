@@ -20,6 +20,8 @@ import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { BreathIntro } from "@/components/BreathIntro";
+import { feastIconFor, type FeastIcon } from "@/lib/feastIcons";
+import { cachedImageUrl, cacheImage } from "@/lib/imageCache";
 import { CYCLE_MS } from "@/lib/breathRings";
 import {
   BREATH_INTRO_BREATHS, BREATH_INTRO_SLACK_MS,
@@ -1031,6 +1033,11 @@ function DailyProgressPill() {
 // faded straight into the home. Native app only — never on web — and only
 // once per app launch. Signed-out visitors see it too since 2026-09-04: the
 // beat starts on mount rather than after the sign-in check (see below).
+/** How long a feast day's saved icon may take to be found and decoded before the splash gives up on it for this launch. */
+const FEAST_LOOKUP_MS = 400;
+/** How long the splash holds once a feast icon is on screen (owner: "about 2 seconds"). */
+const FEAST_HOLD_MS = 2000;
+
 function OpeningSplash() {
   const { user, isLoading: authLoading, settled: authSettled } = useAuth();
   const native = isNativeShell();
@@ -1085,6 +1092,69 @@ function OpeningSplash() {
     () => phase === "breath" || (phase === "in" && breathEligibleRef.current && breathIntroDueNow()),
   );
 
+  /**
+   * A FEAST DAY'S ICON IN PLACE OF THE APP ICON (owner, 2026-09-17: "If it is
+   * feast day and we have an icon of the saint, could we display it on the
+   * splash?" — larger than the app icon, the name beneath, held about two
+   * seconds, for everyone). lib/feastIcons says which days and which icon.
+   *
+   * NEVER WAITED ON. The picture is shown only from the copy saved on the
+   * device (the offline walk keeps the coming month's), looked up for at most
+   * FEAST_LOOKUP_MS and decoded before it appears, so it lands whole or not at
+   * all; otherwise this launch shows the Phoebe icon as on any day and saves
+   * the icon for the next one. Only a launch that actually SHOWS it holds the
+   * splash longer. A launch that takes the three breaths shows neither icon.
+   */
+  const feastIcon = useMemo<FeastIcon | null>(
+    () => (native && phase === "in" && !breathLaunch ? feastIconFor(new Date()) : null),
+    // Decided once, on the first frame, like breathLaunch above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  // "pending" while the saved copy is looked up; then its local URL, or null
+  // for the Phoebe icon.
+  const [feastImg, setFeastImg] = useState<string | null | "pending">(() => (feastIcon ? "pending" : null));
+  const feastPendingRef = useRef(!!feastIcon);
+  // When the beat may end — pushed out to FEAST_HOLD_MS once a feast icon shows.
+  const beatHoldUntilRef = useRef(0);
+  useEffect(() => {
+    if (!feastIcon) return;
+    feastPendingRef.current = true;
+    let settled = false;
+    const settle = (url: string | null) => {
+      if (settled) return;
+      settled = true;
+      feastPendingRef.current = false;
+      if (url && phaseRef.current === "in") beatHoldUntilRef.current = Date.now() + FEAST_HOLD_MS;
+      setFeastImg(url);
+    };
+    const timer = window.setTimeout(() => settle(null), FEAST_LOOKUP_MS);
+    void (async () => {
+      const local = await cachedImageUrl(feastIcon.img).catch(() => null);
+      if (!local) {
+        settle(null);
+        // For the next launch today — any network, one picture.
+        void cacheImage(feastIcon.img);
+        return;
+      }
+      // Loaded, and then a short head start on decoding so the first frame
+      // isn't a blank box. Not decode() alone: it can wait on the page being
+      // visible and never resolve (a hidden WebView), and the image, once
+      // loaded, fades in over 0.6s regardless.
+      try {
+        const probe = new Image();
+        await new Promise<void>((resolve, reject) => {
+          probe.onload = () => resolve();
+          probe.onerror = () => reject(new Error("feast icon failed to load"));
+          probe.src = local;
+        });
+        await Promise.race([probe.decode().catch(() => {}), new Promise((r) => window.setTimeout(r, 120))]);
+      } catch { settle(null); return; }
+      settle(local);
+    })();
+    return () => { window.clearTimeout(timer); settled = true; feastPendingRef.current = false; };
+  }, [feastIcon]);
+
   // Start the auto-dismiss once auth has resolved (user present) — NOT on a
   // bare mount. On a native cold start `user` is null while /api/auth/me
   // loads; stamping the once-per-launch flag then would burn the splash
@@ -1105,8 +1175,13 @@ function OpeningSplash() {
     // Nothing to read anymore — just the icon — so this is a beat, not a hold.
     // 0.7s (was 1.2s): owner, 2026-09-04, "it's still not loading fast
     // enough" — the beat plus the fade plus the failsafe below bound the wait.
-    const id = setTimeout(() => {
+    let id = window.setTimeout(function endBeat() {
       if (phaseRef.current !== "in") return;
+      // A feast icon being looked up, or on screen: wait for it (the lookup is
+      // capped, and the hold is FEAST_HOLD_MS from the moment it appeared).
+      if (feastPendingRef.current) { id = window.setTimeout(endBeat, 50); return; }
+      const hold = beatHoldUntilRef.current - Date.now();
+      if (hold > 0) { id = window.setTimeout(endBeat, hold); return; }
       // End of the beat: three breaths, or straight into the fade. Decided
       // here, once the sign-in record has had the beat to settle — and never
       // waited on beyond it. A launch slow enough to need the failsafe or the
@@ -1119,7 +1194,7 @@ function OpeningSplash() {
       }
       setPhase("out");
     }, 700);
-    return () => clearTimeout(id);
+    return () => window.clearTimeout(id);
   }, [phase, native]);
   /**
    * Failsafe dismissal — the reason the splash gets stuck.
@@ -1164,7 +1239,8 @@ function OpeningSplash() {
   const [showEnter, setShowEnter] = useState(false);
   useEffect(() => {
     if (phase !== "in" || !native) { setShowEnter(false); return; }
-    const id = setTimeout(() => setShowEnter(true), 1600);
+    // Past a feast icon's longer hold too, so it never shows over the saint.
+    const id = setTimeout(() => setShowEnter(true), feastIcon ? FEAST_LOOKUP_MS + FEAST_HOLD_MS + 300 : 1600);
     return () => clearTimeout(id);
   }, [phase, native]);
 
@@ -1284,7 +1360,29 @@ function OpeningSplash() {
           backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
         }}
       />
-      {!breathLaunch && (
+      {!breathLaunch && feastImg !== "pending" && (feastImg && feastIcon ? (
+        // The feast's icon, the name beneath, and the iconographer's credit
+        // (most of these are shown by the artist's permission, with
+        // attribution). Fades in place — no scale, no rise.
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "0 28px", textAlign: "center" }}
+        >
+          <img
+            src={feastImg}
+            alt={feastIcon.label}
+            style={{ display: "block", width: "auto", height: "auto", maxWidth: "min(62vw, 260px)", maxHeight: "44vh", borderRadius: 14, boxShadow: "0 10px 36px rgba(0,0,0,0.45)" }}
+          />
+          <p style={{ margin: "8px 0 0", color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: "clamp(20px, 5.6vw, 24px)", lineHeight: 1.35, textShadow: "0 2px 18px rgba(8,30,18,0.6)", textWrap: "balance" }}>
+            {feastIcon.label}
+          </p>
+          <p style={{ margin: 0, color: "rgba(240,237,230,0.62)", fontFamily: "'Space Grotesk', system-ui, sans-serif", fontSize: 11, letterSpacing: "0.04em", textShadow: "0 1px 10px rgba(8,30,18,0.6)" }}>
+            {feastIcon.credit}
+          </p>
+        </motion.div>
+      ) : (
         <motion.img
           src="/phoebe-app-icon.png"
           alt=""
@@ -1294,7 +1392,7 @@ function OpeningSplash() {
           transition={{ duration: 0.5, ease: "easeOut" }}
           style={{ width: 96, height: 96, borderRadius: 22, boxShadow: "0 8px 32px rgba(0,0,0,0.35)" }}
         />
-      )}
+      ))}
       {phase === "breath" && breathStartedAtRef.current != null && (
         <BreathIntro startedAt={breathStartedAtRef.current} breaths={BREATH_INTRO_BREATHS} onDone={finishBreath} />
       )}

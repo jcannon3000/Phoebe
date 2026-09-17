@@ -33,6 +33,7 @@ import { sundayPsalmReadUrl } from "@/lib/sundayLectio";
 import { passageRefFromUrl, purgeExtractedPassages } from "@/lib/passageCache";
 import { cachePage, hasSavedPage, prunePagesExcept, prunePages } from "@/lib/pageCache";
 import { cacheImage, hasCachedImage, pruneImages, pruneImagesExcept } from "@/lib/imageCache";
+import { feastIconUrlsAhead } from "@/lib/feastIcons";
 import { cacheDay, getCachedDay, pruneDays, pruneDaysBefore } from "@/lib/dayContentCache";
 import { VISIO_SCHEDULE } from "@/lib/visioSchedule";
 import { chooseArtwork, readingUrl } from "@/lib/visioSelect";
@@ -562,6 +563,12 @@ async function warmReadersAndPictures(ctx: { onWifi: boolean; noteSaved: () => v
     if (chosen?.ref) { const u = readingUrl(chosen.ref); if (u) pageUrls.add(u); }
     if (chosen?.art?.img) images.add(chosen.art.img);
   }
+  /**
+   * THE FEAST ICONS for the same month (lib/feastIcons) — the app-open splash
+   * shows a feast's icon only from the copy saved here, never waiting on the
+   * network. Joining `images` also keeps them from the prune below.
+   */
+  for (const img of feastIconUrlsAhead(READER_WINDOW_DAYS)) images.add(img);
   /**
    * TWO PASSES, because the second depends on the first: the day-lists must be
    * saved before Lectio's reading URLs are known, and those URLs are pages to
