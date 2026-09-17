@@ -21,14 +21,16 @@
  * golden-ratio line. Haptics as Creation Prayer has them ("make sure there are
  * haptics on the intro breathing"); still no sound.
  *
- * ONE NAME OF GOD PER BREATH, under the rings (owner, 2026-09-16: "with each
- * of the three breaths do Creator / Sustainer / Redeemer … under the circles,
- * balanced with the text on top … they stay for the whole breath … on the in
- * and out"). The word holds for its whole breath and rises and falls with each
- * half of it, as "Breathe In / Breathe Out" does on Creation Prayer — so it
- * changes at the bottom of the exhale, while it is invisible.
+ * Pared back the same evening (owner): the Creator / Sustainer / Redeemer names
+ * that sat under the rings for one pass came out ("On the splash take out the
+ * sustainer redeemer... part"), and so did Creation Prayer's "n of 3" counter
+ * ("take out the 1 of 3"), and "Breathe In / Breathe Out" moved from the bottom
+ * row into the names' place under the rings, centred, in italic Georgia ("where
+ * the sustainer text is have it do breath in and out italic georgia centered
+ * there"), still rising and falling with each half-breath. What is left is the
+ * invitation above the rings, the phase word the same distance below, and Skip.
  *
- * It only breathes, counts and says when it is done. Whether it appears at all,
+ * It only breathes and says when it is done. Whether it appears at all,
  * and what happens afterwards, belong to OpeningSplash (components/layout.tsx).
  */
 import { useEffect, useRef, useState } from "react";
@@ -42,18 +44,10 @@ import {
 } from "@/lib/breathRings";
 
 const WARM = "#F0EDE6";
-const TEXT_DIM = "rgba(182,210,188,0.72)";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
-/** The word under the rings for breath 1, 2 and 3. */
-const BREATH_NAMES = [
-  { key: "breath_intro.creator", word: "Creator" },
-  { key: "breath_intro.sustainer", word: "Sustainer" },
-  { key: "breath_intro.redeemer", word: "Redeemer" },
-] as const;
-/** The invitation above the rings and the name below sit this far from them (of the screen's height). */
+const SERIF = "Georgia, 'Times New Roman', serif";
+/** The invitation above the rings and the phase word below sit this far from them (of the screen's height). */
 const TEXT_GAP = "8%";
-
-type Readout = { inhale: boolean; breath: number };
 
 export function BreathIntro({
   startedAt,
@@ -69,18 +63,14 @@ export function BreathIntro({
   const ringInRef = useRef<SVGCircleElement>(null);
   const ringOutRef = useRef<SVGCircleElement>(null);
   const sessionRingRef = useRef<SVGCircleElement>(null);
-  const phaseWordRef = useRef<HTMLSpanElement>(null);
-  const nameRef = useRef<HTMLParagraphElement>(null);
+  const phaseWordRef = useRef<HTMLParagraphElement>(null);
   const doneRef = useRef(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
   const totalMs = breaths * CYCLE_MS;
 
-  const readoutAt = (now: number): Readout => {
-    const since = Math.max(0, now - startedAt);
-    return { inhale: since % CYCLE_MS < INHALE_MS, breath: Math.min(breaths, Math.floor(since / CYCLE_MS) + 1) };
-  };
-  const [readout, setReadout] = useState<Readout>(() => readoutAt(Date.now()));
+  const inhaleAt = (now: number): boolean => Math.max(0, now - startedAt) % CYCLE_MS < INHALE_MS;
+  const [inhaleWord, setInhaleWord] = useState<boolean>(() => inhaleAt(Date.now()));
 
   const [boxPx, setBoxPx] = useState<number>(() => {
     try { return breathGlobeBoxPx(window.innerWidth); } catch { return 158; }
@@ -95,8 +85,8 @@ export function BreathIntro({
   // The rings, driven straight on the DOM each frame exactly as Creation
   // Prayer's are: the light ring draws forward over the inhale and HOLDS; the
   // dark ring sweeps forward over it on the exhale; the inner ring fills once
-  // across all three breaths. Only the two words re-render, and only when they
-  // actually change — twice a breath.
+  // across all three breaths. Only the phase word re-renders, and only when it
+  // actually changes — twice a breath.
   useEffect(() => {
     let raf = 0;
     // HAPTICS AS CREATION PRAYER HAS THEM: a soft swell as each inhale begins
@@ -137,7 +127,6 @@ export function BreathIntro({
       // the turn — the same curve as Creation Prayer's phase word.
       const rise = Math.sin(Math.PI * (inhale ? pos / INHALE_MS : (pos - INHALE_MS) / EXHALE_MS)).toFixed(4);
       if (phaseWordRef.current) phaseWordRef.current.style.opacity = rise;
-      if (nameRef.current) nameRef.current.style.opacity = rise;
       const breathIdx = Math.floor(since / CYCLE_MS);
       // A turn of the breath — including the start of the next breath's inhale,
       // which a frame that skips the whole exhale (a stalled tab) would miss if
@@ -152,8 +141,7 @@ export function BreathIntro({
         inhale ? 0 : (pos - INHALE_MS) / EXHALE_MS,
         since / totalMs,
       );
-      const next = readoutAt(now);
-      setReadout((cur) => (cur.inhale === next.inhale && cur.breath === next.breath ? cur : next));
+      setInhaleWord(inhaleAt(now));
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -176,8 +164,8 @@ export function BreathIntro({
       style={{ position: "absolute", inset: 0 }}
     >
       {/* Anchored by its BOTTOM edge a TEXT_GAP above the rings, mirroring the
-          name below them, so the two stay balanced about the circles whatever
-          the screen height (and however many lines the invitation wraps to). */}
+          phase word below them, so the two stay balanced about the circles
+          whatever the screen height (and however many lines this wraps to). */}
       <p
         style={{
           position: "absolute", left: 28, right: 28, bottom: `calc(50% + ${boxPx / 2}px + ${TEXT_GAP})`, margin: 0,
@@ -218,48 +206,22 @@ export function BreathIntro({
         </svg>
       </div>
 
+      {/* Breathe In / Breathe Out — under the rings, centred, italic Georgia
+          (owner), faded up and down each half-breath by the loop above. */}
       <p
-        ref={nameRef}
+        ref={phaseWordRef}
+        aria-live="polite"
         style={{
           position: "absolute", left: 28, right: 28, top: `calc(50% + ${boxPx / 2}px + ${TEXT_GAP})`, margin: 0,
-          color: WARM, fontFamily: SPACE_GROTESK, fontSize: "clamp(20px, 5.8vw, 25px)", lineHeight: 1.5,
-          letterSpacing: "0.04em", textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)",
+          color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(20px, 5.8vw, 25px)", lineHeight: 1.5,
+          textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)",
           opacity: 0, willChange: "opacity",
         }}
       >
-        {(() => { const n = BREATH_NAMES[Math.min(BREATH_NAMES.length, readout.breath) - 1]!; return t(n.key, { defaultValue: n.word }); })()}
+        {inhaleWord
+          ? t("cobreathe.phase_in", { defaultValue: "Breathe In" })
+          : t("cobreathe.phase_out", { defaultValue: "Breathe Out" })}
       </p>
-
-      {/* Breathe In / Breathe Out on the left, "n of 3" on the right — the same
-          bottom row as Creation Prayer, lifted to leave room for Skip. */}
-      <div
-        style={{
-          position: "absolute", left: 28, right: 28,
-          bottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)",
-          display: "flex", alignItems: "flex-end", gap: 14,
-        }}
-      >
-        <span
-          ref={phaseWordRef}
-          aria-live="polite"
-          style={{ willChange: "opacity",
-            flex: 1, minWidth: 0, color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15.2, fontWeight: 600,
-            letterSpacing: "0.04em", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "nowrap",
-          }}
-        >
-          {readout.inhale
-            ? t("cobreathe.phase_in", { defaultValue: "Breathe In" })
-            : t("cobreathe.phase_out", { defaultValue: "Breathe Out" })}
-        </span>
-        <span
-          style={{
-            flex: 1, textAlign: "right", color: TEXT_DIM, fontFamily: SPACE_GROTESK, fontSize: 15.2,
-            fontWeight: 600, letterSpacing: "0.04em",
-          }}
-        >
-          {t("cobreathe.breath_counter", { current: readout.breath, total: breaths, defaultValue: `${readout.breath} of ${breaths}` })}
-        </span>
-      </div>
 
       <button
         type="button"
