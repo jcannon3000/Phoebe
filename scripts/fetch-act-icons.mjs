@@ -17,7 +17,9 @@
 // back empty), so a record qualifies by evidence: the word icon in its title
 // or notes, an icon-tradition title term (Pantocrator, Theotokos, Deesis,
 // iconostasis), or a known iconographer as artist. The query list sweeps those
-// same signals; the predicate is what keeps a stray hit out.
+// same signals; the predicate is what keeps a stray hit out. One more door:
+// works chosen in BY HAND, by ACT id, that the evidence would turn away
+// (CHOSEN_ICON_IDS — Duccio's Maestà panels).
 //
 // RIGHTS: same two doors as fetch-act-catalogue.mjs — a Commons-verified free
 // licence, OR ACT's recorded artist grant of non-commercial use with
@@ -140,7 +142,91 @@ const EXCLUDED_ARTISTS = ["blake, william", "herrel, edie mae"];
  * look identical to a withdrawal, and these were confirmed over separate runs.
  */
 const DEAD_IMAGE_IDS = [55261, 56543, 59210, 59244];
-const EXCLUDED_IDS = new Set([59230, ...DEAD_IMAGE_IDS]);
+/**
+ * Works ACT serves too small to show. The icon is drawn full width, so these
+ * could only ever be a blur.
+ *   57094 Saint of the Gulf (Pittman) — 100×300, first harvested 2026-09-17
+ */
+const TINY_IMAGE_IDS = [57094];
+const EXCLUDED_IDS = new Set([59230, ...DEAD_IMAGE_IDS, ...TINY_IMAGE_IDS]);
+
+/**
+ * DUCCIO'S MAESTÀ, CHOSEN BY HAND (owner, 2026-09-17: "lets add what we can to
+ * the icons"). ACT describes none of its 58 Duccio records as an icon, so
+ * isIcon() lets none of them in; these 37 come in by id, each one looked at.
+ * The prophets, the Madonnas, the apostles in pairs and the single scenes of
+ * Christ's life, death and appearances. Left out, and why:
+ *   46448 46449  the Massacre of the Innocents: the killing, and the dead children
+ *   46644        a diagram of the altarpiece's back, 26 scenes at stamp size
+ *   49182        a detail of the city from the Temptation, with no figure in it
+ *   49168        the thief on his cross, close up, not Christ
+ *   56590        a detail of the accusers alone
+ *   58761        a fragment of the Crevole Madonna with the Virgin's face cut off
+ *   58976        the same file as 49155
+ *   49161 49167 49188 49193 49195 49244 49245 49248 49249 49251 49254 49255
+ *   49260        two scenes stacked in one panel, not one image to sit with
+ *
+ * Each shows the LARGER of two copies of the same public-domain file: ACT's,
+ * or the Wikimedia Commons file ACT names. ACT keeps most of these at 700px on
+ * the long side (the prophets 255px wide) where Commons has 1,500–4,000px, but
+ * for a few ACT's copy is the bigger one (Raising of Lazarus: ACT 800×752,
+ * Commons 600×564), so both are measured rather than assumed.
+ */
+const DUCCIO = "Duccio, di Buoninsegna, -1319?";
+const CHOSEN_ICON_IDS = new Set([
+  46446, 46447, 46450, 46451, 46658, 49151, 49152, 49153, 49154, 49155,
+  49156, 49158, 49165, 49170, 49172, 49174, 49177, 49181, 49183, 49184,
+  49186, 49257, 49261, 49263, 54254, 54743, 55283, 55804, 56662, 56682,
+  57182, 58386, 58389, 58757, 58762, 58772, 58901,
+]);
+
+/** Commons' own image for each file, with its size: a 1600px rendition when the
+ *  original is wider, else the original (fetch-commons-visio.mjs's rule). */
+async function resolveImages(titles) {
+  const out = new Map();
+  for (let i = 0; i < titles.length; i += 20) {
+    const batch = titles.slice(i, i + 20);
+    const q = new URLSearchParams({
+      action: "query", format: "json", prop: "imageinfo",
+      iiprop: "url|size", iiurlwidth: "1600", titles: batch.join("|"),
+    });
+    const res = await fetch(`https://commons.wikimedia.org/w/api.php?${q}`, { headers: { "User-Agent": UA } });
+    if (!res.ok) throw new Error(`Commons ${res.status}`);
+    const d = await res.json();
+    const asked = new Map((d.query?.normalized ?? []).map((n) => [n.to, n.from]));
+    for (const p of Object.values(d.query?.pages ?? {})) {
+      const ii = p.imageinfo?.[0];
+      if (!ii?.url) continue;
+      const thumb = !!ii.thumburl && (ii.width ?? 0) > 1600;
+      const img = {
+        url: String(thumb ? ii.thumburl : ii.url).split("?")[0],
+        area: thumb ? ii.thumbwidth * ii.thumbheight : (ii.width ?? 0) * (ii.height ?? 0),
+      };
+      out.set(p.title, img);
+      if (asked.has(p.title)) out.set(asked.get(p.title), img);
+    }
+    await new Promise((r) => setTimeout(r, 120));
+  }
+  return out;
+}
+
+/** Pixel area of a JPEG at a URL, read from its frame header; 0 when unreadable. */
+async function jpegArea(url) {
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": UA } });
+    if (!res.ok) return 0;
+    const b = new Uint8Array(await res.arrayBuffer());
+    for (let i = 2; i + 9 < b.length;) {
+      if (b[i] !== 0xff) { i++; continue; }
+      const m = b[i + 1];
+      if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) {
+        return ((b[i + 5] << 8) | b[i + 6]) * ((b[i + 7] << 8) | b[i + 8]);
+      }
+      i += 2 + ((b[i + 2] << 8) | b[i + 3]);
+    }
+  } catch { /* unreadable: 0 */ }
+  return 0;
+}
 
 function attribution(a, artist, original) {
   const who = artist ? `${artist}. ` : "";
@@ -171,11 +257,37 @@ const main = async () => {
     }
     console.log(`"${q}": pool now ${byId.size}`);
   }
+  // The works chosen by hand, which isIcon() would turn away.
+  for (let page = 1, pages = 1; page <= pages; page++) {
+    const d = await actSearch({ q: "", page, hitsPerPage: 100, filter: `artists = ${JSON.stringify(DUCCIO)}` });
+    pages = d.totalPages ?? 1;
+    for (const h of d.hits ?? []) {
+      if (!CHOSEN_ICON_IDS.has(h.id) || byId.has(h.id)) continue;
+      if (h.image_is_public !== 1 || !h.image_filename) continue;
+      if (!commonsTitle(h.copyright_source) && !ncPermitted(h)) continue;
+      byId.set(h.id, h);
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  const unanswered = [...CHOSEN_ICON_IDS].filter((id) => !byId.has(id));
+  if (unanswered.length) console.warn(`chosen icons ACT did not return: ${unanswered.join(", ")}`);
+  console.log(`chosen by hand: pool now ${byId.size}`);
   const candidates = [...byId.values()];
 
   const titles = [...new Set(candidates.map((a) => commonsTitle(a.copyright_source)).filter(Boolean))];
   console.log(`Verifying ${titles.length} file licences against Commons…`);
   const lic = await resolveLicences(titles);
+  const chosen = candidates.filter((a) => CHOSEN_ICON_IDS.has(a.id));
+  const commonsImg = await resolveImages([...new Set(chosen.map((a) => commonsTitle(a.copyright_source)).filter(Boolean))]);
+  /** act id → the larger copy's URL, for the works chosen by hand. */
+  const chosenImg = new Map();
+  for (const a of chosen) {
+    const actUrl = ACT_IMAGE(a.image_filename);
+    const commons = commonsImg.get(commonsTitle(a.copyright_source));
+    const actArea = await jpegArea(actUrl);
+    chosenImg.set(a.id, commons && commons.area > actArea ? commons.url : actUrl);
+    await new Promise((r) => setTimeout(r, 150));
+  }
 
   const kept = [];
   const dropped = { noRights: 0, unresolved: 0, notFree: 0, excludedArtist: 0 };
@@ -212,7 +324,7 @@ const main = async () => {
       artist: tidy(artist),
       date: tidy(a.creation_date) || null,
       where: place(a) || null,
-      img: ACT_IMAGE(a.image_filename),
+      img: chosenImg.get(a.id) ?? ACT_IMAGE(a.image_filename),
       // Who the icon depicts, when ACT says — this is what makes "teresa"
       // findable even when the title is just "St. Teresa of Avila".
       people: (a.people ?? []).map(tidy),
@@ -240,7 +352,9 @@ const main = async () => {
  *
  * GENERATED FILE. Do not edit by hand: run
  *   node scripts/fetch-act-icons.mjs
- * which re-harvests ACT's icon-tradition works. Every entry either passed the
+ * which re-harvests ACT's icon-tradition works, plus the works chosen in by
+ * hand (Duccio's Maestà, each shown from the larger of ACT's copy and the
+ * Wikimedia Commons file). Every entry either passed the
  * Wikimedia Commons licence check (public domain / CC0 / CC BY(-SA)) or
  * carries ACT's recorded artist grant of non-commercial use with attribution
  * (Phoebe is a non-profit; the required attribution is printed on the

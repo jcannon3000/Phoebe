@@ -3,7 +3,9 @@
  *
  * GENERATED FILE. Do not edit by hand: run
  *   node scripts/fetch-act-icons.mjs
- * which re-harvests ACT's icon-tradition works. Every entry either passed the
+ * which re-harvests ACT's icon-tradition works, plus the works chosen in by
+ * hand (Duccio's Maestà, each shown from the larger of ACT's copy and the
+ * Wikimedia Commons file). Every entry either passed the
  * Wikimedia Commons licence check (public domain / CC0 / CC BY(-SA)) or
  * carries ACT's recorded artist grant of non-commercial use with attribution
  * (Phoebe is a non-profit; the required attribution is printed on the
@@ -93,6 +95,100 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "attribution": "Madonna and the Child; the Crucified Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Prof. Patout J. Burns."
  },
  {
+  "id": 46446,
+  "title": "Prophet Malachi",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/3/39/Duccio_di_Buoninsegna_066.jpg",
+  "people": [
+   "Malachi (Biblical figure)"
+  ],
+  "refs": [
+   "Malachi 4:1-2a",
+   "Malachi 3:1-4"
+  ],
+  "days": [
+   "Year C Proper 28th Sunday",
+   "Year C Advent 2nd Sunday"
+  ],
+  "subjects": [],
+  "act": "https://act.library.vanderbilt.edu/artworks/46446",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Prophet Malachi, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46447,
+  "title": "Prophet Hosea",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Duccio_di_Buoninsegna_063.jpg",
+  "people": [
+   "Hosea (Biblical figure)"
+  ],
+  "refs": [
+   "Hosea 1:2-10",
+   "Hosea 2:14-20",
+   "Hosea 5:15-6:6"
+  ],
+  "days": [
+   "Year C Proper 12th Sunday",
+   "Year A Proper 5th Sunday",
+   "Year B Epiphany 8th Sunday"
+  ],
+  "subjects": [],
+  "act": "https://act.library.vanderbilt.edu/artworks/46447",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Prophet Hosea, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46450,
+  "title": "Madonna with angels, saints and apostles",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e7/Duccio_di_Buoninsegna_054.jpg/1920px-Duccio_di_Buoninsegna_054.jpg",
+  "people": [
+   "Mary, the mother of Jesus (Biblical figure)",
+   "Jesus Christ (Biblical figure)",
+   "Apostles (Biblical figures)"
+  ],
+  "refs": [],
+  "days": [],
+  "subjects": [
+   "Angels",
+   "Saints",
+   "Madonna and Child"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/46450",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Madonna with angels, saints and apostles, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46451,
+  "title": "Prophet Jeremiah",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/4/41/Duccio_di_Buoninsegna_064.jpg",
+  "people": [
+   "Jeremiah (Biblical figure)"
+  ],
+  "refs": [
+   "Jeremiah 2:4-13",
+   "Jeremiah 8:18-9:1"
+  ],
+  "days": [
+   "Year C Proper 17th Sunday",
+   "Year C Proper 20th Sunday"
+  ],
+  "subjects": [],
+  "act": "https://act.library.vanderbilt.edu/artworks/46451",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Prophet Jeremiah, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 46638,
   "title": "Christ Pantocrator",
   "artist": null,
@@ -108,6 +204,27 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/46638",
   "licence": "Public domain",
   "attribution": "Christ Pantocrator, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46658,
+  "title": "Flight into Egypt (Joseph's dream on the left)",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Duccio_di_Buoninsegna_060.jpg/1920px-Duccio_di_Buoninsegna_060.jpg",
+  "people": [],
+  "refs": [
+   "Matthew 2:13-23"
+  ],
+  "days": [
+   "Year A Christmas 1st Sunday"
+  ],
+  "subjects": [
+   "Flight into Egypt"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/46658",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Flight into Egypt (Joseph's dream on the left), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 46695,
@@ -166,6 +283,441 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/48051",
   "licence": "Public domain",
   "attribution": "Greco, 1541?-1614. Christ Blessing, The Saviour of the World, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49151,
+  "title": "Gabriel, detail from Annunciation",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/00/Duccio_di_Buoninsegna_069.jpg/1920px-Duccio_di_Buoninsegna_069.jpg",
+  "people": [
+   "Gabriel (archangel)"
+  ],
+  "refs": [
+   "Luke 1:26-38"
+  ],
+  "days": [
+   "Year B Advent 4th Sunday"
+  ],
+  "subjects": [
+   "Annunciation to Mary"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49151",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Gabriel, detail from Annunciation, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49152,
+  "title": "Mary with the child Jesus",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/8/81/Duccio_di_Buoninsegna_006.jpg",
+  "people": [],
+  "refs": [],
+  "days": [],
+  "subjects": [
+   "Madonna and Child"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49152",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Mary with the child Jesus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49153,
+  "title": "Apostles James the Younger and Bartholomew",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2e/Duccio_di_Buoninsegna_051.jpg/1920px-Duccio_di_Buoninsegna_051.jpg",
+  "people": [
+   "Bartholomew, the Apostle (Biblical figure)",
+   "James the Younger, the Apostle (Biblical figure)"
+  ],
+  "refs": [],
+  "days": [],
+  "subjects": [],
+  "act": "https://act.library.vanderbilt.edu/artworks/49153",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Apostles James the Younger and Bartholomew, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49154,
+  "title": "Crucifixion",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Duccio_di_Buoninsegna_021.jpg/1920px-Duccio_di_Buoninsegna_021.jpg",
+  "people": [],
+  "refs": [
+   "Matthew 26:14-27:66",
+   "Mark 14:1-15:47",
+   "Luke 22:14-23:56"
+  ],
+  "days": [
+   "Year A Liturgy of Pass",
+   "Year B Liturgy of Pass",
+   "Year C Liturgy of Pass"
+  ],
+  "subjects": [
+   "Passion of Jesus Christ: Crucifixion of Jesus"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49154",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Crucifixion, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49155,
+  "title": "Jesus Appears on Lake Tiberias",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/73/Duccio_di_Buoninsegna_015.jpg/1920px-Duccio_di_Buoninsegna_015.jpg",
+  "people": [],
+  "refs": [
+   "John 21:1-19"
+  ],
+  "days": [
+   "Year C Easter 3rd Sunday"
+  ],
+  "subjects": [
+   "Water",
+   "Boats"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49155",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Jesus Appears on Lake Tiberias, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49156,
+  "title": "Agony in the Garden (detail)",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/05/Duccio_di_Buoninsegna_033.jpg/1920px-Duccio_di_Buoninsegna_033.jpg",
+  "people": [],
+  "refs": [
+   "Matthew 26:14-27:66",
+   "Mark 14:1-15:47"
+  ],
+  "days": [
+   "Year A Liturgy of Pass",
+   "Year B Liturgy of Pass"
+  ],
+  "subjects": [
+   "Passion of Jesus Christ: Gethsemane"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49156",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Agony in the Garden (detail), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49158,
+  "title": "Christ Appears to the Disciples on the Mountain in Galilee",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Duccio_di_Buoninsegna_016.jpg/1920px-Duccio_di_Buoninsegna_016.jpg",
+  "people": [],
+  "refs": [
+   "Luke 24:13-49",
+   "Matthew 28:16-20"
+  ],
+  "days": [
+   "Year A Resurrection of the Lord",
+   "Year A Trinity Sunday"
+  ],
+  "subjects": [
+   "Mountain"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49158",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Christ Appears to the Disciples on the Mountain in Galilee, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49165,
+  "title": "Apostles Philip and James the Elder",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a4/Duccio_di_Buoninsegna_052.jpg/1920px-Duccio_di_Buoninsegna_052.jpg",
+  "people": [
+   "James the Elder, the Apostle (Biblical figure)",
+   "Philip, the Apostle (Biblical figure)"
+  ],
+  "refs": [],
+  "days": [],
+  "subjects": [],
+  "act": "https://act.library.vanderbilt.edu/artworks/49165",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Apostles Philip and James the Elder, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49170,
+  "title": "Madonna and Child, detail",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/07/Duccio_di_Buoninsegna_053.jpg/1920px-Duccio_di_Buoninsegna_053.jpg",
+  "people": [],
+  "refs": [],
+  "days": [],
+  "subjects": [
+   "Madonna and Child"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49170",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Madonna and Child, detail, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49172,
+  "title": "Annunciation - Predella panel from the Maesta Altarpiece of Siena",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "National Gallery (Great Britain), London, United Kingdom",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/Duccio_di_Buoninsegna_068.jpg/1920px-Duccio_di_Buoninsegna_068.jpg",
+  "people": [
+   "Mary, the mother of Jesus (Biblical figure)"
+  ],
+  "refs": [
+   "Luke 1:26-38"
+  ],
+  "days": [
+   "Year B Advent 4th Sunday",
+   "Year B Annunciation of the Lord"
+  ],
+  "subjects": [
+   "Annunciation to Mary"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49172",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Annunciation - Predella panel from the Maesta Altarpiece of Siena, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49174,
+  "title": "Birth of Christ",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6d/Duccio_di_Buoninsegna_058.jpg/1920px-Duccio_di_Buoninsegna_058.jpg",
+  "people": [],
+  "refs": [
+   "Luke 2:1-14, (15-20)",
+   "Matthew 1:18-25"
+  ],
+  "days": [
+   "Year A Nativity of the Lord Proper I",
+   "Year A Advent 4th Sunday"
+  ],
+  "subjects": [
+   "Nativity",
+   "Birth"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49174",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Birth of Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49177,
+  "title": "Prophet Ezekiel",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/1/13/Duccio_di_Buoninsegna_062.jpg",
+  "people": [
+   "Ezekiel (Biblical figure)"
+  ],
+  "refs": [],
+  "days": [],
+  "subjects": [],
+  "act": "https://act.library.vanderbilt.edu/artworks/49177",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Prophet Ezekiel, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49181,
+  "title": "Prophet Isaiah",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/9/98/Duccio_di_Buoninsegna_065.jpg",
+  "people": [
+   "Isaiah (Biblical figure)"
+  ],
+  "refs": [
+   "Isaiah 7:10-16"
+  ],
+  "days": [
+   "Year A Advent 4th Sunday"
+  ],
+  "subjects": [],
+  "act": "https://act.library.vanderbilt.edu/artworks/49181",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Prophet Isaiah, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49183,
+  "title": "Temptation of Christ on the Mount",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Frick Collection, New York, United States",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/75/Duccio_di_Buoninsegna_040.jpg/1920px-Duccio_di_Buoninsegna_040.jpg",
+  "people": [],
+  "refs": [
+   "Matthew 4:1-11",
+   "Luke 4:1-13",
+   "Mark 1:9-15"
+  ],
+  "days": [
+   "Year A Lent 1st Sunday",
+   "Year C Lent 1st Sunday",
+   "Year B Lent 1st Sunday"
+  ],
+  "subjects": [
+   "Temptation of Christ"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49183",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Temptation of Christ on the Mount, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49184,
+  "title": "Christ Appears to the Disciples at the Table after the Resurrection",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f0/Duccio_di_Buoninsegna_017.jpg/1920px-Duccio_di_Buoninsegna_017.jpg",
+  "people": [],
+  "refs": [
+   "Luke 24:13-49"
+  ],
+  "days": [
+   "Year B Easter 3rd Sunday",
+   "Year B Easter 2nd Sunday"
+  ],
+  "subjects": [
+   "Resurrection"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49184",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Christ Appears to the Disciples at the Table after the Resurrection, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49186,
+  "title": "Prophet Qoheleth",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/7/71/Duccio_di_Buoninsegna_067.jpg",
+  "people": [
+   "Qoheleth (Biblical figure)"
+  ],
+  "refs": [
+   "Ecclesiastes 1:2, 12-14; 2:18-23"
+  ],
+  "days": [
+   "Year C Proper 13th Sunday"
+  ],
+  "subjects": [],
+  "act": "https://act.library.vanderbilt.edu/artworks/49186",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Prophet Qoheleth, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49257,
+  "title": "Pentecost",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f0/Duccio_di_Buoninsegna_018.jpg/1920px-Duccio_di_Buoninsegna_018.jpg",
+  "people": [],
+  "refs": [
+   "Acts 2:1-21"
+  ],
+  "days": [
+   "Year A Day of Pentecost"
+  ],
+  "subjects": [
+   "Pentecost"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49257",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Pentecost, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49261,
+  "title": "Christ Calling the Apostles Peter and Andrew",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2a/Duccio_di_Buoninsegna_036.jpg/1920px-Duccio_di_Buoninsegna_036.jpg",
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Peter, the Apostle (Biblical figure)",
+   "Andrew, the Apostle (Biblical figure)"
+  ],
+  "refs": [
+   "Mark 1:14-20",
+   "Matthew 4:12-23"
+  ],
+  "days": [
+   "Year C Epiphany 5th Sunday",
+   "Year B Epiphany 3rd Sunday",
+   "Year A Epiphany 3rd Sunday"
+  ],
+  "subjects": [
+   "Water",
+   "Fish",
+   "Calling of the disciples"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49261",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Christ Calling the Apostles Peter and Andrew, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49263,
+  "title": "Wedding at Cana",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/b/b2/Duccio_di_Buoninsegna_038.jpg",
+  "people": [],
+  "refs": [
+   "John 2:1-11"
+  ],
+  "days": [
+   "Year C Epiphany 2nd Sunday"
+  ],
+  "subjects": [
+   "Marriage at Cana"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/49263",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Wedding at Cana, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 54254,
+  "title": "The Incredulity of Thomas",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/a/a9/The-Maesta-Altarpiece-The-Incredulity-of-Saint-Thomas-1461_Duccio.jpg",
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Thomas, the Apostle (Biblical figure)"
+  ],
+  "refs": [
+   "John 20:19-23"
+  ],
+  "days": [
+   "Year A Easter 2nd Sunday",
+   "Year B Easter 2nd Sunday"
+  ],
+  "subjects": [],
+  "act": "https://act.library.vanderbilt.edu/artworks/54254",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. The Incredulity of Thomas, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 54414,
@@ -296,6 +848,28 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "attribution": "Sopocani mural, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 54743,
+  "title": "Christ and the Samaritan Woman",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "ca. 1308-1311",
+  "where": "Museo Thyssen-Bornemisza, Madrid, Spain",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d4/Duccio_di_Buoninsegna_-_Christ_and_the_Samaritan_Woman_-_Google_Art_Project.jpg/1920px-Duccio_di_Buoninsegna_-_Christ_and_the_Samaritan_Woman_-_Google_Art_Project.jpg",
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Samaritan Woman (Biblical figure)"
+  ],
+  "refs": [
+   "John 4:5-42"
+  ],
+  "days": [
+   "Year A Lent 3rd Sunday"
+  ],
+  "subjects": [],
+  "act": "https://act.library.vanderbilt.edu/artworks/54743",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Christ and the Samaritan Woman, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 54989,
   "title": "Parable of the Souls",
   "artist": null,
@@ -395,6 +969,24 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "attribution": "Anonymous. Interrogation of Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 55283,
+  "title": "Pilate's First Interrogation of Christ",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "ca. 1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/0/0d/Duccio_di_Buoninsegna_-_Pilate%27s_First_Interrogation_of_Christ_-_WGA06803.jpg",
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Pontius Pilate, 1st century"
+  ],
+  "refs": [],
+  "days": [],
+  "subjects": [],
+  "act": "https://act.library.vanderbilt.edu/artworks/55283",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Pilate's First Interrogation of Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 55374,
   "title": "Transfiguration of Christ",
   "artist": null,
@@ -491,6 +1083,31 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/55642",
   "licence": "Public domain",
   "attribution": "Philemon and Apphia, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55804,
+  "title": "Nativity with the Prophets Isaiah and Ezekiel",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "ca. 1308-1311",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fc/Duccio%2C_nativit%C3%A0_tra_i_profeti_isaia_e_giobbe.jpg/1920px-Duccio%2C_nativit%C3%A0_tra_i_profeti_isaia_e_giobbe.jpg",
+  "people": [
+   "Isaiah (Biblical figure)",
+   "Ezekiel (Biblical figure)"
+  ],
+  "refs": [
+   "Matthew 1:18-25"
+  ],
+  "days": [
+   "Year A Advent 4th Sunday"
+  ],
+  "subjects": [
+   "Nativity",
+   "Immanuel"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/55804",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Nativity with the Prophets Isaiah and Ezekiel, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 55893,
@@ -1266,6 +1883,34 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "attribution": "Swanson, John August. Rainbow, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Estate of John August Swanson, https://www.johnaugustswanson.com/."
  },
  {
+  "id": 56662,
+  "title": "Healing of the Man Born Blind",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1307",
+  "where": "National Gallery (Great Britain), London, United Kingdom",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/8/80/Duccio_di_Buoninsegna_037.jpg",
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Bartimaeus (Biblical figure)"
+  ],
+  "refs": [
+   "Mark 10:46-52"
+  ],
+  "days": [
+   "Year A Lent 4th Sunday",
+   "Year B Proper 25th Sunday"
+  ],
+  "subjects": [
+   "Faith",
+   "Healing",
+   "Miracles",
+   "Blindness"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/56662",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Healing of the Man Born Blind, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 56666,
   "title": "Icon of the Second Coming",
   "artist": null,
@@ -1285,6 +1930,30 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/56666",
   "licence": "Public domain",
   "attribution": "Icon of the Second Coming, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56682,
+  "title": "Christ Before Pilate Again",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell'Opera del Duomo, Florence, Italy",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/6/67/Duccio_di_Buoninsegna_-_Christ_Before_Pilate_Again_%28detail%29_-_WGA06806.jpg",
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Pontius Pilate, 1st century"
+  ],
+  "refs": [
+   "John 18:33-37"
+  ],
+  "days": [
+   "Year B Reign of Christ"
+  ],
+  "subjects": [
+   "Passion of Jesus Christ: Jesus before Pilate"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/56682",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Christ Before Pilate Again, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 56778,
@@ -1964,6 +2633,33 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "attribution": "Latimore, Kelly. St. Teresa of Avila, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Kelly Latimore Icons, https://kellylatimoreicons.com/."
  },
  {
+  "id": 57182,
+  "title": "Zacchaeus, detail from Entry into Jerusalem",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell'Opera del Duomo, Siena, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Ducciobvzlapk001.jpg",
+  "people": [
+   "Zacchaeus (Biblical figure)"
+  ],
+  "refs": [
+   "Luke 19:1-10"
+  ],
+  "days": [
+   "Year C Proper 26th Sunday"
+  ],
+  "subjects": [
+   "Tax Collectors",
+   "Outcast",
+   "Rich",
+   "Wealth",
+   "Caring"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/57182",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Zacchaeus, detail from Entry into Jerusalem, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 57348,
   "title": "Tormenting of Christ",
   "artist": null,
@@ -2094,6 +2790,54 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/57758",
   "licence": "Public domain",
   "attribution": "Folds from Ethiopian Processional Icon, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58386,
+  "title": "Raising of Lazarus",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "ca. 1310-1311",
+  "where": "Kimbell Art Museum, Fort Worth, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/raisinglazarus5ghut193.jpg",
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Lazarus, of Bethany (Biblical figure)"
+  ],
+  "refs": [
+   "John 11:1-45"
+  ],
+  "days": [
+   "Year A Lent 5th Sunday"
+  ],
+  "subjects": [
+   "Visual Commentary on Scripture",
+   "Raising from the Dead",
+   "Resurrection"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/58386",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Raising of Lazarus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58389,
+  "title": "Christ Taking Leave of the Apostles",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell'Opera del Duomo, Siena, Italy",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/4/45/Christ_Taking_Leave_of_the_Apostles.jpg",
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Apostles (Biblical figures)"
+  ],
+  "refs": [
+   "John 16:16-24"
+  ],
+  "days": [],
+  "subjects": [
+   "Visual Commentary on Scripture"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/58389",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Christ Taking Leave of the Apostles, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 58411,
@@ -2351,6 +3095,86 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "attribution": "Swanson, John August. Wedding Feast, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Estate of John August Swanson, https://www.johnaugustswanson.com/."
  },
  {
+  "id": 58757,
+  "title": "Transfiguration",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "National Gallery (Great Britain), London, United Kingdom",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Duccio_di_Buoninsegna_-_Transfiguration_-_WGA06780.jpg",
+  "people": [
+   "Moses (Biblical figure)",
+   "Jesus Christ (Biblical figure)",
+   "Elijah (Biblical figure)"
+  ],
+  "refs": [
+   "Matthew 17:1-9",
+   "Mark 9:2-9",
+   "Luke 9:28-36, (37-43)"
+  ],
+  "days": [
+   "Year A Transfiguration Sunday",
+   "Year B Transfiguration Sunday",
+   "Year C Transfiguration Sunday"
+  ],
+  "subjects": [
+   "Transfiguration of Jesus"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/58757",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Transfiguration, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58762,
+  "title": "Disputation with the Doctors",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell'Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Duccio_di_Buoninsegna_Disputation_with_the_Doctors.jpg",
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "refs": [
+   "Luke 2:41-52"
+  ],
+  "days": [
+   "Year C Christmas 1st Sunday"
+  ],
+  "subjects": [
+   "Temple",
+   "Childhood of Jesus",
+   "Teaching"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/58762",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Disputation with the Doctors, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58772,
+  "title": "Entry into Jerusalem",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/entryDuccio75g6ty2k.jpg",
+  "people": [],
+  "refs": [
+   "Luke 19:28-40",
+   "Matthew 21:1-11",
+   "Mark 11:1-11",
+   "John 12:12-16"
+  ],
+  "days": [
+   "Year C Liturgy of Palms",
+   "Year A Liturgy of Palms",
+   "Year B Liturgy of Palms"
+  ],
+  "subjects": [
+   "Entry into Jerusalem"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/58772",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Entry into Jerusalem, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 58774,
   "title": "Elijah",
   "artist": "Anonymous",
@@ -2407,6 +3231,32 @@ export const ICON_CATALOGUE: IconArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/58782",
   "licence": "Public domain",
   "attribution": "Anonymous. Great Deesis with Prophets, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58901,
+  "title": "Christ Appears to the Apostles",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308",
+  "where": "Museo dell’Opera del Duomo, Siena, Italy",
+  "img": "https://upload.wikimedia.org/wikipedia/commons/3/33/Duccio_Maesta_detail2.jpg",
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "refs": [
+   "Luke 24:13-49"
+  ],
+  "days": [
+   "Year A Resurrection of the Lord",
+   "Year B Resurrection of the Lord",
+   "Year B Easter 3rd Sunday"
+  ],
+  "subjects": [
+   "Resurrection of Jesus"
+  ],
+  "act": "https://act.library.vanderbilt.edu/artworks/58901",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Christ Appears to the Apostles, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 59393,
