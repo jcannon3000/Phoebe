@@ -275,6 +275,21 @@ const THEME_PICKS = {
   // Palm Sunday 2028: the Daily Office fallback gives this Sunday no gospel at
   // all, so the key is the day.
   "2028-04-09": 58329,
+  // DUCCIO'S MAESTÀ PANELS (owner, 2026-09-17: "see if there are any weeks we
+  // can use any of these images in visio"). They came in through the icon
+  // harvest, so they're reachable here by id. No week lacked a painting of its
+  // gospel; in these three the painting only matched through a broad ACT tag
+  // and showed another episode, and Duccio paints the Sunday's own.
+  // Lent 1, Year B: the temptation. Jesus Mafa's "The first two disciples"
+  // held it through its Mark 1:14-20 tag, the calling that follows.
+  "Mark 1:9-15": 49183,
+  // Easter 3, Year B: "Jesus himself stood among them and said to them, Peace
+  // be with you." Frank Wesley's Walk to Emmaus held it through Luke 24:13-49.
+  "Luke 24:36b-48": 58901,
+  // Christ the King, Year B: Pilate asks "Are you the King of the Jews?"
+  // Wesley's To Calvary held it through John 18:1-19:42. ACT tags this panel
+  // with no passage, so the card doesn't name the verses.
+  "John 18:33-37": 55283,
 };
 
 /** Every work a theme pick may name: the pool, and the icon harvest beside it. */
