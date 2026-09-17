@@ -3339,8 +3339,10 @@ function ReadingsHomeCard({ side = "morning", hero = false }: { side?: "morning"
    * which was the only thing available while the reading happened somewhere we
    * could never see the end of.
    */
+  // ?side= so finishing the deck keeps THIS card's side and not the other one
+  // (it kept both until 2026-09-17).
   const onClick = () => {
-    setReadingsLocation("/bcp/daily-office?mode=scripture");
+    setReadingsLocation(`/bcp/daily-office?mode=scripture&side=${praySide ?? side}`);
   };
   /**
    * The routine card asked to PRAY this, so open it.

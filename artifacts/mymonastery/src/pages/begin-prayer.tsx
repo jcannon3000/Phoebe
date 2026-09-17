@@ -294,10 +294,11 @@ export default function BeginPrayerPage() {
      * Completion is NOT marked here. The deck marks it when it is FINISHED,
      * which is the office-completed invariant; marking on open was only
      * defensible while the reading happened on someone else's site where we
-     * could never see the end of it.
+     * could never see the end of it. ?side= tells it WHICH side to mark: it
+     * used to mark both (2026-09-17).
      */
     if (defaultPrayerLevel === "readings") {
-      setLocation("/bcp/daily-office?mode=scripture", { replace: true });
+      setLocation(`/bcp/daily-office?mode=scripture&side=${side}`, { replace: true });
       return;
     }
     // A practice the user named themselves IS this side's prayer → there's no

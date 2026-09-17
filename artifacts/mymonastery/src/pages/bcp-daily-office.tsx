@@ -677,13 +677,34 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    * One helper, called from all four end paths (Amen, Done, the book path,
    * the play-through), so they cannot drift again.
    */
+  /**
+   * ONE SIDE PER FINISHED READING (reported 2026-09-17: on the light,
+   * signed-out setup, doing the morning reading also checked off the evening).
+   *
+   * This credited EVERY side whose practice is the readings, and the basic
+   * customizer's "Daily Scripture Readings" sets both. The deck is the same
+   * day's reading whichever side opens it, so it goes by who opened it: the
+   * routine (/begin-prayer) and the Scripture Readings card pass ?side=. The
+   * Practices page and the offline list open it without one, so the clock
+   * decides, as it does for a bare /begin-prayer (before noon is morning). A
+   * reading finished when that side's practice isn't the readings counts
+   * toward the side that is; one already kept gets nothing more.
+   */
+  const scriptureSideToCredit = (): OfficeSide | null => {
+    const isReadings = (s: OfficeSide) => getSideLevel(s) === "readings";
+    const open = (s: OfficeSide) => isReadings(s) && !hasPrayedReadingsToday(s);
+    if (scriptureDeckSide) return open(scriptureDeckSide) ? scriptureDeckSide : null;
+    const byClock: OfficeSide = new Date().getHours() < 12 ? "morning" : "evening";
+    if (isReadings(byClock)) return open(byClock) ? byClock : null;
+    const other: OfficeSide = byClock === "morning" ? "evening" : "morning";
+    return open(other) ? other : null;
+  };
   const stampCompleted = () => {
     localStorage.setItem(officeCompletedKey(resolvedMode, officeTodayKey(), trackVariant), "1");
     markRecentCompletion(completedCardKey);
     if (resolvedMode === "scripture") {
-      for (const side of ["morning", "evening"] as const) {
-        if (getSideLevel(side) === "readings" && !hasPrayedReadingsToday(side)) recordReadingsOpened({ side });
-      }
+      const side = scriptureSideToCredit();
+      if (side) recordReadingsOpened({ side });
     }
   };
   /**
@@ -849,6 +870,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   }, []);
   /** Only the Sunday deck has two variants; every other mode keys as before. */
   const trackVariant = resolvedMode === "sunday" ? sundayTrack : undefined;
+  /**
+   * WHOSE READING THIS IS — ?side=, read ONCE at mount like the track, since
+   * the deck strips its query once loaded. See scriptureSideToCredit.
+   */
+  const scriptureDeckSide: OfficeSide | null = useMemo(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get("side");
+      return v === "morning" || v === "evening" ? v : null;
+    } catch { return null; }
+  }, []);
 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
