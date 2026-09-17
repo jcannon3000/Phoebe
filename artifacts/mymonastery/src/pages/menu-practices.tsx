@@ -5,8 +5,7 @@ import { usePracticeDirectory } from "@/lib/practiceDirectory";
 
 // The core contemplative practices. (Gratitude is still reachable via its own
 // surface; it's just not listed here.) The list itself — its order, its gates
-// and why each row is there — lives in lib/practiceDirectory, which the home's
-// Practices ticker reads too.
+// and why each row is there — lives in lib/practiceDirectory.
 export default function MenuPracticesPage() {
   const [, setLocation] = useLocation();
   const practices = usePracticeDirectory();

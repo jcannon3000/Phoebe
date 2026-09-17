@@ -19,7 +19,6 @@ import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { HomeLearnSection } from "@/components/HomeLearnSection";
-import { HomePracticesTicker } from "@/components/HomePracticesTicker";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
@@ -7336,10 +7335,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
           {!eventsOnly && (
             <div className="mb-2">
               <LiturgicalDateHeader />
-              {/* Every practice, rolling past under the feast line with no
-                  heading — where the April pill row sat (owner, 2026-09-16).
-                  See HomePracticesTicker. */}
-              <HomePracticesTicker />
             </div>
           )}
           {/* PUBLIC first-open welcome — a dismissible "begin here" note under

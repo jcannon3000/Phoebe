@@ -5,17 +5,17 @@ import { isDeviceLocalGuest } from "@/lib/guestFlag";
 
 // ── The practices, as one list ───────────────────────────────────────────────
 //
-// What the Practices page lists, in its order, behind its gates. Two surfaces
-// read it: that page's cards (pages/menu-practices) and the home's Practices
-// ticker (components/HomePracticesSection, owner 2026-09-16). Neither keeps a
-// copy, so a practice added, moved or hidden from guests here changes both —
-// a second list would be one more place for them to disagree
+// What the Practices page lists, in its order, behind its gates, read by that
+// page's cards (pages/menu-practices). It was lifted out of the page for the
+// home's Practices ticker (2026-09-16), since taken out by the owner ("Take
+// out the practice ticker"); a surface that needs the practice list again
+// reads it from here rather than keeping a copy that could disagree
 // (reference_second_renderer_drift).
 
 export interface PracticeEntry {
   /**
    * This practice's key in lib/offline's registry, when the registry carries
-   * it. Offline, both surfaces sort on THIS, never the label — see
+   * it. Offline, the Practices page sorts on THIS, never the label — see
    * MenuHubItem.offlineKey for why titles can't be the contract.
    */
   offlineKey?: string;
