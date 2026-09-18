@@ -33,6 +33,39 @@ type MusicPlugin = {
   stop?: () => Promise<void>;
 };
 
+/**
+ * NOTHING NATIVE MAY HANG THE FALLBACK.
+ *
+ * Every caller is shaped `play(...).then(ok => ok ? … : openExternal(url))`,
+ * so a promise that never settles is worse than one that rejects: the music
+ * does not play AND the link never opens — the tap does nothing at all, which
+ * is exactly the regression the header above forbids.
+ *
+ * Two MusicKit suspension points can stall rather than throw. The permission
+ * sheet does not resume if the person swipes away to the home screen instead
+ * of answering it, and `MusicSubscription.current` is the first element of a
+ * network-backed stream, so a captive portal can hold it indefinitely. `try?`
+ * in the Swift absorbs a throw; it cannot absorb a stall.
+ *
+ * So every crossing of the bridge gets a deadline, and a missed deadline is
+ * treated exactly like a "no": open the service instead.
+ */
+const NATIVE_DEADLINE_MS = 6000;
+/** Longer, because this one is allowed to be waiting on a human. */
+const AUTHORIZE_DEADLINE_MS = 60000;
+
+function withDeadline<T>(work: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let settled = false;
+    const done = (v: T) => { if (!settled) { settled = true; resolve(v); } };
+    const timer = setTimeout(() => done(fallback), ms);
+    work.then(
+      (v) => { clearTimeout(timer); done(v); },
+      () => { clearTimeout(timer); done(fallback); },
+    );
+  });
+}
+
 function plugin(): MusicPlugin | null {
   if (typeof window === "undefined") return null;
   try {
@@ -59,7 +92,7 @@ export async function appleMusicNativeReady(): Promise<boolean> {
   const p = plugin();
   if (!p?.isAvailable) return false;
   try {
-    const r = await p.isAvailable();
+    const r = await withDeadline(p.isAvailable(), NATIVE_DEADLINE_MS, {});
     return r?.available === true && r?.authorized === true && r?.subscribed === true;
   } catch {
     return false;
@@ -77,16 +110,18 @@ export async function playAppleMusicNative(trackId: string | null | undefined): 
   const p = plugin();
   if (!p?.playTrack || !trackId) return false;
   try {
-    const status = (await p.isAvailable?.()) ?? {};
+    const status = p.isAvailable ? await withDeadline(p.isAvailable(), NATIVE_DEADLINE_MS, {}) : {};
     if (status.available !== true) return false;
     if (status.authorized !== true) {
-      const asked = (await p.authorize?.()) ?? {};
+      // The sheet is allowed to wait on a person; it is not allowed to wait
+      // forever, because a sheet swiped away never resumes.
+      const asked = p.authorize ? await withDeadline(p.authorize(), AUTHORIZE_DEADLINE_MS, {}) : {};
       if (asked.authorized !== true) return false;
       if (asked.subscribed !== true) return false;
     } else if (status.subscribed !== true) {
       return false;
     }
-    const played = await p.playTrack({ id: trackId });
+    const played = await withDeadline(p.playTrack({ id: trackId }), NATIVE_DEADLINE_MS, {});
     return played?.playing === true;
   } catch {
     // "not-authorized", "no-subscription", "not-found", a MusicKit error, or
@@ -115,19 +150,19 @@ export async function playAppleMusicPlaylistNative(
   const p = plugin();
   if (!p?.playPlaylist || !playlistId) return false;
   try {
-    const status = (await p.isAvailable?.()) ?? {};
+    const status = p.isAvailable ? await withDeadline(p.isAvailable(), NATIVE_DEADLINE_MS, {}) : {};
     if (status.available !== true) return false;
     if (status.authorized !== true) {
-      const asked = (await p.authorize?.()) ?? {};
+      const asked = p.authorize ? await withDeadline(p.authorize(), AUTHORIZE_DEADLINE_MS, {}) : {};
       if (asked.authorized !== true || asked.subscribed !== true) return false;
     } else if (status.subscribed !== true) {
       return false;
     }
-    const played = await p.playPlaylist({
+    const played = await withDeadline(p.playPlaylist({
       id: playlistId,
       shuffle: opts.shuffle === true,
       repeatAll: opts.repeatAll === true,
-    });
+    }), NATIVE_DEADLINE_MS, {});
     return played?.playing === true;
   } catch {
     return false;
@@ -155,7 +190,7 @@ export async function requestAppleMusicNative(): Promise<{ authorized: boolean; 
   const p = plugin();
   if (!p?.authorize) return { authorized: false, subscribed: false };
   try {
-    const r = await p.authorize();
+    const r = await withDeadline(p.authorize(), AUTHORIZE_DEADLINE_MS, {});
     return { authorized: r?.authorized === true, subscribed: r?.subscribed === true };
   } catch {
     return { authorized: false, subscribed: false };
