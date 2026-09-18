@@ -210,7 +210,17 @@ export default function HymnsPage() {
             fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap",
           }}
         >
-          {hymnNumberLabel(h)}
+          {/* Stacked, not joined (owner: "stack the numbers so they dont push
+              the titles over"). A pair like 125, 126 set on one line widened
+              this column and shoved every title right — and only on the rows
+              that happen to be a pair, so the list lost its left edge. One
+              number per line keeps the column the width of the widest single
+              number, which is what the titles line up against. */}
+          {h.num.length
+            ? h.num.map((n) => (
+                <span key={n} style={{ display: "block", lineHeight: 1.15 }}>{n}</span>
+              ))
+            : hymnNumberLabel(h)}
         </span>
 
         <span style={{ minWidth: 0, flex: 1 }}>
