@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { hasAppleMusicNative, playAppleMusicNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
+import { setPendingListen } from "@/lib/pendingListen";
 import { HYMNS, hymnNumberLabel, type Hymn } from "@/lib/hymnsCatalogue";
 import { SpotifyMark, AppleMark, YouTubeMark } from "@/components/ServiceMarks";
 import {
@@ -115,6 +116,14 @@ export default function HymnsPage() {
   // actually present, so the web path stays synchronous inside the tap and is
   // never at the mercy of a popup blocker.
   const play = (h: Hymn, url: string) => {
+    // Owner: "when they pick a hymn, regardless of the platform, if it opens
+    // the other app, when they come back to phoebe, it should have that hymn
+    // ready to be logged". Left for Audio Divina's log whichever way it plays
+    // — in-app or out in the service — because either way this is what they
+    // listened to. lib/pendingListen clears it on use and at the day turn.
+    setPendingListen({
+      what: h.num.length ? `Hymn ${hymnNumberLabel(h)} · ${h.name} — ${h.artist}` : `${h.name} — ${h.artist}`,
+    });
     if (service === "apple" && h.appleTrackId && hasAppleMusicNative()) {
       if (playingId === h.appleTrackId) { void stopAppleMusicNative(); setPlayingId(null); return; }
       void playAppleMusicNative(h.appleTrackId).then((ok) => {

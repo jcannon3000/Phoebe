@@ -16,11 +16,25 @@ import { apiRequest, ApiError } from "@/lib/queryClient";
 import { enqueueWrite } from "@/lib/writeOutbox";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 import { openExternal } from "@/lib/openExternal";
+import { hasAppleMusicNative, playAppleMusicNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
+import { takePendingListen } from "@/lib/pendingListen";
 import { CtaArrow } from "@/components/CtaArrow";
 
-// Audio Divina — sacred listening, kept simple as a JOURNAL/TASK (like gratitude):
-// you put on music, then note what you listened to + how, and mark it done for the
-// day. No timer, no goal, no in-app player. Every entry is kept in a local log.
+// Audio Divina — sacred listening. You listen, then note what you listened to
+// + how, and mark it done for the day. No timer and no goal; every entry is
+// kept in a local log.
+//
+// IT PLAYS NOW (owner, 2026-09-18: "we want them to be able to playback now",
+// "get rid of the journal ristriction"). Tapping a recent listen, or a song in
+// the search, starts it through the listener's OWN Apple Music subscription —
+// see lib/appleMusicNative and PhoebeMusicPlugin.swift. Everything about that
+// is additive: with no native plugin, no subscription, or no permission, the
+// tap opens the service exactly as it did when this was a log-only practice,
+// and typed free text is still logged as typed.
+//
+// This reverses the older rule that the recents were deliberately inert so the
+// song would "come to you" rather than be picked off a menu. The owner asked
+// for the menu. The invitation on the LISTEN beat still comes first.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -129,9 +143,10 @@ export default function ListeningPage() {
   // the page reads as the practice rather than an empty form. This re-opens it.
   const [logAnother, setLogAnother] = useState(false);
   // `query` is the search text; `what` is what will be logged. Tapping a result
-  // or a recent fills both and remembers the artwork; TYPING fills both too —
-  // free text is logged as typed (it always was, despite what this comment used
-  // to claim, and offline it is the only way in). No playback, no library link.
+  // or a recent fills both, remembers the artwork, AND starts it playing where
+  // we can; TYPING fills both too — free text is logged as typed (it always
+  // was, despite what this comment used to claim, and offline it is the only
+  // way in).
   const online = useOnline();
   const [query, setQuery] = useState("");
   const [what, setWhat] = useState("");
@@ -158,6 +173,75 @@ export default function ListeningPage() {
     }, 350);
     return () => { cancelled = true; window.clearTimeout(h); };
   }, [query, picked, online]);
+  /**
+   * A hymn played from the catalogue fills this in (owner: "auto filled on the
+   * log page"). Read on mount AND on becoming visible again, because leaving
+   * for Apple Music and coming back does not remount the page — iOS keeps the
+   * web view alive, so without the visibility listener the field would still be
+   * empty on the one path this exists for.
+   *
+   * Never overwrites: if they have already typed or picked something, that is
+   * the entry they mean, and the note is left for next time.
+   */
+  useEffect(() => {
+    const fill = () => {
+      setWhat((prev) => {
+        if (prev.trim()) return prev;
+        const p = takePendingListen();
+        if (!p) return prev;
+        setQuery(p.what);
+        setArtworkUrl(p.artworkUrl ?? "");
+        setPicked(true);
+        return p.what;
+      });
+    };
+    fill();
+    const onVis = () => { if (document.visibilityState === "visible") fill(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  // What is playing INSIDE Phoebe right now, if anything. Only ever set on a
+  // native build whose listener has an Apple Music subscription and has said
+  // yes once; on the web it stays null and every tap behaves as it always did.
+  const [nowPlaying, setNowPlaying] = useState<{ id: string; title: string } | null>(null);
+  useEffect(() => () => { void stopAppleMusicNative(); }, []);
+
+  /** Start a catalog song, or fall back to opening the service. */
+  function playSearchResult(r: SearchResult) {
+    const id = r.service === "apple" && r.kind === "song" ? r.appleId : undefined;
+    const title = r.subtitle ? `${r.title} — ${r.subtitle}` : r.title;
+    // The native branch is only entered when the plugin is really there, so on
+    // the web the openExternal below stays inside the tap and can't be blocked.
+    if (id && hasAppleMusicNative()) {
+      if (nowPlaying?.id === id) { void stopAppleMusicNative(); setNowPlaying(null); return; }
+      void playAppleMusicNative(id).then((ok) => {
+        if (ok) setNowPlaying({ id, title });
+        else if (r.url) openExternal(r.url, { system: true });
+      });
+      return;
+    }
+    if (r.url) openExternal(r.url, { system: true });
+  }
+
+  /**
+   * Play something listened to before. A logged entry keeps only the TEXT of
+   * what it was ("Morning Has Broken — Cat Stevens"), never a catalog id, so
+   * the id has to be looked up again — which is a round trip, and therefore
+   * only worth taking on a build that can actually play. On the web this fills
+   * the log and stops, exactly as tapping a recent always has.
+   */
+  function playRecent(r: { what: string; artworkUrl?: string; medium: ListeningMedium }) {
+    chooseRecent(r);
+    if (!hasAppleMusicNative()) return;
+    void (async () => {
+      const hits = await searchCatalog(r.what).catch(() => [] as SearchResult[]);
+      const song = hits.find((h) => h.service === "apple" && h.kind === "song" && h.appleId);
+      if (!song?.appleId) return;
+      if (await playAppleMusicNative(song.appleId)) setNowPlaying({ id: song.appleId, title: r.what });
+    })();
+  }
+
   function chooseResult(r: SearchResult) {
     const title = r.subtitle ? `${r.title} — ${r.subtitle}` : r.title;
     setWhat(title);
@@ -165,6 +249,10 @@ export default function ListeningPage() {
     setArtworkUrl(r.artworkUrl ?? "");
     setPicked(true);
     setResults([]);
+    // Owner: "they could search for the song in phoebe and it would start
+    // playing". Filling the log stays — what you played is what you listened
+    // to, so the log writes itself instead of asking you to retype it.
+    playSearchResult(r);
   }
   const [medium, setMedium] = useState<ListeningMedium>(() => {
     try {
@@ -698,10 +786,15 @@ export default function ListeningPage() {
                     * "Let a song come to mind" is a real ask, and on the days
                     * nothing comes the practice stalls at its second beat. What
                     * you have already sat with is the most likely place for one
-                    * to come from — so it's shown, quietly, as a reminder
-                    * rather than a menu: these aren't tappable, because
-                    * choosing here would make it a picker and the point is
-                    * that the song comes to YOU.
+                    * to come from.
+                    *
+                    * These USED to be deliberately inert, on the reasoning that
+                    * choosing here would make the practice a picker. The owner
+                    * asked for the picker (2026-09-18: "if they tap a song in
+                    * recents it would start playing"), so a tap now plays it
+                    * and fills the log. Buttons, not divs — the deck pages
+                    * forward on any tap in its right half and stands down only
+                    * for button/a/[role=button].
                     */}
                   {sortedEntries.length > 0 && (
                     <div className="w-full flex flex-col gap-2">
@@ -709,11 +802,14 @@ export default function ListeningPage() {
                         Lately
                       </p>
                       {sortedEntries.slice(0, 3).map((e) => (
-                        <div
+                        <button
                           key={e.id}
+                          type="button"
+                          onClick={() => playRecent({ what: e.what, artworkUrl: e.artworkUrl, medium: e.medium })}
+                          className="active:scale-[0.99]"
                           style={{
                             display: "flex", alignItems: "center", gap: 10, width: "100%",
-                            padding: 8, borderRadius: 12, textAlign: "left",
+                            padding: 8, borderRadius: 12, textAlign: "left", cursor: "pointer",
                             background: "rgba(240,237,230,0.05)",
                             backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
                             border: `1px solid ${DECK_BORDER}`,
@@ -732,10 +828,10 @@ export default function ListeningPage() {
                               {e.what?.trim() || (MEDIUM_EMOJI[e.medium] ?? "🎧")}
                             </span>
                             <span style={{ display: "block", color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, marginTop: 2 }}>
-                              {relDay(e.day)}
+                              {nowPlaying?.title === e.what ? "Playing…" : relDay(e.day)}
                             </span>
                           </span>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
