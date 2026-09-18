@@ -133,6 +133,7 @@ export function playlistById(id: string | null | undefined): MusicPlaylist | nul
 
 const KEY_CONTEMPLATION = "phoebe:contemplation:music";
 const KEY_OFFICE = "phoebe:office:music";
+const KEY_COBREATHE = "phoebe:cobreathe:music";
 /** The last playlist chosen ANYWHERE — what a new surface defaults to. */
 const KEY_RECENT = "phoebe:music:recent";
 
@@ -202,5 +203,27 @@ export function getOfficeMusic(): MusicPlaylist | null {
 /** Pass null for silence — stored explicitly, so it isn't re-defaulted. */
 export function setOfficeMusic(id: string | null): void {
   write(KEY_OFFICE, id ?? NONE);
+  remember(id);
+}
+
+/**
+ * MUSIC UNDER THE BREATH (owner, 2026-09-18: "a music dropdown when Apple
+ * Music is on, defaulting to the last chosen or None").
+ *
+ * Same shape as the office: an explicit None sticks, and anything else falls
+ * back to the last playlist chosen anywhere. Breathing together is a shared
+ * practice with its own sound already — the swells — so music here is
+ * something asked for, and the dropdown does not appear at all unless Apple
+ * Music can really play it.
+ */
+export function getCobreatheMusic(): MusicPlaylist | null {
+  const saved = read(KEY_COBREATHE);
+  if (saved === NONE) return null;
+  if (saved) return playlistById(saved);
+  return recentPlaylist();
+}
+
+export function setCobreatheMusic(id: string | null): void {
+  write(KEY_COBREATHE, id ?? NONE);
   remember(id);
 }
