@@ -43,6 +43,18 @@ const KEY_REFLECTION_SOURCE = "phoebe:office:reflection-source";
 // this live; Settings sets the default. Per-device, like the reflection
 // source.
 const KEY_OFFICE_AUDIO_SOURCE = "phoebe:office:audio-source";
+/**
+ * HOW LECTIO DIVINA IS KEPT — the app's own slideshow (read it yourself, three
+ * times, with the prompts) or the guided audio, Abiding Way Ministries' daily
+ * lectio (owner, 2026-09-18: "instead of having guided lectio divina as its
+ * own option … just have it as an option under lectio divina").
+ *
+ * ONE door either way: /lectio is still what every card, row and widget opens,
+ * and it hands off to the audio when that is the choice. A second href in the
+ * six places that name this practice is exactly the drift this app keeps
+ * getting bitten by.
+ */
+const KEY_LECTIO_MODE = "phoebe:lectio:mode";
 const KEY_INCLUDE_GRATITUDE_SLIDE = "phoebe:office:include-gratitude-slide";
 // Default silent-contemplation length in minutes. 0 = off (no default;
 // the Contemplation timer shows its picker). Set from the Daily Office
@@ -253,6 +265,17 @@ export function getOfficeAudioSource(): OfficeAudioSource {
   } catch { /* private mode */ }
   return "forward-movement";
 }
+export type LectioMode = "slideshow" | "audio";
+export function getLectioMode(): LectioMode {
+  try { return localStorage.getItem(KEY_LECTIO_MODE) === "audio" ? "audio" : "slideshow"; } catch { return "slideshow"; }
+}
+export function setLectioMode(v: LectioMode): void {
+  try {
+    localStorage.setItem(KEY_LECTIO_MODE, v);
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* private mode / quota — non-fatal */ }
+}
+
 export function setOfficeAudioSource(v: OfficeAudioSource): void {
   try {
     localStorage.setItem(KEY_OFFICE_AUDIO_SOURCE, v);

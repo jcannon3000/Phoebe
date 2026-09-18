@@ -59,7 +59,7 @@ export const ROUTINE_KEYS: string[] = [
   "phoebe:office:confession:morning", "phoebe:office:confession:evening",
   "phoebe:office:gratitude:morning", "phoebe:office:gratitude:evening",
   // Global office/reflection settings.
-  "phoebe:office:reflection-source", "phoebe:office:audio-source",
+  "phoebe:office:reflection-source", "phoebe:office:audio-source", "phoebe:lectio:mode",
   "phoebe:office:default-entry", "phoebe:office:include-gratitude-slide",
   "phoebe:office:contemplation-minutes",
   "phoebe:office:show-cac-close", "phoebe:office:show-fdd-close", "phoebe:office:show-ssje-close",

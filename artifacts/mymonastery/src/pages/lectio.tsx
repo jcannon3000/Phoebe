@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { isOnline } from "@/lib/offline";
 import { X } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { getLectioMode } from "@/lib/officePrefs";
 import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 import { DeckAnnouncer } from "@/components/DeckAnnouncer";
 import { sundayLectionaryQuery, type SundayLectionary } from "@/lib/sundayLectionary";
@@ -115,6 +116,21 @@ export default function LectioPage() {
    * rather than whatever it was on mount (reference_query_only_navigation).
    */
   const search = useSearch();
+  /**
+   * THE ONE DOOR. Every card, row and widget opens /lectio; if the rule says
+   * this practice is kept as the guided audio (officePrefs.getLectioMode —
+   * set on the customizer's Lectio slide), the page hands straight off to it
+   * rather than a second href being threaded through six renderers. The mode
+   * is a rule choice, changed where the rule is (the customizer), not toggled
+   * per visit — so nothing in the app links ?read=1; it is the deep link that
+   * opens the slideshow anyway, for support and for testing both doors.
+   */
+  useEffect(() => {
+    if (getLectioMode() !== "audio") return;
+    try { if (new URLSearchParams(search).get("read") === "1") return; } catch { /* fall through */ }
+    setLocation("/reflect/lectio");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
   const { sundayMode, sundayTrack } = useMemo(() => {
     const q = new URLSearchParams(search);
     return { sundayMode: q.get("sunday") === "1", sundayTrack: (q.get("track") === "2" ? 2 : 1) as 1 | 2 };

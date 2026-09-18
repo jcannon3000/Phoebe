@@ -78,12 +78,6 @@ export function usePracticeDirectory(): PracticeEntry[] {
      * everyone, as the route itself is — their feed is public.
      */
     { emoji: "🙇🏽", label: "Pray As You Go Daily", sub: "A guided audio meditation on scripture", href: "/reflect/payg" },
-    /**
-     * Guided Lectio Divina — Abiding Way Ministries' daily reading, heard
-     * rather than read (owner, 2026-09-18). Like Pray As You Go it opens the
-     * app's own player and the time counts as contemplation.
-     */
-    { emoji: "📖", label: "Guided Lectio Divina", sub: "A passage read slowly, with silence and a guide", href: "/reflect/lectio" },
     // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no
     // ?side=), so it logs as a standalone practice rather than closing
     // out a morning/evening anchor.

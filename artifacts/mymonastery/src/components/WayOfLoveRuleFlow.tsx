@@ -90,6 +90,9 @@ import {
   clearSideDaySwap,
   getSideContemplationKind,
   TRACKED_REFLECTION_SOURCES,
+  getLectioMode,
+  setLectioMode,
+  type LectioMode,
 } from "@/lib/officePrefs";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -1606,6 +1609,8 @@ export default function WayOfLoveRuleFlow({
   // practice options for morning and eveing, its not right now") — a listened
   // meditation kept as this side's contemplative practice.
   const CONTEMPLATIVE_FORMS = ["prayer", "creation", "walk", "audio", "payg", "visio", "lectio", "rosary", "icons"] as const;
+  // Which way Lectio Divina is kept — the slideshow or the guided audio.
+  const [lectioMode, setLectioModeState] = useState<LectioMode>(() => getLectioMode());
   type ContemplativeForm = (typeof CONTEMPLATIVE_FORMS)[number];
   // Owner: "the Examen and Compline shouldn't be in contemplative practice in
   // evening as they can be chosen other places." Compline is one of the prayer
@@ -5858,6 +5863,43 @@ export default function WayOfLoveRuleFlow({
 
             Only for the silent sit: Breathing Together counts in breaths (its own
             control below), and a walk or Audio Divina has no length to set. */}
+        {/* LECTIO: READ IT, OR BE READ TO (owner, 2026-09-18: "If someone
+            choses [lectio] divina in the customizer, have an options slide
+            that they would chose between slide show and audio", "just have it
+            as an option under lectio divina"). One setting, not a second
+            practice — /lectio stays the single door and hands off to the audio
+            when that is the choice. */}
+        {contemplativeForm[side] === "lectio" && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.lectio_mode_label", { defaultValue: "How would you like to keep it?" })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
+              {([
+                { v: "slideshow" as const, label: t("wol_rule.lectio_mode_slideshow", { defaultValue: "📜 The slideshow" }), sub: t("wol_rule.lectio_mode_slideshow_sub", { defaultValue: "Read the passage yourself, three times, with a prompt before each." }) },
+                { v: "audio" as const, label: t("wol_rule.lectio_mode_audio", { defaultValue: "📖 Guided Lectio Divina" }), sub: t("wol_rule.lectio_mode_audio_sub", { defaultValue: "Abiding Way Ministries reads it to you, with silence and a guide." }) },
+              ]).map((opt) => {
+                const on = lectioMode === opt.v;
+                return (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => { setLectioModeState(opt.v); setLectioMode(opt.v); }}
+                    style={{
+                      ...FROST_BLUR, width: "100%", boxSizing: "border-box" as const, textAlign: "left",
+                      background: on ? "rgba(46,107,64,0.35)" : CARD,
+                      border: `1px solid ${on ? "rgba(168,197,160,0.6)" : CARD_B}`,
+                      borderRadius: 12, padding: "13px 14px", cursor: "pointer", fontFamily: FONT,
+                    }}
+                  >
+                    <span style={{ display: "block", color: CREAM, fontSize: 15, fontWeight: on ? 700 : 600 }}>{opt.label}</span>
+                    <span style={{ display: "block", color: SAGE, fontSize: 12.5, marginTop: 3, lineHeight: 1.45 }}>{opt.sub}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
         {contemplativeForm[side] === "prayer" && (
           <>
             <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
