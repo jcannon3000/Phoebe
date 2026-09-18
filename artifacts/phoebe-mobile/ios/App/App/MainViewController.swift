@@ -59,6 +59,14 @@ class MainViewController: CAPBridgeViewController {
         // with a bare ✕ and a toolbar that collapses on scroll: the custom
         // controller built to avoid exactly that has been dead code.
         bridge?.registerPluginInstance(BibleBrowserPlugin())
+        // PhoebeMusic — in-app Apple Music playback for the hymns catalogue.
+        // Registered explicitly for the same reason as every plugin above it:
+        // nothing in Swift references the class, so Capacitor 8 dead-strips it
+        // and window.Capacitor.Plugins.PhoebeMusic would simply not exist. The
+        // JS side guards on that and falls back to opening music.apple.com, so
+        // a missing registration would look like "the native path never works"
+        // rather than like an error.
+        bridge?.registerPluginInstance(PhoebeMusicPlugin())
 
         // A SIMULATOR SAYS SO. App Metrics must not count test runs (owner,
         // 2026-09-16: "make sure simulator sessions are not being counted"),

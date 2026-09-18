@@ -59,6 +59,8 @@
 	<string>Phoebe uses your contacts so you can invite people you already know — just like a party app. Nothing is sent to our servers unless you choose to invite someone.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Phoebe uses Face ID so only you can open your prayer intentions.</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Phoebe plays hymns through your own Apple Music subscription, so you can pray with them without leaving the app.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Phoebe uses your camera so you can take a profile photo.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

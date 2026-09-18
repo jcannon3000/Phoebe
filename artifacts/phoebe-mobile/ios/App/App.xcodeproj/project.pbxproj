@@ -23,6 +23,7 @@
 		B1B1E0010000000000000002 /* BibleWebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000001 /* BibleWebViewController.swift */; };
 		B1B1E0010000000000000004 /* BibleBrowserPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000003 /* BibleBrowserPlugin.swift */; };
 		B1B1E0010000000000000006 /* PhoebeBadgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */; };
+		B1B1E0010000000000000022 /* PhoebeMusicPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000021 /* PhoebeMusicPlugin.swift */; };
 		B1B1E0010000000000000008 /* PhoebeAudioPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000007 /* PhoebeAudioPlugin.swift */; };
 		B1B1E001000000000000000C /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E001000000000000000B /* MainViewController.swift */; };
 		B2B2E0020000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2B2E0020000000000000010 /* Assets.xcassets */; };
@@ -79,6 +80,7 @@
 		B1B1E0010000000000000001 /* BibleWebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BibleWebViewController.swift; sourceTree = "<group>"; };
 		B1B1E0010000000000000003 /* BibleBrowserPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BibleBrowserPlugin.swift; sourceTree = "<group>"; };
 		B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeBadgePlugin.swift; sourceTree = "<group>"; };
+		B1B1E0010000000000000021 /* PhoebeMusicPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeMusicPlugin.swift; sourceTree = "<group>"; };
 		B1B1E0010000000000000007 /* PhoebeAudioPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeAudioPlugin.swift; sourceTree = "<group>"; };
 		B1B1E001000000000000000B /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		B2B2E0020000000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -152,6 +154,7 @@
 				B1B1E0010000000000000001 /* BibleWebViewController.swift */,
 				B1B1E0010000000000000003 /* BibleBrowserPlugin.swift */,
 				B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */,
+				B1B1E0010000000000000021 /* PhoebeMusicPlugin.swift */,
 				B1B1E0010000000000000007 /* PhoebeAudioPlugin.swift */,
 				B1B1E001000000000000000B /* MainViewController.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -353,6 +356,7 @@
 				B1B1E0010000000000000002 /* BibleWebViewController.swift in Sources */,
 				B1B1E0010000000000000004 /* BibleBrowserPlugin.swift in Sources */,
 				B1B1E0010000000000000006 /* PhoebeBadgePlugin.swift in Sources */,
+				B1B1E0010000000000000022 /* PhoebeMusicPlugin.swift in Sources */,
 				B1B1E0010000000000000008 /* PhoebeAudioPlugin.swift in Sources */,
 				B1B1E001000000000000000C /* MainViewController.swift in Sources */,
 				1906F0DF4B109027829D0BEC /* PhoebeWidgetPlugin.swift in Sources */,

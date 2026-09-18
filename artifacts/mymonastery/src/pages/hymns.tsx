@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
+import { hasAppleMusicNative, playAppleMusicNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 import { HYMNS, hymnNumberLabel, type Hymn } from "@/lib/hymnsCatalogue";
 import { SpotifyMark, AppleMark, YouTubeMark } from "@/components/ServiceMarks";
 import {
@@ -102,6 +103,29 @@ export default function HymnsPage() {
   // of opening a web player inside Phoebe (the call Audio Divina already uses).
   const open = (url: string) => { void openExternal(url, { system: true }); };
 
+  // Which row, if any, is playing INSIDE Phoebe right now. Only ever set on a
+  // native build with an Apple Music subscription; on the web it stays null and
+  // this page behaves exactly as it did before the native player existed.
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  useEffect(() => () => { void stopAppleMusicNative(); }, []);
+
+  // Apple Music can play here, through the listener's own subscription
+  // (lib/appleMusicNative). Everything else — and every failure — opens the
+  // service instead. The native attempt is only made when the plugin is
+  // actually present, so the web path stays synchronous inside the tap and is
+  // never at the mercy of a popup blocker.
+  const play = (h: Hymn, url: string) => {
+    if (service === "apple" && h.appleTrackId && hasAppleMusicNative()) {
+      if (playingId === h.appleTrackId) { void stopAppleMusicNative(); setPlayingId(null); return; }
+      void playAppleMusicNative(h.appleTrackId).then((ok) => {
+        if (ok) setPlayingId(h.appleTrackId);
+        else open(url);
+      });
+      return;
+    }
+    open(url);
+  };
+
   const label = MUSIC_SERVICES.find((s) => s.id === service)?.label ?? "Spotify";
 
   // A frosted pill with a transparent native <select> laid over it, so a tap
@@ -147,6 +171,7 @@ export default function HymnsPage() {
 
   const card = (h: Hymn, i: number) => {
     const url = urlFor(h, service);
+    const playing = !!h.appleTrackId && playingId === h.appleTrackId;
     return (
       <div
         key={`${h.spotifyUrl}-${i}`}
@@ -198,8 +223,8 @@ export default function HymnsPage() {
         <button
           type="button"
           disabled={!url}
-          onClick={() => url && open(url)}
-          aria-label={url ? `Play ${h.name} in ${label}` : `${h.name} is not on ${label}`}
+          onClick={() => url && play(h, url)}
+          aria-label={playing ? `Pause ${h.name}` : url ? `Play ${h.name} in ${label}` : `${h.name} is not on ${label}`}
           title={url ? undefined : `Not on ${label}`}
           style={{
             flex: "0 0 auto", width: 36, height: 36, borderRadius: 999,
@@ -209,9 +234,16 @@ export default function HymnsPage() {
             border: `1px solid ${url ? "rgba(143,175,150,0.55)" : BORDER}`,
           }}
         >
-          <svg width="13" height="14" viewBox="0 0 13 14" aria-hidden focusable="false" style={{ display: "block", marginLeft: 2 }}>
-            <path d="M0 0.8 A0.8 0.8 0 0 1 1.2 0.1 L12.2 6.3 A0.8 0.8 0 0 1 12.2 7.7 L1.2 13.9 A0.8 0.8 0 0 1 0 13.2 Z" fill={WARM} />
-          </svg>
+          {playing ? (
+            <svg width="12" height="14" viewBox="0 0 12 14" aria-hidden focusable="false" style={{ display: "block" }}>
+              <rect x="0.5" y="0.5" width="4" height="13" rx="1.1" fill={WARM} />
+              <rect x="7.5" y="0.5" width="4" height="13" rx="1.1" fill={WARM} />
+            </svg>
+          ) : (
+            <svg width="13" height="14" viewBox="0 0 13 14" aria-hidden focusable="false" style={{ display: "block", marginLeft: 2 }}>
+              <path d="M0 0.8 A0.8 0.8 0 0 1 1.2 0.1 L12.2 6.3 A0.8 0.8 0 0 1 12.2 7.7 L1.2 13.9 A0.8 0.8 0 0 1 0 13.2 Z" fill={WARM} />
+            </svg>
+          )}
         </button>
       </div>
     );
