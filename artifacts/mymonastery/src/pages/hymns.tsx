@@ -41,8 +41,13 @@ const BORDER = "rgba(46,107,64,0.38)";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 function norm(s: string): string {
-  try { return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
-  catch { return s.toLowerCase(); }
+  // Curly apostrophes fold to straight ones BOTH ways: iOS Smart Punctuation
+  // turns a typed ' into ’, so "King’s College" found none of the
+  // fourteen King's College recordings, while the one row spelled with ’
+  // could not be found by typing '.
+  const flat = s.replace(/[\u2018\u2019\u02BC]/g, "'");
+  try { return flat.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+  catch { return flat.toLowerCase(); }
 }
 
 function mmss(seconds: number): string {
@@ -88,7 +93,10 @@ export default function HymnsPage() {
     return HYMNS.filter((h) => {
       // The number is searchable as a word of its own, so typing "154" finds
       // the hymn and "15" does not drag in every hymn with a 15 in its id.
-      const hay = norm([h.num.join(" "), h.name, h.firstLine ?? "", h.artist].join(" "));
+      // The number is NOT in the haystack: as a substring "15" matched 115,
+      // 150, 152, 154, 156, 158 and 159, and "66" matched 165/166 as well as
+      // Hymn 66. It is only ever compared whole, below.
+      const hay = norm([h.name, h.firstLine ?? "", h.artist].join(" "));
       const nums = h.num.map(String);
       return words.every((w) => hay.includes(w) || nums.some((n) => n === w));
     });
@@ -108,32 +116,48 @@ export default function HymnsPage() {
   // native build with an Apple Music subscription; on the web it stays null and
   // this page behaves exactly as it did before the native player existed.
   const [playingId, setPlayingId] = useState<string | null>(null);
-  useEffect(() => () => { void stopAppleMusicNative(); }, []);
+  // NO stop-on-unmount. It used to be here and undid the feature: the whole
+  // point of the pendingListen hand-off is that you LEAVE this page to go and
+  // log the hymn that is playing, and the cleanup killed it on the way out.
+  // Playback is the listener's to stop — pause here, the lock screen, or
+  // Control Center.
 
   // Apple Music can play here, through the listener's own subscription
   // (lib/appleMusicNative). Everything else — and every failure — opens the
   // service instead. The native attempt is only made when the plugin is
   // actually present, so the web path stays synchronous inside the tap and is
   // never at the mercy of a popup blocker.
+  /** A hymn you went off to hear comes back ready to log (pendingListen). */
+  const noteForTheLog = (h: Hymn) => setPendingListen({
+    what: h.num.length ? `Hymn ${hymnNumberLabel(h)} · ${h.name} — ${h.artist}` : `${h.name} — ${h.artist}`,
+  });
+
   const play = (h: Hymn, url: string) => {
     // Owner: "when they pick a hymn, regardless of the platform, if it opens
     // the other app, when they come back to phoebe, it should have that hymn
     // ready to be logged". Left for Audio Divina's log whichever way it plays
     // — in-app or out in the service — because either way this is what they
     // listened to. lib/pendingListen clears it on use and at the day turn.
-    setPendingListen({
-      what: h.num.length ? `Hymn ${hymnNumberLabel(h)} · ${h.name} — ${h.artist}` : `${h.name} — ${h.artist}`,
-    });
     if (service === "apple" && h.appleTrackId && hasAppleMusicNative()) {
+      // Pause is not listening: return BEFORE the note is left, or stopping a
+      // hymn would record it as the thing you sat with.
       if (playingId === h.appleTrackId) { void stopAppleMusicNative(); setPlayingId(null); return; }
+      noteForTheLog(h);
       void playAppleMusicNative(h.appleTrackId).then((ok) => {
         if (ok) setPlayingId(h.appleTrackId);
         else open(url);
       });
       return;
     }
+    noteForTheLog(h);
     open(url);
   };
+
+  // Changing where your music comes from stops what the old one was playing —
+  // otherwise audio runs on with no control for it anywhere on the page.
+  useEffect(() => {
+    if (service !== "apple" && playingId) { void stopAppleMusicNative(); setPlayingId(null); }
+  }, [service, playingId]);
 
   const label = MUSIC_SERVICES.find((s) => s.id === service)?.label ?? "Spotify";
 
@@ -186,7 +210,11 @@ export default function HymnsPage() {
 
   const card = (h: Hymn, i: number) => {
     const url = urlFor(h, service);
-    const playing = !!h.appleTrackId && playingId === h.appleTrackId;
+    // `service` belongs here as well as in play(): without it, switching the
+    // chooser mid-hymn left a pause button on a row whose service can no longer
+    // pause anything — inert where the row has no link for the new service,
+    // and a SECOND stream where it has one.
+    const playing = service === "apple" && !!h.appleTrackId && playingId === h.appleTrackId;
     return (
       <div
         key={`${h.spotifyUrl}-${i}`}
