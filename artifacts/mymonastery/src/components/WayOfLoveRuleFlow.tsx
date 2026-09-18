@@ -757,7 +757,7 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
   // Heard, not read: its card opens the audio player on the day's session
   // (owner, 2026-09-17), and it is kept once most of it has played.
-  { id: "payg", label: "🎧 Pray As You Go Daily", sub: "The Jesuits' daily prayer, listened to" },
+  { id: "payg", label: "🎧 Pray As You Go Daily", sub: "A guided audio meditation on scripture" },
   // Read-only sources (see ReflectionSource): they sit in the rule and open in
   // the reader like the others, but opening one is not scored.
   { id: "nouwen", label: "😊 Nouwen Daily Devotion", sub: "Henri Nouwen Society" },
@@ -1454,6 +1454,7 @@ export default function WayOfLoveRuleFlow({
       compline: homeCardOn(seedLayout(user), "compline"),
       noonday: homeCardOn(seedLayout(user), "noonday"),
       lectio: homeCardOn(seedLayout(user), "lectio"),
+      payg: homeCardOn(seedLayout(user), "payg"),
     });
     // Per-side Contemplative Prayer — re-seed once the home layout lands.
     setContemplationBySide((p) => touchedRef.current ? p : {
@@ -1474,7 +1475,7 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; andrews: boolean; spirituals: boolean; compline: boolean; noonday: boolean; reading: boolean; lectio: boolean; rosary: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; icons: boolean; taize: boolean; andrews: boolean; spirituals: boolean; compline: boolean; noonday: boolean; reading: boolean; lectio: boolean; rosary: boolean; payg: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: !creationHeldBySide() && homeCardOn(seedLayout(user), "cobreathe"),
     audio: homeCardOn(seedLayout(user), "listening"),
@@ -1498,8 +1499,13 @@ export default function WayOfLoveRuleFlow({
     // and every full-customizer Save switched it off (audit 2026-09-03).
     lectio: homeCardOn(seedLayout(user), "lectio"),
     rosary: homeCardOn(seedLayout(user), "rosary"),
+    // Pray As You Go Daily — a listened meditation, so it belongs among the
+    // contemplative practices as well as the reflections (owner, 2026-09-18).
+    // ONE card key either way, so this seeds from the same layout key its
+    // reflection row writes.
+    payg: homeCardOn(seedLayout(user), "payg"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "andrews" | "spirituals" | "compline" | "noonday" | "reading" | "lectio" | "rosary") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "icons" | "taize" | "andrews" | "spirituals" | "compline" | "noonday" | "reading" | "lectio" | "rosary" | "payg") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -2312,6 +2318,7 @@ export default function WayOfLoveRuleFlow({
        * unticked Rosary is never hidden either.
        */
       ...(contemplative.rosary ? ["rosary"] : []),
+      ...(contemplative.payg ? ["payg"] : []),
       ...(contemplative.reading ? ["reading"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
       ...(hagiographyOn ? ["hagiography"] : []),
@@ -2331,6 +2338,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.spirituals ? [] : ["spirituals"]),
       ...(contemplative.lectio ? [] : ["lectio"]),
       ...(contemplative.rosary ? [] : ["rosary"]),
+      ...(contemplative.payg ? [] : ["payg"]),
       ...(contemplative.reading ? [] : ["reading"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
       ...(hagiographyOn ? [] : ["hagiography"]),
@@ -2680,6 +2688,7 @@ export default function WayOfLoveRuleFlow({
        * unticked Rosary is never hidden either.
        */
       ...(contemplative.rosary ? ["rosary"] : []),
+      ...(contemplative.payg ? ["payg"] : []),
       ...(contemplative.reading ? ["reading"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
       ...(hagiographyOn ? ["hagiography"] : []),
@@ -2700,6 +2709,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.spirituals ? [] : ["spirituals"]),
       ...(contemplative.lectio ? [] : ["lectio"]),
       ...(contemplative.rosary ? [] : ["rosary"]),
+      ...(contemplative.payg ? [] : ["payg"]),
       ...(contemplative.reading ? [] : ["reading"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
       ...(hagiographyOn ? [] : ["hagiography"]),
@@ -2886,7 +2896,7 @@ export default function WayOfLoveRuleFlow({
     // wants Visio Divina and a Contemplative Walk gets exactly those, and
     // nothing survives from the rule being replaced.
     setContemplative({
-      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, andrews: false, spirituals: false, compline: false, noonday: false, reading: false, lectio: false, rosary: false,
+      cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, andrews: false, spirituals: false, compline: false, noonday: false, reading: false, lectio: false, rosary: false, payg: false,
       ...(preset.practices ?? {}),
     });
     /**
@@ -4897,6 +4907,16 @@ export default function WayOfLoveRuleFlow({
     // (worse) would put a duplicate Compline card on the home next to the
     // evening anchor that already IS Compline.
     const complineAlreadyPrimary = prayBySide.evening === "compline" || prayBySide.morning === "compline";
+    /**
+     * Pray As You Go as a side's PRAYER — a reflection anchor, which stores the
+     * level "fdd" whichever source it is (see the Reflection row), with the
+     * source itself per side. Offering it again below would be a second toggle
+     * for the same card.
+     */
+    const paygIsSidePrayer = (["morning", "evening"] as OfficeSide[]).some(
+      (side) => prayBySide[side] === "fdd"
+        && (anchorReflectionBySide[side] ?? getSideReflectionExplicit(side) ?? "fdd") === "payg",
+    );
     return shell(
       <>
         {backRow(goPrev)}
@@ -4940,6 +4960,12 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(contemplative.noonday, `☀️ ${t("wol_rule.cp_noonday", { defaultValue: "Midday Prayer" })}`, t("wol_rule.cp_noonday_sub", { defaultValue: "A short office for noon, from the prayer book." }), () => toggleContemplative("noonday"))}
           {!complineAlreadyPrimary && choiceRow(contemplative.compline, `🌙 ${t("wol_rule.cp_compline", { defaultValue: "Compline" })}`, t("wol_rule.cp_compline_sub", { defaultValue: "The night office — available from 7pm." }), () => toggleContemplative("compline"))}
           {!anchoredAsForm("audio") && choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Connecting with God through music." }), () => toggleContemplative("audio"))}
+          {/* Pray As You Go Daily, among the contemplative practices (owner,
+              2026-09-18) — and NOT offered here when it is already a side's
+              prayer ("if was already put in morning or evening, then also make
+              sure then it isnt able to be chosen again"), the same rule
+              anchoredAsForm keeps for the rest. */}
+          {!paygIsSidePrayer && choiceRow(contemplative.payg, `🎧 ${t("wol_rule.cp_payg", { defaultValue: "Pray As You Go Daily" })}`, t("wol_rule.cp_payg_sub", { defaultValue: "A guided audio meditation on scripture." }), () => toggleContemplative("payg"))}
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
           {/* Lectio sits right after the Examen (owner, 2026-09-05: "move
               Lectio Divina up to be after the Examen"); it was last but one. */}
@@ -6282,6 +6308,12 @@ export default function WayOfLoveRuleFlow({
             // still sees the row, so a lapsed follower can see and change
             // their own choice rather than having it vanish silently.
             .filter((n) => n.id !== "vts" || entitlements.vts || newsletters.includes("vts"))
+            // Pray As You Go is offered on the contemplative step too — one
+            // card, two doors. Once it has been taken there it is not an
+            // option here as well (owner, 2026-09-18: "if someone selects it as
+            // a contemplative practice make sure it doesnt show up as an option
+            // when they get to reflections").
+            .filter((n) => n.id !== "payg" || !contemplative.payg)
             .map((n) => {
               // FDD chosen as the morning PRAYER (not just a reflection) stays
               // noted here even if unchecked as a reflection below — the two

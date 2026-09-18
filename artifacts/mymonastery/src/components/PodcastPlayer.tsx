@@ -12,6 +12,7 @@ import { WIDE_PHOTOS } from "@/lib/wideBackgrounds";
 import { markComplete as markCourseLessonComplete } from "@/lib/courseProgress";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { markReflectionRead, type TrackedReflection } from "@/lib/cacReadState";
+import { logListenedContemplation } from "@/lib/listenedContemplation";
 
 // ≥2 minutes of actual listening to a (non-office) podcast counts the
 // "Podcasts" daily practice as kept — if the user has it as a practice.
@@ -72,6 +73,14 @@ export type PlayingEpisode = {
    * mark, exactly as they do when a reflection's page is opened.
    */
   creditReflection?: TrackedReflection;
+  /**
+   * …and the time counts as CONTEMPLATION time, the way Breathing Together's
+   * breath does (owner, 2026-09-18). Opt-in per episode rather than implied by
+   * creditReflection: a reflection that is merely listened to is not
+   * necessarily prayer with the ear, and only the practice that asked for this
+   * should add minutes to a silence goal.
+   */
+  creditContemplation?: boolean;
   // Skip the listening-history write — the daily office changes every day
   // and is tracked via prayer-sessions, not the podcast history.
   skipHistory?: boolean;
@@ -491,7 +500,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // Surface + office-credit mode for the CURRENTLY accumulating session.
   // Set when an episode starts; read by commitSession (which can't close
   // over `current`). Defaults to the podcast surface.
-  const sessionMetaRef = useRef<{ surface: string; creditMode?: "morning" | "evening" | "compline" }>({ surface: "podcast" });
+  const sessionMetaRef = useRef<{ surface: string; creditMode?: "morning" | "evening" | "compline"; contemplationSource?: string }>({ surface: "podcast" });
   // The episodeId of the office episode we've already credited this play, so the
   // ≥60% office credit fires exactly once per listen.
   const officeCreditedRef = useRef<string | null>(null);
@@ -538,8 +547,25 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     closeSeg();
     const total = Math.round(seg.current.acc);
     const startedAt = seg.current.startedAt;
-    const { surface, creditMode } = sessionMetaRef.current;
+    const { surface, creditMode, contemplationSource } = sessionMetaRef.current;
     seg.current = { start: null, acc: 0, startedAt: null };
+    /**
+     * PRAYER WITH THE EAR IS CONTEMPLATION TIME (owner, 2026-09-18, of Pray As
+     * You Go: "when someone listens to it have it count towards their
+     * contemplation time too like breathing together does").
+     *
+     * Logged HERE rather than at the 60% credit, because this is where the
+     * seconds are known: the credit fires two thirds of the way in, and the
+     * last third — often the silence they were led into — would never be
+     * counted. commitSession runs when the player closes, backgrounds, changes
+     * episode or unmounts, each time with the seconds ACTUALLY listened since
+     * the last commit, which is what Breathing Together logs too.
+     */
+    if (contemplationSource && total > 0) {
+      logListenedContemplation({ seconds: total, source: contemplationSource, user });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+    }
     if (total > 0 && startedAt && user) {
       // Listening-time row (community metrics + streak). The office "prayed
       // today" credit is handled separately by creditOfficePodcast once the
@@ -553,7 +579,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       }).catch(() => { /* best-effort */ });
       void creditMode;
     }
-  }, [closeSeg, user]);
+  }, [closeSeg, user, queryClient]);
 
   // Count an office podcast as PRAYED TODAY (≥60% listened). Stamps the local
   // office-completed flag (instant dashboard flip) and POSTs a completed=TRUE
@@ -606,7 +632,13 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       const officeSide = officeSideFromSlug(ep.showSlug) ?? ep.creditMode ?? null;
       sessionMetaRef.current = officeSide
         ? { surface: `${officeSide}-office-podcast`, creditMode: officeSide }
-        : { surface: ep.sessionSurface ?? "podcast", creditMode: ep.creditMode };
+        : {
+          surface: ep.sessionSurface ?? "podcast",
+          creditMode: ep.creditMode,
+          // Prayer with the ear, counted as contemplation time — see
+          // creditContemplation and commitSession below.
+          ...(ep.creditContemplation ? { contemplationSource: ep.creditReflection ?? "audio" } : {}),
+        };
       officeCreditedRef.current = null;
       courseCreditedRef.current = null;
       podcastCreditedRef.current = false;

@@ -79,6 +79,9 @@ export default function ReflectPaygPage() {
       // Counts the reflection read once it has been heard — the card's dot,
       // the streak and any side that takes this as its prayer all follow.
       creditReflection: "payg",
+      // Owner: "when someone listens to it have it count towards their
+      // contemplation time too like breathing together does."
+      creditContemplation: true,
       showHref: "/reflect/payg",
     });
     setLocation("/dashboard");
