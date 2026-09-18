@@ -306,6 +306,22 @@ const FM_CALENDAR: Record<string, string> = {
 
 /** Forward Movement's page for this date's commemoration, or null. */
 export function forwardMovementFeastUrl(date: Date = new Date()): string | null {
-  const slug = FM_CALENDAR[`${date.getMonth() + 1}-${date.getDate()}`];
+  return forwardMovementUrlFor(date.getMonth() + 1, date.getDate());
+}
+
+/**
+ * The same page for ANY month/day, not just today — what the commemorations
+ * index needs (owner, 2026-09-18: "if someone clicks on one, then can open the
+ * reader view of the page even if its not the day").
+ */
+export function forwardMovementUrlFor(month: number, day: number): string | null {
+  const slug = FM_CALENDAR[`${month}-${day}`];
   return slug ? `https://prayer.forwardmovement.org/calendar/${slug}` : null;
+}
+
+/** Every dated commemoration they publish, as [month, day] pairs, in order. */
+export function forwardMovementDates(): Array<[number, number]> {
+  return Object.keys(FM_CALENDAR)
+    .map((k) => k.split("-").map(Number) as [number, number])
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
 }

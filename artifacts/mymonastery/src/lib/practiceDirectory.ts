@@ -78,6 +78,12 @@ export function usePracticeDirectory(): PracticeEntry[] {
      * everyone, as the route itself is — their feed is public.
      */
     { emoji: "🙇🏽", label: "Pray As You Go Daily", sub: "A guided audio meditation on scripture", href: "/reflect/payg" },
+    /**
+     * Meditating on the lives of the saints (owner, 2026-09-18). A prompt, the
+     * life read on Forward Movement's own page in the in-app reader, a moment
+     * to pray with what it stirred, and the company you've been keeping.
+     */
+    { emoji: "🕯️", label: "The Life of a Saint", sub: "Read a life slowly, and let it ask something of yours", href: "/saints" },
     // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no
     // ?side=), so it logs as a standalone practice rather than closing
     // out a morning/evening anchor.
