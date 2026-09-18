@@ -29,6 +29,7 @@ import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
 import { AndroidPwaInstallPrompt } from "@/components/AndroidPwaInstallPrompt";
 import { BottomPromptStack } from "@/components/BottomPromptStack";
+import { isInReaderWatch } from "@/lib/videoEmbed";
 import { ReflectionReturnRedirect } from "@/components/ReflectionReturnRedirect";
 import { ReflectionPreheater } from "@/components/ReflectionPreheater";
 import { OfficeAudioPreloader } from "@/components/OfficeAudioPreloader";
@@ -1677,11 +1678,23 @@ function App() {
                 Store download), stacked so they never overlap. Inside the
                 router so the live banner's "Watch →" can SPA-navigate to
                 /ncmp/watch. */}
-            <BottomPromptStack />
-            {/* Desktop install banner — inside the router so it can react to
-                navigation (e.g. stay hidden during the customize flow). */}
-            <DesktopAppPrompt />
-            <AndroidPwaInstallPrompt />
+            {/* NOT INSIDE OUR OWN READER. When the iOS shell opens one of
+                these pages in the in-app browser so a video can play (the
+                origin there is real — see lib/videoEmbed), the page is a view
+                of one thing, not the app: a standing "add Phoebe to your home
+                screen" card pinned under a cathedral service is both wrong and
+                impossible to act on. Seen in the reader on the emulator,
+                2026-09-18. One guard at the mount site covers all three. */}
+            {!isInReaderWatch() && (
+              <>
+                <BottomPromptStack />
+                {/* Desktop install banner — inside the router so it can react
+                    to navigation (e.g. stay hidden during the customize
+                    flow). */}
+                <DesktopAppPrompt />
+                <AndroidPwaInstallPrompt />
+              </>
+            )}
             {/* Global podcast player — mounted above the route Switch so
                 audio keeps playing as you navigate. Renders its own
                 persistent <audio> + mini-player bar. */}
