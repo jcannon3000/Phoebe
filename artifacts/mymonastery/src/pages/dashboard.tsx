@@ -2307,7 +2307,15 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
       <HeroCardShell
         role={later ? undefined : "button"}
         tabIndex={later ? undefined : 0}
-        className={`mb-3 ${later ? "opacity-60" : "cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
+        /* NO mb-3 HERE. The hero renders as heroNode inside the Next list,
+           which is a `flex flex-col gap-2` — the gap already spaces it from the
+           card below. A bottom margin on top of that gave the hero 20px of air
+           where every other pair has 8, which is the "gap for no reason" the
+           owner kept seeing (measured 2026-09-18: hero wrapper 179.06 tall
+           around a 167.06 card, the 12px collapsing out through the anchor).
+           Three of the six heroes carried it and three did not, so it showed
+           only when one of those three led the day. */
+        className={later ? "opacity-60" : "cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99]"}
       >
         <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
         <div className="flex-1 px-4 pt-[20px] pb-[20px]">
@@ -2501,7 +2509,15 @@ function ExamenHomeCard({ hero = false }: { hero?: boolean } = {}) {
         <HeroCardShell
           role="button"
           tabIndex={0}
-          className="cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
+          /* NO mb-3 HERE. The hero renders as heroNode inside the Next list,
+             which is a `flex flex-col gap-2` — the gap already spaces it from the
+             card below. A bottom margin on top of that gave the hero 20px of air
+             where every other pair has 8, which is the "gap for no reason" the
+             owner kept seeing (measured 2026-09-18: hero wrapper 179.06 tall
+             around a 167.06 card, the 12px collapsing out through the anchor).
+             Three of the six heroes carried it and three did not, so it showed
+             only when one of those three led the day. */
+          className="cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99]"
         >
           <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
           <div className="flex-1 px-4 pt-[20px] pb-[20px]">
@@ -2752,7 +2768,15 @@ function CreationHomeCard({ side, hero = false }: { side: "morning" | "evening";
         <HeroCardShell
           role="button"
           tabIndex={0}
-          className="cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
+          /* NO mb-3 HERE. The hero renders as heroNode inside the Next list,
+             which is a `flex flex-col gap-2` — the gap already spaces it from the
+             card below. A bottom margin on top of that gave the hero 20px of air
+             where every other pair has 8, which is the "gap for no reason" the
+             owner kept seeing (measured 2026-09-18: hero wrapper 179.06 tall
+             around a 167.06 card, the 12px collapsing out through the anchor).
+             Three of the six heroes carried it and three did not, so it showed
+             only when one of those three led the day. */
+          className="cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99]"
         >
           <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
           <div className="flex-1 px-4 pt-[20px] pb-[20px]">
