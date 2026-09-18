@@ -217,6 +217,36 @@ export function galleryForDayWithMarker(
   return { works, relatedFrom: works.length > relatedFrom ? relatedFrom : -1 };
 }
 
+/**
+ * THE COMMENTARY, WHERE THERE IS ONE (owner, 2026-09-18, with an ACT link:
+ * "if there is a comentery, have a read comenatry pill next to the others").
+ *
+ * ACT records a work's commentary as a URL on thevcs.org — the Visual
+ * Commentary on Scripture — not as text, so nothing of theirs is held here or
+ * shipped in the bundle. The pill opens their page in the in-app reader, the
+ * same rule this app keeps for Forward Movement, oremus and the newsletters.
+ *
+ * Both catalogues carry the field; the commentary harvest is where most of
+ * them live (241 of its works have one). The http test matters because the
+ * field is an empty string for a work without one, and the admin tool applies
+ * the same test.
+ */
+const commentaryById = new Map<number, string>();
+let commentaryBuilt = false;
+
+export function commentaryUrlFor(id: number): string | null {
+  if (!commentaryBuilt) {
+    for (const a of [...ACT_COMMENTARY_CATALOGUE, ...ACT_CATALOGUE]) {
+      const essay = (a as { essay?: string }).essay;
+      if (essay && /^https?:\/\//i.test(essay) && !commentaryById.has(a.id)) {
+        commentaryById.set(a.id, essay);
+      }
+    }
+    commentaryBuilt = true;
+  }
+  return commentaryById.get(id) ?? null;
+}
+
 export type HeldWork = { id: number; ymd: string; seconds: number };
 
 /** What you have stayed with — device-local, newest first, capped. */
