@@ -177,6 +177,8 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
    * one-letter query can't try to render the entire catalogue at once.
    */
   const [ask, setAsk] = useState("");
+  /** The work whose credit is being read, if any (the ⓘ pill). */
+  const [info, setInfo] = useState<GalleryWork | null>(null);
   const pool = useMemo(() => galleryPool(), []);
   const ASK_CAP = 80;
   const askedAll = useMemo(() => {
@@ -285,6 +287,74 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "#050D08" }}>
+      {/* THE CREDIT, in full. Above the gallery's own layer, dismissed by the
+          scrim or the button — the scrim carries the tap so there is always a
+          way out, and the panel swallows its own so a tap on the text doesn't
+          close it mid-read. */}
+      {info && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("icons.gallery_info_label", { defaultValue: "Credit and licence" })}
+          onClick={() => setInfo(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 70, display: "flex",
+            alignItems: "center", justifyContent: "center", padding: 22,
+            background: "rgba(3,9,6,0.72)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%", maxWidth: 400, maxHeight: "76vh", overflowY: "auto",
+              borderRadius: 18, padding: "20px 20px 18px",
+              background: "rgba(9,26,16,0.93)", border: "1px solid rgba(200,212,192,0.25)",
+              boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+            }}
+          >
+            <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 19, lineHeight: 1.35, margin: "0 0 6px" }}>
+              {info.title}
+            </p>
+            {(info.artist || info.date) && (
+              <p style={{ color: SAGE, fontFamily: FONT, fontSize: 12.5, margin: "0 0 14px" }}>
+                {[info.artist ? tidyArtist(info.artist) : null, info.date].filter(Boolean).join(" · ")}
+              </p>
+            )}
+            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>
+              {info.attribution}
+              {info.where ? ` ${info.where}.` : ""}
+            </p>
+            {info.licence && (
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12, lineHeight: 1.55, margin: "10px 0 0" }}>
+                {info.licence}
+              </p>
+            )}
+            {info.act && (
+              <button
+                type="button"
+                onClick={() => { const u = info.act; setInfo(null); if (u) openExternal(u, { reader: true }); }}
+                style={{
+                  marginTop: 14, background: "none", border: "none", padding: 0, cursor: "pointer",
+                  color: SAGE, fontFamily: FONT, fontSize: 12.5, textDecoration: "underline", textUnderlineOffset: 3,
+                }}
+              >
+                {t("icons.gallery_info_source", { defaultValue: "See it at the source" })}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setInfo(null)}
+              style={{
+                marginTop: 18, width: "100%", borderRadius: 999, padding: "11px 18px",
+                fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer", color: WARM,
+                background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)",
+              }}
+            >
+              {t("common.close", { defaultValue: "Close" })}
+            </button>
+          </div>
+        </div>
+      )}
       {leaf && (
         <>
           <img
@@ -441,6 +511,25 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
                     📖 {ref}
                   </button>
                 )}
+                {/* Owner: "There needs to also be an info pill next to the
+                    others that would bring up a pop up the proper
+                    atribiution". ACT asks for the credit line and the
+                    CC-licensed works REQUIRE it — it is already printed under
+                    the work you pray with, and this is the same thing for a
+                    work you are only looking at. A pill rather than fine print
+                    under every picture: forty credit lines down a scroll would
+                    bury the art they belong to. */}
+                <button
+                  type="button"
+                  onClick={() => setInfo(art)}
+                  aria-label={t("icons.gallery_info_label", { defaultValue: "Credit and licence" })}
+                  style={{
+                    borderRadius: 999, padding: "9px 14px", fontSize: 13, fontWeight: 600, fontFamily: FONT,
+                    color: WARM, background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)", cursor: "pointer",
+                  }}
+                >
+                  {t("icons.gallery_info", { defaultValue: "ⓘ Info" })}
+                </button>
               </div>
             </section>
           );
