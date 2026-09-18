@@ -798,27 +798,23 @@ export default function ContemplationPage() {
         </button>
       </div>
 
-      {/* View stats — a quiet link under Start that drops the focused slide and
-          opens the full page on the Stats tab. Only in the immersive begin
-          mode; the full page already carries the History/Stats/Learn tabs. */}
+      {/* View stats and Log Prayer Time — HALF EACH, one row (owner,
+          2026-09-18: "What if we have view stats and log prayer time as two
+          half wide pills on a third row, together as wide as the pills
+          above"). Both are now pills of the same weight, and the row spans
+          exactly what Length and Start span, so the slide reads as three
+          rows rather than a pill, a link and another pill. Only in the
+          immersive begin mode; the full page carries its own tabs. */}
       {beginMode && (
-        <div className="flex items-center justify-center gap-3 mt-3.5">
+        <div className="flex items-stretch gap-2.5 mt-3.5">
           <button
             type="button"
             onClick={() => { setTab("stats"); setLocation("/contemplation?tab=stats"); }}
-            className="text-center transition-opacity active:opacity-70"
-            style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            className="flex-1 rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "12px 10px" }}
           >
             {t("contemplation.view_stats", { defaultValue: "View stats" })}<CtaArrow />
           </button>
-        </div>
-      )}
-      {/* Manual log — owner: "have it be a pill... goes not to the
-          contemplation details page, but goes to its own simple UI page."
-          A real pill (not the quiet text link the other two use), its own
-          row so it doesn't crowd against View stats. */}
-      {beginMode && (
-        <div className="flex items-center justify-center mt-3">
           <button
             type="button"
             onClick={() => {
@@ -827,8 +823,8 @@ export default function ContemplationPage() {
               })();
               setLocation(s === "morning" || s === "evening" ? `/contemplation-log?side=${s}` : "/contemplation-log");
             }}
-            className="rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "10px 20px" }}
+            className="flex-1 rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "12px 10px" }}
           >
             {t("contemplation.log_prayer_time", { defaultValue: "Log Prayer Time" })}
           </button>
