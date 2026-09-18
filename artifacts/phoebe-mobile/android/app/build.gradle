@@ -50,7 +50,7 @@ android {
         // upload (Play refuses a repeat). versionName tracks iOS's
         // MARKETING_VERSION in project.pbxproj — keep the two in step.
         versionCode 1
-        versionName "10.4"
+        versionName "10.5"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
