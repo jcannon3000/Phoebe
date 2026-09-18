@@ -93,6 +93,29 @@ export async function playAppleMusicNative(trackId: string | null | undefined): 
   }
 }
 
+/**
+ * Ask for Apple Music access, on purpose and in the open.
+ *
+ * Owner, 2026-09-18: "the first time someone picks apple music, aks them for
+ * permission". Choosing Apple Music IS the consent moment — it is a deliberate
+ * act, so the sheet belongs there rather than ambushing the first play. iOS
+ * only ever shows it once per install; after that this returns the standing
+ * answer without showing anything, which is why it is safe to call on every
+ * pick rather than tracking "have we asked yet" ourselves.
+ *
+ * Returns whether they can actually play: allowed AND subscribed.
+ */
+export async function requestAppleMusicNative(): Promise<{ authorized: boolean; subscribed: boolean }> {
+  const p = plugin();
+  if (!p?.authorize) return { authorized: false, subscribed: false };
+  try {
+    const r = await p.authorize();
+    return { authorized: r?.authorized === true, subscribed: r?.subscribed === true };
+  } catch {
+    return { authorized: false, subscribed: false };
+  }
+}
+
 /** Hold the music where it is — the player's pause button. */
 export async function pauseAppleMusicNative(): Promise<void> {
   try { await plugin()?.pause?.(); } catch { /* nothing playing */ }

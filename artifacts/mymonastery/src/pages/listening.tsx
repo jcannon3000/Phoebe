@@ -17,6 +17,9 @@ import { enqueueWrite } from "@/lib/writeOutbox";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 import { openExternal } from "@/lib/openExternal";
 import { hasAppleMusicNative, appleMusicNativeReady, playAppleMusicNative, pauseAppleMusicNative, resumeAppleMusicNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
+import { requestAppleMusicNative } from "@/lib/appleMusicNative";
+import { getMusicService, setMusicService, MUSIC_SERVICES, MUSIC_SERVICE_EVENT, type MusicService } from "@/lib/musicService";
+import { SpotifyMark, AppleMark, YouTubeMark } from "@/components/ServiceMarks";
 import { takePendingListen } from "@/lib/pendingListen";
 import { CtaArrow } from "@/components/CtaArrow";
 
@@ -92,6 +95,16 @@ const glassRow = {
 
 // "Today" / "Yesterday" / "Mon, Aug 24" for a log date (a local YYYY-MM-DD).
 // Bare "Aug 24" made you do the arithmetic on the practice you kept yesterday.
+/**
+ * Apple's artwork URLs carry their size in the path, and the search proxy asks
+ * for 160x160 — fine for a list row, mush at player size. Swapping the segment
+ * asks Apple for the same image larger; anything that isn't one of their URLs
+ * is returned untouched.
+ */
+function bigArtwork(url: string): string {
+  return url ? url.replace(/\/\d+x\d+(bb)?\./, "/600x600$1.") : url;
+}
+
 function relDay(day: string): string {
   const d = new Date(`${day}T12:00:00`);
   if (Number.isNaN(d.getTime())) return day;
@@ -215,6 +228,32 @@ export default function ListeningPage() {
    * web, on an older build, and for anyone who hasn't allowed it: no icon, and
    * the row behaves as it always did.
    */
+  /** Which service plays this listener's music — the same choice /hymns uses. */
+  const [service, setService] = useState<MusicService>(() => getMusicService());
+  useEffect(() => {
+    const sync = () => setService(getMusicService());
+    window.addEventListener(MUSIC_SERVICE_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(MUSIC_SERVICE_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  /**
+   * Picking Apple Music is the consent moment (owner: "the first time someone
+   * picks apple music, aks them for permission"). Choosing it is deliberate, so
+   * the sheet belongs here rather than ambushing the first play. iOS shows it
+   * once per install and afterwards answers silently, so this can run on every
+   * pick without nagging.
+   */
+  function pickService(v: MusicService) {
+    setMusicService(v);
+    setService(v);
+    if (v !== "apple" || !hasAppleMusicNative()) return;
+    void requestAppleMusicNative().then((r) => setCanPlayInApp(r.authorized && r.subscribed));
+  }
+
   const [canPlayInApp, setCanPlayInApp] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -254,11 +293,13 @@ export default function ListeningPage() {
     // Phoebe is holding the music and this beat becomes the player, or the
     // music is somewhere else and there is nothing left to do here but write it
     // down — so it goes straight to the log, already filled in by chooseRecent.
-    if (!hasAppleMusicNative()) { setDeckStep(LOG); return; }
+    if (service !== "apple" || !hasAppleMusicNative()) { setDeckStep(LOG); return; }
     void (async () => {
       const hits = await searchCatalog(r.what).catch(() => [] as SearchResult[]);
       const song = hits.find((h) => h.service === "apple" && h.kind === "song" && h.appleId);
       if (song?.appleId && await playAppleMusicNative(song.appleId)) {
+        // The catalogue hit knows the cover even when the logged row didn't.
+        if (song.artworkUrl) setArtworkUrl(song.artworkUrl);
         setNowPlaying({ id: song.appleId, title: r.what });
         setPaused(false);
         return;
@@ -793,6 +834,48 @@ export default function ListeningPage() {
                     Browse the library<CtaArrow />
                   </button>
                   )}
+                  {/* Where your music comes from (owner: "maybe on the bottom
+                      of the first slide of audio divina there is a drop down
+                      where they would chose between the platforms"). The same
+                      stored choice the hymns catalogue uses, so answering it in
+                      either place answers it in both — and the same frosted
+                      pill over a transparent native <select>, so a tap opens
+                      the iOS wheel rather than a row of buttons.
+
+                      Picking Apple Music asks for permission then and there,
+                      which is the one moment it makes sense to ask: they have
+                      just said this is where their music lives. */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9, marginTop: 26 }}>
+                    <span style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 12 }}>Play with</span>
+                    <div style={{ position: "relative" }}>
+                      <div
+                        style={{
+                          display: "flex", alignItems: "center", gap: 7, borderRadius: 999,
+                          padding: "7px 14px", pointerEvents: "none",
+                          background: "rgba(240,237,230,0.06)", border: `1px solid ${DECK_BORDER}`,
+                          color: WARM, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600,
+                        }}
+                      >
+                        {service === "apple" ? <AppleMark size={15} /> : service === "youtube" ? <YouTubeMark size={15} /> : <SpotifyMark size={15} />}
+                        <span>{MUSIC_SERVICES.find((x) => x.id === service)?.label ?? "Spotify"}</span>
+                        <span aria-hidden style={{ color: SAGE, fontSize: 11, lineHeight: 1 }}>▾</span>
+                      </div>
+                      <select
+                        value={service}
+                        onChange={(e) => pickService(e.target.value as MusicService)}
+                        aria-label="Which app plays your music"
+                        style={{
+                          position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0,
+                          appearance: "none", WebkitAppearance: "none", border: "none",
+                          background: "transparent", color: "transparent", cursor: "pointer",
+                        }}
+                      >
+                        {MUSIC_SERVICES.map((x) => (
+                          <option key={x.id} value={x.id}>{x.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -915,45 +998,65 @@ export default function ListeningPage() {
                   <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
                     {paused ? "Paused" : "Now playing"}
                   </p>
-                  {artworkUrl && (
-                    <img
-                      src={artworkUrl}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      style={{ width: 168, height: 168, objectFit: "cover", borderRadius: 16, border: `1px solid ${DECK_BORDER}` }}
-                    />
-                  )}
-                  <p className="text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 18, fontWeight: 500, lineHeight: 1.4, margin: 0 }}>
+                  {/* The cover IS the player (owner: "dont have a pause button
+                      in the middle, do something better, can we show the cover
+                      in there? Then have a play pause under it"). Always a
+                      square, art or not — a record with no sleeve still has a
+                      shape, and collapsing the slide when Apple has no image
+                      would put the controls back in the middle. It dims while
+                      paused, so the state reads from across the room. */}
+                  <div
+                    style={{
+                      width: "min(62vw, 240px)", aspectRatio: "1 / 1", borderRadius: 18,
+                      overflow: "hidden", position: "relative", flex: "0 0 auto",
+                      background: "rgba(9,26,16,0.55)", border: `1px solid ${DECK_BORDER}`,
+                      boxShadow: "0 18px 44px rgba(0,0,0,0.38)",
+                      opacity: paused ? 0.55 : 1, transition: "opacity 240ms ease",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >
+                    {artworkUrl ? (
+                      <img
+                        src={bigArtwork(artworkUrl)}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    ) : (
+                      <span aria-hidden style={{ fontSize: 46, opacity: 0.5 }}>♪</span>
+                    )}
+                  </div>
+                  <p className="text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 500, lineHeight: 1.4, margin: 0 }}>
                     {nowPlaying.title}
                   </p>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (paused) { void resumeAppleMusicNative(); setPaused(false); }
-                        else { void pauseAppleMusicNative(); setPaused(true); }
-                      }}
-                      aria-label={paused ? "Resume" : "Pause"}
-                      className="active:scale-[0.99]"
-                      style={{
-                        width: 56, height: 56, borderRadius: 999, cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        background: "rgba(46,107,64,0.45)", border: "1px solid rgba(143,175,150,0.55)",
-                      }}
-                    >
-                      {paused ? (
-                        <svg width="17" height="19" viewBox="0 0 17 19" aria-hidden style={{ display: "block", marginLeft: 3 }}>
-                          <path d="M0 1 A1 1 0 0 1 1.6 0.2 L16 8.6 A1 1 0 0 1 16 10.4 L1.6 18.8 A1 1 0 0 1 0 18 Z" fill={WARM} />
-                        </svg>
-                      ) : (
-                        <svg width="16" height="19" viewBox="0 0 16 19" aria-hidden style={{ display: "block" }}>
-                          <rect x="0.5" y="0.5" width="5.5" height="18" rx="1.5" fill={WARM} />
-                          <rect x="10" y="0.5" width="5.5" height="18" rx="1.5" fill={WARM} />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
+                  {/* Under the cover, where a player's controls belong. */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (paused) { void resumeAppleMusicNative(); setPaused(false); }
+                      else { void pauseAppleMusicNative(); setPaused(true); }
+                    }}
+                    aria-label={paused ? "Resume" : "Pause"}
+                    className="active:scale-[0.97]"
+                    style={{
+                      width: 62, height: 62, borderRadius: 999, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: "rgba(46,107,64,0.5)", border: "1px solid rgba(143,175,150,0.6)",
+                      backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+                    }}
+                  >
+                    {paused ? (
+                      <svg width="19" height="21" viewBox="0 0 19 21" aria-hidden style={{ display: "block", marginLeft: 4 }}>
+                        <path d="M0 1.1 A1.1 1.1 0 0 1 1.7 0.2 L17.7 9.4 A1.1 1.1 0 0 1 17.7 11.6 L1.7 20.8 A1.1 1.1 0 0 1 0 19.9 Z" fill={WARM} />
+                      </svg>
+                    ) : (
+                      <svg width="18" height="21" viewBox="0 0 18 21" aria-hidden style={{ display: "block" }}>
+                        <rect x="0.5" y="0.5" width="6" height="20" rx="1.6" fill={WARM} />
+                        <rect x="11" y="0.5" width="6" height="20" rx="1.6" fill={WARM} />
+                      </svg>
+                    )}
+                  </button>
                   <button
                     type="button"
                     onClick={() => { void stopAppleMusicNative(); setNowPlaying(null); setPaused(false); setDeckStep(LOG); }}
