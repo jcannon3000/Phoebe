@@ -739,6 +739,29 @@ export default function ListeningPage() {
                       ))}
                     </div>
                   )}
+                  {/* Hymns — owner: "under it can you have a pill that says
+                      hymns". The shelf to go and look at when nothing comes to
+                      mind: the whole Hymnal 1982 as recorded, in hymnal order.
+                      Unlike the Lately rows above this IS tappable — it doesn't
+                      choose the song for you, it opens the place to find one.
+
+                      A real <button> on purpose: the deck pages forward on any
+                      tap in its right half (onTapNavigate), and it stands down
+                      only for button/a/[role=button]. As a <div> this would
+                      both open the catalogue AND skip the beat. */}
+                  <button
+                    type="button"
+                    onClick={() => setLocation("/hymns")}
+                    className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                    style={{
+                      ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
+                      fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 7,
+                    }}
+                  >
+                    <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
+                    Hymns
+                  </button>
                 </div>
               )}
 
