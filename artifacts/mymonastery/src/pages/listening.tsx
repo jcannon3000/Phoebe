@@ -429,8 +429,13 @@ export default function ListeningPage() {
   }
   // Audio Divina is private — a personal listening log, no sharing with fellows.
   const logMutation = useMutation({
-    mutationFn: async () => {
-      const body = { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, shared: false };
+    mutationFn: async (vars?: { what?: string; artworkUrl?: string }) => {
+      // An explicit title wins over the field. Logging what is PLAYING must not
+      // read `what` out of state — a tap that both sets the title and logs it
+      // would otherwise read the previous render's value.
+      const title = (vars?.what ?? what).trim();
+      const art = vars?.artworkUrl ?? artworkUrl;
+      const body = { day: new Date().toLocaleDateString("en-CA"), medium, what: title, artworkUrl: art, shared: false };
       try {
         return await apiRequest("POST", "/api/listening", body);
       } catch (err) {
@@ -477,7 +482,8 @@ export default function ListeningPage() {
     // Never log the same title twice in a day — the prefill puts today's entry
     // back in the field, and the table has no unique day+title index.
     if (alreadyLoggedThis) return;
-    logMutation.mutate();
+    // No overrides: this path logs whatever is in the field.
+    logMutation.mutate({});
     markPracticeDoneToday("listening");
     // The local day-log, so the entry is visible before the server has it.
     saveListeningEntry({ minutes: 0, songs: 1, medium, what: what.trim(), artworkUrl });
@@ -505,6 +511,48 @@ export default function ListeningPage() {
     [entries],
   );
   const todayYmd = new Date().toLocaleDateString("en-CA");
+
+  /**
+   * LATELY, CONDENSED (owner, 2026-09-18: "Last three: condense. Same thing
+   * three days running collapses to one; show the last two, and make the third
+   * 'your most listened to this month'").
+   *
+   * Three rows of the same hymn three evenings running told you nothing you did
+   * not already know, and crowded out the one thing this list is for: somewhere
+   * for a song to come from. So the first two are the last two DISTINCT things,
+   * and the third answers a different and better question.
+   *
+   * The third is dropped when there is nothing to say — a title played once is
+   * not a "most listened to", and one already shown above would be a repeat
+   * wearing a grander label.
+   */
+  const lately = useMemo(() => {
+    const seen = new Set<string>();
+    const rows: typeof sortedEntries = [];
+    for (const e of sortedEntries) {
+      const k = (e.what ?? "").trim().toLowerCase();
+      if (!k || seen.has(k)) continue;
+      seen.add(k);
+      rows.push(e);
+      if (rows.length === 2) break;
+    }
+    const cutoff = new Date(Date.now() - 30 * 86400_000).toLocaleDateString("en-CA");
+    const counts = new Map<string, { n: number; e: typeof sortedEntries[number] }>();
+    for (const e of sortedEntries) {
+      if (e.day < cutoff) continue;
+      const k = (e.what ?? "").trim().toLowerCase();
+      if (!k) continue;
+      const cur = counts.get(k);
+      if (cur) cur.n += 1; else counts.set(k, { n: 1, e });
+    }
+    let most: typeof sortedEntries[number] | null = null;
+    let mostN = 1;
+    for (const [k, v] of counts) {
+      if (seen.has(k) || v.n < 2 || v.n <= mostN) continue;
+      most = v.e; mostN = v.n;
+    }
+    return { rows, most };
+  }, [sortedEntries]);
   const todayEntry = sortedEntries.find((e) => e.day === todayYmd) ?? null;
   const keptToday = todayEntry !== null;
   /** The field holds a title already logged today (the prefill, or a re-type). */
@@ -933,12 +981,15 @@ export default function ListeningPage() {
                     * forward on any tap in its right half and stands down only
                     * for button/a/[role=button].
                     */}
-                  {sortedEntries.length > 0 && (
+                  {lately.rows.length > 0 && (
                     <div className="w-full flex flex-col gap-2">
                       <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
                         Lately
                       </p>
-                      {sortedEntries.slice(0, 3).map((e) => (
+                      {[
+                        ...lately.rows.map((e) => ({ e, sub: relDay(e.day) })),
+                        ...(lately.most ? [{ e: lately.most, sub: "Your most listened to this month" }] : []),
+                      ].map(({ e, sub }) => (
                         <button
                           key={e.id}
                           type="button"
@@ -965,7 +1016,7 @@ export default function ListeningPage() {
                               {e.what?.trim() || (MEDIUM_EMOJI[e.medium] ?? "🎧")}
                             </span>
                             <span style={{ display: "block", color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, marginTop: 2 }}>
-                              {relDay(e.day)}
+                              {sub}
                             </span>
                           </span>
                           {canPlayInApp && (
@@ -984,6 +1035,65 @@ export default function ListeningPage() {
                           )}
                         </button>
                       ))}
+                    </div>
+                  )}
+                  {/**
+                    * SEARCH, right here (owner, 2026-09-18: "with apple music
+                    * enabled, put a search bar where the last-three and the
+                    * other options are… tapping a result plays it AND is the
+                    * log — they don't need to go to another log screen, just
+                    * hit log").
+                    *
+                    * Only when Apple Music can actually play it: on every other
+                    * build this beat's answer is "go and play it wherever you
+                    * play music", and a search box that can only ever hand you
+                    * back out would be a worse version of the Hymns pill below.
+                    *
+                    * It writes the SAME state the log field writes, so a tap
+                    * fills the log as well as starting the music — which is
+                    * what makes "just hit log" true.
+                    */}
+                  {canPlayInApp && (
+                    <div className="w-full">
+                      <input
+                        value={query}
+                        onChange={(e) => { setQuery(e.target.value); setPicked(false); setWhat(e.target.value); setArtworkUrl(""); }}
+                        placeholder="Search for something to listen to…"
+                        inputMode="search"
+                        aria-label="Search for something to listen to"
+                        style={{
+                          width: "100%", boxSizing: "border-box", fontSize: 16, padding: "12px 14px",
+                          borderRadius: 12, outline: "none", color: WARM, fontFamily: SPACE_GROTESK,
+                          background: "rgba(240,237,230,0.06)", border: `1px solid ${DECK_BORDER}`,
+                        }}
+                      />
+                      {!picked && results.length > 0 && (
+                        <div className="mt-2 flex flex-col gap-1.5 max-h-[34vh] overflow-y-auto">
+                          {results.map((r, i) => (
+                            <button key={`lr-${i}`} type="button" onClick={() => chooseResult(r)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left active:scale-[0.99]" style={glassRow}>
+                              {r.artworkUrl ? (
+                                <img
+                                  src={r.artworkUrl}
+                                  alt=""
+                                  loading="lazy"
+                                  decoding="async"
+                                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                                  style={{ width: 34, height: 34, borderRadius: 6, objectFit: "cover", flex: "0 0 auto", backgroundColor: "rgba(46,107,64,0.3)" }}
+                                />
+                              ) : (
+                                <span aria-hidden>{KIND_EMOJI[r.kind]}</span>
+                              )}
+                              <span className="min-w-0">
+                                <span className="block text-[14px] truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.title}</span>
+                                {r.subtitle && <span className="block text-[12px] truncate" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{r.subtitle}</span>}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {searching && (
+                        <p className="text-center mt-2" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 12 }}>Searching…</p>
+                      )}
                     </div>
                   )}
                   {/* Hymns — owner: "under it can you have a pill that says
@@ -1105,7 +1215,30 @@ export default function ListeningPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { void stopAppleMusicNative(); setNowPlaying(null); setPaused(false); setDeckStep(LOG); }}
+                    onClick={() => {
+                      /**
+                       * THIS IS THE LOG (owner, 2026-09-18: "If something is
+                       * playing and they hit the Log pill, that IS the log —
+                       * count it and go to the last screen").
+                       *
+                       * It used to stop the music and drop you on the log form
+                       * to type in the title of the thing Phoebe was playing a
+                       * second ago. What is playing is the answer, so it is
+                       * written straight through and the deck goes to its
+                       * closing slide — and the music keeps going, because the
+                       * listening is the practice and it is not over.
+                       */
+                      const title = (nowPlaying.title ?? "").trim();
+                      const already = entries.some((e) => e.day === todayYmd
+                        && e.what.trim().toLowerCase() === title.toLowerCase());
+                      if (title && !already) {
+                        logMutation.mutate({ what: title, artworkUrl });
+                        markPracticeDoneToday("listening");
+                        saveListeningEntry({ minutes: 0, songs: 1, medium, what: title, artworkUrl });
+                      }
+                      loggedHere.current = true;
+                      setDeckStep(DONE);
+                    }}
                     className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
                     style={{
                       ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,

@@ -879,7 +879,10 @@ export default function ContemplationPage() {
           and it suits the thing: choosing music for a sit is a decision made
           once and rarely revisited, not a control to live with on the screen.
           Fades in place; nothing rises (reference_page_rise_end_snap). */}
-      {musicPickerOpen && (
+      {/* musicReady as well as open: if Apple Music is revoked or lapses while
+          the picker is up, the list of options must go with it rather than
+          leaving someone choosing music that cannot play. */}
+      {musicPickerOpen && musicReady && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
