@@ -26,6 +26,8 @@ type MusicPlugin = {
   isAvailable?: () => Promise<{ available?: boolean; authorized?: boolean; subscribed?: boolean }>;
   authorize?: () => Promise<{ authorized?: boolean; subscribed?: boolean }>;
   playTrack?: (opts: { id: string }) => Promise<{ playing?: boolean; title?: string | null }>;
+  playPlaylist?: (opts: { id: string; shuffle?: boolean; repeatAll?: boolean })
+    => Promise<{ playing?: boolean; title?: string | null; count?: number }>;
   pause?: () => Promise<void>;
   resume?: () => Promise<void>;
   stop?: () => Promise<void>;
@@ -91,6 +93,50 @@ export async function playAppleMusicNative(trackId: string | null | undefined): 
     // no capability on the App ID — all of them mean: open the link instead.
     return false;
   }
+}
+
+/**
+ * Play a whole Apple Music PLAYLIST in-app — the Hildegard essentials behind a
+ * sit, or "play the whole thing" on the catalogue page.
+ *
+ * Same contract as playAppleMusicNative: false for every failure, so the
+ * caller opens music.apple.com instead. `shuffle` comes at the playlist in a
+ * different order each time; `repeatAll` keeps a long sit from falling silent
+ * when the music runs out.
+ *
+ * Note the plugin check is `playPlaylist`, not `playTrack`: an iOS build from
+ * before this method existed has the plugin but not the method, and calling it
+ * there would reject rather than fall back.
+ */
+export async function playAppleMusicPlaylistNative(
+  playlistId: string | null | undefined,
+  opts: { shuffle?: boolean; repeatAll?: boolean } = {},
+): Promise<boolean> {
+  const p = plugin();
+  if (!p?.playPlaylist || !playlistId) return false;
+  try {
+    const status = (await p.isAvailable?.()) ?? {};
+    if (status.available !== true) return false;
+    if (status.authorized !== true) {
+      const asked = (await p.authorize?.()) ?? {};
+      if (asked.authorized !== true || asked.subscribed !== true) return false;
+    } else if (status.subscribed !== true) {
+      return false;
+    }
+    const played = await p.playPlaylist({
+      id: playlistId,
+      shuffle: opts.shuffle === true,
+      repeatAll: opts.repeatAll === true,
+    });
+    return played?.playing === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Is in-app PLAYLIST playback available? False on any build older than it. */
+export function hasAppleMusicPlaylistNative(): boolean {
+  return !!plugin()?.playPlaylist;
 }
 
 /**

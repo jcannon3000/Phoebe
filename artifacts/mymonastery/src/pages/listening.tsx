@@ -980,6 +980,23 @@ export default function ListeningPage() {
                     <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
                     Hymns
                   </button>
+                  {/* Hildegard, beside the hymnal (owner, 2026-09-18: "next to
+                      hymns have a catalouge that says Hildegard"). The other
+                      shelf: one composer's essentials, put on whole rather
+                      than looked up. */}
+                  <button
+                    type="button"
+                    onClick={() => setLocation("/hildegard")}
+                    className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                    style={{
+                      ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
+                      fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 7,
+                    }}
+                  >
+                    <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
+                    Hildegard
+                  </button>
                 </div>
               )}
 

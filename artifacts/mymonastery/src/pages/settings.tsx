@@ -31,6 +31,9 @@ import {
 } from "@/lib/officePrefs";
 import { resetRoutineToDefault } from "@/lib/resetRoutine";
 import { CtaArrow } from "@/components/CtaArrow";
+import {
+  appleMusicEnabled, appleMusicOfferable, enableAppleMusic, disableAppleMusic,
+} from "@/lib/appleMusicFeatures";
 
 
 function SectionHeader({ label }: { label: string }) {
@@ -1232,6 +1235,39 @@ function HomeDisplaySettings() {
   // never been written), matching "on, but you can turn them off".
   const [doneHidden, setDoneHidden] = useState<boolean>(() => readLsBool(HIDE_DONE_KEY));
   const [hapticsOff, setHapticsOff] = useState<boolean>(() => readLsBool(HAPTICS_OFF_KEY));
+  // APPLE MUSIC (owner, 2026-09-18: "a field in settings that says turn on
+  // apple music features, they hit it it asks them for permissions, and then
+  // it would turn on all the features"). The row appears only on a build that
+  // HAS the plugin — on the web there is nothing to turn on, and a dead switch
+  // explains itself worse than an absent one.
+  const [appleOn, setAppleOn] = useState<boolean>(() => appleMusicEnabled());
+  const [appleOfferable, setAppleOfferable] = useState<boolean>(() => appleMusicOfferable());
+  const [appleBusy, setAppleBusy] = useState(false);
+  const [appleNote, setAppleNote] = useState<string | null>(null);
+  useEffect(() => {
+    // The plugin is registered by the native shell, which can land after the
+    // first paint — so re-ask once rather than deciding on mount alone.
+    const id = window.setTimeout(() => setAppleOfferable(appleMusicOfferable()), 600);
+    return () => window.clearTimeout(id);
+  }, []);
+  const toggleAppleMusic = () => {
+    if (appleBusy) return;
+    if (appleOn) { disableAppleMusic(); setAppleOn(false); setAppleNote(null); return; }
+    setAppleBusy(true);
+    setAppleNote(null);
+    void enableAppleMusic().then((r) => {
+      setAppleBusy(false);
+      if (r.ok) { setAppleOn(true); return; }
+      setAppleOn(false);
+      setAppleNote(
+        r.reason === "no-subscription"
+          ? "That needs an Apple Music subscription on this phone."
+          : r.reason === "denied"
+            ? "Apple Music access was declined. You can allow it in the iOS Settings app, under Phoebe."
+            : "Apple Music isn't available on this device.",
+      );
+    });
+  };
   // Community, Prayer list and Events out of the drawer, for someone keeping
   // a rhythm alone (owner, 2026-09-05).
   const [communityHidden, setCommunityHidden] = useState<boolean>(() => readLsBool(HIDE_COMMUNITY_KEY));
@@ -1375,6 +1411,46 @@ function HomeDisplaySettings() {
           </div>
         </button>
       </SettingsCard>
+
+      {/* APPLE MUSIC — one switch that turns on every Apple Music feature:
+          playing a hymn or a Hildegard chant without leaving Phoebe, and music
+          behind a sit. Tapping it asks iOS for access (the sheet shows once
+          per install), and it only settles ON when the answer is a real yes —
+          allowed AND subscribed — because a switch that reads on while
+          playback can't work would put "Add music" on the contemplation screen
+          and then fail at the sit. See lib/appleMusicFeatures. */}
+      {appleOfferable && (<>
+        <SectionHeader label="Apple Music" />
+
+        <SettingsCard>
+          <button
+            onClick={toggleAppleMusic}
+            disabled={appleBusy}
+            className="w-full flex items-center justify-between disabled:opacity-60"
+          >
+            <div className="text-left">
+              <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+                Apple Music features
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                Play hymns and chant inside Phoebe with your own subscription, and put
+                music behind a sit. Asks for permission once.
+              </p>
+            </div>
+            <div
+              className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${appleOn ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+            >
+              <div
+                className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${appleOn ? "left-[21px]" : "left-[3px]"}`}
+                style={{ background: "#F0EDE6" }}
+              />
+            </div>
+          </button>
+          {appleNote && (
+            <p className="text-xs mt-2.5" style={{ color: "#C9A227" }}>{appleNote}</p>
+          )}
+        </SettingsCard>
+      </>)}
 
       <div className="mb-8" />
     </>

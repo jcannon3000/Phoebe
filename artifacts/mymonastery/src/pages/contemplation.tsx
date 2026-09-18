@@ -25,6 +25,12 @@ import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { openExternal } from "@/lib/openExternal";
 import { primeAudio } from "@/lib/amenFeedback";
 import { CtaArrow } from "@/components/CtaArrow";
+import {
+  CONTEMPLATION_PLAYLISTS, getContemplationPlaylist, setContemplationPlaylist,
+  CONTEMPLATION_MUSIC_EVENT, type ContemplationPlaylist,
+} from "@/lib/contemplationMusic";
+import { appleMusicFeaturesReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
+import { playAppleMusicPlaylistNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
 // centering prayer. Opened externally (SFSafariViewController on iOS via
@@ -442,6 +448,52 @@ export default function ContemplationPage() {
   // each visit (web uses a Wide photo; native falls back to a bundled leaf).
   const contemplationLeaf = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
   const [timerOpen, setTimerOpen] = useState(false);
+
+  /**
+   * MUSIC BEHIND THE SIT (owner, 2026-09-18: "a third pill before the split
+   * pill that says add music … it would play that playlist inside the
+   * contemplation … This is only if people have connected their Apple Music
+   * account").
+   *
+   * The pill appears only when Apple Music is really available — the Settings
+   * switch is on AND iOS still agrees (authorized, subscribed, native build).
+   * That is asked asynchronously, so the pill fades in rather than being
+   * rendered dead; a control offering music it cannot play is worse than no
+   * control. See lib/appleMusicFeatures for why the flag alone isn't enough.
+   */
+  const [musicReady, setMusicReady] = useState(false);
+  const [playlist, setPlaylist] = useState<ContemplationPlaylist | null>(() => getContemplationPlaylist());
+  const [musicPickerOpen, setMusicPickerOpen] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const ask = () => { void appleMusicFeaturesReady().then((ok) => { if (alive) setMusicReady(ok); }); };
+    ask();
+    const sync = () => { setPlaylist(getContemplationPlaylist()); ask(); };
+    window.addEventListener(CONTEMPLATION_MUSIC_EVENT, sync);
+    window.addEventListener(APPLE_MUSIC_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      alive = false;
+      window.removeEventListener(CONTEMPLATION_MUSIC_EVENT, sync);
+      window.removeEventListener(APPLE_MUSIC_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  /**
+   * Start the music when the sit starts, stop it when the sit ends — including
+   * when it ends by leaving the page, which is why the cleanup stops it too.
+   * Shuffled and repeating: the same twenty-five chants in the same order every
+   * morning would become furniture, and a long sit must not fall silent.
+   *
+   * Failure is silence, never an error: if MusicKit refuses (a revoke, a lapse,
+   * no network) the sit simply proceeds the way it always has.
+   */
+  useEffect(() => {
+    if (!timerOpen || !playlist || !musicReady) return;
+    void playAppleMusicPlaylistNative(playlist.id, { shuffle: true, repeatAll: true });
+    return () => { void stopAppleMusicNative(); };
+  }, [timerOpen, playlist, musicReady]);
   // First-ever silent sit gets a one-card intro (what silence is, where it comes
   // from, what to do) so a beginner isn't dropped into a blank timer unguided.
   const [silenceIntroDismissed, setSilenceIntroDismissed] = useState(false);
@@ -797,6 +849,120 @@ export default function ContemplationPage() {
           {t("contemplation.start_contemplation", { defaultValue: "Start contemplation" })}<CtaArrow />
         </button>
       </div>
+
+      {/* ADD MUSIC — the third pill, above the split pair (owner, 2026-09-18:
+          "a third pill before the split pill that says add music … when you go
+          back to the contemplation start screen it would just show that
+          playlist"). Once something is chosen the pill IS the answer: it stops
+          saying "Add music" and says what will play, so the start screen shows
+          the choice without a second line of chrome. Tapping it again reopens
+          the picker, where choosing the same row again returns to silence.
+
+          Apple Music only, and only when it can really play — see musicReady
+          above. On the web and for anyone who hasn't turned the Settings
+          switch on, this row simply isn't there. */}
+      {beginMode && musicReady && (
+        <button
+          type="button"
+          onClick={() => setMusicPickerOpen(true)}
+          className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] mt-3.5 flex items-center justify-center gap-2"
+          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "12px 10px" }}
+        >
+          <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>♪</span>
+          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {playlist ? playlist.label : t("contemplation.add_music", { defaultValue: "Add music" })}
+          </span>
+        </button>
+      )}
+
+      {/* The picker. Rows you check, then Close — the shape that was asked for,
+          and it suits the thing: choosing music for a sit is a decision made
+          once and rarely revisited, not a control to live with on the screen.
+          Fades in place; nothing rises (reference_page_rise_end_snap). */}
+      {musicPickerOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(4,14,8,0.72)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", padding: 20 }}
+          onClick={() => setMusicPickerOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full"
+            style={{
+              maxWidth: 420, borderRadius: 18, padding: 18, boxSizing: "border-box",
+              background: "rgba(9,26,16,0.96)", border: "1px solid rgba(46,107,64,0.45)",
+            }}
+          >
+            <p style={{ color: "#F0EDE6", fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, margin: "0 0 4px" }}>
+              {t("contemplation.music_title", { defaultValue: "Music for the sit" })}
+            </p>
+            <p style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, fontSize: 12, lineHeight: 1.45, margin: "0 0 14px" }}>
+              {t("contemplation.music_blurb", { defaultValue: "Plays through your Apple Music while you sit. Tap the one that's on to go back to silence." })}
+            </p>
+
+            <div className="flex flex-col gap-2">
+              {CONTEMPLATION_PLAYLISTS.map((pl) => {
+                const on = playlist?.id === pl.id;
+                return (
+                  <button
+                    key={pl.id}
+                    type="button"
+                    role="checkbox"
+                    aria-checked={on}
+                    onClick={() => {
+                      const next = on ? null : pl.id;
+                      setContemplationPlaylist(next);
+                      setPlaylist(next ? pl : null);
+                    }}
+                    className="w-full flex items-center gap-10 text-left transition-opacity hover:opacity-90"
+                    style={{
+                      borderRadius: 12, padding: "12px 13px", cursor: "pointer",
+                      background: on ? "rgba(46,107,64,0.32)" : "rgba(240,237,230,0.05)",
+                      border: `1px solid ${on ? "rgba(143,175,150,0.55)" : "rgba(46,107,64,0.38)"}`,
+                    }}
+                  >
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <span style={{ display: "block", color: "#F0EDE6", fontFamily: SPACE_GROTESK, fontSize: 14.5, lineHeight: 1.3 }}>
+                        {pl.label}
+                      </span>
+                      <span style={{ display: "block", color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, fontSize: 11.5, marginTop: 3 }}>
+                        {pl.sub}
+                      </span>
+                    </span>
+                    {/* The check. Always present as a box so the rows line up
+                        whether or not one is chosen. */}
+                    <span
+                      aria-hidden
+                      style={{
+                        flex: "0 0 auto", width: 21, height: 21, borderRadius: 6,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        background: on ? "#2D5E3F" : "transparent",
+                        border: `1px solid ${on ? "rgba(143,175,150,0.7)" : "rgba(143,175,150,0.35)"}`,
+                        color: "#F0EDE6", fontSize: 12, lineHeight: 1,
+                      }}
+                    >
+                      {on ? "✓" : ""}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMusicPickerOpen(false)}
+              className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] mt-4"
+              style={{ background: "rgba(46,107,64,0.45)", border: "1px solid rgba(143,175,150,0.55)", color: "#F0EDE6", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "12px 10px" }}
+            >
+              {t("common.close", { defaultValue: "Close" })}
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* View stats and Log Prayer Time — HALF EACH, one row (owner,
           2026-09-18: "What if we have view stats and log prayer time as two

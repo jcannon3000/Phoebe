@@ -54,6 +54,7 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "authorize", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "playTrack", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "playPlaylist", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "pause", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resume", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
@@ -157,6 +158,72 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                         "playing": true,
                         "title": song.title,
                         "artist": song.artistName,
+                    ])
+                } catch {
+                    call.reject("playback-failed: \(error.localizedDescription)")
+                }
+            }
+            return
+        }
+        #endif
+        call.reject("Apple Music playback needs iOS 16 or later")
+    }
+
+    /// Play a whole Apple Music catalog PLAYLIST — the Hildegard essentials
+    /// behind a sit, or the "play the whole thing" button on the catalogue
+    /// page. `shuffle` and `repeatAll` are the two things a listener actually
+    /// wants from a playlist: come at it in a different order each time, and
+    /// don't fall silent halfway through a long sit.
+    ///
+    /// The queue is built from the playlist's TRACKS rather than the playlist
+    /// itself, because shuffleMode only reliably reorders a queue that already
+    /// holds its entries; a playlist queued whole can start playing before its
+    /// tracks have loaded and ignore the shuffle.
+    @objc func playPlaylist(_ call: CAPPluginCall) {
+        guard let id = call.getString("id"), !id.isEmpty else {
+            call.reject("playPlaylist needs an Apple Music catalog playlist id")
+            return
+        }
+        let shuffle = call.getBool("shuffle") ?? false
+        let repeatAll = call.getBool("repeatAll") ?? false
+        #if canImport(MusicKit)
+        if #available(iOS 16.0, *) {
+            Task {
+                guard MusicAuthorization.currentStatus == .authorized else {
+                    call.reject("not-authorized")
+                    return
+                }
+                guard (try? await MusicSubscription.current)?.canPlayCatalogContent == true else {
+                    call.reject("no-subscription")
+                    return
+                }
+                do {
+                    var request = MusicCatalogResourceRequest<Playlist>(matching: \.id, equalTo: MusicItemID(id))
+                    request.limit = 1
+                    let response = try await request.response()
+                    guard let playlist = response.items.first else {
+                        call.reject("not-found")
+                        return
+                    }
+                    let detailed = try await playlist.with([.tracks])
+                    await MainActor.run { self.activateAudioSession() }
+                    let player = ApplicationMusicPlayer.shared
+                    let tracks = detailed.tracks ?? []
+                    if tracks.isEmpty {
+                        player.queue = ApplicationMusicPlayer.Queue(for: [playlist])
+                    } else {
+                        player.queue = ApplicationMusicPlayer.Queue(for: tracks)
+                    }
+                    // Set BEFORE play: changing shuffleMode on a playing queue
+                    // reshuffles from the current song and can restart it.
+                    player.state.shuffleMode = shuffle ? .songs : .off
+                    player.state.repeatMode = repeatAll ? .all : MusicPlayer.RepeatMode.none
+                    try await player.prepareToPlay()
+                    try await player.play()
+                    call.resolve([
+                        "playing": true,
+                        "title": playlist.name,
+                        "count": tracks.count,
                     ])
                 } catch {
                     call.reject("playback-failed: \(error.localizedDescription)")
