@@ -207,12 +207,21 @@ export function BreathIntro({
       </div>
 
       {/* Breathe In / Breathe Out — under the rings, centred, italic Georgia
-          (owner), faded up and down each half-breath by the loop above. */}
+          (owner), faded up and down each half-breath by the loop above.
+
+          Nudged 6px LEFT of true centre (owner, 2026-09-18: "move the breathe
+          in over slightly"). The box was already dead centre — equal insets
+          here, left:50% and a translate on the rings — so this is an optical
+          correction, not an alignment fix: italic Georgia leans right, and its
+          overhang makes a mathematically centred word sit visibly right of the
+          rings above it. Done with a transform so the text box, and therefore
+          the wrapping, is untouched. */}
       <p
         ref={phaseWordRef}
         aria-live="polite"
         style={{
           position: "absolute", left: 28, right: 28, top: `calc(50% + ${boxPx / 2}px + ${TEXT_GAP})`, margin: 0,
+          transform: "translateX(-6px)",
           color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(20px, 5.8vw, 25px)", lineHeight: 1.5,
           textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)",
           opacity: 0, willChange: "opacity",
