@@ -628,6 +628,26 @@ export const COMMONS_VISIO_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Jan Cornelisz Vermeyen. Holy Family at the fire. Original source: Wikimedia Commons."
  },
  {
+  "id": 9176018,
+  "title": "Saints Cosmas and Damian",
+  "artist": null,
+  "date": "1778",
+  "where": "Syria",
+  "img": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9e/Saints_Cosmas_and_Damian_icon%2C_Syria_%281778%29.jpg/1920px-Saints_Cosmas_and_Damian_icon%2C_Syria_%281778%29.jpg",
+  "refs": [],
+  "days": [],
+  "people": [],
+  "subjects": [
+   "Saints",
+   "Culture: Syrian",
+   "Healing"
+  ],
+  "essay": "",
+  "act": "https://commons.wikimedia.org/wiki/File:Saints_Cosmas_and_Damian_icon,_Syria_(1778).jpg",
+  "licence": "Public domain",
+  "attribution": "Saints Cosmas and Damian. Original source: Wikimedia Commons."
+ },
+ {
   "id": 9180489,
   "title": "The Delivery of the Keys",
   "artist": "Pietro Perugino",
