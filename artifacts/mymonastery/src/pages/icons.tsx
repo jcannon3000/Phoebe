@@ -740,6 +740,17 @@ export default function IconsPage() {
      * With no history at all — a first visit — there is nothing to default
      * to, so the chooser leads instead.
      */
+    /**
+     * ?gallery=1 opens straight into the scroll — the door the home ticker's
+     * "Sacred Image Doom Scroll" pill uses (owner, 2026-09-18). Read once, at
+     * mount, which is all this needs: every way in is a PATH change from
+     * somewhere else, so the page really does mount. A query-only change while
+     * already here would not re-run this — see reference_query_only_navigation
+     * — and there is no such route today.
+     */
+    try {
+      if (new URLSearchParams(window.location.search).get("gallery") === "1") return "gallery";
+    } catch { /* no window / blocked: fall through to the normal opening */ }
     try { return getIconHistory().length > 0 ? "open" : "week"; } catch { return "week"; }
   });
   // The first-run tutorial and its "How this works" pill were REMOVED
