@@ -200,6 +200,27 @@ export function getOfficeMusic(): MusicPlaylist | null {
   return recentPlaylist();
 }
 
+/**
+ * WHAT ACTUALLY PLAYS UNDER AN OFFICE — an explicit choice only, never the
+ * inherited recent.
+ *
+ * getOfficeMusic falls back to the most recent so the DROPDOWN opens on it,
+ * which is what the owner asked for. But the dropdown lives on the office's
+ * welcome slide, and Daily Prayer's outer picker (Time of day / Practice /
+ * How → Begin) lands on slide 2 and skips that slide entirely. Playing the
+ * fallback there meant music starting under an office from a playlist chosen
+ * for something else — a sit, most likely — with no control ever shown
+ * (found in a browser pass, 2026-09-18).
+ *
+ * So: the recent pre-fills the control, and only a choice made FOR the office
+ * starts the music. Nothing plays that nobody picked.
+ */
+export function officeMusicToPlay(): MusicPlaylist | null {
+  const saved = read(KEY_OFFICE);
+  if (!saved || saved === NONE) return null;
+  return playlistById(saved);
+}
+
 /** Pass null for silence — stored explicitly, so it isn't re-defaulted. */
 export function setOfficeMusic(id: string | null): void {
   write(KEY_OFFICE, id ?? NONE);

@@ -41,7 +41,7 @@ import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, getSideDaySwap, setSideDaySwap, clearSideDaySwap, getSideExtra, extraOfficeMode, getScriptureParts, type OfficeSide, type OfficeLevel, type DefaultOfficeEntry } from "@/lib/officePrefs";
 import {
-  MUSIC_PLAYLISTS, getOfficeMusic, setOfficeMusic, playlistById,
+  MUSIC_PLAYLISTS, getOfficeMusic, setOfficeMusic, playlistById, officeMusicToPlay,
   PRACTICE_MUSIC_EVENT, type MusicPlaylist,
 } from "@/lib/practiceMusic";
 import { appleMusicPlaylistsReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
@@ -928,11 +928,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   }, []);
   const officeBegun = slideIdx > 0;
   useEffect(() => {
-    if (!officeBegun || !officeMusic || !musicReady) return;
+    // The DROPDOWN shows officeMusic (recent as its default); what PLAYS is
+    // only ever an explicit office choice — see officeMusicToPlay.
+    const toPlay = officeMusicToPlay();
+    if (!officeBegun || !toPlay || !musicReady) return;
     // Shuffled and repeating: an office is twenty minutes and a playlist must
     // not run out under it. Failure is silence — if MusicKit refuses, the
     // office reads exactly as it always has.
-    void playAppleMusicCollectionNative(officeMusic.kind, officeMusic.id, { shuffle: true, repeatAll: true });
+    void playAppleMusicCollectionNative(toPlay.kind, toPlay.id, { shuffle: true, repeatAll: true });
     return () => { void stopAppleMusicNative(); };
   }, [officeBegun, officeMusic, musicReady]);
   /**
