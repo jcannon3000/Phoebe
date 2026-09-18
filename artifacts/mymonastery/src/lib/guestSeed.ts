@@ -675,6 +675,16 @@ export function resetDeviceRuleForLogout(): void {
     const PREFIXES = [
       "phoebe:office:",           // per-side levels/entries/reflections/minutes/etc.
       "phoebe:office-completed:", // today's office done flags
+      // The UNDO tombstones, which MASK a server-kept office for the rest of
+      // the day — "phoebe:office-undone:<side>" and "-mode:<mode>". Another
+      // hyphen near-miss: "phoebe:office:" does not catch them, so the next
+      // person's office read as un-prayed on this device until midnight.
+      "phoebe:office-undone",
+      // …and the prefetch's "this day is complete" stamp. Logout empties the
+      // offline office cache, so keeping the stamp meant the walk skipped the
+      // rest of the day and the new person had no offline content until
+      // tomorrow (audit, 2026-09-17).
+      "phoebe:office-prefetch:",
       "phoebe:practice-done:",    // today's optional-practice done flags
       // "NOT TODAY" — the other half of the pair above, and the half that was
       // missing. 8e7829b1 made the skip stamp load-bearing for Reading, so the
@@ -684,6 +694,13 @@ export function resetDeviceRuleForLogout(): void {
       // held "practice-done:" and nothing caught that "practice-skip:" wasn't
       // beside it.
       "phoebe:practice-skip:",
+      // THE BOOK ITSELF, not just its stamps (audit, 2026-09-17). ea787b95's
+      // message said this was added; its diff only added the skip prefix. The
+      // key is a hyphen where the rest of the family is a colon — the exact
+      // near-miss the note below warns about — so no prefix caught it, and the
+      // next person on a shared device opened A's book at A's page and their
+      // first "Log it" advanced A's record.
+      "phoebe:reading-book",
       "phoebe:contemplation",     // per-side sit done flags + style
       "phoebe:slot:",             // practice time-of-day slots
       "phoebe:guest-",            // guest silence/step goals, seed marker, welcome, migrated

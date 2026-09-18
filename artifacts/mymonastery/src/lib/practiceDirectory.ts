@@ -75,16 +75,6 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // ?side=), so it logs as a standalone practice rather than closing
     // out a morning/evening anchor.
     { offlineKey: "guided-prayer", emoji: "🙏🏽", label: "Simple Guided Prayer", sub: "Praise, ask, confess, give thanks", href: "/guided-prayer" },
-    // The Rosary — a guided walk through a set of mysteries, on Simple
-    // Guided Prayer's own recipe. Open to everyone (owner). Sits beside
-    // PACT because it is the same kind of thing: a shaped prayer you are
-    // walked through rather than a reading.
-    //
-    // Its offline key was missing: lib/offline's registry has carried the
-    // Rosary as bundled since aeb89d8c (2026-09-07), a day after this list
-    // learned to split offline, so the Practices page filed it under "Not
-    // available" while /offline listed it as kept.
-    { offlineKey: "rosary", emoji: "📿", label: "The Rosary", sub: "Pray the mysteries, a decade at a time", href: "/rosary" },
     // Guided courses now live in their own "Learn" menu tab.
     { offlineKey: "cobreathe", emoji: "🌍", label: "Breathing Together", sub: "Breathing together with God's creation", href: "/cobreathe" },
     // Prayers for the Climate sits at the bottom (behind CREATION_PRAYER_ENABLED).
@@ -103,6 +93,18 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // true for any signed-in non-beta account, so this row was hidden
     // from nearly everyone, not just visitors without an account.
     { offlineKey: "visio", emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image, slowly", href: "/visio" },
+    // BELOW VISIO (owner, 2026-09-18: "move the rosay bellow visio on the
+    // practice page and option pages").
+    // The Rosary — a guided walk through a set of mysteries, on Simple
+    // Guided Prayer's own recipe. Open to everyone (owner). Sits beside
+    // PACT because it is the same kind of thing: a shaped prayer you are
+    // walked through rather than a reading.
+    //
+    // Its offline key was missing: lib/offline's registry has carried the
+    // Rosary as bundled since aeb89d8c (2026-09-07), a day after this list
+    // learned to split offline, so the Practices page filed it under "Not
+    // available" while /offline listed it as kept.
+    { offlineKey: "rosary", emoji: "📿", label: "The Rosary", sub: "Pray the mysteries, a decade at a time", href: "/rosary" },
     // Praying with Icons — beside Visio because they share the same
     // catalogue, with the choice inverted: there the day picks the
     // image, here the person searches it out by name and sits with it

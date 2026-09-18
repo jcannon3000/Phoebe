@@ -882,6 +882,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   }, []);
 
   const [slides, setSlides] = useState<Slide[]>([]);
+  // "Listen" on the Daily Scripture Reading deck (owner, 2026-09-18: "on daily
+  // scripture readings, we should be able to integrate the forward daily
+  // scripture podcast, so that people can listen") — Forward Movement's
+  // Scripture Day by Day, the same lectionary this deck lays out, handed to the
+  // app's own full-screen player. Offered on the deck's first slide only, and
+  // only with a connection: the episode is fetched, never saved.
+  const [listenPending, setListenPending] = useState(false);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
   /**
@@ -2196,6 +2203,38 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     );
   }
 
+  async function listenToTodaysReading() {
+    if (listenPending) return;
+    setListenPending(true);
+    try {
+      const ep = await apiRequest<{
+        feedTitle: string | null; title: string | null; audioUrl: string | null;
+        durationSeconds: number | null; publishedAt: string | null; imageUrl: string | null;
+      }>("GET", "/api/podcast/scripture-day-by-day/today");
+      if (!ep?.audioUrl) {
+        toast({ title: "Today's reading isn't up yet", description: "Forward Movement posts a new recording each day." });
+        return;
+      }
+      player.play({
+        showSlug: "scripture-day-by-day",
+        episodeId: ep.audioUrl,
+        title: ep.title,
+        audioUrl: ep.audioUrl,
+        imageUrl: ep.imageUrl,
+        showTitle: ep.feedTitle ?? "Scripture Day by Day",
+        showArtwork: ep.imageUrl,
+        durationSeconds: ep.durationSeconds,
+        publishedAt: ep.publishedAt,
+        sessionSurface: "scripture-audio",
+        showHref: "/podcasts/show/scripture-day-by-day",
+      });
+    } catch {
+      toast({ title: "Couldn't reach the recording", description: "Try again when you have a connection." });
+    } finally {
+      setListenPending(false);
+    }
+  }
+
   // ── Physical-book mode handlers + view ──────────────────────────────
   // "I prayed this office" — the book guide's completion path. The user
   // attests they prayed the office from their physical book, so we log
@@ -3292,6 +3331,27 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         animation: "office-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) backwards",
       }}
     >
+      {/* LISTEN INSTEAD — Forward Movement reads the same day's lectionary
+          (owner). First slide only, so it is an opening choice rather than a
+          pill following you through the readings, and never offline. */}
+      {isReadingDeck && resolvedMode === "scripture" && slideIdx === 0 && isOnline() && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); void listenToTodaysReading(); }}
+          style={{
+            position: "absolute", left: 0, right: 0, marginInline: "auto", width: "fit-content",
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)", zIndex: 40,
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "11px 22px", borderRadius: 999,
+            background: "rgba(var(--ot-green, 46,107,64),0.16)",
+            border: "1px solid rgba(var(--ot-sage, 143,175,150),0.4)",
+            color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600,
+            cursor: "pointer", opacity: listenPending ? 0.6 : 1,
+          }}
+        >
+          🎧 {listenPending ? "Finding today's reading…" : "Listen to today's reading"}
+        </button>
+      )}
       {/* Says the slide out loud when it changes — see DeckAnnouncer. Without
           it, Next changed the whole screen and announced nothing. */}
       <DeckAnnouncer label={`${sectionLabel}, ${slideIdx + 1} of ${slides.length}${currentSlide.title ? `. ${currentSlide.title}` : ""}`} />
@@ -4228,17 +4288,25 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             // that's wrong for Compline's read-here passages.
             (() => {
               const ref = String(currentSlide.title ?? currentSlide.metadata?.lessonRef ?? "").trim();
+              /**
+               * MIDDAY READS ITS SCRIPTURE IN THE OFFICE'S OWN TYPE (owner,
+               * 2026-09-18: "On the midday prayer make the scripture in the
+               * space gortesk left aligned everything else is in"). Compline
+               * keeps the centred Georgia italic it has always had; only
+               * Midday's lesson changes.
+               */
+              const middayLesson = !!currentSlide.metadata?.noonday;
               return (
                 <div
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    alignItems: "center",
+                    alignItems: middayLesson ? "flex-start" : "center",
                     justifyContent: "center",
                     width: "100%",
                     maxWidth: 560,
                     margin: "0 auto",
-                    textAlign: "center",
+                    textAlign: middayLesson ? "left" : "center",
                     gap: 18,
                   }}
                 >
@@ -4274,13 +4342,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   )}
                   <p
                     style={{
-                      fontFamily: "Georgia, 'Times New Roman', serif",
-                      fontStyle: "italic",
+                      fontFamily: middayLesson ? SPACE_GROTESK : "Georgia, 'Times New Roman', serif",
+                      fontStyle: middayLesson ? "normal" : "italic",
                       fontSize: "clamp(18px, 3.4vw, 22px)",
                       lineHeight: 1.55,
                       color: WARM_TEXT,
                       margin: 0,
                       whiteSpace: "pre-wrap",
+                      textAlign: middayLesson ? "left" : "center",
                     }}
                   >
                     {currentSlide.content}
@@ -5090,7 +5159,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     cursor: "pointer",
                   }}
                 >
-                  {"Read Gospel →"}
+                  <>Read Gospel<CtaArrow /></>
                 </button>
               </div>
             );

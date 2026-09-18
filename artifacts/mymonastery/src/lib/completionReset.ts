@@ -14,6 +14,9 @@ const PREFIXES = [
   "phoebe:office-done",
   "phoebe:slideshow-completed",     // prayer-list slideshow walked today
   "phoebe:practice-done",           // optional practices (gratitude/examen/listening/…)
+  "phoebe:reading-book",            // the book a visitor was reading, title + page:
+                                    // a new account must not inherit it (audit,
+                                    // 2026-09-17).
   "phoebe:practice-skip",           // …and "Not today" for those same practices. A
                                     // visitor who skipped a card before signing up
                                     // handed the new account a day with that card

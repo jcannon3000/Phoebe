@@ -1729,6 +1729,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const sideHasLectio =
     (morningContemplationActive && sideKind("morning") === "lectio")
     || (eveningContemplationActive && sideKind("evening") === "lectio");
+  /** Same for Pray As You Go: kept as a side's practice, its reflection card
+   *  would be the same session a second time. The customizer already switches
+   *  the standing card off when it is chosen for a side (WayOfLoveRuleFlow),
+   *  but a rule that arrived any other way must not double it either. */
+  const sideHasPayg =
+    (morningContemplationActive && sideKind("morning") === "payg")
+    || (eveningContemplationActive && sideKind("evening") === "payg");
   /** Same for the Rosary — a side's practice since 2026-09-10. */
   const sideHasRosary =
     (morningContemplationActive && sideKind("morning") === "rosary")
@@ -1755,6 +1762,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     reading: { emoji: "📚", title: t("rhythm.card_reading", { defaultValue: "Reading" }), blurb: t("rhythm.blurb_reading_side", { defaultValue: "A page a day" }), href: "" },
     rosary: { emoji: "📿", title: t("rhythm.card_rosary", { defaultValue: "The Rosary" }), blurb: t("rhythm.blurb_rosary", { defaultValue: "Pray today's mysteries" }), href: "/rosary" },
     icons: { emoji: "🪟", title: t("rhythm.card_icons", { defaultValue: "Praying with Icons" }), blurb: t("rhythm.blurb_icons_side", { defaultValue: "This week's icon" }), href: "/icon-prayer" },
+    // Pray As You Go as this side's contemplative practice — the card opens
+    // the player on the day's session, and the player's own credit is what
+    // marks it kept (see useRhythmState's kindKept).
+    payg: { emoji: "🙇🏽", title: t("rhythm.card_payg", { defaultValue: "Pray As You Go Daily" }), blurb: t("rhythm.blurb_payg", { defaultValue: "A guided audio meditation on scripture" }), href: "/reflect/payg" },
   };
   const namedSide = (side: "morning" | "evening") => NAMED_SIDE_PRACTICE[sideKind(side)] ?? null;
   // Kept for the handful of places that genuinely have no side in hand.
@@ -1926,7 +1937,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // Reflection cards lead the morning (default second, right after Morning).
     // One card per reflection newsletter the user follows — each its own card +
     // dot, opening that source's reading directly (and marking it read).
-    ...reflections.map((r) => {
+    ...reflections.filter((r) => !(r.source === "payg" && sideHasPayg)).map((r) => {
       const url = reflectionSourceUrl(r.source);
       // A map, not a chain: a chain's final `: markVtsRead` would have marked
       // the Dean's Commentary read when someone opened Sojourners.

@@ -5,7 +5,7 @@ import { HIDE_COMMUNITY_KEY } from "@/lib/displayPrefs";
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth, useLogout } from "@/hooks/useAuth";
+import { useAuth, useLogout, hasEverAuthenticated } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, LogIn, ChevronRight, ChevronDown, Plus } from "lucide-react";
@@ -1069,7 +1069,13 @@ function OpeningSplash() {
   useEffect(() => {
     if (!native) return;
     if (user) rememberBreathIntroEligible(!!user.isSuperAdmin);
-    else if (authSettled) rememberBreathIntroEligible(false);
+    // Only a settled answer from someone who has actually signed in on this
+    // device clears the flag. useAuth's user is null for a TRANSIENT failure
+    // (offline, the auth timeout) just as readily as for a real logout
+    // (useAuth.ts's own note), and this flag is what the beat falls back to
+    // before the record arrives — so one stumbling launch used to cost the
+    // NEXT launch its breaths, silently (audit, 2026-09-17).
+    else if (authSettled && !hasEverAuthenticated()) rememberBreathIntroEligible(false);
   }, [native, user, authSettled]);
   const breathEligibleRef = useRef(false);
   // Until the record is in, go by what this device last knew: the answer the

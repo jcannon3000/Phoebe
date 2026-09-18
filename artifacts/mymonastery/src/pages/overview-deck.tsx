@@ -12,6 +12,7 @@
 // runs immediately, so the deck is a detour in front of that flow, not a
 // separate path.
 import { useLocation, useSearch } from "wouter";
+import { isAndroidDevice } from "@/lib/isNativeShell";
 import { useQueryClient } from "@tanstack/react-query";
 import { DeckShell, type Slide } from "./church-deck";
 import { seedGuestRule } from "@/lib/guestSeed";
@@ -192,7 +193,7 @@ export default function OverviewDeckPage() {
       doneTo="/dashboard"
       autoAdvanceMs={12000}
       quickIndex={-1}
-      stickyAction={isIntro ? { label: "Start praying →", onClick: startPraying } : undefined}
+      stickyAction={isIntro ? { label: isAndroidDevice() ? "Start praying" : "Start praying →", onClick: startPraying } : undefined}
     />
   );
 }

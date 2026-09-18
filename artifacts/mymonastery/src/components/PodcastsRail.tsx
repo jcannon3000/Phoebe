@@ -120,7 +120,7 @@ export function PodcastsRail({ title = "🎧 Podcasts" }: { title?: string }) {
             onClick={() => refetch()}
             style={{ width: "100%", textAlign: "left", background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.3)", borderRadius: 14, padding: "14px 16px", color: "#A8C5A0", fontFamily: FONT, fontSize: 14, cursor: "pointer" }}
           >
-            Couldn't load podcasts. Tap to retry →
+            Couldn't load podcasts. Tap to retry<CtaArrow />
           </button>
         </section>
       );

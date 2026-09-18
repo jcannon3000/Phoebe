@@ -32,11 +32,22 @@ function readInitialLocale(): SupportedLocale {
  * copy and iOS/web output is byte-identical. A lone "→" (send_arrow, an
  * icon) is kept: the rule needs a word before the arrow.
  */
+/** Values that END in an arrow but are not CTA labels — the arrow is inside a sentence. */
+const SENTENCE_FRAGMENT_KEYS = ["your_streak_prefix"];
+
 const androidCtaArrow = {
   type: "postProcessor" as const,
   name: "androidCtaArrow",
-  process(value: string): string {
-    return typeof value === "string" ? value.replace(/(\S)\s+→\s*$/, "$1") : value;
+  process(value: string, key?: unknown): string {
+    if (typeof value !== "string") return value;
+    // A LABEL ends at its arrow; a SENTENCE carries on past it. "Your streak of
+    // {{count}} →" is the first third of one line on the moment page (the arrow
+    // is the connective before the gallons and "saved by you"), so stripping it
+    // ran the numbers together (audit, 2026-09-17). A key whose value is a
+    // fragment of a larger sentence is named here rather than guessed at.
+    const k = Array.isArray(key) ? String(key[0] ?? "") : String(key ?? "");
+    if (SENTENCE_FRAGMENT_KEYS.some((suffix) => k.endsWith(suffix))) return value;
+    return value.replace(/(\S)\s+→\s*$/, "$1");
   },
 };
 

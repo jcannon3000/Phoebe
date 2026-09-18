@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { CtaArrow } from "@/components/CtaArrow";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -121,7 +122,7 @@ export default function CommunitiesPage() {
                   style={isBuilder
                     ? { background: "transparent", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.4)" }
                     : { background: "#2D5E3F", color: "#F0EDE6" }}>
-                  {t("communities.browse_communities", { defaultValue: "Browse communities" })} →
+                  {t("communities.browse_communities", { defaultValue: "Browse communities" })}<CtaArrow />
                 </span>
               </Link>
             </div>

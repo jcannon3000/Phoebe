@@ -10,7 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAndrewsVisible } from "@/lib/appSettings";
 import {
   hasReadCacToday, hasReadFddToday, hasReadSsjeToday, hasReadVtsToday, isVtsPublishingDay, isVtsStillExpected,
-  CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT, VTS_READ_EVENT,
+  CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT, VTS_READ_EVENT, PAYG_READ_EVENT,
   hasPrayedPsalmsToday, PSALMS_READ_EVENT,
   hasPrayedGuidedPrayerToday, GUIDED_PRAYER_READ_EVENT,
   hasPrayedFddToday, FDD_PRAYED_EVENT,
@@ -526,6 +526,11 @@ export function useRhythmState(): RhythmState {
     window.addEventListener(FDD_READ_EVENT, recheck);
     window.addEventListener(SSJE_READ_EVENT, recheck);
     window.addEventListener(VTS_READ_EVENT, recheck);
+    // Pray As You Go is marked read by the PLAYER, which can be running while
+    // the home is on screen — without this the card only caught up on the next
+    // refetch or app-resume. (nouwen/sojo/grist still wait for one; their
+    // trackers export no event constant to listen for.)
+    window.addEventListener(PAYG_READ_EVENT, recheck);
     window.addEventListener(PSALMS_READ_EVENT, recheck);
     window.addEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
     window.addEventListener(CUSTOM_PRAYER_READ_EVENT, recheck);
@@ -572,6 +577,7 @@ export function useRhythmState(): RhythmState {
       window.removeEventListener(FDD_READ_EVENT, recheck);
       window.removeEventListener(SSJE_READ_EVENT, recheck);
       window.removeEventListener(VTS_READ_EVENT, recheck);
+      window.removeEventListener(PAYG_READ_EVENT, recheck);
       window.removeEventListener(PSALMS_READ_EVENT, recheck);
       window.removeEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
       window.removeEventListener(CUSTOM_PRAYER_READ_EVENT, recheck);
@@ -1605,7 +1611,12 @@ export function useRhythmState(): RhythmState {
             : kind === "reading" ? (practiceLocal.reading || serverDone("reading"))
               : kind === "rosary" ? (practiceLocal.rosary || serverDone("rosary"))
                 : kind === "icons" ? (practiceLocal.icons || serverDone("icons"))
-                  : null;
+                  // Pray As You Go is kept by being HEARD — the player marks
+                  // the reflection read (locally, and on the server through
+                  // /api/reflections/read), so that one flag is what this side
+                  // reads too rather than a practice-completion of its own.
+                  : kind === "payg" ? (hasReadPaygToday() || !!reflRead?.payg)
+                    : null;
   const morningContemplationDone = kindKept(morningContemplationKind)
     ?? (contemplationSideDone.morning || sidesToday.morning);
   const eveningContemplationDone = kindKept(eveningContemplationKind)

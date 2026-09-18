@@ -595,7 +595,7 @@ function SlideContent({
             className="px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40"
             style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)" }}
           >
-            {askSubmitting ? "Sharing…" : "Share with my community →"}
+            {askSubmitting ? "Sharing…" : <>Share with my community<CtaArrow /></>}
           </button>
           <button
             onClick={onAdvance}

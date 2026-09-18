@@ -97,7 +97,6 @@ import { useAndrewsVisible } from "@/lib/appSettings";
 import { FrostLayers, frostBox } from "@/components/FrostRing";
 import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
 import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
-import { CtaArrow } from "@/components/CtaArrow";
 
 // Set once a routine snapshot exists, so the entry slide can offer "go back
 // to a past routine" synchronously instead of racing a fetch.
@@ -1603,7 +1602,10 @@ export default function WayOfLoveRuleFlow({
   // longer keeps Reading as its contemplative practice; the standalone Reading
   // practice in the catalogue is untouched. A side already stored as "reading"
   // re-opens as Contemplative Prayer (see the seed mapping below).
-  const CONTEMPLATIVE_FORMS = ["prayer", "creation", "walk", "audio", "visio", "lectio", "rosary", "icons"] as const;
+  // "payg" (owner, 2026-09-18: "Have pray as you ago be in the contemplative
+  // practice options for morning and eveing, its not right now") — a listened
+  // meditation kept as this side's contemplative practice.
+  const CONTEMPLATIVE_FORMS = ["prayer", "creation", "walk", "audio", "payg", "visio", "lectio", "rosary", "icons"] as const;
   type ContemplativeForm = (typeof CONTEMPLATIVE_FORMS)[number];
   // Owner: "the Examen and Compline shouldn't be in contemplative practice in
   // evening as they can be chosen other places." Compline is one of the prayer
@@ -1660,7 +1662,8 @@ export default function WayOfLoveRuleFlow({
               : kind === "lectio" ? "lectio"
                 : kind === "rosary" ? "rosary"
                   : kind === "icons" ? "icons"
-                    : "prayer";
+                    : kind === "payg" ? "payg"
+                      : "prayer";
     };
     return { morning: seed("morning"), evening: seed("evening") };
   });
@@ -2224,7 +2227,8 @@ export default function WayOfLoveRuleFlow({
           setSideContemplationKind(side,
             f === "creation" ? "creation" : f === "walk" ? "walk"
               : f === "audio" ? "audio" : f === "visio" ? "visio"
-                : f === "lectio" ? "lectio" : f === "rosary" ? "rosary" : f === "icons" ? "icons" : "silent");
+                : f === "lectio" ? "lectio" : f === "rosary" ? "rosary" : f === "icons" ? "icons"
+                  : f === "payg" ? "payg" : "silent");
         }
         // Sit length is per side (config picker), NOT the daily goal.
         if (contemplationBySide[side]) setSideMinutes(side, minutesBySide[side]);
@@ -2527,7 +2531,8 @@ export default function WayOfLoveRuleFlow({
           setSideContemplationKind(side,
             f === "creation" ? "creation" : f === "walk" ? "walk"
               : f === "audio" ? "audio" : f === "visio" ? "visio"
-                : f === "lectio" ? "lectio" : f === "rosary" ? "rosary" : f === "icons" ? "icons" : "silent");
+                : f === "lectio" ? "lectio" : f === "rosary" ? "rosary" : f === "icons" ? "icons"
+                  : f === "payg" ? "payg" : "silent");
         }
         // Sit length is per side (config picker), NOT the daily goal — a
         // 90-minute goal must not put a 90-minute sit on each card (owner).
@@ -5394,7 +5399,16 @@ export default function WayOfLoveRuleFlow({
               newsletter cards — needs a real OfficeLevel of its own (or a
               stored "which source" pref the home card reads), not a label
               change; flagged rather than guessed at. */}
-          {side === "morning" && choiceRow(
+          {/* NO LONGER OFFERED (owner, 2026-09-18: "Lets take reflections out of
+              morning and evening options"). A reflection is a card of its own
+              on the reflections step, and — for Pray As You Go — a
+              contemplative practice for a side; it stops being an anchor that
+              replaces the office. The row still renders for someone who
+              ALREADY has it, so they can see what they keep and change it,
+              the way a de-listed newsletter still shows to whoever chose it.
+              Nothing below the row changed: the "fdd" level, its home card and
+              begin-prayer's handling all stay for those rules. */}
+          {prayBySide[side] === "fdd" && choiceRow(
             prayBySide[side] === "fdd",
             `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Reflection" })}`,
             // NAMES THE SOURCE — the same lookup the learn step's tick uses
@@ -5718,6 +5732,7 @@ export default function WayOfLoveRuleFlow({
       : f === "creation" ? { emoji: "🌍", label: t("wol_rule.cf_creation", { defaultValue: "Breathing Together" }), sub: t("wol_rule.cf_creation_sub", { defaultValue: "Breathing with creation, at one shared pace." }) }
       : f === "walk" ? { emoji: "🚶🏽", label: t("wol_rule.cf_walk", { defaultValue: "Contemplative Walk" }), sub: t("wol_rule.cf_walk_sub", { defaultValue: "A walk kept as prayer, attentive to what's around you." }) }
       : f === "audio" ? { emoji: "🎵", label: t("wol_rule.cf_audio", { defaultValue: "Audio Divina" }), sub: t("wol_rule.cf_audio_sub", { defaultValue: "Connecting with God through music." }) }
+      : f === "payg" ? { emoji: "🙇🏽", label: t("wol_rule.cf_payg", { defaultValue: "Pray As You Go Daily" }), sub: t("wol_rule.cf_payg_sub", { defaultValue: "A guided audio meditation on scripture." }) }
             : f === "visio" ? { emoji: "🖼️", label: t("wol_rule.cf_visio", { defaultValue: "Visio Divina" }), sub: t("wol_rule.cf_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }) }
       : f === "lectio" ? { emoji: "📜", label: t("wol_rule.cf_lectio", { defaultValue: "Lectio Divina" }), sub: t("wol_rule.cf_lectio_sub", { defaultValue: "Read a passage slowly, three times — listen, reflect, pray." }) }
       : f === "rosary" ? { emoji: "📿", label: t("wol_rule.cf_rosary", { defaultValue: "The Rosary" }), sub: t("wol_rule.cf_rosary_sub", { defaultValue: "The day's mysteries, a decade at a time — or the Anglican beads." }) }

@@ -2484,7 +2484,7 @@ export default function MomentNew() {
                       ? selectedGroupId
                           ? <>{t("moment_new.cta.plant_for_community", { community: adminGroups.find(g => g.id === selectedGroupId)?.name ?? t("moment_new.cta.community_fallback") })} 🌿</>
                           : t("moment_new.cta.select_community")
-                      : <>{t("moment_new.continue")} →</>}
+                      : <>{t("moment_new.continue")}<CtaArrow /></>}
               </button>
               {plantMutation.isError && (() => {
                 const raw = plantMutation.error instanceof Error ? plantMutation.error.message : "";
