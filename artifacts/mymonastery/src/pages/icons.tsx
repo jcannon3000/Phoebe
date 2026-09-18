@@ -66,6 +66,13 @@ function tidyArtist(a: string): string {
 }
 
 /** Case/diacritic-insensitive haystack for the name search. */
+/** "eleven minutes", "a minute", "under a minute" — never "0 minutes". */
+function spellTime(seconds: number): string {
+  if (seconds < 60) return "under a minute";
+  const mins = Math.round(seconds / 60);
+  return mins === 1 ? "a minute" : `${mins} minutes`;
+}
+
 function norm(s: string): string {
   try {
     return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -179,6 +186,30 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
   const [ask, setAsk] = useState("");
   /** The work whose credit is being read, if any (the ⓘ pill). */
   const [info, setInfo] = useState<GalleryWork | null>(null);
+  /**
+   * WHAT THIS VISIT CAME TO (owner: "it goes to a done page, kind of like
+   * breathing together. It tells them how many images they viewed, and how
+   * much time they spent").
+   *
+   * Counted the same way the dwell clock counts: a work is "viewed" when it
+   * takes the centre of the screen, not when it is rendered — forty are
+   * rendered, and scrolling past a picture in a quarter of a second is not
+   * viewing it. Time is wall-clock from opening the scroll, which is the
+   * honest answer to "how long was I doing this".
+   */
+  const seenRef = useRef<Set<number>>(new Set());
+  const openedAtRef = useRef<number>(Date.now());
+  const [done, setDone] = useState(false);
+  const [visit, setVisit] = useState<{ seen: number; seconds: number }>({ seen: 0, seconds: 0 });
+
+  const finish = () => {
+    commitRef.current();
+    setVisit({
+      seen: seenRef.current.size,
+      seconds: Math.max(0, Math.round((Date.now() - openedAtRef.current) / 1000)),
+    });
+    setDone(true);
+  };
   const pool = useMemo(() => galleryPool(), []);
   const ASK_CAP = 80;
   const askedAll = useMemo(() => {
@@ -211,6 +242,7 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
   // centre — mid-flick — whereas the tick belongs to the SETTLE.
   const lastTapRef = useRef<number | null>(null);
 
+  const commitRef = useRef<() => void>(() => {});
   const commit = () => {
     const cur = currentRef.current;
     if (!cur) return;
@@ -219,6 +251,7 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
     // A glance is not a dwell: under a second says nothing about what held you.
     if (seconds >= 1) onDwell(cur.id, seconds);
   };
+  commitRef.current = commit;
 
   /**
    * WHICH PICTURE IS BEING LOOKED AT: the card nearest the middle of the
@@ -243,7 +276,11 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
         if (gap < bestGap) { bestGap = gap; bestId = id; }
       }
       if (bestId == null) { commit(); return; }
-      if (currentRef.current?.id !== bestId) { commit(); currentRef.current = { id: bestId, since: Date.now() }; }
+      if (currentRef.current?.id !== bestId) {
+        commit();
+        currentRef.current = { id: bestId, since: Date.now() };
+        seenRef.current.add(bestId);
+      }
     };
     sync();
     lastTapRef.current = currentRef.current?.id ?? null;
@@ -385,22 +422,66 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
         <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 600 }}>
           {t("icons.gallery_title", { defaultValue: "Images" })}
         </span>
+        {/* Done, not ✕ (owner: "have something at the top that says done. Up
+            top right, then it goes to a done page"). The way out now passes
+            through what the time came to, the way the breath does. */}
         <button
           type="button"
-          onClick={() => { commit(); onClose(); }}
-          aria-label={t("common.close", { defaultValue: "Close" })}
+          onClick={finish}
           style={{
-            width: 34, height: 34, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
-            background: "rgba(9,26,16,0.55)", border: "1px solid rgba(200,212,192,0.25)", color: WARM, cursor: "pointer", padding: 0,
+            borderRadius: 999, padding: "7px 16px", fontSize: 13, fontWeight: 600, fontFamily: FONT,
+            background: "rgba(9,26,16,0.55)", border: "1px solid rgba(200,212,192,0.25)", color: WARM, cursor: "pointer",
+            backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
           }}
         >
-          ✕
+          {t("icons.gallery_done_pill", { defaultValue: "Done" })}
         </button>
       </div>
+      {done && (
+        <div
+          style={{
+            position: "absolute", inset: 0, zIndex: 2, display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center", gap: 14,
+            padding: "calc(env(safe-area-inset-top) + 28px) 30px calc(env(safe-area-inset-bottom) + 28px)",
+            textAlign: "center",
+          }}
+        >
+          <p style={{ color: FAINT, fontFamily: FONT, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
+            {t("icons.gallery_done_eyebrow", { defaultValue: "Today's scroll" })}
+          </p>
+          <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 30, lineHeight: 1.25, margin: 0 }}>
+            {visit.seen === 1
+              ? t("icons.gallery_done_one", { defaultValue: "One image" })
+              : t("icons.gallery_done_count", { count: visit.seen, defaultValue: `${visit.seen} images` })}
+          </p>
+          <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, margin: 0, maxWidth: 330 }}>
+            {t("icons.gallery_done_body", {
+              defaultValue: `You spent ${spellTime(visit.seconds)} with sacred imagery, instead of doom scrolling.`,
+            })}
+          </p>
+          <p style={{ color: FAINT, fontFamily: FONT, fontSize: 14, lineHeight: 1.6, margin: 0, maxWidth: 330 }}>
+            {t("icons.gallery_done_return", { defaultValue: "Come back again tomorrow." })}
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              marginTop: 10, width: "100%", maxWidth: 320, borderRadius: 999, padding: "13px 20px",
+              fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer", color: WARM,
+              background: "rgba(46,107,64,0.5)", border: "1px solid rgba(143,175,150,0.55)",
+              backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+            }}
+          >
+            {t("icons.gallery_done_close", { defaultValue: "Close" })}
+          </button>
+        </div>
+      )}
+
       <div
         ref={scrollerRef}
         style={{
           position: "relative", zIndex: 1,
+          visibility: done ? "hidden" : "visible",
           height: "100%", overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
           padding: "calc(max(10px, env(safe-area-inset-top)) + 44px) 0 calc(env(safe-area-inset-bottom, 0px) + 28px)",
           // Each picture settles in the middle when the finger lifts (owner).
