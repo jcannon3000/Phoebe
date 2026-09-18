@@ -952,6 +952,7 @@ function OfficeCloseExtrasSettings() {
     { value: "ssje", label: "SSJE Reflections", sub: "From the Society of Saint John the Evangelist.", emoji: "✍🏽" },
     { value: "sojo", label: "Sojourners Daily Devotion", sub: "Verse, voice and prayer of the day.", emoji: "🕊️" },
     { value: "nouwen", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society.", emoji: "😊" },
+    { value: "payg", label: "Pray As You Go Daily", sub: "The Jesuits' daily prayer session, listened to.", emoji: "🎧" },
     { value: "none", label: "No reflection", sub: "No pill at the close.", emoji: "—" },
   ];
   return (

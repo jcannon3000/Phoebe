@@ -165,7 +165,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
 // player. They have their own home there, so we keep them OUT of the
 // Discover browse + search — the SHOWS entries stay (so
 // /podcast/:show/today still serves them), they're just not listed.
-const HIDDEN_FROM_DISCOVER = new Set<string>(["morning-office", "evening-office", "compline", "ssje-sermons"]);
+const HIDDEN_FROM_DISCOVER = new Set<string>(["morning-office", "evening-office", "compline", "ssje-sermons", "pray-as-you-go"]);
 
 // Individual episodes hidden by title (matched apostrophe- and
 // whitespace-insensitively). Filtered out when the feed is parsed, so
@@ -249,6 +249,24 @@ export const SHOWS: Record<string, Show> = {
     artist: "Forward Movement",
     publisher: "forward-movement",
     feedUrl: "https://feeds.megaphone.fm/FDMV3439145045",
+    artwork: null,
+  },
+  // Pray As You Go — the Jesuits in Britain's daily prayer session: music,
+  // a scripture reading and a few questions, about twelve minutes. Owner,
+  // 2026-09-17, with a link to one of them: "we want it as a daily reflection,
+  // but it comes up as an audio player", "instead of opening to there website"
+  // / "open to play the podcast". So it is a reflection source whose card
+  // plays the day's episode in Phoebe's own player (pages/reflect-payg).
+  //
+  // The feed is the one Apple Podcasts lists, and prayasyougo.org's robots.txt
+  // is "User-Agent: * / Allow: /". Phoebe reads it as any podcast client does:
+  // their page, their audio, their attribution.
+  "pray-as-you-go": {
+    slug: "pray-as-you-go",
+    title: "Pray As You Go Daily",
+    artist: "Pray As You Go",
+    publisher: "around-the-church",
+    feedUrl: "https://admin.prayasyougo.org/api/feed.xml",
     artwork: null,
   },
   // ── Center for Action and Contemplation ─────────────────────────────
@@ -794,6 +812,39 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
         ?? eps[0]
         ?? null;
     }
+    res.json({
+      feedTitle: feed.feedTitle ?? show.title,
+      title: ep?.title ?? null,
+      audioUrl: ep?.audioUrl ?? null,
+      durationSeconds: ep?.durationSeconds ?? null,
+      publishedAt: ep?.publishedAt ?? null,
+      imageUrl: feed.feedImage ?? ep?.imageUrl ?? null,
+    });
+    return;
+  }
+
+  /**
+   * Pray As You Go: the session FOR THE LISTENER'S OWN DAY, not the newest.
+   *
+   * Every item is stamped 00:00:00 GMT on the day it is meant for, and the
+   * next day's is usually up by the evening before — so the newest item is
+   * often tomorrow's. The UTC date IS their publication date, so match that
+   * against the listener's day (?date=YYYY-MM-DD, else the Eastern day);
+   * then the newest session that isn't in the future; then the newest.
+   */
+  if (slug === "pray-as-you-go") {
+    const feed = await loadFeed(show, 10);
+    const eps = feed.episodes;
+    const rawDate = String(req.query.date ?? "");
+    const utcYmd = (iso: string) => new Date(iso).toISOString().slice(0, 10);
+    const ymd = /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+      ? rawDate
+      : new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
+    const dated = eps.filter((e) => !!e.publishedAt);
+    const ep = dated.find((e) => utcYmd(e.publishedAt!) === ymd)
+      ?? dated.find((e) => utcYmd(e.publishedAt!) <= ymd)
+      ?? eps[0]
+      ?? null;
     res.json({
       feedTitle: feed.feedTitle ?? show.title,
       title: ep?.title ?? null,

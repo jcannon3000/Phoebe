@@ -21,8 +21,10 @@ import { getSavedPageToday, cachePageForToday } from "@/lib/pageCache";
 import { readCachedHomeLayout } from "@/lib/homeLayoutCache";
 import { clearWarmedPages } from "@/lib/warmedPages";
 import { reflectionSourceUrl } from "@/lib/cacReadState";
-/** The seven daily reflections, matching useRhythmState's own list. */
-const REFLECTION_SOURCES = ["fdd", "cac", "ssje", "vts", "nouwen", "sojo", "grist"] as const;
+/** The daily reflections, matching useRhythmState's own list. Pray As You Go
+ *  is among them but has no page to save — it is heard, and reflectionSourceUrl
+ *  returns "" for it, which the warm-a-page jobs below skip. */
+const REFLECTION_SOURCES = ["fdd", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "payg"] as const;
 import { boundedFetch } from "@/lib/boundedFetch";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isReallyOnline } from "@/lib/offline";

@@ -861,6 +861,7 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             ...(!UNOFFERED_REFLECTION_SOURCES.has("sojo") || newsletter === "sojo"
               ? [{ value: "sojo", label: "Sojourners Daily Devotion" }]
               : []),
+            { value: "payg", label: "Pray As You Go Daily" },
             { value: "nouwen", label: "Nouwen Daily Devotion" },
             { value: "fdd", label: "Forward Day by Day" },
             { value: "ssje", label: "SSJE — Brother, Give Us a Word" },

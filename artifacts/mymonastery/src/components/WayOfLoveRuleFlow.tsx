@@ -755,6 +755,9 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "fdd", label: "📖 Forward Day by Day", sub: "Forward Movement" },
   { id: "ssje", label: "✍🏽 SSJE — Brother, Give Us a Word", sub: "Society of St. John the Evangelist" },
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
+  // Heard, not read: its card opens the audio player on the day's session
+  // (owner, 2026-09-17), and it is kept once most of it has played.
+  { id: "payg", label: "🎧 Pray As You Go Daily", sub: "The Jesuits' daily prayer, listened to" },
   // Read-only sources (see ReflectionSource): they sit in the rule and open in
   // the reader like the others, but opening one is not scored.
   { id: "nouwen", label: "😊 Nouwen Daily Devotion", sub: "Henri Nouwen Society" },

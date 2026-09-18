@@ -65,6 +65,8 @@ export const HOME_MODULE_KEYS = [
   "nouwen",
   "sojo",
   "grist",
+  // Heard, not read: the card opens Phoebe's player on the day's session.
+  "payg",
   "ncmp",
   "podcasts",
   "requests",

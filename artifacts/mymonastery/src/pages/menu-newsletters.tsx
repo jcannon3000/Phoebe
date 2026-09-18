@@ -25,8 +25,9 @@ import { useWeeklies, useWeeklyLatest, useSetWeeklySubscription, weeklySourceId 
 import { useAndrewsVisible } from "@/lib/appSettings";
 import {
   reflectionSourceUrl,
+  reflectionInAppRoute,
   markCacRead, markFddRead, markSsjeRead, markVtsRead,
-  markNouwenRead, markSojoRead, markGristRead,
+  markNouwenRead, markSojoRead, markGristRead, markPaygRead,
 } from "@/lib/cacReadState";
 import type { TrackedReflection } from "@/lib/cacReadState";
 
@@ -96,13 +97,14 @@ const PUBLISHER: Record<DailySource, string> = {
   nouwen: "Henri Nouwen Society",
   grist: "The day's climate reporting",
   vts: "Virginia Theological Seminary · weekdays",
+  payg: "The Jesuits in Britain · listen",
 };
 const DAILY = TRACKED_REFLECTION_SOURCES.filter((s) => !UNOFFERED_REFLECTION_SOURCES.has(s)).map((source) => ({
   source, emoji: REFLECTION_EMOJI[source], title: PUBLICATION_NAME[source], publisher: PUBLISHER[source],
 }));
 const MARK_READ: Record<DailySource, (dwellMs?: number) => void> = {
   cac: markCacRead, fdd: markFddRead, ssje: markSsjeRead, vts: markVtsRead,
-  nouwen: markNouwenRead, sojo: markSojoRead, grist: markGristRead,
+  nouwen: markNouwenRead, sojo: markSojoRead, grist: markGristRead, payg: markPaygRead,
 };
 
 export default function MenuNewslettersPage() {
@@ -215,7 +217,11 @@ export default function MenuNewslettersPage() {
         // Read-gated like the home card (owner, 2026-09-04: a long piece counts
         // only once scrolled through) — it used to mark read BEFORE opening.
         open: () => {
-          if (d.source === "vts") { MARK_READ[d.source](); setLocation("/vts-reading"); return; }
+          // In-app sources open their own screen and mark themselves there:
+          // the VTS reader marks on the first step, the Pray As You Go player
+          // once the session has been heard.
+          const inApp = reflectionInAppRoute(d.source);
+          if (inApp) { if (d.source === "vts") MARK_READ[d.source](); setLocation(inApp); return; }
           // This morning's copy when the walk got one — see lib/warmedPages.
           const src = reflectionSourceUrl(d.source);
           openExternalThenMarkRead(src, (ms) => MARK_READ[d.source](ms), { reader: true, savedHtml: warmedHtml(src) });
@@ -302,6 +308,9 @@ export default function MenuNewslettersPage() {
   // along its green→purple gradient by position (rhythmGradientRgb), and the
   // reflection cards' own blue never reaches the screen there — so it mustn't
   // here either (owner: "I never asked for blue UI, just green").
+  const readVerb = (key: string) => (key === "payg"
+    ? t("rhythm.listen", { defaultValue: "Listen" })
+    : t("rhythm.read", { defaultValue: "Read" }));
   const card = (e: Entry, i: number, n: number) => (
     <PracticeCard
       key={e.key}
@@ -316,9 +325,11 @@ export default function MenuNewslettersPage() {
        * cards do: dimmed, labelled, and not tappable.
        */
       {...(online ? {} : { later: true, laterLabel: t("newsletters.offline", { defaultValue: "Offline" }) })}
-      cta={t("rhythm.read", { defaultValue: "Read" })}
+      // "Listen" for the reflection that is heard rather than read — the one
+      // that opens in the audio player (Pray As You Go).
+      cta={readVerb(e.key)}
       done={e.done}
-      doneCta={t("rhythm.read", { defaultValue: "Read" })}
+      doneCta={readVerb(e.key)}
       rgb={rhythmGradientRgb(i, n)}
       onClick={e.open}
       pulseOnLoad={false}

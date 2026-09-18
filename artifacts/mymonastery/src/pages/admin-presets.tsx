@@ -58,7 +58,7 @@ const SLOTTED = ["cobreathe", "listening", "examen", "walk", "reading", "visio",
 // home reads them. Kept in step with the server's HOME_MODULE_KEYS.
 const CARD_KEYS = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe",
   "compline", "noonday", "examen", "visio", "icons", "lectio", "rosary", "taize", "andrews", "spirituals",
-  "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "hagiography", "ncmp", "podcasts", "requests", "prayer-list"] as const;
+  "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "payg", "hagiography", "ncmp", "podcasts", "requests", "prayer-list"] as const;
 
 type Row = { slug: string; body: Record<string, unknown>; hidden?: boolean; sortOrder?: number | null };
 

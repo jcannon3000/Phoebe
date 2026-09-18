@@ -30,6 +30,7 @@ const REFLECTION_NAME: Record<TrackedReflection, string> = {
   ssje: "Brother, Give Us a Word",
   vts: "VTS Dean's Commentary",
   nouwen: "Nouwen Daily Devotion",
+  payg: "Pray As You Go Daily",
   sojo: "Sojourners Daily Devotion",
   grist: "Grist Climate News",
 };

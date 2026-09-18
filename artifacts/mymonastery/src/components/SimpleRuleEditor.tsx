@@ -56,6 +56,7 @@ const REFLECTION_CHOICES: { value: ReflectionSource; label: string; sub: string 
   // Sojourners is not offered while Verse and Voice is silent (2026-09-12);
   // see UNOFFERED_REFLECTION_SOURCES in lib/officePrefs.
   { value: "nouwen", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society" },
+  { value: "payg", label: "Pray As You Go Daily", sub: "The Jesuits' daily prayer session, listened to" },
   // VTS BELONGS HERE TOO. Without it this editor did something worse than
   // omit an option: the label lookup below falls back to "Forward Day by Day",
   // so a reader whose reflection IS the Dean's Commentary was shown a screen

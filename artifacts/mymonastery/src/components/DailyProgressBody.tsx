@@ -24,7 +24,7 @@ import { useOnline, cardAvailableOffline } from "@/lib/offline";
 import { daySwapNote } from "@/components/PracticeSwitcher";
 import { rowIdToCardKeys } from "@/lib/routineOrder";
 import { recordPracticeOpen, sortCardsByLearnedOrder, dayGroupFor, isMorningAnchorKey } from "@/lib/practiceOrderLearning";
-import { hasReadReflectionToday, reflectionDwellMsToday, reflectionSourceUrl, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
+import { hasReadReflectionToday, reflectionDwellMsToday, reflectionSourceUrl, reflectionInAppRoute, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markPaygRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markInboxRead, unmarkInboxRead } from "@/lib/taizeInbox";
 import { markCustomDoneToday, setCustomNotToday, unmarkCustomDoneToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig , curatedPromptFor } from "@/lib/customAnchors";
@@ -54,6 +54,8 @@ import { usePreviousIssues, usePreviousIssuesFor } from "@/hooks/usePreviousIssu
  *  a reflection looks like itself wherever it appears. */
 export const REFLECTION_EMOJI: Record<TrackedReflection, string> = {
   cac: "🌵", fdd: "📔", ssje: "✍🏽", vts: "🦩", nouwen: "😊", sojo: "🕊️", grist: "🌎",
+  // Heard, not read — the headphones say so on every surface it appears on.
+  payg: "🎧",
 };
 
 export const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
@@ -64,6 +66,7 @@ export const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string>
   nouwen: "Nouwen Daily Devotion",
   sojo: "Sojourners Daily Devotion",
   grist: "Grist Climate News",
+  payg: "Pray As You Go Daily",
 };
 
 const WARM = "#F0EDE6";
@@ -1119,6 +1122,30 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   });
   const vtsTitle = (vtsMeta?.title ?? "").trim();
   /**
+   * TODAY'S PRAY AS YOU GO SESSION, for the card's second line (owner,
+   * 2026-09-17: "the titles of the podcasts are the date and then the title of
+   * the episode, have the title of the episode be the second line of the
+   * routine card"). Their feed titles every episode "Friday 18 September 2026
+   * - Journey with Jesus", so the date is dropped and the name kept.
+   *
+   * Gated on a card being rendered, like the VTS fetch above. The day is sent
+   * because their sessions are stamped for the day they are FOR, and the next
+   * day's is up the evening before.
+   */
+  const { data: paygMeta } = useQuery<{ title?: string | null }>({
+    queryKey: ["/api/podcast/pray-as-you-go/today", "card"],
+    queryFn: () => apiRequest("GET", `/api/podcast/pray-as-you-go/today?date=${new Date().toLocaleDateString("en-CA")}`),
+    staleTime: 60 * 60_000,
+    enabled: reflections.some((r) => r.source === "payg"),
+  });
+  const paygTitle = (() => {
+    const raw = (paygMeta?.title ?? "").trim();
+    // "<weekday> <d Month yyyy> - <name>" → the name. Any other shape is kept
+    // whole rather than guessed at.
+    const m = /^[A-Za-z]+\s+\d{1,2}\s+[A-Za-z]+\s+\d{4}\s*[-–—]\s*(.+)$/.exec(raw);
+    return (m?.[1] ?? raw).trim();
+  })();
+  /**
    * VTS posts the Dean's Commentary on WEEKDAY mornings, not always by the
    * time an early riser opens Phoebe. Owner: "if the Dean's commentary has
    * not been updated yet, and it's a weekday, put it in later faded, and
@@ -1906,16 +1933,23 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       const MARK_READ: Record<TrackedReflection, () => void> = {
         cac: markCacRead, fdd: markFddRead, ssje: markSsjeRead, vts: markVtsRead,
         nouwen: markNouwenRead, sojo: markSojoRead, grist: markGristRead,
+        // Never called: Pray As You Go opens the player, which marks it once
+        // it has been heard. The map has to be complete, so it points at the
+        // same mark rather than a no-op that could hide a wiring mistake.
+        payg: markPaygRead,
       };
       const mark = MARK_READ[r.source];
-      const scrapedTitle = r.source === "cac" ? cacTitle : r.source === "vts" ? vtsTitle : "";
-      // VTS opens the in-app paragraph slideshow (vts-reading.tsx) — VTS
-      // gave permission to bring the text into Phoebe rather than just
-      // linking out, unlike CAC/FDD/SSJE, which still open externally.
+      const scrapedTitle = r.source === "cac" ? cacTitle : r.source === "vts" ? vtsTitle : r.source === "payg" ? paygTitle : "";
+      // Two sources open INSIDE Phoebe and mark themselves read there: VTS,
+      // whose text we have permission to carry (vts-reading.tsx), and Pray As
+      // You Go, which is heard rather than read — its route hands the day's
+      // session to the audio player (reflect-payg.tsx). Everything else opens
+      // the publisher's own page.
+      const inApp = reflectionInAppRoute(r.source);
       const isVts = r.source === "vts";
       const waitingForUpdate = isVts && vtsWaitingForUpdate;
       return {
-        key: `reflect-${r.source}`, slot: "morning" as CustomSlot, emoji: REFLECTION_EMOJI[r.source], rgb: "96,141,209", done: r.done, href: isVts ? "/vts-reading" : "",
+        key: `reflect-${r.source}`, slot: "morning" as CustomSlot, emoji: REFLECTION_EMOJI[r.source], rgb: "96,141,209", done: r.done, href: inApp ?? "",
         onUnlog: () => unlogReflectionToday(r.source),
         title: PUBLICATION_NAME[r.source],
         blurb: waitingForUpdate
@@ -1945,8 +1979,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         // Dean's Commentary can take five seconds to reach live; a warmed copy
         // renders at once. Read SYNCHRONOUSLY here — the store is async and on
         // web the open has to happen inside the tap's own tick.
-        ...(isVts ? {} : { onClick: () => openExternalThenMarkRead(url, () => { mark(); swellHaptic(); }, { reader: true, savedHtml: warmedHtml(url) }) }),
-        cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
+        ...(inApp ? {} : { onClick: () => openExternalThenMarkRead(url, () => { mark(); swellHaptic(); }, { reader: true, savedHtml: warmedHtml(url) }) }),
+        // "Listen" for the one that is heard rather than read.
+        cta: r.source === "payg" ? t("rhythm.listen", { defaultValue: "Listen" }) : t("rhythm.read", { defaultValue: "Read" }), later: false,
       };
     }),
     // Per-side Contemplative Prayer — Morning / Evening Contemplation, each its
@@ -2239,7 +2274,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(() => {
       const EXTRA_READ_MS = 10_000;
       const inRhythm = new Set(reflections.map((r) => r.source));
-      return (["cac", "fdd", "ssje", "nouwen", "sojo", "grist", "vts"] as TrackedReflection[])
+      return (["cac", "fdd", "ssje", "nouwen", "sojo", "grist", "payg", "vts"] as TrackedReflection[])
         .filter((src) => !inRhythm.has(src)
           && hasReadReflectionToday(src)
           && (reflectionDwellMsToday(src) ?? 0) >= EXTRA_READ_MS)
@@ -2249,7 +2284,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           emoji: REFLECTION_EMOJI[src],
           rgb: "150,140,160",
           done: true,
-          href: src === "vts" ? "/vts-reading" : reflectionSourceUrl(src),
+          href: reflectionInAppRoute(src) ?? reflectionSourceUrl(src),
           onUnlog: () => unlogReflectionToday(src),
           title: PUBLICATION_NAME[src],
           blurb: kept,

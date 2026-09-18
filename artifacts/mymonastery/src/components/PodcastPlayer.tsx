@@ -11,6 +11,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { WIDE_PHOTOS } from "@/lib/wideBackgrounds";
 import { markComplete as markCourseLessonComplete } from "@/lib/courseProgress";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { markReflectionRead, type TrackedReflection } from "@/lib/cacReadState";
 
 // ≥2 minutes of actual listening to a (non-office) podcast counts the
 // "Podcasts" daily practice as kept — if the user has it as a practice.
@@ -64,6 +65,13 @@ export type PlayingEpisode = {
   // When set, a session >= 180s stamps the local office-completed flag
   // (phoebe:office-completed:<mode>:<date>) so the dashboard lights up.
   creditMode?: "morning" | "evening" | "compline";
+  /**
+   * A daily reflection that is HEARD rather than read (Pray As You Go): once
+   * ≥60% of the episode has played, count it read for the day — the card's
+   * dot, the streak and any side whose prayer it is all follow from that one
+   * mark, exactly as they do when a reflection's page is opened.
+   */
+  creditReflection?: TrackedReflection;
   // Skip the listening-history write — the daily office changes every day
   // and is tracked via prayer-sessions, not the podcast history.
   skipHistory?: boolean;
@@ -490,6 +498,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const weeklyCreditedRef = useRef<string | null>(null);
   // The episodeId of the course lesson already credited this play (≥90% heard).
   const courseCreditedRef = useRef<string | null>(null);
+  const reflectionCreditedRef = useRef<string | null>(null);
   // Whether THIS podcast play has already credited the Podcasts daily practice
   // (so the ≥2-min credit fires once per episode play).
   const podcastCreditedRef = useRef(false);
@@ -931,6 +940,17 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       officeCreditedRef.current = current.episodeId;
       const played = seg.current.acc + (seg.current.start !== null ? (Date.now() - seg.current.start) / 1000 : 0);
       creditOfficePodcast(officeSide, played > 1 ? played : a.currentTime, seg.current.startedAt);
+    }
+    // A reflection that is listened to (Pray As You Go) — ≥60% heard counts
+    // it read for the day, the same bar as the offices above. Once per play.
+    if (
+      current.creditReflection &&
+      reflectionCreditedRef.current !== current.episodeId &&
+      isFinite(a.duration) && a.duration > 0 &&
+      a.currentTime / a.duration >= OFFICE_CREDIT_FRACTION
+    ) {
+      reflectionCreditedRef.current = current.episodeId;
+      markReflectionRead(current.creditReflection);
     }
     // Weekly-plan episode credit — ≥60% heard completes the checklist item
     // (60% not 100%: outros, and grace). Fires once per play.

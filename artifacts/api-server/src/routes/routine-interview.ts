@@ -173,10 +173,11 @@ const CATALOGUE: Record<string, CatalogueEntry> = {
   sojo:            { kind: "newsletter", label: "the Sojourners daily devotion", hint: "" },
   nouwen:          { kind: "newsletter", label: "the Henri Nouwen daily devotion", hint: "" },
   grist:           { kind: "newsletter", label: "Grist climate news", hint: "" },
+  payg:            { kind: "newsletter", label: "Pray As You Go Daily — the Jesuit daily prayer session, listened to", hint: "\"pray as you go\"" },
 };
 // "fdd" is a newsletter too — the same key, read as a card when it is not a
 // side's prayer. The adapter decides by `when`: no side → newsletter.
-const NEWSLETTER_KEYS = new Set(["cac", "fdd", "ssje", "vts", "sojo", "nouwen", "grist"]);
+const NEWSLETTER_KEYS = new Set(["cac", "fdd", "ssje", "vts", "sojo", "nouwen", "grist", "payg"]);
 const WHEN = new Set(["morning", "midday", "afternoon", "evening", "anytime"]);
 
 const FLAT_VOCAB = `
@@ -854,7 +855,7 @@ const RC_LEVELS = new Set([
   "readings", "psalms", "examen", "creation", "guided-prayer", "custom", "compline",
 ]);
 const RC_ENTRIES = new Set(["read", "listen", "watch", "book", "venite"]);
-const RC_REFLECTIONS = new Set(["cac", "fdd", "ssje", "vts", "sojo", "nouwen", "grist", "none"]);
+const RC_REFLECTIONS = new Set(["cac", "fdd", "ssje", "vts", "sojo", "nouwen", "grist", "payg", "none"]);
 const RC_SLOTS = new Set(["morning", "anytime", "midday", "afternoon", "evening"]);
 const RC_STYLES = new Set(["silent", "cobreathe"]);
 /**

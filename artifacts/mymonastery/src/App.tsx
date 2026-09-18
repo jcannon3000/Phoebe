@@ -331,6 +331,7 @@ const PodcastPublisherPage = lazy(() => import("./pages/podcast-publisher"));
 const PodcastShowPage = lazy(() => import("./pages/podcast-show"));
 const FddSitPage = lazy(() => import("./pages/fdd-sit"));
 const ReflectCacPage = lazy(() => import("./pages/reflect-cac"));
+const ReflectPaygPage = lazy(() => import("./pages/reflect-payg"));
 const GatheringsPage = lazy(() => import("./pages/gatherings"));
 const MomentNew = lazy(() => import("./pages/moment-new"));
 const MomentDetail = lazy(() => import("./pages/moment-detail"));
@@ -937,7 +938,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // non-beta, non-community-admin account, so the bounce hit ordinary users.)
   // All personal practices — a reflection reader, a listening session, and
   // three tap-to-log surfaces — with no social surface between them.
-  "/reflect/cac", "/listening", "/lectio", "/walk-log", "/reading-log", "/podcast-log",
+  "/reflect/cac", "/reflect/payg", "/listening", "/lectio", "/walk-log", "/reading-log", "/podcast-log",
   /**
    * THE DEAN'S COMMENTARY'S OWN READER. Owner: "THE VTS NEWSLETTER IS STILL
    * ADMIN GATED … EVEN THOUGH IT SHOWS UP IN THE ROUTINE, it cant be viewed
@@ -1216,6 +1217,8 @@ function Router() {
           publisher slug. */}
       <Route path="/reflect/fdd" component={FddSitPage} />
       <Route path="/reflect/cac" component={ReflectCacPage} />
+      {/* Pray As You Go Daily — hands the day's session to the audio player. */}
+      <Route path="/reflect/payg" component={ReflectPaygPage} />
       <Route path="/podcasts/show/:slug" component={PodcastShowPage} />
       <Route path="/news" component={NewsPage} />
       <Route path="/building-faith" component={BuildingFaithPage} />

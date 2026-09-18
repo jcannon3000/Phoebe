@@ -42,7 +42,7 @@ const HOME_MODULES = [
   // hidden-governs-visibility rule turned both cards ON for someone who had
   // simply reordered their home.
   "icons", ...(COMMUNITY_FEATURES_ENABLED ? ["prayer-list" as const] : []), "lectio",
-  "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "ncmp", "podcasts", "requests",
+  "cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "payg", "ncmp", "podcasts", "requests",
 ] as const;
 type HomeModule = typeof HOME_MODULES[number];
 
@@ -157,6 +157,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     // These three were readable from the Reflections menu but could not be
     // chosen, so the menu offered six and the rhythm accepted four.
     nouwen:       { label: "Nouwen Daily Devotion",          emoji: "😊", sub: "From the Henri Nouwen Society" },
+    payg:         { label: "Pray As You Go Daily",           emoji: "🎧", sub: "The Jesuits' daily prayer session, listened to" },
     sojo:         { label: "Sojourners Daily Devotion",        emoji: "🕊️", sub: "Verse, voice and prayer of the day" },
     grist:        { label: "Grist Climate News",                 emoji: "🌎", sub: "The day's climate reporting" },
     ncmp:         { label: "National Cathedral Morning Prayer",  emoji: "📺", sub: "Weekday live broadcast · 7 AM ET" },

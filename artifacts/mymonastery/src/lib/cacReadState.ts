@@ -315,6 +315,22 @@ const sojoTracker = makeDailyReadTracker(
   "reflect-sojo",
 );
 /**
+ * PRAY AS YOU GO — the one that is HEARD (owner, 2026-09-17: "we want it as a
+ * daily reflection, but it comes up as an audio player", "instead of opening
+ * to there website … open to play the podcast").
+ *
+ * Every other source here is a page the reader opens; this one is the Jesuits'
+ * daily session played in Phoebe's own player (pages/reflect-payg), and the
+ * player marks it read once it has been heard. Everything downstream — the
+ * card, its dot, the streak, a side that takes it as its prayer — reads this
+ * tracker exactly as it reads the others.
+ */
+const paygTracker = makeDailyReadTracker(
+  "phoebe:payg:last-read-day", "phoebe:payg-read",
+  (ymd) => { postOrQueue(`reflect-read:payg:${ymd}`, "/api/reflections/read", { source: "payg", ymd }); },
+  "reflect-payg",
+);
+/**
  * THE DAY'S COMMEMORATION — the life behind the feast.
  *
  * Synced as reflection_reads source "hagiography" (2026-09-15). It was a
@@ -350,10 +366,10 @@ const gristTracker = makeDailyReadTracker(
  * is a compile error at every site that must learn about it, which is what
  * you want from a list this widely consulted.
  */
-export type TrackedReflection = "cac" | "fdd" | "ssje" | "vts" | "nouwen" | "sojo" | "grist";
+export type TrackedReflection = "cac" | "fdd" | "ssje" | "vts" | "nouwen" | "sojo" | "grist" | "payg";
 const DAY_TRACKERS: Record<TrackedReflection, ReturnType<typeof makeDailyReadTracker>> = {
   cac: cacTracker, fdd: fddTracker, ssje: ssjeTracker, vts: vtsTracker,
-  nouwen: nouwenTracker, sojo: sojoTracker, grist: gristTracker,
+  nouwen: nouwenTracker, sojo: sojoTracker, grist: gristTracker, payg: paygTracker,
 };
 
 /**
@@ -658,6 +674,8 @@ const sojoTrackerMorning = makeDailyReadTracker("phoebe:sojo:morning:last-read-d
 const sojoTrackerEvening = makeDailyReadTracker("phoebe:sojo:evening:last-read-day", "phoebe:sojo-prayed", () => syncVtsSession("evening"), "evening");
 const gristTrackerMorning = makeDailyReadTracker("phoebe:grist:morning:last-read-day", "phoebe:grist-prayed", () => syncVtsSession("morning"), "morning");
 const gristTrackerEvening = makeDailyReadTracker("phoebe:grist:evening:last-read-day", "phoebe:grist-prayed", () => syncVtsSession("evening"), "evening");
+const paygTrackerMorning = makeDailyReadTracker("phoebe:payg:morning:last-read-day", "phoebe:payg-prayed", () => syncVtsSession("morning"), "morning");
+const paygTrackerEvening = makeDailyReadTracker("phoebe:payg:evening:last-read-day", "phoebe:payg-prayed", () => syncVtsSession("evening"), "evening");
 
 /** Per-side kept flag for every tracked source — see DAY_TRACKERS' note on
  *  why this is a map and not another ternary chain. */
@@ -666,6 +684,7 @@ const SIDE_TRACKERS: Record<TrackedReflection, (side: "morning" | "evening") => 
   nouwen: (side) => (side === "evening" ? nouwenTrackerEvening : nouwenTrackerMorning),
   sojo: (side) => (side === "evening" ? sojoTrackerEvening : sojoTrackerMorning),
   grist: (side) => (side === "evening" ? gristTrackerEvening : gristTrackerMorning),
+  payg: (side) => (side === "evening" ? paygTrackerEvening : paygTrackerMorning),
 };
 
 /**
@@ -998,9 +1017,43 @@ export function reflectionSourceUrl(source: string): string {
     case "nouwen": return NOUWEN_TODAY_URL;
     case "sojo": return sojournersTodayUrl();
     case "grist": return GRIST_TODAY_URL;
+    // Pray As You Go has no page to open: its card plays the day's session in
+    // Phoebe (reflectionInAppRoute below). Empty rather than the FDD default,
+    // which would open somebody else's writing.
+    case "payg": return "";
     default: return FDD_TODAY_URL;
   }
 }
+
+/**
+ * A reflection that opens INSIDE Phoebe rather than at its publisher's page.
+ * VTS gave permission to bring its text in (pages/vts-reading); Pray As You Go
+ * is listened to, so its card opens the player (pages/reflect-payg). Every
+ * other source opens the publisher's own page — reflectionSourceUrl above.
+ */
+export function reflectionInAppRoute(source: string): string | null {
+  switch (source) {
+    case "vts": return "/vts-reading";
+    case "payg": return "/reflect/payg";
+    default: return null;
+  }
+}
+
+/**
+ * Mark a reflection read BY SOURCE — for a surface that knows the key rather
+ * than the function, like the audio player crediting a session it has heard.
+ * Same two steps every mark*Read does: the day tracker, then any side whose
+ * prayer this is.
+ */
+export function markReflectionRead(source: TrackedReflection, dwellMs?: number): void {
+  DAY_TRACKERS[source].markRead(dwellMs);
+  creditAnchorsFor(source);
+}
+
+/** Pray As You Go — read = HEARD: the player marks it (pages/reflect-payg). */
+export const PAYG_READ_EVENT = paygTracker.eventName;
+export function hasReadPaygToday(): boolean { return paygTracker.hasReadToday(); }
+export function markPaygRead(dwellMs?: number): void { paygTracker.markRead(dwellMs); creditAnchorsFor("payg"); }
 
 export const SSJE_READ_EVENT = ssjeTracker.eventName;
 export function getSsjeReadDay(): string | null { return ssjeTracker.getLastReadDay(); }
@@ -1024,7 +1077,7 @@ export function recordSsjeOpened(opts?: { flagReturn?: boolean; dwellMs?: number
 export function reflectionDwellMsToday(source: string): number | null {
   const t = ({
     cac: cacTracker, fdd: fddTracker, ssje: ssjeTracker, vts: vtsTracker,
-    nouwen: nouwenTracker, sojo: sojoTracker, grist: gristTracker,
+    nouwen: nouwenTracker, sojo: sojoTracker, grist: gristTracker, payg: paygTracker,
   } as Record<string, { dwellMsToday(): number | null } | undefined>)[source];
   return t ? t.dwellMsToday() : null;
 }
@@ -1033,7 +1086,7 @@ export function reflectionDwellMsToday(source: string): number | null {
 export function hasReadReflectionToday(source: string): boolean {
   const t = ({
     cac: cacTracker, fdd: fddTracker, ssje: ssjeTracker, vts: vtsTracker,
-    nouwen: nouwenTracker, sojo: sojoTracker, grist: gristTracker,
+    nouwen: nouwenTracker, sojo: sojoTracker, grist: gristTracker, payg: paygTracker,
   } as Record<string, { hasReadToday(): boolean } | undefined>)[source];
   return t ? t.hasReadToday() : false;
 }
@@ -1054,7 +1107,7 @@ export function recordReflectionDwell(source: string, dwellMs: number): void {
     cac: "phoebe:cac:last-read-day", fdd: "phoebe:fdd:last-read-day",
     ssje: "phoebe:ssje:last-read-day", vts: "phoebe:vts:last-read-day",
     nouwen: "phoebe:nouwen:last-read-day", sojo: "phoebe:sojo:last-read-day",
-    grist: "phoebe:grist:last-read-day",
+    grist: "phoebe:grist:last-read-day", payg: "phoebe:payg:last-read-day",
   };
   const base = KEYS[source];
   if (!base) return;

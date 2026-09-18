@@ -29,7 +29,8 @@ function isValidYmd(s: string): boolean {
 // POST 400s and the read is never recorded anywhere but this one device, which
 // is precisely "it didn't save".
 // "hagiography" (2026-09-15): the feast-day life, so App Metrics can count it.
-const SOURCES = new Set(["fdd", "ssje", "vts", "nouwen", "sojo", "grist", "hagiography"]);
+// "payg" (2026-09-17): Pray As You Go's daily session, heard rather than read.
+const SOURCES = new Set(["fdd", "ssje", "vts", "nouwen", "sojo", "grist", "hagiography", "payg"]);
 
 function uid(req: Request): number | null {
   const u = req.user as { id?: number } | undefined;
