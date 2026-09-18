@@ -757,7 +757,7 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
   // Heard, not read: its card opens the audio player on the day's session
   // (owner, 2026-09-17), and it is kept once most of it has played.
-  { id: "payg", label: "🧘🏽 Pray As You Go Daily", sub: "A guided audio meditation on scripture" },
+  { id: "payg", label: "🙇🏽 Pray As You Go Daily", sub: "A guided audio meditation on scripture" },
   // Read-only sources (see ReflectionSource): they sit in the rule and open in
   // the reader like the others, but opening one is not scored.
   { id: "nouwen", label: "😊 Nouwen Daily Devotion", sub: "Henri Nouwen Society" },
@@ -4965,7 +4965,7 @@ export default function WayOfLoveRuleFlow({
               prayer ("if was already put in morning or evening, then also make
               sure then it isnt able to be chosen again"), the same rule
               anchoredAsForm keeps for the rest. */}
-          {!paygIsSidePrayer && choiceRow(contemplative.payg, `🧘🏽 ${t("wol_rule.cp_payg", { defaultValue: "Pray As You Go Daily" })}`, t("wol_rule.cp_payg_sub", { defaultValue: "A guided audio meditation on scripture." }), () => toggleContemplative("payg"))}
+          {!paygIsSidePrayer && choiceRow(contemplative.payg, `🙇🏽 ${t("wol_rule.cp_payg", { defaultValue: "Pray As You Go Daily" })}`, t("wol_rule.cp_payg_sub", { defaultValue: "A guided audio meditation on scripture." }), () => toggleContemplative("payg"))}
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
           {/* Lectio sits right after the Examen (owner, 2026-09-05: "move
               Lectio Divina up to be after the Examen"); it was last but one. */}
