@@ -8,7 +8,6 @@ import ImprintSlideshow, {
   useGatheringSlides,
   type ImprintSlide,
 } from "@/components/ImprintSlideshow";
-import { isNativeShell } from "@/lib/isNativeShell";
 import { SPIRITUAL_JOURNEY, JOURNEY_TOTAL, CENTERING_PRAYER, CENTERING_TOTAL } from "@/lib/spiritualJourney";
 import { WAY_OF_LOVE, WOL_TOTAL } from "@/lib/wayOfLoveCourse";
 import { useCourseProgress } from "@/lib/courseProgress";
@@ -134,19 +133,20 @@ export default function LearnPage() {
           ))}
         </div>
 
-        {/* Guided courses. VIDEO courses (YouTube player) are web-only; the
-            Way of Love AUDIO course plays natively too — same split as the
-            home's HomeLearnSection, which was already iOS-aware while this
-            page hid the whole section (the flagship rule-of-life course was
-            invisible in the app). */}
+        {/* Guided courses, in two sections — video and audio (owner,
+            2026-09-18: "on courses make two sections, one's audio one's
+            video").
+
+            The video courses used to be hidden on a phone entirely, because
+            YouTube would not embed inside the app. It does now: inline on
+            Android and the web, and through the in-app reader on iOS (see
+            lib/videoEmbed and CoursePage's hand-off), so both sections are
+            offered on every platform. */}
         <div className="mt-8">
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
-              Courses
+              Watch
             </p>
             <div className="space-y-3">
-              {/* Centering Prayer first — the short PRACTICE course is the
-                  on-ramp; the Spiritual Journey is where it deepens. */}
-              {!isNativeShell() && (
               <button
                 onClick={() => setLocation("/centering-prayer")}
                 className="w-full text-left rounded-2xl px-5 py-4 transition-opacity hover:opacity-90 active:scale-[0.99]"
@@ -164,14 +164,12 @@ export default function LearnPage() {
                     <p className="text-[11px] mt-2 font-semibold uppercase tracking-widest" style={{ color: "#5FBF7F" }}>
                       {centeringDone > 0
                         ? `Continue · ${centeringDone} of ${CENTERING_TOTAL} complete`
-                        : `Video course · ${CENTERING_TOTAL} lessons + the practice`}
+                        : `${CENTERING_TOTAL} lessons + the practice`}
                     </p>
                   </div>
                 </div>
               </button>
-              )}
 
-              {!isNativeShell() && (
               <button
                 onClick={() => setLocation("/journey")}
                 className="w-full text-left rounded-2xl px-5 py-4 transition-opacity hover:opacity-90 active:scale-[0.99]"
@@ -189,13 +187,17 @@ export default function LearnPage() {
                     <p className="text-[11px] mt-2 font-semibold uppercase tracking-widest" style={{ color: "#5FBF7F" }}>
                       {completedCount > 0
                         ? `Continue · ${completedCount} of ${JOURNEY_TOTAL} complete`
-                        : `Video course · ${JOURNEY_TOTAL} lessons`}
+                        : `${JOURNEY_TOTAL} lessons`}
                     </p>
                   </div>
                 </div>
               </button>
-              )}
+            </div>
 
+            <p className="text-[11px] font-semibold uppercase tracking-widest mt-7 mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
+              Listen
+            </p>
+            <div className="space-y-3">
               <button
                 onClick={() => setLocation("/way-of-love-course")}
                 className="w-full text-left rounded-2xl px-5 py-4 transition-opacity hover:opacity-90 active:scale-[0.99]"
@@ -213,7 +215,7 @@ export default function LearnPage() {
                     <p className="text-[11px] mt-2 font-semibold uppercase tracking-widest" style={{ color: "#5FBF7F" }}>
                       {wolDone > 0
                         ? `Continue · ${wolDone} of ${WOL_TOTAL} complete`
-                        : `Audio course · ${WOL_TOTAL} talks`}
+                        : `${WOL_TOTAL} talks`}
                     </p>
                   </div>
                 </div>

@@ -5,9 +5,10 @@
 // your progress bar. If you haven't started anything, a single quiet
 // "Start course" card offers the platform's flagship instead of a menu of all.
 //
-// PLATFORM: the video courses (Centering Prayer, The Spiritual Journey) are
-// web/desktop-only (YouTube IFrame player) — on the iOS shell only Bishop
-// Budde's Way of Love (an audio course on the podcast player) appears.
+// PLATFORM: every course appears on every platform. The two video courses
+// (Centering Prayer, The Spiritual Journey) used to be web-only, because
+// YouTube would not embed inside the app; their pages handle that themselves
+// now (lib/videoEmbed), so nothing is hidden here.
 //
 // FOURTEEN DAYS (owner, 2026-09-16): a course nobody has engaged with for two
 // weeks leaves the home — the "Start course" offer of the Way of Love too,
@@ -19,7 +20,6 @@ import { useLocation } from "wouter";
 import { motion, useInView } from "framer-motion";
 import { Play } from "lucide-react";
 import { FrostLayers, frostBox } from "@/components/FrostRing";
-import { isNativeShell } from "@/lib/isNativeShell";
 import {
   useCourseProgress,
   useAnyCourseProgressTick,
@@ -119,7 +119,6 @@ export function selectHomeCourses(
 
 export function HomeLearnSection() {
   const [, setLocation] = useLocation();
-  const native = isNativeShell();
   const centering = useCourseProgress(CENTERING_PRAYER.id);
   const journey = useCourseProgress(SPIRITUAL_JOURNEY.id);
   const wol = useCourseProgress(WAY_OF_LOVE.id);
@@ -157,7 +156,15 @@ export function HomeLearnSection() {
   const { data: cacData } = useCacCourses({ enabled: maySeeCac });
 
   const cards: LearnCard[] = [];
-  if (!native) {
+  /*
+   * THE VIDEO COURSES ARE ON THE HOME EVERYWHERE NOW (owner, 2026-09-18).
+   * They were web-only here because their pages refused to play in the app —
+   * a card that opened a "watch this on the web" wall. The pages play on a
+   * phone now (inline where YouTube embeds, through the in-app reader where it
+   * doesn't — lib/videoEmbed), so a course someone is in the middle of belongs
+   * on their home whatever they are holding.
+   */
+  {
     cards.push({ ...videoCourseCard(CENTERING_PRAYER, CENTERING_INDEX, "/centering-prayer", centering), updatedAt: snapshotProgress(CENTERING_PRAYER.id).updatedAt ?? 0 });
     cards.push({ ...videoCourseCard(SPIRITUAL_JOURNEY, JOURNEY_INDEX, "/journey", journey), updatedAt: snapshotProgress(SPIRITUAL_JOURNEY.id).updatedAt ?? 0 });
   }

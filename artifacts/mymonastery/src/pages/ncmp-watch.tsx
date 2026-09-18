@@ -3,6 +3,8 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
+import { YouTubePlayer } from "@/components/YouTubePlayer";
+import { canEmbedVideoHere, isInReaderWatch, openVideoInReader } from "@/lib/videoEmbed";
 import { useTranslation } from "react-i18next";
 
 // ── /ncmp/watch — National Cathedral Morning Prayer ──
@@ -64,13 +66,7 @@ export default function NcmpWatchPage() {
   const committedRef = useRef(false);
 
   useEffect(() => {
-    const closeSpan = () => {
-      const o = openedAtRef.current;
-      if (o === null) return;
-      const elapsed = (Date.now() - o) / 1000;
-      if (elapsed > 0) accumulatedRef.current += elapsed;
-      openedAtRef.current = null;
-    };
+    const closeSpan = endWatchSpan;
     // Commit exactly one row for this visit. Guarded so unmount + pagehide
     // can both call it without double-posting.
     const commit = () => {
@@ -112,18 +108,43 @@ export default function NcmpWatchPage() {
     };
   }, []);
 
-  const watch = () => {
-    const url = ncmpMeta?.url ?? CHANNEL_LIVE_URL;
-    // Close any still-open span (re-tap) before starting a new one.
+  /**
+   * A WATCH SPAN is the stretch we count as watched. Inline, the player opens
+   * one when the video starts playing and closes it on pause, stall or end —
+   * real watch time, which the old hand-off could only approximate by timing
+   * how long the person was away (the note at the top of this file). On the
+   * hand-off path the span is still the time spent in the reader.
+   */
+  const beginWatchSpan = () => {
     const prev = openedAtRef.current;
     if (prev !== null) accumulatedRef.current += (Date.now() - prev) / 1000;
     if (!startedAtRef.current) startedAtRef.current = new Date();
     openedAtRef.current = Date.now();
-    // Call synchronously inside the click handler to preserve the iOS
-    // user-gesture context the popup blocker enforces (see openExternal).
-    openExternal(url);
+  };
+  const endWatchSpan = () => {
+    const open = openedAtRef.current;
+    if (open === null) return;
+    accumulatedRef.current += (Date.now() - open) / 1000;
+    openedAtRef.current = null;
   };
 
+  /**
+   * The hand-off, for the one platform that can't embed: open THIS page at
+   * withphoebe.app in the in-app reader, where the origin is real and the
+   * player works. It used to open YouTube's own page, which is what made
+   * watching feel like leaving Phoebe.
+   *
+   * Called synchronously inside the click handler to keep the iOS user-gesture
+   * context (see openExternal).
+   */
+  const watch = () => {
+    beginWatchSpan();
+    if (!openVideoInReader()) openExternal(ncmpMeta?.url ?? CHANNEL_LIVE_URL);
+  };
+
+  const videoId = ncmpMeta?.videoId ?? null;
+  // Can a YouTube iframe initialise on this page at all? See lib/videoEmbed.
+  const inlineVideo = canEmbedVideoHere();
   const poster = ncmpMeta?.videoId
     ? `https://i.ytimg.com/vi/${ncmpMeta.videoId}/hqdefault.jpg`
     : null;
@@ -152,13 +173,15 @@ export default function NcmpWatchPage() {
           gap: 12,
         }}
       >
+        {isInReaderWatch() ? <span /> : (
         <button
-          type="button"
-          onClick={() => setLocation("/dashboard")}
-          style={{ justifySelf: "start", background: "none", border: "none", color: PALETTE.sage, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}
-        >
-          ← {t("common.back")}
-        </button>
+            type="button"
+            onClick={() => setLocation("/dashboard")}
+            style={{ justifySelf: "start", background: "none", border: "none", color: PALETTE.sage, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}
+          >
+            ← {t("common.back")}
+          </button>
+        )}
         <span
           className="rounded-full"
           style={{ background: PALETTE.cardBg, border: `1px solid ${PALETTE.border}`, color: PALETTE.warm, fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", padding: "6px 14px", whiteSpace: "nowrap" }}
@@ -169,48 +192,75 @@ export default function NcmpWatchPage() {
       </header>
 
       <main style={{ flex: 1, padding: "12px 16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-        {/* Tappable poster — opens the broadcast in the browser. */}
-        <button
-          type="button"
-          onClick={watch}
-          aria-label={t("ncmp.watch", { defaultValue: "Watch Morning Prayer" })}
-          style={{
-            position: "relative",
-            width: "100%",
-            maxWidth: 560,
-            aspectRatio: "16 / 9",
-            alignSelf: "center",
-            background: poster ? `center / cover no-repeat url("${poster}")` : "#000",
-            borderRadius: 16,
-            overflow: "hidden",
-            border: `1px solid ${PALETTE.border}`,
-            cursor: "pointer",
-            padding: 0,
-          }}
-        >
-          <span aria-hidden style={{ position: "absolute", inset: 0, background: "rgba(9,26,16, 0.385)" }} />
-          <span aria-hidden style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(240,237,230,0.95)", color: "#091A10", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, paddingLeft: 4 }}>
-              ▶
-            </span>
-          </span>
-        </button>
+        {/* THE BROADCAST, INSIDE PHOEBE (owner, 2026-09-18: "bring in video
+            content, like the video of the cathedral's evening prayer, morning
+            prayer … even go full screen without it looking like you're leaving
+            the app").
 
-        {/* Explicit Watch button + "opens in browser" hint. */}
-        <div style={{ width: "100%", maxWidth: 560, alignSelf: "center", textAlign: "center" }}>
+            Where YouTube will embed — the web, and the Android shell, whose
+            origin is a real https://localhost — it plays right here in our own
+            frame, and the ⤢ button fills the screen with it. Where it won't
+            (the iOS shell's capacitor:// origin, which the player answers with
+            "Error 153"), the poster hands this same page to the in-app reader,
+            which loads real URLs. Neither path lands on YouTube's own page,
+            which is what "watch" used to mean here. See lib/videoEmbed. */}
+        {inlineVideo && videoId ? (
+          <div style={{ width: "100%", maxWidth: 560, alignSelf: "center" }}>
+            <YouTubePlayer
+              videoId={videoId}
+              autoplay={false}
+              onPlaying={beginWatchSpan}
+              onPaused={endWatchSpan}
+              onEnded={endWatchSpan}
+            />
+          </div>
+        ) : (
+          <>
+        {/* Tappable poster — opens the broadcast in the browser. */}
           <button
             type="button"
             onClick={watch}
-            style={{ background: PALETTE.cardBg, border: `1px solid ${PALETTE.border}`, color: PALETTE.warm, fontFamily: FONT, fontSize: 14, fontWeight: 600, borderRadius: 999, padding: "10px 22px", cursor: "pointer" }}
+            aria-label={t("ncmp.watch", { defaultValue: "Watch Morning Prayer" })}
+            style={{
+              position: "relative",
+              width: "100%",
+              maxWidth: 560,
+              aspectRatio: "16 / 9",
+              alignSelf: "center",
+              background: poster ? `center / cover no-repeat url("${poster}")` : "#000",
+              borderRadius: 16,
+              overflow: "hidden",
+              border: `1px solid ${PALETTE.border}`,
+              cursor: "pointer",
+              padding: 0,
+            }}
           >
-            {isLoading ? t("ncmp.loading") : t("ncmp.watch", { defaultValue: "Watch Morning Prayer" })}
+            <span aria-hidden style={{ position: "absolute", inset: 0, background: "rgba(9,26,16, 0.385)" }} />
+            <span aria-hidden style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(240,237,230,0.95)", color: "#091A10", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, paddingLeft: 4 }}>
+                ▶
+              </span>
+            </span>
           </button>
-          <p style={{ fontSize: 12, color: PALETTE.faint, margin: "8px 0 0" }}>
-            {t("ncmp.opens_in_browser", { defaultValue: "Opens in your browser" })}
-          </p>
-        </div>
+  
+          {/* Explicit Watch button + "opens in browser" hint. */}
+          <div style={{ width: "100%", maxWidth: 560, alignSelf: "center", textAlign: "center" }}>
+            <button
+              type="button"
+              onClick={watch}
+              style={{ background: PALETTE.cardBg, border: `1px solid ${PALETTE.border}`, color: PALETTE.warm, fontFamily: FONT, fontSize: 14, fontWeight: 600, borderRadius: 999, padding: "10px 22px", cursor: "pointer" }}
+            >
+              {isLoading ? t("ncmp.loading") : t("ncmp.watch", { defaultValue: "Watch Morning Prayer" })}
+            </button>
+            <p style={{ fontSize: 12, color: PALETTE.faint, margin: "8px 0 0" }}>
+              {t("ncmp.opens_in_app", { defaultValue: "Opens full screen in Phoebe" })}
+            </p>
+          </div>
+  
+          {/* Context blurb + today's title. */}
+        </>
+        )}
 
-        {/* Context blurb + today's title. */}
         <div style={{ width: "100%", maxWidth: 560, alignSelf: "center" }}>
           <p style={{ fontSize: 13, color: PALETTE.warm, margin: 0, lineHeight: 1.5 }}>{t("ncmp.blurb")}</p>
           {ncmpMeta?.title && (

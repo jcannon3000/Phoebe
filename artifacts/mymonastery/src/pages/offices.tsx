@@ -14,11 +14,8 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { MenuHub, type MenuHubGroup, type MenuHubItem, type MenuHubAction } from "@/components/MenuHub";
-import { isNativeShell } from "@/lib/isNativeShell";
-import { openExternal } from "@/lib/openExternal";
 import { isOnline } from "@/lib/offline";
 
-const NCMP_LIVE_URL = "https://www.youtube.com/@WashingtonNationalCathedral/live";
 
 type CardSpec = {
   emoji: string;
@@ -170,7 +167,16 @@ export default function OfficesPage() {
             variant: "purple" as const,
             emoji: "📺",
             label: t("offices.watch_ncmp", { defaultValue: "Watch · Nat'l Cathedral" }),
-            onClick: isNativeShell() ? () => openExternal(NCMP_LIVE_URL) : () => setLocation("/ncmp/watch"),
+            /*
+             * ALWAYS OUR OWN PAGE (owner, 2026-09-18). The native branch here
+             * used to hand the URL straight to YouTube, so "Watch" on a phone
+             * meant leaving Phoebe for YouTube's page — the thing the video
+             * work set out to fix. /ncmp/watch now plays the broadcast inline
+             * where YouTube will embed and, where it won't, opens itself in the
+             * in-app reader (lib/videoEmbed). Either way it stays Phoebe, and
+             * the watch time still counts toward Morning Prayer.
+             */
+            onClick: () => setLocation("/ncmp/watch"),
           }] : []),
         ]),
         // Watch St. John's Cathedral's daily "Morning Devotion with Dean Kate"

@@ -1588,6 +1588,17 @@ function AndroidBackButton() {
 
     let handle: { remove: () => void } | null = null;
     const onBack = (ev: BackEv) => {
+      /*
+       * FULL SCREEN FIRST. A video playing full screen (the cathedral offices,
+       * a course lesson — see components/YouTubePlayer) covers the whole app,
+       * so Back there means "give me the page back", not "leave the page".
+       * Without this the person would be navigated out from under the video
+       * and land somewhere else with it still going.
+       */
+      if (document.fullscreenElement) {
+        void document.exitFullscreen?.();
+        return;
+      }
       // Trust Capacitor's own canGoBack (computed from the WebView history);
       // fall back to history length if it's ever absent.
       const canGoBack = typeof ev?.canGoBack === "boolean"

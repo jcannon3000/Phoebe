@@ -15,6 +15,7 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -26,6 +27,9 @@ import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 
@@ -111,6 +115,10 @@ public class ReaderActivity extends Activity {
 
     private WebView web;
     private View backdrop;
+    /** The video a page put into full screen, and the callback that ends it. */
+    private View fullscreenView;
+    private WebChromeClient.CustomViewCallback fullscreenCallback;
+    private FrameLayout rootFrame;
     private TextView readerToggle;
     private final Handler handler = new Handler(Looper.getMainLooper());
     /** The reader script, or null when the asset wasn't generated (a build
@@ -221,6 +229,54 @@ public class ReaderActivity extends Activity {
             WebViewCompat.addDocumentStartJavaScript(web, readerJs, new HashSet<>(Collections.singletonList("*")));
             injectedAtStart = true;
         }
+        /*
+         * VIDEO, FULL SCREEN, STILL INSIDE PHOEBE (owner, 2026-09-18: "even go
+         * full screen without it looking like you're leaving the app").
+         *
+         * A WebView shows HTML5 video inline on its own, but the player's
+         * full-screen button does nothing at all unless a WebChromeClient
+         * takes the view it hands over — onShowCustomView — and puts it on
+         * screen. Without this the reader is a dead end for video: the button
+         * is there and tapping it is silently ignored.
+         *
+         * It matters most on iOS, where the reader IS the video surface (the
+         * app's own capacitor:// origin can't embed YouTube at all — see the
+         * web side's lib/videoEmbed), so a service or a course lesson watched
+         * on an iPhone plays in this same container's twin. Android embeds in
+         * place and rarely comes through here, but a publisher's page with a
+         * video in it now works either way.
+         *
+         * The view covers the whole activity while it is up, and the page's
+         * own exit (or Back, below) takes it down again.
+         */
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onShowCustomView(View view, CustomViewCallback callback) {
+                if (fullscreenView != null) {
+                    // A second video while one is already full screen: let the
+                    // page know the first is finished rather than stacking.
+                    callback.onCustomViewHidden();
+                    return;
+                }
+                fullscreenView = view;
+                fullscreenCallback = callback;
+                view.setBackgroundColor(Color.BLACK);
+                if (rootFrame != null) {
+                    rootFrame.addView(view, new FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                }
+                // Let the video have the status and gesture bars too.
+                WindowInsetsControllerCompat bars = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+                bars.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                bars.hide(WindowInsetsCompat.Type.systemBars());
+            }
+
+            @Override
+            public void onHideCustomView() {
+                exitFullscreenVideo();
+            }
+        });
+
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
@@ -262,6 +318,7 @@ public class ReaderActivity extends Activity {
             root.addView(buildOfficePill(slideLabel, sectionLabel));
         }
 
+        rootFrame = root;
         setContentView(root);
 
         if (savedHtml != null && !savedHtml.isEmpty()) {
@@ -535,8 +592,28 @@ public class ReaderActivity extends Activity {
         return id > 0 ? getResources().getDimensionPixelSize(id) : 0;
     }
 
+    /**
+     * Take a full-screen video down: off the screen, system bars back, and the
+     * page told it is no longer full screen (without that last call the
+     * player's own state stays stuck on "full screen"). Safe to call twice.
+     */
+    private void exitFullscreenVideo() {
+        if (fullscreenView == null) return;
+        if (rootFrame != null) rootFrame.removeView(fullscreenView);
+        fullscreenView = null;
+        WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView())
+                .show(WindowInsetsCompat.Type.systemBars());
+        if (fullscreenCallback != null) {
+            fullscreenCallback.onCustomViewHidden();
+            fullscreenCallback = null;
+        }
+    }
+
     @Override
     public void onBackPressed() {
+        // A video filling the screen owns Back first — it means "give me the
+        // page back", not "leave the reading".
+        if (fullscreenView != null) { exitFullscreenVideo(); return; }
         // Inside a reading, Back is "go back a page"; at the first page it
         // leaves — the same shape as the deck's own back guard.
         if (web != null && web.canGoBack()) { web.goBack(); return; }

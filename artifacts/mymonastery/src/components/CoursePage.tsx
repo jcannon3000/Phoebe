@@ -21,11 +21,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Circle,
-  Maximize2,
   Play,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { YouTubePlayer } from "@/components/YouTubePlayer";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { canEmbedVideoHere, openVideoInReader, youtubePoster } from "@/lib/videoEmbed";
 import {
   videoLabel,
   type CourseIndex,
@@ -55,152 +56,6 @@ const FROST = {
   backdropFilter: "blur(11.34px)",
   WebkitBackdropFilter: "blur(11.34px)",
 } as const;
-
-// ─── YouTube IFrame API loader (singleton) ───────────────────────────────────
-
-let ytApiPromise: Promise<any> | null = null;
-function loadYouTubeApi(): Promise<any> {
-  if (typeof window === "undefined") return Promise.reject(new Error("no window"));
-  const w = window as any;
-  if (w.YT?.Player) return Promise.resolve(w.YT);
-  if (ytApiPromise) return ytApiPromise;
-  ytApiPromise = new Promise((resolve) => {
-    const prev = w.onYouTubeIframeAPIReady;
-    w.onYouTubeIframeAPIReady = () => {
-      try { prev?.(); } catch { /* ignore other consumers */ }
-      resolve(w.YT);
-    };
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(tag);
-  });
-  return ytApiPromise;
-}
-
-// ─── In-app player ───────────────────────────────────────────────────────────
-// Creates a single YT.Player and swaps videos with cue/load so navigating
-// between lessons doesn't tear down and rebuild the iframe (which flickers).
-
-function LessonPlayer({
-  videoId,
-  autoplay,
-  onEnded,
-  onPlaying,
-}: {
-  videoId: string;
-  autoplay: boolean;
-  onEnded: () => void;
-  onPlaying?: () => void;
-}) {
-  const hostRef = useRef<HTMLDivElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<any>(null);
-  const readyRef = useRef(false);
-  const endedRef = useRef(false);
-
-  const desiredRef = useRef(videoId);
-  const autoplayRef = useRef(autoplay);
-  const onEndedRef = useRef(onEnded);
-  const onPlayingRef = useRef(onPlaying);
-  desiredRef.current = videoId;
-  autoplayRef.current = autoplay;
-  onEndedRef.current = onEnded;
-  onPlayingRef.current = onPlaying;
-
-  // Create the player once.
-  useEffect(() => {
-    let cancelled = false;
-    const initial = desiredRef.current;
-    loadYouTubeApi().then((YT) => {
-      if (cancelled || !hostRef.current) return;
-      playerRef.current = new YT.Player(hostRef.current, {
-        videoId: initial,
-        playerVars: {
-          rel: 0,
-          modestbranding: 1,
-          playsinline: 1,
-          autoplay: autoplayRef.current ? 1 : 0,
-          origin: window.location.origin,
-        },
-        events: {
-          onReady: (e: any) => {
-            readyRef.current = true;
-            // If the desired video changed while the API was loading, honour it.
-            if (desiredRef.current !== initial) {
-              if (autoplayRef.current) e.target.loadVideoById(desiredRef.current);
-              else e.target.cueVideoById(desiredRef.current);
-            }
-          },
-          onStateChange: (e: any) => {
-            // 1 === YT.PlayerState.PLAYING — covers pressing play INSIDE the
-            // iframe on the initially-cued video (no openVideo call happens).
-            if (e.data === 1) onPlayingRef.current?.();
-            // 0 === YT.PlayerState.ENDED
-            if (e.data === 0 && !endedRef.current) {
-              endedRef.current = true;
-              onEndedRef.current();
-            }
-          },
-        },
-      });
-    });
-    return () => {
-      cancelled = true;
-      try { playerRef.current?.destroy(); } catch { /* ignore */ }
-      playerRef.current = null;
-      readyRef.current = false;
-    };
-    // Intentionally create-once; video swaps handled by the effect below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Swap the video when the selection changes.
-  useEffect(() => {
-    endedRef.current = false;
-    const p = playerRef.current;
-    if (p && readyRef.current) {
-      if (autoplayRef.current) p.loadVideoById(videoId);
-      else p.cueVideoById(videoId);
-    }
-  }, [videoId]);
-
-  const [isFs, setIsFs] = useState(false);
-  useEffect(() => {
-    const onFs = () => setIsFs(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", onFs);
-    return () => document.removeEventListener("fullscreenchange", onFs);
-  }, []);
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen?.();
-      return;
-    }
-    // Prefer the actual YT iframe so fullscreen fills the screen with the video
-    // (falls back to the wrapper before the iframe has mounted).
-    const iframe = wrapRef.current?.querySelector("iframe") as HTMLElement | null;
-    const target = iframe ?? wrapRef.current;
-    target?.requestFullscreen?.();
-  }, []);
-
-  return (
-    <div
-      ref={wrapRef}
-      className="relative w-full overflow-hidden rounded-2xl bg-black"
-      style={{ aspectRatio: "16 / 9", border: `1px solid ${C.border}` }}
-    >
-      {/* YT.Player replaces this node with its iframe. */}
-      <div ref={hostRef} className="absolute inset-0 h-full w-full" />
-      <button
-        onClick={toggleFullscreen}
-        aria-label={isFs ? "Exit fullscreen" : "Fullscreen"}
-        className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg opacity-70 transition-opacity hover:opacity-100"
-        style={{ background: "rgba(9,26,16,0.72)", color: C.text, backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
-      >
-        <Maximize2 size={15} />
-      </button>
-    </div>
-  );
-}
 
 // ─── Practice bridge — learning flows into praying ──────────────────────────
 // Shown on practice courses (Centering Prayer): sit NOW at Keating's lengths,
@@ -452,19 +307,56 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
 
   const pct = Math.round((completedCount / Math.max(1, index.total)) * 100);
 
-  // ── Web-only gate ──────────────────────────────────────────────────────────
-  if (isNativeShell()) {
+  /**
+   * WHERE YOUTUBE WON'T EMBED — the iOS shell, whose capacitor:// origin the
+   * player refuses (lib/videoEmbed). This used to be a dead end: "this guided
+   * course plays best on the web … open withphoebe.app in your browser". It now
+   * hands the SAME course page to the in-app reader, where the origin is real,
+   * so the course plays full screen inside Phoebe with our own chrome (owner,
+   * 2026-09-18: "can we bring that into mobile … in a seamless experience").
+   *
+   * Android needs none of this — it embeds in place, a few lines down.
+   */
+  if (isNativeShell() && !canEmbedVideoHere()) {
     return (
       <Layout bgPhoto={leafBg}>
-        <div className="mx-auto w-full max-w-md px-2 py-16 text-center">
-          <p className="text-4xl">🎓</p>
-          <h1 className="mt-4 text-xl font-bold" style={{ color: C.text, fontFamily: C.font }}>
+        <div className="mx-auto w-full max-w-md px-2 py-10">
+          <h1 className="text-2xl font-bold" style={{ color: C.text, fontFamily: C.font }}>
             {course.title}
           </h1>
-          <p className="mt-3 text-sm leading-relaxed" style={{ color: C.sage }}>
-            This guided course plays best on the web. Open{" "}
-            <span style={{ color: C.dim }}>withphoebe.app</span> in your browser to watch{" "}
-            {course.author}'s series and track your progress.
+          <p className="mt-0.5 text-sm" style={{ color: C.sage }}>with {course.author}</p>
+          <button
+            onClick={() => openVideoInReader()}
+            className="mt-4 w-full overflow-hidden rounded-2xl text-left transition-opacity active:opacity-90"
+            style={{ border: `1px solid ${C.border}`, background: "#000" }}
+          >
+            <span className="relative block w-full" style={{ aspectRatio: "16 / 9" }}>
+              <img
+                src={youtubePoster(activeId)}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+                style={{ opacity: 0.72 }}
+              />
+              <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
+                <span
+                  className="flex h-14 w-14 items-center justify-center rounded-full"
+                  style={{ background: C.green, color: C.text }}
+                >
+                  <Play size={22} style={{ marginLeft: 3 }} />
+                </span>
+              </span>
+            </span>
+            <span className="block px-4 py-3" style={{ background: C.greenSoft }}>
+              <span className="block text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.7)" }}>
+                {completedCount} of {index.total} lessons complete
+              </span>
+              <span className="mt-0.5 block text-[15px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>
+                {active ? active.lessonTitle : course.title}
+              </span>
+            </span>
+          </button>
+          <p className="mt-3 text-[13px] leading-relaxed" style={{ color: C.dim }}>
+            {course.tagline}
           </p>
         </div>
       </Layout>
@@ -525,7 +417,7 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
         <div className="mt-5 flex flex-col gap-6 lg:flex-row">
           {/* Main: player + lesson detail */}
           <div className="min-w-0 flex-1" ref={playerTopRef}>
-            <LessonPlayer videoId={activeId} autoplay={autoplay} onEnded={handleEnded} onPlaying={markStarted} />
+            <YouTubePlayer videoId={activeId} autoplay={autoplay} onEnded={handleEnded} onPlaying={markStarted} />
 
             {active && (
               <div className="mt-4">
