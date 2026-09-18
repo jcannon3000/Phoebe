@@ -26,9 +26,9 @@ import { openExternal } from "@/lib/openExternal";
 import { primeAudio } from "@/lib/amenFeedback";
 import { CtaArrow } from "@/components/CtaArrow";
 import {
-  CONTEMPLATION_PLAYLISTS, getContemplationPlaylist, setContemplationPlaylist,
-  CONTEMPLATION_MUSIC_EVENT, type ContemplationPlaylist,
-} from "@/lib/contemplationMusic";
+  MUSIC_PLAYLISTS, getContemplationPlaylist, setContemplationPlaylist,
+  PRACTICE_MUSIC_EVENT, type MusicPlaylist,
+} from "@/lib/practiceMusic";
 import { appleMusicFeaturesReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
 import { playAppleMusicPlaylistNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 
@@ -462,19 +462,19 @@ export default function ContemplationPage() {
    * control. See lib/appleMusicFeatures for why the flag alone isn't enough.
    */
   const [musicReady, setMusicReady] = useState(false);
-  const [playlist, setPlaylist] = useState<ContemplationPlaylist | null>(() => getContemplationPlaylist());
+  const [playlist, setPlaylist] = useState<MusicPlaylist | null>(() => getContemplationPlaylist());
   const [musicPickerOpen, setMusicPickerOpen] = useState(false);
   useEffect(() => {
     let alive = true;
     const ask = () => { void appleMusicFeaturesReady().then((ok) => { if (alive) setMusicReady(ok); }); };
     ask();
     const sync = () => { setPlaylist(getContemplationPlaylist()); ask(); };
-    window.addEventListener(CONTEMPLATION_MUSIC_EVENT, sync);
+    window.addEventListener(PRACTICE_MUSIC_EVENT, sync);
     window.addEventListener(APPLE_MUSIC_EVENT, sync);
     window.addEventListener("storage", sync);
     return () => {
       alive = false;
-      window.removeEventListener(CONTEMPLATION_MUSIC_EVENT, sync);
+      window.removeEventListener(PRACTICE_MUSIC_EVENT, sync);
       window.removeEventListener(APPLE_MUSIC_EVENT, sync);
       window.removeEventListener("storage", sync);
     };
@@ -905,7 +905,7 @@ export default function ContemplationPage() {
             </p>
 
             <div className="flex flex-col gap-2">
-              {CONTEMPLATION_PLAYLISTS.map((pl) => {
+              {MUSIC_PLAYLISTS.map((pl) => {
                 const on = playlist?.id === pl.id;
                 return (
                   <button

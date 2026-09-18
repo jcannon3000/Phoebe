@@ -40,6 +40,12 @@ import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, getSideDaySwap, setSideDaySwap, clearSideDaySwap, getSideExtra, extraOfficeMode, getScriptureParts, type OfficeSide, type OfficeLevel, type DefaultOfficeEntry } from "@/lib/officePrefs";
+import {
+  MUSIC_PLAYLISTS, getOfficeMusic, setOfficeMusic, playlistById,
+  PRACTICE_MUSIC_EVENT, type MusicPlaylist,
+} from "@/lib/practiceMusic";
+import { appleMusicFeaturesReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
+import { playAppleMusicPlaylistNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 
 /**
  * CHOOSING HOW TO PRAY TODAY IS NOT EDITING YOUR RULE.
@@ -891,6 +897,44 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const [listenPending, setListenPending] = useState(false);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
+  /**
+   * MUSIC UNDER THE OFFICE (owner, 2026-09-18: "at the beggining of the
+   * offices have an extra drop down button that says music, defualt is none,
+   * but then they could select one of these playlists" · "and defaults the
+   * most recent" · "but again this is only if a user has apple music turned
+   * on").
+   *
+   * The dropdown is on the welcome slide; the music starts when the reader
+   * leaves it, so nothing plays while they are still choosing. It stops
+   * whenever this deck goes away — finished, backed out of, or navigated past
+   * — which is what the cleanup is for.
+   */
+  const [musicReady, setMusicReady] = useState(false);
+  const [officeMusic, setOfficeMusicState] = useState<MusicPlaylist | null>(() => getOfficeMusic());
+  useEffect(() => {
+    let alive = true;
+    const ask = () => { void appleMusicFeaturesReady().then((ok) => { if (alive) setMusicReady(ok); }); };
+    ask();
+    const sync = () => { setOfficeMusicState(getOfficeMusic()); ask(); };
+    window.addEventListener(PRACTICE_MUSIC_EVENT, sync);
+    window.addEventListener(APPLE_MUSIC_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      alive = false;
+      window.removeEventListener(PRACTICE_MUSIC_EVENT, sync);
+      window.removeEventListener(APPLE_MUSIC_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+  const officeBegun = slideIdx > 0;
+  useEffect(() => {
+    if (!officeBegun || !officeMusic || !musicReady) return;
+    // Shuffled and repeating: an office is twenty minutes and a playlist must
+    // not run out under it. Failure is silence — if MusicKit refuses, the
+    // office reads exactly as it always has.
+    void playAppleMusicPlaylistNative(officeMusic.id, { shuffle: true, repeatAll: true });
+    return () => { void stopAppleMusicNative(); };
+  }, [officeBegun, officeMusic, musicReady]);
   /**
    * Has the FINAL lesson's passage already been opened?
    *
@@ -3238,6 +3282,32 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               )
             ))}
           </>
+        )}
+        {/* Row 3 — MUSIC. Not part of "how to pray it", so it sits outside the
+            canChoose pair: an office someone arrived at with the way already
+            settled can still have music put under it. Only when Apple Music is
+            really on (the Settings switch AND iOS still agreeing), because
+            offering music we cannot play is worse than offering none. Defaults
+            to the most recently chosen playlist, and "None" is a real choice
+            that sticks — see lib/practiceMusic. */}
+        {musicReady && dropdown(
+          "office-music",
+          officeMusic?.id ?? "none",
+          officeMusic?.label ?? "None",
+          "Music",
+          (v) => {
+            const next = v === "none" ? null : v;
+            setOfficeMusic(next);
+            setOfficeMusicState(playlistById(next));
+          },
+          (
+            <>
+              <option value="none">None</option>
+              {MUSIC_PLAYLISTS.map((pl) => (
+                <option key={pl.id} value={pl.id}>{pl.label}</option>
+              ))}
+            </>
+          ),
         )}
         {/* Owner: "a pill under these to press if you prayed with the
             physical BCP" — same one-tap "already prayed it" as the outer

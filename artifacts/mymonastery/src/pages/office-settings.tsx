@@ -25,7 +25,7 @@
  *   8. Gratitude pause   → local includeGratitudeSlide
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -51,6 +51,10 @@ import {
   type DefaultOfficeEntry,
   type OfficeSide,
 } from "@/lib/officePrefs";
+import {
+  MUSIC_PLAYLISTS, getOfficeMusic, setOfficeMusic, playlistById, type MusicPlaylist,
+} from "@/lib/practiceMusic";
+import { appleMusicFeaturesReady } from "@/lib/appleMusicFeatures";
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -241,13 +245,26 @@ export default function OfficeSettingsPage() {
   const sideMinutes: number = getSideMinutes(side);
 
   const [step, setStep] = useState(0);
+  // Apple Music, asked positively — the step exists only when music can
+  // actually play (lib/appleMusicFeatures). Re-asked once after first paint
+  // because the native shell registers the plugin after it.
+  const [musicReady, setMusicReady] = useState(false);
+  const [officeMusic, setOfficeMusicState] = useState<MusicPlaylist | null>(() => getOfficeMusic());
+  useEffect(() => {
+    let alive = true;
+    void appleMusicFeaturesReady().then((ok) => { if (alive) setMusicReady(ok); });
+    const id = window.setTimeout(() => {
+      void appleMusicFeaturesReady().then((ok) => { if (alive) setMusicReady(ok); });
+    }, 600);
+    return () => { alive = false; window.clearTimeout(id); };
+  }, []);
   const [dir, setDir] = useState(1);
   // Confession belongs to the full Office only — show it for this side
   // only when this side's depth is the Office (skip it for Devotion).
   const includeConfession = sideLevel === "office";
   // Side-scoped: 9 base slides minus the OTHER side's reminder, minus the
   // Confession step when this side isn't the Office.
-  const TOTAL = includeConfession ? 8 : 7;
+  const TOTAL = (includeConfession ? 8 : 7) + (musicReady ? 1 : 0);
 
   const goNext = () => { setDir(1); setStep((s) => Math.min(s + 1, TOTAL - 1)); };
   const goBack = () => { setDir(-1); setStep((s) => Math.max(s - 1, 0)); };
@@ -474,6 +491,37 @@ export default function OfficeSettingsPage() {
       </SlideShell>
     ),
 
+    // 8 — Music under the office (owner, 2026-09-18: "in slideshow settings
+    // like offices, have a new optioon that says turn on music, and they would
+    // select a playlist" · "but again this is only if a user has apple music
+    // turned on"). Filtered out entirely when Apple Music isn't on, which is
+    // why TOTAL counts it conditionally.
+    () => (
+      <SlideShell
+        eyebrow="Music"
+        headline="Music under the office?"
+        sub="Plays through your Apple Music while you pray. You can change it at the start of any office."
+      >
+        {([
+          { value: null, emoji: "\u{1F910}", label: "None", sub: "Pray in silence" },
+          ...MUSIC_PLAYLISTS.map((pl) => ({ value: pl.id, emoji: "\u{266A}", label: pl.label, sub: pl.sub })),
+        ]).map((o) => (
+          <OptionCard
+            key={o.value ?? "none"}
+            emoji={o.emoji}
+            label={o.label}
+            sub={o.sub}
+            selected={(officeMusic?.id ?? null) === o.value}
+            onSelect={() => {
+              setOfficeMusic(o.value);
+              setOfficeMusicState(playlistById(o.value));
+              autoAdvance();
+            }}
+          />
+        ))}
+      </SlideShell>
+    ),
+
     // 8 — Gratitude pause + finish
     () => (
       <SlideShell
@@ -505,6 +553,7 @@ export default function OfficeSettingsPage() {
   const visibleSlides = slides.filter((_, i) => {
     if (i === dropReminderIdx) return false;
     if (i === 4 && !includeConfession) return false;
+    if (i === 8 && !musicReady) return false;
     return true;
   });
 
