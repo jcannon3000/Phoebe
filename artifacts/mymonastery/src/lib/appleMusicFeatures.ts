@@ -24,7 +24,7 @@
 
 import {
   appleMusicNativeReady, requestAppleMusicNative, hasAppleMusicNative,
-  hasAppleMusicPlaylistNative,
+  hasAppleMusicCollectionNative,
 } from "@/lib/appleMusicNative";
 
 const KEY = "phoebe:apple-music:on";
@@ -103,6 +103,6 @@ export async function appleMusicFeaturesReady(): Promise<boolean> {
  * whole thing, falling back to opening music.apple.com.)
  */
 export async function appleMusicPlaylistsReady(): Promise<boolean> {
-  if (!hasAppleMusicPlaylistNative()) return false;
+  if (!hasAppleMusicCollectionNative()) return false;
   return appleMusicFeaturesReady();
 }

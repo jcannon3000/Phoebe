@@ -28,6 +28,8 @@ type MusicPlugin = {
   playTrack?: (opts: { id: string }) => Promise<{ playing?: boolean; title?: string | null }>;
   playPlaylist?: (opts: { id: string; shuffle?: boolean; repeatAll?: boolean })
     => Promise<{ playing?: boolean; title?: string | null; count?: number }>;
+  playCollection?: (opts: { id: string; kind?: string; shuffle?: boolean; repeatAll?: boolean })
+    => Promise<{ playing?: boolean; title?: string | null; count?: number }>;
   pause?: () => Promise<void>;
   resume?: () => Promise<void>;
   stop?: () => Promise<void>;
@@ -167,6 +169,49 @@ export async function playAppleMusicPlaylistNative(
   } catch {
     return false;
   }
+}
+
+/** What a music option is, in Apple Music's own terms. */
+export type CollectionKind = "playlist" | "album" | "artist";
+
+/**
+ * Play a whole album, playlist, or artist library in-app.
+ *
+ * The owner's music options are not all one shape — editorial playlists,
+ * albums, and Loud Harp's entire library — so this is the one door for all
+ * three. Same contract as everything else here: false for every failure, so
+ * the caller opens music.apple.com instead.
+ */
+export async function playAppleMusicCollectionNative(
+  kind: CollectionKind,
+  id: string | null | undefined,
+  opts: { shuffle?: boolean; repeatAll?: boolean } = {},
+): Promise<boolean> {
+  const p = plugin();
+  if (!p?.playCollection || !id) return false;
+  try {
+    const status = (await p.isAvailable?.()) ?? {};
+    if (status.available !== true) return false;
+    if (status.authorized !== true) {
+      const asked = (await p.authorize?.()) ?? {};
+      if (asked.authorized !== true || asked.subscribed !== true) return false;
+    } else if (status.subscribed !== true) {
+      return false;
+    }
+    const played = await p.playCollection({
+      id, kind,
+      shuffle: opts.shuffle === true,
+      repeatAll: opts.repeatAll === true,
+    });
+    return played?.playing === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Is in-app collection playback available? False on any build older than it. */
+export function hasAppleMusicCollectionNative(): boolean {
+  return !!plugin()?.playCollection;
 }
 
 /** Is in-app PLAYLIST playback available? False on any build older than it. */

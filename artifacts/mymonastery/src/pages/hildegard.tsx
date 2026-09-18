@@ -3,9 +3,10 @@ import { useLocation } from "wouter";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import {
-  hasAppleMusicNative, playAppleMusicNative, stopAppleMusicNative,
-  hasAppleMusicPlaylistNative, playAppleMusicPlaylistNative,
+  playAppleMusicNative, stopAppleMusicNative,
+  hasAppleMusicCollectionNative, playAppleMusicCollectionNative,
 } from "@/lib/appleMusicNative";
+import { appleMusicFeaturesReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
 import { setPendingListen } from "@/lib/pendingListen";
 import { HILDEGARD_TRACKS, HILDEGARD_PLAYLIST, type HildegardTrack } from "@/lib/hildegardCatalogue";
 import { SpotifyMark, AppleMark, YouTubeMark } from "@/components/ServiceMarks";
@@ -101,7 +102,21 @@ export default function HildegardPage() {
   const [playingAll, setPlayingAll] = useState(false);
   useEffect(() => () => { void stopAppleMusicNative(); }, []);
 
-  const appleNative = service === "apple" && hasAppleMusicNative();
+  /**
+   * Opted in AND iOS still agreeing — not merely "the plugin exists". Gating on
+   * presence let a play tap raise an authorization sheet from a button that
+   * promised music, which is the ambush lib/appleMusicFeatures exists to
+   * prevent (audit, 2026-09-18; same defect fixed in listening.tsx).
+   */
+  const [canPlayInApp, setCanPlayInApp] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const ask = () => { void appleMusicFeaturesReady().then((ok) => { if (alive) setCanPlayInApp(ok); }); };
+    ask();
+    window.addEventListener(APPLE_MUSIC_EVENT, ask);
+    return () => { alive = false; window.removeEventListener(APPLE_MUSIC_EVENT, ask); };
+  }, []);
+  const appleNative = service === "apple" && canPlayInApp;
 
   /** The whole thing, in order or shuffled. In-app for an Apple Music
    *  subscriber on a native build; otherwise it opens the playlist (Apple) or
@@ -109,9 +124,9 @@ export default function HildegardPage() {
    *  themselves — there is no URL that makes another app shuffle. */
   const playAll = (shuffle: boolean) => {
     setPendingListen({ what: `${HILDEGARD_PLAYLIST.name} — Hildegard von Bingen` });
-    if (service === "apple" && hasAppleMusicPlaylistNative()) {
+    if (service === "apple" && canPlayInApp && hasAppleMusicCollectionNative()) {
       if (playingAll) { void stopAppleMusicNative(); setPlayingAll(false); return; }
-      void playAppleMusicPlaylistNative(HILDEGARD_PLAYLIST.id, { shuffle, repeatAll: true })
+      void playAppleMusicCollectionNative("playlist", HILDEGARD_PLAYLIST.id, { shuffle, repeatAll: true })
         .then((ok) => {
           if (ok) { setPlayingAll(true); setPlayingId(null); }
           else open(HILDEGARD_PLAYLIST.url);

@@ -27,10 +27,13 @@
 // music.apple.com URL) and add a row. Nothing else needs to change.
 
 import { HILDEGARD_PLAYLIST } from "@/lib/hildegardCatalogue";
+import type { CollectionKind } from "@/lib/appleMusicNative";
 
 export type MusicPlaylist = {
-  /** Apple Music catalog playlist id ("pl...."). */
+  /** Apple Music catalog id — "pl...." for a playlist, digits otherwise. */
   id: string;
+  /** Which kind of thing it is, so the plugin knows what to request. */
+  kind: CollectionKind;
   /** What a row, a pill and a dropdown call it. */
   label: string;
   /** The one line under the label — who made it, and how long it runs. */
@@ -42,17 +45,84 @@ export type MusicPlaylist = {
 export const MUSIC_PLAYLISTS: readonly MusicPlaylist[] = [
   {
     id: HILDEGARD_PLAYLIST.id,
+    kind: "playlist",
     label: HILDEGARD_PLAYLIST.name,
-    sub: "25 chants · 2 hr 13 min · Apple Music Medieval",
+    sub: "25 chants \u00b7 2 hr 13 min \u00b7 Apple Music Medieval",
     url: HILDEGARD_PLAYLIST.url,
   },
   {
     // Owner, 2026-09-18: "add this to the playlist with the Hildigard".
     // Long enough (12 hours) that no office or sit can ever run it out.
     id: "pl.bed492442a53481f98e98c6c4da9e01d",
+    kind: "playlist",
     label: "Ambient Chill",
-    sub: "250 tracks · 12 hr 13 min · Apple Music Chill",
+    sub: "250 tracks \u00b7 12 hr 13 min \u00b7 Apple Music Chill",
     url: "https://music.apple.com/us/playlist/ambient-chill/pl.bed492442a53481f98e98c6c4da9e01d",
+  },
+  {
+    /**
+     * THE OWNER'S OWN, and the description is theirs, to be used wherever this
+     * option is described: in the monastery Jeremy listened to this album on
+     * CD between Matins and Eucharist, on contemplative walks.
+     */
+    id: "1833109181",
+    kind: "album",
+    label: "Ryuichi Sakamoto \u00b7 Music For Film",
+    sub: "Listened to on CD in the monastery, between Matins and Eucharist, on contemplative walks",
+    url: "https://music.apple.com/us/album/ryuichi-sakamoto-music-for-film/1833109181",
+  },
+  {
+    id: "192752238",
+    kind: "album",
+    label: "Freedom Highway",
+    sub: "The Staple Singers \u00b7 18 tracks \u00b7 Gospel Spirit Series",
+    url: "https://music.apple.com/us/album/freedom-highway-gospel-spirit-series/192752238",
+  },
+  {
+    id: "272149140",
+    kind: "album",
+    label: "Classic African American Gospel",
+    sub: "Various artists \u00b7 24 tracks \u00b7 Smithsonian Folkways",
+    url: "https://music.apple.com/us/album/classic-african-american-gospel-from-smithsonian-folkways/272149140",
+  },
+  {
+    // Spelled as the artist and Apple's own playlist title spell it; the
+    // owner wrote "McMillian" in passing.
+    id: "pl.217641d5a0b64782b3c4a15748df5609",
+    kind: "playlist",
+    label: "John Mark McMillan",
+    sub: "18 songs \u00b7 1 hr 29 min \u00b7 Apple Music",
+    url: "https://music.apple.com/us/playlist/john-mark-mcmillan-essentials/pl.217641d5a0b64782b3c4a15748df5609",
+  },
+  {
+    id: "pl.c3153f44394b41b09d8cc23d929d1058",
+    kind: "playlist",
+    label: "John Coltrane",
+    sub: "26 songs \u00b7 3 hr 26 min \u00b7 Apple Music Jazz",
+    url: "https://music.apple.com/us/playlist/john-coltrane-essentials/pl.c3153f44394b41b09d8cc23d929d1058",
+  },
+  {
+    // Owner asked for "the whole library", so this is the ARTIST, not one
+    // album — the plugin walks their albums.
+    id: "535498745",
+    kind: "artist",
+    label: "Loud Harp",
+    sub: "Their whole library",
+    url: "https://music.apple.com/us/artist/loud-harp/535498745",
+  },
+  {
+    id: "160593555",
+    kind: "album",
+    label: "Mary Lou's Mass",
+    sub: "Mary Lou Williams \u00b7 24 tracks",
+    url: "https://music.apple.com/us/album/mary-lous-mass/160593555",
+  },
+  {
+    id: "262208338",
+    kind: "album",
+    label: "Black Christ of the Andes",
+    sub: "Mary Lou Williams \u00b7 14 tracks",
+    url: "https://music.apple.com/us/album/mary-lou-williams-presents-black-christ-of-the-andes/262208338",
   },
 ];
 

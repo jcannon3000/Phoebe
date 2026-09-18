@@ -30,7 +30,7 @@ import {
   PRACTICE_MUSIC_EVENT, type MusicPlaylist,
 } from "@/lib/practiceMusic";
 import { appleMusicPlaylistsReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
-import { playAppleMusicPlaylistNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
+import { playAppleMusicCollectionNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
 // centering prayer. Opened externally (SFSafariViewController on iOS via
@@ -491,7 +491,7 @@ export default function ContemplationPage() {
    */
   useEffect(() => {
     if (!timerOpen || !playlist || !musicReady) return;
-    void playAppleMusicPlaylistNative(playlist.id, { shuffle: true, repeatAll: true });
+    void playAppleMusicCollectionNative(playlist.kind, playlist.id, { shuffle: true, repeatAll: true });
     return () => { void stopAppleMusicNative(); };
   }, [timerOpen, playlist, musicReady]);
   // First-ever silent sit gets a one-card intro (what silence is, where it comes

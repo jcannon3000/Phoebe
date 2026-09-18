@@ -45,7 +45,7 @@ import {
   PRACTICE_MUSIC_EVENT, type MusicPlaylist,
 } from "@/lib/practiceMusic";
 import { appleMusicPlaylistsReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
-import { playAppleMusicPlaylistNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
+import { playAppleMusicCollectionNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 
 /**
  * CHOOSING HOW TO PRAY TODAY IS NOT EDITING YOUR RULE.
@@ -932,7 +932,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // Shuffled and repeating: an office is twenty minutes and a playlist must
     // not run out under it. Failure is silence — if MusicKit refuses, the
     // office reads exactly as it always has.
-    void playAppleMusicPlaylistNative(officeMusic.id, { shuffle: true, repeatAll: true });
+    void playAppleMusicCollectionNative(officeMusic.kind, officeMusic.id, { shuffle: true, repeatAll: true });
     return () => { void stopAppleMusicNative(); };
   }, [officeBegun, officeMusic, musicReady]);
   /**

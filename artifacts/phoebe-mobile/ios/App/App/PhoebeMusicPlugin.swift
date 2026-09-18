@@ -55,6 +55,7 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "authorize", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "playTrack", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "playPlaylist", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "playCollection", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "pause", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resume", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
@@ -234,6 +235,109 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                         "title": playlist.name,
                         "count": tracks.count,
                     ])
+                } catch {
+                    call.reject("playback-failed: \(error.localizedDescription)")
+                }
+            }
+            return
+        }
+        #endif
+        call.reject("Apple Music playback needs iOS 16 or later")
+    }
+
+    /**
+     * Play a whole ALBUM, PLAYLIST or ARTIST library.
+     *
+     * The owner's music options are not all one shape: some are Apple's
+     * editorial playlists, some are albums (Sakamoto's Music For Film, Mary
+     * Lou's Mass), and one is an artist's whole library (Loud Harp). Rather
+     * than three near-identical methods, `kind` picks the request and the rest
+     * is the same — build an explicit TRACK queue, set shuffle and repeat
+     * BEFORE play, then play.
+     *
+     * The artist arm walks their albums, because an artist has no tracks of
+     * its own; top songs are the fallback when the albums relationship comes
+     * back empty. Capped, because this runs on a tap and a deep catalogue
+     * would otherwise fetch for a long time before a note sounded.
+     */
+    @objc func playCollection(_ call: CAPPluginCall) {
+        guard let id = call.getString("id"), !id.isEmpty else {
+            call.reject("playCollection needs an Apple Music catalog id")
+            return
+        }
+        let kind = call.getString("kind") ?? "playlist"
+        let shuffle = call.getBool("shuffle") ?? false
+        let repeatAll = call.getBool("repeatAll") ?? false
+        #if canImport(MusicKit)
+        if #available(iOS 16.0, *) {
+            Task {
+                guard MusicAuthorization.currentStatus == .authorized else {
+                    call.reject("not-authorized")
+                    return
+                }
+                guard (try? await MusicSubscription.current)?.canPlayCatalogContent == true else {
+                    call.reject("no-subscription")
+                    return
+                }
+                do {
+                    var tracks: [Track] = []
+                    var name = ""
+                    switch kind {
+                    case "album":
+                        var req = MusicCatalogResourceRequest<Album>(matching: \.id, equalTo: MusicItemID(id))
+                        req.limit = 1
+                        guard let album = try await req.response().items.first else {
+                            call.reject("not-found"); return
+                        }
+                        name = album.title
+                        tracks = Array(try await album.with([.tracks]).tracks ?? [])
+                    case "artist":
+                        var req = MusicCatalogResourceRequest<Artist>(matching: \.id, equalTo: MusicItemID(id))
+                        req.limit = 1
+                        guard let artist = try await req.response().items.first else {
+                            call.reject("not-found"); return
+                        }
+                        name = artist.name
+                        let detailed = try await artist.with([.albums, .topSongs])
+                        for album in (detailed.albums ?? []).prefix(12) {
+                            if let t = try? await album.with([.tracks]).tracks { tracks.append(contentsOf: t) }
+                        }
+                        if tracks.isEmpty, let top = detailed.topSongs {
+                            // Songs, not Tracks — queue them directly below.
+                            let songs = Array(top)
+                            if !songs.isEmpty {
+                                await MainActor.run { self.activateAudioSession() }
+                                let player = ApplicationMusicPlayer.shared
+                                player.queue = ApplicationMusicPlayer.Queue(for: songs)
+                                player.state.shuffleMode = shuffle ? .songs : .off
+                                player.state.repeatMode = repeatAll ? .all : MusicPlayer.RepeatMode.none
+                                try await player.prepareToPlay()
+                                try await player.play()
+                                call.resolve(["playing": true, "title": name, "count": songs.count])
+                                return
+                            }
+                        }
+                    default:
+                        var req = MusicCatalogResourceRequest<Playlist>(matching: \.id, equalTo: MusicItemID(id))
+                        req.limit = 1
+                        guard let playlist = try await req.response().items.first else {
+                            call.reject("not-found"); return
+                        }
+                        name = playlist.name
+                        tracks = Array(try await playlist.with([.tracks]).tracks ?? [])
+                    }
+                    guard !tracks.isEmpty else {
+                        call.reject("not-found")
+                        return
+                    }
+                    await MainActor.run { self.activateAudioSession() }
+                    let player = ApplicationMusicPlayer.shared
+                    player.queue = ApplicationMusicPlayer.Queue(for: tracks)
+                    player.state.shuffleMode = shuffle ? .songs : .off
+                    player.state.repeatMode = repeatAll ? .all : MusicPlayer.RepeatMode.none
+                    try await player.prepareToPlay()
+                    try await player.play()
+                    call.resolve(["playing": true, "title": name, "count": tracks.count])
                 } catch {
                     call.reject("playback-failed: \(error.localizedDescription)")
                 }
