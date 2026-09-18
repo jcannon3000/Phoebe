@@ -31,6 +31,12 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { ICON_CATALOGUE, type IconArtwork } from "@/lib/iconCatalogue";
+import { COMMONS_VISIO_CATALOGUE } from "@/lib/visioCommonsCatalogue";
+import {
+  galleryForDay, getHeldWorks, recordDwell, heldIds, HELD_EVENT,
+  GALLERY_HOLD_MS, type GalleryWork, type HeldWork,
+} from "@/lib/iconGallery";
+import { readingUrl } from "@/lib/visioSelect";
 import { ACT_CATALOGUE } from "@/lib/visioCatalogue";
 import { ACT_COMMENTARY_CATALOGUE } from "@/lib/visioCommentaryCatalogue";
 import { openExternal } from "@/lib/openExternal";
@@ -100,13 +106,23 @@ const RESULT_CAP = 24;
 function iconPool(): IconArtwork[] {
   const base = ICON_CATALOGUE.filter((a) => !isActHidden(a.id) && !actIconOff(a.id));
   const seen = new Set(base.map((a) => a.id));
+  // THE OTHER LIBRARIES' WORKS TOO (owner, 2026-09-18: "also can we include
+  // some of the other images in icons?"). The hand-picked Wikimedia Commons
+  // set — Armenian, Ethiopian and Syrian icons among them — joins what the
+  // practice can search and sit with, on the same admin gates as everything
+  // else. The Visio POOL is untouched: this is the icon practice reading
+  // wider, not icons being handed to the day's picture.
+  const commons: IconArtwork[] = COMMONS_VISIO_CATALOGUE
+    .filter((a) => !isActHidden(a.id) && !actIconOff(a.id) && !seen.has(a.id))
+    .map((a) => ({ id: a.id, title: a.title, artist: a.artist, date: a.date, where: a.where, img: a.img, people: a.people, refs: a.refs, days: a.days, subjects: a.subjects, act: a.act, licence: a.licence, attribution: a.attribution }));
+  for (const a of commons) seen.add(a.id);
   const added: IconArtwork[] = ACT_CATALOGUE
     .filter((a) => actIconOn(a.id) && !isActHidden(a.id) && !seen.has(a.id))
     // refs/days/subjects carry straight through rather than being blanked:
     // a library work toggled icon-ON is then eligible for the week's
     // reading-suggested icon exactly like a harvested one.
     .map((a) => ({ id: a.id, title: a.title, artist: a.artist, date: a.date, where: a.where, img: a.img, people: a.people, refs: a.refs, days: a.days, subjects: a.subjects, act: a.act, licence: a.licence, attribution: a.attribution }));
-  return [...base, ...added];
+  return [...base, ...commons, ...added];
 }
 
 /**
@@ -114,6 +130,206 @@ function iconPool(): IconArtwork[] {
  * phase is unchanged; once an icon is chosen for the week the practice opens
  * straight into it, which is the whole point of choosing one.
  */
+/**
+ * THE GALLERY — scroll, and where you stay is remembered (owner, 2026-09-18).
+ *
+ * One work per screen, snapping, the words held back until a picture has kept
+ * you: past GALLERY_HOLD_MS the title, the hand and the year fade in, with the
+ * passage the work carries if it carries one. Nothing is asked and nothing is
+ * credited — scrolling on costs nothing, and the time spent is what tomorrow's
+ * order is built from (lib/iconGallery).
+ */
+function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
+  works: GalleryWork[];
+  held: Set<number>;
+  onDwell: (id: number, seconds: number) => void;
+  onPray: (art: GalleryWork) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [heldNow, setHeldNow] = useState<Set<number>>(held);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  // The work on screen and when it arrived — a ref, because the commit has to
+  // read them inside a scroll handler and on unmount, not a render later.
+  const currentRef = useRef<{ id: number; since: number } | null>(null);
+
+  const commit = () => {
+    const cur = currentRef.current;
+    if (!cur) return;
+    const seconds = (Date.now() - cur.since) / 1000;
+    currentRef.current = null;
+    // A glance is not a dwell: under a second says nothing about what held you.
+    if (seconds >= 1) onDwell(cur.id, seconds);
+  };
+
+  /**
+   * WHICH WORK IS ON SCREEN, from the scroll position rather than an
+   * IntersectionObserver: one page per screen means the index is just
+   * scrollTop / height, it needs no callbacks to be delivered, and the same
+   * arithmetic tells us the moment a page is left so its seconds can be
+   * committed. The clock is stopped when the app goes away — a phone put down
+   * face-up on a picture must not report the attention nobody paid.
+   */
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const idAt = (index: number): number | null => {
+      const node = el.children[index] as HTMLElement | undefined;
+      const id = node ? Number(node.dataset.workId) : NaN;
+      return Number.isFinite(id) ? id : null;
+    };
+    // The words appear when the picture has kept you: one timer, armed when a
+    // picture arrives and cleared when it is left — no polling, and nothing
+    // fires for a picture scrolled past.
+    let revealTimer = 0;
+    const armReveal = (id: number, elapsed: number) => {
+      if (revealTimer) window.clearTimeout(revealTimer);
+      const left = Math.max(0, GALLERY_HOLD_MS - elapsed);
+      revealTimer = window.setTimeout(() => {
+        revealTimer = 0;
+        if (currentRef.current?.id === id) setHeldNow((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+      }, left);
+    };
+    const sync = () => {
+      if (document.visibilityState === "hidden") { commit(); if (revealTimer) { window.clearTimeout(revealTimer); revealTimer = 0; } return; }
+      const height = el.clientHeight || 1;
+      const id = idAt(Math.round(el.scrollTop / height));
+      if (id == null) { commit(); return; }
+      if (currentRef.current?.id !== id) {
+        commit();
+        currentRef.current = { id, since: Date.now() };
+        armReveal(id, 0);
+      } else if (!revealTimer) {
+        armReveal(id, Date.now() - currentRef.current.since);
+      }
+    };
+    sync();
+    let pending = 0;
+    const onScroll = () => {
+      if (pending) return;
+      pending = window.setTimeout(() => { pending = 0; sync(); }, 120);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const onVisibility = () => { if (document.visibilityState === "hidden") commit(); else sync(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (pending) window.clearTimeout(pending);
+      if (revealTimer) window.clearTimeout(revealTimer);
+      commit();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [works]);
+
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "#050D08" }}>
+      <button
+        type="button"
+        onClick={() => { commit(); onClose(); }}
+        aria-label={t("common.close", { defaultValue: "Close" })}
+        style={{
+          position: "absolute", top: "max(14px, env(safe-area-inset-top))", right: 14, zIndex: 3,
+          width: 38, height: 38, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(9,26,16,0.5)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+          border: "1px solid rgba(200,212,192,0.25)", color: WARM, cursor: "pointer", padding: 0,
+        }}
+      >
+        ✕
+      </button>
+      <div
+        ref={scrollerRef}
+        style={{
+          height: "100%", overflowY: "auto", scrollSnapType: "y mandatory",
+          WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
+        }}
+      >
+        {works.map((art) => {
+          const shown = heldNow.has(art.id);
+          const ref = art.refs.find((r) => !!readingUrl(r)) ?? null;
+          return (
+            <section
+              key={art.id}
+              data-work-id={art.id}
+              style={{
+                height: "100%", scrollSnapAlign: "start", position: "relative",
+                display: "flex", alignItems: "center", justifyContent: "center", padding: "0 12px",
+              }}
+            >
+              <img
+                src={art.img}
+                alt={art.title}
+                loading="lazy"
+                decoding="async"
+                style={{ maxWidth: "100%", maxHeight: "82vh", objectFit: "contain", borderRadius: 10, boxShadow: "0 18px 50px rgba(0,0,0,0.55)" }}
+              />
+              {/* The words, once the picture has kept you. They fade in place. */}
+              <div
+                style={{
+                  position: "absolute", left: 0, right: 0, bottom: 0, padding: "48px 22px calc(env(safe-area-inset-bottom, 0px) + 22px)",
+                  display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start",
+                  background: "linear-gradient(180deg, rgba(5,13,8,0) 0%, rgba(5,13,8,0.82) 60%)",
+                  opacity: shown ? 1 : 0, transition: "opacity 700ms ease-out", pointerEvents: shown ? "auto" : "none",
+                }}
+              >
+                <span style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 19, lineHeight: 1.3 }}>{art.title}</span>
+                {(art.artist || art.date) && (
+                  <span style={{ color: FAINT, fontFamily: FONT, fontSize: 12 }}>
+                    {[art.artist ? tidyArtist(art.artist) : null, art.date].filter(Boolean).join(" · ")}
+                  </span>
+                )}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => { commit(); onPray(art); }}
+                    style={{
+                      borderRadius: 999, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: FONT,
+                      color: WARM, background: "rgba(46,107,64,0.42)", border: "1px solid rgba(143,175,150,0.45)", cursor: "pointer",
+                    }}
+                  >
+                    {t("icons.gallery_pray", { defaultValue: "Sit with this" })}
+                  </button>
+                  {/* The passage this picture paints, when it paints one (owner:
+                      "they might be able to open passages that relate to that
+                      image if there is one"). */}
+                  {ref && (
+                    <button
+                      type="button"
+                      onClick={() => { const u = readingUrl(ref); if (u) openExternal(u, { reader: true }); }}
+                      style={{
+                        borderRadius: 999, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: FONT,
+                        color: WARM, background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)", cursor: "pointer",
+                      }}
+                    >
+                      {t("icons.gallery_read", { defaultValue: `Read ${ref}`, ref })}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
+          );
+        })}
+        <section style={{ height: "100%", scrollSnapAlign: "start", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "0 28px", textAlign: "center" }}>
+          <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 21, margin: 0, lineHeight: 1.4 }}>
+            {t("icons.gallery_end", { defaultValue: "That is today's gallery." })}
+          </p>
+          <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: 0, lineHeight: 1.5, maxWidth: 320 }}>
+            {t("icons.gallery_end_sub", { defaultValue: "The ones you stayed with are kept on the first screen. Tomorrow brings another forty." })}
+          </p>
+          <button
+            type="button"
+            onClick={() => { commit(); onClose(); }}
+            style={{ marginTop: 6, borderRadius: 999, padding: "11px 22px", fontSize: 14, fontWeight: 600, fontFamily: FONT, color: WARM, background: "rgba(46,107,64,0.35)", border: "1px solid rgba(143,175,150,0.4)", cursor: "pointer" }}
+          >
+            {t("icons.gallery_done", { defaultValue: "Back" })}
+          </button>
+        </section>
+      </div>
+    </div>
+  );
+}
+
 /** One of the week's doors — the icon, its name, and why it is being offered. */
 function WeekDoor({ art, label, note, onClick }: {
   art: IconArtwork; label: string; note: string | null; onClick: () => void;
@@ -186,7 +402,7 @@ function WeekDoor({ art, label, note, onClick }: {
  * It is also where a settled week now LANDS, so returning mid-week meets the
  * icon again rather than a form.
  */
-type Phase = "week" | "open" | "search" | "timer" | "pray" | "done" | "log" | "log-done";
+type Phase = "week" | "open" | "search" | "timer" | "pray" | "done" | "log" | "log-done" | "gallery";
 
 export default function IconsPage() {
   const { t } = useTranslation();
@@ -324,6 +540,35 @@ export default function IconsPage() {
    * a sitting completes (complete() calls setHistory), rather than showing the
    * previous answer until the page is remounted.
    */
+  /**
+   * THE GALLERY'S MEMORY — what has held you, and how long. Re-read on the
+   * HELD_EVENT so the first screen's row updates the moment the feed closes.
+   */
+  const [heldRows, setHeldRows] = useState<HeldWork[]>(() => getHeldWorks());
+  useEffect(() => {
+    const refresh = () => setHeldRows(getHeldWorks());
+    window.addEventListener(HELD_EVENT, refresh);
+    return () => window.removeEventListener(HELD_EVENT, refresh);
+  }, []);
+  const galleryWorks = useMemo(
+    () => galleryForDay(new Date().toLocaleDateString("en-CA"), { held: heldRows }),
+    // Today's order is settled when the feed opens; it must not resort itself
+    // under the reader's thumb as the seconds are recorded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [phase === "gallery"],
+  );
+  const heldNowIds = useMemo(() => heldIds(heldRows), [heldRows]);
+  /** The ones that held you, newest first, as works — for the first screen's row. */
+  const heldWorks = useMemo(() => {
+    const seconds = new Map(heldRows.map((r) => [r.id, r.seconds]));
+    return heldRows
+      .filter((r) => heldNowIds.has(r.id))
+      .map((r) => byId.get(r.id))
+      .filter((a): a is IconArtwork => !!a)
+      .slice(0, 12)
+      .map((a) => ({ art: a, seconds: seconds.get(a.id) ?? 0 }));
+  }, [heldRows, heldNowIds, byId]);
+
   const weekDoors = useMemo(() => {
     const lastEntry = lastIconPrayed();
     const lastArt = lastEntry ? byId.get(lastEntry.id) ?? null : null;
@@ -625,6 +870,7 @@ export default function IconsPage() {
     // Back from the catalogue returns where you came FROM: the intro slide
     // when there was already an icon on it (the "choose another" door), the
     // three suggestions when there wasn't.
+    if (phase === "gallery") { setPhase("week"); return; }
     if (phase === "search") { setPhase(chosen ? "open" : "week"); setQuery(""); return; }
     if (phase === "open") { toStart(); return; }
     // Back from the timer returns to the opening slide — one step, not out.
@@ -702,6 +948,39 @@ export default function IconsPage() {
               <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, textAlign: "center", margin: 0, lineHeight: 1.55 }}>
                 {t("icons.week_sub", { defaultValue: "Stay with one for a while, or begin somewhere new." })}
               </p>
+              {/* THE ONES THAT HELD YOU — the gallery's only record, and the
+                  only thing holding a picture does. Tapping one sits with it. */}
+              {heldWorks.length > 0 && (
+                <div style={{ width: "100%" }}>
+                  <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", margin: "2px 0 8px" }}>
+                    {t("icons.held_row", { defaultValue: "The ones that held you" })}
+                  </p>
+                  <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
+                    {heldWorks.map(({ art, seconds }) => (
+                      <button
+                        key={art.id}
+                        type="button"
+                        onClick={() => choose(art)}
+                        style={{
+                          userSelect: "none", WebkitTapHighlightColor: "transparent",
+                          flex: "0 0 auto", width: 112, padding: 0, border: "none",
+                          background: "none", cursor: "pointer", textAlign: "left",
+                        }}
+                      >
+                        <img
+                          src={art.img} alt="" loading="lazy" decoding="async"
+                          style={{ width: 112, height: 112, objectFit: "cover", borderRadius: 10, boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}
+                        />
+                        <span style={{ display: "block", color: FAINT, fontFamily: FONT, fontSize: 10.5, marginTop: 5 }}>
+                          {seconds >= 60
+                            ? t("icons.held_minutes", { count: Math.round(seconds / 60), defaultValue: `${Math.round(seconds / 60)} min` })
+                            : t("icons.held_seconds", { count: Math.round(seconds), defaultValue: `${Math.round(seconds)}s` })}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 6 }}>
                 {weekDoors.last && (
                   <WeekDoor
@@ -729,6 +1008,21 @@ export default function IconsPage() {
                     onClick={() => chooseForWeek(weekDoors.suggested!)}
                   />
                 )}
+                {/* THE GALLERY (owner, 2026-09-18: "where it could be a pill
+                    on the icon page"). Every library at once, one work per
+                    screen; where you stay is remembered. */}
+                <button
+                  type="button"
+                  onClick={() => setPhase("gallery")}
+                  style={{
+                    userSelect: "none", WebkitTapHighlightColor: "transparent",
+                    width: "100%", borderRadius: 999, padding: "13px 20px", fontSize: 14, fontWeight: 600,
+                    fontFamily: FONT, cursor: "pointer", color: WARM,
+                    background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)",
+                  }}
+                >
+                  {t("icons.gallery_pill", { defaultValue: "🖼️ Browse the gallery" })}
+                </button>
                 <button
                   type="button"
                   onClick={openBrowse}
@@ -785,14 +1079,6 @@ export default function IconsPage() {
                   {t("icons.log_pill", { defaultValue: "🕯️ Log your own icon" })}
                 </button>
               )}
-              {/* ONE PER ROW, FULL WIDTH (owner). An icon is chosen by
-                  LOOKING at it, and two to a row gave each one a 120px
-                  thumbnail — small enough that the choice came down to reading
-                  the title underneath. Full width gives the picture the space
-                  the practice is actually about. */}
-              {/* Only while browsing — a search is a question about the
-                  catalogue, not about your own history, and this row under the
-                  results would answer something nobody asked. */}
               {query.trim() === "" && mostReturned.length > 0 && (
                 <div style={{ width: "100%" }}>
                   <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", margin: "2px 0 8px" }}>
@@ -880,6 +1166,17 @@ export default function IconsPage() {
             * the way on. The duration question keeps its own screen, where
             * it belongs — after you have actually looked at the thing.
             */}
+          {/* The gallery is a full-screen surface of its own — rendered
+              outside the column so the pictures are not inset by it. */}
+          {phase === "gallery" && (
+            <GalleryFeed
+              works={galleryWorks}
+              held={heldNowIds}
+              onDwell={(id, seconds) => recordDwell(id, seconds, new Date().toLocaleDateString("en-CA"))}
+              onPray={(art) => { setPhase("week"); choose(art as IconArtwork); }}
+              onClose={() => setPhase("week")}
+            />
+          )}
           {phase === "open" && chosen && (
             <>
               <img
