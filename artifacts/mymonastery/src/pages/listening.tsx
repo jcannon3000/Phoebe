@@ -16,7 +16,7 @@ import { apiRequest, ApiError } from "@/lib/queryClient";
 import { enqueueWrite } from "@/lib/writeOutbox";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 import { openExternal } from "@/lib/openExternal";
-import { hasAppleMusicNative, playAppleMusicNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
+import { hasAppleMusicNative, appleMusicNativeReady, playAppleMusicNative, pauseAppleMusicNative, resumeAppleMusicNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 import { takePendingListen } from "@/lib/pendingListen";
 import { CtaArrow } from "@/components/CtaArrow";
 
@@ -205,6 +205,22 @@ export default function ListeningPage() {
   // native build whose listener has an Apple Music subscription and has said
   // yes once; on the web it stays null and every tap behaves as it always did.
   const [nowPlaying, setNowPlaying] = useState<{ id: string; title: string } | null>(null);
+  const [paused, setPaused] = useState(false);
+  /**
+   * Can Phoebe itself play music right now? Owner: "If they have apple music
+   * turned on, on the cards that show recent logs, have a play icon on the
+   * right section" — so the icon has to mean it, not merely hope. This asks the
+   * plugin for authorization AND an active subscription and NEVER prompts, so
+   * opening this page can't spring a permission sheet on anybody. False on the
+   * web, on an older build, and for anyone who hasn't allowed it: no icon, and
+   * the row behaves as it always did.
+   */
+  const [canPlayInApp, setCanPlayInApp] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void appleMusicNativeReady().then((ok) => { if (alive) setCanPlayInApp(ok); });
+    return () => { alive = false; };
+  }, []);
   useEffect(() => () => { void stopAppleMusicNative(); }, []);
 
   /** Start a catalog song, or fall back to opening the service. */
@@ -233,12 +249,21 @@ export default function ListeningPage() {
    */
   function playRecent(r: { what: string; artworkUrl?: string; medium: ListeningMedium }) {
     chooseRecent(r);
-    if (!hasAppleMusicNative()) return;
+    // Owner, 2026-09-18: "if they are listening in app do a player, if they are
+    // not go to the log screen and autofill it". Two outcomes, no third: either
+    // Phoebe is holding the music and this beat becomes the player, or the
+    // music is somewhere else and there is nothing left to do here but write it
+    // down — so it goes straight to the log, already filled in by chooseRecent.
+    if (!hasAppleMusicNative()) { setDeckStep(LOG); return; }
     void (async () => {
       const hits = await searchCatalog(r.what).catch(() => [] as SearchResult[]);
       const song = hits.find((h) => h.service === "apple" && h.kind === "song" && h.appleId);
-      if (!song?.appleId) return;
-      if (await playAppleMusicNative(song.appleId)) setNowPlaying({ id: song.appleId, title: r.what });
+      if (song?.appleId && await playAppleMusicNative(song.appleId)) {
+        setNowPlaying({ id: song.appleId, title: r.what });
+        setPaused(false);
+        return;
+      }
+      setDeckStep(LOG);
     })();
   }
 
@@ -775,7 +800,7 @@ export default function ListeningPage() {
                   are different") — .prompt-rise, the app's illuminated
                   rise: a 6px lift as they fade in, then a slow breathing glow.
                   Space Grotesk, upright, 21px, same measure. */}
-              {deckStep === LISTEN && (
+              {deckStep === LISTEN && !nowPlaying && (
                 <div className="w-full flex flex-col items-center gap-5" style={{ maxWidth: 480 }}>
                   <p className="prompt-rise text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, margin: 0 }}>
                     Let a song come to mind that feels sacred to you in this moment. Listen to it once — rest in the music, and listen for what touches your heart as you do.
@@ -828,9 +853,23 @@ export default function ListeningPage() {
                               {e.what?.trim() || (MEDIUM_EMOJI[e.medium] ?? "🎧")}
                             </span>
                             <span style={{ display: "block", color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, marginTop: 2 }}>
-                              {nowPlaying?.title === e.what ? "Playing…" : relDay(e.day)}
+                              {relDay(e.day)}
                             </span>
                           </span>
+                          {canPlayInApp && (
+                            <span
+                              aria-hidden
+                              style={{
+                                flex: "0 0 auto", width: 28, height: 28, borderRadius: 999,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                background: "rgba(46,107,64,0.45)", border: "1px solid rgba(143,175,150,0.55)",
+                              }}
+                            >
+                              <svg width="10" height="11" viewBox="0 0 10 11" style={{ display: "block", marginLeft: 2 }}>
+                                <path d="M0 0.7 A0.7 0.7 0 0 1 1 0.1 L9.4 4.9 A0.7 0.7 0 0 1 9.4 6.1 L1 10.9 A0.7 0.7 0 0 1 0 10.3 Z" fill={WARM} />
+                              </svg>
+                            </span>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -857,6 +896,74 @@ export default function ListeningPage() {
                   >
                     <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
                     Hymns
+                  </button>
+                </div>
+              )}
+
+              {/* THE PLAYER (owner: "if they are listening in app do a
+                  player"). Phoebe is holding the music, so this beat stops
+                  being an invitation to go and find some and becomes the thing
+                  playing it. No scrubber and no queue: this is one song, sat
+                  with once, and a progress bar would invite watching the time
+                  rather than listening. Pause, and the way on to the log.
+
+                  Lock screen and Control Center carry the same controls, since
+                  MusicKit owns the playback — so leaving Phoebe mid-hymn does
+                  not lose it. */}
+              {deckStep === LISTEN && nowPlaying && (
+                <div className="w-full flex flex-col items-center gap-5" style={{ maxWidth: 480 }}>
+                  <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
+                    {paused ? "Paused" : "Now playing"}
+                  </p>
+                  {artworkUrl && (
+                    <img
+                      src={artworkUrl}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      style={{ width: 168, height: 168, objectFit: "cover", borderRadius: 16, border: `1px solid ${DECK_BORDER}` }}
+                    />
+                  )}
+                  <p className="text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 18, fontWeight: 500, lineHeight: 1.4, margin: 0 }}>
+                    {nowPlaying.title}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (paused) { void resumeAppleMusicNative(); setPaused(false); }
+                        else { void pauseAppleMusicNative(); setPaused(true); }
+                      }}
+                      aria-label={paused ? "Resume" : "Pause"}
+                      className="active:scale-[0.99]"
+                      style={{
+                        width: 56, height: 56, borderRadius: 999, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        background: "rgba(46,107,64,0.45)", border: "1px solid rgba(143,175,150,0.55)",
+                      }}
+                    >
+                      {paused ? (
+                        <svg width="17" height="19" viewBox="0 0 17 19" aria-hidden style={{ display: "block", marginLeft: 3 }}>
+                          <path d="M0 1 A1 1 0 0 1 1.6 0.2 L16 8.6 A1 1 0 0 1 16 10.4 L1.6 18.8 A1 1 0 0 1 0 18 Z" fill={WARM} />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="19" viewBox="0 0 16 19" aria-hidden style={{ display: "block" }}>
+                          <rect x="0.5" y="0.5" width="5.5" height="18" rx="1.5" fill={WARM} />
+                          <rect x="10" y="0.5" width="5.5" height="18" rx="1.5" fill={WARM} />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { void stopAppleMusicNative(); setNowPlaying(null); setPaused(false); setDeckStep(LOG); }}
+                    className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                    style={{
+                      ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
+                      fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
+                    }}
+                  >
+                    Log this listening
                   </button>
                 </div>
               )}

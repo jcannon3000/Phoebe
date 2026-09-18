@@ -93,6 +93,16 @@ export async function playAppleMusicNative(trackId: string | null | undefined): 
   }
 }
 
+/** Hold the music where it is — the player's pause button. */
+export async function pauseAppleMusicNative(): Promise<void> {
+  try { await plugin()?.pause?.(); } catch { /* nothing playing */ }
+}
+
+/** Pick it back up from where it was paused. */
+export async function resumeAppleMusicNative(): Promise<void> {
+  try { await plugin()?.resume?.(); } catch { /* nothing to resume */ }
+}
+
 /** Stop in-app playback (leaving the Music app's own state alone). */
 export async function stopAppleMusicNative(): Promise<void> {
   try { await plugin()?.stop?.(); } catch { /* nothing playing */ }
