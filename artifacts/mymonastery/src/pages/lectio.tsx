@@ -640,7 +640,12 @@ export default function LectioPage() {
                     cursor: "pointer", ...FROST_CTA, border: `1px solid ${DECK_BORDER}`,
                   }}
                 >
-                  <span aria-hidden style={{ fontSize: 15, lineHeight: 1 }}>📖</span>
+                  {/* Headphones, not a book — owner, 2026-09-18: "put
+                      headphones nedt to the guided lectio divina so they
+                      understand its audio". This door leads to a session you
+                      listen to, and a book beside it read as more of the
+                      same reading the page already offers. */}
+                  <span aria-hidden style={{ fontSize: 15, lineHeight: 1 }}>🎧</span>
                   Guided Lectio Divina
                 </button>
               </>

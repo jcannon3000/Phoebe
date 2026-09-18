@@ -79,7 +79,10 @@ export default function ReflectLectioPage() {
       // Owner: "when someone listens to it have it count towards their
       // contemplation time too like breathing together does."
       creditContemplation: true,
-      transcriptUrl: episode.pageUrl ?? undefined,
+      // No transcript pill here — owner, 2026-09-18: "also there is not
+      // transcript button needed there". Their lectio page is the session
+      // itself rather than a script to read along with, so the pill offered
+      // something that wasn't there.
       showHref: "/reflect/lectio",
     });
     setLocation("/dashboard");

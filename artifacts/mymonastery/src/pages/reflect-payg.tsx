@@ -84,7 +84,17 @@ export default function ReflectPaygPage() {
       // Owner: "when someone listens to it have it count towards their
       // contemplation time too like breathing together does."
       creditContemplation: true,
-      transcriptUrl: episode.pageUrl ?? undefined,
+      /**
+       * THE READER LANDS ON THE SCRIPT (owner, 2026-09-18: "it should start on
+       * the page where it says script").
+       *
+       * Their page is a Next.js app and the Script heading carries no id, so
+       * there is no ordinary #anchor to aim at. A TEXT fragment aims at the
+       * words themselves: WebKit and Chrome scroll to the first whole-word
+       * match, and anywhere it isn't supported the page simply opens at the
+       * top — which is exactly what it did before, so this can only help.
+       */
+      transcriptUrl: episode.pageUrl ? `${episode.pageUrl}#:~:text=Script` : undefined,
       showHref: "/reflect/payg",
     });
     setLocation("/dashboard");
