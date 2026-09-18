@@ -19,6 +19,7 @@ import {
   practiceCompletionTable,
   reflectionReadsTable,
   deviceTokensTable,
+  breathSessionsTable,
 } from "@workspace/db";
 import { eq, and, gte, ne, sql, isNull, inArray, isNotNull } from "drizzle-orm";
 import {
@@ -35,6 +36,7 @@ import {
   sendFeedEventTomorrowPush,
   sendNewFeedIntercessionPush,
   sendWeeklyDigestPush,
+  sendBreathTogetherPush,
 } from "./pushSender";
 import { getGardenUserIds } from "./garden";
 import { runRetentionCleanupSender } from "./retention";
@@ -1403,6 +1405,101 @@ export async function runContemplationGoalSender(opts: { forceNow?: boolean } = 
   }
 }
 
+// ─── "You Breathed with N others" — Breathing Together's evening note ────────
+//
+// Owner, 2026-09-17: "Could you make a notification for anyone who has done
+// breathing together today, that it tells them how many people breathed with
+// today" — headline "You Breathed with x others", and "only for those who
+// breathed today".
+//
+// A breath is one row per (user, local day) in breath_sessions, and the count
+// the practice reports is every row for that day string (routes/breath.ts). So
+// this is the same number the summary screen shows, said again in the evening
+// once the day has filled up — sent ONLY to people with a row of their own for
+// their own local today, and never when they were the only one (the summary
+// withholds that line for the same reason).
+const BREATH_TOGETHER_TIME = "20:00";
+
+export type BreathTogetherRow = { userId: number; day: string; timezone: string | null; sentDate: string | null };
+
+/**
+ * WHO gets the note, and the number each one is told — a pure decision over the
+ * rows, so the rules can be tested without a database.
+ *
+ * - Only a breather whose row is their OWN local today (a row from yesterday is
+ *   yesterday's, whatever timezone it was kept in).
+ * - `others` is every OTHER person who kept the breath on that same day string,
+ *   counted once however many rows they have.
+ * - Nobody is told they breathed with nobody: at zero there is nothing to say,
+ *   and no stamp is written, so a later tick in the window can still catch the
+ *   day once somebody else breathes.
+ * - One note per person per local day (`sentDate`).
+ */
+export function breathTogetherRecipients(
+  rows: BreathTogetherRow[],
+  helpers: { todayFor: (tz: string) => string; inWindow: (tz: string) => boolean },
+): Array<{ userId: number; others: number; today: string }> {
+  const breathersByDay = new Map<string, Set<number>>();
+  for (const r of rows) {
+    if (!breathersByDay.has(r.day)) breathersByDay.set(r.day, new Set());
+    breathersByDay.get(r.day)!.add(r.userId);
+  }
+  const out: Array<{ userId: number; others: number; today: string }> = [];
+  const seen = new Set<number>();
+  for (const r of rows) {
+    if (seen.has(r.userId)) continue;
+    const tz = r.timezone || "America/New_York";
+    const today = helpers.todayFor(tz);
+    if (r.day !== today) continue;
+    if (r.sentDate === today) { seen.add(r.userId); continue; }
+    if (!helpers.inWindow(tz)) continue;
+    const others = Math.max(0, (breathersByDay.get(today)?.size ?? 1) - 1);
+    if (others < 1) continue;
+    seen.add(r.userId);
+    out.push({ userId: r.userId, others, today });
+  }
+  return out;
+}
+
+export async function runBreathTogetherSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  try {
+    // Two days of rows covers every timezone's "today" at once; the count per
+    // day string is taken from this same set, so it counts EVERY breather that
+    // day, not just those being notified.
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const rows = await db
+      .select({
+        userId: breathSessionsTable.userId,
+        day: breathSessionsTable.day,
+        timezone: usersTable.timezone,
+        sentDate: usersTable.breathTogetherSentDate,
+      })
+      .from(breathSessionsTable)
+      .innerJoin(usersTable, eq(usersTable.id, breathSessionsTable.userId))
+      .where(gte(breathSessionsTable.day, cutoff));
+
+    const recipients = breathTogetherRecipients(rows, {
+      todayFor: (tz) => todayInZone(tz),
+      inWindow: (tz) => !!opts.forceNow || isWithinTickWindow(tz, BREATH_TOGETHER_TIME),
+    });
+
+    for (const r of recipients) {
+      try {
+        await sendBreathTogetherPush(r.userId, { others: r.others });
+        await db
+          .update(usersTable)
+          .set({ breathTogetherSentDate: r.today })
+          .where(eq(usersTable.id, r.userId));
+      } catch (err) {
+        // No stamp on failure → a later tick inside the window retries.
+        logger.warn({ err, userId: r.userId }, "[breath-together] push failed");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "[breath-together] sender failed");
+  }
+}
+
 // ─── Weekly Way of Love review — Sunday-evening examen nudge ─────────────────
 // Once a week (Sunday ~20:00 in the user's tz) invite beta users who've opted in
 // to look back on the week and set the one ahead. Skipped if they already did
@@ -1876,6 +1973,9 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // thirty AM," which needs a tick fine enough to land on the user's chosen
   // minute, not this list's 15-minute cadence.
   { name: "contemplation-goal",    run: runContemplationGoalSender },
+  // Breathing Together's evening note — "You Breathed with N others", to
+  // everyone who kept the breath today.
+  { name: "breath-together",       run: runBreathTogetherSender },
   // VTS Dean's Commentary — weekday ~8am nudge for readers who follow it.
   { name: "vts-commentary",        run: runVtsCommentarySender },
   // Weekly review — re-enabled (owner: "I didn't get the week review

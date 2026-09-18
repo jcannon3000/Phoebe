@@ -190,6 +190,10 @@ export const usersTable = pgTable("users", {
   // freshly-set goal nudges by default; the user can keep a goal for tracking
   // while silencing the reminder from Settings → Daily reminders.
   contemplationReminderEnabled: boolean("contemplation_reminder_enabled").notNull().default(true),
+  // YYYY-MM-DD (user TZ) of the last "You Breathed with N others" push — the
+  // evening note to everyone who kept Breathing Together that day (owner,
+  // 2026-09-17). One per local day; NULL = never sent.
+  breathTogetherSentDate: text("breath_together_sent_date"),
   // Daily steps goal (Apple Health). When > 0, the home card shows progress and
   // the server pushes "you hit your step goal" the first time today's synced
   // steps cross it. 0 = off.

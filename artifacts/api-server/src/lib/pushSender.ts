@@ -1322,6 +1322,28 @@ export function sendContemplationGoalReminderPush(
   });
 }
 
+/**
+ * "You Breathed with N others" — the evening note to everyone who kept
+ * Breathing Together today (owner, 2026-09-17: "a notification for anyone who
+ * has done breathing together today, that it tells them how many people
+ * breathed with today" · "Have the headline be like 'You Breathed with x
+ * others'" · "only for those who breathed today").
+ *
+ * N is everyone else who kept the breath on the same local day — the practice's
+ * own asynchronous body (routes/breath.ts). The sender never sends it at zero:
+ * the summary screen holds the same line back when nobody else breathed.
+ */
+export function sendBreathTogetherPush(userId: number, opts: { others: number }) {
+  return sendPushToUser(userId, {
+    title: opts.others === 1 ? "You Breathed with 1 other" : `You Breathed with ${opts.others} others`,
+    body: "Breathing Together — one breath, kept across the whole day.",
+    path: "/cobreathe",
+    threadId: "breath-together",
+    collapseId: `breath-together-${userId}`,
+    sound: PHOEBE_SOUND_LOW,
+  });
+}
+
 // Weekly Way of Love review — the Sunday-evening examen nudge. Invites the user
 // to look back on the week and set the one ahead. Deep-links into the review;
 // deduped to once per Sunday by the sender.
