@@ -54,7 +54,14 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // lectionary source (today's Old Testament / New Testament /
     // Gospel), a different, slower way to sit with one of them.
     // Contemplation leads the rest of the list.
-    { offlineKey: "contemplation", emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", href: "/contemplation" },
+    // ?begin=1 — the SIT, not its statistics (owner, 2026-09-18: "when you hit
+    // contemplation from the practice page, go to that into page where the
+    // routine card would take you, not the stats page"). Bare /contemplation
+    // opens the history, goal and tabs; ?begin=1 is the focused slide the
+    // rhythm card, the widget and the goal notification all open — length,
+    // Start, and the Breathing Together pill. No ?sit here: from Practices
+    // there is no side to take a length from, so their own default stands.
+    { offlineKey: "contemplation", emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", href: "/contemplation?begin=1" },
     { offlineKey: "lectio", emoji: "📜", label: "Lectio Divina", sub: "Meditate on today's readings", href: "/lectio" },
     // Novenas hidden for all users per owner request (2026-08-07) — see
     // useRhythmState.ts's NOVENAS_ENABLED comment for why.
