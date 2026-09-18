@@ -1613,7 +1613,20 @@ export default function WayOfLoveRuleFlow({
   // listing them here made the same practice reachable by two names — and a
   // reader who picked Compline here had no way to tell it apart from picking
   // it under the Book of Common Prayer. Same list for both sides now.
-  const formsForSide = (_s: OfficeSide): readonly ContemplativeForm[] => CONTEMPLATIVE_FORMS;
+  /**
+   * ONE SIDE ONLY, FOR PRAY AS YOU GO (owner, 2026-09-18: "if it is chosen for
+   * morning, it cant be for evening, and vice versa"). There is ONE session a
+   * day, so keeping it morning AND evening would be the same twelve minutes
+   * asked for twice — and the second card could never be kept separately, since
+   * both read the one "heard it today" flag. Hidden on the other side once a
+   * side has it; the side that HAS it still sees its own row, so it can be seen
+   * and changed rather than vanishing.
+   */
+  const formsForSide = (s: OfficeSide): readonly ContemplativeForm[] => {
+    const other: OfficeSide = s === "morning" ? "evening" : "morning";
+    const heldByOther = contemplativeForm[other] === "payg" && contemplativeForm[s] !== "payg";
+    return heldByOther ? CONTEMPLATIVE_FORMS.filter((f) => f !== "payg") : CONTEMPLATIVE_FORMS;
+  };
   const [contemplativeForm, setContemplativeForm] = useState<Record<OfficeSide, ContemplativeForm | null>>(() => {
     // Only the two per-side forms survive a reload — walk/audio/examen/compline
     // are standing all-day practices with no per-side storage, so a side set to
