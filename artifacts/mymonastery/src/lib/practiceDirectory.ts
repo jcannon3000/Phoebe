@@ -59,6 +59,18 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // Novenas hidden for all users per owner request (2026-08-07) — see
     // useRhythmState.ts's NOVENAS_ENABLED comment for why.
     { offlineKey: "examen", emoji: "🌗", label: "The Examen", sub: "Review the day with God", href: "/examen" },
+    /**
+     * PRAY AS YOU GO DAILY (owner, 2026-09-18: "Have pray as you ago availible
+     * in practices as well", then "no we want it higher then the icons, like
+     * after examen"). The Jesuits' daily session — music, a reading and
+     * a few questions — played in Phoebe's own audio player, the same way its
+     * reflection card opens it (pages/reflect-payg, [[project_payg_daily]]).
+     *
+     * NO offlineKey: it streams their audio, so with no connection it belongs
+     * under "Not available" rather than being offered and failing. Open to
+     * everyone, as the route itself is — their feed is public.
+     */
+    { emoji: "🎧", label: "Pray As You Go Daily", sub: "A guided audio meditation on scripture", href: "/reflect/payg" },
     // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no
     // ?side=), so it logs as a standalone practice rather than closing
     // out a morning/evening anchor.
@@ -97,17 +109,6 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // on a timer. Same guest posture as Visio for the same reasons —
     // the artworks and licences are public and completion is device-local.
     { emoji: "🪟", label: "Praying with Icons", sub: "Choose an icon and sit with it", href: "/icon-prayer" },
-    /**
-     * PRAY AS YOU GO DAILY (owner, 2026-09-18: "Have pray as you ago availible
-     * in practices as well"). The Jesuits' daily session — music, a reading and
-     * a few questions — played in Phoebe's own audio player, the same way its
-     * reflection card opens it (pages/reflect-payg, [[project_payg_daily]]).
-     *
-     * NO offlineKey: it streams their audio, so with no connection it belongs
-     * under "Not available" rather than being offered and failing. Open to
-     * everyone, as the route itself is — their feed is public.
-     */
-    { emoji: "🎧", label: "Pray As You Go Daily", sub: "A guided audio meditation on scripture", href: "/reflect/payg" },
     // NO SPIRITUALS ROW (owner, 2026-09-05: "take out reading and
     // spirituals from the practices ... both on the main practice page
     // and in the customizer"). The practice itself and /spirituals still
