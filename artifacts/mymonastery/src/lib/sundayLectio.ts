@@ -33,7 +33,12 @@ export type LectioOption = { kind: LectioKind; reference: string; readUrl: strin
 function barePsalm(ref: string | null | undefined): string | null {
   const raw = (ref ?? "").trim().replace(/^\[+/, "").replace(/\]+$/, "").trim();
   if (!/^psalms?\s+\d/i.test(raw) && !/^\d/.test(raw)) return null;
-  const bare = raw.replace(/^psalms?\s+/i, "").split(/[&;]/)[0]!.trim().replace(/[*]+$/, "");
+  // The RCL's alternatives — "Psalm 84 or 84:1-8" on the Sundays after
+  // Christmas — keep the LAST: that is the selection the Sunday deck prays
+  // (parsePsalmRef reads the verses after the colon), so Lectio opens the
+  // same psalm the deck showed, not a page called "84 or 84:1-8".
+  const alternatives = raw.replace(/^psalms?\s+/i, "").split(/\s+or\s+/i);
+  const bare = alternatives[alternatives.length - 1]!.split(/[&;]/)[0]!.trim().replace(/[*]+$/, "");
   return bare || null;
 }
 
