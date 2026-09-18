@@ -44,7 +44,7 @@ import {
   MUSIC_PLAYLISTS, getOfficeMusic, setOfficeMusic, playlistById,
   PRACTICE_MUSIC_EVENT, type MusicPlaylist,
 } from "@/lib/practiceMusic";
-import { appleMusicFeaturesReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
+import { appleMusicPlaylistsReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
 import { playAppleMusicPlaylistNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 
 /**
@@ -913,7 +913,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const [officeMusic, setOfficeMusicState] = useState<MusicPlaylist | null>(() => getOfficeMusic());
   useEffect(() => {
     let alive = true;
-    const ask = () => { void appleMusicFeaturesReady().then((ok) => { if (alive) setMusicReady(ok); }); };
+    const ask = () => { void appleMusicPlaylistsReady().then((ok) => { if (alive) setMusicReady(ok); }); };
     ask();
     const sync = () => { setOfficeMusicState(getOfficeMusic()); ask(); };
     window.addEventListener(PRACTICE_MUSIC_EVENT, sync);

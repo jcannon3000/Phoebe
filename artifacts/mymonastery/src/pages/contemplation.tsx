@@ -29,7 +29,7 @@ import {
   MUSIC_PLAYLISTS, getContemplationPlaylist, setContemplationPlaylist,
   PRACTICE_MUSIC_EVENT, type MusicPlaylist,
 } from "@/lib/practiceMusic";
-import { appleMusicFeaturesReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
+import { appleMusicPlaylistsReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
 import { playAppleMusicPlaylistNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
@@ -466,7 +466,7 @@ export default function ContemplationPage() {
   const [musicPickerOpen, setMusicPickerOpen] = useState(false);
   useEffect(() => {
     let alive = true;
-    const ask = () => { void appleMusicFeaturesReady().then((ok) => { if (alive) setMusicReady(ok); }); };
+    const ask = () => { void appleMusicPlaylistsReady().then((ok) => { if (alive) setMusicReady(ok); }); };
     ask();
     const sync = () => { setPlaylist(getContemplationPlaylist()); ask(); };
     window.addEventListener(PRACTICE_MUSIC_EVENT, sync);

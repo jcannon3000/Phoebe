@@ -54,7 +54,7 @@ import {
 import {
   MUSIC_PLAYLISTS, getOfficeMusic, setOfficeMusic, playlistById, type MusicPlaylist,
 } from "@/lib/practiceMusic";
-import { appleMusicFeaturesReady } from "@/lib/appleMusicFeatures";
+import { appleMusicPlaylistsReady } from "@/lib/appleMusicFeatures";
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -252,9 +252,9 @@ export default function OfficeSettingsPage() {
   const [officeMusic, setOfficeMusicState] = useState<MusicPlaylist | null>(() => getOfficeMusic());
   useEffect(() => {
     let alive = true;
-    void appleMusicFeaturesReady().then((ok) => { if (alive) setMusicReady(ok); });
+    void appleMusicPlaylistsReady().then((ok) => { if (alive) setMusicReady(ok); });
     const id = window.setTimeout(() => {
-      void appleMusicFeaturesReady().then((ok) => { if (alive) setMusicReady(ok); });
+      void appleMusicPlaylistsReady().then((ok) => { if (alive) setMusicReady(ok); });
     }, 600);
     return () => { alive = false; window.clearTimeout(id); };
   }, []);

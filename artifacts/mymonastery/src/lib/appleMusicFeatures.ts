@@ -24,6 +24,7 @@
 
 import {
   appleMusicNativeReady, requestAppleMusicNative, hasAppleMusicNative,
+  hasAppleMusicPlaylistNative,
 } from "@/lib/appleMusicNative";
 
 const KEY = "phoebe:apple-music:on";
@@ -83,4 +84,25 @@ export function disableAppleMusic(): void {
 export async function appleMusicFeaturesReady(): Promise<boolean> {
   if (!appleMusicEnabled()) return false;
   return appleMusicNativeReady();
+}
+
+/**
+ * THE GATE FOR MUSIC BEHIND A PRACTICE — everything above, AND a build whose
+ * plugin can actually play a PLAYLIST.
+ *
+ * Swift ships in the app binary, not in the web bundle: a phone updated from
+ * the server has the new screens while its plugin is still the old one, with
+ * playTrack but no playPlaylist. Gating those surfaces on
+ * appleMusicFeaturesReady() alone would put "Add music" on the contemplation
+ * screen and a Music row on the office, let someone choose a playlist, and
+ * then play silence with nothing to explain it. So they ask for the method
+ * itself, and simply aren't offered until the app is rebuilt.
+ *
+ * (Hymns is unaffected — one song is playTrack, which has been on devices for
+ * a while, and /hildegard checks the method itself before offering to play the
+ * whole thing, falling back to opening music.apple.com.)
+ */
+export async function appleMusicPlaylistsReady(): Promise<boolean> {
+  if (!hasAppleMusicPlaylistNative()) return false;
+  return appleMusicFeaturesReady();
 }
