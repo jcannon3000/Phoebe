@@ -55,7 +55,7 @@ import { usePreviousIssues, usePreviousIssuesFor } from "@/hooks/usePreviousIssu
 export const REFLECTION_EMOJI: Record<TrackedReflection, string> = {
   cac: "🌵", fdd: "📔", ssje: "✍🏽", vts: "🦩", nouwen: "😊", sojo: "🕊️", grist: "🌎",
   // Heard, not read — the headphones say so on every surface it appears on.
-  payg: "🎧",
+  payg: "🧘🏽",
 };
 
 export const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {

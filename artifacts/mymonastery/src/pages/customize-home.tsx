@@ -157,7 +157,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     // These three were readable from the Reflections menu but could not be
     // chosen, so the menu offered six and the rhythm accepted four.
     nouwen:       { label: "Nouwen Daily Devotion",          emoji: "😊", sub: "From the Henri Nouwen Society" },
-    payg:         { label: "Pray As You Go Daily",           emoji: "🎧", sub: "A guided audio meditation on scripture" },
+    payg:         { label: "Pray As You Go Daily",           emoji: "🧘🏽", sub: "A guided audio meditation on scripture" },
     sojo:         { label: "Sojourners Daily Devotion",        emoji: "🕊️", sub: "Verse, voice and prayer of the day" },
     grist:        { label: "Grist Climate News",                 emoji: "🌎", sub: "The day's climate reporting" },
     ncmp:         { label: "National Cathedral Morning Prayer",  emoji: "📺", sub: "Weekday live broadcast · 7 AM ET" },
