@@ -4289,24 +4289,26 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             (() => {
               const ref = String(currentSlide.title ?? currentSlide.metadata?.lessonRef ?? "").trim();
               /**
-               * MIDDAY READS ITS SCRIPTURE IN THE OFFICE'S OWN TYPE (owner,
+               * THE SHORT LESSON READS IN THE OFFICE'S OWN TYPE (owner,
                * 2026-09-18: "On the midday prayer make the scripture in the
-               * space gortesk left aligned everything else is in"). Compline
-               * keeps the centred Georgia italic it has always had; only
-               * Midday's lesson changes.
+               * space gortesk left aligned everything else is in", then "no
+               * compline should also be space left"). Both Midday's and
+               * Compline's read-here passages are Space Grotesk, left
+               * aligned, like every other word in the deck; the centred
+               * Georgia italic is gone from this slide.
                */
-              const middayLesson = !!currentSlide.metadata?.noonday;
+              const shortLesson = !!(currentSlide.metadata?.noonday || currentSlide.metadata?.compline);
               return (
                 <div
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    alignItems: middayLesson ? "flex-start" : "center",
+                    alignItems: shortLesson ? "flex-start" : "center",
                     justifyContent: "center",
                     width: "100%",
                     maxWidth: 560,
                     margin: "0 auto",
-                    textAlign: middayLesson ? "left" : "center",
+                    textAlign: shortLesson ? "left" : "center",
                     gap: 18,
                   }}
                 >
@@ -4342,14 +4344,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   )}
                   <p
                     style={{
-                      fontFamily: middayLesson ? SPACE_GROTESK : "Georgia, 'Times New Roman', serif",
-                      fontStyle: middayLesson ? "normal" : "italic",
+                      fontFamily: shortLesson ? SPACE_GROTESK : "Georgia, 'Times New Roman', serif",
+                      fontStyle: shortLesson ? "normal" : "italic",
                       fontSize: "clamp(18px, 3.4vw, 22px)",
                       lineHeight: 1.55,
                       color: WARM_TEXT,
                       margin: 0,
                       whiteSpace: "pre-wrap",
-                      textAlign: middayLesson ? "left" : "center",
+                      textAlign: shortLesson ? "left" : "center",
                     }}
                   >
                     {currentSlide.content}
