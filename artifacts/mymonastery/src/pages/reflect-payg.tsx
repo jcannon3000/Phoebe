@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
+import { markQuietHandoff } from "@/lib/handoffQuiet";
 
 // ── /reflect/payg — Pray As You Go Daily ────────────────────────────────────
 //
@@ -97,6 +98,9 @@ export default function ReflectPaygPage() {
       transcriptUrl: episode.pageUrl ? `${episode.pageUrl}#:~:text=Script` : undefined,
       showHref: "/reflect/payg",
     });
+    // Handed back to the home with audio already playing — one swell there,
+    // not a tick under every card (lib/handoffQuiet).
+    markQuietHandoff();
     setLocation("/dashboard");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episode?.audioUrl]);

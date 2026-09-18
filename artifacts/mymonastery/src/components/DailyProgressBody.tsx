@@ -38,6 +38,7 @@ import { logCelebrationEvent } from "@/lib/celebrationDebugLog";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { playRoutineCompleteSwell } from "@/lib/amenFeedback";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { consumeQuietHandoff, handoffSwell } from "@/lib/handoffQuiet";
 import { CtaArrow } from "@/components/CtaArrow";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
@@ -2781,6 +2782,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (isFirstOpenOnboardingActive()) return;
     cascadeHaptedRef.current = true;
     if (!isNativeShell()) return;
+    // HANDED BACK, NOT ARRIVED. Pray As You Go and the guided lectio land here
+    // with their audio already playing; the cascade then reads as the home
+    // loading in the background behind the music (owner, 2026-09-18). One
+    // swell says "you're back" without pretending this was an arrival.
+    if (consumeQuietHandoff()) { handoffSwell(); return; }
     // Count the office HERO card too (it leads the Next list at enterUp(0)), so
     // it gets the first tick and every card below cascades a haptic IN the same
     // top-to-bottom (time-of-day) order they rise in. Without the hero in the

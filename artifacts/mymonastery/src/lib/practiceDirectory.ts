@@ -124,6 +124,14 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // on a timer. Same guest posture as Visio for the same reasons —
     // the artworks and licences are public and completion is device-local.
     { emoji: "🪟", label: "Praying with Icons", sub: "Choose an icon and sit with it", href: "/icon-prayer" },
+    /**
+     * Sacred Image Doom Scroll — owner, 2026-09-18: "also have Sacred Image
+     * Doom Scroll be a listed practice". It already had a ticker pill, whose
+     * note said the Practices page had not been asked about; now it has.
+     * Same door either way (/icon-prayer?gallery=1), so the two can't drift.
+     * The name is the owner's, and it is the joke the practice is built on.
+     */
+    { emoji: "🖼️", label: "Sacred Image Doom Scroll", sub: "Scroll through sacred images, and stay where one holds you", href: "/icon-prayer?gallery=1" },
     // NO SPIRITUALS ROW (owner, 2026-09-05: "take out reading and
     // spirituals from the practices ... both on the main practice page
     // and in the customizer"). The practice itself and /spirituals still

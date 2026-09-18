@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
+import { markQuietHandoff } from "@/lib/handoffQuiet";
 
 // ── /reflect/lectio — Guided Lectio Divina (Abiding Way Ministries) ────────
 //
@@ -85,6 +86,9 @@ export default function ReflectLectioPage() {
       // something that wasn't there.
       showHref: "/reflect/lectio",
     });
+    // Handed back to the home with audio already playing — one swell there,
+    // not a tick under every card (lib/handoffQuiet).
+    markQuietHandoff();
     setLocation("/dashboard");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episode?.audioUrl]);
