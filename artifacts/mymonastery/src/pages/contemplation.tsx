@@ -840,6 +840,24 @@ export default function ContemplationPage() {
             take you to pray as you go". Opens today's Pray As You Go session in
             the app's audio player; listening counts towards contemplation time,
             so it belongs on this slide beside the silent sit. */}
+        {/* Guided Lectio Divina — Abiding Way's daily reading (owner,
+            2026-09-18: "On the contemplation slide, create a third pill that
+            says Guided Lectio Divina"). Heard, like the two below it, and the
+            time counts as contemplation. */}
+        <Link href="/reflect/lectio" className="block">
+          <div
+            className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
+            style={{
+              background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+              border: "1px solid rgba(46,107,64,0.4)",
+              color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
+              padding: "15px", cursor: "pointer",
+            }}
+          >
+            <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>📖</span>
+            <span>{t("contemplation.guided_lectio", { defaultValue: "Guided Lectio Divina" })}</span>
+          </div>
+        </Link>
         <Link href="/reflect/payg" className="block">
           <div
             className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"

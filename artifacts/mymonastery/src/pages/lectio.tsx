@@ -607,6 +607,26 @@ export default function LectioPage() {
                     </button>
                   ))}
                 </div>
+                {/* GUIDED, IF YOU WOULD RATHER BE LED (owner, 2026-09-18:
+                    "Also on the lectio page, do a pill at the bottom that is
+                    Guided Lectio Divina that would bring this up"). Abiding
+                    Way's daily reading, heard: a passage read slowly, with
+                    silence and a guide, in the app's own player. */}
+                <button
+                  type="button"
+                  onClick={() => setLocation("/reflect/lectio")}
+                  style={{
+                    userSelect: "none", WebkitTapHighlightColor: "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    width: "100%", boxSizing: "border-box", marginTop: 14,
+                    borderRadius: 999, padding: "14px 20px",
+                    fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, color: WARM,
+                    cursor: "pointer", ...FROST_CTA, border: `1px solid ${DECK_BORDER}`,
+                  }}
+                >
+                  <span aria-hidden style={{ fontSize: 15, lineHeight: 1 }}>📖</span>
+                  Guided Lectio Divina
+                </button>
               </>
             )}
 

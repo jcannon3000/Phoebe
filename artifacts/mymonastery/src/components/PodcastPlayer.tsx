@@ -13,6 +13,7 @@ import { markComplete as markCourseLessonComplete } from "@/lib/courseProgress";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { markReflectionRead, type TrackedReflection } from "@/lib/cacReadState";
 import { logListenedContemplation } from "@/lib/listenedContemplation";
+import { openExternal } from "@/lib/openExternal";
 
 // ≥2 minutes of actual listening to a (non-office) podcast counts the
 // "Podcasts" daily practice as kept — if the user has it as a practice.
@@ -90,6 +91,18 @@ export type PlayingEpisode = {
   creditWeeklyItem?: { groupSlug: string; itemId: number };
   // Hide the Recommend (♡) action — a daily office isn't a shareable ep.
   hideRecommend?: boolean;
+  /**
+   * THE SESSION'S OWN PAGE, for the Transcript pill (owner, 2026-09-18, with a
+   * Pray As You Go session: "can you then create a reader view of the
+   * transcription … that someone could open in the bottom right corner of the
+   * audio player with a pill that says 'transcript'").
+   *
+   * It opens THEIR page in Phoebe's reader — the same reader the offices' own
+   * readings open in. Their words are not extracted, reworded or re-rendered
+   * as Phoebe's; the page is loaded whole, as Safari's Reader does, which is
+   * the rule this app already keeps for other people's text.
+   */
+  transcriptUrl?: string;
   // Override the "view show" link target — offices have no /podcasts/show
   // page, so they link back to their own player route.
   showHref?: string;
@@ -1749,12 +1762,22 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                   })}
                 </div>
               ) : (
-                /* Podcast actions: playback speed. */
-                <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0 0" }}>
+                /* Podcast actions: playback speed, and — when the episode has
+                   a page of its own — the transcript, at the right (owner). */
+                <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0 0", width: "100%" }}>
                   <button type="button" onClick={cycleRate} aria-label={t("podcasts.a11y_speed")}
                     style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.18)", color: "#F6F0E6", fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 12px", cursor: "pointer", fontFamily: FONT }}>
                     {rate}×
                   </button>
+                  {current.transcriptUrl && (
+                    <button
+                      type="button"
+                      onClick={() => { if (current.transcriptUrl) openExternal(current.transcriptUrl, { reader: true }); }}
+                      style={{ marginLeft: "auto", background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.18)", color: "#F6F0E6", fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 12px", cursor: "pointer", fontFamily: FONT }}
+                    >
+                      {t("podcasts.transcript", { defaultValue: "Transcript" })}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

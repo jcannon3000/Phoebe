@@ -6,26 +6,21 @@ import { apiRequest } from "@/lib/queryClient";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 
-// ── /reflect/payg — Pray As You Go Daily ────────────────────────────────────
+// ── /reflect/lectio — Guided Lectio Divina (Abiding Way Ministries) ────────
 //
-// Owner, 2026-09-17, with a link to one of their sessions: "we want it as a
-// daily reflection, but it comes up as an audio player", "instead of opening
-// to there website … open to play the podcast", "no we want it in the standard
-// ui for audio which is the backround library".
+// Owner, 2026-09-18, with their site: "can we add their daily lectio
+// podcast?" · "Call it Guided Lectio Divina" · "ANd have it work like Pray as
+// You Go".
 //
-// So this is a reflection card like the CAC one, except that the tap opens the
-// app's own audio player rather than a publisher's page — the SAME player the
-// Audio library uses, which keeps playing in the background, shows on the lock
-// screen and collapses to the mini bar. Nothing of theirs is copied: the
-// server reads their public podcast feed (the one Apple lists) and hands back
-// the day's episode; the audio, the title and the artwork are served from
-// them. Unlike the Dean's Commentary, no text is brought into Phoebe.
+// So: the same shape as /reflect/payg. A pass-through page — fetch the day's
+// episode, hand it to the app's own audio player (which keeps playing in the
+// background, shows on the lock screen and collapses to the mini bar), and
+// land on the home. Nothing of theirs is copied: the server reads their public
+// podcast feed and the audio, title and artwork are served from them.
 //
-// A pass-through page, exactly like office-podcast.tsx: fetch today's session,
-// hand it to the player, land on the home. The player marks the reflection
-// read once about two thirds of it has been heard (see creditReflection in
-// PodcastPlayer) — the same bar the audio offices are counted at, and the same
-// mark the card's dot reads.
+// Their episodes are titled by the day they are for and posted the evening
+// before, so the server is told which day this phone is on and matches the
+// title (routes/podcast.ts).
 
 const PALETTE = {
   bg: "#091A10",
@@ -45,7 +40,7 @@ type Episode = {
   pageUrl?: string | null;
 };
 
-export default function ReflectPaygPage() {
+export default function ReflectLectioPage() {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
   // The listener's own day: their sessions are stamped for the day they are
@@ -54,8 +49,8 @@ export default function ReflectPaygPage() {
   const today = new Date().toLocaleDateString("en-CA");
 
   const { data: episode, isLoading } = useQuery<Episode>({
-    queryKey: ["/api/podcast/pray-as-you-go/today", today],
-    queryFn: () => apiRequest("GET", `/api/podcast/pray-as-you-go/today?date=${today}`),
+    queryKey: ["/api/podcast/abiding-way-lectio/today", today],
+    queryFn: () => apiRequest("GET", `/api/podcast/abiding-way-lectio/today?date=${today}`),
     staleTime: 30 * 60_000,
   });
 
@@ -65,27 +60,27 @@ export default function ReflectPaygPage() {
     if (launched.current || !episode?.audioUrl) return;
     launched.current = true;
     player.play({
-      showSlug: "pray-as-you-go",
+      showSlug: "abiding-way-lectio",
       episodeId: episode.audioUrl,
       title: episode.title,
       audioUrl: episode.audioUrl,
       imageUrl: episode.imageUrl,
-      showTitle: episode.feedTitle ?? "Pray As You Go Daily",
+      showTitle: episode.feedTitle ?? "Guided Lectio Divina",
       showArtwork: episode.imageUrl,
       durationSeconds: episode.durationSeconds,
       publishedAt: episode.publishedAt,
-      description: t("podcasts.payg_blurb", {
-        defaultValue: "The day's prayer from Pray As You Go: music, a reading from scripture, and a few questions to sit with.",
+      description: t("podcasts.abiding_lectio_blurb", {
+        defaultValue: "The day's lectio divina from Abiding Way Ministries: a passage read slowly, with silence and a guide.",
       }),
-      sessionSurface: "payg-audio",
-      // Counts the reflection read once it has been heard — the card's dot,
-      // the streak and any side that takes this as its prayer all follow.
-      creditReflection: "payg",
+      sessionSurface: "abiding-lectio-audio",
+      // NOT a reflection source (that registry is Pray As You Go's and the
+      // written ones); this is a contemplative practice you choose, so only
+      // the time is credited.
       // Owner: "when someone listens to it have it count towards their
       // contemplation time too like breathing together does."
       creditContemplation: true,
       transcriptUrl: episode.pageUrl ?? undefined,
-      showHref: "/reflect/payg",
+      showHref: "/reflect/lectio",
     });
     setLocation("/dashboard");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,7 +98,7 @@ export default function ReflectPaygPage() {
       {!isLoading && !episode?.audioUrl ? (
         <>
           <p style={{ color: PALETTE.faint, fontSize: 13, textAlign: "center", maxWidth: 280, lineHeight: 1.5 }}>
-            {t("podcasts.payg_error", { defaultValue: "Today's session couldn't be reached. Please try again in a moment." })}
+            {t("podcasts.abiding_lectio_error", { defaultValue: "Today's lectio couldn't be reached. Please try again in a moment." })}
           </p>
           <button
             type="button"
@@ -115,7 +110,7 @@ export default function ReflectPaygPage() {
         </>
       ) : (
         <p style={{ color: PALETTE.faint, fontSize: 13 }}>
-          {t("podcasts.payg_loading", { defaultValue: "Finding today's session…" })}
+          {t("podcasts.abiding_lectio_loading", { defaultValue: "Finding today's lectio…" })}
         </p>
       )}
     </div>

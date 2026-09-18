@@ -165,7 +165,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
 // player. They have their own home there, so we keep them OUT of the
 // Discover browse + search — the SHOWS entries stay (so
 // /podcast/:show/today still serves them), they're just not listed.
-const HIDDEN_FROM_DISCOVER = new Set<string>(["morning-office", "evening-office", "compline", "ssje-sermons", "pray-as-you-go"]);
+const HIDDEN_FROM_DISCOVER = new Set<string>(["morning-office", "evening-office", "compline", "ssje-sermons", "pray-as-you-go", "abiding-way-lectio"]);
 
 // Individual episodes hidden by title (matched apostrophe- and
 // whitespace-insensitively). Filtered out when the feed is parsed, so
@@ -261,6 +261,23 @@ export const SHOWS: Record<string, Show> = {
   // The feed is the one Apple Podcasts lists, and prayasyougo.org's robots.txt
   // is "User-Agent: * / Allow: /". Phoebe reads it as any podcast client does:
   // their page, their audio, their attribution.
+  // ── Abiding Way Ministries — Guided Lectio Divina ────────────────────
+  //
+  // Owner, 2026-09-18, with their site: "can we add their daily lectio
+  // podcast?" · "Call it Guided Lectio Divina" · "have it work like Pray as
+  // You Go". A reading, silence and a guided lectio, about fourteen minutes,
+  // posted for each day (their own titles ARE the day: "Friday, September 18,
+  // 2026"). Their Squarespace feed is the public RSS their page links; Phoebe
+  // reads it as any podcast client does — their page, their audio, their
+  // attribution — and brings none of their text into the app.
+  "abiding-way-lectio": {
+    slug: "abiding-way-lectio",
+    title: "Guided Lectio Divina",
+    artist: "Abiding Way Ministries",
+    publisher: "around-the-church",
+    feedUrl: "https://www.abidingway.life/lectio-podcast?format=rss",
+    artwork: null,
+  },
   "pray-as-you-go": {
     slug: "pray-as-you-go",
     title: "Pray As You Go Daily",
@@ -459,6 +476,13 @@ export type EpisodeFull = {
   // the show page uses it as the group header. Only the Roundtables scraper
   // sets it today.
   seasonName?: string | null;
+  /**
+   * The episode's own page on the publisher's site (<link>) — where the
+   * session's text lives. Phoebe never copies that text: the player's
+   * Transcript pill opens THIS page in the reader, the way the offices open
+   * their readings (owner, 2026-09-18).
+   */
+  pageUrl?: string | null;
 };
 export type ParsedFeed = {
   feedTitle: string | null;
@@ -588,6 +612,7 @@ export function parseFeed(xml: string, limit: number): ParsedFeed {
       firstMatch(item, /<itunes:summary>([\s\S]*?)<\/itunes:summary>/i) ??
       firstMatch(item, /<description>([\s\S]*?)<\/description>/i);
     const itemImage = firstMatch(item, /<itunes:image[^>]*\bhref="([^"]+)"/i);
+    const link = firstMatch(item, /<link>([\s\S]*?)<\/link>/i);
     const seasonRaw = firstMatch(item, /<itunes:season>([\s\S]*?)<\/itunes:season>/i);
     const season = seasonRaw && /^\d+$/.test(seasonRaw.trim()) ? parseInt(seasonRaw.trim(), 10) : null;
     const decodedTitle = title ? decodeXmlText(title) : null;
@@ -601,6 +626,7 @@ export function parseFeed(xml: string, limit: number): ParsedFeed {
       description: plainTextPreview(desc),
       imageUrl: itemImage ? decodeXmlText(itemImage) : null,
       season,
+      pageUrl: link ? decodeXmlText(link).trim() || null : null,
     });
   }
   return {
@@ -832,6 +858,62 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
    * against the listener's day (?date=YYYY-MM-DD, else the Eastern day);
    * then the newest session that isn't in the future; then the newest.
    */
+  /**
+   * Abiding Way's episode for the listener's own day. Their titles ARE the
+   * date — "Friday, September 18, 2026" — which is the only reliable key:
+   * an episode is posted the EVENING BEFORE the day it is for, so its
+   * pubDate belongs to the day before and matching on that would hand back
+   * yesterday's reading. The title is read first; the pubDate rules only
+   * decide what to fall back to (the newest that is not still in the future).
+   */
+  if (slug === "abiding-way-lectio") {
+    const feed = await loadFeed(show, 14);
+    const eps = feed.episodes;
+    const rawDate = String(req.query.date ?? "");
+    const ymd = /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+      ? rawDate
+      : new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
+    /**
+     * Their titles ARE the date — and a weekend is ONE episode for two days,
+     * titled "Saturday & Sunday, September 12/13, 2026", so a day-range has to
+     * answer for both days or Sunday falls through to whatever was posted last
+     * (which by Sunday evening is Monday's).
+     */
+    const titleYmds = (title: string | null | undefined): string[] => {
+      if (!title) return [];
+      const m = /([A-Z][a-z]+)\s+(\d{1,2})(?:\s*\/\s*(\d{1,2}))?,\s*(\d{4})/.exec(title);
+      if (!m) return [];
+      const month = [
+        "january", "february", "march", "april", "may", "june",
+        "july", "august", "september", "october", "november", "december",
+      ].indexOf(m[1]!.toLowerCase());
+      if (month < 0) return [];
+      const mm = String(month + 1).padStart(2, "0");
+      const days = [m[2], m[3]].filter(Boolean) as string[];
+      return days.map((d) => `${m[4]}-${mm}-${String(Number(d)).padStart(2, "0")}`);
+    };
+    const nowIso = new Date().toISOString();
+    // Only items with audio: the feed also carries notices ("Special
+    // Announcement", "Daily Lectio is on temporary hold") that have no
+    // enclosure, and handing one of those back would open a player with
+    // nothing to play.
+    const playable = eps.filter((e) => !!e.audioUrl);
+    const ep = playable.find((e) => titleYmds(e.title).includes(ymd))
+      ?? playable.find((e) => !!e.publishedAt && e.publishedAt <= nowIso)
+      ?? playable[0]
+      ?? null;
+    res.json({
+      feedTitle: feed.feedTitle ?? show.title,
+      title: ep?.title ?? null,
+      audioUrl: ep?.audioUrl ?? null,
+      durationSeconds: ep?.durationSeconds ?? null,
+      publishedAt: ep?.publishedAt ?? null,
+      imageUrl: feed.feedImage ?? ep?.imageUrl ?? null,
+      pageUrl: ep?.pageUrl ?? null,
+    });
+    return;
+  }
+
   if (slug === "pray-as-you-go") {
     const feed = await loadFeed(show, 10);
     const eps = feed.episodes;
@@ -852,6 +934,8 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
       durationSeconds: ep?.durationSeconds ?? null,
       publishedAt: ep?.publishedAt ?? null,
       imageUrl: feed.feedImage ?? ep?.imageUrl ?? null,
+      // Their session page — what the player's Transcript pill opens.
+      pageUrl: ep?.pageUrl ?? null,
     });
     return;
   }
