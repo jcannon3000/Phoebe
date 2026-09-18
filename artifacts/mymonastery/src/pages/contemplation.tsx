@@ -964,23 +964,32 @@ export default function ContemplationPage() {
         </motion.div>
       )}
 
-      {/* View stats and Log Prayer Time — HALF EACH, one row (owner,
-          2026-09-18: "What if we have view stats and log prayer time as two
-          half wide pills on a third row, together as wide as the pills
-          above"). Both are now pills of the same weight, and the row spans
-          exactly what Length and Start span, so the slide reads as three
-          rows rather than a pill, a link and another pill. Only in the
-          immersive begin mode; the full page carries its own tabs. */}
+      {/* View stats — a quiet link under Start that drops the focused slide and
+          opens the full page on the Stats tab. Owner, 2026-09-18, having asked
+          for the half-width pair the day before: "i want the view stats and log
+          prayer time to be reverted to how they were" — so this is c73292a2
+          undone, a link and a pill on separate rows, with the emojis they asked
+          for added. Only in the immersive begin mode; the full page already
+          carries the History/Stats/Learn tabs. */}
       {beginMode && (
-        <div className="flex items-stretch gap-2.5 mt-3.5">
+        <div className="flex items-center justify-center gap-3 mt-3.5">
           <button
             type="button"
             onClick={() => { setTab("stats"); setLocation("/contemplation?tab=stats"); }}
-            className="flex-1 rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "12px 10px" }}
+            className="text-center transition-opacity active:opacity-70"
+            style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
           >
+            <span aria-hidden style={{ marginRight: 6 }}>📊</span>
             {t("contemplation.view_stats", { defaultValue: "View stats" })}<CtaArrow />
           </button>
+        </div>
+      )}
+      {/* Manual log — owner: "have it be a pill... goes not to the
+          contemplation details page, but goes to its own simple UI page."
+          A real pill (not the quiet text link above), its own row so it
+          doesn't crowd against View stats. */}
+      {beginMode && (
+        <div className="flex items-center justify-center mt-3">
           <button
             type="button"
             onClick={() => {
@@ -989,41 +998,38 @@ export default function ContemplationPage() {
               })();
               setLocation(s === "morning" || s === "evening" ? `/contemplation-log?side=${s}` : "/contemplation-log");
             }}
-            className="flex-1 rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "12px 10px" }}
+            className="rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
+            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "10px 20px" }}
           >
-            {t("contemplation.log_prayer_time", { defaultValue: "Log Prayer Time" })}
+            <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>✍🏽</span>
+            <span>{t("contemplation.log_prayer_time", { defaultValue: "Log Prayer Time" })}</span>
           </button>
         </div>
       )}
 
-      {/* The other two ways to keep this time — set apart from Length/Start by a
+      {/* The other ways to keep this time — set apart from Length/Start by a
           space, and tight to each other: someone who doesn't want bare silence
-          today picks one of these instead. */}
-      <div className="mt-6 space-y-2.5">
+          today picks one of these instead. The eyebrow is the owner's (2026-09-18:
+          "above the last three pill there should be an eybrow that says more
+          contemplative practices"), and it is what tells you the group below is
+          a different kind of thing from the sit above it. */}
+      <div className="mt-6">
+        <p
+          style={{
+            color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK, fontSize: 10.5,
+            fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase",
+            margin: "0 0 10px", textAlign: "center",
+          }}
+        >
+          {t("contemplation.more_practices", { defaultValue: "More contemplative practices" })}
+        </p>
+      </div>
+      <div className="space-y-2.5">
         {/* Guided Scripture Meditation — owner, 2026-09-18: "a full lenght pill
             for Guided Scripture Meditation above breathing together that would
             take you to pray as you go". Opens today's Pray As You Go session in
             the app's audio player; listening counts towards contemplation time,
             so it belongs on this slide beside the silent sit. */}
-        {/* Guided Lectio Divina — Abiding Way's daily reading (owner,
-            2026-09-18: "On the contemplation slide, create a third pill that
-            says Guided Lectio Divina"). Heard, like the two below it, and the
-            time counts as contemplation. */}
-        <Link href="/reflect/lectio" className="block">
-          <div
-            className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
-            style={{
-              background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-              border: "1px solid rgba(46,107,64,0.4)",
-              color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
-              padding: "15px", cursor: "pointer",
-            }}
-          >
-            <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>📖</span>
-            <span>{t("contemplation.guided_lectio", { defaultValue: "Guided Lectio Divina" })}</span>
-          </div>
-        </Link>
         <Link href="/reflect/payg" className="block">
           <div
             className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
@@ -1036,6 +1042,25 @@ export default function ContemplationPage() {
           >
             <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>🙇🏽</span>
             <span>{t("contemplation.guided_scripture", { defaultValue: "Guided Scripture Meditation" })}</span>
+          </div>
+        </Link>
+        {/* Guided Lectio Divina — Abiding Way's daily reading. UNDER Guided
+            Scripture Meditation (owner, 2026-09-18: "Guided Lectio Divina was
+            supposed to be under Guided scripture on the contemplation page").
+            Headphones, because it is heard rather than read — the same mark it
+            carries on the Lectio page. */}
+        <Link href="/reflect/lectio" className="block">
+          <div
+            className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
+            style={{
+              background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+              border: "1px solid rgba(46,107,64,0.4)",
+              color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
+              padding: "15px", cursor: "pointer",
+            }}
+          >
+            <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>🎧</span>
+            <span>{t("contemplation.guided_lectio", { defaultValue: "Guided Lectio Divina" })}</span>
           </div>
         </Link>
 
