@@ -835,22 +835,47 @@ export default function ContemplationPage() {
         </div>
       )}
 
-      {/* Cobreathe pill — set apart with a space; opens Co-Breathe's intro slide
-          (the why + Topic/Length/Location), then Begin leads into the breath. */}
-      <Link href="/cobreathe?from=contemplation" onClick={() => primeAudio()} className="block mt-6">
-        <div
-          className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
-          style={{
-            background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-            border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.5 : 0.4})`,
-            color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
-            padding: "15px", cursor: "pointer",
-          }}
-        >
-          <CobreatheGlobe size={18} />
-          <span>{t("cobreathe.title", { defaultValue: "Breathing Together" })}</span>
-        </div>
-      </Link>
+      {/* The other two ways to keep this time — set apart from Length/Start by a
+          space, and tight to each other: someone who doesn't want bare silence
+          today picks one of these instead. */}
+      <div className="mt-6 space-y-2.5">
+        {/* Guided Scripture Meditation — owner, 2026-09-18: "a full lenght pill
+            for Guided Scripture Meditation above breathing together that would
+            take you to pray as you go". Opens today's Pray As You Go session in
+            the app's audio player; listening counts towards contemplation time,
+            so it belongs on this slide beside the silent sit. */}
+        <Link href="/reflect/payg" className="block">
+          <div
+            className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
+            style={{
+              background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+              border: "1px solid rgba(46,107,64,0.4)",
+              color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
+              padding: "15px", cursor: "pointer",
+            }}
+          >
+            <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>🙇🏽</span>
+            <span>{t("contemplation.guided_scripture", { defaultValue: "Guided Scripture Meditation" })}</span>
+          </div>
+        </Link>
+
+        {/* Cobreathe pill — opens Co-Breathe's intro slide (the why +
+            Topic/Length/Location), then Begin leads into the breath. */}
+        <Link href="/cobreathe?from=contemplation" onClick={() => primeAudio()} className="block">
+          <div
+            className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
+            style={{
+              background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+              border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.5 : 0.4})`,
+              color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
+              padding: "15px", cursor: "pointer",
+            }}
+          >
+            <CobreatheGlobe size={18} />
+            <span>{t("cobreathe.title", { defaultValue: "Breathing Together" })}</span>
+          </div>
+        </Link>
+      </div>
     </div>
   );
 
