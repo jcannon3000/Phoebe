@@ -119,13 +119,13 @@ function WeekDoor({ art, label, note, onClick }: {
   art: IconArtwork; label: string; note: string | null; onClick: () => void;
 }) {
   /**
-   * FULL LENGTH (owner, 2026-09-12: "what I wanted you to make full width was
-   * not the browsing … the first thing you get shows you the last icon you
-   * looked at and your suggestion — that's what we wanted full length").
-   * An icon is chosen by LOOKING at it, so each door is the whole artwork
-   * across the card — contained, never cropped, capped so a tall panel
-   * still leaves the next door in reach — with the words beneath it. The
-   * catalogue's rows (IconRow) keep their own shape.
+   * A CARD WITH A THUMBNAIL (owner, 2026-09-18: "For the fist page of the icon
+   * page, i just want it to be cards again, with thumbnails" · "three of them,
+   * most recent, most viewed, suggested"). The full-bleed artwork of
+   * 2026-09-12 gave one door most of the screen, so the three rarely stood
+   * together; a square thumbnail beside the words puts all three in view at
+   * once, which is what choosing between them needs. The artwork still gets
+   * its full size on the opening slide, a tap away.
    */
   return (
     <button
@@ -133,8 +133,8 @@ function WeekDoor({ art, label, note, onClick }: {
       onClick={onClick}
       style={{
         userSelect: "none", WebkitTapHighlightColor: "transparent",
-        width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", gap: 0, textAlign: "left",
-        borderRadius: 16, padding: 0, overflow: "hidden",
+        width: "100%", display: "flex", alignItems: "center", gap: 12, textAlign: "left",
+        borderRadius: 16, padding: 10, overflow: "hidden",
         background: "rgba(240,237,230,0.06)",
         backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
         border: "1px solid rgba(200,212,192,0.18)",
@@ -145,13 +145,22 @@ function WeekDoor({ art, label, note, onClick }: {
         alt=""
         aria-hidden
         decoding="async"
-        style={{ width: "100%", height: "auto", maxHeight: "58vh", objectFit: "contain", display: "block", background: "rgba(0,0,0,0.25)" }}
+        loading="lazy"
+        style={{
+          flex: "0 0 auto", width: 88, height: 88, objectFit: "cover", display: "block",
+          borderRadius: 11, background: "rgba(0,0,0,0.25)", boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
+        }}
       />
-      <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0, padding: "12px 16px 14px" }}>
+      {/* minWidth 0 so a long artist or title ellipsises inside the card
+          instead of pushing the thumbnail off the row. */}
+      <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0, paddingRight: 4 }}>
         <span style={{ color: "rgba(143,175,150,0.9)", fontFamily: FONT, fontSize: 10.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>
           {label}
         </span>
-        <span style={{ color: WARM, fontFamily: FONT, fontSize: 15.5, fontWeight: 600, lineHeight: 1.3 }}>
+        <span style={{
+          color: WARM, fontFamily: FONT, fontSize: 15.5, fontWeight: 600, lineHeight: 1.3,
+          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+        }}>
           {art.title}
         </span>
         {note && (
