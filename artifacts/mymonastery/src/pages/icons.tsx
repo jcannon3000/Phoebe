@@ -33,7 +33,7 @@ import { useTranslation } from "react-i18next";
 import { ICON_CATALOGUE, type IconArtwork } from "@/lib/iconCatalogue";
 import { COMMONS_VISIO_CATALOGUE } from "@/lib/visioCommonsCatalogue";
 import {
-  galleryForDay, getHeldWorks, recordDwell, heldIds, HELD_EVENT,
+  galleryForDay, galleryPool, getHeldWorks, recordDwell, heldIds, HELD_EVENT,
   failedImageIds, rememberFailedImage, type GalleryWork, type HeldWork,
 } from "@/lib/iconGallery";
 import { readingUrl } from "@/lib/visioSelect";
@@ -164,7 +164,43 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
   // Addresses that have already failed on this device, plus any that fail
   // while scrolling: neither is rendered (owner).
   const [broken, setBroken] = useState<Set<number>>(() => failedImageIds());
-  const shown = useMemo(() => works.filter((a) => !broken.has(a.id)), [works, broken]);
+
+  /**
+   * ASK THE SCROLL FOR SOMETHING (owner: "at the top of the scroll they could
+   * enter something in the text and it would refresh the scroll, or they can
+   * just keep scroll").
+   *
+   * Empty is the important case: it is today's forty, untouched, so someone
+   * who never types sees exactly what they saw before this existed. A query
+   * leaves the day behind and searches the whole pool — every icon, every ACT
+   * and Commons work — "until there is not any more related", capped only so a
+   * one-letter query can't try to render the entire catalogue at once.
+   */
+  const [ask, setAsk] = useState("");
+  const pool = useMemo(() => galleryPool(), []);
+  const ASK_CAP = 80;
+  const askedAll = useMemo(() => {
+    const q = norm(ask.trim());
+    if (!q) return null;
+    const words = q.split(/\s+/).filter(Boolean);
+    return pool.filter((a) => {
+      const hay = norm(`${a.title} ${a.artist ?? ""} ${(a.people ?? []).join(" ")}`);
+      return words.every((w) => hay.includes(w));
+    });
+  }, [ask, pool]);
+  // Kept whole and then cut, so the page can say how many there really are.
+  // "mary" matches well past the cap, and an end card reading "that is
+  // everything related" over a truncated list would simply be untrue.
+  const asked = useMemo(() => (askedAll ? askedAll.slice(0, ASK_CAP) : null), [askedAll]);
+  const askedCapped = !!askedAll && askedAll.length > ASK_CAP;
+
+  const shown = useMemo(
+    () => (asked ?? works).filter((a) => !broken.has(a.id)),
+    [asked, works, broken],
+  );
+
+  // A new question starts at its own top, not halfway down the last answer.
+  useEffect(() => { scrollerRef.current?.scrollTo({ top: 0 }); }, [asked]);
   // The picture being looked at and when it arrived — a ref, because the
   // commit has to read them inside a scroll handler and on unmount.
   const currentRef = useRef<{ id: number; since: number } | null>(null);
@@ -308,6 +344,35 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
           scrollSnapType: "y mandatory",
         }}
       >
+        {/* At the top of the scroll, and it scrolls away — the owner's own
+            framing: "they could enter something in the text and it would
+            refresh the scroll, or they can just keep scroll". So it is an
+            offer, not a gate: nobody has to answer anything to look at
+            pictures. Not a snap target, so a flick still lands on artwork. */}
+        <div style={{ padding: "0 18px 20px" }}>
+          <input
+            value={ask}
+            onChange={(e) => setAsk(e.target.value)}
+            placeholder={t("icons.gallery_ask", { defaultValue: "Looking for something? Try \u201cmercy\u201d, \u201cMary\u201d, \u201cthe cross\u201d\u2026" })}
+            inputMode="search"
+            aria-label={t("icons.gallery_ask_label", { defaultValue: "Search the pictures" })}
+            style={{
+              width: "100%", boxSizing: "border-box", fontSize: 16, padding: "11px 14px",
+              borderRadius: 12, outline: "none", color: WARM, fontFamily: FONT,
+              background: "rgba(9,26,16,0.5)", border: "1px solid rgba(200,212,192,0.22)",
+              backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+            }}
+          />
+          {asked && (
+            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12, margin: "8px 2px 0" }}>
+              {shown.length === 0
+                ? t("icons.gallery_ask_none", { defaultValue: "Nothing here by that name. Clear it to go back to today's scroll." })
+                : askedCapped
+                  ? t("icons.gallery_ask_capped", { defaultValue: `First ${shown.length} of ${askedAll?.length ?? 0} pictures` })
+                  : t("icons.gallery_ask_count", { count: shown.length, defaultValue: `${shown.length} pictures` })}
+            </p>
+          )}
+        </div>
         {shown.map((art) => {
           const ref = art.refs.find((r) => !!readingUrl(r)) ?? null;
           return (
@@ -382,10 +447,18 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
         })}
         <section style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "36px 28px 60px", textAlign: "center" }}>
           <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 20, margin: 0, lineHeight: 1.4 }}>
-            {t("icons.gallery_end", { defaultValue: "That is today's scroll." })}
+            {asked
+              ? askedCapped
+                ? t("icons.gallery_end_asked_more", { defaultValue: "There are more of these." })
+                : t("icons.gallery_end_asked", { defaultValue: "That is everything related." })
+              : t("icons.gallery_end", { defaultValue: "That is today's scroll." })}
           </p>
           <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: 0, lineHeight: 1.5, maxWidth: 320 }}>
-            {t("icons.gallery_end_sub", { defaultValue: "The ones you stayed with are kept on the first screen. Tomorrow brings another forty." })}
+            {asked
+              ? askedCapped
+                ? t("icons.gallery_end_asked_more_sub", { defaultValue: "Narrow the search at the top to see further in, or clear it to go back to today's scroll." })
+                : t("icons.gallery_end_asked_sub", { defaultValue: "Clear the search at the top to go back to today's scroll." })
+              : t("icons.gallery_end_sub", { defaultValue: "The ones you stayed with are kept on the first screen. Tomorrow brings another forty." })}
           </p>
           <button
             type="button"
@@ -1089,23 +1162,6 @@ export default function IconsPage() {
                 >
                   {t("icons.week_new", { defaultValue: "Choose a new one →" })}
                 </button>
-                {/* THE GALLERY (owner, 2026-09-18: "where it could be a pill
-                    on the icon page", then 2026-09-18: "Have the browse the
-                    gallery be at the bottom of the page on icons"). Every
-                    library at once, one work per screen; where you stay is
-                    remembered. */}
-                <button
-                  type="button"
-                  onClick={() => setPhase("gallery")}
-                  style={{
-                    userSelect: "none", WebkitTapHighlightColor: "transparent",
-                    width: "100%", borderRadius: 999, padding: "13px 20px", fontSize: 14, fontWeight: 600,
-                    fontFamily: FONT, cursor: "pointer", color: WARM,
-                    background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)",
-                  }}
-                >
-                  {t("icons.gallery_pill", { defaultValue: "🖼️ Scroll Through Images" })}
-                </button>
               </div>
             </>
           )}
@@ -1634,6 +1690,34 @@ export default function IconsPage() {
           )}
         </motion.div>
       </div>
+
+      {/* THE GALLERY (owner, 2026-09-18: "where it could be a pill on the icon
+          page", then "Have the browse the gallery be at the bottom of the page
+          on icons", then "Also i wanted the scroll through images at the bottom
+          of the screen"). The last of those is the reason it sits OUT of the
+          scrolling column: at the foot of the content it still had to be
+          scrolled to, and on a long week card it was below the fold. As a
+          sibling of the scroll it is simply always there.
+
+          Only on the week screen — during a sit, a timer or the log it would
+          be a door out of the thing being done. */}
+      {phase === "week" && (
+        <div style={{ flex: "0 0 auto", padding: "10px 20px calc(env(safe-area-inset-bottom) + 14px)" }}>
+          <button
+            type="button"
+            onClick={() => setPhase("gallery")}
+            style={{
+              userSelect: "none", WebkitTapHighlightColor: "transparent",
+              width: "100%", borderRadius: 999, padding: "13px 20px", fontSize: 14, fontWeight: 600,
+              fontFamily: FONT, cursor: "pointer", color: WARM,
+              background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)",
+              backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+            }}
+          >
+            {t("icons.gallery_pill", { defaultValue: "🖼️ Scroll Through Images" })}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
