@@ -1336,7 +1336,7 @@ export function sendContemplationGoalReminderPush(
 export function sendBreathTogetherPush(userId: number, opts: { others: number }) {
   return sendPushToUser(userId, {
     title: opts.others === 1 ? "You Breathed with 1 other" : `You Breathed with ${opts.others} others`,
-    body: "Breathing Together — one breath, kept across the whole day.",
+    body: "Come back tomorrow to join in the communal prayer for creation",
     path: "/cobreathe",
     threadId: "breath-together",
     collapseId: `breath-together-${userId}`,
