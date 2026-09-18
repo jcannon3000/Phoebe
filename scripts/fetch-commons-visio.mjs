@@ -108,7 +108,15 @@ const main = async () => {
     // artist is still checked against that description, so it can't wander.
     // "Unknown painter" names nobody, so there is nothing to check it against;
     // a photograph of a fresco or mosaic puts the PHOTOGRAPHER in Artist.
-    const metaArtist = plain(m.Artist?.value).replace(/\s*\(\d{3,4}[^)]*\)\s*$/, "") || null;
+    // Commons renders the Artist field from several nodes, so a template can
+    // come back doubled ("Unknown authorUnknown author"); and "Unknown author"
+    // names nobody, so it must not be printed as if it were a painter.
+    const metaArtistRaw = plain(m.Artist?.value).replace(/\s*\(\d{3,4}[^)]*\)\s*$/, "");
+    const halved = metaArtistRaw.length % 2 === 0
+      && metaArtistRaw.slice(0, metaArtistRaw.length / 2) === metaArtistRaw.slice(metaArtistRaw.length / 2)
+      ? metaArtistRaw.slice(0, metaArtistRaw.length / 2)
+      : metaArtistRaw;
+    const metaArtist = /^\s*unknown\b/i.test(halved) ? null : (halved || null);
     const namesSomeone = pick.artist && !/^unknown\b/i.test(pick.artist);
     if (namesSomeone && !`${metaArtist ?? ""} ${plain(m.ImageDescription?.value)} ${plain(m.Credit?.value)}`.toLowerCase().includes(pick.artist.toLowerCase().split(" ").pop())) {
       dropped.push([pick.file, `artist "${pick.artist}" not named in the file's metadata`]); continue;
