@@ -36,6 +36,25 @@
 
 import Foundation
 import Capacitor
+
+/**
+ * WHO HOLDS THE SHARED AUDIO SESSION.
+ *
+ * AVAudioSession is one object for the whole app, and two plugins write to it:
+ * PhoebeAudioPlugin (chimes, swells, the sit's bell) wants `.ambient` so
+ * effects honour the mute switch, and PhoebeMusicPlugin wants an exclusive
+ * `.playback` so Apple Music keeps playing in the background with lock-screen
+ * controls. Without an arbiter the last writer won, in both directions.
+ *
+ * So: music raises this flag while it is playing, and the audio plugin leaves
+ * the category alone while it is up. Set on the main actor from the music
+ * plugin's own paths only, and read on the same paths — a plain flag is the
+ * right weight for a question with one writer.
+ */
+enum PhoebeSessionOwner {
+    /// True from the moment Apple Music takes the session until it stops.
+    static var musicHolds = false
+}
 import AVFoundation
 import UserNotifications
 import CoreHaptics
@@ -304,13 +323,33 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // 2026-09-14). The cleanup timer is valid from scheduling until ~10s
         // after the bell, when it relaxes the session itself.
         let bellPending = cleanupTimer?.isValid ?? false
+        // WHILE APPLE MUSIC HOLDS THE SESSION, LEAVE THE CATEGORY ALONE.
+        // There is one shared session and two plugins with opposite needs, and
+        // before this the last writer won: a chime mid-office set .ambient,
+        // which silenced the office playlist and dropped its background
+        // licence; and after a hymn the session stayed .playback, so ambient
+        // effects leaked through the mute switch (audit, 2026-09-18 —
+        // reference_audio_silent_switch).
+        //
+        // This app's own bells and swells sound over the music regardless of
+        // category — .mixWithOthers governs OTHER apps, not our own players —
+        // so standing down here costs the bell nothing and keeps MusicKit's
+        // exclusive .playback, which is what carries the Now Playing slot and
+        // the lock-screen controls.
+        if PhoebeSessionOwner.musicHolds {
+            try session.setActive(true, options: [])
+            sessionPrimed = true
+            return
+        }
         try session.setCategory(bell || bellPending ? .playback : .ambient, mode: .default, options: [.mixWithOthers])
         try session.setActive(true, options: [])
         sessionPrimed = true
     }
 
-    /// Back to the silent-switch-honouring category once no bell is pending.
+    /// Back to the silent-switch-honouring category once no bell is pending —
+    /// unless Apple Music is playing, in which case relaxing would cut it off.
     private func relaxSession() {
+        if PhoebeSessionOwner.musicHolds { return }
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
     }

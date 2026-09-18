@@ -67,8 +67,17 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     /// ducking it out.
     private func activateAudioSession() {
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            // EXCLUSIVE .playback, NOT .mixWithOthers. Mixing forfeits the
+            // Now Playing slot, which is what gives the lock screen and
+            // Control Center their play/pause and skip — a prayer playlist
+            // with no lock-screen controls is a playlist you cannot stop
+            // without unlocking the phone (audit, 2026-09-18).
+            //
+            // Phoebe's own bells and breath swells still sound over this:
+            // .mixWithOthers governs OTHER apps, not our own players.
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
             try AVAudioSession.sharedInstance().setActive(true)
+            PhoebeSessionOwner.musicHolds = true
         } catch {
             // Non-fatal: MusicKit generally manages its own session. If this
             // fails the hymn still plays; it may just duck other audio.
@@ -265,6 +274,10 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
             let player = ApplicationMusicPlayer.shared
             player.stop()
             player.queue = ApplicationMusicPlayer.Queue()
+            // Hand the session back, so the next chime returns to .ambient and
+            // effects honour the mute switch again.
+            PhoebeSessionOwner.musicHolds = false
+            try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
             call.resolve()
             return
         }

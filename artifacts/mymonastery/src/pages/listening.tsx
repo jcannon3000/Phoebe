@@ -16,8 +16,8 @@ import { apiRequest, ApiError } from "@/lib/queryClient";
 import { enqueueWrite } from "@/lib/writeOutbox";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 import { openExternal } from "@/lib/openExternal";
-import { hasAppleMusicNative, appleMusicNativeReady, playAppleMusicNative, pauseAppleMusicNative, resumeAppleMusicNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
-import { requestAppleMusicNative } from "@/lib/appleMusicNative";
+import { hasAppleMusicNative, playAppleMusicNative, pauseAppleMusicNative, resumeAppleMusicNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
+import { appleMusicFeaturesReady, enableAppleMusic, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
 import { getMusicService, setMusicService, MUSIC_SERVICES, MUSIC_SERVICE_EVENT, type MusicService } from "@/lib/musicService";
 import { SpotifyMark, AppleMark, YouTubeMark } from "@/components/ServiceMarks";
 import { takePendingListen } from "@/lib/pendingListen";
@@ -251,24 +251,49 @@ export default function ListeningPage() {
     setMusicService(v);
     setService(v);
     if (v !== "apple" || !hasAppleMusicNative()) return;
-    void requestAppleMusicNative().then((r) => setCanPlayInApp(r.authorized && r.subscribed));
+    // Picking Apple Music here is the same deliberate act as the Settings
+    // switch, so it goes through the same door: enableAppleMusic asks iOS AND
+    // records the opt-in. Without that this screen could be authorized while
+    // lib/appleMusicFeatures still read "not opted in", and in-app playback
+    // would never start no matter what they granted.
+    void enableAppleMusic().then((r) => setCanPlayInApp(r.ok));
   }
 
   const [canPlayInApp, setCanPlayInApp] = useState(false);
   useEffect(() => {
     let alive = true;
-    void appleMusicNativeReady().then((ok) => { if (alive) setCanPlayInApp(ok); });
-    return () => { alive = false; };
+    // appleMusicFeaturesReady, NOT appleMusicNativeReady: it also requires the
+    // opt-in, which is what keeps a permission sheet from springing out of a
+    // play button somebody pressed expecting sound.
+    const ask = () => { void appleMusicFeaturesReady().then((ok) => { if (alive) setCanPlayInApp(ok); }); };
+    ask();
+    window.addEventListener(APPLE_MUSIC_EVENT, ask);
+    return () => { alive = false; window.removeEventListener(APPLE_MUSIC_EVENT, ask); };
   }, []);
-  useEffect(() => () => { void stopAppleMusicNative(); }, []);
+  /**
+   * Nothing may start playing after this screen is gone. The recents path takes
+   * a round trip to look the song up, and unmount's stop used to run BEFORE the
+   * play it was meant to cancel — so the music started with no player on screen
+   * and no in-app way to stop it (audit, 2026-09-18).
+   */
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => { aliveRef.current = false; void stopAppleMusicNative(); };
+  }, []);
 
   /** Start a catalog song, or fall back to opening the service. */
   function playSearchResult(r: SearchResult) {
-    const id = r.service === "apple" && r.kind === "song" ? r.appleId : undefined;
+    // `service` is THIS listener's chosen service; `r.service` is only where
+    // the search result came from. Reading the result alone handed a Spotify
+    // listener Apple Music (audit, 2026-09-18).
+    const id = service === "apple" && r.service === "apple" && r.kind === "song" ? r.appleId : undefined;
     const title = r.subtitle ? `${r.title} — ${r.subtitle}` : r.title;
-    // The native branch is only entered when the plugin is really there, so on
-    // the web the openExternal below stays inside the tap and can't be blocked.
-    if (id && hasAppleMusicNative()) {
+    // canPlayInApp, not "the plugin exists": entering the native branch on mere
+    // presence let playAppleMusicNative raise an authorization sheet from a tap
+    // that promised music. On the web this is false, so the openExternal below
+    // stays inside the tap and can't be blocked.
+    if (id && canPlayInApp) {
       if (nowPlaying?.id === id) { void stopAppleMusicNative(); setNowPlaying(null); return; }
       void playAppleMusicNative(id).then((ok) => {
         if (ok) setNowPlaying({ id, title });
@@ -293,11 +318,15 @@ export default function ListeningPage() {
     // Phoebe is holding the music and this beat becomes the player, or the
     // music is somewhere else and there is nothing left to do here but write it
     // down — so it goes straight to the log, already filled in by chooseRecent.
-    if (service !== "apple" || !hasAppleMusicNative()) { setDeckStep(LOG); return; }
+    if (service !== "apple" || !canPlayInApp) { setDeckStep(LOG); return; }
     void (async () => {
       const hits = await searchCatalog(r.what).catch(() => [] as SearchResult[]);
       const song = hits.find((h) => h.service === "apple" && h.kind === "song" && h.appleId);
+      // Left mid-lookup: don't start anything, and make sure nothing slipped
+      // past the unmount stop.
+      if (!aliveRef.current) { void stopAppleMusicNative(); return; }
       if (song?.appleId && await playAppleMusicNative(song.appleId)) {
+        if (!aliveRef.current) { void stopAppleMusicNative(); return; }
         // The catalogue hit knows the cover even when the logged row didn't.
         if (song.artworkUrl) setArtworkUrl(song.artworkUrl);
         setNowPlaying({ id: song.appleId, title: r.what });
