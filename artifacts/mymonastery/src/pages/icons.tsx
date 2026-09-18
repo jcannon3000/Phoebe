@@ -34,7 +34,7 @@ import { ICON_CATALOGUE, type IconArtwork } from "@/lib/iconCatalogue";
 import { COMMONS_VISIO_CATALOGUE } from "@/lib/visioCommonsCatalogue";
 import {
   galleryForDay, getHeldWorks, recordDwell, heldIds, HELD_EVENT,
-  GALLERY_HOLD_MS, type GalleryWork, type HeldWork,
+  failedImageIds, rememberFailedImage, type GalleryWork, type HeldWork,
 } from "@/lib/iconGallery";
 import { readingUrl } from "@/lib/visioSelect";
 import { ACT_CATALOGUE } from "@/lib/visioCatalogue";
@@ -131,13 +131,17 @@ function iconPool(): IconArtwork[] {
  * straight into it, which is the whole point of choosing one.
  */
 /**
- * THE GALLERY — scroll, and where you stay is remembered (owner, 2026-09-18).
+ * THE GALLERY — a scroll of pictures (owner, 2026-09-18: "what if we create an
+ * image scroll feed like instagram where people browse through images, holding
+ * where they findiing meeting", then "make it more like an instagam ui", "we
+ * want to see the title", "I asked for a pill button if there was a scripture
+ * asociated", and "we want to see the next one coming underneath").
  *
- * One work per screen, snapping, the words held back until a picture has kept
- * you: past GALLERY_HOLD_MS the title, the hand and the year fade in, with the
- * passage the work carries if it carries one. Nothing is asked and nothing is
- * credited — scrolling on costs nothing, and the time spent is what tomorrow's
- * order is built from (lib/iconGallery).
+ * So: a FEED, not a slideshow. Each picture is a card at its own height with
+ * its name under it and its pills beneath that, and the next card shows at the
+ * bottom of the screen — the scroll never snaps and nothing is hidden waiting
+ * to be earned. Holding asks nothing; the seconds given to each picture are
+ * kept on the device and order tomorrow's scroll (lib/iconGallery).
  */
 function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
   works: GalleryWork[];
@@ -147,10 +151,13 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const [heldNow, setHeldNow] = useState<Set<number>>(held);
   const scrollerRef = useRef<HTMLDivElement>(null);
-  // The work on screen and when it arrived — a ref, because the commit has to
-  // read them inside a scroll handler and on unmount, not a render later.
+  // Addresses that have already failed on this device, plus any that fail
+  // while scrolling: neither is rendered (owner).
+  const [broken, setBroken] = useState<Set<number>>(() => failedImageIds());
+  const shown = useMemo(() => works.filter((a) => !broken.has(a.id)), [works, broken]);
+  // The picture being looked at and when it arrived — a ref, because the
+  // commit has to read them inside a scroll handler and on unmount.
   const currentRef = useRef<{ id: number; since: number } | null>(null);
 
   const commit = () => {
@@ -163,51 +170,35 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
   };
 
   /**
-   * WHICH WORK IS ON SCREEN, from the scroll position rather than an
-   * IntersectionObserver: one page per screen means the index is just
-   * scrollTop / height, it needs no callbacks to be delivered, and the same
-   * arithmetic tells us the moment a page is left so its seconds can be
-   * committed. The clock is stopped when the app goes away — a phone put down
-   * face-up on a picture must not report the attention nobody paid.
+   * WHICH PICTURE IS BEING LOOKED AT: the card nearest the middle of the
+   * screen. A feed has no pages, so there is no index to divide for — and the
+   * centre is what a person is actually reading. The clock stops when the app
+   * goes away, so a phone set down face-up reports nothing.
    */
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    const idAt = (index: number): number | null => {
-      const node = el.children[index] as HTMLElement | undefined;
-      const id = node ? Number(node.dataset.workId) : NaN;
-      return Number.isFinite(id) ? id : null;
-    };
-    // The words appear when the picture has kept you: one timer, armed when a
-    // picture arrives and cleared when it is left — no polling, and nothing
-    // fires for a picture scrolled past.
-    let revealTimer = 0;
-    const armReveal = (id: number, elapsed: number) => {
-      if (revealTimer) window.clearTimeout(revealTimer);
-      const left = Math.max(0, GALLERY_HOLD_MS - elapsed);
-      revealTimer = window.setTimeout(() => {
-        revealTimer = 0;
-        if (currentRef.current?.id === id) setHeldNow((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
-      }, left);
-    };
     const sync = () => {
-      if (document.visibilityState === "hidden") { commit(); if (revealTimer) { window.clearTimeout(revealTimer); revealTimer = 0; } return; }
-      const height = el.clientHeight || 1;
-      const id = idAt(Math.round(el.scrollTop / height));
-      if (id == null) { commit(); return; }
-      if (currentRef.current?.id !== id) {
-        commit();
-        currentRef.current = { id, since: Date.now() };
-        armReveal(id, 0);
-      } else if (!revealTimer) {
-        armReveal(id, Date.now() - currentRef.current.since);
+      if (document.visibilityState === "hidden") { commit(); return; }
+      const mid = el.clientHeight / 2;
+      let bestId: number | null = null;
+      let bestGap = Infinity;
+      for (const child of Array.from(el.children)) {
+        const node = child as HTMLElement;
+        const id = Number(node.dataset.workId);
+        if (!Number.isFinite(id)) continue;
+        const top = node.offsetTop - el.scrollTop;
+        const gap = Math.abs(top + node.offsetHeight / 2 - mid);
+        if (gap < bestGap) { bestGap = gap; bestId = id; }
       }
+      if (bestId == null) { commit(); return; }
+      if (currentRef.current?.id !== bestId) { commit(); currentRef.current = { id: bestId, since: Date.now() }; }
     };
     sync();
     let pending = 0;
     const onScroll = () => {
       if (pending) return;
-      pending = window.setTimeout(() => { pending = 0; sync(); }, 120);
+      pending = window.setTimeout(() => { pending = 0; sync(); }, 150);
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     const onVisibility = () => { if (document.visibilityState === "hidden") commit(); else sync(); };
@@ -216,83 +207,92 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
       el.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onVisibility);
       if (pending) window.clearTimeout(pending);
-      if (revealTimer) window.clearTimeout(revealTimer);
       commit();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [works]);
-
+  }, [shown]);
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "#050D08" }}>
-      <button
-        type="button"
-        onClick={() => { commit(); onClose(); }}
-        aria-label={t("common.close", { defaultValue: "Close" })}
+      {/* A thin bar over the scroll, so the way out is always in reach. */}
+      <div
         style={{
-          position: "absolute", top: "max(14px, env(safe-area-inset-top))", right: 14, zIndex: 3,
-          width: 38, height: 38, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(9,26,16,0.5)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
-          border: "1px solid rgba(200,212,192,0.25)", color: WARM, cursor: "pointer", padding: 0,
+          position: "absolute", top: 0, left: 0, right: 0, zIndex: 3,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "max(10px, env(safe-area-inset-top)) 14px 10px",
+          background: "linear-gradient(180deg, rgba(5,13,8,0.9) 0%, rgba(5,13,8,0) 100%)",
         }}
       >
-        ✕
-      </button>
+        <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 600 }}>
+          {t("icons.gallery_title", { defaultValue: "Images" })}
+        </span>
+        <button
+          type="button"
+          onClick={() => { commit(); onClose(); }}
+          aria-label={t("common.close", { defaultValue: "Close" })}
+          style={{
+            width: 34, height: 34, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(9,26,16,0.55)", border: "1px solid rgba(200,212,192,0.25)", color: WARM, cursor: "pointer", padding: 0,
+          }}
+        >
+          ✕
+        </button>
+      </div>
       <div
         ref={scrollerRef}
         style={{
-          height: "100%", overflowY: "auto", scrollSnapType: "y mandatory",
-          WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
+          height: "100%", overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
+          padding: "calc(max(10px, env(safe-area-inset-top)) + 44px) 0 calc(env(safe-area-inset-bottom, 0px) + 28px)",
         }}
       >
-        {works.map((art) => {
-          const shown = heldNow.has(art.id);
+        {shown.map((art) => {
           const ref = art.refs.find((r) => !!readingUrl(r)) ?? null;
           return (
-            <section
-              key={art.id}
-              data-work-id={art.id}
-              style={{
-                height: "100%", scrollSnapAlign: "start", position: "relative",
-                display: "flex", alignItems: "center", justifyContent: "center", padding: "0 12px",
-              }}
-            >
+            <section key={art.id} data-work-id={art.id} style={{ padding: "0 0 26px" }}>
               <img
                 src={art.img}
                 alt={art.title}
                 loading="lazy"
                 decoding="async"
-                style={{ maxWidth: "100%", maxHeight: "82vh", objectFit: "contain", borderRadius: 10, boxShadow: "0 18px 50px rgba(0,0,0,0.55)" }}
+                // The whole work, never cropped — and capped at 68vh so the
+                // next one always shows underneath (owner).
+                onError={() => { rememberFailedImage(art.id); setBroken((prev) => (prev.has(art.id) ? prev : new Set(prev).add(art.id))); }}
+                style={{ display: "block", width: "100%", height: "auto", maxHeight: "68vh", objectFit: "contain", background: "rgba(255,255,255,0.03)" }}
               />
-              {/* The words, once the picture has kept you. They fade in place. */}
-              <div
-                style={{
-                  position: "absolute", left: 0, right: 0, bottom: 0, padding: "48px 22px calc(env(safe-area-inset-bottom, 0px) + 22px)",
-                  display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start",
-                  background: "linear-gradient(180deg, rgba(5,13,8,0) 0%, rgba(5,13,8,0.82) 60%)",
-                  opacity: shown ? 1 : 0, transition: "opacity 700ms ease-out", pointerEvents: shown ? "auto" : "none",
-                }}
-              >
-                <span style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 19, lineHeight: 1.3 }}>{art.title}</span>
-                {(art.artist || art.date) && (
-                  <span style={{ color: FAINT, fontFamily: FONT, fontSize: 12 }}>
-                    {[art.artist ? tidyArtist(art.artist) : null, art.date].filter(Boolean).join(" · ")}
-                  </span>
-                )}
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+              <div style={{ padding: "12px 18px 0", display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* The words on the left, the way on at the right (owner:
+                    "under each one, maybe to the right, it should say sit with
+                    it that would then chose that for the actiual praying with
+                    icons") — tapping it picks this work for the practice. */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                    <span style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 18, lineHeight: 1.3 }}>{art.title}</span>
+                    {(art.artist || art.date) && (
+                      <span style={{ color: FAINT, fontFamily: FONT, fontSize: 12 }}>
+                        {[art.artist ? tidyArtist(art.artist) : null, art.date].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
+                    {held.has(art.id) && (
+                      <span style={{ color: "rgba(143,175,150,0.75)", fontFamily: FONT, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                        {t("icons.gallery_held", { defaultValue: "You stayed with this" })}
+                      </span>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={() => { commit(); onPray(art); }}
                     style={{
-                      borderRadius: 999, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: FONT,
-                      color: WARM, background: "rgba(46,107,64,0.42)", border: "1px solid rgba(143,175,150,0.45)", cursor: "pointer",
+                      flex: "0 0 auto", borderRadius: 999, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: FONT,
+                      color: WARM, background: "rgba(46,107,64,0.42)", border: "1px solid rgba(143,175,150,0.45)", cursor: "pointer", whiteSpace: "nowrap",
                     }}
                   >
                     {t("icons.gallery_pray", { defaultValue: "Sit with this" })}
                   </button>
-                  {/* The passage this picture paints, when it paints one (owner:
-                      "they might be able to open passages that relate to that
-                      image if there is one"). */}
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {/* The passage the picture paints, whenever it paints one
+                      (owner: "I asked for a pill button if there was a scripture
+                      asociated") — shown from the first frame, not earned. */}
                   {ref && (
                     <button
                       type="button"
@@ -302,7 +302,7 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
                         color: WARM, background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)", cursor: "pointer",
                       }}
                     >
-                      {t("icons.gallery_read", { defaultValue: `Read ${ref}`, ref })}
+                      📖 {ref}
                     </button>
                   )}
                 </div>
@@ -310,9 +310,9 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
             </section>
           );
         })}
-        <section style={{ height: "100%", scrollSnapAlign: "start", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "0 28px", textAlign: "center" }}>
-          <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 21, margin: 0, lineHeight: 1.4 }}>
-            {t("icons.gallery_end", { defaultValue: "That is today's gallery." })}
+        <section style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "36px 28px 60px", textAlign: "center" }}>
+          <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 20, margin: 0, lineHeight: 1.4 }}>
+            {t("icons.gallery_end", { defaultValue: "That is today's scroll." })}
           </p>
           <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: 0, lineHeight: 1.5, maxWidth: 320 }}>
             {t("icons.gallery_end_sub", { defaultValue: "The ones you stayed with are kept on the first screen. Tomorrow brings another forty." })}
@@ -1008,21 +1008,6 @@ export default function IconsPage() {
                     onClick={() => chooseForWeek(weekDoors.suggested!)}
                   />
                 )}
-                {/* THE GALLERY (owner, 2026-09-18: "where it could be a pill
-                    on the icon page"). Every library at once, one work per
-                    screen; where you stay is remembered. */}
-                <button
-                  type="button"
-                  onClick={() => setPhase("gallery")}
-                  style={{
-                    userSelect: "none", WebkitTapHighlightColor: "transparent",
-                    width: "100%", borderRadius: 999, padding: "13px 20px", fontSize: 14, fontWeight: 600,
-                    fontFamily: FONT, cursor: "pointer", color: WARM,
-                    background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)",
-                  }}
-                >
-                  {t("icons.gallery_pill", { defaultValue: "🖼️ Browse the gallery" })}
-                </button>
                 <button
                   type="button"
                   onClick={openBrowse}
@@ -1033,6 +1018,23 @@ export default function IconsPage() {
                   }}
                 >
                   {t("icons.week_new", { defaultValue: "Choose a new one →" })}
+                </button>
+                {/* THE GALLERY (owner, 2026-09-18: "where it could be a pill
+                    on the icon page", then 2026-09-18: "Have the browse the
+                    gallery be at the bottom of the page on icons"). Every
+                    library at once, one work per screen; where you stay is
+                    remembered. */}
+                <button
+                  type="button"
+                  onClick={() => setPhase("gallery")}
+                  style={{
+                    userSelect: "none", WebkitTapHighlightColor: "transparent",
+                    width: "100%", borderRadius: 999, padding: "13px 20px", fontSize: 14, fontWeight: 600,
+                    fontFamily: FONT, cursor: "pointer", color: WARM,
+                    background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)",
+                  }}
+                >
+                  {t("icons.gallery_pill", { defaultValue: "🖼️ Scroll Through Images" })}
                 </button>
               </div>
             </>

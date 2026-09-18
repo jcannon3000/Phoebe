@@ -183,3 +183,34 @@ export function affinityScore(art: GalleryWork, weights: Map<string, number>): n
   for (const p of art.people) score += weights.get(`person:${p}`) ?? 0;
   return score;
 }
+
+/**
+ * PICTURES THAT DO NOT LOAD ARE NOT SHOWN (owner, 2026-09-18: "make sure that
+ * any that are not loading do not show up"). A catalogue this size, drawn from
+ * four sources, will always have a few dead addresses — a museum re-pathing a
+ * file, a Commons thumb that 404s. The feed hides one the moment its image
+ * errors and remembers it, so it never appears again on this device; a work
+ * that only failed because the connection did gets a fresh chance whenever the
+ * list is cleared.
+ */
+const FAILED_KEY = "phoebe:icon-img-failed";
+
+export function failedImageIds(): Set<number> {
+  try {
+    const raw = localStorage.getItem(FAILED_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter((v): v is number => typeof v === "number") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function rememberFailedImage(id: number): void {
+  try {
+    const ids = failedImageIds();
+    if (ids.has(id)) return;
+    ids.add(id);
+    // Capped: a spell offline must not blacklist the whole library for good.
+    localStorage.setItem(FAILED_KEY, JSON.stringify([...ids].slice(-300)));
+  } catch { /* ignore */ }
+}
