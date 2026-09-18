@@ -152,6 +152,15 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
 }) {
   const { t } = useTranslation();
   const scrollerRef = useRef<HTMLDivElement>(null);
+  // Owner: "can the image scroll over a leaf backround instead of just dark
+  // green". Chosen once per opening, not per picture — a ground that changed
+  // under you as you scrolled would compete with the works. The pictures are
+  // objectFit: contain over a near-transparent panel, so the leaves show
+  // through the letterboxing on either side of every work.
+  const leaf = useMemo(
+    () => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
+    [],
+  );
   // Addresses that have already failed on this device, plus any that fail
   // while scrolling: neither is rendered (owner).
   const [broken, setBroken] = useState<Set<number>>(() => failedImageIds());
@@ -159,6 +168,10 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
   // The picture being looked at and when it arrived — a ref, because the
   // commit has to read them inside a scroll handler and on unmount.
   const currentRef = useRef<{ id: number; since: number } | null>(null);
+  // Which picture the haptic has already acknowledged. Separate from
+  // currentRef because the dwell clock changes the moment a new card takes the
+  // centre — mid-flick — whereas the tick belongs to the SETTLE.
+  const lastTapRef = useRef<number | null>(null);
 
   const commit = () => {
     const cur = currentRef.current;
@@ -195,10 +208,31 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
       if (currentRef.current?.id !== bestId) { commit(); currentRef.current = { id: bestId, since: Date.now() }; }
     };
     sync();
+    lastTapRef.current = currentRef.current?.id ?? null;
     let pending = 0;
+    let settle = 0;
+    /**
+     * Two clocks on one scroll. The 150ms throttle keeps the dwell tracker
+     * honest while the finger is moving; the settle timer is the haptic, and
+     * only fires once the scrolling has actually stopped — owner: "snap to the
+     * center when they let go, with a haptic". It reads currentRef, the same
+     * centre-nearest picture the dwell uses, so the tick can never disagree
+     * with the thing being timed.
+     */
     const onScroll = () => {
-      if (pending) return;
-      pending = window.setTimeout(() => { pending = 0; sync(); }, 150);
+      if (!pending) pending = window.setTimeout(() => { pending = 0; sync(); }, 150);
+      if (settle) window.clearTimeout(settle);
+      settle = window.setTimeout(() => {
+        settle = 0;
+        sync();
+        const id = currentRef.current?.id ?? null;
+        if (id != null && id !== lastTapRef.current) {
+          lastTapRef.current = id;
+          // A light tick — the snap landing, not an event. The native shell
+          // turns this into a real haptic; on the web it is silent.
+          try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } })); } catch { /* web */ }
+        }
+      }, 140);
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     const onVisibility = () => { if (document.visibilityState === "hidden") commit(); else sync(); };
@@ -207,6 +241,7 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
       el.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onVisibility);
       if (pending) window.clearTimeout(pending);
+      if (settle) window.clearTimeout(settle);
       commit();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -214,6 +249,24 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "#050D08" }}>
+      {leaf && (
+        <>
+          <img
+            src={leaf}
+            alt=""
+            aria-hidden
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.38, zIndex: 0 }}
+          />
+          {/* Held down enough that a pale work still reads against it. */}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute", inset: 0, zIndex: 0,
+              background: "linear-gradient(180deg, rgba(5,13,8,0.74) 0%, rgba(5,13,8,0.66) 45%, rgba(5,13,8,0.8) 100%)",
+            }}
+          />
+        </>
+      )}
       {/* A thin bar over the scroll, so the way out is always in reach. */}
       <div
         style={{
@@ -241,14 +294,47 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
       <div
         ref={scrollerRef}
         style={{
+          position: "relative", zIndex: 1,
           height: "100%", overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
           padding: "calc(max(10px, env(safe-area-inset-top)) + 44px) 0 calc(env(safe-area-inset-bottom, 0px) + 28px)",
+          // Each picture settles in the middle when the finger lifts (owner).
+          // The snap lives on the IMAGE, not the card: the card also carries
+          // the title and the pills, so centring the card would leave the
+          // picture sitting high. And the cards keep their own height — an
+          // earlier version paged the whole screen, which the owner replaced
+          // with "more like an instagam ui … we want to see the next one
+          // coming underneath". Centring a 68vh picture leaves the next one
+          // peeking below, so the feed still reads as a feed.
+          scrollSnapType: "y mandatory",
         }}
       >
         {shown.map((art) => {
           const ref = art.refs.find((r) => !!readingUrl(r)) ?? null;
           return (
-            <section key={art.id} data-work-id={art.id} style={{ padding: "0 0 26px" }}>
+            <section
+              key={art.id}
+              data-work-id={art.id}
+              // A subtle line between pictures (owner: "have some divider
+              // between the images, just a suttle lione") — a hairline, not a
+              // rule: enough to say one work has ended and another begun.
+              style={{ padding: "0 0 22px", marginBottom: 22, borderBottom: "1px solid rgba(200,212,192,0.11)" }}
+            >
+              {/* The title goes ABOVE the picture (owner) — you are told what
+                  you are about to look at, rather than looking and then
+                  checking underneath what it was. */}
+              <div style={{ padding: "0 18px 10px", display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                <span style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 18, lineHeight: 1.3 }}>{art.title}</span>
+                {(art.artist || art.date) && (
+                  <span style={{ color: FAINT, fontFamily: FONT, fontSize: 12 }}>
+                    {[art.artist ? tidyArtist(art.artist) : null, art.date].filter(Boolean).join(" · ")}
+                  </span>
+                )}
+                {held.has(art.id) && (
+                  <span style={{ color: "rgba(143,175,150,0.75)", fontFamily: FONT, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                    {t("icons.gallery_held", { defaultValue: "You stayed with this" })}
+                  </span>
+                )}
+              </div>
               <img
                 src={art.img}
                 alt={art.title}
@@ -257,55 +343,39 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
                 // The whole work, never cropped — and capped at 68vh so the
                 // next one always shows underneath (owner).
                 onError={() => { rememberFailedImage(art.id); setBroken((prev) => (prev.has(art.id) ? prev : new Set(prev).add(art.id))); }}
-                style={{ display: "block", width: "100%", height: "auto", maxHeight: "68vh", objectFit: "contain", background: "rgba(255,255,255,0.03)" }}
+                style={{ display: "block", width: "100%", height: "auto", maxHeight: "68vh", objectFit: "contain", background: "rgba(255,255,255,0.03)", scrollSnapAlign: "center" }}
               />
-              <div style={{ padding: "12px 18px 0", display: "flex", flexDirection: "column", gap: 8 }}>
-                {/* The words on the left, the way on at the right (owner:
-                    "under each one, maybe to the right, it should say sit with
-                    it that would then chose that for the actiual praying with
-                    icons") — tapping it picks this work for the practice. */}
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-                    <span style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 18, lineHeight: 1.3 }}>{art.title}</span>
-                    {(art.artist || art.date) && (
-                      <span style={{ color: FAINT, fontFamily: FONT, fontSize: 12 }}>
-                        {[art.artist ? tidyArtist(art.artist) : null, art.date].filter(Boolean).join(" · ")}
-                      </span>
-                    )}
-                    {held.has(art.id) && (
-                      <span style={{ color: "rgba(143,175,150,0.75)", fontFamily: FONT, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                        {t("icons.gallery_held", { defaultValue: "You stayed with this" })}
-                      </span>
-                    )}
-                  </div>
+              {/* Both ways on, in one row (owner: "have the sit with this put
+                  that next to the scripture pill" … "if there is no scripture,
+                  just have it on the left"). A left-aligned row gives the
+                  second for free: with no passage, Sit with this simply stands
+                  alone on the left. */}
+              <div style={{ padding: "12px 18px 0", display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => { commit(); onPray(art); }}
+                  style={{
+                    borderRadius: 999, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: FONT,
+                    color: WARM, background: "rgba(46,107,64,0.42)", border: "1px solid rgba(143,175,150,0.45)", cursor: "pointer", whiteSpace: "nowrap",
+                  }}
+                >
+                  {t("icons.gallery_pray", { defaultValue: "Sit with this" })}
+                </button>
+                {/* The passage the picture paints, whenever it paints one
+                    (owner: "I asked for a pill button if there was a scripture
+                    asociated") — shown from the first frame, not earned. */}
+                {ref && (
                   <button
                     type="button"
-                    onClick={() => { commit(); onPray(art); }}
+                    onClick={() => { const u = readingUrl(ref); if (u) openExternal(u, { reader: true }); }}
                     style={{
-                      flex: "0 0 auto", borderRadius: 999, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: FONT,
-                      color: WARM, background: "rgba(46,107,64,0.42)", border: "1px solid rgba(143,175,150,0.45)", cursor: "pointer", whiteSpace: "nowrap",
+                      borderRadius: 999, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: FONT,
+                      color: WARM, background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)", cursor: "pointer",
                     }}
                   >
-                    {t("icons.gallery_pray", { defaultValue: "Sit with this" })}
+                    📖 {ref}
                   </button>
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {/* The passage the picture paints, whenever it paints one
-                      (owner: "I asked for a pill button if there was a scripture
-                      asociated") — shown from the first frame, not earned. */}
-                  {ref && (
-                    <button
-                      type="button"
-                      onClick={() => { const u = readingUrl(ref); if (u) openExternal(u, { reader: true }); }}
-                      style={{
-                        borderRadius: 999, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: FONT,
-                        color: WARM, background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)", cursor: "pointer",
-                      }}
-                    >
-                      📖 {ref}
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
             </section>
           );
