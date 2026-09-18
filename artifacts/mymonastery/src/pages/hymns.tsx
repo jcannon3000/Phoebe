@@ -140,9 +140,15 @@ export default function HymnsPage() {
   // A frosted pill with a transparent native <select> laid over it, so a tap
   // opens the iOS wheel — the same control the contemplation length picker
   // uses, and the reason this isn't a row of buttons.
+  //
+  // "Play with", not "Open in" (owner, 2026-09-18: "If someone turns apple
+  // music on and hits play on a hymn, it doesnt need to open the apple music
+  // app anymore"). With the native player an Apple Music subscriber never
+  // leaves Phoebe, so a label promising to open their app would be describing
+  // the fallback rather than what happens. "Play with" is true either way.
   const chooser = (
     <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
-      <span style={{ color: FAINT, fontFamily: FONT, fontSize: 12 }}>Open in</span>
+      <span style={{ color: FAINT, fontFamily: FONT, fontSize: 12 }}>Play with</span>
       <div style={{ position: "relative" }}>
         <div
           style={{
@@ -233,7 +239,7 @@ export default function HymnsPage() {
           type="button"
           disabled={!url}
           onClick={() => url && play(h, url)}
-          aria-label={playing ? `Pause ${h.name}` : url ? `Play ${h.name} in ${label}` : `${h.name} is not on ${label}`}
+          aria-label={playing ? `Pause ${h.name}` : url ? `Play ${h.name} with ${label}` : `${h.name} is not on ${label}`}
           title={url ? undefined : `Not on ${label}`}
           style={{
             flex: "0 0 auto", width: 36, height: 36, borderRadius: 999,
@@ -288,7 +294,7 @@ export default function HymnsPage() {
             The Hymnal 1982
           </h1>
           <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, margin: "0 0 14px" }}>
-            Sung, in hymnal order. Tap play to hear it in your own music app.
+            Sung, in hymnal order. Tap play — it uses your own music subscription.
           </p>
 
           {chooser}
