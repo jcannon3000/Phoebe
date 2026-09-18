@@ -11,12 +11,13 @@
 // fetched: the artifact ships a frozen bundle and every remote asset is one
 // more thing that can fail to load on a phone with no signal.
 //
-// Each is the service's own logo, used the one way both brands ask for — as
+// Each is the service's own logo, used the one way the brands ask for — as
 // the affordance on a link INTO their app, never as decoration and never
 // altered in shape. Spotify keeps its green; Apple's mark is monochrome by its
 // own guideline, so it takes the surrounding text colour.
 
 const SPOTIFY_GREEN = "#1ED760";
+const YOUTUBE_RED = "#FF0033";
 
 /** Spotify's circle-and-waves, at the size given (default 18px). */
 export function SpotifyMark({ size = 18, color = SPOTIFY_GREEN }: { size?: number; color?: string }) {
@@ -32,6 +33,15 @@ export function AppleMark({ size = 18, color = "currentColor" }: { size?: number
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={color} aria-hidden focusable="false" style={{ flex: "0 0 auto", display: "block" }}>
       <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+    </svg>
+  );
+}
+
+/** YouTube's rounded rectangle and play triangle. */
+export function YouTubeMark({ size = 18, color = YOUTUBE_RED }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} aria-hidden focusable="false" style={{ flex: "0 0 auto", display: "block" }}>
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
     </svg>
   );
 }

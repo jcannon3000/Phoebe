@@ -3,9 +3,9 @@ import { useLocation } from "wouter";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { HYMNS, hymnNumberLabel, type Hymn } from "@/lib/hymnsCatalogue";
-import { SpotifyMark, AppleMark } from "@/components/ServiceMarks";
+import { SpotifyMark, AppleMark, YouTubeMark } from "@/components/ServiceMarks";
 import {
-  getMusicService, setMusicService, showsApple, showsSpotify,
+  getMusicService, setMusicService, MUSIC_SERVICES,
   MUSIC_SERVICE_EVENT, type MusicService,
 } from "@/lib/musicService";
 
@@ -21,10 +21,14 @@ import {
 // the number on the left the way a hymnal index reads.
 //
 // It is a CATALOGUE, not a player. Phoebe holds no audio here — the tap hands
-// the recording to Spotify or Apple Music, which is where the listener's
+// the recording to the listener's own music app, which is where their
 // subscription lives, and they come back and log what they heard. See
 // lib/hymnsCatalogue.ts for where the numbers and links came from, and why no
 // hymn TEXT appears anywhere in this feature.
+//
+// One service, chosen once at the top, and then one play button per row
+// (owner: "dont have all the icons on the right, just a play button"). Three
+// marks on every card made the reader choose the same way ninety-six times.
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -45,12 +49,25 @@ function mmss(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/** The link for the chosen service — null when that service doesn't have it. */
+function urlFor(h: Hymn, service: MusicService): string | null {
+  if (service === "apple") return h.appleUrl;
+  if (service === "youtube") return h.youtubeUrl;
+  return h.spotifyUrl;
+}
+
+function ServiceMark({ service, size = 16 }: { service: MusicService; size?: number }) {
+  if (service === "apple") return <AppleMark size={size} />;
+  if (service === "youtube") return <YouTubeMark size={size} />;
+  return <SpotifyMark size={size} />;
+}
+
 export default function HymnsPage() {
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState("");
 
-  // Which service's marks to show. Read on mount and kept in step with the
-  // chooser below (and with any other surface that sets it later).
+  // Which service the play buttons open. Read on mount and kept in step with
+  // the chooser below (and with any other surface that sets it later).
   const [service, setService] = useState<MusicService>(() => getMusicService());
   useEffect(() => {
     const sync = () => setService(getMusicService());
@@ -75,58 +92,82 @@ export default function HymnsPage() {
     });
   }, [query]);
 
+  const missing = useMemo(
+    () => results.filter((h) => !urlFor(h, service)).length,
+    [results, service],
+  );
+
   // Hand the track to the music app itself: `system: true` leaves the WKWebView
-  // so iOS can route the universal link to Spotify / Music, instead of opening
-  // a web player inside Phoebe (the same call the Audio Divina library makes).
+  // so iOS can route the universal link to Spotify / Music / YouTube, instead
+  // of opening a web player inside Phoebe (the call Audio Divina already uses).
   const open = (url: string) => { void openExternal(url, { system: true }); };
 
+  const label = MUSIC_SERVICES.find((s) => s.id === service)?.label ?? "Spotify";
+
+  // A frosted pill with a transparent native <select> laid over it, so a tap
+  // opens the iOS wheel — the same control the contemplation length picker
+  // uses, and the reason this isn't a row of buttons.
   const chooser = (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-      <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11.5 }}>Open in</span>
-      {([["both", "Both"], ["apple", "Apple Music"], ["spotify", "Spotify"]] as const).map(([id, label]) => {
-        const on = service === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            onClick={() => { setMusicService(id); setService(id); }}
-            style={{
-              borderRadius: 999, padding: "5px 12px", cursor: "pointer",
-              fontFamily: FONT, fontSize: 12, fontWeight: 600,
-              color: on ? WARM : FAINT,
-              background: on ? "rgba(46,107,64,0.45)" : "rgba(240,237,230,0.05)",
-              border: `1px solid ${on ? "rgba(143,175,150,0.6)" : BORDER}`,
-            }}
-          >
-            {label}
-          </button>
-        );
-      })}
+    <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
+      <span style={{ color: FAINT, fontFamily: FONT, fontSize: 12 }}>Open in</span>
+      <div style={{ position: "relative" }}>
+        <div
+          style={{
+            display: "flex", alignItems: "center", gap: 7, borderRadius: 999,
+            padding: "7px 14px", pointerEvents: "none",
+            background: "rgba(240,237,230,0.06)", border: `1px solid ${BORDER}`,
+            color: WARM, fontFamily: FONT, fontSize: 13, fontWeight: 600,
+          }}
+        >
+          <ServiceMark service={service} size={15} />
+          <span>{label}</span>
+          <span aria-hidden style={{ color: SAGE, fontSize: 11, lineHeight: 1 }}>▾</span>
+        </div>
+        <select
+          value={service}
+          onChange={(e) => {
+            const v = e.target.value as MusicService;
+            setMusicService(v);
+            setService(v);
+          }}
+          aria-label="Which app to open hymns in"
+          style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0,
+            appearance: "none", WebkitAppearance: "none", border: "none",
+            background: "transparent", color: "transparent", cursor: "pointer",
+          }}
+        >
+          {MUSIC_SERVICES.map((s) => (
+            <option key={s.id} value={s.id}>{s.label}</option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 
   const card = (h: Hymn, i: number) => {
-    const spotify = showsSpotify(service);
-    const apple = showsApple(service) && !!h.appleUrl;
+    const url = urlFor(h, service);
     return (
       <div
         key={`${h.spotifyUrl}-${i}`}
         style={{
-          display: "flex", alignItems: "center", gap: 12, width: "100%",
-          padding: "11px 13px", borderRadius: 12, boxSizing: "border-box",
+          display: "flex", alignItems: "center", gap: 10, width: "100%",
+          padding: "11px 12px", borderRadius: 12, boxSizing: "border-box",
           background: "rgba(240,237,230,0.05)", border: `1px solid ${BORDER}`,
         }}
       >
-        {/* The number, on the left, as a hymnal index reads it. Fixed width so
-            every name starts on the same line down the page; tabular figures so
-            the digits don't shuffle between rows. */}
+        {/* The number, on the left, as a hymnal index reads it — but held to a
+            narrow column so the name gets the room (owner: "move the numbers
+            over to the right more so the card has more room"). Right-aligned
+            and tabular, so single numbers still line up down the page and only
+            a tune PAIR pushes out. */}
         <span
           aria-label={h.num.length ? `Hymn ${hymnNumberLabel(h)}` : undefined}
           style={{
-            flex: "0 0 auto", width: 46, textAlign: "right",
+            flex: "0 0 auto", minWidth: 28, textAlign: "right",
             color: h.num.length ? SAGE : "rgba(143,175,150,0.35)",
-            fontFamily: FONT, fontSize: 14.5, fontWeight: 600, lineHeight: 1.25,
-            fontVariantNumeric: "tabular-nums",
+            fontFamily: FONT, fontSize: 14, fontWeight: 600, lineHeight: 1.25,
+            fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap",
           }}
         >
           {hymnNumberLabel(h)}
@@ -150,38 +191,28 @@ export default function HymnsPage() {
           </span>
         </span>
 
-        {/* The marks, on the right. Each is a real link into the service's own
-            app — never a player here. */}
-        <span style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 6 }}>
-          {apple && (
-            <button
-              type="button"
-              onClick={() => open(h.appleUrl!)}
-              aria-label={`Play ${h.name} in Apple Music`}
-              style={{
-                width: 34, height: 34, borderRadius: 999, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "rgba(240,237,230,0.06)", border: `1px solid ${BORDER}`, color: WARM,
-              }}
-            >
-              <AppleMark size={17} />
-            </button>
-          )}
-          {spotify && (
-            <button
-              type="button"
-              onClick={() => open(h.spotifyUrl)}
-              aria-label={`Play ${h.name} in Spotify`}
-              style={{
-                width: 34, height: 34, borderRadius: 999, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "rgba(240,237,230,0.06)", border: `1px solid ${BORDER}`,
-              }}
-            >
-              <SpotifyMark size={18} />
-            </button>
-          )}
-        </span>
+        {/* One play button, opening whichever service the chooser names. Shown
+            dimmed and inert when this recording isn't on that service, rather
+            than hidden — a row that silently loses its button reads as a bug,
+            and the tooltip says which service is missing it. */}
+        <button
+          type="button"
+          disabled={!url}
+          onClick={() => url && open(url)}
+          aria-label={url ? `Play ${h.name} in ${label}` : `${h.name} is not on ${label}`}
+          title={url ? undefined : `Not on ${label}`}
+          style={{
+            flex: "0 0 auto", width: 36, height: 36, borderRadius: 999,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: url ? "pointer" : "default", opacity: url ? 1 : 0.28,
+            background: url ? "rgba(46,107,64,0.45)" : "rgba(240,237,230,0.04)",
+            border: `1px solid ${url ? "rgba(143,175,150,0.55)" : BORDER}`,
+          }}
+        >
+          <svg width="13" height="14" viewBox="0 0 13 14" aria-hidden focusable="false" style={{ display: "block", marginLeft: 2 }}>
+            <path d="M0 0.8 A0.8 0.8 0 0 1 1.2 0.1 L12.2 6.3 A0.8 0.8 0 0 1 12.2 7.7 L1.2 13.9 A0.8 0.8 0 0 1 0 13.2 Z" fill={WARM} />
+          </svg>
+        </button>
       </div>
     );
   };
@@ -216,7 +247,7 @@ export default function HymnsPage() {
             The Hymnal 1982
           </h1>
           <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, margin: "0 0 14px" }}>
-            Sung, in hymnal order. Tap a mark to play it in your own music app.
+            Sung, in hymnal order. Tap play to hear it in your own music app.
           </p>
 
           {chooser}
@@ -235,6 +266,7 @@ export default function HymnsPage() {
           />
           <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12, margin: "10px 0" }}>
             {query.trim() ? `${results.length} of ${HYMNS.length}` : `${HYMNS.length} recordings`}
+            {missing > 0 && ` · ${missing} not on ${label}`}
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
