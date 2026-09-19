@@ -6177,35 +6177,6 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Wesley, Frank, 1923-2002. Abigail Begging David, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Estate of Frank Wesley, http://www.frankwesleyart.com/main_page.htm."
  },
  {
-  "id": 59238,
-  "title": "And the Word Became Flesh",
-  "artist": "Wesley, Frank, 1923-2002",
-  "date": null,
-  "where": null,
-  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/And the Word Became Flesh-Frank Wesley.jpg",
-  "refs": [
-   "John 1:1-14"
-  ],
-  "days": [
-   "Year A Nativity of the Lord Proper I",
-   "",
-   "Year B Nativity of the Lord Proper I",
-   "Year C Nativity of the Lord Proper I"
-  ],
-  "people": [
-   "Mary, the mother of Jesus (Biblical figure)",
-   "Jesus Christ (Biblical figure)"
-  ],
-  "subjects": [
-   "Culture: Indian",
-   "Word (The)"
-  ],
-  "essay": "",
-  "act": "https://act.library.vanderbilt.edu/artworks/59238",
-  "licence": "Used by permission of the artist (non-commercial, with attribution)",
-  "attribution": "Wesley, Frank, 1923-2002. And the Word Became Flesh, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Estate of Frank Wesley, http://www.frankwesleyart.com/main_page.htm."
- },
- {
   "id": 59239,
   "title": "Arise",
   "artist": "Wesley, Frank, 1923-2002",
@@ -8408,49 +8379,6 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Koenig, Peter. The Ship of the Church, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
  },
  {
-  "id": 58491,
-  "title": "Cross of the Eucharist",
-  "artist": "Koenig, Peter",
-  "date": "20th century",
-  "where": "Parish of St. Edward, Kettering, United Kingdom",
-  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-cross387ye87.jpg",
-  "refs": [
-   "Luke 22:14-23:56",
-   "John 15:1-8",
-   "Matthew 14:13-21",
-   "John 6:24-35",
-   "Kings I, 19:4-8"
-  ],
-  "days": [
-   "Year C Liturgy of Pass",
-   "Year B Easter 5th Sunday",
-   "Year A Proper 13th Sunday",
-   "Year B Proper 14th Sunday",
-   "Year B Proper 13th Sunday"
-  ],
-  "people": [
-   "Jesus Christ (Biblical figure)",
-   "Elijah (Biblical figure)",
-   "Angel (Biblical figure)",
-   "Disciples (Biblical figures)",
-   "Jezebel (Biblical figure)"
-  ],
-  "subjects": [
-   "Fox",
-   "Vine",
-   "Passion of Jesus Christ: Last Supper",
-   "Feeding the Multitude",
-   "Eucharist",
-   "Pelican",
-   "Manna",
-   "Bread of Life"
-  ],
-  "essay": "",
-  "act": "https://act.library.vanderbilt.edu/artworks/58491",
-  "licence": "Used by permission of the artist (non-commercial, with attribution)",
-  "attribution": "Koenig, Peter. Cross of the Eucharist, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
- },
- {
   "id": 58492,
   "title": "Elijah and Elisha",
   "artist": "Koenig, Peter",
@@ -8975,32 +8903,6 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/58512",
   "licence": "Used by permission of the artist (non-commercial, with attribution)",
   "attribution": "Koenig, Peter. Mary and Elizabeth, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
- },
- {
-  "id": 58514,
-  "title": "The Census",
-  "artist": "Koenig, Peter",
-  "date": "2015",
-  "where": "United Kingdom",
-  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-census9876yg76.jpg",
-  "refs": [
-   "Luke 2:1-14, (15-20)"
-  ],
-  "days": [
-   "Year A Nativity of the Lord Proper I"
-  ],
-  "people": [
-   "Mary, the mother of Jesus (Biblical figure)",
-   "Jesus Christ (Biblical figure)",
-   "Joseph, the husband of Mary (Biblical figure)"
-  ],
-  "subjects": [
-   "Holy Family"
-  ],
-  "essay": "",
-  "act": "https://act.library.vanderbilt.edu/artworks/58514",
-  "licence": "Used by permission of the artist (non-commercial, with attribution)",
-  "attribution": "Koenig, Peter. The Census, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
  },
  {
   "id": 58515,
@@ -9935,30 +9837,6 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Koenig, Peter. I am the Gate, detail of Dove, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
  },
  {
-  "id": 58557,
-  "title": "Parable of the Yeast, detail",
-  "artist": "Koenig, Peter",
-  "date": "1975",
-  "where": "United Kingdom",
-  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-yeast-seond-9089yh.jpg",
-  "refs": [
-   "Matthew 13:31-33, 44-52"
-  ],
-  "days": [
-   "Year A Proper 12th Sunday"
-  ],
-  "people": [],
-  "subjects": [
-   "Bread",
-   "Woman",
-   "Parable of the Leaven"
-  ],
-  "essay": "",
-  "act": "https://act.library.vanderbilt.edu/artworks/58557",
-  "licence": "Used by permission of the artist (non-commercial, with attribution)",
-  "attribution": "Koenig, Peter. Parable of the Yeast, detail, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
- },
- {
   "id": 58558,
   "title": "St Francis of Assisi",
   "artist": "Koenig, Peter",
@@ -9978,26 +9856,6 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   ],
   "essay": "",
   "act": "https://act.library.vanderbilt.edu/artworks/58558",
-  "licence": "Used by permission of the artist (non-commercial, with attribution)",
-  "attribution": "Koenig, Peter. St Francis of Assisi, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
- },
- {
-  "id": 58559,
-  "title": "St Francis of Assisi",
-  "artist": "Koenig, Peter",
-  "date": "1989",
-  "where": "United Kingdom",
-  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-Francis90nbvfd-second.jpg",
-  "refs": [],
-  "days": [],
-  "people": [
-   "Francis, of Assisi, 1182-1226"
-  ],
-  "subjects": [
-   "Animals"
-  ],
-  "essay": "",
-  "act": "https://act.library.vanderbilt.edu/artworks/58559",
   "licence": "Used by permission of the artist (non-commercial, with attribution)",
   "attribution": "Koenig, Peter. St Francis of Assisi, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
  },
@@ -10024,30 +9882,6 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/58560",
   "licence": "Used by permission of the artist (non-commercial, with attribution)",
   "attribution": "Koenig, Peter. Christ Overturns the Tables of the Moneylenders, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
- },
- {
-  "id": 58561,
-  "title": "Christ Overturns the Tables of the Moneylenders, detail",
-  "artist": "Koenig, Peter",
-  "date": "2015",
-  "where": "United Kingdom",
-  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-temple-detail2-Christ.jpg",
-  "refs": [
-   "John 2:13-22"
-  ],
-  "days": [
-   "Year B Lent 3rd Sunday"
-  ],
-  "people": [
-   "Jesus Christ (Biblical figure)"
-  ],
-  "subjects": [
-   "Cleansing of the Temple"
-  ],
-  "essay": "",
-  "act": "https://act.library.vanderbilt.edu/artworks/58561",
-  "licence": "Used by permission of the artist (non-commercial, with attribution)",
-  "attribution": "Koenig, Peter. Christ Overturns the Tables of the Moneylenders, detail, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
  },
  {
   "id": 58607,

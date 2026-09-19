@@ -51,20 +51,86 @@ function asGallery(a: {
   };
 }
 
-/** Every work, once, from every library — admin-hidden and icon-OFF works left out. */
-export function galleryPool(): GalleryWork[] {
-  const byId = new Map<number, GalleryWork>();
-  // Icons first, so an id that exists in both keeps the icon record (its
-  // attribution is the one the practice already prints).
-  for (const a of ICON_CATALOGUE) byId.set(a.id, a);
-  for (const a of [...ACT_CATALOGUE, ...ACT_COMMENTARY_CATALOGUE, ...COMMONS_VISIO_CATALOGUE]) {
-    if (!byId.has(a.id)) byId.set(a.id, asGallery(a));
+/**
+ * ONE PICTURE, ONE PLACE IN THE SCROLL (owner, 2026-09-18: "Showed the same
+ * image twice" — Cara B. Hochhalter's "Maundy Thursday Foot-Washing", back to
+ * back).
+ *
+ * ACT files the same picture under several records, one per lectionary Sunday
+ * it serves: Hochhalter's 66 records are about thirty pictures, the same JPEG
+ * three times over. The JESUS MAFA and Koenig sets add a black-and-white
+ * bulletin copy ("...bw.jpg") of works already held in colour. Visio wants
+ * every record (each carries its own readings); the gallery wants each
+ * picture once. So works are folded by image address AND by title + artist —
+ * the address alone misses the bulletin copies, the title alone would fold two
+ * different artists' "Transfiguration".
+ *
+ * The first record met is kept (icons first, then the curated library), unless
+ * it is a bulletin copy and the newcomer is not — the colour scan wins.
+ * `aliasOf` maps every folded id to the one kept, so time already spent on a
+ * folded record still counts, and still reads as "you stayed with this".
+ */
+const normImg = (u: string) => {
+  let v = u;
+  try { v = decodeURI(u); } catch { /* keep as is */ }
+  return v.trim().toLowerCase().replace(/\s+/g, " ");
+};
+const normTitle = (a: { title: string; artist: string | null }) =>
+  `${a.title.trim().toLowerCase().replace(/\s+/g, " ")}|${(a.artist ?? "").trim().toLowerCase()}`;
+const isBulletinCopy = (img: string) => /bw\d*\.jpe?g$/i.test(img);
+
+let folded: { works: GalleryWork[]; aliasOf: Map<number, number> } | null = null;
+
+function foldedLibrary(): { works: GalleryWork[]; aliasOf: Map<number, number> } {
+  if (folded) return folded;
+  const kept: GalleryWork[] = [];
+  const aliasOf = new Map<number, number>();
+  const byImg = new Map<string, number>();
+  const byTitle = new Map<string, number>();
+  const seenId = new Set<number>();
+  const all: GalleryWork[] = [
+    ...ICON_CATALOGUE,
+    ...[...ACT_CATALOGUE, ...ACT_COMMENTARY_CATALOGUE, ...COMMONS_VISIO_CATALOGUE].map(asGallery),
+  ];
+  for (const a of all) {
+    // Icons first, so an id that exists in both keeps the icon record (its
+    // attribution is the one the practice already prints).
+    if (seenId.has(a.id) || !a.img) continue;
+    seenId.add(a.id);
+    const ik = normImg(a.img);
+    const tk = normTitle(a);
+    const at = byImg.get(ik) ?? byTitle.get(tk);
+    if (at === undefined) {
+      byImg.set(ik, kept.length);
+      byTitle.set(tk, kept.length);
+      kept.push(a);
+      continue;
+    }
+    const prior = kept[at]!;
+    if (isBulletinCopy(prior.img) && !isBulletinCopy(a.img)) {
+      // The colour scan replaces the bulletin copy in the same slot.
+      aliasOf.set(prior.id, a.id);
+      for (const [k, v] of aliasOf) if (v === prior.id) aliasOf.set(k, a.id);
+      kept[at] = a;
+      byImg.set(ik, at);
+    } else {
+      aliasOf.set(a.id, prior.id);
+    }
   }
-  return [...byId.values()].filter((a) => !!a.img && !isActHidden(a.id) && !actIconOff(a.id));
+  folded = { works: kept, aliasOf };
+  return folded;
 }
 
-/** Where the "related images" tail begins, and how long it runs. */
-export const RELATED_TAIL = 20;
+/** The id a record is shown under in the gallery (itself, unless folded). */
+export function galleryIdFor(id: number): number {
+  return foldedLibrary().aliasOf.get(id) ?? id;
+}
+
+/** Every picture, once, from every library — admin-hidden and icon-OFF works left out. */
+export function galleryPool(): GalleryWork[] {
+  return foldedLibrary().works.filter((a) => !isActHidden(a.id) && !actIconOff(a.id));
+}
+
 /** However much you like one hand, the day is not theirs. */
 const MAX_PER_ARTIST_PER_DAY = 6;
 
@@ -111,9 +177,9 @@ export function galleryForDay(ymd: string, opts: { held?: HeldWork[] } = {}): Ga
 export function galleryForDayWithMarker(
   ymd: string,
   opts: { held?: HeldWork[] } = {},
-): { works: GalleryWork[]; relatedFrom: number } {
+): { works: GalleryWork[]; relatedFrom: number; tailIsRelated: boolean } {
   const pool = galleryPool();
-  const rows = opts.held ?? [];
+  const rows = foldHeld(opts.held ?? []);
   // A cheap deterministic hash of the day, so the order is stable per device
   // per day without storing anything.
   let seed = 0;
@@ -202,19 +268,53 @@ export function galleryForDayWithMarker(
 
   const relatedFrom = works.length;
   /**
-   * THE TAIL — nearest to what you have HELD, not to the day's picks, and only
-   * when there is something to be near. With no history there is nothing
-   * "related" to show, so the scroll simply ends where it always did.
+   * THE TAIL — THE REST OF THE LIBRARY (owner, 2026-09-18: "I only looked at
+   * like 30 images, isn't there like 500 in the library").
+   *
+   * It used to be twenty works near what you had held, and nothing at all with
+   * no history — so a first scroll ended at forty with most of the library
+   * unseen. Now the scroll goes on through every picture not yet shown:
+   * nearest to what you have stayed with first (when there is anything to be
+   * near), then everything else in the day's shuffle, with the same no-run-of-
+   * one-hand window the day keeps (the per-day artist cap is the day's rule,
+   * not the tail's, or a large set would simply stop partway).
+   *
+   * Pictures you have already held are not repeated here; they have their own
+   * row on the first screen.
    */
-  if (weights.size > 0) {
-    const tail = [...fresh]
-      .filter((a) => !used.has(a.id) && affinityScore(a, weights) > 0)
-      .sort((a, b) =>
+  const rest = fresh.filter((a) => !used.has(a.id));
+  const tailRelated = weights.size > 0;
+  const tailOrder = tailRelated
+    ? [...rest].sort((a, b) =>
         (affinityScore(b, weights) - affinityScore(a, weights)) || (order.get(a.id)! - order.get(b.id)!))
-      .slice(0, RELATED_TAIL);
-    works.push(...tail);
+    : rest;
+  const pending = [...tailOrder];
+  while (pending.length) {
+    let k = pending.findIndex((a) => {
+      if (!a.artist) return true;
+      let n = 0;
+      for (let i = Math.max(0, works.length - 5); i < works.length; i++) {
+        if (works[i]!.artist === a.artist) n += 1;
+      }
+      return n < 2;
+    });
+    // Only one hand left: take it rather than stop.
+    if (k < 0) k = 0;
+    const [next] = pending.splice(k, 1);
+    works.push(next!);
   }
-  return { works, relatedFrom: works.length > relatedFrom ? relatedFrom : -1 };
+  return { works, relatedFrom: works.length > relatedFrom ? relatedFrom : -1, tailIsRelated: tailRelated };
+}
+
+/** Held rows with folded ids merged into the id the gallery shows. */
+export function foldHeld(rows: HeldWork[]): HeldWork[] {
+  const out = new Map<number, HeldWork>();
+  for (const r of rows) {
+    const id = galleryIdFor(r.id);
+    const prior = out.get(id);
+    out.set(id, prior ? { ...prior, seconds: prior.seconds + r.seconds } : { ...r, id });
+  }
+  return [...out.values()];
 }
 
 /**
@@ -296,7 +396,7 @@ export function forgetHeld(id: number): void {
 
 /** Held = stayed with past the hold, as opposed to merely scrolled past. */
 export function heldIds(rows: HeldWork[] = getHeldWorks()): Set<number> {
-  return new Set(rows.filter((v) => v.seconds >= GALLERY_HOLD_MS / 1000).map((v) => v.id));
+  return new Set(foldHeld(rows).filter((v) => v.seconds >= GALLERY_HOLD_MS / 1000).map((v) => v.id));
 }
 
 /**

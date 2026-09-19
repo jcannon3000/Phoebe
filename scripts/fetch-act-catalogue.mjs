@@ -102,7 +102,17 @@ const BUILDINGS = ["Benaki Museum"];
  * look identical to a withdrawal, and these were confirmed over separate runs.
  */
 const DEAD_IMAGE_IDS = [55261, 56543, 59210, 59244];
-const EXCLUDED_IDS = new Set([59230, ...DEAD_IMAGE_IDS]);
+/**
+ * Owner, 2026-09-18, from the Sacred Image gallery: "take this one out"
+ * (59238, Frank Wesley, "And the Word Became Flesh"). And the Koenig records
+ * ACT holds only as blown-up crops (800px on the long edge but upscaled from
+ * something far smaller, so the phone shows them pixelated; measured by
+ * high-frequency energy, 1.3-1.8 against 6+ for a sharp scan): 58491 "Cross
+ * of the Eucharist" (58608, the whole cross, is sharp and stays), 58557 and
+ * 58561 (details), 58514 "The Census", 58559 "St Francis" (58558 stays).
+ */
+const OWNER_REMOVED_IDS = [59238, 58491, 58557, 58561, 58514, 58559];
+const EXCLUDED_IDS = new Set([59230, ...DEAD_IMAGE_IDS, ...OWNER_REMOVED_IDS]);
 
 /** Owner: "any image with nudity should not be in there." Keyword screen —
  *  see the header for its limits and the admin tool's role. */

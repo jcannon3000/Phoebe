@@ -33,7 +33,7 @@ import { useTranslation } from "react-i18next";
 import { ICON_CATALOGUE, type IconArtwork } from "@/lib/iconCatalogue";
 import { COMMONS_VISIO_CATALOGUE } from "@/lib/visioCommonsCatalogue";
 import {
-  galleryForDayWithMarker, galleryPool, getHeldWorks, commentaryUrlFor, recordDwell, heldIds, HELD_EVENT,
+  galleryForDayWithMarker, galleryPool, getHeldWorks, foldHeld, commentaryUrlFor, recordDwell, heldIds, HELD_EVENT,
   failedImageIds, rememberFailedImage, type GalleryWork, type HeldWork,
 } from "@/lib/iconGallery";
 import { readingUrl } from "@/lib/visioSelect";
@@ -150,10 +150,13 @@ function iconPool(): IconArtwork[] {
  * to be earned. Holding asks nothing; the seconds given to each picture are
  * kept on the device and order tomorrow's scroll (lib/iconGallery).
  */
-function GalleryFeed({ works, relatedFrom, held, onDwell, onPray, onClose, onFinished }: {
+function GalleryFeed({ works, relatedFrom, tailIsRelated, held, onDwell, onPray, onClose, onFinished }: {
   works: GalleryWork[];
-  /** Index in `works` where the related-images tail begins; -1 = no tail. */
+  /** Index in `works` where the tail (the rest of the library) begins; -1 = no tail. */
   relatedFrom: number;
+  /** The tail is ordered by what you have held ("Related images"), rather
+   *  than simply the rest of the library in the day's shuffle. */
+  tailIsRelated: boolean;
   /** Done's exit: the practice is kept and the home takes over. */
   onFinished: () => void;
   held: Set<number>;
@@ -301,6 +304,33 @@ function GalleryFeed({ works, relatedFrom, held, onDwell, onPray, onClose, onFin
 
   // A new question starts at its own top, not halfway down the last answer.
   useEffect(() => { scrollerRef.current?.scrollTo({ top: 0 }); }, [asked]);
+
+  /**
+   * RENDERED IN STEPS. The scroll now runs on through the whole library
+   * (owner: "isn't there like 500 in the library"), and several hundred
+   * sections at once is a long first render on a phone even with lazy
+   * images. So the first sixty are laid down, and forty more whenever the
+   * reader comes within a few screens of the end of what is there. The end
+   * card waits until everything has been laid down, so it can never appear
+   * with pictures still to come.
+   */
+  const STEP = 40;
+  const [limit, setLimit] = useState(60);
+  useEffect(() => { setLimit(60); }, [asked]);
+  const visible = useMemo(() => shown.slice(0, limit), [shown, limit]);
+  const allLaid = limit >= shown.length;
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el || allLaid) return;
+    const check = () => {
+      if (el.scrollTop + el.clientHeight * 4 >= el.scrollHeight) {
+        setLimit((l) => Math.min(l + STEP, shown.length));
+      }
+    };
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    return () => el.removeEventListener("scroll", check);
+  }, [allLaid, shown.length, limit]);
   // The picture being looked at and when it arrived — a ref, because the
   // commit has to read them inside a scroll handler and on unmount.
   const currentRef = useRef<{ id: number; since: number } | null>(null);
@@ -681,7 +711,7 @@ function GalleryFeed({ works, relatedFrom, held, onDwell, onPray, onClose, onFin
             </div>
           )}
         </div>
-        {shown.map((art) => {
+        {visible.map((art) => {
           const ref = art.refs.find((r) => !!readingUrl(r)) ?? null;
           return (
             <Fragment key={art.id}>
@@ -692,7 +722,9 @@ function GalleryFeed({ works, relatedFrom, held, onDwell, onPray, onClose, onFin
               >
                 <span style={{ flex: 1, height: 1, background: "rgba(200,212,192,0.18)" }} />
                 <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase" }}>
-                  {t("icons.gallery_related", { defaultValue: "Related images" })}
+                  {tailIsRelated
+                    ? t("icons.gallery_related", { defaultValue: "Related images" })
+                    : t("icons.gallery_more", { defaultValue: "More from the library" })}
                 </span>
                 <span style={{ flex: 1, height: 1, background: "rgba(200,212,192,0.18)" }} />
               </div>
@@ -802,20 +834,21 @@ function GalleryFeed({ works, relatedFrom, held, onDwell, onPray, onClose, onFin
             </Fragment>
           );
         })}
+        {allLaid && (
         <section style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "36px 28px 60px", textAlign: "center" , scrollSnapAlign: "end"}}>
           <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 20, margin: 0, lineHeight: 1.4 }}>
             {asked
               ? askedCapped
                 ? t("icons.gallery_end_asked_more", { defaultValue: "There are more of these." })
                 : t("icons.gallery_end_asked", { defaultValue: "That is everything related." })
-              : t("icons.gallery_end", { defaultValue: "That is today's scroll." })}
+              : t("icons.gallery_end_library", { defaultValue: "That is the whole library." })}
           </p>
           <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: 0, lineHeight: 1.5, maxWidth: 320 }}>
             {asked
               ? askedCapped
                 ? t("icons.gallery_end_asked_more_sub", { defaultValue: "Narrow the search at the top to see further in, or clear it to go back to today's scroll." })
                 : t("icons.gallery_end_asked_sub", { defaultValue: "Clear the search at the top to go back to today's scroll." })
-              : t("icons.gallery_end_sub", { defaultValue: "The one you stayed with longest waits on the first screen. Tomorrow brings another forty." })}
+              : t("icons.gallery_end_library_sub", { defaultValue: "The one you stayed with longest waits on the first screen. Tomorrow the scroll begins again, in a new order." })}
           </p>
           <button
             type="button"
@@ -825,6 +858,7 @@ function GalleryFeed({ works, relatedFrom, held, onDwell, onPray, onClose, onFin
             {t("icons.gallery_done", { defaultValue: "Back" })}
           </button>
         </section>
+        )}
       </div>
     </div>
   );
@@ -1071,8 +1105,11 @@ export default function IconsPage() {
   const heldNowIds = useMemo(() => heldIds(heldRows), [heldRows]);
   /** The ones that held you, newest first, as works — for the first screen's row. */
   const heldWorks = useMemo(() => {
-    const seconds = new Map(heldRows.map((r) => [r.id, r.seconds]));
-    return heldRows
+    // Folded first: time on a duplicate record of a picture counts for the one
+    // the gallery shows (lib/iconGallery, "ONE PICTURE, ONE PLACE").
+    const rows = foldHeld(heldRows);
+    const seconds = new Map(rows.map((r) => [r.id, r.seconds]));
+    return rows
       .filter((r) => heldNowIds.has(r.id))
       .map((r) => byId.get(r.id))
       .filter((a): a is IconArtwork => !!a)
@@ -1655,6 +1692,7 @@ export default function IconsPage() {
             <GalleryFeed
               works={galleryDay.works}
               relatedFrom={galleryDay.relatedFrom}
+              tailIsRelated={galleryDay.tailIsRelated}
               held={heldNowIds}
               onDwell={(id, seconds) => recordDwell(id, seconds, new Date().toLocaleDateString("en-CA"))}
               onPray={(art) => { setPhase("week"); choose(art as IconArtwork); }}
