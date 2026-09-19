@@ -356,7 +356,13 @@ export const SHOWS: Record<string, Show> = {
   // ── Diocese of Washington — Bishop Mariann Budde ────────────────────
   "experiencing-jesus": {
     slug: "experiencing-jesus",
-    title: "Introduction to The Way of Love",
+    // ITS ACTUAL NAME (owner, 2026-09-19: "Rename the Budde course
+    // experiencing Jesus as that was the actual name" — and then the reason:
+    // "So that we can name the Micheal curry one The Way of Love"). Her feed
+    // calls itself "Experiencing Jesus with Bishop Mariann"; the Way of Love
+    // is what the episodes WALK, not what the series is called. The slug stays
+    // `experiencing-jesus`, so nobody's progress moves.
+    title: "Experiencing Jesus",
     artist: "Diocese of Washington",
     publisher: "way-of-love",
     feedUrl: "https://feeds.simplecast.com/1CBZhkXf",
@@ -368,8 +374,11 @@ export const SHOWS: Record<string, Show> = {
   // ── The Episcopal Church — Presiding Bishop Michael Curry ───────────
   "way-of-love-curry": {
     slug: "way-of-love-curry",
-    title: "The Way of Love with Bishop Michael Curry",
-    artist: "The Episcopal Church",
+    // The name belongs to this one now (owner, above). Dropping "with Bishop
+    // Michael Curry" from the title leaves nothing carrying his name, so the
+    // byline does — the show IS his, and the Episcopal Church publishes it.
+    title: "The Way of Love",
+    artist: "Bishop Michael Curry",
     publisher: "way-of-love",
     feedUrl: "https://feeds.megaphone.fm/the-way-of-love",
     artwork: "/podcast-art/curry.jpg",
@@ -476,6 +485,10 @@ export type EpisodeFull = {
   // the show page uses it as the group header. Only the Roundtables scraper
   // sets it today.
   seasonName?: string | null;
+  // <itunes:episode> — the publisher's own place for this episode in its
+  // season. Null where a feed doesn't number (most don't) and, tellingly, on
+  // the trailers and one-off specials of feeds that otherwise do.
+  episodeNumber?: number | null;
   /**
    * The episode's own page on the publisher's site (<link>) — where the
    * session's text lives. Phoebe never copies that text: the player's
@@ -615,6 +628,8 @@ export function parseFeed(xml: string, limit: number): ParsedFeed {
     const link = firstMatch(item, /<link>([\s\S]*?)<\/link>/i);
     const seasonRaw = firstMatch(item, /<itunes:season>([\s\S]*?)<\/itunes:season>/i);
     const season = seasonRaw && /^\d+$/.test(seasonRaw.trim()) ? parseInt(seasonRaw.trim(), 10) : null;
+    const epNumRaw = firstMatch(item, /<itunes:episode>([\s\S]*?)<\/itunes:episode>/i);
+    const episodeNumber = epNumRaw && /^\d+$/.test(epNumRaw.trim()) ? parseInt(epNumRaw.trim(), 10) : null;
     const decodedTitle = title ? decodeXmlText(title) : null;
     if (isHiddenEpisode(decodedTitle)) continue; // blocklisted episode
     episodes.push({
@@ -626,6 +641,7 @@ export function parseFeed(xml: string, limit: number): ParsedFeed {
       description: plainTextPreview(desc),
       imageUrl: itemImage ? decodeXmlText(itemImage) : null,
       season,
+      episodeNumber,
       pageUrl: link ? decodeXmlText(link).trim() || null : null,
     });
   }
@@ -1265,6 +1281,56 @@ export type CacCourse = {
   episodes: EpisodeFull[];
 };
 
+/**
+ * HAND-CUT SEASONS, for a show whose feed carries more than the course does.
+ *
+ * Owner, of The Way of Love with Bishop Michael Curry (2026-09-19): "Let's
+ * split them as different courses within the show, just like CAC turning to
+ * the mystics" and then "You can leave out episodes that don't fit."
+ *
+ * A podcast season and a course are not the same object. A season is
+ * everything the publisher put out under that number — the teaching run, the
+ * bonus interviews afterwards, a Christmas message, a trailer. A course is the
+ * through-line you can walk end to end. Where the two differ, this table says
+ * so, PER SHOW: no show without an entry here changes in any way, which is the
+ * point — the CAC courses people already have progress in must keep exactly
+ * the episodes and the counts they have today.
+ *
+ * `numberedOnly` drops what the publisher itself never placed in sequence
+ * (<itunes:episode> absent): on this feed that is the 65-second show trailer
+ * and an unnumbered Christmas special, and it is the general shape of the
+ * "trailer as lesson 1" problem the 2026-09-15 course audit left open.
+ * min/maxEpisode then cut a season down to its run. A season with no entry
+ * keeps everything it has.
+ *
+ * A title here is used VERBATIM and the derived-name heuristics are skipped,
+ * so what a season is called is a decision written down rather than a guess
+ * that can quietly change when a feed does.
+ */
+type ShowCourseMeta = {
+  numberedOnly?: boolean;
+  seasons?: Record<number, { title?: string; minEpisode?: number; maxEpisode?: number }>;
+};
+const SHOW_COURSE_META: Record<string, ShowCourseMeta> = {
+  "way-of-love-curry": {
+    numberedOnly: true,
+    seasons: {
+      // Episodes 1-8: "What is the Way of Love?" and then the seven practices.
+      // 9-11 are bonus episodes recorded AFTER the season ("In this first
+      // bonus episode following Season 1…"), by the show's own description.
+      1: { title: "The Seven Practices", maxEpisode: 8 },
+      // The show names this season itself — Season 1's bonus episode
+      // announces 'the theme ("Beyond the Church Walls")' for Season 2. Again
+      // 1-8 is the run; 9-18 are bonus interviews, a Christmas message, the
+      // Rooted in Jesus live recordings and a cathedral sermon.
+      2: { title: "Beyond the Church Walls", maxEpisode: 8 },
+      // 1-9 are the conversations; 10 is the Presiding Bishop's Christmas
+      // message. Seasons 3 and 4 need no cut — every episode is a conversation.
+      5: { maxEpisode: 9 },
+    },
+  },
+};
+
 // One "course" per season of a show, in feed order (oldest first). Shared by
 // the CAC library and the per-show endpoint below, so course ids — the key
 // the device's progress is stored under — are identical from both.
@@ -1293,8 +1359,12 @@ async function buildCourses(shows: Show[]): Promise<CacCourse[]> {
     // Only when a show has NO season tags at all do we fall back to one
     // single course covering the whole feed, so nothing goes unorganized.
     const anyTagged = feed.episodes.some((ep) => ep.season !== null);
+    const meta = SHOW_COURSE_META[slug];
     const bySeason = new Map<number, EpisodeFull[]>();
     for (const ep of feed.episodes) {
+      // Not placed in the sequence by the publisher → not a lesson. Only for
+      // a show that asked for it, and only where the feed numbers at all.
+      if (meta?.numberedOnly && ep.episodeNumber == null) continue;
       if (ep.season === null) {
         if (anyTagged) continue; // untagged straggler — skip, not a real season
         const list = bySeason.get(1) ?? [];
@@ -1309,12 +1379,33 @@ async function buildCourses(shows: Show[]): Promise<CacCourse[]> {
     const seasons = [...bySeason.keys()].sort((a, b) => a - b);
     for (const season of seasons) {
       // The feed lists newest-first; a course plays oldest-first.
-      const episodes = [...(bySeason.get(season) ?? [])].reverse();
+      let episodes = [...(bySeason.get(season) ?? [])].reverse();
+      const seasonMeta = meta?.seasons?.[season];
+      if (seasonMeta) {
+        const { minEpisode, maxEpisode } = seasonMeta;
+        episodes = episodes.filter((ep) => {
+          const n = ep.episodeNumber;
+          if (n == null) return minEpisode == null && maxEpisode == null;
+          if (minEpisode != null && n < minEpisode) return false;
+          if (maxEpisode != null && n > maxEpisode) return false;
+          return true;
+        });
+      }
+      // A hand-cut show plays in the publisher's OWN numbering where it has
+      // one — publication order alone put Season 5's two episode 3s either
+      // side of episode 4, which reads as a mistake in a lesson list. Ties and
+      // unnumbered episodes keep their publication order (sort is stable).
+      if (meta && episodes.every((ep) => ep.episodeNumber != null)) {
+        episodes = [...episodes].sort((a, b) => (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0));
+      }
       if (episodes.length === 0) continue;
       // A feed that names its seasons (the Roundtables scraper) wins over the
       // title-pattern guess; a season nobody names is plain "Season N" (owner).
+      // A season NAMED IN THE TABLE above wins over both, and skips the guess
+      // entirely — a written-down title shouldn't drift with the feed.
       const seasonName = seasons.length > 1
-        ? (episodes.find((ep) => ep.seasonName)?.seasonName ?? deriveSeasonName(episodes))
+        ? (seasonMeta?.title
+          ?? (meta ? null : episodes.find((ep) => ep.seasonName)?.seasonName ?? deriveSeasonName(episodes)))
         : null;
       courses.push({
         id: `${slug}-s${season}`,

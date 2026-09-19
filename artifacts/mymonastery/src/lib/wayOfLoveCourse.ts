@@ -1,6 +1,6 @@
 // ─── The Way of Love — a guided audio course ─────────────────────────────────
 //
-// Bishop Mariann Budde's "The Way of Love: A Rule of Life" — an 8-part series
+// Bishop Mariann Budde's "Experiencing Jesus" — an 8-part series
 // (an introduction + the seven practices: Turn, Learn, Pray, Worship, Bless,
 // Go, Rest). The audio is already in Phoebe as the `experiencing-jesus` podcast
 // show, so this course is a structured overlay on that feed: it defines the
@@ -51,7 +51,11 @@ export interface WolCourse {
 export const WAY_OF_LOVE: WolCourse = {
   id: "way-of-love",
   showSlug: "experiencing-jesus",
-  title: "The Way of Love",
+  // "Experiencing Jesus" is the series' real name — her feed is "Experiencing
+  // Jesus with Bishop Mariann" (owner, 2026-09-19). The id stays "way-of-love"
+  // because it is the key every device's progress is stored under; renaming it
+  // would silently empty everyone's course.
+  title: "Experiencing Jesus",
   author: "Bishop Mariann Budde",
   tagline:
     "A rule of life for following Jesus — Bishop Mariann walks the seven practices, one talk at a time.",
@@ -63,7 +67,9 @@ export const WAY_OF_LOVE: WolCourse = {
       lessons: [
         {
           key: "intro",
-          practice: "The Way of Love",
+          // Not "The Way of Love" any more: that name is Bishop Curry's
+          // course now, and the home card prints "<course> · <lesson>".
+          practice: "Introduction",
           emoji: "❤️",
           blurb: "Spiritual practices for a Jesus-focused life.",
           match: ["spiritual practices", "jesus-focused", "ep. 1", "ep 1"],

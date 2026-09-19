@@ -114,9 +114,9 @@ export default function MenuPage() {
   });
 
   // Learn — guided courses. Centering Prayer (public, no sign-in) and the deeper
-  // Spiritual Journey are YouTube video courses → WEB ONLY. The Way of Love
-  // (Bishop Budde) rides the podcast library, so it's the ONE course that also
-  // works on iOS. So: three courses on the web, only one (Way of Love) on iOS.
+  // Spiritual Journey are YouTube video courses → WEB ONLY. The two podcast
+  // courses — Experiencing Jesus (Bishop Budde) and The Way of Love (Bishop
+  // Curry) — ride the podcast library, so they also work on iOS.
   // Courses belong to the LIGHT experience too — their routes are in the guest
   // allowlist and the home's Learn band starts the Way of Love for a fresh
   // guest — so there's no guest gating here, only the platform rule.
@@ -135,7 +135,11 @@ export default function MenuPage() {
   // now (lib/videoEmbed), so the web-only gate that stood here is gone.
   learn.items.push({ emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", onClick: () => go("/centering-prayer") });
   learn.items.push({ emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") });
-  learn.items.push({ emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") });
+  learn.items.push({ emoji: "❤️", label: "Experiencing Jesus", sub: "Bishop Budde on the Way of Love", onClick: () => go("/way-of-love-course") });
+  // The Presiding Bishop's own series, as five season-courses (owner,
+  // 2026-09-19). No season count here: the show page counts them from the
+  // feed, and a number written down would quietly go stale.
+  learn.items.push({ emoji: "\u{1F49A}", label: "The Way of Love", sub: "Bishop Michael Curry", onClick: () => go("/cac-show/way-of-love-curry") });
   groups.push(thisSunday);
   groups.push(learn);
 

@@ -272,7 +272,7 @@ export default function WayOfLoveCoursePage() {
         </div>
 
         <p className="mt-6 px-1 text-[11px] italic leading-relaxed" style={{ color: "rgba(143,175,150,0.5)" }}>
-          Audio from “The Way of Love: A Rule of Life,” Episcopal Diocese of Washington. Plays in Phoebe's
+          Audio from “Experiencing Jesus with Bishop Mariann,” Episcopal Diocese of Washington. Plays in Phoebe's
           podcast player; your progress is saved on this device.
         </p>
       </div>

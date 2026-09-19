@@ -4,7 +4,7 @@ import { MenuHub } from "@/components/MenuHub";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useMemo } from "react";
 import { useCacLibrary } from "@/hooks/useCacLibrary";
-import { useCacCourses } from "@/lib/cacCourses";
+import { useCacCourses, useShowCourses } from "@/lib/cacCourses";
 
 // Courses — the guided courses, as their own menu category (the drawer's
 // Courses row and /menu's Courses group both land here). Open to everyone,
@@ -44,6 +44,20 @@ export default function MenuLearnPage() {
   const { enabled: cacLibraryGranted } = useCacLibrary();
   // The CAC shows, one row each — the same grouping the CAC Courses page draws.
   const { data: cacData } = useCacCourses();
+  /**
+   * THE OTHER Way of Love — Presiding Bishop Curry's (owner, 2026-09-19:
+   * "Can we add this as courses" · "The first course was with Budde not
+   * curry" · "We don't have this as a course").
+   *
+   * His show was already in the audio library; what it wasn't was a course.
+   * It needs no new page: its feed tags every episode with a season, so the
+   * same per-show endpoint that turns CAC's seasons into courses turns his
+   * into five, and /cac-show renders them — it gates only on a show being
+   * CAC's, and this is the Episcopal Church's. So this row is open to
+   * everyone, like Bishop Budde's above it.
+   */
+  const { data: curryData } = useShowCourses("way-of-love-curry");
+  const currySeasons = curryData?.courses.length ?? 0;
   const shows = useMemo(() => {
     const byShow = new Map<string, { showSlug: string; showTitle: string; author: string; seasonCount: number }>();
     for (const c of cacData?.courses ?? []) {
@@ -74,7 +88,17 @@ export default function MenuLearnPage() {
           items: [
             // Way of Love first (owner, 2026-09-05), then every CAC show as
             // its own row — "bring them out of the folder of just CAC Courses".
-            { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", muted: !online, onClick: () => go("/way-of-love-course") },
+            { emoji: "❤️", label: "Experiencing Jesus", sub: "Bishop Budde on the Way of Love", muted: !online, onClick: () => go("/way-of-love-course") },
+            // Two rows named the Way of Love, so each says WHOSE — the first
+            // course is Bishop Budde's, this one is the Presiding Bishop's.
+            {
+              emoji: "\u{1F49A}", // 💚 — no cross emojis (owner)
+              label: "The Way of Love",
+              sub: ["Bishop Michael Curry", currySeasons > 0 ? `${currySeasons} seasons` : null]
+                .filter(Boolean).join(" · "),
+              muted: !online,
+              onClick: () => go("/cac-show/way-of-love-curry"),
+            },
             ...(isAdmin || cacLibraryGranted
               ? shows.map((show) => ({
                   emoji: "🌵",
