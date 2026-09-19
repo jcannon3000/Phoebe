@@ -11,7 +11,7 @@
 // now (lib/videoEmbed), so nothing is hidden here.
 //
 // FOURTEEN DAYS (owner, 2026-09-16): a course nobody has engaged with for two
-// weeks leaves the home — the "Start course" offer of the Way of Love too,
+// weeks leaves the home — the "Start course" offer of the flagship too,
 // counted from the day it was first offered. See selectHomeCourses and
 // courseProgress.ts (COURSE_HOME_STALE_MS).
 
@@ -38,7 +38,7 @@ import {
   type CourseIndex,
 } from "@/lib/spiritualJourney";
 import { WAY_OF_LOVE, WOL_LESSONS, WOL_TOTAL } from "@/lib/wayOfLoveCourse";
-import { useCacCourses, courseCompletion } from "@/lib/cacCourses";
+import { useCacCourses, useShowCourses, courseCompletion } from "@/lib/cacCourses";
 import { useCacLibrary } from "@/hooks/useCacLibrary";
 import { useBetaStatus } from "@/hooks/useDemo";
 
@@ -98,7 +98,7 @@ function videoCourseCard(
  *
  * Active courses (started, unfinished, engaged within 14 days), most recently
  * engaged first. With nothing active, the one quiet "Start course" offer —
- * the Way of Love — as long as it is not itself lapsed: a started one that
+ * the flagship — as long as it is not itself lapsed: a started one that
  * went quiet for 14 days is gone like any other, and a never-started one
  * lapses 14 days after the home first offered it (`wolOfferedAt`, 0 = never
  * offered yet, so it shows and gets stamped).
@@ -161,6 +161,9 @@ export function HomeLearnSection() {
   const { enabled: cacLibraryGranted } = useCacLibrary();
   const maySeeCac = isAdmin || cacLibraryGranted;
   const { data: cacData } = useCacCourses({ enabled: maySeeCac });
+  // No gate: the Way of Love show is the Episcopal Church's, not CAC's, and
+  // every course in the app is offered to everyone (see /menu/learn).
+  const { data: curryData } = useShowCourses("way-of-love-curry");
 
   const cards: LearnCard[] = [];
   /*
@@ -203,6 +206,30 @@ export function HomeLearnSection() {
    * these are simply offered on the same terms as every other course and the
    * shared filter decides.
    */
+  /**
+   * …and one per season of Bishop Curry's Way of Love, the same way. His five
+   * seasons (9522e0b6) come from the SHOW endpoint rather than the CAC one —
+   * the show is the Episcopal Church's, open to everyone — so without this
+   * loop a season someone had started could never reach the home.
+   */
+  for (const c of curryData?.courses ?? []) {
+    const { completedCount, total, nextTitle, isStarted, updatedAt } = courseCompletion(c);
+    if (!isStarted) continue;
+    cards.push({
+      key: `cac-${c.id}`,
+      // ❤️‍🔥 for the Way of Love's seasons: 💚 is the whole course's card
+      // above, and these are the same love, taught.
+      emoji: "\u{2764}\u{FE0F}\u{200D}\u{1F525}",
+      title: `${c.showTitle} · ${c.title}`,
+      nextLabel: nextTitle ?? "",
+      href: `/cac-course/${c.id}`,
+      done: completedCount,
+      total,
+      started: true,
+      updatedAt,
+    });
+  }
+
   for (const c of cacData?.courses ?? []) {
     const { completedCount, total, nextTitle, isStarted, updatedAt } = courseCompletion(c);
     if (!isStarted) continue;
@@ -222,7 +249,9 @@ export function HomeLearnSection() {
 
   // ONLY ACTIVE courses appear on the home (owner): started and not yet
   // finished. A FRESH home with nothing in flight (owner, for first opens)
-  // offers exactly one quiet "Start course" card — Bishop Budde's Way of Love,
+  // offers exactly one quiet "Start course" card — Bishop Budde's Experiencing
+  // Jesus (id "way-of-love", renamed 2026-09-19; Curry's Way of Love is the
+  // show above),
   // the flagship on every platform — instead of a menu of all. Once everything
   // is finished, the section disappears; starting something else happens from
   // the Learn tab.
@@ -309,7 +338,7 @@ export function HomeLearnSection() {
            */
           const lesson = Math.min(c.done + 1, c.total);
           // The lesson's own name, unless it just repeats the course's (the
-          // Way of Love's first lesson IS "The Way of Love") — a second line
+          // course's first lesson can carry the course's own name) — a second line
           // that says the title again tells nobody anything.
           const label = c.nextLabel && !c.title.includes(c.nextLabel) ? ` · ${c.nextLabel}` : "";
           return (
