@@ -48,7 +48,10 @@ export function HomeSaintsTicker() {
     return rows.map((c) => ({
       key: `${c.month}-${c.day}`,
       emoji: c.major ? "✨" : "🕯️",
-      label: shortName(c.name),
+      // The date first, then the name (owner, 2026-09-18: "put their date
+      // first like 9/27 then the name") — a row of upcoming saints reads as a
+      // calendar, and the date is what tells you which one is today's.
+      label: `${c.month}/${c.day} ${shortName(c.name)}`,
       onSelect: () => setLocation(`/saints?d=${c.month}-${c.day}`),
     }));
   }, [setLocation]);
