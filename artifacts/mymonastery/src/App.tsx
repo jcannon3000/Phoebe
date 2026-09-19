@@ -1350,8 +1350,15 @@ function Router() {
       {/* BETA "Pray the breath" — Co-Breathe with the user's prayer requests as
           the rotating text in the top half, instead of photos. */}
       <Route path="/pray-breath" component={PrayBreathPage} />
-      {/* Saints — a single browsable/searchable index (BCP-Prayers-style). */}
-      <Route path="/saints" component={SaintsIndex} />
+      {/* Saints — a single browsable/searchable index (BCP-Prayers-style).
+          At /saints/all, not /saints (2026-09-18): the Hagiographies PRACTICE
+          (pages/saints) was given /saints below, but this earlier route matched
+          first, so every door to the practice — the Practices row, the home's
+          saints ticker (/saints?d=M-D) — opened this index instead and the
+          practice was unreachable. The index keeps its own address and its
+          Resources → Saints entry; guests still reach it (the "/saints" guest
+          prefix covers it). */}
+      <Route path="/saints/all" component={SaintsIndex} />
       <Route path="/intentions">{() => <AccountRequiredGate><IntentionsPage /></AccountRequiredGate>}</Route>
       <Route path="/listening" component={ListeningPage} />
       <Route path="/hymns" component={HymnsPage} />
