@@ -154,6 +154,14 @@ export default function ListeningPage() {
   // way in).
   const online = useOnline();
   const [query, setQuery] = useState("");
+  /**
+   * The Choose beat's search box, apart from `query` (owner, 2026-09-18: "The
+   * search shouldn't be auto filled"). `query` also backs the log field, which
+   * SHOULD arrive filled with what was just played; sharing it put yesterday's
+   * song in an empty search. Typing here still writes `query` and `what`, so
+   * the catalogue lookup and the log follow it.
+   */
+  const [findQuery, setFindQuery] = useState("");
   const [what, setWhat] = useState("");
   // Apple Music catalog suggestions for the search field: artists, songs,
   // albums. Debounced; `picked` suppresses re-searching the text we just filled
@@ -671,7 +679,13 @@ export default function ListeningPage() {
    * picture practice ends too. Ending on the log made the last thing you did
    * data entry.
    */
-  const INTRO = 0, LISTEN = 1, HOW = 2, LOG = 3, LIFT = 4, DONE = 5;
+  /**
+   * LISTEN is the invitation alone; FIND is Lately and the search (owner,
+   * 2026-09-18: "Split this into two pages … The prompt first then the recent
+   * and search"). The one slide had grown past the screen, pushing the
+   * Hymns/Hildegard pills under the deck's footer.
+   */
+  const INTRO = 0, LISTEN = 1, FIND = 2, HOW = 3, LOG = 4, LIFT = 5, DONE = 6;
   /**
    * ?log=1 — a catalogue (Hymns, Hildegard) opened the music in another app
    * and sent the person here, so the deck starts on the log, which the
@@ -686,12 +700,14 @@ export default function ListeningPage() {
     } catch { /* no URL to read */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const DECK_TOTAL = 6;
+  const DECK_TOTAL = 7;
   const LAST = DONE;
   // The pill's section label — the office's "N of M · Section" shape.
-  const LISTEN_SECTION = ["Begin", "Listen", "How", "Log", "Pray", "Done"];
-  /** The LISTEN beat is the player — Phoebe is holding the music. */
-  const playerShowing = deckStep === LISTEN && !!nowPlaying;
+  const LISTEN_SECTION = ["Begin", "Listen", "Choose", "How", "Log", "Pray", "Done"];
+  /** Either listening beat becomes the player once Phoebe is holding the
+   *  music: LISTEN when a catalogue handed it over, FIND when it was chosen
+   *  from Lately or the search. */
+  const playerShowing = (deckStep === LISTEN || deckStep === FIND) && !!nowPlaying;
 
   // ——— Library (curated albums) ———
   if (view === "library") {
@@ -865,17 +881,17 @@ export default function ListeningPage() {
       // is best for you" and "what did you listen to?" are for music played
       // somewhere else. Phoebe is playing this one and already knows what it
       // is — so Next logs it and goes on to the prayer beat.
-      if (deckStep === LISTEN && nowPlaying) { logNowPlaying(); setDeckStep(LIFT); return; }
+      if (playerShowing) { logNowPlaying(); setDeckStep(LIFT); return; }
       if (deckStep < LAST) setDeckStep((n) => n + 1);
     };
     const prev = () => {
       // Stepping back from the prayer beat skips the log once it's been done —
       // logToday clears the form, so going back to it showed an empty one,
       // which reads as "it didn't save".
-      if (deckStep === LIFT && loggedHere.current) { setDeckStep(LISTEN); return; }
+      if (deckStep === LIFT && loggedHere.current) { setDeckStep(FIND); return; }
       // Sent here by a catalogue's play button: they came from a shelf and
       // want the rest of it, not the deck's Begin slide they never saw.
-      if (deckStep === LISTEN && cameFrom.current) { setLocation(cameFrom.current); return; }
+      if (playerShowing && cameFrom.current) { setLocation(cameFrom.current); return; }
       if (deckStep > INTRO) setDeckStep((n) => n - 1);
     };
     // Tap the left half to go back, the right half forward; swipe likewise —
@@ -1069,10 +1085,13 @@ export default function ListeningPage() {
                   rise: a 6px lift as they fade in, then a slow breathing glow.
                   Space Grotesk, upright, 21px, same measure. */}
               {deckStep === LISTEN && !nowPlaying && (
+                <p className="prompt-rise text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
+                  Let a song come to mind that feels sacred to you in this moment. Listen to it once — rest in the music, and listen for what touches your heart as you do.
+                </p>
+              )}
+
+              {deckStep === FIND && !nowPlaying && (
                 <div className="w-full flex flex-col items-center gap-5" style={{ maxWidth: 480 }}>
-                  <p className="prompt-rise text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, margin: 0 }}>
-                    Let a song come to mind that feels sacred to you in this moment. Listen to it once — rest in the music, and listen for what touches your heart as you do.
-                  </p>
                   {/**
                     * The last three, under the invitation (owner).
                     *
@@ -1164,8 +1183,8 @@ export default function ListeningPage() {
                   {canPlayInApp && (
                     <div className="w-full">
                       <input
-                        value={query}
-                        onChange={(e) => { setQuery(e.target.value); setPicked(false); setWhat(e.target.value); setArtworkUrl(""); }}
+                        value={findQuery}
+                        onChange={(e) => { setFindQuery(e.target.value); setQuery(e.target.value); setPicked(false); setWhat(e.target.value); setArtworkUrl(""); }}
                         placeholder="Search for something to listen to…"
                         inputMode="search"
                         aria-label="Search for something to listen to"
@@ -1263,7 +1282,7 @@ export default function ListeningPage() {
                   Lock screen and Control Center carry the same controls, since
                   MusicKit owns the playback — so leaving Phoebe mid-hymn does
                   not lose it. */}
-              {deckStep === LISTEN && nowPlaying && (
+              {playerShowing && nowPlaying && (
                 <MusicPlayer
                   title={nowPlaying.title}
                   artworkUrl={artworkUrl}
