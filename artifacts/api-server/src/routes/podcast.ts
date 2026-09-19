@@ -1308,11 +1308,29 @@ export type CacCourse = {
  * that can quietly change when a feed does.
  */
 type ShowCourseMeta = {
+  /**
+   * The only seasons offered AS COURSES. Everything else the show published
+   * stays exactly where it was — `/podcasts/show/:slug` hands back the feed
+   * untouched, so the seasons left out here are still browsable and playable
+   * in the audio library. This trims the course list, not the show.
+   */
+  courseSeasons?: readonly number[];
   numberedOnly?: boolean;
   seasons?: Record<number, { title?: string; minEpisode?: number; maxEpisode?: number }>;
 };
 const SHOW_COURSE_META: Record<string, ShowCourseMeta> = {
   "way-of-love-curry": {
+    /**
+     * THE TWO THE SHOW ITSELF NAMED (owner, 2026-09-19: "What if we just do
+     * the first two two seasons of the curry one").
+     *
+     * Seasons 1 and 2 walk the seven practices and are the only ones the show
+     * ever gave a name; 3, 4 and 5 are guest conversations nobody titled — and
+     * two named seasons is, almost certainly, where the owner's "They have two
+     * seasons" came from. The conversations are not deleted: they are still in
+     * the library under the show, just not offered as courses to begin.
+     */
+    courseSeasons: [1, 2],
     numberedOnly: true,
     seasons: {
       // Episodes 1-8: "What is the Way of Love?" and then the seven practices.
@@ -1324,8 +1342,9 @@ const SHOW_COURSE_META: Record<string, ShowCourseMeta> = {
       // 1-8 is the run; 9-18 are bonus interviews, a Christmas message, the
       // Rooted in Jesus live recordings and a cathedral sermon.
       2: { title: "Beyond the Church Walls", maxEpisode: 8 },
-      // 1-9 are the conversations; 10 is the Presiding Bishop's Christmas
-      // message. Seasons 3 and 4 need no cut — every episode is a conversation.
+      // Not offered today (see courseSeasons) — kept so that restoring
+      // Season 5 restores its cut with it: 1-9 are the conversations, 10 is
+      // the Presiding Bishop's Christmas message. Seasons 3 and 4 need no cut.
       5: { maxEpisode: 9 },
     },
   },
@@ -1378,6 +1397,8 @@ async function buildCourses(shows: Show[]): Promise<CacCourse[]> {
     }
     const seasons = [...bySeason.keys()].sort((a, b) => a - b);
     for (const season of seasons) {
+      // Offered as a course at all? A season left out stays in the library.
+      if (meta?.courseSeasons && !meta.courseSeasons.includes(season)) continue;
       // The feed lists newest-first; a course plays oldest-first.
       let episodes = [...(bySeason.get(season) ?? [])].reverse();
       const seasonMeta = meta?.seasons?.[season];
