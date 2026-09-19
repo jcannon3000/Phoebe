@@ -2799,13 +2799,20 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         return isTaize && url.path.contains("prayer-and-reflection")
     }
 
-    /** Phoebe's own watch pages (/video, /ncmp/watch, /devotion/watch) on
-     *  withphoebe.app — scoped to exactly these, so the office and the
-     *  newsletter readers keep their bars. */
+    /** One of Phoebe's OWN pages, opened in the reader so a video can play:
+     *  withphoebe.app carrying ?inapp=1, the mark lib/videoEmbed sets on every
+     *  page it hands over (the watch pages, and a course lesson through the
+     *  relay). The office Options menu means nothing on these — owner, on a
+     *  Centering Prayer lesson: "The options are not relevant to this" — and
+     *  their <title> is only "Phoebe". The paths are still named because a
+     *  watch page reached WITHOUT the mark is the same page and deserves the
+     *  same bar. Other hosts' readers (SSJE, Taizé, an office) are untouched. */
     static func isPhoebeWatchPage(_ url: URL?) -> Bool {
         guard let url, let host = url.host?.lowercased() else { return false }
         guard host == "withphoebe.app" || host == "www.withphoebe.app" else { return false }
-        return ["/video", "/ncmp/watch", "/devotion/watch"].contains(url.path)
+        if ["/video", "/ncmp/watch", "/devotion/watch"].contains(url.path) { return true }
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        return items.contains { $0.name == "inapp" && $0.value == "1" }
     }
 
     static func isReaderHostName(_ host: String) -> Bool {

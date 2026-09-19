@@ -268,6 +268,16 @@ function ReaderShell({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * WHEN THE READER WAS LAST OPENED for a course, so returning from it cannot
+ * bounce straight back in. The page stays mounted while the reader is up, so a
+ * ref would normally be enough; this also covers the case where coming back
+ * remounts the page (a refetched progress query, a re-entered route). Module
+ * level, because the guard has to outlive the component.
+ */
+const lastReaderOpenAt = new Map<string, number>();
+const REOPEN_GUARD_MS = 1500;
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export function CoursePage({ course, index }: { course: JourneyCourse; index: CourseIndex }) {
@@ -372,6 +382,43 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
     };
   }, [handsOffToReader, course.id]);
 
+  /** Start the course and hand this page to the reader. */
+  const openCourseInReader = useCallback(() => {
+    // Opening a lesson IS starting the course (the home's Continue card keys
+    // on it) — here as much as on the web, where openVideo does the same.
+    markStarted();
+    lastReaderOpenAt.set(course.id, Date.now());
+    return openVideoInReader(readerCoursePath(course.id, window.location.pathname));
+  }, [course.id, markStarted]);
+
+  /**
+   * STRAIGHT INTO THE READER (owner, 2026-09-19: "When we tap a centering
+   * prayer course, skip this slide and go straight to the browser").
+   *
+   * Tapping a video course on iOS used to land on the poster below — a still,
+   * a play button and one more tap to get what they had already asked for.
+   * Now the tap opens the reader itself, from wherever the course was tapped:
+   * every door (the home's Continue card, /learn, /menu/learn, a Courses row)
+   * comes through this page, so opening on arrival covers them all.
+   *
+   * The poster is still the page underneath, which is where the reader closes
+   * back to — by then with the progress it just collected — and it is what a
+   * person sees if the reader refuses to open at all. Both reasons it must NOT
+   * reopen on its own: once per arrival, and never within a moment of the last
+   * open, or closing the reader would throw them back into it.
+   */
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!handsOffToReader || autoOpenedRef.current) return;
+    autoOpenedRef.current = true;
+    // Not while the app is in the background: a course page built behind the
+    // reader (or off screen) must not steal the front when it comes back.
+    if (document.visibilityState !== "visible") return;
+    const last = lastReaderOpenAt.get(course.id) ?? 0;
+    if (Date.now() - last < REOPEN_GUARD_MS) return;
+    openCourseInReader();
+  }, [handsOffToReader, course.id, openCourseInReader]);
+
   /**
    * WHERE YOUTUBE WON'T EMBED — the iOS shell, whose capacitor:// origin the
    * player refuses (lib/videoEmbed). This used to be a dead end: "this guided
@@ -391,13 +438,7 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
           </h1>
           <p className="mt-0.5 text-sm" style={{ color: C.sage }}>with {course.author}</p>
           <button
-            onClick={() => {
-              // Opening a lesson IS starting the course (the home's Continue
-              // card keys on it) — here as much as on the web, where openVideo
-              // does the same.
-              markStarted();
-              openVideoInReader(readerCoursePath(course.id, window.location.pathname));
-            }}
+            onClick={openCourseInReader}
             className="mt-4 w-full overflow-hidden rounded-2xl text-left transition-opacity active:opacity-90"
             style={{ border: `1px solid ${C.border}`, background: "#000" }}
           >
