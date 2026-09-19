@@ -109,6 +109,22 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // true for any signed-in non-beta account, so this row was hidden
     // from nearly everyone, not just visitors without an account.
     { offlineKey: "visio", emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image, slowly", href: "/visio" },
+    /**
+     * EVERY SIGNED-IN PERSON SEES IT (owner, 2026-09-06: "I want all
+     * signed in users to see it"). The gate was `!isGuest`, and the
+     * public shape covers every ordinary account — so this row reached
+     * pilot-group members and super admins only, which is not what
+     * "not in the public version" was meant to mean. The no-login
+     * version still doesn't carry it (owner, 2026-07-02), and that is
+     * what `signedIn` now says: an anonymous device user is not an
+     * account. /listening itself was never gated.
+     *
+     * ABOVE THE ROSARY (owner, 2026-09-18: "Move audio Divina above the
+     * rosary"). It sat at the bottom of Practices before that.
+     */
+    ...(signedIn ? [
+      { offlineKey: "listening", emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", href: "/listening" },
+    ] : []),
     // BELOW VISIO (owner, 2026-09-18: "move the rosay bellow visio on the
     // practice page and option pages").
     // The Rosary — a guided walk through a set of mysteries, on Simple
@@ -142,20 +158,5 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // spirituals from the practices ... both on the main practice page
     // and in the customizer"). The practice itself and /spirituals still
     // exist — see lib/spiritualsFlag.ts — but nothing links to it here.
-    /**
-     * EVERY SIGNED-IN PERSON SEES IT (owner, 2026-09-06: "I want all
-     * signed in users to see it"). The gate was `!isGuest`, and the
-     * public shape covers every ordinary account — so this row reached
-     * pilot-group members and super admins only, which is not what
-     * "not in the public version" was meant to mean. The no-login
-     * version still doesn't carry it (owner, 2026-07-02), and that is
-     * what `signedIn` now says: an anonymous device user is not an
-     * account. /listening itself was never gated.
-     *
-     * Audio Divina sits at the BOTTOM of Practices (owner).
-     */
-    ...(signedIn ? [
-      { offlineKey: "listening", emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", href: "/listening" },
-    ] : []),
   ];
 }
