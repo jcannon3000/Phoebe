@@ -103,6 +103,35 @@ function parseFirstEntry(xml: string): {
   return { videoId, title, publishedAt };
 }
 
+// THE FEED WENT AWAY (2026-09-18: the playlist RSS answers 404 for both
+// playlists, from Railway and from a laptop alike, while the playlists
+// themselves are live and current). So when the feed fails, read the first
+// video off the playlist PAGE instead: it lists newest-first, and its
+// ytInitialData carries each item's id and title. Two shapes, because
+// YouTube has served both within a year — the newer lockupViewModel
+// (contentId + lockupMetadataViewModel.title.content) and the older
+// playlistVideoRenderer (videoId + title.runs[0].text).
+function parsePlaylistPage(html: string): { videoId: string | null; title: string | null } {
+  const lockup = html.match(/"lockupViewModel":\{"contentImage"[\s\S]*?"contentId":"([A-Za-z0-9_-]{11})"/)
+    ?? html.match(/"lockupViewModel":\{[\s\S]{0,4000}?"contentId":"([A-Za-z0-9_-]{11})"/);
+  if (lockup) {
+    const after = html.slice(lockup.index ?? 0);
+    const title = after.match(/"lockupMetadataViewModel":\{"title":\{"content":"((?:[^"\\]|\\.)*)"/)?.[1] ?? null;
+    return { videoId: lockup[1], title: title ? decodeJsonString(title) : null };
+  }
+  const renderer = html.match(/"playlistVideoRenderer":\{"videoId":"([A-Za-z0-9_-]{11})"/);
+  if (renderer) {
+    const after = html.slice(renderer.index ?? 0);
+    const title = after.match(/"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/)?.[1] ?? null;
+    return { videoId: renderer[1], title: title ? decodeJsonString(title) : null };
+  }
+  return { videoId: null, title: null };
+}
+
+function decodeJsonString(raw: string): string {
+  try { return JSON.parse(`"${raw}"`) as string; } catch { return raw; }
+}
+
 // YouTube embeds lengthSeconds in the player config JSON inside the
 // watch page HTML. A loose regex tolerates extra whitespace and the
 // occasional surrounding-config drift. Returns seconds or null.
@@ -134,18 +163,36 @@ async function resolveTodaysMeta(key: PlaylistKey, playlistId: string): Promise<
   };
 
   try {
-    const feedRes = await fetch(feedUrlFor(playlistId), {
-      headers: { "User-Agent": UA, "Accept": "application/atom+xml, application/xml, */*" },
-      signal: controller.signal,
-    });
-    if (!feedRes.ok) {
-      logger.warn({ status: feedRes.status }, "[ncmp] playlist RSS non-ok");
-      return fallback;
+    let videoId: string | null = null;
+    let title: string | null = null;
+    let publishedAt: string | null = null;
+    try {
+      const feedRes = await fetch(feedUrlFor(playlistId), {
+        headers: { "User-Agent": UA, "Accept": "application/atom+xml, application/xml, */*" },
+        signal: controller.signal,
+      });
+      if (feedRes.ok) {
+        ({ videoId, title, publishedAt } = parseFirstEntry(await feedRes.text()));
+      } else {
+        logger.warn({ status: feedRes.status, key }, "[ncmp] playlist RSS non-ok; trying the playlist page");
+      }
+    } catch (err) {
+      logger.warn({ err: err instanceof Error ? err.message : String(err), key }, "[ncmp] playlist RSS failed; trying the playlist page");
     }
-    const xml = await feedRes.text();
-    const { videoId, title, publishedAt } = parseFirstEntry(xml);
     if (!videoId) {
-      logger.warn("[ncmp] could not parse first entry from playlist RSS");
+      // safeFetch re-validates the host on every redirect hop.
+      const pageRes = await safeFetch(playlistUrlFor(playlistId), {
+        timeoutMs: 8_000,
+        headers: {
+          "User-Agent": UA,
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+      });
+      if (pageRes.ok) ({ videoId, title } = parsePlaylistPage(await pageRes.text()));
+    }
+    if (!videoId) {
+      logger.warn({ key }, "[ncmp] no video from the RSS or the playlist page");
       return fallback;
     }
 
