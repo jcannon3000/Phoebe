@@ -22,7 +22,9 @@ import { getMusicService, setMusicService, MUSIC_SERVICES, MUSIC_SERVICE_EVENT, 
 import { SpotifyMark, AppleMark, YouTubeMark } from "@/components/ServiceMarks";
 import { takePendingListen } from "@/lib/pendingListen";
 import { takeNowPlayingHandOff } from "@/lib/nowPlaying";
-import { MusicPlayer } from "@/components/MusicPlayer";
+import { MusicPlayer, MUSIC_PLAYER_PILL } from "@/components/MusicPlayer";
+import { MusicLibrarySheet } from "@/components/MusicLibrarySheet";
+import type { MusicPlaylist } from "@/lib/practiceMusic";
 import { CtaArrow } from "@/components/CtaArrow";
 
 // Audio Divina — sacred listening. You listen, then note what you listened to
@@ -219,6 +221,8 @@ export default function ListeningPage() {
   // yes once; on the web it stays null and every tap behaves as it always did.
   const [nowPlaying, setNowPlaying] = useState<{ id: string; title: string } | null>(null);
   const [paused, setPaused] = useState(false);
+  /** The "Choose from library" sheet (components/MusicLibrarySheet). */
+  const [libraryOpen, setLibraryOpen] = useState(false);
   /**
    * Can Phoebe itself play music right now? Owner: "If they have apple music
    * turned on, on the cards that show recent logs, have a play icon on the
@@ -398,6 +402,31 @@ export default function ListeningPage() {
         return;
       }
       setDeckStep(LOG);
+    })();
+  }
+
+  /**
+   * A catalogue chosen from the library sheet. In-app for an Apple Music
+   * listener whose build can play a whole collection, straight into the
+   * player; otherwise it opens in Apple Music and the deck goes on to the log,
+   * already filled in, as a search result that links out does.
+   */
+  function playFromLibrary(pl: MusicPlaylist) {
+    setLibraryOpen(false);
+    const title = pl.label;
+    const elsewhere = () => {
+      openExternal(pl.url, { system: true });
+      setWhat(title); setQuery(title); setPicked(true); setArtworkUrl("");
+      setDeckStep(LOG);
+    };
+    if (service !== "apple" || !canPlayInApp || !hasAppleMusicCollectionNative()) { elsewhere(); return; }
+    void (async () => {
+      const ok = await playAppleMusicCollectionNative(pl.kind, pl.id, { shuffle: false, repeatAll: false });
+      if (!aliveRef.current) { void stopAppleMusicNative(); return; }
+      if (!ok) { elsewhere(); return; }
+      setArtworkUrl("");
+      setNowPlaying({ id: pl.id, title });
+      setPaused(false);
     })();
   }
 
@@ -1223,51 +1252,24 @@ export default function ListeningPage() {
                       )}
                     </div>
                   )}
-                  {/* The catalogue pills sit side by side (owner, 2026-09-18:
-                      "have the catalouge pills next to each other"). Wraps on
-                      the narrowest phones rather than squeezing either label. */}
-                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
-                    {/* Hymns — owner: "under it can you have a pill that says
-                        hymns". The shelf to go and look at when nothing comes to
-                        mind: the whole Hymnal 1982 as recorded, in hymnal order.
-                        Unlike the Lately rows above this IS tappable — it doesn't
-                        choose the song for you, it opens the place to find one.
-
-                        A real <button> on purpose: the deck pages forward on any
-                        tap in its right half (onTapNavigate), and it stands down
-                        only for button/a/[role=button]. As a <div> this would
-                        both open the catalogue AND skip the beat. */}
-                    <button
-                      type="button"
-                      onClick={() => setLocation("/hymns")}
-                      className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-                      style={{
-                        ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
-                        fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 7,
-                      }}
-                    >
-                      <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
-                      Hymns
-                    </button>
-                    {/* Hildegard, beside the hymnal (owner, 2026-09-18: "next to
-                        hymns have a catalouge that says Hildegard"). The other
-                        shelf: one composer's essentials, put on whole rather
-                        than looked up. */}
-                    <button
-                      type="button"
-                      onClick={() => setLocation("/hildegard")}
-                      className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-                      style={{
-                        ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
-                        fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 7,
-                      }}
-                    >
-                      <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
-                      Hildegard
-                    </button>
-                  </div>
+                  {/* ONE WIDE PILL, "Choose from library" (owner, 2026-09-18:
+                      "instead of those two pills there should be a wide pill
+                      that says chose from library, and then they would chose a
+                      catalogue"). It opens components/MusicLibrarySheet: the
+                      catalogues, with Hymns under Sakamoto. A real <button>:
+                      the deck pages forward on taps in its right half and
+                      stands down only for button/a/[role=button]. */}
+                  <button
+                    type="button"
+                    onClick={() => setLibraryOpen(true)}
+                    className="w-full rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                    style={{
+                      ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
+                      fontSize: 15, fontWeight: 600, padding: "13px 22px", cursor: "pointer",
+                    }}
+                  >
+                    Choose from library
+                  </button>
                 </div>
               )}
 
@@ -1282,10 +1284,32 @@ export default function ListeningPage() {
                   Lock screen and Control Center carry the same controls, since
                   MusicKit owns the playback — so leaving Phoebe mid-hymn does
                   not lose it. */}
+              {/* Outside the deck's tap-to-page: a tap on the sheet's scrim
+                  must close it, not turn the page underneath. */}
+              <div onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
+                <MusicLibrarySheet
+                  open={libraryOpen}
+                  onClose={() => setLibraryOpen(false)}
+                  onPick={playFromLibrary}
+                  onHymns={() => { setLibraryOpen(false); setLocation("/hymns"); }}
+                />
+              </div>
+
               {playerShowing && nowPlaying && (
                 <MusicPlayer
                   title={nowPlaying.title}
                   artworkUrl={artworkUrl}
+                  backdrop={deckBackdrop}
+                  onMinimize={() => {
+                    // Out of the player: back to the shelf it came from, or
+                    // to Choose with the music stopped — not to the other
+                    // listening beat, which would show this player again.
+                    if (cameFrom.current) { setLocation(cameFrom.current); return; }
+                    void stopAppleMusicNative();
+                    setNowPlaying(null);
+                    setPaused(false);
+                    setDeckStep(FIND);
+                  }}
                   paused={paused}
                   onTogglePause={() => {
                     if (paused) { void resumeAppleMusicNative(); setPaused(false); }
@@ -1311,11 +1335,8 @@ export default function ListeningPage() {
                       logNowPlaying();
                       setDeckStep(DONE);
                     }}
-                    className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-                    style={{
-                      ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
-                      fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
-                    }}
+                    className="transition-opacity hover:opacity-90 active:scale-[0.99]"
+                    style={MUSIC_PLAYER_PILL}
                   >
                     Log this listening
                   </button>

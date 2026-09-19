@@ -144,7 +144,9 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // Renamed Sacred Image Browser (owner, 2026-09-18: "Call the sacred image
     // scroll Sacred Image Browser"). The done screen still says "instead of doom
     // scrolling": that is what the practice is set against, not its name.
-    { emoji: "🖼️", label: "Sacred Image Browser", sub: "Scroll through sacred images, and stay where one holds you", href: "/icon-prayer?gallery=1" },
+    // OFF THE PRACTICES PAGE (owner, 2026-09-18: "Take out sacred image
+    // browser from the practice page"). The gallery itself still opens from
+    // Praying with Icons (/icon-prayer?gallery=1).
     // NO SPIRITUALS ROW (owner, 2026-09-05: "take out reading and
     // spirituals from the practices ... both on the main practice page
     // and in the customizer"). The practice itself and /spirituals still
