@@ -2113,6 +2113,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                titled "Phoebe" until it says otherwise, so that one word is the
                only title refused here — a course names itself as soon as it
                knows which course it is. */
+            if Self.isSelfTitledPage(webView.url) { return }
             if Self.isPhoebeWatchPage(webView.url) && t == "Phoebe" { return }
             self.title = t
         }
@@ -2820,9 +2821,28 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     static func isPhoebeWatchPage(_ url: URL?) -> Bool {
         guard let url, let host = url.host?.lowercased() else { return false }
         guard host == "withphoebe.app" || host == "www.withphoebe.app" else { return false }
-        if ["/video", "/ncmp/watch", "/devotion/watch"].contains(url.path) { return true }
+        if WATCH_PATHS.contains(url.path) { return true }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         return items.contains { $0.name == "inapp" && $0.value == "1" }
+    }
+
+    /** The watch pages, which PRINT their own heading. */
+    private static let WATCH_PATHS = ["/video", "/ncmp/watch", "/devotion/watch"]
+
+    /**
+     * A page that names itself ON the page, so the bar must not name it again
+     * (owner, 2026-09-19, on a hymn whose own heading read "HYMN 8 / Morning
+     * Has Broken / Yusuf · Cat Stevens" under a bar saying the same: "We don't
+     * also need the browser title").
+     *
+     * A COURSE in the reader is not one of these: its heading is the course,
+     * while the bar names the course and the lesson, which is what the owner
+     * asked for there.
+     */
+    static func isSelfTitledPage(_ url: URL?) -> Bool {
+        guard let url, let host = url.host?.lowercased() else { return false }
+        guard host == "withphoebe.app" || host == "www.withphoebe.app" else { return false }
+        return WATCH_PATHS.contains(url.path)
     }
 
     static func isReaderHostName(_ host: String) -> Bool {
