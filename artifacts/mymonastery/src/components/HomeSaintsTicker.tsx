@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+import { motion, useInView } from "framer-motion";
 import { useLocation } from "wouter";
 import { PillTicker } from "@/components/PillTicker";
 import { allCommemorations, type Commemoration } from "@/lib/commemorations";
@@ -56,6 +57,11 @@ export function HomeSaintsTicker() {
     }));
   }, [setLocation]);
 
+  // Both hooks above the early return, or an empty list changes the hook count
+  // between renders and React throws (HomeLearnSection carries the same note).
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(rootRef, { once: true, amount: 0.25 });
+
   if (!pills.length) return null;
   /**
    * THE HEADING IS RENDERED HERE, not passed to PillTicker.
@@ -71,18 +77,32 @@ export function HomeSaintsTicker() {
    * the reflection sources all say Hagiographies, so anything else would read
    * as our typo rather than theirs.
    *
-   * Type matches the section headings already on the home (HomeLearnSection's
-   * eyebrow) so it sits in the page rather than announcing itself.
+   * THE SAME HEADING AND SPACING AS PRACTICES AND COURSES (owner,
+   * 2026-09-18: "The Hagiographies header needs to match the practices and
+   * match the spacing between sections"). It first shipped with a 10.5px
+   * uppercase eyebrow, on the belief that that was HomeLearnSection's style —
+   * but HomeLearnSection's heading is the h3 + hairline below, which is also
+   * what Practices copies. And it had no top margin, so it sat tight against
+   * Courses while every other section stood 24px off the one above.
+   *
+   * So: the same mt-6, the same heading, the same hairline, the same
+   * opacity-only arrival, word for word. The three read as one set of sections.
    */
+  const enter = (i: number) => ({
+    initial: { opacity: 0 },
+    animate: inView ? { opacity: 1 } : { opacity: 0 },
+    transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: i * 0.1 },
+  });
   return (
-    <div>
-      <p
-        className="truncate text-[10.5px] font-semibold uppercase tracking-widest leading-[14px] px-1 mb-1.5"
-        style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}
-      >
-        Hagiographies
-      </p>
-      <PillTicker label="Hagiographies" pills={pills} />
+    <div className="mt-6" ref={rootRef}>
+      <motion.div {...enter(0)} className="flex items-center gap-3 mb-2">
+        <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>Hagiographies</h3>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+      </motion.div>
+      <motion.div {...enter(1)}>
+        {/* `label` stays: it is the row's aria-label, not a visible heading. */}
+        <PillTicker label="Hagiographies" pills={pills} />
+      </motion.div>
     </div>
   );
 }
