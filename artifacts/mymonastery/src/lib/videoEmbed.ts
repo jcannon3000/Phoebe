@@ -77,3 +77,41 @@ export function openVideoInReader(pathAndQuery?: string): boolean {
 export function youtubePoster(videoId: string): string {
   return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 }
+
+/** A bare YouTube video id: eleven characters of [A-Za-z0-9_-]. */
+export const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+
+/** The video id in any of YouTube's link shapes, or null. */
+export function youtubeIdFrom(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\.|^m\./, "");
+    let id: string | null = null;
+    if (host === "youtu.be") id = u.pathname.slice(1).split("/")[0] ?? null;
+    else if (host === "youtube.com" || host === "music.youtube.com" || host === "youtube-nocookie.com") {
+      id = u.searchParams.get("v");
+      if (!id) {
+        const m = /^\/(?:embed|shorts|live|v)\/([^/?#]+)/.exec(u.pathname);
+        id = m?.[1] ?? null;
+      }
+    }
+    return id && YOUTUBE_ID.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The /video page (pages/video-watch) for one video — for setLocation or
+ *  openVideoInReader. `from` is where its Back returns (in-app paths only);
+ *  `log` offers "Log this listening" (the caller has left a pendingListen). */
+export function videoPath(
+  id: string,
+  opts: { title?: string | null; from?: string | null; log?: boolean } = {},
+): string {
+  const q = new URLSearchParams({ v: id });
+  if (opts.title) q.set("title", opts.title);
+  if (opts.from && opts.from.startsWith("/")) q.set("from", opts.from);
+  if (opts.log) q.set("log", "1");
+  return `/video?${q.toString()}`;
+}

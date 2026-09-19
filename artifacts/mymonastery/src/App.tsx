@@ -306,6 +306,7 @@ const ForgotPassword = lazy(() => import("./pages/forgot-password"));
 const ResetPassword = lazy(() => import("./pages/reset-password"));
 const PrayerChooserPage = lazy(() => import("./pages/prayer-chooser"));
 const NcmpWatchPage = lazy(() => import("./pages/ncmp-watch"));
+const VideoWatchPage = lazy(() => import("./pages/video-watch"));
 const DevotionWatchPage = lazy(() => import("./pages/devotion-watch"));
 const OfficePodcastPage = lazy(() => import("./pages/office-podcast"));
 const OfficePrayAlongPage = lazy(() => import("./pages/office-pray-along"));
@@ -971,6 +972,9 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // offices, which the public spec keeps.
   "/podcast/morning-office", "/podcast/evening-office", "/podcast/compline",
   "/devotion/watch", "/ncmp/watch",
+  // A hymn (or any link) played through YouTube inside Phoebe — /hymns is
+  // open to guests, so the page it plays on must be too.
+  "/video",
   // Reference content the guest Resources menu links to.
   "/building-faith",
   "/signin", "/login", "/onboarding",
@@ -1191,6 +1195,7 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/prayer-chooser">{() => <PrayerGate><PrayerChooserPage /></PrayerGate>}</Route>
       <Route path="/ncmp/watch" component={NcmpWatchPage} />
+      <Route path="/video" component={VideoWatchPage} />
       <Route path="/devotion/watch" component={DevotionWatchPage} />
       <Route path="/podcast/morning-office" component={OfficePodcastPage} />
       <Route path="/podcast/evening-office" component={OfficePodcastPage} />

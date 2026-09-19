@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
+import { canEmbedVideoHere, openVideoInReader, videoPath, youtubeIdFrom } from "@/lib/videoEmbed";
 import { hasAppleMusicNative, playAppleMusicNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 import { setPendingListen } from "@/lib/pendingListen";
 import { handOffNowPlaying } from "@/lib/nowPlaying";
@@ -167,6 +168,30 @@ export default function HymnsPage() {
         setLocation("/listening");
       });
       return;
+    }
+    /**
+     * YOUTUBE PLAYS IN PHOEBE (owner, 2026-09-18: "Can it open the YouTube links
+     * for hymns and such in app like we were building for other things?").
+     * The same route the cathedral services take (lib/videoEmbed): where the
+     * page has a real http(s) origin (web, Android) the /video page plays it
+     * inline; on iOS, whose capacitor:// origin YouTube refuses (Error 153),
+     * the same page opens in the in-app reader at withphoebe.app, and the app
+     * underneath goes on to the log exactly as the other services do. A link
+     * whose id can't be read still opens YouTube itself, as before.
+     */
+    if (service === "youtube") {
+      const vid = youtubeIdFrom(url);
+      if (vid) {
+        noteForTheLog(h);
+        if (canEmbedVideoHere()) {
+          setLocation(videoPath(vid, { title: listenedAs(h), from: "/hymns", log: true }));
+          return;
+        }
+        if (openVideoInReader(videoPath(vid, { title: listenedAs(h) }))) {
+          setLocation("/listening?log=1");
+          return;
+        }
+      }
     }
     noteForTheLog(h);
     openThenLog(url);
