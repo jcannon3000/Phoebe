@@ -80,6 +80,57 @@ const PLAY_DEADLINE_MS = 30000;
 
 const TIMED_OUT = Symbol("timed-out");
 
+type AvailableAnswer = { available?: boolean; authorized?: boolean; subscribed?: boolean };
+
+/**
+ * ONE AVAILABILITY CHECK, SHARED FOR HALF A MINUTE.
+ *
+ * isAvailable asks Apple's servers about the subscription, and a single tap
+ * could pay for it twice: the page asking "can this play in the app?", then
+ * the play call asking again for itself. On a cold phone that is two network
+ * round trips before a note sounds.
+ *
+ * Neither caller trusts the other — every function here still asks for
+ * itself and still fails to false — they just share the answer. Only a real
+ * answer is kept: a timeout or a failure is dropped at once, so one slow
+ * moment can't make the next tap link out. It is forgotten whenever
+ * authorization is asked for (the answer just changed) and whenever the app
+ * comes back to the front (a subscription can lapse, or be bought, while
+ * Phoebe is in the background).
+ */
+const CHECK_TTL_MS = 30000;
+let checkCache: { at: number; answer: Promise<AvailableAnswer> } | null = null;
+
+function checkAvailable(p: MusicPlugin): Promise<AvailableAnswer> {
+  if (!p.isAvailable) return Promise.resolve({});
+  const now = Date.now();
+  if (checkCache && now - checkCache.at < CHECK_TTL_MS) return checkCache.answer;
+  const entry = { at: now, answer: withDeadline<AvailableAnswer>(p.isAvailable(), CHECK_DEADLINE_MS, {}) };
+  checkCache = entry;
+  void entry.answer.then((r) => {
+    if (r?.available !== true && checkCache === entry) checkCache = null;
+  });
+  return entry.answer;
+}
+
+/** Forget the shared answer — authorization changed, or we're back in front. */
+export function forgetAppleMusicCheck(): void {
+  checkCache = null;
+}
+
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") forgetAppleMusicCheck();
+  });
+}
+
+/** Ask for authorization; whatever the answer, the shared check is stale now. */
+function authorizeFresh(p: MusicPlugin): Promise<{ authorized?: boolean; subscribed?: boolean }> {
+  forgetAppleMusicCheck();
+  if (!p.authorize) return Promise.resolve({});
+  return withDeadline(p.authorize(), AUTHORIZE_DEADLINE_MS, {}).finally(forgetAppleMusicCheck);
+}
+
 /**
  * Start playback within PLAY_DEADLINE_MS, or report false so the caller opens
  * the service. If the deadline passes and the play then finishes after all,
@@ -137,7 +188,7 @@ export async function appleMusicNativeReady(): Promise<boolean> {
   const p = plugin();
   if (!p?.isAvailable) return false;
   try {
-    const r = await withDeadline(p.isAvailable(), CHECK_DEADLINE_MS, {});
+    const r = await checkAvailable(p);
     return r?.available === true && r?.authorized === true && r?.subscribed === true;
   } catch {
     return false;
@@ -155,12 +206,12 @@ export async function playAppleMusicNative(trackId: string | null | undefined): 
   const p = plugin();
   if (!p?.playTrack || !trackId) return false;
   try {
-    const status = p.isAvailable ? await withDeadline(p.isAvailable(), CHECK_DEADLINE_MS, {}) : {};
+    const status = await checkAvailable(p);
     if (status.available !== true) return false;
     if (status.authorized !== true) {
       // The sheet is allowed to wait on a person; it is not allowed to wait
       // forever, because a sheet swiped away never resumes.
-      const asked = p.authorize ? await withDeadline(p.authorize(), AUTHORIZE_DEADLINE_MS, {}) : {};
+      const asked = await authorizeFresh(p);
       if (asked.authorized !== true) return false;
       if (asked.subscribed !== true) return false;
     } else if (status.subscribed !== true) {
@@ -194,10 +245,10 @@ export async function playAppleMusicPlaylistNative(
   const p = plugin();
   if (!p?.playPlaylist || !playlistId) return false;
   try {
-    const status = p.isAvailable ? await withDeadline(p.isAvailable(), CHECK_DEADLINE_MS, {}) : {};
+    const status = await checkAvailable(p);
     if (status.available !== true) return false;
     if (status.authorized !== true) {
-      const asked = p.authorize ? await withDeadline(p.authorize(), AUTHORIZE_DEADLINE_MS, {}) : {};
+      const asked = await authorizeFresh(p);
       if (asked.authorized !== true || asked.subscribed !== true) return false;
     } else if (status.subscribed !== true) {
       return false;
@@ -233,10 +284,10 @@ export async function playAppleMusicCollectionNative(
   try {
     // The same limits as the other two paths — this one arrived after the
     // deadlines did and had none, so a stall here was a dead tap.
-    const status = p.isAvailable ? await withDeadline(p.isAvailable(), CHECK_DEADLINE_MS, {}) : {};
+    const status = await checkAvailable(p);
     if (status.available !== true) return false;
     if (status.authorized !== true) {
-      const asked = p.authorize ? await withDeadline(p.authorize(), AUTHORIZE_DEADLINE_MS, {}) : {};
+      const asked = await authorizeFresh(p);
       if (asked.authorized !== true || asked.subscribed !== true) return false;
     } else if (status.subscribed !== true) {
       return false;
@@ -277,7 +328,7 @@ export async function requestAppleMusicNative(): Promise<{ authorized: boolean; 
   const p = plugin();
   if (!p?.authorize) return { authorized: false, subscribed: false };
   try {
-    const r = await withDeadline(p.authorize(), AUTHORIZE_DEADLINE_MS, {});
+    const r = await authorizeFresh(p);
     return { authorized: r?.authorized === true, subscribed: r?.subscribed === true };
   } catch {
     return { authorized: false, subscribed: false };
