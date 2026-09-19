@@ -81,6 +81,38 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     /// while the app went to the background.
     private var started = false
 
+    /// Play tickets. Every play takes the next one; stop() advances it even
+    /// when nothing has started yet. A play still fetching its catalogue when
+    /// the sit, office or breath ended used to find stop() a no-op (started
+    /// was false) and then start the playlist on the home screen with nothing
+    /// left to stop it (audit, 2026-09-18). Main-actor only.
+    private var playGen = 0
+
+    @MainActor private func beginPlay() -> Int {
+        playGen += 1
+        return playGen
+    }
+
+    @MainActor private func isCurrent(_ gen: Int) -> Bool {
+        return gen == playGen
+    }
+
+    /// A play that took the session and then failed (or was stopped mid-start)
+    /// hands it straight back, as stop() does. Left alone it held an exclusive
+    /// .playback session for nothing: other apps' audio cut, chimes through
+    /// the mute switch, and the sit's keep-alive and bell standing down for
+    /// musicHolds (audit, 2026-09-18).
+    @MainActor private func releaseAfterFailedStart() {
+        #if canImport(MusicKit)
+        if #available(iOS 16.0, *) {
+            ApplicationMusicPlayer.shared.stop()
+        }
+        #endif
+        started = false
+        PhoebeSessionOwner.musicHolds = false
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+    }
+
     private func activateAudioSession() {
         started = true
         do {
@@ -159,6 +191,10 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
             // state, and driving it from a background task is undefined
             // (two watchdog kills on the owner's phone, 2026-09-18).
             Task { @MainActor in
+                // This play's ticket: a stop() or a newer play advances it,
+                // and a stale play gives up instead of starting music.
+                let gen = self.beginPlay()
+                var activated = false
                 guard MusicAuthorization.currentStatus == .authorized else {
                     call.reject("not-authorized")
                     return
@@ -188,19 +224,24 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                        let start = tracks.first(where: { $0.id == song.id }) {
                         queue = ApplicationMusicPlayer.Queue(for: tracks, startingAt: start)
                     }
+                    guard self.isCurrent(gen) else { call.reject("superseded"); return }
                     self.activateAudioSession()
+                    activated = true
                     let player = ApplicationMusicPlayer.shared
                     player.queue = queue
                     player.state.shuffleMode = .off
                     player.state.repeatMode = MusicPlayer.RepeatMode.none
                     try await player.prepareToPlay()
                     try await player.play()
+                    // Stopped (or replaced) while it was starting: undo it.
+                    guard self.isCurrent(gen) else { self.releaseAfterFailedStart(); call.reject("superseded"); return }
                     call.resolve([
                         "playing": true,
                         "title": song.title,
                         "artist": song.artistName,
                     ])
                 } catch {
+                    if activated { self.releaseAfterFailedStart() }
                     call.reject("playback-failed: \(error.localizedDescription)")
                 }
             }
@@ -233,6 +274,10 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
             // state, and driving it from a background task is undefined
             // (two watchdog kills on the owner's phone, 2026-09-18).
             Task { @MainActor in
+                // This play's ticket: a stop() or a newer play advances it,
+                // and a stale play gives up instead of starting music.
+                let gen = self.beginPlay()
+                var activated = false
                 guard MusicAuthorization.currentStatus == .authorized else {
                     call.reject("not-authorized")
                     return
@@ -250,7 +295,9 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                         return
                     }
                     let detailed = try await playlist.with([.tracks])
-                    await MainActor.run { self.activateAudioSession() }
+                    guard self.isCurrent(gen) else { call.reject("superseded"); return }
+                    self.activateAudioSession()
+                    activated = true
                     let player = ApplicationMusicPlayer.shared
                     let tracks = detailed.tracks ?? []
                     if tracks.isEmpty {
@@ -264,12 +311,15 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                     player.state.repeatMode = repeatAll ? .all : MusicPlayer.RepeatMode.none
                     try await player.prepareToPlay()
                     try await player.play()
+                    // Stopped (or replaced) while it was starting: undo it.
+                    guard self.isCurrent(gen) else { self.releaseAfterFailedStart(); call.reject("superseded"); return }
                     call.resolve([
                         "playing": true,
                         "title": playlist.name,
                         "count": tracks.count,
                     ])
                 } catch {
+                    if activated { self.releaseAfterFailedStart() }
                     call.reject("playback-failed: \(error.localizedDescription)")
                 }
             }
@@ -308,6 +358,10 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
             // state, and driving it from a background task is undefined
             // (two watchdog kills on the owner's phone, 2026-09-18).
             Task { @MainActor in
+                // This play's ticket: a stop() or a newer play advances it,
+                // and a stale play gives up instead of starting music.
+                let gen = self.beginPlay()
+                var activated = false
                 guard MusicAuthorization.currentStatus == .authorized else {
                     call.reject("not-authorized")
                     return
@@ -343,13 +397,17 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                             // Songs, not Tracks — queue them directly below.
                             let songs = Array(top)
                             if !songs.isEmpty {
-                                await MainActor.run { self.activateAudioSession() }
+                                guard self.isCurrent(gen) else { call.reject("superseded"); return }
+                                self.activateAudioSession()
+                                activated = true
                                 let player = ApplicationMusicPlayer.shared
                                 player.queue = ApplicationMusicPlayer.Queue(for: songs)
                                 player.state.shuffleMode = shuffle ? .songs : .off
                                 player.state.repeatMode = repeatAll ? .all : MusicPlayer.RepeatMode.none
                                 try await player.prepareToPlay()
                                 try await player.play()
+                                // Stopped (or replaced) while it was starting: undo it.
+                                guard self.isCurrent(gen) else { self.releaseAfterFailedStart(); call.reject("superseded"); return }
                                 call.resolve(["playing": true, "title": name, "count": songs.count])
                                 return
                             }
@@ -367,15 +425,20 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                         call.reject("not-found")
                         return
                     }
-                    await MainActor.run { self.activateAudioSession() }
+                    guard self.isCurrent(gen) else { call.reject("superseded"); return }
+                    self.activateAudioSession()
+                    activated = true
                     let player = ApplicationMusicPlayer.shared
                     player.queue = ApplicationMusicPlayer.Queue(for: tracks)
                     player.state.shuffleMode = shuffle ? .songs : .off
                     player.state.repeatMode = repeatAll ? .all : MusicPlayer.RepeatMode.none
                     try await player.prepareToPlay()
                     try await player.play()
+                    // Stopped (or replaced) while it was starting: undo it.
+                    guard self.isCurrent(gen) else { self.releaseAfterFailedStart(); call.reject("superseded"); return }
                     call.resolve(["playing": true, "title": name, "count": tracks.count])
                 } catch {
+                    if activated { self.releaseAfterFailedStart() }
                     call.reject("playback-failed: \(error.localizedDescription)")
                 }
             }
@@ -418,8 +481,15 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func stop(_ call: CAPPluginCall) {
         #if canImport(MusicKit)
-        if #available(iOS 16.0, *), started {
+        if #available(iOS 16.0, *) {
             Task { @MainActor in
+                // Always advance the ticket, so a play still fetching its
+                // catalogue gives up instead of starting after we left.
+                self.playGen += 1
+                // Nothing started: touch nothing. The first touch of
+                // ApplicationMusicPlayer.shared opens a synchronous media-
+                // server connection on the main thread (the watchdog kills).
+                guard self.started else { call.resolve(); return }
                 // stop() only. Swapping in an empty Queue() here was one
                 // more round trip to the media server for nothing.
                 ApplicationMusicPlayer.shared.stop()

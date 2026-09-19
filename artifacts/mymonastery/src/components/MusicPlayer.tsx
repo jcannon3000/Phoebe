@@ -26,7 +26,7 @@
 // The track is not draggable: there is no seek on the native side, and a knob
 // that looked draggable but wasn't would be worse than none.
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   appleMusicStatusNative, hasAppleMusicStatusNative,
   nextAppleMusicNative, previousAppleMusicNative,
@@ -159,15 +159,20 @@ export function MusicPlayer({
     return () => { alive = false; window.clearInterval(h); document.removeEventListener("visibilitychange", tick); };
   }, []);
 
-  // The lock screen can pause it too; the button should say what is true.
-  // Only a CHANGE in what MusicKit reports is passed on, so a tap here is not
-  // undone by the poll that was already in flight when it landed.
-  const reportedPlaying = status?.playing;
+  // The button says what is TRUE. The lock screen can pause it too, and a
+  // tap MusicKit ignores used to leave the button wrong indefinitely (audit,
+  // 2026-09-18), because only a CHANGE in the reported state was passed on.
+  // Now MusicKit's answer wins once it has disagreed with the button for two
+  // polls running — long enough that a tap is never undone by the poll that
+  // was already in flight when it landed.
+  const disagreeRef = useRef(0);
   useEffect(() => {
-    if (reportedPlaying === undefined) return;
-    onPausedChange?.(!reportedPlaying);
+    if (!status) return;
+    if (status.playing === !paused) { disagreeRef.current = 0; return; }
+    disagreeRef.current += 1;
+    if (disagreeRef.current >= 2) { disagreeRef.current = 0; onPausedChange?.(!status.playing); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportedPlaying]);
+  }, [status]);
 
   const count = status?.count ?? 0;
   const index = status?.index ?? -1;

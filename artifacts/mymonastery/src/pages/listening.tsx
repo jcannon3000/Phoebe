@@ -417,12 +417,25 @@ export default function ListeningPage() {
     setLibraryOpen(false);
     const title = pl.label;
     const elsewhere = () => {
-      openExternal(pl.url, { system: true });
+      // The listener's OWN service (audit, 2026-09-18: a Spotify or YouTube
+      // listener was sent to Apple Music and logged as if they'd heard it
+      // there). These catalogues are Apple's, so the others get a search for
+      // the name on their service — /hildegard's urlFor does the same.
+      const q = encodeURIComponent(title);
+      const url = service === "apple" ? pl.url
+        : service === "youtube" ? `https://www.youtube.com/results?search_query=${q}`
+        : `https://open.spotify.com/search/${q}`;
+      openExternal(url, { system: true });
       setWhat(title); setQuery(title); setPicked(true); setArtworkUrl("");
       setDeckStep(LOG);
     };
-    if (service !== "apple" || !canPlayInApp || !hasAppleMusicCollectionNative()) { elsewhere(); return; }
+    // playableNow, not the raw canPlayInApp: null means "still asking", and
+    // treating that as "no" opened the Music app for a listener who could
+    // play in-app a moment later.
+    const playable = service === "apple" && hasAppleMusicCollectionNative() ? playableNow() : false;
+    if (playable === false) { elsewhere(); return; }
     void (async () => {
+      if (!(await playable)) { if (aliveRef.current) elsewhere(); return; }
       const ok = await playAppleMusicCollectionNative(pl.kind, pl.id, { shuffle: false, repeatAll: false });
       if (!aliveRef.current) { void stopAppleMusicNative(); return; }
       if (!ok) { elsewhere(); return; }
@@ -433,6 +446,9 @@ export default function ListeningPage() {
   }
 
   function chooseResult(r: SearchResult) {
+    // The keyboard spacer goes with the keyboard (audit, 2026-09-18).
+    setFindFocused(false);
+    try { (document.activeElement as HTMLElement | null)?.blur(); } catch { /* no focus */ }
     const title = r.subtitle ? `${r.title} — ${r.subtitle}` : r.title;
     setWhat(title);
     setQuery(title);
@@ -524,13 +540,13 @@ export default function ListeningPage() {
   }
   // Audio Divina is private — a personal listening log, no sharing with fellows.
   const logMutation = useMutation({
-    mutationFn: async (vars?: { what?: string; artworkUrl?: string }) => {
+    mutationFn: async (vars?: { what?: string; artworkUrl?: string; medium?: ListeningMedium }) => {
       // An explicit title wins over the field. Logging what is PLAYING must not
       // read `what` out of state — a tap that both sets the title and logs it
       // would otherwise read the previous render's value.
       const title = (vars?.what ?? what).trim();
       const art = vars?.artworkUrl ?? artworkUrl;
-      const body = { day: new Date().toLocaleDateString("en-CA"), medium, what: title, artworkUrl: art, shared: false };
+      const body = { day: new Date().toLocaleDateString("en-CA"), medium: vars?.medium ?? medium, what: title, artworkUrl: art, shared: false };
       try {
         return await apiRequest("POST", "/api/listening", body);
       } catch (err) {
@@ -735,10 +751,11 @@ export default function ListeningPage() {
   const LAST = DONE;
   // The pill's section label — the office's "N of M · Section" shape.
   const LISTEN_SECTION = ["Begin", "Listen", "Choose", "How", "Log", "Pray", "Done"];
-  /** Either listening beat becomes the player once Phoebe is holding the
+  /** Any beat before the prayer becomes the player once Phoebe is holding the
    *  music: LISTEN when a catalogue handed it over, FIND when it was chosen
-   *  from Lately or the search. */
-  const playerShowing = (deckStep === LISTEN || deckStep === FIND) && !!nowPlaying;
+   *  from Lately or the search — and HOW or LOG when a slow play finished
+   *  after the person paged on (audit, 2026-09-18: music with no controls). */
+  const playerShowing = deckStep > INTRO && deckStep < LIFT && !!nowPlaying;
 
   // ——— Library (curated albums) ———
   if (view === "library") {
@@ -901,9 +918,11 @@ export default function ListeningPage() {
       const already = entries.some((e) => e.day === todayYmd
         && e.what.trim().toLowerCase() === title.toLowerCase());
       if (title && !already) {
-        logMutation.mutate({ what: title, artworkUrl });
+        logMutation.mutate({ what: title, artworkUrl, medium: "streaming" });
         markPracticeDoneToday("listening");
-        saveListeningEntry({ minutes: 0, songs: 1, medium, what: title, artworkUrl });
+        // Phoebe played it, so it was streamed — not the remembered Vinyl/CD
+        // choice from some earlier log (audit, 2026-09-18).
+        saveListeningEntry({ minutes: 0, songs: 1, medium: "streaming", what: title, artworkUrl });
       }
       loggedHere.current = true;
     };

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { canEmbedVideoHere, openVideoInReader, videoPath, youtubeIdFrom } from "@/lib/videoEmbed";
 import { hasAppleMusicNative, playAppleMusicNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
+import { appleMusicFeaturesReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
 import { setPendingListen } from "@/lib/pendingListen";
 import { handOffNowPlaying } from "@/lib/nowPlaying";
 import { HYMNS, hymnNumberLabel, type Hymn } from "@/lib/hymnsCatalogue";
@@ -124,6 +125,31 @@ export default function HymnsPage() {
   // Playback is the listener's to stop — pause here, the lock screen, or
   // Control Center.
 
+  /**
+   * THE SAME GATE AS /hildegard AND AUDIO DIVINA (audit, 2026-09-18). This page
+   * alone still entered the native branch on "the plugin exists", so it
+   * ignored the Settings switch turned OFF, and a play tap could raise the
+   * authorization sheet — the ambush lib/appleMusicNative forbids.
+   * appleMusicFeaturesReady asks iOS and never prompts. null = still asking.
+   */
+  const [canPlayInApp, setCanPlayInApp] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    const ask = () => { void appleMusicFeaturesReady().then((ok) => { if (live) setCanPlayInApp(ok); }); };
+    ask();
+    window.addEventListener(APPLE_MUSIC_EVENT, ask);
+    return () => { live = false; window.removeEventListener(APPLE_MUSIC_EVENT, ask); };
+  }, []);
+  function playableNow(): boolean | Promise<boolean> {
+    if (canPlayInApp !== null) return canPlayInApp;
+    if (!hasAppleMusicNative()) return false;
+    return appleMusicFeaturesReady();
+  }
+  /** Still on this page? A play that lands after leaving must not pull the
+   *  person back to /listening or start music behind wherever they went. */
+  const aliveRef = useRef(true);
+  useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; }; }, []);
+
   // Apple Music can play here, through the listener's own subscription
   // (lib/appleMusicNative). Everything else — and every failure — opens the
   // service instead. The native attempt is only made when the plugin is
@@ -151,12 +177,20 @@ export default function HymnsPage() {
     // ready to be logged". Left for Audio Divina's log whichever way it plays
     // — in-app or out in the service — because either way this is what they
     // listened to. lib/pendingListen clears it on use and at the day turn.
-    if (service === "apple" && h.appleTrackId && hasAppleMusicNative()) {
+    const playable = service === "apple" && h.appleTrackId ? playableNow() : false;
+    if (playable !== false && h.appleTrackId) {
       // Pause is not listening: return BEFORE the note is left, or stopping a
       // hymn would record it as the thing you sat with.
       if (playingId === h.appleTrackId) { void stopAppleMusicNative(); setPlayingId(null); return; }
       noteForTheLog(h);
-      void playAppleMusicNative(h.appleTrackId).then((ok) => {
+      void (async () => {
+        if (!(await playable)) { if (aliveRef.current) openThenLog(url); return; }
+        return playAppleMusicNative(h.appleTrackId);
+      })().then((ok) => {
+        if (ok === undefined) return;
+        // A second tap or leaving makes this play stale; lib/appleMusicNative
+        // then never settles it. Left the page while it started: stop it.
+        if (!aliveRef.current) { if (ok) void stopAppleMusicNative(); return; }
         if (!ok) { openThenLog(url); return; }
         setPlayingId(h.appleTrackId);
         // Playing goes to the player (owner, 2026-09-18: "Playing from a

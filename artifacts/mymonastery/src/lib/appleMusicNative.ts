@@ -139,8 +139,24 @@ function authorizeFresh(p: MusicPlugin): Promise<{ authorized?: boolean; subscri
  * and music starting inside Phoebe behind it is the double-start nobody asked
  * for.
  */
-async function playWithin(work: Promise<{ playing?: boolean } | null | undefined>): Promise<boolean> {
+/**
+ * PLAY TICKETS, the JS half of the native ones (audit, 2026-09-18). Every play
+ * takes one when it is ASKED for — before the availability check, which can
+ * itself take seconds — and stopAppleMusicNative() advances it. A play whose
+ * ticket is stale when it settles was stopped or replaced while it started
+ * (someone left the sit, tapped a second hymn): it resolves to NEVER, so no
+ * caller mistakes it for a failure and opens Apple Music behind the person
+ * who just left. The native side refuses or undoes the music itself.
+ */
+let playTicket = 0;
+const NEVER = new Promise<boolean>(() => { /* superseded: settles for no one */ });
+function takeTicket(): number { return ++playTicket; }
+function stale(ticket: number): boolean { return ticket !== playTicket; }
+
+async function playWithin(work: Promise<{ playing?: boolean } | null | undefined>, ticket: number): Promise<boolean> {
+  if (stale(ticket)) return NEVER;
   const r = await withDeadline<unknown>(work, PLAY_DEADLINE_MS, TIMED_OUT);
+  if (stale(ticket)) return NEVER;
   if (r === TIMED_OUT) {
     work.then(
       (late) => { if (late?.playing === true) void plugin()?.stop?.(); },
@@ -204,25 +220,26 @@ export async function appleMusicNativeReady(): Promise<boolean> {
  * an authorization sheet on page load would be an ambush.
  */
 export async function playAppleMusicNative(trackId: string | null | undefined): Promise<boolean> {
+  const ticket = takeTicket();
   const p = plugin();
-  if (!p?.playTrack || !trackId) return false;
+  if (!p?.playTrack || !trackId) return stale(ticket) ? NEVER : false;
   try {
     const status = await checkAvailable(p);
-    if (status.available !== true) return false;
+    if (status.available !== true) return stale(ticket) ? NEVER : false;
     if (status.authorized !== true) {
       // The sheet is allowed to wait on a person; it is not allowed to wait
       // forever, because a sheet swiped away never resumes.
       const asked = await authorizeFresh(p);
-      if (asked.authorized !== true) return false;
-      if (asked.subscribed !== true) return false;
+      if (asked.authorized !== true) return stale(ticket) ? NEVER : false;
+      if (asked.subscribed !== true) return stale(ticket) ? NEVER : false;
     } else if (status.subscribed !== true) {
-      return false;
+      return stale(ticket) ? NEVER : false;
     }
-    return await playWithin(p.playTrack({ id: trackId }));
+    return await playWithin(p.playTrack({ id: trackId }), ticket);
   } catch {
     // "not-authorized", "no-subscription", "not-found", a MusicKit error, or
     // no capability on the App ID — all of them mean: open the link instead.
-    return false;
+    return stale(ticket) ? NEVER : false;
   }
 }
 
@@ -243,24 +260,25 @@ export async function playAppleMusicPlaylistNative(
   playlistId: string | null | undefined,
   opts: { shuffle?: boolean; repeatAll?: boolean } = {},
 ): Promise<boolean> {
+  const ticket = takeTicket();
   const p = plugin();
-  if (!p?.playPlaylist || !playlistId) return false;
+  if (!p?.playPlaylist || !playlistId) return stale(ticket) ? NEVER : false;
   try {
     const status = await checkAvailable(p);
-    if (status.available !== true) return false;
+    if (status.available !== true) return stale(ticket) ? NEVER : false;
     if (status.authorized !== true) {
       const asked = await authorizeFresh(p);
-      if (asked.authorized !== true || asked.subscribed !== true) return false;
+      if (asked.authorized !== true || asked.subscribed !== true) return stale(ticket) ? NEVER : false;
     } else if (status.subscribed !== true) {
-      return false;
+      return stale(ticket) ? NEVER : false;
     }
     return await playWithin(p.playPlaylist({
       id: playlistId,
       shuffle: opts.shuffle === true,
       repeatAll: opts.repeatAll === true,
-    }));
+    }), ticket);
   } catch {
-    return false;
+    return stale(ticket) ? NEVER : false;
   }
 }
 
@@ -280,26 +298,27 @@ export async function playAppleMusicCollectionNative(
   id: string | null | undefined,
   opts: { shuffle?: boolean; repeatAll?: boolean } = {},
 ): Promise<boolean> {
+  const ticket = takeTicket();
   const p = plugin();
-  if (!p?.playCollection || !id) return false;
+  if (!p?.playCollection || !id) return stale(ticket) ? NEVER : false;
   try {
     // The same limits as the other two paths — this one arrived after the
     // deadlines did and had none, so a stall here was a dead tap.
     const status = await checkAvailable(p);
-    if (status.available !== true) return false;
+    if (status.available !== true) return stale(ticket) ? NEVER : false;
     if (status.authorized !== true) {
       const asked = await authorizeFresh(p);
-      if (asked.authorized !== true || asked.subscribed !== true) return false;
+      if (asked.authorized !== true || asked.subscribed !== true) return stale(ticket) ? NEVER : false;
     } else if (status.subscribed !== true) {
-      return false;
+      return stale(ticket) ? NEVER : false;
     }
     return await playWithin(p.playCollection({
       id, kind,
       shuffle: opts.shuffle === true,
       repeatAll: opts.repeatAll === true,
-    }));
+    }), ticket);
   } catch {
-    return false;
+    return stale(ticket) ? NEVER : false;
   }
 }
 
@@ -348,6 +367,8 @@ export async function resumeAppleMusicNative(): Promise<void> {
 
 /** Stop in-app playback (leaving the Music app's own state alone). */
 export async function stopAppleMusicNative(): Promise<void> {
+  // Any play still starting is now stale (see playTicket).
+  playTicket += 1;
   try { await plugin()?.stop?.(); } catch { /* nothing playing */ }
 }
 
