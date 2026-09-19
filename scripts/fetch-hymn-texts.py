@@ -23,7 +23,7 @@ strict enough that a doubtful case shows no words:
        and it is 1929 or earlier; anyone "b. ..." refuses it.
   A text with no named person at all (a traditional carol) passes on 1-3.
 
-Usage:  python3 scripts/fetch-hymn-texts.py
+Usage:  python3 scripts/fetch-hymn-texts.py [--from-json pages.json]
 It reads the hymn numbers from lib/hymnsCatalogue.ts, fetches one page per
 text (first number of a tune pair; 5 s apart, retried on a 403, cached in
 $HYMNARY_CACHE so a run stopped by the rate limit resumes), and prints what it took and
@@ -35,6 +35,7 @@ import re
 import time
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -134,9 +135,24 @@ def main():
     firsts = sorted(
         {m.split(",")[0].strip() for m in re.findall(r"\{ num: \[([0-9, ]+)\]", src)}, key=int
     )
+    # --from-json <file>: pages already read in a browser, as
+    # {"<n>": {"v": [stanza paragraphs], "i": {Text Information}}}. For when
+    # hymnary.org blocks scripted requests (it did, 2026-09-19, for over an
+    # hour) but still serves a browser. The SAME verdict() is applied, so the
+    # rule cannot be bypassed; a number absent from the file counts as refused.
+    pre = None
+    if len(sys.argv) > 2 and sys.argv[1] == "--from-json":
+        pre = json.loads(Path(sys.argv[2]).read_text())
     took, refused = {}, {}
     for n in firsts:
-        paras, info = parse(fetch(n))
+        if pre is not None:
+            if n not in pre:
+                refused[n] = ["not in the browser pass (refused there)"]
+                continue
+            paras = ["\n".join(l.strip() for l in p.split("\n") if l.strip()) for p in pre[n]["v"]]
+            info = pre[n]["i"]
+        else:
+            paras, info = parse(fetch(n))
         why = verdict(paras, info)
         if why:
             refused[n] = why
