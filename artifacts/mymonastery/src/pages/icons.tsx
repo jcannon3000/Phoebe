@@ -48,6 +48,8 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { logListenedContemplation } from "@/lib/listenedContemplation";
+import { useAuth } from "@/hooks/useAuth";
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -1003,6 +1005,7 @@ export default function IconsPage() {
   const [query, setQuery] = useState("");
   const [chosen, setChosen] = useState<IconArtwork | null>(null);
   /** Minutes, 1–5 — or null for "no timer". */
+  const { user } = useAuth();
   const [minutes, setMinutes] = useState<number | null>(null);
   /**
    * The sit's END as a wall-clock timestamp, not a decrementing counter — a
@@ -1349,8 +1352,24 @@ export default function IconsPage() {
     setPhase("timer");
   };
 
+  /**
+   * SITTING WITH THE ICON IS CONTEMPLATION TIME (owner, 2026-09-19: "What if
+   * view icons and Visio Divina counts towards contemplation time?").
+   *
+   * The SIT, from Begin to Complete — not the choosing, and not the Sacred
+   * Image scroll, which is a gallery rather than a sit (its dwell clock keeps
+   * doing only what it did: remembering what held you). Written once, where
+   * the practice is already marked kept, with the seconds actually sat,
+   * capped at the length chosen so a phone left open on the picture cannot
+   * report an hour. Under a minute is ignored (lib/listenedContemplation).
+   */
+  const sitStartRef = useRef<number | null>(null);
+  const sitSecondsRef = useRef(0);
+
   const begin = () => {
     if (!chosen) return;
+    sitStartRef.current = Date.now();
+    sitSecondsRef.current = 0;
     setEndsAt(minutes != null ? Date.now() + minutes * 60_000 : null);
     // Prime the remaining time IN THE SAME UPDATE. Left stale (its initial 0,
     // or 0 from a finished earlier sit), the pray phase's first render saw
@@ -1408,6 +1427,14 @@ export default function IconsPage() {
      * entry did, on every completion.
      */
     markPracticeDoneToday("icons");
+    const startedAt = sitStartRef.current;
+    if (startedAt !== null) {
+      sitStartRef.current = null;
+      const sat = (Date.now() - startedAt) / 1000;
+      const cap = minutes != null ? minutes * 60 : 60 * 60;
+      sitSecondsRef.current = Math.min(sat, cap);
+      logListenedContemplation({ seconds: sitSecondsRef.current, source: "icons", user });
+    }
     setHistory((h) => [{ id: chosen.id, ymd }, ...h.filter((v) => v.id !== chosen.id)]);
     setPhase("done");
   };

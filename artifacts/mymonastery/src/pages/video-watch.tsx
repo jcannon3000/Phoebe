@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { YouTubePlayer } from "@/components/YouTubePlayer";
 import { isInReaderWatch, YOUTUBE_ID } from "@/lib/videoEmbed";
@@ -60,6 +60,21 @@ export default function VideoWatchPage() {
   const inReader = isInReaderWatch();
   const words = hymnTextFor(params.get("hymn"));
   // The reader can't log (see the header); the caller did, and said so.
+  /**
+   * THE READER'S OWN TITLE BAR reads document.title (owner, 2026-09-19: "The
+   * top of that reader shouldn't say Phoebe it should be related to the
+   * content"), and on iOS this page IS what the reader is showing. So it
+   * names the track while it is open and hands the old title back on the way
+   * out, for the app's other pages.
+   */
+  useEffect(() => {
+    const name = [eyebrow, title].filter(Boolean).join(" · ");
+    if (!name) return;
+    const prior = document.title;
+    document.title = name;
+    return () => { document.title = prior; };
+  }, [eyebrow, title]);
+
   const [logged, setLogged] = useState(
     () => params.get("logged") === "1" || (!!logAs && !inReader && listenLoggedToday(logAs)),
   );

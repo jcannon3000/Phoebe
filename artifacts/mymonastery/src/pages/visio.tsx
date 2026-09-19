@@ -48,6 +48,8 @@ import { isOnline } from "@/lib/offline";
 import { cachedImageUrl } from "@/lib/imageCache";
 import { FROST_BLUR } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { logListenedContemplation } from "@/lib/listenedContemplation";
+import { useAuth } from "@/hooks/useAuth";
 import { artworkForDay } from "@/lib/visioArtworks";
 import { chooseArtwork, artworkById, alternatesForDay, readingUrl, canonicalRef, type Chosen } from "@/lib/visioSelect";
 import { isActHidden } from "@/lib/actOverrides";
@@ -630,6 +632,38 @@ export default function VisioPage() {
    *  instructions back to back and made the reader tap twice before seeing
    *  anything. The reading is offered under the work instead. */
   const showsImage = step === LOOK || step === LOOK_AGAIN;
+
+  /**
+   * LOOKING IS CONTEMPLATION TIME (owner, 2026-09-19: "What if view icons and
+   * Visio Divina counts towards contemplation time?").
+   *
+   * Only the two beats that hold the PICTURE — not the title, not the reading
+   * hand-off, not the closing slide: the deck's prompts are instructions, and
+   * counting them would pay someone for tapping through. The clock stops when
+   * the app goes away, so a phone set down on the picture reports nothing, and
+   * it is written ONCE, on reaching the closing slide, with the seconds
+   * actually accrued (lib/listenedContemplation, the shape Pray As You Go and
+   * Breathing Together already use — under a minute is ignored there).
+   */
+  const { user } = useAuth();
+  const lookMsRef = useRef(0);
+  const lookSinceRef = useRef<number | null>(null);
+  const loggedLookRef = useRef(false);
+  useEffect(() => {
+    const open = () => { if (lookSinceRef.current === null) lookSinceRef.current = Date.now(); };
+    const close = () => {
+      if (lookSinceRef.current === null) return;
+      lookMsRef.current += Date.now() - lookSinceRef.current;
+      lookSinceRef.current = null;
+    };
+    if (showsImage && document.visibilityState !== "hidden") open(); else close();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") close();
+      else if (showsImage) open();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => { document.removeEventListener("visibilitychange", onVisibility); close(); };
+  }, [showsImage]);
   // The stage's height and the picture's rendered height, for centring the
   // first look's picture with the description right under it (see the image).
   const stageRef = useRef<HTMLDivElement>(null);
@@ -978,7 +1012,14 @@ export default function VisioPage() {
   useEffect(() => {
     if (step !== DONE) return;
     try { markPracticeDoneToday("visio"); } catch { /* non-fatal */ }
-  }, [step, DONE]);
+    if (loggedLookRef.current) return;
+    loggedLookRef.current = true;
+    if (lookSinceRef.current !== null) {
+      lookMsRef.current += Date.now() - lookSinceRef.current;
+      lookSinceRef.current = null;
+    }
+    logListenedContemplation({ seconds: lookMsRef.current / 1000, source: "visio", user });
+  }, [step, DONE, user]);
   useEffect(() => { if (view?.essayUrl) preloadExternal(view.essayUrl); }, [view?.essayUrl]);
   useEffect(() => { if (passageUrl) preloadExternal(passageUrl); }, [passageUrl]);
   useEffect(() => {
