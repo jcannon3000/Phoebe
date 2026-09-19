@@ -2830,19 +2830,21 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private static let WATCH_PATHS = ["/video", "/ncmp/watch", "/devotion/watch"]
 
     /**
-     * A page that names itself ON the page, so the bar must not name it again
-     * (owner, 2026-09-19, on a hymn whose own heading read "HYMN 8 / Morning
-     * Has Broken / Yusuf · Cat Stevens" under a bar saying the same: "We don't
-     * also need the browser title").
+     * A page that names itself ON the page, so the bar must not name it again.
      *
-     * A COURSE in the reader is not one of these: its heading is the course,
-     * while the bar names the course and the lesson, which is what the owner
-     * asked for there.
+     * Owner, first of a hymn — its own heading read "HYMN 8 / Morning Has
+     * Broken / Yusuf · Cat Stevens" under a bar saying the same: "We don't
+     * also need the browser title" — and then of a course lesson, under a bar
+     * reading "Centering Prayer · The Method…": "I don't think it needs the
+     * dublicate title".
+     *
+     * Which is every page of ours: they all carry their own heading, and the
+     * bar's copy truncates where the page's does not. So this is now simply
+     * "one of ours", and only other publishers' readers (SSJE, Taizé, an
+     * office, a newsletter) still take a title from the document.
      */
     static func isSelfTitledPage(_ url: URL?) -> Bool {
-        guard let url, let host = url.host?.lowercased() else { return false }
-        guard host == "withphoebe.app" || host == "www.withphoebe.app" else { return false }
-        return WATCH_PATHS.contains(url.path)
+        return isPhoebeWatchPage(url)
     }
 
     static func isReaderHostName(_ host: String) -> Bool {

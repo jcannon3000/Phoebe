@@ -279,6 +279,13 @@ function ReaderShell({ children, photo }: { children: ReactNode; photo: string |
         <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, overflow: "hidden" }}>
           <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.38 }} />
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(5,13,8,0.74), rgba(5,13,8,0.66) 45%, rgba(5,13,8,0.8))" }} />
+          {/* THE JOIN WITH THE NATIVE BAR (owner, 2026-09-19: "Can the top bar
+              match or no?"). The bar takes this page's ground colour exactly —
+              it probes it — but the page's own top band is a photograph, so a
+              flat bar over leaf texture still read as a separate slab. The
+              first inch fades from the ground colour, and the two become one
+              surface. Below it the photo is at full strength as before. */}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 120, background: `linear-gradient(180deg, ${C.bg} 0%, ${C.bg} 18%, rgba(9,26,16,0) 100%)` }} />
         </div>
       )}
       {children}
