@@ -103,15 +103,25 @@ export function youtubeIdFrom(url: string | null | undefined): string | null {
 }
 
 /** The /video page (pages/video-watch) for one video — for setLocation or
- *  openVideoInReader. `from` is where its Back returns (in-app paths only);
- *  `log` offers "Log this listening" (the caller has left a pendingListen). */
+ *  openVideoInReader.
+ *   - title: the name of the thing (a hymn's name), set large;
+ *   - eyebrow / sub: small lines above and below it (the hymn number; who
+ *     sings it);
+ *   - from: where Back returns (in-app paths only);
+ *   - logAs: what "Log this listening" writes, in place (lib/logListenNow);
+ *   - logged: the caller already logged it (the iOS reader, which can't);
+ *   - hymn: lib/hymnTexts key, for the public-domain words beneath. */
 export function videoPath(
   id: string,
-  opts: { title?: string | null; from?: string | null; log?: boolean } = {},
+  opts: { title?: string | null; eyebrow?: string | null; sub?: string | null; from?: string | null; logAs?: string | null; logged?: boolean; hymn?: string | null } = {},
 ): string {
   const q = new URLSearchParams({ v: id });
   if (opts.title) q.set("title", opts.title);
+  if (opts.eyebrow) q.set("eyebrow", opts.eyebrow);
+  if (opts.sub) q.set("sub", opts.sub);
   if (opts.from && opts.from.startsWith("/")) q.set("from", opts.from);
-  if (opts.log) q.set("log", "1");
+  if (opts.logAs) q.set("logAs", opts.logAs);
+  if (opts.logged) q.set("logged", "1");
+  if (opts.hymn) q.set("hymn", opts.hymn);
   return `/video?${q.toString()}`;
 }

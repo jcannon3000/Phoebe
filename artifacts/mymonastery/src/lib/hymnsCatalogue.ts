@@ -167,3 +167,10 @@ export const HYMNS: readonly Hymn[] = [
 export function hymnNumberLabel(h: Hymn): string {
   return h.num.length ? h.num.join(", ") : "—";
 }
+
+/** A stable key for one recording's hymn: its number(s) ("6-7"), or, for the
+ *  one without a number, its name. What lib/hymnTexts is keyed by, and what
+ *  the /video page is told (`hymn=`) so it can show the words beneath. */
+export function hymnKey(h: Hymn): string {
+  return h.num.length ? h.num.join("-") : h.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}

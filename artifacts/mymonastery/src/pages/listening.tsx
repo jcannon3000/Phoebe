@@ -1279,6 +1279,22 @@ export default function ListeningPage() {
                       <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
                       Hildegard
                     </button>
+                    {/* Owner, 2026-09-19: "Try to find Mary Lou's Mass on YouTube
+                        and make that a third pill." All 24 tracks are the
+                        official Topic uploads (lib/youtubeCatalogues). */}
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/mary-lous-mass")}
+                      className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                      style={{
+                        ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
+                        fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 7,
+                      }}
+                    >
+                      <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
+                      Mary Lou's Mass
+                    </button>
                   </div>
                   {/* Room for the keyboard while searching, so the field can
                       scroll to the top of the slide (see the search onFocus). */}
