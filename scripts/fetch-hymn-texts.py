@@ -117,6 +117,16 @@ def verdict(paras, info):
     return why
 
 
+# Known errors in hymnary.org's own credits, corrected on the way out. Only
+# the display credit changes: the verdict is taken on what hymnary printed,
+# so a correction can never let a text in.
+#   94: hymnary prints "Nahym Tate, 1625-1715"; the poet is Nahum Tate,
+#       1652-1715 (flagged 2026-09-19 in a read-through of the lyrics).
+CREDIT_FIXES = {
+    "Nahym Tate, 1625-1715": "Nahum Tate, 1652-1715",
+}
+
+
 def split(paras):
     """Stanzas without their printed numbers, and the refrain (once) if any."""
     stanzas, refrain = [], None
@@ -161,7 +171,7 @@ def main():
             people = {k: v for k, v in info.items() if PERSON.match(k)}
             took[n] = {
                 "firstLine": info.get("First Line", ""),
-                "credit": "; ".join(f"{k}: {v}" for k, v in people.items()) or info.get("Source", "Traditional"),
+                "credit": "; ".join(f"{k}: {CREDIT_FIXES.get(v, v)}" for k, v in people.items()) or info.get("Source", "Traditional"),
                 "source": info.get("Source"),
                 "stanzas": stanzas,
                 "refrain": refrain,
