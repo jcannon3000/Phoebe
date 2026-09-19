@@ -403,6 +403,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   deck), Visio Divina and the commentary. Its OWN row, right
                   after Newsletters (owner, 2026-09-04: "put This Sunday after
                   Newsletters"). */}
+              {/* Sermons — the churches you can hear preaching from (owner,
+                  2026-09-19: "make a sermons page from the menu" · "it would
+                  show churches to listen to them from"). Beside Reflections:
+                  both are other people's voices, kept rather than practised. */}
+              <MenuRow emoji="🎙️" label={t("menu.sermons", { defaultValue: "Sermons" })} onClick={() => goCategory("/menu/sermons")} />
               <MenuRow emoji="🗓️" label={t("menu.this_sunday", { defaultValue: "This Sunday" })} onClick={() => goCategory("/this-sunday")} />
               <MenuRow emoji="🎓" label={t("menu.learn", { defaultValue: "Courses" })} onClick={() => goCategory("/menu/learn")} />
             </div>

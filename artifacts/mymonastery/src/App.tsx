@@ -317,6 +317,7 @@ const MenuLearnPage = lazy(() => import("./pages/menu-learn"));
 const MenuNewslettersPage = lazy(() => import("./pages/menu-newsletters"));
 const ReflectionReadPage = lazy(() => import("./pages/reflection-read"));
 const MenuResourcesPage = lazy(() => import("./pages/menu-resources"));
+const MenuSermonsPage = lazy(() => import("./pages/menu-sermons"));
 // (No HomeBetaPage lazy import — /home-beta redirects to /dashboard and no
 // route ever rendered it, so the lazy() only bought the bundle an extra chunk
 // entry. The module itself is still imported for its named exports by
@@ -918,7 +919,7 @@ function PilotGate({ children }: { children: ReactNode }) {
 // would loop). No-op entirely when guest mode isn't active.
 const GUEST_ALLOWED_EXACT = new Set<string>([
   "/", "/dashboard", "/daily-progress",
-  "/menu", "/menu/bcp", "/menu/practices", "/menu/learn", "/menu/reflections", "/menu/newsletters", "/menu/resources",
+  "/menu", "/menu/bcp", "/menu/practices", "/menu/learn", "/menu/reflections", "/menu/newsletters", "/menu/resources", "/menu/sermons",
   "/this-sunday",
   "/offline",
   // Practices that need no account to pray — the Examen and the Simple Guided
@@ -1007,6 +1008,15 @@ const GUEST_ALLOWED_PREFIX = [
   "/cac-show/cac-", "/cac-course/cac-",
   // Saints index + detail pages (guest Resources → Saints).
   "/saints",
+  /**
+   * A SHOW'S OWN PAGE — reached from the Menu's Sermons list (2026-09-19),
+   * which every visitor can open. The page already declares itself public
+   * ("No sign-in bounce: the show route is public") and gates its account
+   * parts — the listen list and the listened marks — on a user of their own,
+   * so opening the route admits nobody the page would not. Without this a
+   * guest tapping a church was bounced to the dashboard.
+   */
+  "/podcasts/show/",
   // Prescribed-routine / preset-rule invite links (/routine/:token) — "join a
   // rule via link" must work for the public no-login app too. The anonymous
   // device user has a real session, so accepting applies server-side like any
@@ -1218,6 +1228,7 @@ function Router() {
       <Route path="/menu/reflections" component={MenuNewslettersPage} />
       <Route path="/menu/reflections/:source" component={ReflectionReadPage} />
       <Route path="/menu/resources" component={MenuResourcesPage} />
+      <Route path="/menu/sermons" component={MenuSermonsPage} />
       <Route path="/office/forward" component={OfficeFmPage} />
       {/* The standalone Podcasts browse hub is removed — podcasts stay
           integrated where they belong (the office "Listen" audio, the Forward

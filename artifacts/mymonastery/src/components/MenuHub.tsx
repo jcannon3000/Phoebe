@@ -81,6 +81,7 @@ export function MenuHub({
   backHref,
   groups,
   headerSlot,
+  titleAction,
 }: {
   title: string;
   emoji?: string;
@@ -91,6 +92,10 @@ export function MenuHub({
   /** Optional content rendered between the subtitle and the card groups
    *  (e.g. El Jardín's "Today's reading" card). */
   headerSlot?: ReactNode;
+  /** Optional control on the TITLE's right — the "Previous" affordance the
+   *  newsletters and commentaries carry in the same corner (Sermons, 2026-09-19).
+   *  Omitted everywhere else, so the heading is unchanged. */
+  titleAction?: ReactNode;
 }) {
   const [, setLocation] = useLocation();
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
@@ -110,9 +115,12 @@ export function MenuHub({
           </button>
         )}
 
-        <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em" }}>
-          {title}{emoji ? ` ${emoji}` : ""}
-        </h1>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em" }}>
+            {title}{emoji ? ` ${emoji}` : ""}
+          </h1>
+          {titleAction && <div style={{ flex: "0 0 auto", paddingTop: 6 }}>{titleAction}</div>}
+        </div>
         {subtitle && (
           <p style={{ fontSize: 14, color: SAGE, margin: "0 0 20px", lineHeight: 1.5 }}>{subtitle}</p>
         )}
