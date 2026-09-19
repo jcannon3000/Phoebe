@@ -351,6 +351,24 @@ function GalleryFeed({ works, relatedFrom, tailIsRelated, held, onDwell, onPray,
   commitRef.current = commit;
 
   /**
+   * A POPUP OVER THE SCROLL IS NOT LOOKING AT THE PICTURE (audit, 2026-09-18).
+   * The Search popup and the credit sheet cover the feed, but the dwell clock
+   * kept running on the picture underneath: ten seconds of typing a search
+   * were written as ten seconds held, enough to mark it "You stayed with
+   * this" and to lean tomorrow's order toward it. The clock is closed when a
+   * popup opens and started afresh on whatever is centred when it closes.
+   */
+  const pausedRef = useRef(false);
+  const syncRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    const paused = searchOpen || info !== null;
+    pausedRef.current = paused;
+    if (paused) commit();
+    else syncRef.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchOpen, info]);
+
+  /**
    * WHICH PICTURE IS BEING LOOKED AT: the card nearest the middle of the
    * screen. A feed has no pages, so there is no index to divide for — and the
    * centre is what a person is actually reading. The clock stops when the app
@@ -364,6 +382,7 @@ function GalleryFeed({ works, relatedFrom, tailIsRelated, held, onDwell, onPray,
       // READING the done screen were written as dwell on whatever was centred,
       // enough to promote it to "held" and to skew tomorrow's order.
       if (doneRef.current) return;
+      if (pausedRef.current) { commit(); return; }
       if (document.visibilityState === "hidden") { commit(); return; }
       const mid = el.clientHeight / 2;
       let bestId: number | null = null;
@@ -383,6 +402,7 @@ function GalleryFeed({ works, relatedFrom, tailIsRelated, held, onDwell, onPray,
         seenRef.current.add(bestId);
       }
     };
+    syncRef.current = sync;
     sync();
     lastTapRef.current = currentRef.current?.id ?? null;
     let pending = 0;
@@ -760,7 +780,10 @@ function GalleryFeed({ works, relatedFrom, tailIsRelated, held, onDwell, onPray,
                 decoding="async"
                 // The whole work, never cropped — and capped at 68vh so the
                 // next one always shows underneath (owner).
-                onError={() => { rememberFailedImage(art.id); setBroken((prev) => (prev.has(art.id) ? prev : new Set(prev).add(art.id))); }}
+                // Hidden only when the failure is believed (online, not part of a
+                // burst): offline, a hidden section let the next forty slide in
+                // and fail in turn, all the way to "the whole library" (audit).
+                onError={() => { if (rememberFailedImage(art.id)) setBroken((prev) => (prev.has(art.id) ? prev : new Set(prev).add(art.id))); }}
                 style={{ display: "block", width: "100%", height: "auto", maxHeight: "68vh", objectFit: "contain", background: "rgba(255,255,255,0.03)", scrollSnapAlign: "center" }}
               />
               {/* Both ways on, in one row (owner: "have the sit with this put
@@ -1109,12 +1132,19 @@ export default function IconsPage() {
     // the gallery shows (lib/iconGallery, "ONE PICTURE, ONE PLACE").
     const rows = foldHeld(heldRows);
     const seconds = new Map(rows.map((r) => [r.id, r.seconds]));
+    // The gallery's pictures too, not only the icon pool (audit, 2026-09-18):
+    // most of what can hold you in the scroll is ACT and commentary work that
+    // the icon pool leaves out, so "the one you stayed with longest waits on
+    // the first screen" was false for it. Longest first, THEN cut to twelve,
+    // or the longest could fall outside the twelve most recent.
+    const galleryById = new Map(galleryPool().map((a) => [a.id, a]));
     return rows
       .filter((r) => heldNowIds.has(r.id))
-      .map((r) => byId.get(r.id))
+      .map((r) => byId.get(r.id) ?? galleryById.get(r.id))
       .filter((a): a is IconArtwork => !!a)
-      .slice(0, 12)
-      .map((a) => ({ art: a, seconds: seconds.get(a.id) ?? 0 }));
+      .map((a) => ({ art: a, seconds: seconds.get(a.id) ?? 0 }))
+      .sort((x, y) => y.seconds - x.seconds)
+      .slice(0, 12);
   }, [heldRows, heldNowIds, byId]);
 
   const weekDoors = useMemo(() => {

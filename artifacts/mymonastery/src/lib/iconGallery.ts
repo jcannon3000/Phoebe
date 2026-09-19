@@ -69,14 +69,40 @@ function asGallery(a: {
  * it is a bulletin copy and the newcomer is not — the colour scan wins.
  * `aliasOf` maps every folded id to the one kept, so time already spent on a
  * folded record still counts, and still reads as "you stayed with this".
+ *
+ * THE TITLE FOLD IS NARROW (audit, 2026-09-18). Title + artist alone also
+ * folded genuinely different paintings: van Hemessen's two "Calling of Saint
+ * Matthew" (1539 and 1548), Schönfeld's two Jacob-and-Esau canvases, and any
+ * two "anonymous" works of one subject, so those never appeared. It now also
+ * needs the same date and a named artist; ACT's duplicates (same scan, same
+ * date) still fold. And one painting held under two different files AND two
+ * wordings of its title can't be seen by either key, so those pairs are named
+ * by hand in SAME_WORK, each checked against both records.
  */
 const normImg = (u: string) => {
   let v = u;
   try { v = decodeURI(u); } catch { /* keep as is */ }
   return v.trim().toLowerCase().replace(/\s+/g, " ");
 };
-const normTitle = (a: { title: string; artist: string | null }) =>
-  `${a.title.trim().toLowerCase().replace(/\s+/g, " ")}|${(a.artist ?? "").trim().toLowerCase()}`;
+/** "c. 1520", "ca. 1520" and "circa 1520" are one date. */
+const normDate = (d: string | null): string =>
+  (d ?? "").trim().toLowerCase().replace(/^(?:c\.|ca\.|circa|approximately|about)\s*/, "").replace(/\s+/g, " ");
+const normTitle = (a: { title: string; artist: string | null; date: string | null }): string | null => {
+  const artist = (a.artist ?? "").trim().toLowerCase();
+  if (!artist || /anonym|unknown/.test(artist)) return null;
+  return `${a.title.trim().toLowerCase().replace(/\s+/g, " ")}|${artist}|${normDate(a.date)}`;
+};
+
+/**
+ * One painting, two records with different files and titles: [kept, folded].
+ * Duccio's Calling of Peter and Andrew (NGA, 1308-11): the icon record and the
+ * Commons "The Calling of the Apostles…". Fra Angelico's San Marco Sermon on
+ * the Mount: ACT's commentary record and the Commons one.
+ */
+const SAME_WORK: ReadonlyArray<readonly [number, number]> = [
+  [49261, 9918996],
+  [58321, 9864396],
+];
 const isBulletinCopy = (img: string) => /bw\d*\.jpe?g$/i.test(img);
 
 let folded: { works: GalleryWork[]; aliasOf: Map<number, number> } | null = null;
@@ -99,10 +125,12 @@ function foldedLibrary(): { works: GalleryWork[]; aliasOf: Map<number, number> }
     seenId.add(a.id);
     const ik = normImg(a.img);
     const tk = normTitle(a);
-    const at = byImg.get(ik) ?? byTitle.get(tk);
+    const pair = SAME_WORK.find(([, f]) => f === a.id);
+    const pairAt = pair ? kept.findIndex((k) => k.id === pair[0]) : -1;
+    const at = pairAt >= 0 ? pairAt : byImg.get(ik) ?? (tk ? byTitle.get(tk) : undefined);
     if (at === undefined) {
       byImg.set(ik, kept.length);
-      byTitle.set(tk, kept.length);
+      if (tk) byTitle.set(tk, kept.length);
       kept.push(a);
       continue;
     }
@@ -174,11 +202,54 @@ export function galleryForDay(ymd: string, opts: { held?: HeldWork[] } = {}): Ga
   return galleryForDayWithMarker(ymd, opts).works;
 }
 
+type GalleryDay = { works: GalleryWork[]; relatedFrom: number; tailIsRelated: boolean };
+
+/**
+ * THE SAME ORDER ALL DAY, KEPT RATHER THAN RE-DERIVED (audit, 2026-09-18).
+ * The order depends on what you have met, and meeting pictures is what the
+ * scroll is for, so rebuilding it on the second opening of a day reshuffled
+ * it under the promise above. The first build of a day is saved on the device
+ * (ids only) and reused until the date changes; any picture added to the
+ * library since is appended, and one removed simply drops out.
+ */
+const DAY_KEY = "phoebe:icon-gallery-day";
+
 export function galleryForDayWithMarker(
   ymd: string,
   opts: { held?: HeldWork[] } = {},
-): { works: GalleryWork[]; relatedFrom: number; tailIsRelated: boolean } {
+): GalleryDay {
   const pool = galleryPool();
+  try {
+    const raw = localStorage.getItem(DAY_KEY);
+    const saved = raw ? JSON.parse(raw) as { ymd?: string; ids?: unknown; relatedFrom?: unknown; tailIsRelated?: unknown } : null;
+    if (saved && saved.ymd === ymd && Array.isArray(saved.ids) && typeof saved.relatedFrom === "number") {
+      const byId = new Map(pool.map((a) => [a.id, a]));
+      const works: GalleryWork[] = [];
+      const seen = new Set<number>();
+      let relatedFrom = -1;
+      saved.ids.forEach((id, i) => {
+        if (i === saved.relatedFrom && relatedFrom < 0) relatedFrom = works.length;
+        const a = typeof id === "number" ? byId.get(id) : undefined;
+        if (a && !seen.has(a.id)) { works.push(a); seen.add(a.id); }
+      });
+      for (const a of pool) if (!seen.has(a.id)) works.push(a);
+      return { works, relatedFrom: saved.relatedFrom >= 0 ? Math.max(0, relatedFrom) : -1, tailIsRelated: saved.tailIsRelated === true };
+    }
+  } catch { /* unreadable: build afresh */ }
+  const built = buildGalleryDay(pool, ymd, opts);
+  try {
+    localStorage.setItem(DAY_KEY, JSON.stringify({
+      ymd, ids: built.works.map((a) => a.id), relatedFrom: built.relatedFrom, tailIsRelated: built.tailIsRelated,
+    }));
+  } catch { /* private mode: it is rebuilt next time, as before */ }
+  return built;
+}
+
+function buildGalleryDay(
+  pool: GalleryWork[],
+  ymd: string,
+  opts: { held?: HeldWork[] },
+): GalleryDay {
   const rows = foldHeld(opts.held ?? []);
   // A cheap deterministic hash of the day, so the order is stable per device
   // per day without storing anything.
@@ -279,8 +350,10 @@ export function galleryForDayWithMarker(
    * one-hand window the day keeps (the per-day artist cap is the day's rule,
    * not the tail's, or a large set would simply stop partway).
    *
-   * Pictures you have already held are not repeated here; they have their own
-   * row on the first screen.
+   * Pictures you have already met come LAST, after everything new, rather
+   * than not at all (audit, 2026-09-18: a picture centred for a second on
+   * Monday was otherwise missing from the whole scroll for weeks, under an end
+   * card that said "the whole library").
    */
   const rest = fresh.filter((a) => !used.has(a.id));
   const tailRelated = weights.size > 0;
@@ -303,6 +376,8 @@ export function galleryForDayWithMarker(
     const [next] = pending.splice(k, 1);
     works.push(next!);
   }
+  // Already met: in the day's shuffle, after everything new.
+  for (const a of shuffled) if (seenIds.has(a.id) && !used.has(a.id)) works.push(a);
   return { works, relatedFrom: works.length > relatedFrom ? relatedFrom : -1, tailIsRelated: tailRelated };
 }
 
@@ -461,28 +536,64 @@ export function affinityScore(art: GalleryWork, weights: Map<string, number>): n
  * any that are not loading do not show up"). A catalogue this size, drawn from
  * four sources, will always have a few dead addresses — a museum re-pathing a
  * file, a Commons thumb that 404s. The feed hides one the moment its image
- * errors and remembers it, so it never appears again on this device; a work
- * that only failed because the connection did gets a fresh chance whenever the
- * list is cleared.
+ * errors and remembers it for a week (see below: offline failures and bursts
+ * are not remembered at all).
  */
 const FAILED_KEY = "phoebe:icon-img-failed";
+/**
+ * A FAILURE IS A GUESS, SO IT EXPIRES (audit, 2026-09-18). Opening the scroll
+ * offline used to fail every lazy image as it came near, remember each one for
+ * good, and let the pages keep loading more to fail, until up to 300 pictures
+ * were blacklisted forever and the end card claimed "the whole library". Now:
+ *  - nothing is remembered while the device says it is offline;
+ *  - a burst of failures (six inside ten seconds) is read as a bad connection,
+ *    not six dead files, and stops the remembering for this session;
+ *  - a remembered failure lasts a week, then the picture gets another chance.
+ * Old entries (bare ids, from before this) are read as already expired.
+ */
+const FAILED_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const BURST_COUNT = 6;
+const BURST_WINDOW_MS = 10_000;
+let recentFailures: number[] = [];
+let connectionSuspect = false;
 
-export function failedImageIds(): Set<number> {
+type FailedRow = { id: number; at: number };
+
+function readFailed(): FailedRow[] {
   try {
     const raw = localStorage.getItem(FAILED_KEY);
     const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(parsed) ? parsed.filter((v): v is number => typeof v === "number") : []);
+    if (!Array.isArray(parsed)) return [];
+    const now = Date.now();
+    return parsed.filter((v): v is FailedRow =>
+      !!v && typeof v === "object" && typeof (v as FailedRow).id === "number"
+      && typeof (v as FailedRow).at === "number" && now - (v as FailedRow).at < FAILED_TTL_MS);
   } catch {
-    return new Set();
+    return [];
   }
 }
 
-export function rememberFailedImage(id: number): void {
+export function failedImageIds(): Set<number> {
+  return new Set(readFailed().map((r) => r.id));
+}
+
+/**
+ * Remember a picture whose image failed. Returns whether it was remembered, so
+ * the feed can still hide it for this visit either way.
+ */
+export function rememberFailedImage(id: number): boolean {
   try {
-    const ids = failedImageIds();
-    if (ids.has(id)) return;
-    ids.add(id);
-    // Capped: a spell offline must not blacklist the whole library for good.
-    localStorage.setItem(FAILED_KEY, JSON.stringify([...ids].slice(-300)));
-  } catch { /* ignore */ }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
+    const now = Date.now();
+    recentFailures = [...recentFailures.filter((t) => now - t < BURST_WINDOW_MS), now];
+    if (recentFailures.length >= BURST_COUNT) connectionSuspect = true;
+    if (connectionSuspect) return false;
+    const rows = readFailed();
+    if (rows.some((r) => r.id === id)) return true;
+    // Capped: a bad spell must not blacklist the whole library.
+    localStorage.setItem(FAILED_KEY, JSON.stringify([...rows, { id, at: now }].slice(-100)));
+    return true;
+  } catch {
+    return false;
+  }
 }
