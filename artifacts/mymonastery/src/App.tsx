@@ -374,7 +374,6 @@ const ContemplationLogPage = lazy(() => import("./pages/contemplation-log"));
 const CobreathePage = lazy(() => import("./pages/cobreathe"));
 const CobreatheAboutPage = lazy(() => import("./pages/cobreathe-about"));
 const PrayBreathPage = lazy(() => import("./pages/pray-breath"));
-const SaintsIndex = lazy(() => import("./pages/Saints/SaintsIndex"));
 const CustomizeHomePage = lazy(() => import("./pages/customize-home"));
 const CustomizeHomeAddPage = lazy(() =>
   import("./pages/customize-home").then((m) => ({ default: m.CustomizeHomeAddPage })),
@@ -1350,15 +1349,26 @@ function Router() {
       {/* BETA "Pray the breath" — Co-Breathe with the user's prayer requests as
           the rotating text in the top half, instead of photos. */}
       <Route path="/pray-breath" component={PrayBreathPage} />
-      {/* Saints — a single browsable/searchable index (BCP-Prayers-style).
-          At /saints/all, not /saints (2026-09-18): the Hagiographies PRACTICE
-          (pages/saints) was given /saints below, but this earlier route matched
-          first, so every door to the practice — the Practices row, the home's
-          saints ticker (/saints?d=M-D) — opened this index instead and the
-          practice was unreachable. The index keeps its own address and its
-          Resources → Saints entry; guests still reach it (the "/saints" guest
-          prefix covers it). */}
-      <Route path="/saints/all" component={SaintsIndex} />
+      {/* THE OLD SAINTS BROWSER IS RETIRED (owner, 2026-09-18: "That Saint
+          browser is out of date. I don't want anything to do with that
+          anymore... It should be opening the practice of the life of the
+          hagiography, not that Saint browser that has just AI generated
+          information").
+
+          It used to hold /saints, ahead of the Hagiographies PRACTICE
+          (pages/saints) further down — so the first match won and every door
+          to the practice (the Practices row, the home's saints ticker at
+          /saints?d=M-D, the newsletters hub) opened the browser instead. A fix
+          moving it to /saints/all was written but never committed; only the
+          Resources link to /saints/all reached origin, pointing at a route that
+          did not exist there.
+
+          Now the browser has no route at all. /saints is the practice, and
+          /saints/all is kept only as a redirect to it, so an old bookmark or a
+          stale bundle's Resources link lands on the new flow rather than on
+          nothing. pages/Saints/SaintsIndex.tsx stays on disk, unreachable, so it
+          can be restored from history if that is ever wanted. */}
+      <Route path="/saints/all">{() => <RedirectTo to="/saints" />}</Route>
       <Route path="/intentions">{() => <AccountRequiredGate><IntentionsPage /></AccountRequiredGate>}</Route>
       <Route path="/listening" component={ListeningPage} />
       <Route path="/hymns" component={HymnsPage} />

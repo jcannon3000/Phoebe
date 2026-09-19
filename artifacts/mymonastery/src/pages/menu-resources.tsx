@@ -16,7 +16,6 @@ export default function MenuResourcesPage() {
         items: [
           { emoji: "📅", label: "Sunday Lectionary", sub: "This Sunday's readings", onClick: () => openExternal("https://withphoebe.app/api/lectionary/today") },
           { emoji: "⛪", label: "Find a Church", sub: "The Episcopal Church's parish finder", onClick: () => openExternal("https://www.episcopalchurch.org/find-a-church/") },
-          { emoji: "😇", label: "Saints", badge: "Beta", sub: "A browsable index", onClick: () => go("/saints/all") },
           { emoji: "📰", label: "Building Faith", sub: "Formation articles", onClick: () => go("/building-faith") },
         ],
       }]}
