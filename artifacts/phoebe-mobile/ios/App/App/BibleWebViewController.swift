@@ -1948,7 +1948,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             // player (owner, 2026-09-19: "That options doesn't make sense at
             // the top"). Every Options item is about praying an office, and the
             // page carries its own Log button, so the right side stays empty.
-            // No title either: the page's <title> is just "Phoebe".
+            // Blank until the page names itself: the document starts out
+            // titled "Phoebe", and the observer above swaps in the real name
+            // (the course, the hymn) as soon as the page sets one.
             navigationItem.rightBarButtonItem = nil
             title = nil
         } else {
@@ -2103,8 +2105,16 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         }
         // Title follows the page's <title> once it loads.
         titleObservation = webView.observe(\.title, options: [.new]) { [weak self] webView, _ in
-            guard let self, !self.isArticle, !Self.isPhoebeWatchPage(webView.url) else { return }
-            if let t = webView.title, !t.isEmpty { self.title = t }
+            guard let self, !self.isArticle else { return }
+            guard let t = webView.title, !t.isEmpty else { return }
+            /* On our own pages the bar names the CONTENT (owner, 2026-09-19:
+               "The top of that reader shouldn't say Phoebe it should be
+               related to the content, or course"). Every page of ours is
+               titled "Phoebe" until it says otherwise, so that one word is the
+               only title refused here — a course names itself as soon as it
+               knows which course it is. */
+            if Self.isPhoebeWatchPage(webView.url) && t == "Phoebe" { return }
+            self.title = t
         }
 
         // A preloaded web view is already loading/loaded — only kick off the

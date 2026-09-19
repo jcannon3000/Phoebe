@@ -36,6 +36,7 @@ import {
 } from "@/lib/spiritualJourney";
 import { isCourseHiddenFromHome, setCourseHiddenFromHome, useCourseProgress } from "@/lib/courseProgress";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { pickWideBackground } from "@/lib/wideBackgrounds";
 
 // Palette (mirrors church-deck / MenuHub). Cards are FROSTED glass — translucent
 // green over the leaf backdrop + a backdrop blur — matching the rest of the app.
@@ -255,14 +256,31 @@ function UnitBlock({
  * the web home and the drawer offered "Sign in". The reader supplies Done; the
  * page is just the course.
  */
-function ReaderShell({ children }: { children: ReactNode }) {
+/**
+ * THE READER'S OWN GROUND. Inside the reader there is no Layout, so the page
+ * used to be flat #0C1F12 while the same course on the web sat on leaves
+ * (owner, 2026-09-19: "Can it have a leaf backround?"). Same photo and the
+ * same scrim the icon gallery uses, laid down here.
+ *
+ * isolation + absolute inset-0, never position:fixed — see memory's
+ * page-backdrop pattern; a fixed backdrop bleeds through the safe-area padding
+ * on iOS. No entrance animation either.
+ */
+function ReaderShell({ children, photo }: { children: ReactNode; photo: string | null }) {
   return (
     <div
       style={{
-        minHeight: "100dvh", background: C.bg, color: C.text,
+        position: "relative", isolation: "isolate", minHeight: "100dvh",
+        background: C.bg, color: C.text,
         padding: "calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 28px)",
       }}
     >
+      {photo && (
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, overflow: "hidden" }}>
+          <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.38 }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(5,13,8,0.74), rgba(5,13,8,0.66) 45%, rgba(5,13,8,0.8))" }} />
+        </div>
+      )}
       {children}
     </div>
   );
@@ -284,8 +302,9 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
   const { completed, completedCount, isComplete, toggleComplete, markComplete, setLast, lastId, markStarted, started } = useCourseProgress(course.id);
   const inReader = isInReaderWatch();
   const [hiddenFromHome, setHiddenFromHome] = useState(() => isCourseHiddenFromHome(course.id));
-  // Leaf backdrop (frosted-glass cards float over it) — one photo per visit.
-  const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
+  // Leaf backdrop (frosted-glass cards float over it) — one photo per visit,
+  // and the same one behind the reader view (see ReaderShell).
+  const leafBg = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   // Which video is on-screen. Seed from ?v= or the last watched, else the first.
   const [activeId, setActiveId] = useState<string>(() => {
@@ -429,6 +448,32 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
    *
    * Android needs none of this — it embeds in place, a few lines down.
    */
+  /**
+   * NAME THE PAGE, for the reader's top bar (owner, 2026-09-19: "The top of
+   * that reader shouldn't say Phoebe it should be related to the content, or
+   * course"). The native bar takes the document's title and refuses only the
+   * literal "Phoebe", which is what every page of ours is called until it says
+   * otherwise. The lesson is named too, since that is what they are watching.
+   */
+  useEffect(() => {
+    if (!inReader) return;
+    const was = document.title;
+    document.title = active ? `${course.title} · ${active.lessonTitle}` : course.title;
+    return () => { document.title = was; };
+  }, [inReader, course.title, active]);
+
+  /** The quiet "off my home screen" line — the bottom of both shells. */
+  const removeFromHome = (
+    <button
+      type="button"
+      onClick={() => { setCourseHiddenFromHome(course.id, !hiddenFromHome); setHiddenFromHome((v) => !v); }}
+      className="text-[12px] underline underline-offset-2 transition-opacity hover:opacity-80"
+      style={{ color: "rgba(143,175,150,0.75)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+    >
+      {hiddenFromHome ? "Show this course on my home screen" : "Remove from my home screen"}
+    </button>
+  );
+
   if (handsOffToReader) {
     return (
       <Layout bgPhoto={leafBg}>
@@ -470,6 +515,7 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
           <p className="mt-3 text-[13px] leading-relaxed" style={{ color: C.dim }}>
             {course.tagline}
           </p>
+          <div className="mt-6 flex justify-center">{removeFromHome}</div>
         </div>
       </Layout>
     );
@@ -510,21 +556,6 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
             </div>
           </div>
 
-          {/* Owner: "there should be an option to take this off your home
-              screen." A course lands on the home the moment you start it and
-              stays until it's finished — right for the one you're walking,
-              wrong for the one you opened once to look at. Device-local, like
-              Settings' other home-display switches: it changes what your home
-              SHOWS, never what you've done. Your progress is untouched and the
-              course is still here whenever you want it back. */}
-          {!inReader && <button
-            type="button"
-            onClick={() => { setCourseHiddenFromHome(course.id, !hiddenFromHome); setHiddenFromHome((v) => !v); }}
-            className="mt-3 text-[12px] underline underline-offset-2 transition-opacity hover:opacity-80"
-            style={{ color: "rgba(143,175,150,0.75)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
-          >
-            {hiddenFromHome ? "Show this course on my home screen" : "Take this off my home screen"}
-          </button>}
         </div>
 
         <div className="h-px" style={{ background: C.line }} />
@@ -532,7 +563,13 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
         <div className="mt-5 flex flex-col gap-6 lg:flex-row">
           {/* Main: player + lesson detail */}
           <div className="min-w-0 flex-1" ref={playerTopRef}>
-            <YouTubePlayer videoId={activeId} autoplay={autoplay} onEnded={handleEnded} onPlaying={markStarted} />
+            {/* EDGE TO EDGE (owner: "Can the video be full width and not
+                rounded courners"). The page is a centred column, so the video
+                steps out of it: full viewport width, no frame, no corners. On
+                a wide screen it sits in its column as before. */}
+            <div className="video-bleed">
+              <YouTubePlayer videoId={activeId} autoplay={autoplay} onEnded={handleEnded} onPlaying={markStarted} frame="bleed" />
+            </div>
 
             {active && (
               <div className="mt-4">
@@ -669,10 +706,19 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
             <p className="mt-4 px-1 text-[11px] italic leading-relaxed" style={{ color: "rgba(143,175,150,0.5)" }}>
               Videos courtesy of Contemplative Outreach on YouTube. Your progress is saved on this device.
             </p>
+            {/* AT THE BOTTOM (owner, 2026-09-19: "Make sure at the bottom of
+                the page they can remove the course from their Home Screen?").
+                It used to sit under the progress bar, where it read as part of
+                the course's own controls. Quiet, like "Discard session": it
+                changes what the home SHOWS, never what you've done — the
+                progress stays, the course stays in Courses, and the same line
+                puts it back. In the reader too, where it rides the relay home
+                with everything else watched there. */}
+            <div className="mt-6 flex justify-center">{removeFromHome}</div>
           </div>
         </div>
       </div>
     </>
   );
-  return inReader ? <ReaderShell>{body}</ReaderShell> : <Layout bgPhoto={leafBg}>{body}</Layout>;
+  return inReader ? <ReaderShell photo={leafBg}>{body}</ReaderShell> : <Layout bgPhoto={leafBg}>{body}</Layout>;
 }

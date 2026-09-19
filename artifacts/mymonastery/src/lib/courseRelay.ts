@@ -20,10 +20,10 @@
 // twice (and can't undo "take this off my home screen" afterwards).
 
 import { apiRequest } from "@/lib/queryClient";
-import { snapshotProgress, adoptProgress } from "@/lib/courseProgress";
+import { snapshotProgress, adoptProgress, isCourseHiddenFromHome, setCourseHiddenFromHome } from "@/lib/courseProgress";
 
 type Stored = { token: string; adoptedAt: number };
-type Relay = { courseId: string; completed: string[]; lastId: string | null; started: boolean; at: number };
+type Relay = { courseId: string; completed: string[]; lastId: string | null; started: boolean; hidden?: boolean; at: number };
 
 const LESSON_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const keyFor = (courseId: string) => `phoebe:course-relay:${courseId}`;
@@ -69,6 +69,10 @@ export function readerCoursePath(courseId: string, pathname: string): string {
   if (p.completed.length) q.set("done", p.completed.join("."));
   if (p.lastId) q.set("last", p.lastId);
   if (p.started) q.set("started", "1");
+  // Whether it is on their home screen travels too, so the line at the foot of
+  // the course reads right inside the reader and a removal made there comes
+  // back (it is a separate store from progress — courseProgress's hidden set).
+  if (isCourseHiddenFromHome(courseId)) q.set("off", "1");
   return `${pathname}?${q.toString()}`;
 }
 
@@ -81,6 +85,11 @@ export async function collectFromReader(courseId: string): Promise<boolean> {
     const r = await apiRequest<Relay>("GET", `/api/course-relay/${st.token}`);
     if (!r || r.courseId !== courseId || !(r.at > st.adoptedAt)) return false;
     adoptProgress(courseId, { completed: r.completed, lastId: r.lastId, started: r.started });
+    // Only when the reader actually reported it: an older build's snapshot has
+    // no such field, and `undefined` must not read as "put it back".
+    if (typeof r.hidden === "boolean" && r.hidden !== isCourseHiddenFromHome(courseId)) {
+      setCourseHiddenFromHome(courseId, r.hidden);
+    }
     writeStored(courseId, { ...st, adoptedAt: r.at });
     return true;
   } catch {
@@ -116,6 +125,9 @@ export function seedFromApp(courseId: string): { resumeId: string | null } | nul
     lastId: resumeId,
     started: q.get("started") === "1" || own.started === true,
   });
+  // The app's answer wins on arrival: it is the device whose home screen this
+  // is, and the reader's own copy is only ever what a previous opening left.
+  setCourseHiddenFromHome(courseId, q.get("off") === "1");
   return { resumeId };
 }
 
@@ -128,6 +140,7 @@ export async function pushToApp(courseId: string, token: string): Promise<void> 
       completed: p.completed,
       lastId: p.lastId ?? null,
       started: p.started === true,
+      hidden: isCourseHiddenFromHome(courseId),
     });
   } catch { /* the next change tries again */ }
 }

@@ -353,6 +353,11 @@ textarea:focus {
    */
   :root { --app-dvh: 100dvh; }
   html.android-web { --app-dvh: calc(100dvh / 0.9); }
+  /* The same correction for WIDTH: under zoom, 100vw is the unzoomed
+     viewport, so a full-bleed child came out narrower than the page it was
+     meant to escape. Used by .video-bleed. */
+  :root { --app-vw: 100vw; }
+  html.android-web { --app-vw: calc(100vw / 0.9); }
 
   html.android-web body {
     zoom: 0.9;
@@ -1041,3 +1046,17 @@ a:active,
    slide titles"). Deck titles keep .title-glow-breathe — the 0.7s fade, the 6px
    rise and the breathing halo. The .title-glint class above is a different
    thing and still in use: the Dean's Commentary card's title. */
+
+/* A video that runs edge to edge (owner, 2026-09-19, of a course lesson:
+   "Can the video be full width and not rounded courners"). The course page is
+   a centred column with its own padding; this steps a child out of it to the
+   full viewport width without knowing what that padding is. At desk width the
+   page is two columns, where the video belongs in its own. */
+.video-bleed {
+  width: var(--app-vw);
+  margin-left: calc(50% - var(--app-vw) / 2);
+  margin-right: calc(50% - var(--app-vw) / 2);
+}
+@media (min-width: 1024px) {
+  .video-bleed { width: 100%; margin-left: 0; margin-right: 0; }
+}

@@ -24,7 +24,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 
 const router: IRouter = Router();
 
-type Relay = { courseId: string; completed: string[]; lastId: string | null; started: boolean; at: number };
+type Relay = { courseId: string; completed: string[]; lastId: string | null; started: boolean; hidden: boolean; at: number };
 
 const RELAYS = new Map<string, Relay>();
 const TTL_MS = 12 * 60 * 60 * 1000;
@@ -66,6 +66,10 @@ router.put("/course-relay/:token", (req: Request, res: Response): void => {
     completed: [...new Set(completed as string[])],
     lastId: body.lastId ?? null,
     started: body.started === true,
+    // Whether the course is on that device's home screen — removed at the foot
+    // of the course page, which the reader shows too, so it has to come home
+    // with everything else watched there.
+    hidden: body.hidden === true,
     at: now,
   });
   res.json({ ok: true, at: now });

@@ -53,9 +53,18 @@ export function YouTubePlayer({
   onEnded,
   onPlaying,
   onPaused,
+  frame = "card",
 }: {
   videoId: string;
   autoplay: boolean;
+  /**
+   * "card" is the bordered, rounded 16:9 box every page used. "bleed" drops
+   * the border and the corners so the video can run edge to edge (owner,
+   * 2026-09-19, of a course lesson: "Can the video be full width and not
+   * rounded courners"). The CALLER gives it the width; this only stops the
+   * frame fighting it. The cathedral pages keep "card".
+   */
+  frame?: "card" | "bleed";
   /** Fired once per video when it plays to the end. */
   onEnded: () => void;
   /** Every transition into PLAYING — a course marks itself started, a
@@ -187,8 +196,8 @@ export function YouTubePlayer({
   return (
     <div
       ref={wrapRef}
-      className="relative w-full overflow-hidden rounded-2xl bg-black"
-      style={{ aspectRatio: "16 / 9", border: `1px solid ${BORDER}` }}
+      className={`relative w-full overflow-hidden bg-black${frame === "bleed" ? "" : " rounded-2xl"}`}
+      style={{ aspectRatio: "16 / 9", ...(frame === "bleed" ? {} : { border: `1px solid ${BORDER}` }) }}
     >
       {/* YT.Player replaces this node with its iframe. */}
       <div ref={hostRef} className="absolute inset-0 h-full w-full" />
