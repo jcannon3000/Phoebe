@@ -638,6 +638,20 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
    * row. That is the existing rule for listened time and this is the same kind
    * of time; it is not a special case invented here.
    */
+  /**
+   * Turn the player into a sit. One writer, called from two places, because
+   * there are two ways an episode can be over — see the `ended` note below.
+   * Returns false when the conditions aren't met, so a caller can carry on.
+   */
+  const beginAfterSit = useCallback((): boolean => {
+    const source = sessionMetaRef.current.contemplationSource;
+    if (!source || afterSitRef.current) return false;
+    afterSitRef.current = { source, startedAt: Date.now() };
+    setAfterSitOn(true);
+    setAfterSitSeconds(0);
+    return true;
+  }, []);
+
   const endAfterSit = useCallback((keep: boolean) => {
     const sit = afterSitRef.current;
     afterSitRef.current = null;
@@ -1140,11 +1154,43 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       if (hasQueueNext || hasHandoff) {
         // Advance the queue / hand off to the next thing.
         onEndedEv();
+      } else if (expanded && beginAfterSit()) {
+        // A trimmed show that counts as contemplation is finished the same way
+        // any other is: stay and let the silence count. No show carries both
+        // an outro trim and a contemplation source today, but closing the
+        // player here would be a quiet trap for the first one that does.
       } else {
         // Nothing queued — just close the player out (the listen is finished).
         closePlayer();
       }
       return;
+    }
+    /**
+     * THE SIT MUST NOT DEPEND ON `ended` ALONE.
+     *
+     * This file already knows that event can go missing — the course credit
+     * stopped relying on it for exactly this reason ("let iOS suspend playback
+     * so `ended` never arrives"). An episode that runs out while the phone is
+     * locked, or that the OS pauses a breath before the last frame, leaves the
+     * player sitting at -0:00 with nothing having happened, which is precisely
+     * what a reflection ending in silence must not do.
+     *
+     * So the last moment of the audio opens the sit too. Guards, each for a
+     * case that would otherwise start a sit nobody asked for:
+     *  · five seconds of actual listening THIS play, so an episode resumed at
+     *    a saved position already past the end doesn't open a sit on arrival;
+     *  · not mid-scrub, so dragging the handle to the end and back doesn't;
+     *  · beginAfterSit itself refuses when one is already running, so whichever
+     *    door fires first wins and `ended` arriving afterwards is a no-op.
+     */
+    if (
+      expanded &&
+      !scrubbingRef.current &&
+      isFinite(a.duration) && a.duration > 0 &&
+      a.currentTime >= a.duration - 0.75 &&
+      seg.current.acc + (seg.current.start !== null ? (Date.now() - seg.current.start) / 1000 : 0) >= 5
+    ) {
+      beginAfterSit();
     }
     const now = Date.now();
     if (now - lastSaveRef.current > 5000) { lastSaveRef.current = now; savePos(current, a.currentTime); }
@@ -1212,12 +1258,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
      * once — an office never carries a contemplation source, but that is a
      * fact about today's surfaces rather than a guarantee.
      */
-    if (expanded && sessionMetaRef.current.contemplationSource && !afterSitRef.current) {
-      afterSitRef.current = { source: sessionMetaRef.current.contemplationSource, startedAt: Date.now() };
-      setAfterSitOn(true);
-      setAfterSitSeconds(0);
-      return;
-    }
+    if (expanded && beginAfterSit()) return;
     // No explicit handoff: if a daily office just finished (and we're still in
     // the full-screen player), gently offer Forward Day by Day next — an
     // optional "up next" banner, never an auto-play.
