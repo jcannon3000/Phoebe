@@ -1264,11 +1264,17 @@ export default function CobreathePage() {
             </button>
 
             {musicReady && (
-              <div style={{ position: "relative", width: "100%", marginBottom: 2 }}>
+              {/* Spacing and inset MATCH the location row above (measured: both boxes
+                    are 440px, but this one was inset 18px against its 16px and
+                    carried a 2px bottom margin where every other row carries
+                    12px — which is why it read as narrower and sat flush
+                    against Start Breathing). Rows here space themselves with
+                    their own mb-3; there is no container gap to inherit. */}
+              <div style={{ position: "relative", width: "100%", marginBottom: 12 }}>
                 <div
                   style={{
                     width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                    gap: 12, borderRadius: 16, padding: "13px 18px", pointerEvents: "none",
+                    gap: 12, borderRadius: 16, padding: "14px 16px", pointerEvents: "none",
                     background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
                     border: "1px solid rgba(168,197,160,0.3)",
                   }}
