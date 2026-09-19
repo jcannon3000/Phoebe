@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize2 } from "lucide-react";
+import { clearVideoPosition, readVideoPosition, saveVideoPosition } from "@/lib/videoPositions";
 
 const BORDER = "rgba(46,107,64,0.38)";
 const TEXT = "#F0EDE6";
@@ -53,6 +54,7 @@ export function YouTubePlayer({
   onEnded,
   onPlaying,
   onPaused,
+  onPlayedSeconds,
   frame = "card",
 }: {
   videoId: string;
@@ -73,6 +75,18 @@ export function YouTubePlayer({
   /** Every transition out of PLAYING (pause, buffer-stall, end). The cathedral
    *  pages close their watch-time span on it; courses don't pass it. */
   onPaused?: () => void;
+  /**
+   * SECONDS OF THIS VIDEO ACTUALLY PLAYED, about once a second while it plays
+   * — not seconds on the page. A course uses it for "started" (owner,
+   * 2026-09-19: "once I've started 30 seconds, act as if I've started the
+   * course"), which is why a paused video must not count. Resets per video.
+   *
+   * It is a SEPARATE count from the watch-time spans the cathedral pages keep
+   * with onPlaying/onPaused, and resuming does not backdate it: it measures
+   * playing from the moment this player took the video, never the position it
+   * started at, so nothing here can credit time nobody watched.
+   */
+  onPlayedSeconds?: (secondsPlayed: number) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -85,6 +99,14 @@ export function YouTubePlayer({
   const onEndedRef = useRef(onEnded);
   const onPlayingRef = useRef(onPlaying);
   const onPausedRef = useRef(onPaused);
+  const onPlayedSecondsRef = useRef(onPlayedSeconds);
+  /** Set once keepPlace exists — the player's own handlers are built before it. */
+  const keepPlaceRef = useRef<(() => void) | null>(null);
+  onPlayedSecondsRef.current = onPlayedSeconds;
+  /** Seconds of the CURRENT video actually played in this sitting. */
+  const playedRef = useRef(0);
+  /** The video the ticker is counting and saving for. */
+  const tickingIdRef = useRef(videoId);
   desiredRef.current = videoId;
   autoplayRef.current = autoplay;
   onEndedRef.current = onEnded;
@@ -105,14 +127,18 @@ export function YouTubePlayer({
           playsinline: 1,
           autoplay: autoplayRef.current ? 1 : 0,
           origin: window.location.origin,
+          // Where they got to last time (lib/videoPositions) — 0 means the
+          // beginning, which is what YouTube does with `start: 0` anyway.
+          start: readVideoPosition(initial),
         },
         events: {
           onReady: (e: any) => {
             readyRef.current = true;
             // If the desired video changed while the API was loading, honour it.
             if (desiredRef.current !== initial) {
-              if (autoplayRef.current) e.target.loadVideoById(desiredRef.current);
-              else e.target.cueVideoById(desiredRef.current);
+              const at = readVideoPosition(desiredRef.current);
+              if (autoplayRef.current) e.target.loadVideoById({ videoId: desiredRef.current, startSeconds: at });
+              else e.target.cueVideoById({ videoId: desiredRef.current, startSeconds: at });
             }
           },
           onStateChange: (e: any) => {
@@ -122,8 +148,11 @@ export function YouTubePlayer({
             // Anything that is not PLAYING has stopped playing — pause (2),
             // buffering (3), ended (0). Watch-time spans close on all of them
             // rather than on pause alone, so a stall isn't counted as watched.
-            else onPausedRef.current?.();
+            else { onPausedRef.current?.(); keepPlaceRef.current?.(); }
             // 0 === YT.PlayerState.ENDED
+            // Watched to the end: there is no place to keep any more, and the
+            // next opening should start it over rather than at the credits.
+            if (e.data === 0) clearVideoPosition(desiredRef.current);
             if (e.data === 0 && !endedRef.current) {
               endedRef.current = true;
               onEndedRef.current();
@@ -142,15 +171,63 @@ export function YouTubePlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Swap the video when the selection changes.
+  // Swap the video when the selection changes — keeping the place in the one
+  // being left, and starting the new one where it was left.
   useEffect(() => {
     endedRef.current = false;
     const p = playerRef.current;
     if (p && readyRef.current) {
-      if (autoplayRef.current) p.loadVideoById(videoId);
-      else p.cueVideoById(videoId);
+      keepPlace();
+      playedRef.current = 0;
+      tickingIdRef.current = videoId;
+      const at = readVideoPosition(videoId);
+      if (autoplayRef.current) p.loadVideoById({ videoId, startSeconds: at });
+      else p.cueVideoById({ videoId, startSeconds: at });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);
+
+  /**
+   * KEEP THE PLACE, from wherever the player is now. Called on the ticker, on
+   * anything that is not playing, when the app goes away, and on the way out —
+   * a video is left in every one of those ways, and iOS gives no reliable
+   * "closing" moment of its own.
+   */
+  const keepPlace = useCallback(() => {
+    const p = playerRef.current;
+    if (!p || !readyRef.current) return;
+    try {
+      saveVideoPosition(tickingIdRef.current, Number(p.getCurrentTime?.() ?? 0), Number(p.getDuration?.() ?? 0));
+    } catch { /* the player was torn down mid-call */ }
+  }, []);
+
+  /**
+   * ONE TICKER, a second at a time: it counts only while the player says
+   * PLAYING, so a paused video adds nothing, and it keeps the place every
+   * fifth tick rather than on every one.
+   */
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const p = playerRef.current;
+      if (!p || !readyRef.current) return;
+      let state = -1;
+      try { state = Number(p.getPlayerState?.() ?? -1); } catch { return; }
+      if (state !== 1) return; // 1 === PLAYING
+      playedRef.current += 1;
+      onPlayedSecondsRef.current?.(playedRef.current);
+      if (playedRef.current % 5 === 0) keepPlace();
+    }, 1000);
+    const onHide = () => { if (document.visibilityState === "hidden") keepPlace(); };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", keepPlace);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", keepPlace);
+      keepPlace();
+    };
+  }, [keepPlace]);
+  keepPlaceRef.current = keepPlace;
 
   const [isFs, setIsFs] = useState(false);
   useEffect(() => {

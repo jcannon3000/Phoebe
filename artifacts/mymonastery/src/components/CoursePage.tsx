@@ -296,6 +296,9 @@ function ReaderShell({ children, photo }: { children: ReactNode; photo: string |
 const lastReaderOpenAt = new Map<string, number>();
 const REOPEN_GUARD_MS = 1500;
 
+/** Seconds of real playback that count as having started the course. */
+const START_AFTER_S = 30;
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export function CoursePage({ course, index }: { course: JourneyCourse; index: CourseIndex }) {
@@ -336,9 +339,9 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
 
   const openVideo = useCallback((id: string, opts?: { autoplay?: boolean }) => {
     if (!index.get(id)) return;
-    // An explicit open counts as STARTING the course (the home's Learn band
-    // keys on this) — merely landing on the page does not.
-    markStarted();
+    // Opening a lesson is NOT starting the course any more: thirty seconds of
+    // it playing is (onPlayedSeconds, owner 2026-09-19). Opening still stamps
+    // the lesson as the one to come back to, through setLast below.
     setActiveId(id);
     setAutoplay(!!opts?.autoplay);
     setJustEnded(false);
@@ -403,12 +406,11 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
 
   /** Start the course and hand this page to the reader. */
   const openCourseInReader = useCallback(() => {
-    // Opening a lesson IS starting the course (the home's Continue card keys
-    // on it) — here as much as on the web, where openVideo does the same.
-    markStarted();
+    // NOT markStarted(): opening is not starting any more — thirty seconds of
+    // watching is (see onPlayedSeconds), and the reader relays that home.
     lastReaderOpenAt.set(course.id, Date.now());
     return openVideoInReader(readerCoursePath(course.id, window.location.pathname));
-  }, [course.id, markStarted]);
+  }, [course.id]);
 
   /**
    * STRAIGHT INTO THE READER (owner, 2026-09-19: "When we tap a centering
@@ -448,6 +450,23 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
    *
    * Android needs none of this — it embeds in place, a few lines down.
    */
+  /**
+   * THIRTY SECONDS OF WATCHING IS STARTING THE COURSE (owner, 2026-09-19:
+   * "once I've started 30 seconds, act as if I've started the course and show
+   * it on the Home Screen and stuff").
+   *
+   * It used to be the tap — pressing play, or opening the reader — which put a
+   * course on the home for anyone who looked at it for a moment and left. The
+   * count is real playing time from YouTubePlayer's own ticker, so a video
+   * opened and left paused never gets there. markStarted is idempotent, so
+   * this cannot double-fire and a resumed lesson does not re-start anything.
+   * On iOS the watching happens in the reader, and `started` rides the relay
+   * home like the rest of the progress.
+   */
+  const onPlayedSeconds = useCallback((secs: number) => {
+    if (secs >= START_AFTER_S) markStarted();
+  }, [markStarted]);
+
   /**
    * NAME THE PAGE, for the reader's top bar (owner, 2026-09-19: "The top of
    * that reader shouldn't say Phoebe it should be related to the content, or
@@ -568,7 +587,13 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
                 steps out of it: full viewport width, no frame, no corners. On
                 a wide screen it sits in its column as before. */}
             <div className="video-bleed">
-              <YouTubePlayer videoId={activeId} autoplay={autoplay} onEnded={handleEnded} onPlaying={markStarted} frame="bleed" />
+              <YouTubePlayer
+                videoId={activeId}
+                autoplay={autoplay}
+                onEnded={handleEnded}
+                onPlayedSeconds={onPlayedSeconds}
+                frame="bleed"
+              />
             </div>
 
             {active && (
