@@ -142,6 +142,13 @@ function parseLengthSeconds(html: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+// A resolved video is cached for an hour; a MISS is not. The fallback used to
+// carry the same max-age=3600, so one bad minute at YouTube pinned "no video"
+// at Railway's edge and on every phone for the next hour (2026-09-18).
+function cacheControlFor(meta: NcmpMeta): string {
+  return meta.videoId ? "public, max-age=3600" : "public, max-age=60";
+}
+
 async function resolveTodaysMeta(key: PlaylistKey, playlistId: string): Promise<NcmpMeta> {
   const today = publishDayKey();
   const hit = caches[key];
@@ -244,7 +251,7 @@ router.get("/ncmp/today-meta", async (_req: Request, res: Response): Promise<voi
   // intermediaries don't pin yesterday's metadata into tomorrow's
   // chooser, and YouTube only sees ~1 request per server-instance per
   // day under the partial index.
-  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.setHeader("Cache-Control", cacheControlFor(meta));
   res.json(meta);
 });
 
@@ -252,7 +259,7 @@ router.get("/ncmp/today-meta", async (_req: Request, res: Response): Promise<voi
 // resolution, surfaced as the Watch option on Morning Devotion.
 router.get("/devotion-watch/today-meta", async (_req: Request, res: Response): Promise<void> => {
   const meta = await resolveTodaysMeta("devotion", PLAYLISTS.devotion);
-  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.setHeader("Cache-Control", cacheControlFor(meta));
   res.json(meta);
 });
 
