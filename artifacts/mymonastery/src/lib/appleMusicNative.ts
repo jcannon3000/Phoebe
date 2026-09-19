@@ -365,10 +365,14 @@ export type AppleMusicStatus = {
   duration: number;
   title: string;
   artist: string;
+  /** The current song's album, or "". */
+  album: string;
   /** https cover of the CURRENT song, or "". */
   artworkUrl: string;
   /** Songs in the queue — more than one means back/next mean something. */
   count: number;
+  /** Where the current song sits in the queue (0-based), or -1. */
+  index: number;
 };
 
 /** Does this build know where the music is? False on the web and older builds. */
@@ -388,8 +392,10 @@ export async function appleMusicStatusNative(): Promise<AppleMusicStatus | null>
     duration: Number(s.duration) || 0,
     title: String(s.title ?? ""),
     artist: String(s.artist ?? ""),
+    album: String(s.album ?? ""),
     artworkUrl: String(s.artworkUrl ?? ""),
     count: Number(s.count) || 0,
+    index: Number.isFinite(Number(s.index)) ? Number(s.index) : -1,
   };
 }
 

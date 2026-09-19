@@ -72,7 +72,12 @@ export function MusicPlayer({
   useEffect(() => {
     if (!hasAppleMusicStatusNative()) return;
     let alive = true;
+    // Only while the page is VISIBLE. Background audio keeps this web view
+    // alive, and a status call every second from a backgrounded app is one
+    // more trip to the media server at exactly the moment iOS is timing the
+    // app's move to the background (the 2026-09-18 watchdog kills).
     const tick = () => {
+      if (document.visibilityState !== "visible") return;
       void appleMusicStatusNative().then((s) => {
         if (!alive || !s) return;
         setStatus(s);
@@ -80,7 +85,8 @@ export function MusicPlayer({
     };
     tick();
     const h = window.setInterval(tick, 1000);
-    return () => { alive = false; window.clearInterval(h); };
+    document.addEventListener("visibilitychange", tick);
+    return () => { alive = false; window.clearInterval(h); document.removeEventListener("visibilitychange", tick); };
   }, []);
 
   // The lock screen can pause it too; the button should say what is true.
@@ -93,29 +99,39 @@ export function MusicPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportedPlaying]);
 
-  const inQueue = (status?.count ?? 0) > 1;
+  const count = status?.count ?? 0;
+  // Back and next are always there once the player knows where the music is
+  // (owner, 2026-09-18: "I asked for next and back"). A lone song is queued
+  // with its album, so there is almost always somewhere to go; at either end
+  // the button stays in place, dimmed, as the podcast player's does.
+  const index = status?.index ?? -1;
+  const hasPrev = !!status && (index > 0 || (status.time ?? 0) > 3);
+  const hasNext = !!status && index >= 0 && index + 1 < count;
   const cover = status?.artworkUrl || (artworkUrl ? bigArtwork(artworkUrl) : "");
-  // In an album or playlist the song changes under the name that started it,
-  // so the song is the title and the collection becomes the line above it.
-  const songTitle = inQueue && status?.title ? status.title : title;
-  // One song: its title usually carries the artist already ("… — Choir"),
-  // and saying it twice reads as a glitch.
+  // The TRACK is the title (owner: "It should also show the name of the
+  // track"); what was started — an album, a playlist, the logged line —
+  // drops to the line beneath, with the artist.
   const artist = status?.artist ?? "";
-  const songSub = inQueue && status?.title
-    ? [artist, title].filter(Boolean).join(" · ")
-    : (artist && !title.toLowerCase().includes(artist.toLowerCase()) ? artist : "");
+  const album = status?.album ?? "";
+  const songTitle = status?.title || title;
+  const songSub = status?.title
+    ? [artist, album || title].filter((v, i, a) => v && a.indexOf(v) === i).join(" \u00b7 ")
+    : "";
+  // "1 of 5" (owner) — where this song sits in what is playing.
+  const position = index >= 0 && count > 1 ? `${index + 1} of ${count}` : "";
   const duration = status?.duration ?? 0;
   const time = Math.min(status?.time ?? 0, duration || Infinity);
   const pct = duration > 0 ? Math.max(0, Math.min(100, (time / duration) * 100)) : 0;
 
-  const trackBtn: React.CSSProperties = {
-    background: "none", border: "none", color: WARM, padding: 4, lineHeight: 0, cursor: "pointer",
-  };
+  const trackBtn = (enabled: boolean): React.CSSProperties => ({
+    background: "none", border: "none", color: WARM, padding: 4, lineHeight: 0,
+    cursor: enabled ? "pointer" : "default", opacity: enabled ? 1 : 0.35,
+  });
 
   return (
     <div className="w-full flex flex-col items-center" style={{ maxWidth: 480, gap: 18 }}>
       <p className="text-center" style={{ color: FAINT, fontFamily: FONT, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
-        {paused ? "Paused" : "Now playing"}
+        {paused ? "Paused" : "Now playing"}{position ? ` \u00b7 ${position}` : ""}
       </p>
       {/* The cover, centred. Always a square, art or not — a record with no
           sleeve still has a shape. Dims while paused. */}
@@ -164,11 +180,11 @@ export function MusicPlayer({
           </div>
         </div>
       )}
-      {/* Transport: back · play/pause · next. Back/next only when there is a
-          queue to move through — for one hymn they would do nothing. */}
+      {/* Transport: back · play/pause · next. Shown whenever this build can
+          report the queue; an older build (no status) has pause alone. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 28 }}>
-        {inQueue && (
-          <button type="button" aria-label="Previous" onClick={() => { void previousAppleMusicNative(); }} className="active:scale-[0.94]" style={trackBtn}>
+        {status && (
+          <button type="button" aria-label="Previous" disabled={!hasPrev} onClick={() => { void previousAppleMusicNative(); }} className="active:scale-[0.94]" style={trackBtn(hasPrev)}>
             <IconTrack />
           </button>
         )}
@@ -195,8 +211,8 @@ export function MusicPlayer({
             </svg>
           )}
         </button>
-        {inQueue && (
-          <button type="button" aria-label="Next" onClick={() => { void nextAppleMusicNative(); }} className="active:scale-[0.94]" style={trackBtn}>
+        {status && (
+          <button type="button" aria-label="Next" disabled={!hasNext} onClick={() => { void nextAppleMusicNative(); }} className="active:scale-[0.94]" style={trackBtn(hasNext)}>
             <IconTrack next />
           </button>
         )}

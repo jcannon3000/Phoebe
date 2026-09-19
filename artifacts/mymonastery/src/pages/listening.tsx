@@ -834,7 +834,32 @@ export default function ListeningPage() {
      * door is only ever to the next beat, never out of the practice.
      */
     const logSatisfied = !!what.trim();
-    const next = () => { if (deckStep < LAST) setDeckStep((n) => n + 1); };
+    /**
+     * Log what Phoebe is playing — the player's "Log this listening", and the
+     * deck's Next while the player is up. The music keeps going: the
+     * listening is the practice and it isn't over. Explicit title, never
+     * `what` from state (a tap that set and logged would read the old one).
+     */
+    const logNowPlaying = () => {
+      if (!nowPlaying) return;
+      const title = (nowPlaying.title ?? "").trim();
+      const already = entries.some((e) => e.day === todayYmd
+        && e.what.trim().toLowerCase() === title.toLowerCase());
+      if (title && !already) {
+        logMutation.mutate({ what: title, artworkUrl });
+        markPracticeDoneToday("listening");
+        saveListeningEntry({ minutes: 0, songs: 1, medium, what: title, artworkUrl });
+      }
+      loggedHere.current = true;
+    };
+    const next = () => {
+      // Next from the PLAYER (owner, 2026-09-18): "Listen … in the way that
+      // is best for you" and "what did you listen to?" are for music played
+      // somewhere else. Phoebe is playing this one and already knows what it
+      // is — so Next logs it and goes on to the prayer beat.
+      if (deckStep === LISTEN && nowPlaying) { logNowPlaying(); setDeckStep(LIFT); return; }
+      if (deckStep < LAST) setDeckStep((n) => n + 1);
+    };
     const prev = () => {
       // Stepping back from the prayer beat skips the log once it's been done —
       // logToday clears the form, so going back to it showed an empty one,
@@ -1256,15 +1281,7 @@ export default function ListeningPage() {
                        * closing slide — and the music keeps going, because the
                        * listening is the practice and it is not over.
                        */
-                      const title = (nowPlaying.title ?? "").trim();
-                      const already = entries.some((e) => e.day === todayYmd
-                        && e.what.trim().toLowerCase() === title.toLowerCase());
-                      if (title && !already) {
-                        logMutation.mutate({ what: title, artworkUrl });
-                        markPracticeDoneToday("listening");
-                        saveListeningEntry({ minutes: 0, songs: 1, medium, what: title, artworkUrl });
-                      }
-                      loggedHere.current = true;
+                      logNowPlaying();
                       setDeckStep(DONE);
                     }}
                     className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"

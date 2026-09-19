@@ -72,7 +72,16 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     /// (PhoebeAudioPlugin carries the same note). `.mixWithOthers` lets
     /// Phoebe's own bells and breath tones sound over the hymn rather than
     /// ducking it out.
+    /// Has Phoebe ever started music in this process? Until it has, NOTHING
+    /// may touch ApplicationMusicPlayer.shared: the first touch opens a
+    /// synchronous connection to the media server on the main thread, and
+    /// every sit and breath calls stop() when it ends — for everyone, music
+    /// or not. Both watchdog kills of 2026-09-18 were that connection hanging
+    /// while the app went to the background.
+    private var started = false
+
     private func activateAudioSession() {
+        started = true
         do {
             // EXCLUSIVE .playback, NOT .mixWithOthers. Mixing forfeits the
             // Now Playing slot, which is what gives the lock screen and
@@ -145,7 +154,10 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         #if canImport(MusicKit)
         if #available(iOS 16.0, *) {
-            Task {
+            // On the MAIN actor: ApplicationMusicPlayer is main-actor
+            // state, and driving it from a background task is undefined
+            // (two watchdog kills on the owner's phone, 2026-09-18).
+            Task { @MainActor in
                 guard MusicAuthorization.currentStatus == .authorized else {
                     call.reject("not-authorized")
                     return
@@ -165,9 +177,21 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                         call.reject("not-found")
                         return
                     }
-                    await MainActor.run { self.activateAudioSession() }
+                    // The song WITH ITS ALBUM, starting at the song (owner,
+                    // 2026-09-18: back and next, and "1 of 5"). One song
+                    // alone gave the player nowhere to go. If the album
+                    // can't be read, the song plays alone as before.
+                    var queue = ApplicationMusicPlayer.Queue(for: [song])
+                    if let album = (try? await song.with([.albums]))?.albums?.first,
+                       let tracks = try? await album.with([.tracks]).tracks,
+                       let start = tracks.first(where: { $0.id == song.id }) {
+                        queue = ApplicationMusicPlayer.Queue(for: tracks, startingAt: start)
+                    }
+                    self.activateAudioSession()
                     let player = ApplicationMusicPlayer.shared
-                    player.queue = ApplicationMusicPlayer.Queue(for: [song])
+                    player.queue = queue
+                    player.state.shuffleMode = .off
+                    player.state.repeatMode = MusicPlayer.RepeatMode.none
                     try await player.prepareToPlay()
                     try await player.play()
                     call.resolve([
@@ -204,7 +228,10 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         let repeatAll = call.getBool("repeatAll") ?? false
         #if canImport(MusicKit)
         if #available(iOS 16.0, *) {
-            Task {
+            // On the MAIN actor: ApplicationMusicPlayer is main-actor
+            // state, and driving it from a background task is undefined
+            // (two watchdog kills on the owner's phone, 2026-09-18).
+            Task { @MainActor in
                 guard MusicAuthorization.currentStatus == .authorized else {
                     call.reject("not-authorized")
                     return
@@ -276,7 +303,10 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         let repeatAll = call.getBool("repeatAll") ?? false
         #if canImport(MusicKit)
         if #available(iOS 16.0, *) {
-            Task {
+            // On the MAIN actor: ApplicationMusicPlayer is main-actor
+            // state, and driving it from a background task is undefined
+            // (two watchdog kills on the owner's phone, 2026-09-18).
+            Task { @MainActor in
                 guard MusicAuthorization.currentStatus == .authorized else {
                     call.reject("not-authorized")
                     return
@@ -354,11 +384,18 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         call.reject("Apple Music playback needs iOS 16 or later")
     }
 
+    // MARK: - Control
+    //
+    // Every control is a no-op until something has been started (see
+    // `started`), and runs on the main actor when it does touch the player.
+
     @objc func pause(_ call: CAPPluginCall) {
         #if canImport(MusicKit)
-        if #available(iOS 16.0, *) {
-            ApplicationMusicPlayer.shared.pause()
-            call.resolve()
+        if #available(iOS 16.0, *), started {
+            Task { @MainActor in
+                ApplicationMusicPlayer.shared.pause()
+                call.resolve()
+            }
             return
         }
         #endif
@@ -367,8 +404,8 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func resume(_ call: CAPPluginCall) {
         #if canImport(MusicKit)
-        if #available(iOS 16.0, *) {
-            Task {
+        if #available(iOS 16.0, *), started {
+            Task { @MainActor in
                 do { try await ApplicationMusicPlayer.shared.play(); call.resolve() }
                 catch { call.reject("resume-failed") }
             }
@@ -380,15 +417,18 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func stop(_ call: CAPPluginCall) {
         #if canImport(MusicKit)
-        if #available(iOS 16.0, *) {
-            let player = ApplicationMusicPlayer.shared
-            player.stop()
-            player.queue = ApplicationMusicPlayer.Queue()
-            // Hand the session back, so the next chime returns to .ambient and
-            // effects honour the mute switch again.
-            PhoebeSessionOwner.musicHolds = false
-            try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
-            call.resolve()
+        if #available(iOS 16.0, *), started {
+            Task { @MainActor in
+                // stop() only. Swapping in an empty Queue() here was one
+                // more round trip to the media server for nothing.
+                ApplicationMusicPlayer.shared.stop()
+                self.started = false
+                // Hand the session back, so the next chime returns to
+                // .ambient and effects honour the mute switch again.
+                PhoebeSessionOwner.musicHolds = false
+                try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+                call.resolve()
+            }
             return
         }
         #endif
@@ -398,15 +438,14 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     // MARK: - The player's face
     //
     // Owner, 2026-09-18: make the music player read like the podcast player —
-    // the cover, a progress bar, and back/next when an album or playlist is
-    // playing. Those need the queue and the clock, which only MusicKit holds,
-    // so the JS player polls `status` about once a second while it is on
-    // screen and asks `next`/`previous` on a tap.
+    // the cover, a progress bar, back/next, and "1 of 5". Those need the
+    // queue and the clock, which only MusicKit holds, so the JS player polls
+    // `status` about once a second while it is on screen and visible.
 
     @objc func next(_ call: CAPPluginCall) {
         #if canImport(MusicKit)
-        if #available(iOS 16.0, *) {
-            Task {
+        if #available(iOS 16.0, *), started {
+            Task { @MainActor in
                 do { try await ApplicationMusicPlayer.shared.skipToNextEntry(); call.resolve() }
                 catch { call.reject("next-failed") }
             }
@@ -420,8 +459,8 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     /// and only goes to the one before when tapped near its start.
     @objc func previous(_ call: CAPPluginCall) {
         #if canImport(MusicKit)
-        if #available(iOS 16.0, *) {
-            Task {
+        if #available(iOS 16.0, *), started {
+            Task { @MainActor in
                 let player = ApplicationMusicPlayer.shared
                 if player.playbackTime > 3 {
                     player.restartCurrentEntry()
@@ -439,31 +478,39 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func status(_ call: CAPPluginCall) {
         #if canImport(MusicKit)
-        if #available(iOS 16.0, *) {
-            let player = ApplicationMusicPlayer.shared
-            let entry = player.queue.currentEntry
-            var duration: Double = 0
-            var artist = entry?.subtitle ?? ""
-            if case .song(let song)? = entry?.item {
-                duration = song.duration ?? 0
-                if artist.isEmpty { artist = song.artistName }
+        if #available(iOS 16.0, *), started {
+            Task { @MainActor in
+                let player = ApplicationMusicPlayer.shared
+                let entry = player.queue.currentEntry
+                var duration: Double = 0
+                var artist = entry?.subtitle ?? ""
+                var album = ""
+                if case .song(let song)? = entry?.item {
+                    duration = song.duration ?? 0
+                    if artist.isEmpty { artist = song.artistName }
+                    album = song.albumTitle ?? ""
+                }
+                var artworkUrl = ""
+                if let url = entry?.artwork?.url(width: 600, height: 600), url.scheme == "https" {
+                    artworkUrl = url.absoluteString
+                }
+                let entries = Array(player.queue.entries)
+                let index = entry.flatMap { e in entries.firstIndex(where: { $0.id == e.id }) } ?? -1
+                call.resolve([
+                    "playing": player.state.playbackStatus == .playing,
+                    "time": player.playbackTime,
+                    "duration": duration,
+                    "title": entry?.title ?? "",
+                    "artist": artist,
+                    "album": album,
+                    "artworkUrl": artworkUrl,
+                    "count": entries.count,
+                    "index": index,
+                ])
             }
-            var artworkUrl = ""
-            if let url = entry?.artwork?.url(width: 600, height: 600), url.scheme == "https" {
-                artworkUrl = url.absoluteString
-            }
-            call.resolve([
-                "playing": player.state.playbackStatus == .playing,
-                "time": player.playbackTime,
-                "duration": duration,
-                "title": entry?.title ?? "",
-                "artist": artist,
-                "artworkUrl": artworkUrl,
-                "count": player.queue.entries.count,
-            ])
             return
         }
         #endif
-        call.resolve(["playing": false, "time": 0, "duration": 0, "title": "", "artist": "", "artworkUrl": "", "count": 0])
+        call.resolve(["playing": false, "time": 0, "duration": 0, "title": "", "artist": "", "album": "", "artworkUrl": "", "count": 0, "index": -1])
     }
 }
