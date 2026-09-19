@@ -251,7 +251,15 @@ export default function ListeningPage() {
     void enableAppleMusic().then((r) => setCanPlayInApp(r.ok));
   }
 
-  const [canPlayInApp, setCanPlayInApp] = useState(false);
+  /**
+   * null = not known yet. It used to start false and flip when the check came
+   * back, so a tap in the first seconds after opening the page was read as
+   * "can't play here" and opened the Music app instead — falling back to a
+   * link because we hadn't finished asking (owner, 2026-09-18: "its just
+   * linking not actually playing in app"). A tap while it is null now waits
+   * for the answer; see playableNow.
+   */
+  const [canPlayInApp, setCanPlayInApp] = useState<boolean | null>(null);
   useEffect(() => {
     let alive = true;
     // appleMusicFeaturesReady, NOT appleMusicNativeReady: it also requires the
@@ -298,6 +306,18 @@ export default function ListeningPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Can this tap play inside Phoebe? The known answer when there is one; on a
+   * native build whose check hasn't come back yet, the check itself. On the web
+   * there is no plugin, so the answer is a synchronous no and the link stays
+   * inside the tap, where a popup blocker can't catch it.
+   */
+  function playableNow(): boolean | Promise<boolean> {
+    if (canPlayInApp !== null) return canPlayInApp;
+    if (!hasAppleMusicNative()) return false;
+    return appleMusicFeaturesReady();
+  }
+
   /** Start a catalog song, or fall back to opening the service. */
   function playSearchResult(r: SearchResult) {
     // `service` is THIS listener's chosen service; `r.service` is only where
@@ -305,19 +325,29 @@ export default function ListeningPage() {
     // listener Apple Music (audit, 2026-09-18).
     const id = service === "apple" && r.service === "apple" && r.kind === "song" ? r.appleId : undefined;
     const title = r.subtitle ? `${r.title} — ${r.subtitle}` : r.title;
+    /**
+     * THE MUSIC OPENED SOMEWHERE ELSE — so this beat is done, and the log is
+     * next, already filled in by chooseResult (owner, 2026-09-18: "when i click
+     * a piece of music and it opens in another place, its supposed to still
+     * advance to the log with that autofilled"). playRecent always did this;
+     * this path opened the service and simply stayed where it was.
+     */
+    const openElsewhere = () => {
+      if (!r.url) return;
+      openExternal(r.url, { system: true });
+      setDeckStep(LOG);
+    };
+    if (id && nowPlaying?.id === id) { void stopAppleMusicNative(); setNowPlaying(null); return; }
+    const playable = id ? playableNow() : false;
+    if (playable === false) { openElsewhere(); return; }
     // canPlayInApp, not "the plugin exists": entering the native branch on mere
     // presence let playAppleMusicNative raise an authorization sheet from a tap
-    // that promised music. On the web this is false, so the openExternal below
-    // stays inside the tap and can't be blocked.
-    if (id && canPlayInApp) {
-      if (nowPlaying?.id === id) { void stopAppleMusicNative(); setNowPlaying(null); return; }
-      void playAppleMusicNative(id).then((ok) => {
-        if (ok) setNowPlaying({ id, title });
-        else if (r.url) openExternal(r.url, { system: true });
-      });
-      return;
-    }
-    if (r.url) openExternal(r.url, { system: true });
+    // that promised music.
+    void (async () => {
+      if (!(await playable)) { openElsewhere(); return; }
+      if (await playAppleMusicNative(id!)) setNowPlaying({ id: id!, title });
+      else openElsewhere();
+    })();
   }
 
   /**
@@ -334,8 +364,10 @@ export default function ListeningPage() {
     // Phoebe is holding the music and this beat becomes the player, or the
     // music is somewhere else and there is nothing left to do here but write it
     // down — so it goes straight to the log, already filled in by chooseRecent.
-    if (service !== "apple" || !canPlayInApp) { setDeckStep(LOG); return; }
+    const playable = service === "apple" ? playableNow() : false;
+    if (playable === false) { setDeckStep(LOG); return; }
     void (async () => {
+      if (!(await playable)) { setDeckStep(LOG); return; }
       const hits = await searchCatalog(r.what).catch(() => [] as SearchResult[]);
       const song = hits.find((h) => h.service === "apple" && h.kind === "song" && h.appleId);
       // Left mid-lookup: don't start anything, and make sure nothing slipped
@@ -632,6 +664,20 @@ export default function ListeningPage() {
    * data entry.
    */
   const INTRO = 0, LISTEN = 1, HOW = 2, LOG = 3, LIFT = 4, DONE = 5;
+  /**
+   * ?log=1 — a catalogue (Hymns, Hildegard) opened the music in another app
+   * and sent the person here, so the deck starts on the log, which the
+   * pendingListen hand-off has already filled in. The query is then dropped so
+   * a reload doesn't land on the log again.
+   */
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("log") !== "1") return;
+      setDeckStep(LOG);
+      window.history.replaceState(window.history.state, "", window.location.pathname);
+    } catch { /* no URL to read */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const DECK_TOTAL = 6;
   const LAST = DONE;
   // The pill's section label — the office's "N of M · Section" shape.

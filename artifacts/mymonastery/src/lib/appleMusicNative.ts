@@ -58,6 +58,46 @@ type MusicPlugin = {
 const NATIVE_DEADLINE_MS = 6000;
 /** Longer, because this one is allowed to be waiting on a human. */
 const AUTHORIZE_DEADLINE_MS = 60000;
+/**
+ * SLOW IS NOT STUCK (owner, 2026-09-18: "The apple music integration is not
+ * working anymore, its just linking not actually playing in app").
+ *
+ * Six seconds held for the calls that only read a flag, and was far too short
+ * for the two that do real work. isAvailable asks Apple's servers whether the
+ * subscription can play catalogue content; playTrack/playPlaylist/
+ * playCollection resolve only after that same check, a catalogue request,
+ * prepareToPlay() and play() — several network round trips plus buffering.
+ * On a phone, and above all on the first play after launch, that ran past six
+ * seconds, so every play "failed", the service opened instead, and the song
+ * often started in the app a moment later behind it.
+ *
+ * So: generous limits for the calls that fetch and buffer, the short one kept
+ * for the cheap ones, and a stall still ends — it just ends in half a minute
+ * rather than six seconds.
+ */
+const CHECK_DEADLINE_MS = 15000;
+const PLAY_DEADLINE_MS = 30000;
+
+const TIMED_OUT = Symbol("timed-out");
+
+/**
+ * Start playback within PLAY_DEADLINE_MS, or report false so the caller opens
+ * the service. If the deadline passes and the play then finishes after all,
+ * it is STOPPED: by then the caller has opened the Music app (or a browser),
+ * and music starting inside Phoebe behind it is the double-start nobody asked
+ * for.
+ */
+async function playWithin(work: Promise<{ playing?: boolean } | null | undefined>): Promise<boolean> {
+  const r = await withDeadline<unknown>(work, PLAY_DEADLINE_MS, TIMED_OUT);
+  if (r === TIMED_OUT) {
+    work.then(
+      (late) => { if (late?.playing === true) void plugin()?.stop?.(); },
+      () => { /* it failed late too — nothing to undo */ },
+    );
+    return false;
+  }
+  return (r as { playing?: boolean } | null | undefined)?.playing === true;
+}
 
 function withDeadline<T>(work: Promise<T>, ms: number, fallback: T): Promise<T> {
   return new Promise<T>((resolve) => {
@@ -97,7 +137,7 @@ export async function appleMusicNativeReady(): Promise<boolean> {
   const p = plugin();
   if (!p?.isAvailable) return false;
   try {
-    const r = await withDeadline(p.isAvailable(), NATIVE_DEADLINE_MS, {});
+    const r = await withDeadline(p.isAvailable(), CHECK_DEADLINE_MS, {});
     return r?.available === true && r?.authorized === true && r?.subscribed === true;
   } catch {
     return false;
@@ -115,7 +155,7 @@ export async function playAppleMusicNative(trackId: string | null | undefined): 
   const p = plugin();
   if (!p?.playTrack || !trackId) return false;
   try {
-    const status = p.isAvailable ? await withDeadline(p.isAvailable(), NATIVE_DEADLINE_MS, {}) : {};
+    const status = p.isAvailable ? await withDeadline(p.isAvailable(), CHECK_DEADLINE_MS, {}) : {};
     if (status.available !== true) return false;
     if (status.authorized !== true) {
       // The sheet is allowed to wait on a person; it is not allowed to wait
@@ -126,8 +166,7 @@ export async function playAppleMusicNative(trackId: string | null | undefined): 
     } else if (status.subscribed !== true) {
       return false;
     }
-    const played = await withDeadline(p.playTrack({ id: trackId }), NATIVE_DEADLINE_MS, {});
-    return played?.playing === true;
+    return await playWithin(p.playTrack({ id: trackId }));
   } catch {
     // "not-authorized", "no-subscription", "not-found", a MusicKit error, or
     // no capability on the App ID — all of them mean: open the link instead.
@@ -155,7 +194,7 @@ export async function playAppleMusicPlaylistNative(
   const p = plugin();
   if (!p?.playPlaylist || !playlistId) return false;
   try {
-    const status = p.isAvailable ? await withDeadline(p.isAvailable(), NATIVE_DEADLINE_MS, {}) : {};
+    const status = p.isAvailable ? await withDeadline(p.isAvailable(), CHECK_DEADLINE_MS, {}) : {};
     if (status.available !== true) return false;
     if (status.authorized !== true) {
       const asked = p.authorize ? await withDeadline(p.authorize(), AUTHORIZE_DEADLINE_MS, {}) : {};
@@ -163,12 +202,11 @@ export async function playAppleMusicPlaylistNative(
     } else if (status.subscribed !== true) {
       return false;
     }
-    const played = await withDeadline(p.playPlaylist({
+    return await playWithin(p.playPlaylist({
       id: playlistId,
       shuffle: opts.shuffle === true,
       repeatAll: opts.repeatAll === true,
-    }), NATIVE_DEADLINE_MS, {});
-    return played?.playing === true;
+    }));
   } catch {
     return false;
   }
@@ -193,20 +231,21 @@ export async function playAppleMusicCollectionNative(
   const p = plugin();
   if (!p?.playCollection || !id) return false;
   try {
-    const status = (await p.isAvailable?.()) ?? {};
+    // The same limits as the other two paths — this one arrived after the
+    // deadlines did and had none, so a stall here was a dead tap.
+    const status = p.isAvailable ? await withDeadline(p.isAvailable(), CHECK_DEADLINE_MS, {}) : {};
     if (status.available !== true) return false;
     if (status.authorized !== true) {
-      const asked = (await p.authorize?.()) ?? {};
+      const asked = p.authorize ? await withDeadline(p.authorize(), AUTHORIZE_DEADLINE_MS, {}) : {};
       if (asked.authorized !== true || asked.subscribed !== true) return false;
     } else if (status.subscribed !== true) {
       return false;
     }
-    const played = await p.playCollection({
+    return await playWithin(p.playCollection({
       id, kind,
       shuffle: opts.shuffle === true,
       repeatAll: opts.repeatAll === true,
-    });
-    return played?.playing === true;
+    }));
   } catch {
     return false;
   }

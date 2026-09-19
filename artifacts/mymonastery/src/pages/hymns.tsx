@@ -133,6 +133,17 @@ export default function HymnsPage() {
     h.num.length ? `Hymn ${hymnNumberLabel(h)} · ${h.name} — ${h.artist}` : `${h.name} — ${h.artist}`;
   const noteForTheLog = (h: Hymn) => setPendingListen({ what: listenedAs(h) });
 
+  /**
+   * The hymn opened in another app, so the next thing is writing it down:
+   * Audio Divina's log, already filled by noteForTheLog (owner, 2026-09-18:
+   * "when i click a piece of music and it opens in another place, its supposed
+   * to still advance to the log with that autofilled"). It used to stay on
+   * this list, and the prefill waited for them to find the log themselves.
+   * Every hymn link is a particular recording on every service, so this is
+   * never a guess.
+   */
+  const openThenLog = (url: string) => { open(url); setLocation("/listening?log=1"); };
+
   const play = (h: Hymn, url: string) => {
     // Owner: "when they pick a hymn, regardless of the platform, if it opens
     // the other app, when they come back to phoebe, it should have that hymn
@@ -145,7 +156,7 @@ export default function HymnsPage() {
       if (playingId === h.appleTrackId) { void stopAppleMusicNative(); setPlayingId(null); return; }
       noteForTheLog(h);
       void playAppleMusicNative(h.appleTrackId).then((ok) => {
-        if (!ok) { open(url); return; }
+        if (!ok) { openThenLog(url); return; }
         setPlayingId(h.appleTrackId);
         // Playing goes to the player (owner, 2026-09-18: "Playing from a
         // catalogue does NOT currently go to the playback slide — it must").
@@ -158,7 +169,7 @@ export default function HymnsPage() {
       return;
     }
     noteForTheLog(h);
-    open(url);
+    openThenLog(url);
   };
 
   // Changing where your music comes from stops what the old one was playing —

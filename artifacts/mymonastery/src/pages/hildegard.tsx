@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import {
-  playAppleMusicNative, stopAppleMusicNative,
+  playAppleMusicNative, stopAppleMusicNative, hasAppleMusicNative,
   hasAppleMusicCollectionNative, playAppleMusicCollectionNative,
 } from "@/lib/appleMusicNative";
 import { appleMusicFeaturesReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
@@ -112,7 +112,9 @@ export default function HildegardPage() {
    * promised music, which is the ambush lib/appleMusicFeatures exists to
    * prevent (audit, 2026-09-18; same defect fixed in listening.tsx).
    */
-  const [canPlayInApp, setCanPlayInApp] = useState(false);
+  // null = not known yet — a tap then waits for the answer instead of reading
+  // the gap as "can't play" (see playableNow; same fix as listening.tsx).
+  const [canPlayInApp, setCanPlayInApp] = useState<boolean | null>(null);
   useEffect(() => {
     let alive = true;
     const ask = () => { void appleMusicFeaturesReady().then((ok) => { if (alive) setCanPlayInApp(ok); }); };
@@ -120,7 +122,27 @@ export default function HildegardPage() {
     window.addEventListener(APPLE_MUSIC_EVENT, ask);
     return () => { alive = false; window.removeEventListener(APPLE_MUSIC_EVENT, ask); };
   }, []);
-  const appleNative = service === "apple" && canPlayInApp;
+  const appleNative = service === "apple" && canPlayInApp === true;
+  /**
+   * Can this tap play inside Phoebe? The known answer, or — on a native build
+   * whose check hasn't come back — the check itself. Synchronously false on
+   * the web, so the link there stays inside the tap.
+   */
+  const playableNow = (needs: () => boolean): boolean | Promise<boolean> => {
+    if (service !== "apple" || !needs()) return false;
+    if (canPlayInApp !== null) return canPlayInApp;
+    return appleMusicFeaturesReady();
+  };
+  /**
+   * The music opened in the Music app, so the next thing is writing it down:
+   * Audio Divina's log, already filled by the setPendingListen above (owner,
+   * 2026-09-18: "when i click a piece of music and it opens in another place,
+   * its supposed to still advance to the log with that autofilled"). Only for
+   * a real RECORDING — an Apple track or the whole playlist. Spotify and
+   * YouTube open a SEARCH, and a log claiming they heard a particular piece
+   * would be a guess.
+   */
+  const toTheLog = () => setLocation("/listening?log=1");
 
   /** The whole thing, in order or shuffled. In-app for an Apple Music
    *  subscriber on a native build; otherwise it opens the playlist (Apple) or
@@ -128,42 +150,49 @@ export default function HildegardPage() {
    *  themselves — there is no URL that makes another app shuffle. */
   const playAll = (shuffle: boolean) => {
     setPendingListen({ what: `${HILDEGARD_PLAYLIST.name} — Hildegard von Bingen` });
-    if (service === "apple" && canPlayInApp && hasAppleMusicCollectionNative()) {
-      if (playingAll) { void stopAppleMusicNative(); setPlayingAll(false); return; }
-      void playAppleMusicCollectionNative("playlist", HILDEGARD_PLAYLIST.id, { shuffle, repeatAll: true })
-        .then((ok) => {
-          if (!ok) { open(HILDEGARD_PLAYLIST.url); return; }
-          setPlayingAll(true); setPlayingId(null);
-          // Playing goes to the player (owner, 2026-09-18) — Apple in-app
-          // success only; a fallback or a search never becomes "now playing".
-          handOffNowPlaying({
-            id: HILDEGARD_PLAYLIST.id,
-            title: `${HILDEGARD_PLAYLIST.name} — Hildegard von Bingen`,
-            from: "/hildegard",
-          });
-          handingOff.current = true;
-          setLocation("/listening");
-        });
+    if (playingAll) { void stopAppleMusicNative(); setPlayingAll(false); return; }
+    const openPlaylist = () => { open(HILDEGARD_PLAYLIST.url); toTheLog(); };
+    const playable = playableNow(hasAppleMusicCollectionNative);
+    if (playable === false) {
+      if (service === "apple") { openPlaylist(); return; }
+      open(`https://${service === "youtube" ? "www.youtube.com/results?search_query=" : "open.spotify.com/search/"}${encodeURIComponent("Hildegard von Bingen")}`);
       return;
     }
-    if (service === "apple") { open(HILDEGARD_PLAYLIST.url); return; }
-    open(`https://${service === "youtube" ? "www.youtube.com/results?search_query=" : "open.spotify.com/search/"}${encodeURIComponent("Hildegard von Bingen")}`);
+    void (async () => {
+      if (!(await playable)) { openPlaylist(); return; }
+      const ok = await playAppleMusicCollectionNative("playlist", HILDEGARD_PLAYLIST.id, { shuffle, repeatAll: true });
+      if (!ok) { openPlaylist(); return; }
+      setPlayingAll(true); setPlayingId(null);
+      // Playing goes to the player (owner, 2026-09-18) — Apple in-app
+      // success only; a fallback or a search never becomes "now playing".
+      handOffNowPlaying({
+        id: HILDEGARD_PLAYLIST.id,
+        title: `${HILDEGARD_PLAYLIST.name} — Hildegard von Bingen`,
+        from: "/hildegard",
+      });
+      handingOff.current = true;
+      setLocation("/listening");
+    })();
   };
 
   const play = (t: HildegardTrack) => {
     setPendingListen({ what: `${t.name} — ${t.artist}` });
-    if (appleNative) {
-      if (playingId === t.appleTrackId) { void stopAppleMusicNative(); setPlayingId(null); return; }
-      void playAppleMusicNative(t.appleTrackId).then((ok) => {
-        if (!ok) { open(t.appleUrl); return; }
-        setPlayingId(t.appleTrackId); setPlayingAll(false);
-        handOffNowPlaying({ id: t.appleTrackId, title: `${t.name} — ${t.artist}`, from: "/hildegard" });
-        handingOff.current = true;
-        setLocation("/listening");
-      });
+    if (playingId === t.appleTrackId) { void stopAppleMusicNative(); setPlayingId(null); return; }
+    const openTrack = () => { open(t.appleUrl); toTheLog(); };
+    const playable = playableNow(hasAppleMusicNative);
+    if (playable === false) {
+      if (service === "apple") { openTrack(); return; }
+      open(urlFor(t, service));   // a search — see toTheLog
       return;
     }
-    open(urlFor(t, service));
+    void (async () => {
+      if (!(await playable)) { openTrack(); return; }
+      if (!(await playAppleMusicNative(t.appleTrackId))) { openTrack(); return; }
+      setPlayingId(t.appleTrackId); setPlayingAll(false);
+      handOffNowPlaying({ id: t.appleTrackId, title: `${t.name} — ${t.artist}`, from: "/hildegard" });
+      handingOff.current = true;
+      setLocation("/listening");
+    })();
   };
 
   const label = MUSIC_SERVICES.find((s) => s.id === service)?.label ?? "Spotify";
