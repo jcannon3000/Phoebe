@@ -5,6 +5,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { allCommemorations, searchCommemorations, type Commemoration } from "@/lib/commemorations";
 import { getSaintsRead, markSaintRead } from "@/lib/saintsRead";
+import { pictureFor } from "@/lib/commemorationPictures";
 
 // ── Meditating on the lives of the saints ───────────────────────────────────
 //
@@ -48,7 +49,7 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-type Beat = "pick" | "prompt" | "prayer" | "recent";
+type Beat = "pick" | "prompt" | "picture" | "prayer" | "recent";
 
 /** Today's commemoration, or the next one coming — never nothing to open. */
 function suggested(all: Commemoration[]): { c: Commemoration; today: boolean } | null {
@@ -115,7 +116,11 @@ export default function SaintsPage() {
     if (!chosen) return;
     markSaintRead({ id: `${chosen.month}-${chosen.day}`, name: chosen.name, when: chosen.when });
     void openExternal(chosen.url, { reader: true });
-    setBeat("prayer");
+    // A face for the life, where there is one (owner: "if you find a picture
+    // for that person, put it on a slide after the heigriohpy"). Only 216 of
+    // the 277 have a picture we can show freely, so the beat is skipped
+    // entirely rather than showing an empty frame.
+    setBeat(pictureFor(chosen.month, chosen.day) ? "picture" : "prayer");
   };
 
   // Entrances fade IN PLACE — nothing rises (reference_page_rise_end_snap).
@@ -315,6 +320,59 @@ export default function SaintsPage() {
       </motion.div>,
       () => setBeat("pick"),
       "Before you read",
+    );
+  }
+
+  // ── Beat: a face for the life ─────────────────────────────────────────────
+  if (beat === "picture" && chosen) {
+    const pic = pictureFor(chosen.month, chosen.day);
+    if (!pic) { setBeat("prayer"); return null; }
+    return shell(
+      <motion.div {...fade} style={{ flex: "1 0 auto", display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 30 }}>
+        <div
+          style={{
+            width: "100%", maxWidth: 420, margin: "0 auto 18px", borderRadius: 16,
+            overflow: "hidden", background: "rgba(9,26,16,0.55)", border: `1px solid ${BORDER}`,
+          }}
+        >
+          <img
+            src={pic.img}
+            alt={chosen.name}
+            loading="lazy"
+            decoding="async"
+            style={{ width: "100%", height: "auto", display: "block" }}
+          />
+        </div>
+        <p style={{ color: WARM, fontFamily: FONT, fontSize: 17, fontWeight: 600, textAlign: "center", lineHeight: 1.35, margin: "0 auto 6px", maxWidth: 400 }}>
+          {chosen.name}
+        </p>
+        {/* THE CREDIT TRAVELS WITH THE PICTURE. Commons licences ask for
+            attribution, and the file's own page is where the full terms live. */}
+        <button
+          type="button"
+          onClick={() => { void openExternal(pic.page, { reader: false }); }}
+          style={{
+            background: "none", border: "none", cursor: "pointer", padding: 0,
+            color: "rgba(143,175,150,0.5)", fontFamily: FONT, fontSize: 11,
+            lineHeight: 1.5, textAlign: "center", margin: "0 auto 26px", maxWidth: 400,
+          }}
+        >
+          {pic.artist ? `${pic.artist} · ` : ""}{pic.licence} · Wikimedia Commons
+        </button>
+        <button
+          type="button"
+          onClick={() => setBeat("prayer")}
+          style={{
+            width: "100%", maxWidth: 380, margin: "0 auto", borderRadius: 999, padding: "14px 10px", cursor: "pointer",
+            background: "rgba(46,107,64,0.45)", border: "1px solid rgba(143,175,150,0.55)",
+            color: WARM, fontFamily: FONT, fontSize: 15, fontWeight: 600,
+          }}
+        >
+          Continue
+        </button>
+      </motion.div>,
+      () => setBeat("prompt"),
+      chosen.when,
     );
   }
 
