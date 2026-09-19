@@ -1943,6 +1943,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 navigationItem.rightBarButtonItem = previousItem
             }
             title = nil
+        } else if Self.isPhoebeWatchPage(url) {
+            // Phoebe's own watch pages — a hymn or a video in the in-app
+            // player (owner, 2026-09-19: "That options doesn't make sense at
+            // the top"). Every Options item is about praying an office, and the
+            // page carries its own Log button, so the right side stays empty.
+            // No title either: the page's <title> is just "Phoebe".
+            navigationItem.rightBarButtonItem = nil
+            title = nil
         } else {
             // A plain office/Venite open. Every Options item genuinely
             // applies here.
@@ -2095,7 +2103,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         }
         // Title follows the page's <title> once it loads.
         titleObservation = webView.observe(\.title, options: [.new]) { [weak self] webView, _ in
-            guard let self, !self.isArticle else { return }
+            guard let self, !self.isArticle, !Self.isPhoebeWatchPage(webView.url) else { return }
             if let t = webView.title, !t.isEmpty { self.title = t }
         }
 
@@ -2789,6 +2797,15 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         if isReaderHostName(host) { return true }
         let isTaize = host == "taize.fr" || host.hasSuffix(".taize.fr")
         return isTaize && url.path.contains("prayer-and-reflection")
+    }
+
+    /** Phoebe's own watch pages (/video, /ncmp/watch, /devotion/watch) on
+     *  withphoebe.app — scoped to exactly these, so the office and the
+     *  newsletter readers keep their bars. */
+    static func isPhoebeWatchPage(_ url: URL?) -> Bool {
+        guard let url, let host = url.host?.lowercased() else { return false }
+        guard host == "withphoebe.app" || host == "www.withphoebe.app" else { return false }
+        return ["/video", "/ncmp/watch", "/devotion/watch"].contains(url.path)
     }
 
     static func isReaderHostName(_ host: String) -> Bool {
