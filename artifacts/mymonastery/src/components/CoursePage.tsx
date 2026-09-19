@@ -11,7 +11,7 @@
 // carries a "put it into practice" bridge — sit now for 15 or 20 minutes, or
 // make it a daily morning/evening rhythm (the customizer's Centering preset).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -26,7 +26,8 @@ import {
 import { Layout } from "@/components/layout";
 import { YouTubePlayer } from "@/components/YouTubePlayer";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { canEmbedVideoHere, openVideoInReader, youtubePoster } from "@/lib/videoEmbed";
+import { canEmbedVideoHere, isInReaderWatch, openVideoInReader, youtubePoster } from "@/lib/videoEmbed";
+import { collectFromReader, pushToApp, readerCoursePath, readerRelayToken, seedFromApp } from "@/lib/courseRelay";
 import {
   videoLabel,
   type CourseIndex,
@@ -246,10 +247,32 @@ function UnitBlock({
   );
 }
 
+/**
+ * INSIDE THE READER, NO APP CHROME (audit, 2026-09-18). On iOS this page is
+ * opened in the in-app reader at withphoebe.app (lib/videoEmbed), and wrapped
+ * in <Layout> it carried the Phoebe wordmark and the Menu drawer — a second
+ * copy of the app inside the first, where tapping the wordmark wandered off to
+ * the web home and the drawer offered "Sign in". The reader supplies Done; the
+ * page is just the course.
+ */
+function ReaderShell({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        minHeight: "100dvh", background: C.bg, color: C.text,
+        padding: "calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 28px)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export function CoursePage({ course, index }: { course: JourneyCourse; index: CourseIndex }) {
-  const { completedCount, isComplete, toggleComplete, markComplete, setLast, lastId, markStarted } = useCourseProgress(course.id);
+  const { completed, completedCount, isComplete, toggleComplete, markComplete, setLast, lastId, markStarted, started } = useCourseProgress(course.id);
+  const inReader = isInReaderWatch();
   const [hiddenFromHome, setHiddenFromHome] = useState(() => isCourseHiddenFromHome(course.id));
   // Leaf backdrop (frosted-glass cards float over it) — one photo per visit.
   const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
@@ -308,6 +331,48 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
   const pct = Math.round((completedCount / Math.max(1, index.total)) * 100);
 
   /**
+   * THE READER'S HALF OF THE HAND-BACK (lib/courseRelay). Seed from the app's
+   * progress once, before first paint, and resume where the app says — unless
+   * the URL already names a lesson (a reload inside the reader).
+   */
+  useLayoutEffect(() => {
+    if (!inReader) return;
+    const seeded = seedFromApp(course.id);
+    let pinned = false;
+    try { pinned = !!new URLSearchParams(window.location.search).get("v"); } catch { /* ignore */ }
+    if (seeded?.resumeId && !pinned && index.get(seeded.resumeId)) setActiveId(seeded.resumeId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  /** …and after every change, send the snapshot back under the code. */
+  const completedKey = useMemo(() => [...completed].sort().join("."), [completed]);
+  useEffect(() => {
+    if (!inReader) return;
+    const token = readerRelayToken();
+    if (!token) return;
+    const t = window.setTimeout(() => { void pushToApp(course.id, token); }, 400);
+    return () => window.clearTimeout(t);
+  }, [inReader, course.id, completedKey, lastId, started]);
+
+  /**
+   * THE APP'S HALF: when the reader closes (phoebe:browserfinished), when the
+   * app comes back to the front, and on arriving here, take back whatever was
+   * watched in the reader. Only where this page hands off to the reader.
+   */
+  const handsOffToReader = isNativeShell() && !canEmbedVideoHere();
+  useEffect(() => {
+    if (!handsOffToReader) return;
+    const collect = () => { void collectFromReader(course.id); };
+    const onVisible = () => { if (document.visibilityState === "visible") collect(); };
+    collect();
+    window.addEventListener("phoebe:browserfinished", collect);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("phoebe:browserfinished", collect);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [handsOffToReader, course.id]);
+
+  /**
    * WHERE YOUTUBE WON'T EMBED — the iOS shell, whose capacitor:// origin the
    * player refuses (lib/videoEmbed). This used to be a dead end: "this guided
    * course plays best on the web … open withphoebe.app in your browser". It now
@@ -317,7 +382,7 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
    *
    * Android needs none of this — it embeds in place, a few lines down.
    */
-  if (isNativeShell() && !canEmbedVideoHere()) {
+  if (handsOffToReader) {
     return (
       <Layout bgPhoto={leafBg}>
         <div className="mx-auto w-full max-w-md px-2 py-10">
@@ -326,7 +391,13 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
           </h1>
           <p className="mt-0.5 text-sm" style={{ color: C.sage }}>with {course.author}</p>
           <button
-            onClick={() => openVideoInReader()}
+            onClick={() => {
+              // Opening a lesson IS starting the course (the home's Continue
+              // card keys on it) — here as much as on the web, where openVideo
+              // does the same.
+              markStarted();
+              openVideoInReader(readerCoursePath(course.id, window.location.pathname));
+            }}
             className="mt-4 w-full overflow-hidden rounded-2xl text-left transition-opacity active:opacity-90"
             style={{ border: `1px solid ${C.border}`, background: "#000" }}
           >
@@ -363,8 +434,11 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
     );
   }
 
-  return (
-    <Layout bgPhoto={leafBg}>
+  // One element tree, placed in whichever wrapper fits. (Not a component
+  // defined here: a new component type each render would remount the whole
+  // page — the player included — every time anything changed.)
+  const body = (
+    <>
       <div className="mx-auto w-full max-w-5xl">
         {/* Header — starts right at the top (no back link; the header IS the page). */}
         <div className="mb-5">
@@ -402,14 +476,14 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
               Settings' other home-display switches: it changes what your home
               SHOWS, never what you've done. Your progress is untouched and the
               course is still here whenever you want it back. */}
-          <button
+          {!inReader && <button
             type="button"
             onClick={() => { setCourseHiddenFromHome(course.id, !hiddenFromHome); setHiddenFromHome((v) => !v); }}
             className="mt-3 text-[12px] underline underline-offset-2 transition-opacity hover:opacity-80"
             style={{ color: "rgba(143,175,150,0.75)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
           >
             {hiddenFromHome ? "Show this course on my home screen" : "Take this off my home screen"}
-          </button>
+          </button>}
         </div>
 
         <div className="h-px" style={{ background: C.line }} />
@@ -505,7 +579,13 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
                       ) : course.practiceBridge ? (
                         // The course's real ending isn't a video — it's the sit.
                         <div className="mt-2">
-                          <PracticeBridge compact />
+                          {inReader ? (
+                            <p className="text-sm leading-relaxed" style={{ color: C.sage }}>
+                              You've learned the method — now pray it. Tap Done, and begin a sit in Phoebe.
+                            </p>
+                          ) : (
+                            <PracticeBridge compact />
+                          )}
                         </div>
                       ) : (
                         <p className="mt-2 text-sm leading-relaxed" style={{ color: C.sage }}>
@@ -523,7 +603,7 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
           <div className="lg:w-[360px] lg:shrink-0">
             {/* Practice courses put the PRAYER above the syllabus — the point of
                 the course is the practice, so it's never below the fold. */}
-            {course.practiceBridge && (
+            {course.practiceBridge && !inReader && (
               <div className="mb-4">
                 <PracticeBridge />
               </div>
@@ -551,6 +631,7 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
+  return inReader ? <ReaderShell>{body}</ReaderShell> : <Layout bgPhoto={leafBg}>{body}</Layout>;
 }

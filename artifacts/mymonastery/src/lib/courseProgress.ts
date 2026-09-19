@@ -158,6 +158,23 @@ export function clearStarted(courseId: string) {
   commit(courseId, { ...s, started: undefined });
 }
 
+/**
+ * Take a whole progress snapshot as this course's own — the in-app reader
+ * handing back what was watched there (lib/courseRelay). Replaces rather than
+ * merges, so a lesson un-marked in the reader stays un-marked: the reader was
+ * seeded from this device's progress before it began, so its snapshot is this
+ * progress plus whatever happened there.
+ */
+export function adoptProgress(courseId: string, p: { completed: string[]; lastId?: string | null; started?: boolean }) {
+  const s = snap(courseId);
+  commit(courseId, {
+    ...s,
+    completed: [...new Set(p.completed)],
+    lastId: p.lastId ?? s.lastId,
+    started: p.started === true || s.started === true ? true : undefined,
+  });
+}
+
 /** One-time progress migration when lessons MOVE between courses (e.g. the
  *  five method videos splitting out of the Spiritual Journey into the
  *  Centering Prayer course): copy any of `ids` completed under `fromId` into

@@ -107,10 +107,16 @@ export default function DevotionWatchPage() {
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("phoebe:browserfinished", onBrowserFinished);
     window.addEventListener("pagehide", commit);
+    // iOS: the reader is presented OVER the app (overFullScreen), so the app's
+    // page is never hidden and never becomes "visible" again — the span stayed
+    // open until this page was left, crediting minutes spent reading the page
+    // afterwards (audit, 2026-09-18). The reader's own close event ends it.
+    window.addEventListener("phoebe:browserfinished", closeSpan);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("phoebe:browserfinished", onBrowserFinished);
       window.removeEventListener("pagehide", commit);
+      window.removeEventListener("phoebe:browserfinished", closeSpan);
       commit();
     };
   }, []);
