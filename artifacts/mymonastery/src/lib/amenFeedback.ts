@@ -10,6 +10,8 @@
  *   (the button tap itself), so iOS autoplay policy is satisfied.
  */
 
+import { appleMusicPlayingInApp } from "@/lib/appleMusicNative";
+
 let _audioCtx: AudioContext | null = null;
 let _unlockHookInstalled = false;
 let _visibilityHookInstalled = false;
@@ -415,6 +417,11 @@ function nativePad(): NativePad | null {
  * AudioContext resumes on the user gesture that triggered it).
  */
 export function playBreathTone(octaveStep: number = 0) {
+  // NOT OVER MUSIC (owner, 2026-09-19). Even the native pad stops Apple Music
+  // playing in-app — the chime at a slide turn was cutting off the office's
+  // music, and the breath's tone would do the same to Breathing Together's.
+  // While Phoebe is holding music, the music is the sound; haptics still run.
+  if (appleMusicPlayingInApp()) return;
   // On device the pad is rendered NATIVELY (PhoebeAudio.playPad), under the
   // app's own AVAudioSession (.playback + mixWithOthers), so a slide turn
   // rides over whatever the person is listening to in another app. WebAudio

@@ -151,12 +151,23 @@ function authorizeFresh(p: MusicPlugin): Promise<{ authorized?: boolean; subscri
 let playTicket = 0;
 const NEVER = new Promise<boolean>(() => { /* superseded: settles for no one */ });
 function takeTicket(): number { return ++playTicket; }
+
+/**
+ * Is Phoebe holding music right now (started in-app, not stopped)? Paused
+ * still counts: the session is still ours. Read by the slide and breath
+ * chimes, which stand down while music plays (owner, 2026-09-19: "When there
+ * is the chime sound effect like in the office it stops music" · "Maybe if
+ * there is music playing don't do the chime").
+ */
+let musicInApp = false;
+export function appleMusicPlayingInApp(): boolean { return musicInApp; }
 function stale(ticket: number): boolean { return ticket !== playTicket; }
 
 async function playWithin(work: Promise<{ playing?: boolean } | null | undefined>, ticket: number): Promise<boolean> {
   if (stale(ticket)) return NEVER;
   const r = await withDeadline<unknown>(work, PLAY_DEADLINE_MS, TIMED_OUT);
   if (stale(ticket)) return NEVER;
+  if ((r as { playing?: boolean } | null | undefined)?.playing === true) musicInApp = true;
   if (r === TIMED_OUT) {
     work.then(
       (late) => { if (late?.playing === true) void plugin()?.stop?.(); },
@@ -369,6 +380,7 @@ export async function resumeAppleMusicNative(): Promise<void> {
 export async function stopAppleMusicNative(): Promise<void> {
   // Any play still starting is now stale (see playTicket).
   playTicket += 1;
+  musicInApp = false;
   try { await plugin()?.stop?.(); } catch { /* nothing playing */ }
 }
 
