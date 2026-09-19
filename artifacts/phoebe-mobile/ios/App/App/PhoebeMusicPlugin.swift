@@ -65,6 +65,7 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "next", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "previous", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "status", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setShuffle", returnType: CAPPluginReturnPromise),
     ]
 
     /// Music the listener asked for, so it plays through the silent switch —
@@ -506,11 +507,29 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                     "artworkUrl": artworkUrl,
                     "count": entries.count,
                     "index": index,
+                    "shuffle": player.state.shuffleMode == .songs,
                 ])
             }
             return
         }
         #endif
-        call.resolve(["playing": false, "time": 0, "duration": 0, "title": "", "artist": "", "album": "", "artworkUrl": "", "count": 0, "index": -1])
+        call.resolve(["playing": false, "time": 0, "duration": 0, "title": "", "artist": "", "album": "", "artworkUrl": "", "count": 0, "index": -1, "shuffle": false])
+    }
+
+    /// Shuffle on or off for what is playing (owner, 2026-09-18: "For
+    /// playlists and album have a shuffle on an off toggle"). Changing it on a
+    /// playing queue reshuffles from the current song rather than restarting.
+    @objc func setShuffle(_ call: CAPPluginCall) {
+        let on = call.getBool("on") ?? false
+        #if canImport(MusicKit)
+        if #available(iOS 16.0, *), started {
+            Task { @MainActor in
+                ApplicationMusicPlayer.shared.state.shuffleMode = on ? .songs : .off
+                call.resolve()
+            }
+            return
+        }
+        #endif
+        call.resolve()
     }
 }

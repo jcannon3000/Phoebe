@@ -221,6 +221,8 @@ export default function ListeningPage() {
   // yes once; on the web it stays null and every tap behaves as it always did.
   const [nowPlaying, setNowPlaying] = useState<{ id: string; title: string } | null>(null);
   const [paused, setPaused] = useState(false);
+  /** The Choose beat's search is focused — room is made under it for the keyboard. */
+  const [findFocused, setFindFocused] = useState(false);
   /** The "Choose from library" sheet (components/MusicLibrarySheet). */
   const [libraryOpen, setLibraryOpen] = useState(false);
   /**
@@ -1216,6 +1218,19 @@ export default function ListeningPage() {
                         onChange={(e) => { setFindQuery(e.target.value); setQuery(e.target.value); setPicked(false); setWhat(e.target.value); setArtworkUrl(""); }}
                         placeholder="Search for something to listen to…"
                         inputMode="search"
+                        // Typing lifts the field above the keyboard (owner,
+                        // 2026-09-18: "When you type the page needs to scroll
+                        // up"). The keyboard animates in over ~250ms, so wait
+                        // for it, then bring the field to the TOP of the slide
+                        // so its results open into the space below it. The
+                        // spacer under the slide makes that scroll possible
+                        // even when the slide is short.
+                        onFocus={(e) => {
+                          setFindFocused(true);
+                          const el = e.currentTarget;
+                          window.setTimeout(() => { try { el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch { /* old WebKit */ } }, 320);
+                        }}
+                        onBlur={() => window.setTimeout(() => setFindFocused(false), 200)}
                         aria-label="Search for something to listen to"
                         style={{
                           width: "100%", boxSizing: "border-box", fontSize: 16, padding: "12px 14px",
@@ -1270,6 +1285,9 @@ export default function ListeningPage() {
                   >
                     Choose from library
                   </button>
+                  {/* Room for the keyboard while searching, so the field can
+                      scroll to the top of the slide (see the search onFocus). */}
+                  {findFocused && <div aria-hidden style={{ height: "55vh", flex: "0 0 auto" }} />}
                 </div>
               )}
 

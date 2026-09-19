@@ -30,6 +30,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   appleMusicStatusNative, hasAppleMusicStatusNative,
   nextAppleMusicNative, previousAppleMusicNative,
+  hasAppleMusicShuffleNative, setShuffleAppleMusicNative,
   type AppleMusicStatus,
 } from "@/lib/appleMusicNative";
 
@@ -72,6 +73,13 @@ function IconPause() {
     <svg width="32" height="32" viewBox="0 0 24 24" aria-hidden>
       <rect x="6" y="4" width="4.2" height="16" rx="1.6" fill="currentColor" />
       <rect x="13.8" y="4" width="4.2" height="16" rx="1.6" fill="currentColor" />
+    </svg>
+  );
+}
+function IconShuffle() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M16 3h5v5" /><path d="M4 20 21 3" /><path d="M21 16v5h-5" /><path d="m15 15 6 6" /><path d="M4 4l5 5" />
     </svg>
   );
 }
@@ -179,6 +187,14 @@ export function MusicPlayer({
   const songSub = status?.title
     ? [artist, album || title].filter((v, i, a) => v && a.indexOf(v) === i).join(" · ")
     : "";
+  // SHUFFLE, one icon you tap (owner, 2026-09-18: "For playlists and album
+  // have a shuffle on an off toggle" · "Maybe just an icon that you tap").
+  // Only for a queue of more than one, and only on a build that can set it.
+  // The tap shows at once; the next status poll confirms it.
+  const [shuffleTap, setShuffleTap] = useState<boolean | null>(null);
+  const shuffleOn = shuffleTap ?? !!status?.shuffle;
+  useEffect(() => { if (status && shuffleTap !== null && status.shuffle === shuffleTap) setShuffleTap(null); }, [status, shuffleTap]);
+  const canShuffle = count > 1 && hasAppleMusicShuffleNative();
   // "1 of 5" (owner) — where this song sits in what is playing.
   const position = index >= 0 && count > 1 ? `${index + 1} of ${count}` : "";
   const duration = status?.duration ?? 0;
@@ -253,7 +269,22 @@ export function MusicPlayer({
         {/* Lower block on the solid colour — the podcast player's, with the
             transport on top as in its Listen-to-Scripture arrangement. */}
         <div style={{ flexShrink: 0, padding: "0 26px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 34, marginBottom: 18 }}>
+          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", gap: 34, marginBottom: 18 }}>
+            {canShuffle && (
+              <button
+                type="button"
+                aria-label={shuffleOn ? "Shuffle on" : "Shuffle off"}
+                aria-pressed={shuffleOn}
+                onClick={() => { const next = !shuffleOn; setShuffleTap(next); void setShuffleAppleMusicNative(next); }}
+                style={{
+                  position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)",
+                  background: "none", border: "none", padding: 6, lineHeight: 0, cursor: "pointer",
+                  color: "#FFFFFF", opacity: shuffleOn ? 1 : 0.38, transition: "opacity 160ms ease",
+                }}
+              >
+                <IconShuffle />
+              </button>
+            )}
             {status && (
               <button type="button" aria-label="Previous track" disabled={!hasPrev} onClick={() => { void previousAppleMusicNative(); }} style={trackBtn(hasPrev)}>
                 <IconTrack />

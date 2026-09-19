@@ -36,6 +36,7 @@ type MusicPlugin = {
   next?: () => Promise<void>;
   previous?: () => Promise<void>;
   status?: () => Promise<Partial<AppleMusicStatus>>;
+  setShuffle?: (opts: { on: boolean }) => Promise<void>;
 };
 
 /**
@@ -373,6 +374,8 @@ export type AppleMusicStatus = {
   count: number;
   /** Where the current song sits in the queue (0-based), or -1. */
   index: number;
+  /** Shuffle is on for what is playing. */
+  shuffle: boolean;
 };
 
 /** Does this build know where the music is? False on the web and older builds. */
@@ -396,6 +399,7 @@ export async function appleMusicStatusNative(): Promise<AppleMusicStatus | null>
     artworkUrl: String(s.artworkUrl ?? ""),
     count: Number(s.count) || 0,
     index: Number.isFinite(Number(s.index)) ? Number(s.index) : -1,
+    shuffle: !!s.shuffle,
   };
 }
 
@@ -407,4 +411,14 @@ export async function nextAppleMusicNative(): Promise<void> {
 /** Back: restarts the song past its first few seconds, else the one before. */
 export async function previousAppleMusicNative(): Promise<void> {
   try { await withDeadline(plugin()?.previous?.() ?? Promise.resolve(), NATIVE_DEADLINE_MS, undefined); } catch { /* start of queue */ }
+}
+
+/** Can this build turn shuffle on and off? False on the web and older builds. */
+export function hasAppleMusicShuffleNative(): boolean {
+  return !!plugin()?.setShuffle;
+}
+
+/** Shuffle on or off for what is playing. */
+export async function setShuffleAppleMusicNative(on: boolean): Promise<void> {
+  try { await withDeadline(plugin()?.setShuffle?.({ on }) ?? Promise.resolve(), NATIVE_DEADLINE_MS, undefined); } catch { /* nothing playing */ }
 }
