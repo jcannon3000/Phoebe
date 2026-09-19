@@ -33,6 +33,9 @@ type MusicPlugin = {
   pause?: () => Promise<void>;
   resume?: () => Promise<void>;
   stop?: () => Promise<void>;
+  next?: () => Promise<void>;
+  previous?: () => Promise<void>;
+  status?: () => Promise<Partial<AppleMusicStatus>>;
 };
 
 /**
@@ -255,4 +258,57 @@ export async function resumeAppleMusicNative(): Promise<void> {
 /** Stop in-app playback (leaving the Music app's own state alone). */
 export async function stopAppleMusicNative(): Promise<void> {
   try { await plugin()?.stop?.(); } catch { /* nothing playing */ }
+}
+
+// ── The player's face ──────────────────────────────────────────────────────
+//
+// The clock, the queue and the skip buttons (owner, 2026-09-18: a progress bar,
+// and back/next when an album or playlist is playing). These arrived in the
+// Swift after the first music build, so an older binary has no `status` — the
+// player then shows the cover and pause only, exactly as it did before.
+
+export type AppleMusicStatus = {
+  playing: boolean;
+  /** Seconds into the current song. */
+  time: number;
+  /** Seconds long; 0 when MusicKit doesn't know. */
+  duration: number;
+  title: string;
+  artist: string;
+  /** https cover of the CURRENT song, or "". */
+  artworkUrl: string;
+  /** Songs in the queue — more than one means back/next mean something. */
+  count: number;
+};
+
+/** Does this build know where the music is? False on the web and older builds. */
+export function hasAppleMusicStatusNative(): boolean {
+  return !!plugin()?.status;
+}
+
+/** Where the music is now, or null when this build can't say. Never prompts. */
+export async function appleMusicStatusNative(): Promise<AppleMusicStatus | null> {
+  const p = plugin();
+  if (!p?.status) return null;
+  const s = await withDeadline(p.status().then((v) => v ?? null), NATIVE_DEADLINE_MS, null);
+  if (!s) return null;
+  return {
+    playing: !!s.playing,
+    time: Number(s.time) || 0,
+    duration: Number(s.duration) || 0,
+    title: String(s.title ?? ""),
+    artist: String(s.artist ?? ""),
+    artworkUrl: String(s.artworkUrl ?? ""),
+    count: Number(s.count) || 0,
+  };
+}
+
+/** The next song in the album or playlist. */
+export async function nextAppleMusicNative(): Promise<void> {
+  try { await withDeadline(plugin()?.next?.() ?? Promise.resolve(), NATIVE_DEADLINE_MS, undefined); } catch { /* end of queue */ }
+}
+
+/** Back: restarts the song past its first few seconds, else the one before. */
+export async function previousAppleMusicNative(): Promise<void> {
+  try { await withDeadline(plugin()?.previous?.() ?? Promise.resolve(), NATIVE_DEADLINE_MS, undefined); } catch { /* start of queue */ }
 }

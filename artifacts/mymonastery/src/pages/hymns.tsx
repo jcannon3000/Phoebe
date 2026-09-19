@@ -4,6 +4,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { hasAppleMusicNative, playAppleMusicNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 import { setPendingListen } from "@/lib/pendingListen";
+import { handOffNowPlaying } from "@/lib/nowPlaying";
 import { HYMNS, hymnNumberLabel, type Hymn } from "@/lib/hymnsCatalogue";
 import { SpotifyMark, AppleMark, YouTubeMark } from "@/components/ServiceMarks";
 import {
@@ -128,9 +129,9 @@ export default function HymnsPage() {
   // actually present, so the web path stays synchronous inside the tap and is
   // never at the mercy of a popup blocker.
   /** A hymn you went off to hear comes back ready to log (pendingListen). */
-  const noteForTheLog = (h: Hymn) => setPendingListen({
-    what: h.num.length ? `Hymn ${hymnNumberLabel(h)} · ${h.name} — ${h.artist}` : `${h.name} — ${h.artist}`,
-  });
+  const listenedAs = (h: Hymn) =>
+    h.num.length ? `Hymn ${hymnNumberLabel(h)} · ${h.name} — ${h.artist}` : `${h.name} — ${h.artist}`;
+  const noteForTheLog = (h: Hymn) => setPendingListen({ what: listenedAs(h) });
 
   const play = (h: Hymn, url: string) => {
     // Owner: "when they pick a hymn, regardless of the platform, if it opens
@@ -144,8 +145,15 @@ export default function HymnsPage() {
       if (playingId === h.appleTrackId) { void stopAppleMusicNative(); setPlayingId(null); return; }
       noteForTheLog(h);
       void playAppleMusicNative(h.appleTrackId).then((ok) => {
-        if (ok) setPlayingId(h.appleTrackId);
-        else open(url);
+        if (!ok) { open(url); return; }
+        setPlayingId(h.appleTrackId);
+        // Playing goes to the player (owner, 2026-09-18: "Playing from a
+        // catalogue does NOT currently go to the playback slide — it must").
+        // Only on an in-app success: on the fallback they've already left for
+        // the Music app. Same string as the log note, so the player, the log
+        // and the Lately row all read alike.
+        handOffNowPlaying({ id: h.appleTrackId!, title: listenedAs(h), from: "/hymns" });
+        setLocation("/listening");
       });
       return;
     }

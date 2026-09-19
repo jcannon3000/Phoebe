@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
@@ -8,6 +8,7 @@ import {
 } from "@/lib/appleMusicNative";
 import { appleMusicFeaturesReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
 import { setPendingListen } from "@/lib/pendingListen";
+import { handOffNowPlaying } from "@/lib/nowPlaying";
 import { HILDEGARD_TRACKS, HILDEGARD_PLAYLIST, type HildegardTrack } from "@/lib/hildegardCatalogue";
 import { SpotifyMark, AppleMark, YouTubeMark } from "@/components/ServiceMarks";
 import {
@@ -100,7 +101,10 @@ export default function HildegardPage() {
 
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [playingAll, setPlayingAll] = useState(false);
-  useEffect(() => () => { void stopAppleMusicNative(); }, []);
+  // Leaving the shelf stops what it started — EXCEPT when it is leaving to
+  // hand the music to the player, which is the whole point of that exit.
+  const handingOff = useRef(false);
+  useEffect(() => () => { if (!handingOff.current) void stopAppleMusicNative(); }, []);
 
   /**
    * Opted in AND iOS still agreeing — not merely "the plugin exists". Gating on
@@ -128,8 +132,17 @@ export default function HildegardPage() {
       if (playingAll) { void stopAppleMusicNative(); setPlayingAll(false); return; }
       void playAppleMusicCollectionNative("playlist", HILDEGARD_PLAYLIST.id, { shuffle, repeatAll: true })
         .then((ok) => {
-          if (ok) { setPlayingAll(true); setPlayingId(null); }
-          else open(HILDEGARD_PLAYLIST.url);
+          if (!ok) { open(HILDEGARD_PLAYLIST.url); return; }
+          setPlayingAll(true); setPlayingId(null);
+          // Playing goes to the player (owner, 2026-09-18) — Apple in-app
+          // success only; a fallback or a search never becomes "now playing".
+          handOffNowPlaying({
+            id: HILDEGARD_PLAYLIST.id,
+            title: `${HILDEGARD_PLAYLIST.name} — Hildegard von Bingen`,
+            from: "/hildegard",
+          });
+          handingOff.current = true;
+          setLocation("/listening");
         });
       return;
     }
@@ -142,8 +155,11 @@ export default function HildegardPage() {
     if (appleNative) {
       if (playingId === t.appleTrackId) { void stopAppleMusicNative(); setPlayingId(null); return; }
       void playAppleMusicNative(t.appleTrackId).then((ok) => {
-        if (ok) { setPlayingId(t.appleTrackId); setPlayingAll(false); }
-        else open(t.appleUrl);
+        if (!ok) { open(t.appleUrl); return; }
+        setPlayingId(t.appleTrackId); setPlayingAll(false);
+        handOffNowPlaying({ id: t.appleTrackId, title: `${t.name} — ${t.artist}`, from: "/hildegard" });
+        handingOff.current = true;
+        setLocation("/listening");
       });
       return;
     }

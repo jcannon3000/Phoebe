@@ -21,6 +21,8 @@ import { appleMusicFeaturesReady, enableAppleMusic, APPLE_MUSIC_EVENT } from "@/
 import { getMusicService, setMusicService, MUSIC_SERVICES, MUSIC_SERVICE_EVENT, type MusicService } from "@/lib/musicService";
 import { SpotifyMark, AppleMark, YouTubeMark } from "@/components/ServiceMarks";
 import { takePendingListen } from "@/lib/pendingListen";
+import { takeNowPlayingHandOff } from "@/lib/nowPlaying";
+import { MusicPlayer } from "@/components/MusicPlayer";
 import { CtaArrow } from "@/components/CtaArrow";
 
 // Audio Divina — sacred listening. You listen, then note what you listened to
@@ -95,16 +97,6 @@ const glassRow = {
 
 // "Today" / "Yesterday" / "Mon, Aug 24" for a log date (a local YYYY-MM-DD).
 // Bare "Aug 24" made you do the arithmetic on the practice you kept yesterday.
-/**
- * Apple's artwork URLs carry their size in the path, and the search proxy asks
- * for 160x160 — fine for a list row, mush at player size. Swapping the segment
- * asks Apple for the same image larger; anything that isn't one of their URLs
- * is returned untouched.
- */
-function bigArtwork(url: string): string {
-  return url ? url.replace(/\/\d+x\d+(bb)?\./, "/600x600$1.") : url;
-}
-
 function relDay(day: string): string {
   const d = new Date(`${day}T12:00:00`);
   if (Number.isNaN(d.getTime())) return day;
@@ -280,6 +272,30 @@ export default function ListeningPage() {
   useEffect(() => {
     aliveRef.current = true;
     return () => { aliveRef.current = false; void stopAppleMusicNative(); };
+  }, []);
+
+  /**
+   * A catalogue started something and sent us here (owner, 2026-09-18:
+   * "Playing from a catalogue does NOT currently go to the playback slide — it
+   * must"). /hymns and /hildegard play in-app, leave a hand-off in
+   * lib/nowPlaying, and navigate here — so the deck opens on the player,
+   * already holding the music, instead of on Begin.
+   *
+   * Only ever set after an in-app play SUCCEEDED, so this can't show a player
+   * for music that isn't there. The log prefill (pendingListen) was consumed
+   * by the effect above, so "Log this listening" writes the entry once.
+   */
+  /** A catalogue that handed us the music — Back on the player goes there. */
+  const cameFrom = useRef<string | null>(null);
+  useEffect(() => {
+    const h = takeNowPlayingHandOff();
+    if (!h) return;
+    cameFrom.current = h.from ?? null;
+    setNowPlaying({ id: h.id, title: h.title });
+    if (h.artworkUrl) setArtworkUrl(h.artworkUrl);
+    setPaused(false);
+    setDeckStep(LISTEN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /** Start a catalog song, or fall back to opening the service. */
@@ -620,6 +636,8 @@ export default function ListeningPage() {
   const LAST = DONE;
   // The pill's section label — the office's "N of M · Section" shape.
   const LISTEN_SECTION = ["Begin", "Listen", "How", "Log", "Pray", "Done"];
+  /** The LISTEN beat is the player — Phoebe is holding the music. */
+  const playerShowing = deckStep === LISTEN && !!nowPlaying;
 
   // ——— Library (curated albums) ———
   if (view === "library") {
@@ -776,6 +794,9 @@ export default function ListeningPage() {
       // logToday clears the form, so going back to it showed an empty one,
       // which reads as "it didn't save".
       if (deckStep === LIFT && loggedHere.current) { setDeckStep(LISTEN); return; }
+      // Sent here by a catalogue's play button: they came from a shelf and
+      // want the rest of it, not the deck's Begin slide they never saw.
+      if (deckStep === LISTEN && cameFrom.current) { setLocation(cameFrom.current); return; }
       if (deckStep > INTRO) setDeckStep((n) => n - 1);
     };
     // Tap the left half to go back, the right half forward; swipe likewise —
@@ -817,11 +838,19 @@ export default function ListeningPage() {
               alt=""
               aria-hidden
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.22 }}
+              // Under the player the leaves come up to the icon gallery's
+              // ground (owner, 2026-09-18: "leaf background, like the icons
+              // gallery") — the cover sits on them the way a work does there.
+              animate={{ opacity: playerShowing ? 0.38 : 0.22 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
             />
-            <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }} />
+            <div aria-hidden style={{
+              position: "absolute", inset: 0, zIndex: -1,
+              background: playerShowing
+                ? "linear-gradient(180deg, rgba(5,13,8,0.74) 0%, rgba(5,13,8,0.66) 45%, rgba(5,13,8,0.8) 100%)"
+                : "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)",
+            }} />
           </>
         ) : (
           <AnimatedBackground base={DECK_BG} variant="subtle" />
@@ -1096,123 +1125,76 @@ export default function ListeningPage() {
                       )}
                     </div>
                   )}
-                  {/* Hymns — owner: "under it can you have a pill that says
-                      hymns". The shelf to go and look at when nothing comes to
-                      mind: the whole Hymnal 1982 as recorded, in hymnal order.
-                      Unlike the Lately rows above this IS tappable — it doesn't
-                      choose the song for you, it opens the place to find one.
+                  {/* The catalogue pills sit side by side (owner, 2026-09-18:
+                      "have the catalouge pills next to each other"). Wraps on
+                      the narrowest phones rather than squeezing either label. */}
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
+                    {/* Hymns — owner: "under it can you have a pill that says
+                        hymns". The shelf to go and look at when nothing comes to
+                        mind: the whole Hymnal 1982 as recorded, in hymnal order.
+                        Unlike the Lately rows above this IS tappable — it doesn't
+                        choose the song for you, it opens the place to find one.
 
-                      A real <button> on purpose: the deck pages forward on any
-                      tap in its right half (onTapNavigate), and it stands down
-                      only for button/a/[role=button]. As a <div> this would
-                      both open the catalogue AND skip the beat. */}
-                  <button
-                    type="button"
-                    onClick={() => setLocation("/hymns")}
-                    className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-                    style={{
-                      ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
-                      fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
-                      display: "flex", alignItems: "center", gap: 7,
-                    }}
-                  >
-                    <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
-                    Hymns
-                  </button>
-                  {/* Hildegard, beside the hymnal (owner, 2026-09-18: "next to
-                      hymns have a catalouge that says Hildegard"). The other
-                      shelf: one composer's essentials, put on whole rather
-                      than looked up. */}
-                  <button
-                    type="button"
-                    onClick={() => setLocation("/hildegard")}
-                    className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-                    style={{
-                      ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
-                      fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
-                      display: "flex", alignItems: "center", gap: 7,
-                    }}
-                  >
-                    <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
-                    Hildegard
-                  </button>
+                        A real <button> on purpose: the deck pages forward on any
+                        tap in its right half (onTapNavigate), and it stands down
+                        only for button/a/[role=button]. As a <div> this would
+                        both open the catalogue AND skip the beat. */}
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/hymns")}
+                      className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                      style={{
+                        ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
+                        fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 7,
+                      }}
+                    >
+                      <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
+                      Hymns
+                    </button>
+                    {/* Hildegard, beside the hymnal (owner, 2026-09-18: "next to
+                        hymns have a catalouge that says Hildegard"). The other
+                        shelf: one composer's essentials, put on whole rather
+                        than looked up. */}
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/hildegard")}
+                      className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                      style={{
+                        ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
+                        fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 7,
+                      }}
+                    >
+                      <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
+                      Hildegard
+                    </button>
+                  </div>
                 </div>
               )}
 
               {/* THE PLAYER (owner: "if they are listening in app do a
                   player"). Phoebe is holding the music, so this beat stops
                   being an invitation to go and find some and becomes the thing
-                  playing it. No scrubber and no queue: this is one song, sat
-                  with once, and a progress bar would invite watching the time
-                  rather than listening. Pause, and the way on to the log.
+                  playing it — drawn like the podcast player (owner,
+                  2026-09-18): the cover centred, a progress bar, and back /
+                  next when an album or playlist is playing. See
+                  components/MusicPlayer.tsx.
 
                   Lock screen and Control Center carry the same controls, since
                   MusicKit owns the playback — so leaving Phoebe mid-hymn does
                   not lose it. */}
               {deckStep === LISTEN && nowPlaying && (
-                <div className="w-full flex flex-col items-center gap-5" style={{ maxWidth: 480 }}>
-                  <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
-                    {paused ? "Paused" : "Now playing"}
-                  </p>
-                  {/* The cover IS the player (owner: "dont have a pause button
-                      in the middle, do something better, can we show the cover
-                      in there? Then have a play pause under it"). Always a
-                      square, art or not — a record with no sleeve still has a
-                      shape, and collapsing the slide when Apple has no image
-                      would put the controls back in the middle. It dims while
-                      paused, so the state reads from across the room. */}
-                  <div
-                    style={{
-                      width: "min(62vw, 240px)", aspectRatio: "1 / 1", borderRadius: 18,
-                      overflow: "hidden", position: "relative", flex: "0 0 auto",
-                      background: "rgba(9,26,16,0.55)", border: `1px solid ${DECK_BORDER}`,
-                      boxShadow: "0 18px 44px rgba(0,0,0,0.38)",
-                      opacity: paused ? 0.55 : 1, transition: "opacity 240ms ease",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}
-                  >
-                    {artworkUrl ? (
-                      <img
-                        src={bigArtwork(artworkUrl)}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                      />
-                    ) : (
-                      <span aria-hidden style={{ fontSize: 46, opacity: 0.5 }}>♪</span>
-                    )}
-                  </div>
-                  <p className="text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 500, lineHeight: 1.4, margin: 0 }}>
-                    {nowPlaying.title}
-                  </p>
-                  {/* Under the cover, where a player's controls belong. */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (paused) { void resumeAppleMusicNative(); setPaused(false); }
-                      else { void pauseAppleMusicNative(); setPaused(true); }
-                    }}
-                    aria-label={paused ? "Resume" : "Pause"}
-                    className="active:scale-[0.97]"
-                    style={{
-                      width: 62, height: 62, borderRadius: 999, cursor: "pointer",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      background: "rgba(46,107,64,0.5)", border: "1px solid rgba(143,175,150,0.6)",
-                      backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
-                    }}
-                  >
-                    {paused ? (
-                      <svg width="19" height="21" viewBox="0 0 19 21" aria-hidden style={{ display: "block", marginLeft: 4 }}>
-                        <path d="M0 1.1 A1.1 1.1 0 0 1 1.7 0.2 L17.7 9.4 A1.1 1.1 0 0 1 17.7 11.6 L1.7 20.8 A1.1 1.1 0 0 1 0 19.9 Z" fill={WARM} />
-                      </svg>
-                    ) : (
-                      <svg width="18" height="21" viewBox="0 0 18 21" aria-hidden style={{ display: "block" }}>
-                        <rect x="0.5" y="0.5" width="6" height="20" rx="1.6" fill={WARM} />
-                        <rect x="11" y="0.5" width="6" height="20" rx="1.6" fill={WARM} />
-                      </svg>
-                    )}
-                  </button>
+                <MusicPlayer
+                  title={nowPlaying.title}
+                  artworkUrl={artworkUrl}
+                  paused={paused}
+                  onTogglePause={() => {
+                    if (paused) { void resumeAppleMusicNative(); setPaused(false); }
+                    else { void pauseAppleMusicNative(); setPaused(true); }
+                  }}
+                  onPausedChange={setPaused}
+                >
                   <button
                     type="button"
                     onClick={() => {
@@ -1247,7 +1229,7 @@ export default function ListeningPage() {
                   >
                     Log this listening
                   </button>
-                </div>
+                </MusicPlayer>
               )}
 
               {/* Owner: a beat between choosing the song and logging it —

@@ -17,6 +17,9 @@
 //   PhoebeMusic.authorize()          -> { authorized }   (prompts once)
 //   PhoebeMusic.playTrack({ id })    -> { playing }
 //   PhoebeMusic.pause() / .resume() / .stop()
+//   PhoebeMusic.next() / .previous()  -> skip within an album or playlist
+//   PhoebeMusic.status()             -> { playing, time, duration, title,
+//                                        artist, artworkUrl, count }
 //
 // TWO THINGS GATE THIS AT RUNTIME, and both fail softly — the JS side falls
 // back to opening music.apple.com, which is what every listener gets today:
@@ -59,6 +62,9 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "pause", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resume", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "next", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "previous", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "status", returnType: CAPPluginReturnPromise),
     ]
 
     /// Music the listener asked for, so it plays through the silent switch —
@@ -387,5 +393,77 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         #endif
         call.resolve()
+    }
+
+    // MARK: - The player's face
+    //
+    // Owner, 2026-09-18: make the music player read like the podcast player —
+    // the cover, a progress bar, and back/next when an album or playlist is
+    // playing. Those need the queue and the clock, which only MusicKit holds,
+    // so the JS player polls `status` about once a second while it is on
+    // screen and asks `next`/`previous` on a tap.
+
+    @objc func next(_ call: CAPPluginCall) {
+        #if canImport(MusicKit)
+        if #available(iOS 16.0, *) {
+            Task {
+                do { try await ApplicationMusicPlayer.shared.skipToNextEntry(); call.resolve() }
+                catch { call.reject("next-failed") }
+            }
+            return
+        }
+        #endif
+        call.resolve()
+    }
+
+    /// Like every player: back restarts the song once it is a few seconds in,
+    /// and only goes to the one before when tapped near its start.
+    @objc func previous(_ call: CAPPluginCall) {
+        #if canImport(MusicKit)
+        if #available(iOS 16.0, *) {
+            Task {
+                let player = ApplicationMusicPlayer.shared
+                if player.playbackTime > 3 {
+                    player.restartCurrentEntry()
+                    call.resolve()
+                    return
+                }
+                do { try await player.skipToPreviousEntry(); call.resolve() }
+                catch { player.restartCurrentEntry(); call.resolve() }
+            }
+            return
+        }
+        #endif
+        call.resolve()
+    }
+
+    @objc func status(_ call: CAPPluginCall) {
+        #if canImport(MusicKit)
+        if #available(iOS 16.0, *) {
+            let player = ApplicationMusicPlayer.shared
+            let entry = player.queue.currentEntry
+            var duration: Double = 0
+            var artist = entry?.subtitle ?? ""
+            if case .song(let song)? = entry?.item {
+                duration = song.duration ?? 0
+                if artist.isEmpty { artist = song.artistName }
+            }
+            var artworkUrl = ""
+            if let url = entry?.artwork?.url(width: 600, height: 600), url.scheme == "https" {
+                artworkUrl = url.absoluteString
+            }
+            call.resolve([
+                "playing": player.state.playbackStatus == .playing,
+                "time": player.playbackTime,
+                "duration": duration,
+                "title": entry?.title ?? "",
+                "artist": artist,
+                "artworkUrl": artworkUrl,
+                "count": player.queue.entries.count,
+            ])
+            return
+        }
+        #endif
+        call.resolve(["playing": false, "time": 0, "duration": 0, "title": "", "artist": "", "artworkUrl": "", "count": 0])
     }
 }
