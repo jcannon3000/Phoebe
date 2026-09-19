@@ -741,10 +741,24 @@ export default function ListeningPage() {
    * pendingListen hand-off has already filled in. The query is then dropped so
    * a reload doesn't land on the log again.
    */
+  /**
+   * ?lift=1 — the hymn player's Done (pages/video-watch), which has ALREADY
+   * logged what was heard (owner, 2026-09-19: "the done proceeds in the
+   * slideshow to the closing prompt of taking a moment to bring to god… and
+   * have it be logged"). So the deck opens on its closing prompt, and
+   * `loggedHere` is set: nothing logs again on arrival, and stepping BACK from
+   * the prayer skips the log rather than offering an empty form for something
+   * already written down. On iOS the same landing comes from the reader
+   * closing — see lib/afterReader.
+   */
   useEffect(() => {
     try {
-      if (new URLSearchParams(window.location.search).get("log") !== "1") return;
-      setDeckStep(LOG);
+      const q = new URLSearchParams(window.location.search);
+      const toLog = q.get("log") === "1";
+      const toLift = q.get("lift") === "1";
+      if (!toLog && !toLift) return;
+      if (toLift) loggedHere.current = true;
+      setDeckStep(toLift ? LIFT : LOG);
       window.history.replaceState(window.history.state, "", window.location.pathname);
     } catch { /* no URL to read */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps

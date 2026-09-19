@@ -4,6 +4,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { canEmbedVideoHere, openVideoInReader, videoPath } from "@/lib/videoEmbed";
 import { logListenNow } from "@/lib/logListenNow";
+import { setAfterReader } from "@/lib/afterReader";
 import type { YouTubeCatalogue, YouTubeTrack } from "@/lib/youtubeCatalogues";
 
 // ── A catalogue whose tracks play on YouTube, inside Phoebe ─────────────────
@@ -15,8 +16,10 @@ import type { YouTubeCatalogue, YouTubeTrack } from "@/lib/youtubeCatalogues";
 // whose capacitor:// origin YouTube refuses (Error 153), and there the app
 // logs the listen as it opens, because the reader can't (lib/logListenNow).
 //
-// A track with no proven YouTube upload of the same recording stays in the
-// list, dimmed, saying so (lib/youtubeCatalogues has the matching rule).
+// A track with no proven YouTube upload of the same recording is NOT SHOWN
+// (owner, 2026-09-19: "Don't show any song not on YouTube in the catalogs").
+// The catalogue keeps it — lib/youtubeCatalogues has the matching rule — so a
+// later match brings it back; the list is simply what can be played.
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -42,16 +45,16 @@ export function YouTubeCataloguePage({ cat }: { cat: YouTubeCatalogue }) {
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState("");
 
+  const playable = useMemo(() => cat.tracks.filter((t) => !!t.youtubeId), [cat]);
   const results = useMemo(() => {
     const q = norm(query.trim());
-    if (!q) return cat.tracks;
+    if (!q) return playable;
     const words = q.split(/\s+/).filter(Boolean);
-    return cat.tracks.filter((t) => {
+    return playable.filter((t) => {
       const hay = norm(`${t.title} ${t.artist}`);
       return words.every((w) => hay.includes(w));
     });
-  }, [query, cat]);
-  const missing = results.filter((t) => !t.youtubeId).length;
+  }, [query, playable]);
 
   const play = (t: YouTubeTrack) => {
     if (!t.youtubeId) return;
@@ -62,30 +65,31 @@ export function YouTubeCataloguePage({ cat }: { cat: YouTubeCatalogue }) {
       return;
     }
     if (openVideoInReader(videoPath(t.youtubeId, { ...sleeve, logged: true }))) {
+      // The reader can't move the app behind it, so its own Done is the way
+      // on: the app lands on the deck's closing prompt when it closes
+      // (lib/afterReader), the same beat /video's Done reaches directly.
+      setAfterReader("/listening?lift=1");
       logListenNow(logAs);
       return;
     }
     void openExternal(`https://www.youtube.com/watch?v=${t.youtubeId}`, { system: true });
   };
 
-  const card = (t: YouTubeTrack) => {
-    const playable = !!t.youtubeId;
-    return (
-      <div
-        key={t.n}
-        role={playable ? "button" : undefined}
-        tabIndex={playable ? 0 : undefined}
-        aria-label={playable ? `Play ${t.title}` : `${t.title} is not on YouTube`}
-        onClick={playable ? () => play(t) : undefined}
-        onKeyDown={playable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); play(t); } } : undefined}
-        style={{
-          cursor: playable ? "pointer" : "default",
-          opacity: playable ? 1 : 0.5,
-          display: "flex", alignItems: "center", gap: 10, width: "100%",
-          padding: "11px 12px", borderRadius: 12, boxSizing: "border-box",
-          background: "rgba(240,237,230,0.05)", border: `1px solid ${BORDER}`,
-        }}
-      >
+  const card = (t: YouTubeTrack) => (
+    <div
+      key={t.n}
+      role="button"
+      tabIndex={0}
+      aria-label={`Play ${t.title}`}
+      onClick={() => play(t)}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); play(t); } }}
+      style={{
+        cursor: "pointer",
+        display: "flex", alignItems: "center", gap: 10, width: "100%",
+        padding: "11px 12px", borderRadius: 12, boxSizing: "border-box",
+        background: "rgba(240,237,230,0.05)", border: `1px solid ${BORDER}`,
+      }}
+    >
         <span
           style={{
             flex: "0 0 auto", minWidth: 22, textAlign: "right",
@@ -109,27 +113,20 @@ export function YouTubeCataloguePage({ cat }: { cat: YouTubeCatalogue }) {
             {t.artist} · {mmss(t.seconds)}
           </span>
         </span>
-        {playable ? (
-          <span
-            aria-hidden
-            style={{
-              flex: "0 0 auto", width: 36, height: 36, borderRadius: 999,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: "rgba(46,107,64,0.45)", border: "1px solid rgba(143,175,150,0.55)",
-            }}
-          >
-            <svg width="13" height="14" viewBox="0 0 13 14" aria-hidden focusable="false" style={{ display: "block", marginLeft: 2 }}>
-              <path d="M0 0.8 A0.8 0.8 0 0 1 1.2 0.1 L12.2 6.3 A0.8 0.8 0 0 1 12.2 7.7 L1.2 13.9 A0.8 0.8 0 0 1 0 13.2 Z" fill={WARM} />
-            </svg>
-          </span>
-        ) : (
-          <span style={{ flex: "0 0 auto", color: FAINT, fontFamily: FONT, fontSize: 10.5, whiteSpace: "nowrap" }}>
-            Not on YouTube
-          </span>
-        )}
-      </div>
-    );
-  };
+      <span
+        aria-hidden
+        style={{
+          flex: "0 0 auto", width: 36, height: 36, borderRadius: 999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(46,107,64,0.45)", border: "1px solid rgba(143,175,150,0.55)",
+        }}
+      >
+        <svg width="13" height="14" viewBox="0 0 13 14" aria-hidden focusable="false" style={{ display: "block", marginLeft: 2 }}>
+          <path d="M0 0.8 A0.8 0.8 0 0 1 1.2 0.1 L12.2 6.3 A0.8 0.8 0 0 1 12.2 7.7 L1.2 13.9 A0.8 0.8 0 0 1 0 13.2 Z" fill={WARM} />
+        </svg>
+      </span>
+    </div>
+  );
 
   return (
     <div style={{ position: "relative", minHeight: "var(--app-dvh)", background: BG, isolation: "isolate" }}>
@@ -178,8 +175,7 @@ export function YouTubeCataloguePage({ cat }: { cat: YouTubeCatalogue }) {
             }}
           />
           <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12, margin: "10px 0" }}>
-            {query.trim() ? `${results.length} of ${cat.tracks.length}` : `${cat.tracks.length} recordings`}
-            {missing > 0 && ` · ${missing} not on YouTube`}
+            {query.trim() ? `${results.length} of ${playable.length}` : `${playable.length} recordings`}
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

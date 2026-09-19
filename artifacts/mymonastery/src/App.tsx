@@ -31,6 +31,7 @@ import { AndroidPwaInstallPrompt } from "@/components/AndroidPwaInstallPrompt";
 import { BottomPromptStack } from "@/components/BottomPromptStack";
 import { isInReaderWatch } from "@/lib/videoEmbed";
 import { ReflectionReturnRedirect } from "@/components/ReflectionReturnRedirect";
+import { AfterReaderRedirect } from "@/components/AfterReaderRedirect";
 import { ReflectionPreheater } from "@/components/ReflectionPreheater";
 import { OfficeAudioPreloader } from "@/components/OfficeAudioPreloader";
 import { AppOpenTracker } from "@/components/AppOpenTracker";
@@ -1707,6 +1708,7 @@ function App() {
             <PendingRoutineInviteRedirect />
             <CustomAnchorServerSync />
             <ReflectionReturnRedirect />
+            <AfterReaderRedirect />
             <ReflectionPreheater />
             <OfficeAudioPreloader />
             {/* Bottom-anchored prompt cards (live broadcast banner + App

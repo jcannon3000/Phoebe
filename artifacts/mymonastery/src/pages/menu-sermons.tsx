@@ -17,8 +17,10 @@ import { apiRequest } from "@/lib/queryClient";
 // /api/podcasts/sermon-sources), so a church added to the library shows up
 // here too rather than in a second hand-kept list.
 //
-// A TAP PLAYS THE NEWEST SERMON. It opens that church's show page with
-// ?play=latest — the same door the audio library uses — so playback, the
+// A TAP PLAYS THE NEWEST SERMON — by id (?ep=<id>), because a sermon feed
+// also carries things that are not sermons and the newest ITEM may be one of
+// them. It opens that church's show page, the same door the audio library
+// uses, so playback, the
 // listening history, the resume position and the per-show trims all behave
 // exactly as they do everywhere else (the cathedral's 22-second sign-on trim
 // among them), and the rest of that church's sermons are on the page behind
@@ -30,6 +32,9 @@ import { apiRequest } from "@/lib/queryClient";
 // (the church you are looking at) and at the TOP RIGHT, where the owner asked
 // for it, which opens the list for the church you last played from here —
 // the first church, the cathedral, until you have played one.
+//
+// WHO PREACHED is shown where the feed says so (the server's sermonMeta:
+// `preacher`, null rather than guessed), in the row and in Previous.
 //
 // A CHURCH THAT HASN'T PREACHED LATELY STILL LISTS, and says so rather than
 // playing something months old: over 90 days since its newest sermon (or a
@@ -59,7 +64,14 @@ type Episode = {
   title: string | null;
   publishedAt: string | null;
   audioUrl: string | null;
-  author?: string | null;
+  /**
+   * From the show's sermonMeta parsing (api-server, 0d3184f4): who preached,
+   * null where the feed doesn't say — never guessed — and whether the episode
+   * IS a sermon. `sermon: false` marks the things that sit in a sermon feed
+   * without being one: a two-minute Prayer for the Day, a vigil, a panel.
+   */
+  preacher?: string | null;
+  sermon?: boolean;
 };
 
 type ShowResponse = { show?: { title?: string }; episodes?: Episode[] };
@@ -110,10 +122,19 @@ export default function MenuSermonsPage() {
     const i = sources.findIndex((s) => s.slug === slug);
     return (i >= 0 ? feeds[i]?.data?.episodes : undefined) ?? [];
   };
+  /**
+   * SERMONS ONLY. A sermon feed carries other things — the cathedral's
+   * Prayer for the Day sits at index 3 — and "play the newest" must not hand
+   * someone a two-minute BBC slot or a 92-minute panel. `sermon: false` is the
+   * server's own mark (0d3184f4); an episode without the field counts as one,
+   * which is every show that has no sermonMeta.
+   */
+  const sermonsFor = (slug: string): Episode[] => episodesFor(slug).filter((e) => e.sermon !== false);
 
-  const play = (slug: string, latest: boolean) => {
+  /** The church's page, with nothing playing — for a feed we can't read. */
+  const openShow = (slug: string) => {
     try { localStorage.setItem(LAST_CHURCH_KEY, slug); } catch { /* private mode */ }
-    setLocation(latest ? `/podcasts/show/${slug}?play=latest` : `/podcasts/show/${slug}`);
+    setLocation(`/podcasts/show/${slug}`);
   };
   const playEpisode = (slug: string, id: string) => {
     try { localStorage.setItem(LAST_CHURCH_KEY, slug); } catch { /* private mode */ }
@@ -121,12 +142,12 @@ export default function MenuSermonsPage() {
   };
 
   const items = sources.map((s) => {
-    const ep = episodesFor(s.slug)[0];
+    const ep = sermonsFor(s.slug)[0];
     const age = daysSince(ep?.publishedAt);
     const fresh = !!ep?.audioUrl && age !== null && age <= STALE_DAYS;
     const said = when(ep?.publishedAt);
     const sub = fresh
-      ? [ep?.title?.trim() || "Latest sermon", said].filter(Boolean).join(" · ")
+      ? [ep?.title?.trim() || "Latest sermon", ep?.preacher?.trim() || null, said].filter(Boolean).join(" · ")
       : ep
         ? `No sermon since ${said ?? "a while ago"}`
         : s.about ?? "";
@@ -135,10 +156,13 @@ export default function MenuSermonsPage() {
       label: s.title,
       sub: sub || s.about || "",
       // The row plays; its own Previous opens the last seven.
-      actions: episodesFor(s.slug).length > 1
+      actions: sermonsFor(s.slug).length > 1
         ? [{ emoji: "🕘", label: "Previous", variant: "gold" as const, onClick: () => setPreviousFor(s) }]
         : undefined,
-      onClick: () => play(s.slug, fresh),
+      // The newest SERMON by id, not ?play=latest: "latest" is the feed's
+      // newest item, which at the cathedral can be a two-minute Prayer for the
+      // Day. Same player, same trims, same history — just the right episode.
+      onClick: () => (fresh && ep?.id ? playEpisode(s.slug, ep.id) : openShow(s.slug)),
     };
   });
 
@@ -150,7 +174,7 @@ export default function MenuSermonsPage() {
     if (church) setPreviousFor(church);
   };
 
-  const previousEpisodes = previousFor ? episodesFor(previousFor.slug).slice(0, PREVIOUS_COUNT) : [];
+  const previousEpisodes = previousFor ? sermonsFor(previousFor.slug).slice(0, PREVIOUS_COUNT) : [];
 
   return (
     <>
@@ -220,7 +244,7 @@ export default function MenuSermonsPage() {
                     {ep.title ?? "Sermon"}
                   </span>
                   <span style={{ display: "block", color: FAINT, fontFamily: FONT, fontSize: 11.5, marginTop: 3 }}>
-                    {[ep.author?.trim() || null, when(ep.publishedAt)].filter(Boolean).join(" · ")}
+                    {[ep.preacher?.trim() || null, when(ep.publishedAt)].filter(Boolean).join(" · ")}
                   </span>
                 </button>
               ))}

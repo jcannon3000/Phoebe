@@ -4,6 +4,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { canEmbedVideoHere, openVideoInReader, videoPath, youtubeIdFrom } from "@/lib/videoEmbed";
 import { logListenNow } from "@/lib/logListenNow";
+import { setAfterReader } from "@/lib/afterReader";
 import { HYMNS, hymnNumberLabel, hymnKey, type Hymn } from "@/lib/hymnsCatalogue";
 
 // ── Hymns ───────────────────────────────────────────────────────────────────
@@ -63,11 +64,19 @@ export default function HymnsPage() {
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState("");
 
+  /**
+   * ONLY WHAT PLAYS (owner, 2026-09-19: "Don't show any song not on YouTube in
+   * the catalogs"). The 25 recordings with no proven YouTube upload used to
+   * list dimmed; they are simply not shown now. The catalogue keeps them, so a
+   * later match brings one back without anyone hunting for what was removed.
+   */
+  const PLAYABLE = useMemo(() => HYMNS.filter((h) => !!youtubeIdFrom(h.youtubeUrl)), []);
+
   const results = useMemo(() => {
     const q = norm(query.trim());
-    if (!q) return HYMNS;
+    if (!q) return PLAYABLE;
     const words = q.split(/\s+/).filter(Boolean);
-    return HYMNS.filter((h) => {
+    return PLAYABLE.filter((h) => {
       // The number is searchable as a word of its own, so typing "154" finds
       // the hymn and "15" does not drag in every hymn with a 15 in its id.
       // The number is NOT in the haystack: as a substring "15" matched 115,
@@ -77,9 +86,7 @@ export default function HymnsPage() {
       const nums = h.num.map(String);
       return words.every((w) => hay.includes(w) || nums.some((n) => n === w));
     });
-  }, [query]);
-
-  const missing = useMemo(() => results.filter((h) => !youtubeIdFrom(h.youtubeUrl)).length, [results]);
+  }, [query, PLAYABLE]);
 
   /** What the log records: the number, the hymn and who sang it. */
   const listenedAs = (h: Hymn) =>
@@ -102,6 +109,10 @@ export default function HymnsPage() {
     // iOS: the reader can't log (no sign-in, its own storage), so the app
     // logs now and the page says "Logged" (logged=1).
     if (openVideoInReader(videoPath(vid, { ...sleeve, logged: true }))) {
+      // The reader can't move the app behind it, so its own Done is the way
+      // on: the app lands on the deck's closing prompt when it closes
+      // (lib/afterReader), the same beat /video's Done reaches directly.
+      setAfterReader("/listening?lift=1");
       logListenNow(sleeve.logAs);
       return;
     }
@@ -109,24 +120,21 @@ export default function HymnsPage() {
     void openExternal(h.youtubeUrl!, { system: true });
   };
 
-  const card = (h: Hymn, i: number) => {
-    const playable = !!youtubeIdFrom(h.youtubeUrl);
-    return (
-      <div
-        key={`${h.spotifyUrl}-${i}`}
-        role={playable ? "button" : undefined}
-        tabIndex={playable ? 0 : undefined}
-        aria-label={playable ? `Play ${h.name}` : `${h.name} is not on YouTube`}
-        onClick={playable ? () => play(h) : undefined}
-        onKeyDown={playable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); play(h); } } : undefined}
-        style={{
-          cursor: playable ? "pointer" : "default",
-          opacity: playable ? 1 : 0.5,
-          display: "flex", alignItems: "center", gap: 10, width: "100%",
-          padding: "11px 12px", borderRadius: 12, boxSizing: "border-box",
-          background: "rgba(240,237,230,0.05)", border: `1px solid ${BORDER}`,
-        }}
-      >
+  const card = (h: Hymn, i: number) => (
+    <div
+      key={`${h.spotifyUrl}-${i}`}
+      role="button"
+      tabIndex={0}
+      aria-label={`Play ${h.name}`}
+      onClick={() => play(h)}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); play(h); } }}
+      style={{
+        cursor: "pointer",
+        display: "flex", alignItems: "center", gap: 10, width: "100%",
+        padding: "11px 12px", borderRadius: 12, boxSizing: "border-box",
+        background: "rgba(240,237,230,0.05)", border: `1px solid ${BORDER}`,
+      }}
+    >
         {/* The number, on the left, as a hymnal index reads it — but held to a
             narrow column so the name gets the room (owner: "move the numbers
             over to the right more so the card has more room"). Right-aligned
@@ -172,27 +180,21 @@ export default function HymnsPage() {
           </span>
         </span>
 
-        {playable ? (
-          <span
-            aria-hidden
-            style={{
-              flex: "0 0 auto", width: 36, height: 36, borderRadius: 999,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: "rgba(46,107,64,0.45)", border: "1px solid rgba(143,175,150,0.55)",
-            }}
-          >
-            <svg width="13" height="14" viewBox="0 0 13 14" aria-hidden focusable="false" style={{ display: "block", marginLeft: 2 }}>
-              <path d="M0 0.8 A0.8 0.8 0 0 1 1.2 0.1 L12.2 6.3 A0.8 0.8 0 0 1 12.2 7.7 L1.2 13.9 A0.8 0.8 0 0 1 0 13.2 Z" fill={WARM} />
-            </svg>
-          </span>
-        ) : (
-          <span style={{ flex: "0 0 auto", color: FAINT, fontFamily: FONT, fontSize: 10.5, whiteSpace: "nowrap" }}>
-            Not on YouTube
-          </span>
-        )}
-      </div>
-    );
-  };
+      <span
+        aria-hidden
+        style={{
+          flex: "0 0 auto", width: 36, height: 36, borderRadius: 999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(46,107,64,0.45)", border: "1px solid rgba(143,175,150,0.55)",
+        }}
+      >
+        <svg width="13" height="14" viewBox="0 0 13 14" aria-hidden focusable="false" style={{ display: "block", marginLeft: 2 }}>
+          <path d="M0 0.8 A0.8 0.8 0 0 1 1.2 0.1 L12.2 6.3 A0.8 0.8 0 0 1 12.2 7.7 L1.2 13.9 A0.8 0.8 0 0 1 0 13.2 Z" fill={WARM} />
+        </svg>
+      </span>
+    </div>
+  );
+
   return (
     <div style={{ position: "relative", minHeight: "var(--app-dvh)", background: BG, isolation: "isolate" }}>
       <AnimatedBackground base={BG} variant="subtle" />
@@ -239,8 +241,7 @@ export default function HymnsPage() {
             }}
           />
           <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12, margin: "10px 0" }}>
-            {query.trim() ? `${results.length} of ${HYMNS.length}` : `${HYMNS.length} recordings`}
-            {missing > 0 && ` · ${missing} not on YouTube`}
+            {query.trim() ? `${results.length} of ${PLAYABLE.length}` : `${PLAYABLE.length} recordings`}
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
