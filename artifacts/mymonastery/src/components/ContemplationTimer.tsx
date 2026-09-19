@@ -338,7 +338,19 @@ export function ContemplationTimer({
       const swell = (window as unknown as {
         Capacitor?: { Plugins?: { PhoebeAudio?: { smoothSwell?: (o: { durationMs: number; peak: number; sharpness: number }) => Promise<unknown> } } };
       }).Capacitor?.Plugins?.PhoebeAudio?.smoothSwell;
-      if (swell) {
+      /**
+       * THE SWELL IS HAPTIC ONLY — PhoebeAudio.smoothSwell drives CHHapticEngine
+       * and makes no sound at all. That is fine for a normal sit, where the
+       * AUDIO comes from the bell scheduleBellAt laid down. But when the plugin
+       * stood down (Apple Music holds the session) there is no scheduled bell,
+       * so ringing the swell here would end the sit with a buzz and silence —
+       * which is the same HIGH finding it was meant to close, moved one step
+       * along. Ring the real bell instead: playNow(bell: true) sounds through
+       * the silent switch.
+       *
+       * Close bell only. The opening swell is untouched.
+       */
+      if (swell && !(octave === 2 && bellDeferredRef.current)) {
         void swell({ durationMs: octave === 0 ? 520 : 660, peak: octave === 0 ? 0.85 : 1, sharpness: 0.45 }).catch(() => {});
         return;
       }
