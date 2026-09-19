@@ -179,7 +179,7 @@ export function useWidgetSync(): void {
         case "reading": return { title: "Reading", eyebrow: "Reading", subtitle: "A page a day", emoji: "📚" };
         case "rosary": return { title: "The Rosary", eyebrow: "The Rosary", subtitle: "Today's mysteries, a decade at a time", emoji: "📿" };
         case "icons": return { title: "Praying with Icons", eyebrow: "Praying with Icons", subtitle: "One icon for the week", emoji: "🪟" };
-        case "payg": return { title: "Pray As You Go Daily", eyebrow: "Pray As You Go", subtitle: "A guided audio meditation on scripture", emoji: "🙇🏽" };
+        case "payg": return { title: "Pray As You Go Daily", eyebrow: "Pray As You Go", subtitle: "Guided prayer and reflection on scripture", emoji: "🙇🏽" };
         default: return { title: `${cap} Contemplation`, eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", emoji: "🕯️" };
       }
     };

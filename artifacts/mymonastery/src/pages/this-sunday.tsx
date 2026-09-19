@@ -4,15 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { PracticeCard, rhythmGradientRgb } from "@/components/DailyProgressBody";
-import { apiRequest } from "@/lib/queryClient";
-import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { useAndrewsVisible, useLivingChurchVisible } from "@/lib/appSettings";
-import { usePreviousIssues, PREVIOUS_ISSUES } from "@/hooks/usePreviousIssues";
-import { markAndrewsRead, type InboxItem } from "@/lib/taizeInbox";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { getDay, readLesserFeastsPref } from "@/lib/liturgical/calendar";
 import { getOfficeCacheEntry } from "@/lib/officeOfflineCache";
 import { nextSundayYmdNY } from "@/lib/sundayDate";
+import { useSundayCommentaries } from "@/lib/sundayCommentaries";
 import { sundayLectionaryQuery, type SundayLectionary as Sunday, type SundayTrack as Track } from "@/lib/sundayLectionary";
 
 /**
@@ -32,8 +28,6 @@ import { sundayLectionaryQuery, type SundayLectionary as Sunday, type SundayTrac
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
-/** The Living Church's "Sunday's Readings" column — opened when this Sunday's post isn't up yet. */
-const LIVING_CHURCH_INDEX = "https://livingchurch.org/category/scripture/sundays-readings/";
 
 function sundayLabel(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -44,36 +38,11 @@ function sundayLabel(iso: string): string {
 export default function ThisSundayPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
-  // The commentary card: super admins always, everyone once the Admin Tools
-  // switch is on (lib/appSettings). Kept as `isAdmin` below.
-  const isAdmin = useAndrewsVisible();
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   // Shared with the Menu, which warms it (lib/sundayLectionary).
   const sundayQ = useQuery<Sunday | null>(sundayLectionaryQuery);
   const sunday = sundayQ.data ?? null;
-  const andrewsQ = useQuery<InboxItem | null>({
-    queryKey: ["/api/andrews/latest"],
-    enabled: isAdmin,
-    staleTime: 15 * 60_000,
-    queryFn: async () => ((await apiRequest("GET", "/api/andrews/latest")) as InboxItem | null) ?? null,
-  });
-  const andrewsPrevious = usePreviousIssues("andrews", isAdmin);
-  // The Living Church's "Sunday's Readings" (owner, 2026-09-15: "build this
-  // just like with the McGowan Comentaries"): super admins always, everyone
-  // once its own Admin Tools switch is on. One list feeds both the card (the
-  // post for this Sunday, picked below) and the reader's "Previous" menu.
-  const livingChurchVisible = useLivingChurchVisible();
-  const livingChurchQ = useQuery<InboxItem[]>({
-    queryKey: ["/api/living-church/posts"],
-    enabled: livingChurchVisible,
-    staleTime: 15 * 60_000,
-    queryFn: async () => ((await apiRequest("GET", "/api/living-church/posts")) as InboxItem[] | null) ?? [],
-  });
-  const livingChurchPrevious = useMemo(
-    () => (livingChurchQ.data ?? []).slice(0, PREVIOUS_ISSUES).map(({ title, url }) => ({ title, url })),
-    [livingChurchQ.data],
-  );
 
   // Track 1 / Track 2 (owner: "a Track A or B toggle on the opening page that
   // would affect what readings are in the deck"). Only offered when the RCL
@@ -133,20 +102,10 @@ export default function ThisSundayPage() {
   // the Sunday while it is not. (They used to be OR'd, so a stale saved flag
   // kept the row up after the live answer said one track.)
   const hasTrack2 = sunday ? !!sunday.track2 : !!savedSunday?.hasTrack2;
-  /**
-   * THIS SUNDAY'S commentary, not merely the newest (owner: "they post on
-   * monday for the coming sunday … so it should be on this sunday"). The post
-   * for a Sunday is the one published in the seven days up to it. From Monday,
-   * when this page moves on to the next Sunday, until that week's post goes
-   * up, nothing matches — and last week's commentary under "This Sunday" would
-   * be the wrong Sunday's, so the card opens the column instead.
-   */
-  const livingChurchPost = useMemo(() => {
-    const ymd = sunday?.sundayDate ?? savedSunday?.date ?? nextSundayYmdNY();
-    const [y, m, d] = ymd.split("-").map(Number);
-    const weekBefore = new Date(Date.UTC(y!, (m ?? 1) - 1, (d ?? 1) - 7)).toISOString().slice(0, 10);
-    return (livingChurchQ.data ?? []).find((p) => !!p.published && p.published > weekBefore && p.published <= ymd) ?? null;
-  }, [livingChurchQ.data, sunday, savedSunday]);
+  // The two commentaries — which post is THIS Sunday's, and how each opens
+  // and marks read — live in lib/sundayCommentaries, shared with the home's
+  // Explore row. The Sunday this page shows is the one it looks up.
+  const commentaries = useSundayCommentaries(sunday?.sundayDate ?? savedSunday?.date ?? null);
   const readingsLine = chosen
     ? [chosen.ot, chosen.psalm, chosen.nt, chosen.gospel].filter(Boolean).join(" · ")
     : (savedSunday?.readings ?? "");
@@ -183,33 +142,17 @@ export default function ThisSundayPage() {
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       open: () => setLocation("/visio"),
     },
-    ...(isAdmin ? [{
-      key: "commentary", emoji: "📰",
-      // Owner (2026-09-15): "have McGowan say "Yale Divinity Commentary" with
-      // his name in the second line" (it was "Scripture Commentary"), then
-      // "have it say a commentary by Dr. ....".
-      title: t("this_sunday.commentary", { defaultValue: "Yale Divinity Commentary" }),
-      blurb: t("this_sunday.commentary_sub", { defaultValue: "A commentary by Dr. Andrew McGowan" }),
+    ...commentaries.map((c) => ({
+      key: c.key, emoji: c.emoji,
+      title: c.key === "commentary"
+        ? t("this_sunday.commentary", { defaultValue: c.title })
+        : t("this_sunday.living_church", { defaultValue: c.title }),
+      blurb: c.key === "commentary"
+        ? t("this_sunday.commentary_sub", { defaultValue: c.blurb })
+        : t("this_sunday.living_church_sub", { defaultValue: c.blurb }),
       cta: t("rhythm.read", { defaultValue: "Read" }),
-      open: () => {
-        const post = andrewsQ.data;
-        if (!post?.url) { openExternal("https://abmcg.substack.com/", { reader: true }); return; }
-        openExternalThenMarkRead(post.url, () => markAndrewsRead(post.id), { reader: true, previous: andrewsPrevious });
-      },
-    }] : []),
-    ...(livingChurchVisible ? [{
-      key: "living-church", emoji: "⛪",
-      // Owner (2026-09-15): "have the living church say "Living Church
-      // Comentary" with a discription under". The second line is short enough
-      // to show whole on an iPhone 17 Pro; the old one ran into the Read pill.
-      title: t("this_sunday.living_church", { defaultValue: "Living Church Commentary" }),
-      blurb: t("this_sunday.living_church_sub", { defaultValue: "Weekly reflection on the readings" }),
-      cta: t("rhythm.read", { defaultValue: "Read" }),
-      // In Phoebe's reader (owner: "lets try a reader view"), with the
-      // column's recent posts under Previous. Nothing is marked read: no other
-      // card anywhere waits on it.
-      open: () => { openExternal(livingChurchPost?.url ?? LIVING_CHURCH_INDEX, { reader: true, previous: livingChurchPrevious }); },
-    }] : []),
+      open: c.open,
+    })),
   ];
 
   return (

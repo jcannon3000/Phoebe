@@ -759,7 +759,7 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
   // Heard, not read: its card opens the audio player on the day's session
   // (owner, 2026-09-17), and it is kept once most of it has played.
-  { id: "payg", label: "🙇🏽 Pray As You Go Daily", sub: "A guided audio meditation on scripture" },
+  { id: "payg", label: "🙇🏽 Pray As You Go Daily", sub: "Guided prayer and reflection on scripture" },
   // Read-only sources (see ReflectionSource): they sit in the rule and open in
   // the reader like the others, but opening one is not scored.
   { id: "nouwen", label: "😊 Nouwen Daily Devotion", sub: "Henri Nouwen Society" },
@@ -4988,7 +4988,7 @@ export default function WayOfLoveRuleFlow({
               prayer ("if was already put in morning or evening, then also make
               sure then it isnt able to be chosen again"), the same rule
               anchoredAsForm keeps for the rest. */}
-          {!paygIsSidePrayer && choiceRow(contemplative.payg, `🙇🏽 ${t("wol_rule.cp_payg", { defaultValue: "Pray As You Go Daily" })}`, t("wol_rule.cp_payg_sub", { defaultValue: "A guided audio meditation on scripture." }), () => toggleContemplative("payg"))}
+          {!paygIsSidePrayer && choiceRow(contemplative.payg, `🙇🏽 ${t("wol_rule.cp_payg", { defaultValue: "Pray As You Go Daily" })}`, t("wol_rule.cp_payg_sub", { defaultValue: "Guided prayer and reflection on scripture." }), () => toggleContemplative("payg"))}
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
           {/* Lectio sits right after the Examen (owner, 2026-09-05: "move
               Lectio Divina up to be after the Examen"); it was last but one. */}
@@ -5750,7 +5750,7 @@ export default function WayOfLoveRuleFlow({
       : f === "creation" ? { emoji: "🌍", label: t("wol_rule.cf_creation", { defaultValue: "Breathing Together" }), sub: t("wol_rule.cf_creation_sub", { defaultValue: "Breathing with creation, at one shared pace." }) }
       : f === "walk" ? { emoji: "🚶🏽", label: t("wol_rule.cf_walk", { defaultValue: "Contemplative Walk" }), sub: t("wol_rule.cf_walk_sub", { defaultValue: "A walk kept as prayer, attentive to what's around you." }) }
       : f === "audio" ? { emoji: "🎵", label: t("wol_rule.cf_audio", { defaultValue: "Audio Divina" }), sub: t("wol_rule.cf_audio_sub", { defaultValue: "Connecting with God through music." }) }
-      : f === "payg" ? { emoji: "🙇🏽", label: t("wol_rule.cf_payg", { defaultValue: "Pray As You Go Daily" }), sub: t("wol_rule.cf_payg_sub", { defaultValue: "A guided audio meditation on scripture." }) }
+      : f === "payg" ? { emoji: "🙇🏽", label: t("wol_rule.cf_payg", { defaultValue: "Pray As You Go Daily" }), sub: t("wol_rule.cf_payg_sub", { defaultValue: "Guided prayer and reflection on scripture." }) }
             : f === "visio" ? { emoji: "🖼️", label: t("wol_rule.cf_visio", { defaultValue: "Visio Divina" }), sub: t("wol_rule.cf_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }) }
       : f === "lectio" ? { emoji: "📜", label: t("wol_rule.cf_lectio", { defaultValue: "Lectio Divina" }), sub: t("wol_rule.cf_lectio_sub", { defaultValue: "Read a passage slowly, three times — listen, reflect, pray." }) }
       : f === "rosary" ? { emoji: "📿", label: t("wol_rule.cf_rosary", { defaultValue: "The Rosary" }), sub: t("wol_rule.cf_rosary_sub", { defaultValue: "The day's mysteries, a decade at a time — or the Anglican beads." }) }

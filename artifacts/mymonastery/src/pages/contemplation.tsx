@@ -1063,7 +1063,9 @@ export default function ContemplationPage() {
               padding: "15px", cursor: "pointer",
             }}
           >
-            <span>{t("contemplation.guided_scripture", { defaultValue: "Guided Scripture Meditation" })}</span>
+            {/* Renamed (owner, 2026-09-19: "Change the pray as you go title to
+                Guided Prayer & Reflection") — the same name it has everywhere. */}
+            <span>{t("contemplation.guided_scripture", { defaultValue: "Guided Prayer & Reflection" })}</span>
           </div>
         </Link>
         {/* Guided Lectio Divina — Abiding Way's daily reading. UNDER Guided

@@ -77,7 +77,7 @@ export function usePracticeDirectory(): PracticeEntry[] {
      * under "Not available" rather than being offered and failing. Open to
      * everyone, as the route itself is — their feed is public.
      */
-    { emoji: "🙇🏽", label: "Pray As You Go Daily", sub: "A guided audio meditation on scripture", href: "/reflect/payg" },
+    { emoji: "🙇🏽", label: "Pray As You Go Daily", sub: "Guided prayer and reflection on scripture", href: "/reflect/payg" },
     // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no
     // ?side=), so it logs as a standalone practice rather than closing
     // out a morning/evening anchor.

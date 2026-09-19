@@ -1766,7 +1766,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // Pray As You Go as this side's contemplative practice — the card opens
     // the player on the day's session, and the player's own credit is what
     // marks it kept (see useRhythmState's kindKept).
-    payg: { emoji: "🙇🏽", title: t("rhythm.card_payg", { defaultValue: "Pray As You Go Daily" }), blurb: t("rhythm.blurb_payg", { defaultValue: "A guided audio meditation on scripture" }), href: "/reflect/payg" },
+    payg: { emoji: "🙇🏽", title: t("rhythm.card_payg", { defaultValue: "Pray As You Go Daily" }), blurb: t("rhythm.blurb_payg", { defaultValue: "Guided prayer and reflection on scripture" }), href: "/reflect/payg" },
   };
   const namedSide = (side: "morning" | "evening") => NAMED_SIDE_PRACTICE[sideKind(side)] ?? null;
   // Kept for the handful of places that genuinely have no side in hand.
