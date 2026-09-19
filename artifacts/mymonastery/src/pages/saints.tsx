@@ -329,9 +329,14 @@ export default function SaintsPage() {
     if (!pic) { setBeat("prayer"); return null; }
     return shell(
       <motion.div {...fade} style={{ flex: "1 0 auto", display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 30 }}>
+        {/* NEVER LARGER THAN THE FILE (audit, 2026-09-18). About forty of these
+            originals are under 400px wide (Enmegahbowh's is 150), and width:100%
+            stretched every one to the 420px frame, soft and blocky. The frame
+            now fits the picture: a large one still fills it, a small one is
+            shown at its own size, framed, rather than blown up. */}
         <div
           style={{
-            width: "100%", maxWidth: 420, margin: "0 auto 18px", borderRadius: 16,
+            width: "fit-content", maxWidth: "min(420px, 100%)", margin: "0 auto 18px", borderRadius: 16,
             overflow: "hidden", background: "rgba(9,26,16,0.55)", border: `1px solid ${BORDER}`,
           }}
         >
@@ -340,7 +345,7 @@ export default function SaintsPage() {
             alt={chosen.name}
             loading="lazy"
             decoding="async"
-            style={{ width: "100%", height: "auto", display: "block" }}
+            style={{ maxWidth: "100%", width: "auto", height: "auto", display: "block" }}
           />
         </div>
         <p style={{ color: WARM, fontFamily: FONT, fontSize: 17, fontWeight: 600, textAlign: "center", lineHeight: 1.35, margin: "0 auto 6px", maxWidth: 400 }}>
