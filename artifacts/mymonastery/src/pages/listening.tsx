@@ -391,11 +391,29 @@ export default function ListeningPage() {
     void (async () => {
       if (!(await playable)) { setDeckStep(LOG); return; }
       const hits = await searchCatalog(r.what).catch(() => [] as SearchResult[]);
-      const song = hits.find((h) => h.service === "apple" && h.kind === "song" && h.appleId);
+      /**
+       * WHAT WAS LOGGED, not merely the first song (owner, 2026-09-19: "If
+       * they are listening to an album it needs to start with track 1"). A
+       * pick is logged as "Title — Artist"; the hit that reads back the same
+       * is the thing itself — an EP logged from search plays as the EP, from
+       * its first track. Only when nothing matches does the first song stand
+       * in, as before.
+       */
+      const norm = (x: string) => x.trim().toLowerCase();
+      const asLogged = hits.find((h) => h.service === "apple" && h.appleId
+        && norm(h.subtitle ? `${h.title} — ${h.subtitle}` : h.title) === norm(r.what));
+      const song = asLogged ?? hits.find((h) => h.service === "apple" && h.kind === "song" && h.appleId);
+      const collection = song && song.kind !== "song" ? song.kind : null;
       // Left mid-lookup: don't start anything, and make sure nothing slipped
       // past the unmount stop.
       if (!aliveRef.current) { void stopAppleMusicNative(); return; }
-      if (song?.appleId && await playAppleMusicNative(song.appleId)) {
+      const played = song?.appleId
+        ? collection
+          ? hasAppleMusicCollectionNative()
+            && await playAppleMusicCollectionNative(collection, song.appleId, { shuffle: false, repeatAll: false })
+          : await playAppleMusicNative(song.appleId)
+        : false;
+      if (song?.appleId && played) {
         if (!aliveRef.current) { void stopAppleMusicNative(); return; }
         // The catalogue hit knows the cover even when the logged row didn't.
         if (song.artworkUrl) setArtworkUrl(song.artworkUrl);
@@ -1293,17 +1311,40 @@ export default function ListeningPage() {
                       catalogues, with Hymns under Sakamoto. A real <button>:
                       the deck pages forward on taps in its right half and
                       stands down only for button/a/[role=button]. */}
-                  <button
-                    type="button"
-                    onClick={() => setLibraryOpen(true)}
-                    className="w-full rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-                    style={{
-                      ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
-                      fontSize: 15, fontWeight: 600, padding: "13px 22px", cursor: "pointer",
-                    }}
-                  >
-                    Choose from library
-                  </button>
+                  {/* NOT AN APPLE MUSIC LISTENER: no library (owner, 2026-09-19:
+                      "If the user is not using apple music, dont show library,
+                      just show hymns and hildegard", then "For non Apple users
+                      let's just show hymns"). The library is Apple's; the
+                      hymnal plays on every service. */}
+                  {service !== "apple" ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
+                      <button
+                        type="button"
+                        onClick={() => setLocation("/hymns")}
+                        className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                        style={{
+                          ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
+                          fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 7,
+                        }}
+                      >
+                        <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
+                        Hymns
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setLibraryOpen(true)}
+                      className="w-full rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                      style={{
+                        ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
+                        fontSize: 15, fontWeight: 600, padding: "13px 22px", cursor: "pointer",
+                      }}
+                    >
+                      Choose from library
+                    </button>
+                  )}
                   {/* Room for the keyboard while searching, so the field can
                       scroll to the top of the slide (see the search onFocus). */}
                   {findFocused && <div aria-hidden style={{ height: "55vh", flex: "0 0 auto" }} />}

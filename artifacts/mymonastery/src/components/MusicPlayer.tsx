@@ -254,10 +254,11 @@ export function MusicPlayer({
         </div>
 
         {/* The middle: the album cover over the photo. Square — no rounding
-            (owner). Dims while paused so the state reads from across the room. */}
+            (owner) — and smaller than it first was (owner, 2026-09-19: "Make
+            the album cover smaller on the playback"). Dims while paused. */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 0, padding: "12px 28px" }}>
           <div style={{
-            width: "min(72vw, 42vh, 320px)", aspectRatio: "1 / 1", flex: "0 0 auto",
+            width: "min(58vw, 34vh, 250px)", aspectRatio: "1 / 1", flex: "0 0 auto",
             background: "rgba(9,26,16,0.55)",
             boxShadow: "0 24px 60px rgba(0,0,0,0.5), 0 2px 10px rgba(0,0,0,0.35)",
             opacity: paused ? 0.6 : 1, transition: "opacity 240ms ease",

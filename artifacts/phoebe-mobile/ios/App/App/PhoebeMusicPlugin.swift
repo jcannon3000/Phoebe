@@ -561,8 +561,15 @@ public class PhoebeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                     if artist.isEmpty { artist = song.artistName }
                     album = song.albumTitle ?? ""
                 }
+                // The SONG's catalogue artwork first: the queue entry's own
+                // artwork answers a musicKit:// URL the web view can't load,
+                // which left the player on its empty sleeve (owner's
+                // screenshot, 2026-09-19). The catalogue's is https.
                 var artworkUrl = ""
-                if let url = entry?.artwork?.url(width: 600, height: 600), url.scheme == "https" {
+                if case .song(let song)? = entry?.item,
+                   let url = song.artwork?.url(width: 600, height: 600), url.scheme == "https" {
+                    artworkUrl = url.absoluteString
+                } else if let url = entry?.artwork?.url(width: 600, height: 600), url.scheme == "https" {
                     artworkUrl = url.absoluteString
                 }
                 let entries = Array(player.queue.entries)
