@@ -33,6 +33,7 @@ import { resetRoutineToDefault } from "@/lib/resetRoutine";
 import { CtaArrow } from "@/components/CtaArrow";
 import {
   appleMusicEnabled, appleMusicOfferable, enableAppleMusic, disableAppleMusic,
+  appleMusicFeaturesReady, APPLE_MUSIC_EVENT,
 } from "@/lib/appleMusicFeatures";
 
 
@@ -1249,6 +1250,16 @@ function HomeDisplaySettings() {
     // first paint — so re-ask once rather than deciding on mount alone.
     const id = window.setTimeout(() => setAppleOfferable(appleMusicOfferable()), 600);
     return () => window.clearTimeout(id);
+  }, []);
+  // Granted means on (owner, 2026-09-18): the switch shows what is TRUE, so a
+  // phone that already allowed Apple Music reads "on" without a tap. Never
+  // prompts — this only reads the answer iOS already has.
+  useEffect(() => {
+    let alive = true;
+    const ask = () => { void appleMusicFeaturesReady().then((ok) => { if (alive) setAppleOn(ok); }); };
+    const id = window.setTimeout(ask, 650);
+    window.addEventListener(APPLE_MUSIC_EVENT, ask);
+    return () => { alive = false; window.clearTimeout(id); window.removeEventListener(APPLE_MUSIC_EVENT, ask); };
   }, []);
   const toggleAppleMusic = () => {
     if (appleBusy) return;

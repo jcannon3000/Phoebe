@@ -18,6 +18,15 @@
 // every time, and every feature gates on THAT. The flag's job is only to say
 // "this person has opted in", so we know we may ask the plugin at all.
 //
+// GRANTED MEANS ON (owner, 2026-09-18: "Once a user has granted permission,
+// it should be on"). Three states, not two:
+//   "1"  turned on here in Phoebe
+//   "0"  turned OFF here — the only thing that keeps a granted phone off
+//   none never chosen: follows iOS. If access is granted and the phone can
+//        play catalogue music, the features are on, no switch needed.
+// The iOS check never prompts, so "none" can't spring a permission sheet —
+// it only notices a yes that was already given.
+//
 // Device-scoped on purpose, like lib/musicService: it describes the phone
 // (which music app is signed in on it), not the person, so it is not synced
 // and not wiped on logout. See reference_logout_wipe_and_local_stamps.
@@ -32,15 +41,22 @@ const KEY = "phoebe:apple-music:on";
 /** Fires on this tab when the switch changes (storage events only cross tabs). */
 export const APPLE_MUSIC_EVENT = "phoebe:apple-music-changed";
 
-/** Has this person turned the features on? Cheap, synchronous, no prompt. */
+/** Turned on here explicitly? Cheap, synchronous, no prompt. The honest
+ *  answer to "is it on" is async — appleMusicFeaturesReady(). */
 export function appleMusicEnabled(): boolean {
   try { return localStorage.getItem(KEY) === "1"; } catch { return false; }
 }
 
-function write(on: boolean): void {
+/** Turned OFF here explicitly — the one state a granted phone stays off in. */
+export function appleMusicTurnedOff(): boolean {
+  try { return localStorage.getItem(KEY) === "0"; } catch { return false; }
+}
+
+/** "on" / "off" record a choice; "follow" forgets it and defers to iOS. */
+function write(state: "on" | "off" | "follow"): void {
   try {
-    if (on) localStorage.setItem(KEY, "1");
-    else localStorage.removeItem(KEY);
+    if (state === "follow") localStorage.removeItem(KEY);
+    else localStorage.setItem(KEY, state === "on" ? "1" : "0");
   } catch { /* private mode: the choice just doesn't persist */ }
   try { window.dispatchEvent(new Event(APPLE_MUSIC_EVENT)); } catch { /* SSR */ }
 }
@@ -64,25 +80,28 @@ export async function enableAppleMusic(): Promise<
 > {
   if (!hasAppleMusicNative()) return { ok: false, reason: "unavailable" };
   const r = await requestAppleMusicNative();
-  if (!r.authorized) { write(false); return { ok: false, reason: "denied" }; }
-  if (!r.subscribed) { write(false); return { ok: false, reason: "no-subscription" }; }
-  write(true);
+  // A no from iOS forgets the choice rather than recording "off": if they
+  // later allow it in the iOS Settings app, it should simply be on.
+  if (!r.authorized) { write("follow"); return { ok: false, reason: "denied" }; }
+  if (!r.subscribed) { write("follow"); return { ok: false, reason: "no-subscription" }; }
+  write("on");
   return { ok: true };
 }
 
 /** Turn them off. Nothing is revoked in iOS — that is the listener's to do in
  *  the Settings app — but Phoebe stops using it and the features disappear. */
 export function disableAppleMusic(): void {
-  write(false);
+  write("off");
 }
 
 /**
- * THE GATE every feature uses: opted in AND iOS still agrees. Never prompts.
- * False on the web, on an older build, after a revoke, and after a lapse — in
+ * THE GATE every feature uses: not turned off here AND iOS agrees (granted,
+ * subscribed). Never prompts. False on the web, on an older build, after a
+ * revoke, after a lapse, and after the Settings switch was turned off — in
  * each case the feature quietly goes back to opening music.apple.com.
  */
 export async function appleMusicFeaturesReady(): Promise<boolean> {
-  if (!appleMusicEnabled()) return false;
+  if (appleMusicTurnedOff()) return false;
   return appleMusicNativeReady();
 }
 
