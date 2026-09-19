@@ -26,14 +26,14 @@
  * record) — this is a practice you can visit, not a card in the daily rhythm,
  * so it touches no completion flags and no dots.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { ICON_CATALOGUE, type IconArtwork } from "@/lib/iconCatalogue";
 import { COMMONS_VISIO_CATALOGUE } from "@/lib/visioCommonsCatalogue";
 import {
-  galleryForDay, galleryPool, getHeldWorks, recordDwell, heldIds, HELD_EVENT,
+  galleryForDayWithMarker, galleryPool, getHeldWorks, commentaryUrlFor, recordDwell, heldIds, HELD_EVENT,
   failedImageIds, rememberFailedImage, type GalleryWork, type HeldWork,
 } from "@/lib/iconGallery";
 import { readingUrl } from "@/lib/visioSelect";
@@ -150,8 +150,12 @@ function iconPool(): IconArtwork[] {
  * to be earned. Holding asks nothing; the seconds given to each picture are
  * kept on the device and order tomorrow's scroll (lib/iconGallery).
  */
-function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
+function GalleryFeed({ works, relatedFrom, held, onDwell, onPray, onClose, onFinished }: {
   works: GalleryWork[];
+  /** Index in `works` where the related-images tail begins; -1 = no tail. */
+  relatedFrom: number;
+  /** Done's exit: the practice is kept and the home takes over. */
+  onFinished: () => void;
   held: Set<number>;
   onDwell: (id: number, seconds: number) => void;
   onPray: (art: GalleryWork) => void;
@@ -184,6 +188,23 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
    * one-letter query can't try to render the entire catalogue at once.
    */
   const [ask, setAsk] = useState("");
+  /**
+   * What is being typed, apart from what is being searched (owner: "when you
+   * start typing, a Search button should appear beneath"). Rebuilding the scroll
+   * on every character also rebuilt the dwell tracker on every character, which
+   * wrote a phantom dwell to whatever the half-typed word put first — so the
+   * same few works were quietly promoted to "held" by other people's typing.
+   * The list now changes when you press Search (or return), and clearing the
+   * field goes straight back to today's scroll.
+   */
+  const [draft, setDraft] = useState("");
+  /** The search popup, opened from the Search pill beside Done. */
+  const [searchOpen, setSearchOpen] = useState(false);
+  const runSearch = () => {
+    const q = draft.trim();
+    setAsk(q);
+    setSearchOpen(false);
+  };
   /** The work whose credit is being read, if any (the ⓘ pill). */
   const [info, setInfo] = useState<GalleryWork | null>(null);
   /**
@@ -198,15 +219,45 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
    * honest answer to "how long was I doing this".
    */
   const seenRef = useRef<Set<number>>(new Set());
-  const openedAtRef = useRef<number>(Date.now());
+  /**
+   * TIME SPENT LOOKING, not time since opening. Wall clock let a phone locked
+   * for forty minutes report "you spent 40 minutes with sacred imagery" — the
+   * one claim this screen exists to make honestly. The dwell clock already
+   * stops when the app goes away; this now stops with it.
+   */
+  const activeMsRef = useRef(0);
+  const activeSinceRef = useRef<number | null>(
+    typeof document !== "undefined" && document.visibilityState === "hidden" ? null : Date.now(),
+  );
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "hidden") {
+        if (activeSinceRef.current != null) {
+          activeMsRef.current += Date.now() - activeSinceRef.current;
+          activeSinceRef.current = null;
+        }
+      } else if (activeSinceRef.current == null) {
+        activeSinceRef.current = Date.now();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+  /** Set the instant Done is pressed; everything that counts stops reading. */
+  const doneRef = useRef(false);
   const [done, setDone] = useState(false);
   const [visit, setVisit] = useState<{ seen: number; seconds: number }>({ seen: 0, seconds: 0 });
 
   const finish = () => {
+    // Once. The top bar sat above the done overlay, so a second press re-ran
+    // this and the minutes climbed on every tap.
+    if (doneRef.current) return;
+    doneRef.current = true;
     commitRef.current();
+    const live = activeSinceRef.current != null ? Date.now() - activeSinceRef.current : 0;
     setVisit({
       seen: seenRef.current.size,
-      seconds: Math.max(0, Math.round((Date.now() - openedAtRef.current) / 1000)),
+      seconds: Math.max(0, Math.round((activeMsRef.current + live) / 1000)),
     });
     setDone(true);
   };
@@ -231,6 +282,22 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
     () => (asked ?? works).filter((a) => !broken.has(a.id)),
     [asked, works, broken],
   );
+
+  /**
+   * Where "Related images" begins. The marker indexes `works`, but `shown`
+   * drops pictures that failed to load — so it is the first surviving work at
+   * or after the marker, not the index itself. No divider while searching (a
+   * search is not the day's list) and none with no history (-1: a first-ever
+   * scroll has nothing to be related TO).
+   */
+  const relatedStartId = useMemo(() => {
+    if (asked || relatedFrom < 0) return null;
+    for (let i = relatedFrom; i < works.length; i++) {
+      const w = works[i];
+      if (w && !broken.has(w.id)) return w.id;
+    }
+    return null;
+  }, [asked, relatedFrom, works, broken]);
 
   // A new question starts at its own top, not halfway down the last answer.
   useEffect(() => { scrollerRef.current?.scrollTo({ top: 0 }); }, [asked]);
@@ -263,6 +330,10 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
     const el = scrollerRef.current;
     if (!el) return;
     const sync = () => {
+      // After Done nothing is being looked at: without this, the seconds spent
+      // READING the done screen were written as dwell on whatever was centred,
+      // enough to promote it to "held" and to skew tomorrow's order.
+      if (doneRef.current) return;
       if (document.visibilityState === "hidden") { commit(); return; }
       const mid = el.clientHeight / 2;
       let bestId: number | null = null;
@@ -299,6 +370,7 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
       if (settle) window.clearTimeout(settle);
       settle = window.setTimeout(() => {
         settle = 0;
+        if (doneRef.current) return; // no tick on a screen where nothing moves
         sync();
         const id = currentRef.current?.id ?? null;
         if (id != null && id !== lastTapRef.current) {
@@ -324,6 +396,66 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "#050D08" }}>
+      {/* THE SEARCH, as a popup (owner: "a search pill which would allow them
+          to do a new search through a pop up"). The same layer and dismissal
+          as the credit popup below: the scrim closes it, the panel keeps its
+          own taps. Searching replaces the scroll; clearing the field and
+          searching goes back to today's. */}
+      {searchOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("icons.gallery_search_title", { defaultValue: "Search the pictures" })}
+          onClick={() => setSearchOpen(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 70, display: "flex",
+            alignItems: "flex-start", justifyContent: "center",
+            padding: "calc(max(10px, env(safe-area-inset-top)) + 72px) 22px 22px",
+            background: "rgba(3,9,6,0.72)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%", maxWidth: 420, borderRadius: 18, padding: "18px 18px 16px",
+              background: "rgba(9,26,16,0.93)", border: "1px solid rgba(200,212,192,0.25)",
+              boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+            }}
+          >
+            <p style={{ color: WARM, fontFamily: FONT, fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>
+              {t("icons.gallery_search_title", { defaultValue: "Search the pictures" })}
+            </p>
+            <input
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.currentTarget.blur(); runSearch(); } }}
+              enterKeyHint="search"
+              inputMode="search"
+              placeholder={t("icons.gallery_ask", { defaultValue: "Try \u201cmercy\u201d, \u201cMary\u201d, \u201cthe cross\u201d\u2026" })}
+              aria-label={t("icons.gallery_ask_label", { defaultValue: "Search the pictures" })}
+              style={{
+                width: "100%", boxSizing: "border-box", fontSize: 16, padding: "11px 14px",
+                borderRadius: 12, outline: "none", color: WARM, fontFamily: FONT,
+                background: "rgba(240,237,230,0.06)", border: "1px solid rgba(200,212,192,0.22)",
+              }}
+            />
+            <button
+              type="button"
+              onClick={runSearch}
+              style={{
+                marginTop: 12, width: "100%", borderRadius: 999, padding: "12px 18px",
+                fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer", color: WARM,
+                background: "rgba(46,107,64,0.5)", border: "1px solid rgba(143,175,150,0.55)",
+              }}
+            >
+              {draft.trim()
+                ? t("icons.gallery_ask_go", { defaultValue: "Search" })
+                : t("icons.gallery_ask_today", { defaultValue: "Back to today's scroll" })}
+            </button>
+          </div>
+        </div>
+      )}
       {/* THE CREDIT, in full. Above the gallery's own layer, dismissed by the
           scrim or the button — the scrim carries the tap so there is always a
           way out, and the panel swallows its own so a tap on the text doesn't
@@ -425,6 +557,18 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
         {/* Done, not ✕ (owner: "have something at the top that says done. Up
             top right, then it goes to a done page"). The way out now passes
             through what the time came to, the way the breath does. */}
+        {!done && (<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <button
+          type="button"
+          onClick={() => { setDraft(ask); setSearchOpen(true); }}
+          style={{
+            borderRadius: 999, padding: "7px 16px", fontSize: 13, fontWeight: 600, fontFamily: FONT,
+            background: "rgba(9,26,16,0.55)", border: "1px solid rgba(200,212,192,0.25)", color: WARM, cursor: "pointer",
+            backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+          }}
+        >
+          {t("icons.gallery_search_pill", { defaultValue: "Search" })}
+        </button>
         <button
           type="button"
           onClick={finish}
@@ -436,6 +580,7 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
         >
           {t("icons.gallery_done_pill", { defaultValue: "Done" })}
         </button>
+        </div>)}
       </div>
       {done && (
         <div
@@ -464,7 +609,7 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
           </p>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onFinished}
             style={{
               marginTop: 10, width: "100%", maxWidth: 320, borderRadius: 999, padding: "13px 20px",
               fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer", color: WARM,
@@ -483,7 +628,9 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
           position: "relative", zIndex: 1,
           visibility: done ? "hidden" : "visible",
           height: "100%", overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
-          padding: "calc(max(10px, env(safe-area-inset-top)) + 44px) 0 calc(env(safe-area-inset-bottom, 0px) + 28px)",
+          // +12px over the bar's own height, so at rest the search field sits
+          // clearly below Done rather than under its gradient.
+          padding: "calc(max(10px, env(safe-area-inset-top)) + 56px) 0 calc(env(safe-area-inset-bottom, 0px) + 28px)",
           // Each picture settles in the middle when the finger lifts (owner).
           // The snap lives on the IMAGE, not the card: the card also carries
           // the title and the pills, so centring the card would leave the
@@ -492,41 +639,64 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
           // with "more like an instagam ui … we want to see the next one
           // coming underneath". Centring a 68vh picture leaves the next one
           // peeking below, so the feed still reads as a feed.
-          scrollSnapType: "y mandatory",
+          //
+          // PROXIMITY, not mandatory. Mandatory forbade ever resting away from a
+          // snap point, and the only snap points are the pictures: so the scroll
+          // could not rest at its own top (the search field was forced ~69px up
+          // under Done — the owner's "the search field is going UNDER Done") or
+          // at its end (the end card and its Back button could never be read).
+          // Proximity still lands a released flick on the nearest picture's
+          // centre, which is the ask, and leaves the two ends reachable.
+          scrollSnapType: "y proximity",
         }}
       >
-        {/* At the top of the scroll, and it scrolls away — the owner's own
-            framing: "they could enter something in the text and it would
-            refresh the scroll, or they can just keep scroll". So it is an
-            offer, not a gate: nobody has to answer anything to look at
-            pictures. Not a snap target, so a flick still lands on artwork. */}
-        <div style={{ padding: "0 18px 20px" }}>
-          <input
-            value={ask}
-            onChange={(e) => setAsk(e.target.value)}
-            placeholder={t("icons.gallery_ask", { defaultValue: "Looking for something? Try \u201cmercy\u201d, \u201cMary\u201d, \u201cthe cross\u201d\u2026" })}
-            inputMode="search"
-            aria-label={t("icons.gallery_ask_label", { defaultValue: "Search the pictures" })}
-            style={{
-              width: "100%", boxSizing: "border-box", fontSize: 16, padding: "11px 14px",
-              borderRadius: 12, outline: "none", color: WARM, fontFamily: FONT,
-              background: "rgba(9,26,16,0.5)", border: "1px solid rgba(200,212,192,0.22)",
-              backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
-            }}
-          />
+        {/* THE TOP OF THE SCROLL. The search itself now lives in a popup off
+            the Search pill beside Done (owner, 2026-09-18: "Next to the done
+            pill do a search pill which would allow then to do a new search
+            through a pop up"). What stays here is only the answer to the last
+            search, and a way back to today's scroll.
+
+            This block is a SNAP TARGET at its top edge, and that matters even
+            when it is empty. The only other snap points are the pictures, so
+            without it the nearest one to a freshly opened scroll was the first
+            picture's centre, and the browser pulled the whole list ~60px down
+            under the top bar to reach it. */}
+        <div style={{ padding: asked ? "0 18px 18px" : "0 18px 4px", scrollSnapAlign: "start" }}>
           {asked && (
-            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12, margin: "8px 2px 0" }}>
-              {shown.length === 0
-                ? t("icons.gallery_ask_none", { defaultValue: "Nothing here by that name. Clear it to go back to today's scroll." })
-                : askedCapped
-                  ? t("icons.gallery_ask_capped", { defaultValue: `First ${shown.length} of ${askedAll?.length ?? 0} pictures` })
-                  : t("icons.gallery_ask_count", { count: shown.length, defaultValue: `${shown.length} pictures` })}
-            </p>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12.5, margin: 0, lineHeight: 1.45 }}>
+                {shown.length === 0
+                  ? t("icons.gallery_ask_none_q", { defaultValue: `Nothing for \u201c${ask.trim()}\u201d.` })
+                  : askedCapped
+                    ? t("icons.gallery_ask_capped_q", { defaultValue: `First ${shown.length} of ${askedAll?.length ?? 0} for \u201c${ask.trim()}\u201d` })
+                    : t("icons.gallery_ask_count_q", { defaultValue: `${shown.length} for \u201c${ask.trim()}\u201d` })}
+              </p>
+              <button
+                type="button"
+                onClick={() => { setAsk(""); setDraft(""); }}
+                style={{ flex: "0 0 auto", background: "none", border: "none", padding: 0, cursor: "pointer", color: SAGE, fontFamily: FONT, fontSize: 12.5, textDecoration: "underline", textUnderlineOffset: 3 }}
+              >
+                {t("icons.gallery_ask_clear", { defaultValue: "Today's scroll" })}
+              </button>
+            </div>
           )}
         </div>
         {shown.map((art) => {
           const ref = art.refs.find((r) => !!readingUrl(r)) ?? null;
           return (
+            <Fragment key={art.id}>
+            {art.id === relatedStartId && (
+              <div
+                role="separator"
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "6px 18px 26px" }}
+              >
+                <span style={{ flex: 1, height: 1, background: "rgba(200,212,192,0.18)" }} />
+                <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase" }}>
+                  {t("icons.gallery_related", { defaultValue: "Related images" })}
+                </span>
+                <span style={{ flex: 1, height: 1, background: "rgba(200,212,192,0.18)" }} />
+              </div>
+            )}
             <section
               key={art.id}
               data-work-id={art.id}
@@ -592,6 +762,22 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
                     📖 {ref}
                   </button>
                 )}
+                {/* Owner: "if there is a comentery, have a read comenatry pill next
+                    to the others". ACT keeps a commentary as a LINK to thevcs.org,
+                    never as text, so this opens it in the in-app reader and
+                    nothing of theirs is held here (reference_vcs_reader_view). */}
+                {commentaryUrlFor(art.id) && (
+                  <button
+                    type="button"
+                    onClick={() => { const c = commentaryUrlFor(art.id); if (c) openExternal(c, { reader: true }); }}
+                    style={{
+                      borderRadius: 999, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: FONT,
+                      color: WARM, background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)", cursor: "pointer",
+                    }}
+                  >
+                    {t("icons.gallery_commentary", { defaultValue: "Read commentary" })}
+                  </button>
+                )}
                 {/* Owner: "There needs to also be an info pill next to the
                     others that would bring up a pop up the proper
                     atribiution". ACT asks for the credit line and the
@@ -613,9 +799,10 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
                 </button>
               </div>
             </section>
+            </Fragment>
           );
         })}
-        <section style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "36px 28px 60px", textAlign: "center" }}>
+        <section style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "36px 28px 60px", textAlign: "center" , scrollSnapAlign: "end"}}>
           <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 20, margin: 0, lineHeight: 1.4 }}>
             {asked
               ? askedCapped
@@ -628,7 +815,7 @@ function GalleryFeed({ works, held, onDwell, onPray, onClose }: {
               ? askedCapped
                 ? t("icons.gallery_end_asked_more_sub", { defaultValue: "Narrow the search at the top to see further in, or clear it to go back to today's scroll." })
                 : t("icons.gallery_end_asked_sub", { defaultValue: "Clear the search at the top to go back to today's scroll." })
-              : t("icons.gallery_end_sub", { defaultValue: "The ones you stayed with are kept on the first screen. Tomorrow brings another forty." })}
+              : t("icons.gallery_end_sub", { defaultValue: "The one you stayed with longest waits on the first screen. Tomorrow brings another forty." })}
           </p>
           <button
             type="button"
@@ -874,8 +1061,8 @@ export default function IconsPage() {
     window.addEventListener(HELD_EVENT, refresh);
     return () => window.removeEventListener(HELD_EVENT, refresh);
   }, []);
-  const galleryWorks = useMemo(
-    () => galleryForDay(new Date().toLocaleDateString("en-CA"), { held: heldRows }),
+  const galleryDay = useMemo(
+    () => galleryForDayWithMarker(new Date().toLocaleDateString("en-CA"), { held: heldRows }),
     // Today's order is settled when the feed opens; it must not resort itself
     // under the reader's thumb as the seconds are recorded.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -909,6 +1096,12 @@ export default function IconsPage() {
       reason: suggestionReason(suggestion),
     };
   }, [byId, history]);
+  /** The one work the gallery held you on longest — the held door, if any. */
+  const heldDoor = useMemo(() => {
+    const doorIds = new Set([weekDoors.last?.id, weekDoors.frequent?.id, weekDoors.suggested?.id].filter((x) => x != null));
+    const top = [...heldWorks].sort((a, b) => b.seconds - a.seconds).find(({ art }) => !doorIds.has(art.id));
+    return top?.art ?? null;
+  }, [heldWorks, weekDoors]);
   /** Choosing sets the week's icon and opens ON it — see Phase's note. */
   const chooseForWeek = (art: IconArtwork) => {
     setChosen(art);
@@ -1272,40 +1465,21 @@ export default function IconsPage() {
               <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, textAlign: "center", margin: 0, lineHeight: 1.55 }}>
                 {t("icons.week_sub", { defaultValue: "Stay with one for a while, or begin somewhere new." })}
               </p>
-              {/* THE ONES THAT HELD YOU — the gallery's only record, and the
-                  only thing holding a picture does. Tapping one sits with it. */}
-              {heldWorks.length > 0 && (
-                <div style={{ width: "100%" }}>
-                  <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", margin: "2px 0 8px" }}>
-                    {t("icons.held_row", { defaultValue: "The ones that held you" })}
-                  </p>
-                  <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
-                    {heldWorks.map(({ art, seconds }) => (
-                      <button
-                        key={art.id}
-                        type="button"
-                        onClick={() => choose(art)}
-                        style={{
-                          userSelect: "none", WebkitTapHighlightColor: "transparent",
-                          flex: "0 0 auto", width: 112, padding: 0, border: "none",
-                          background: "none", cursor: "pointer", textAlign: "left",
-                        }}
-                      >
-                        <img
-                          src={art.img} alt="" loading="lazy" decoding="async"
-                          style={{ width: 112, height: 112, objectFit: "cover", borderRadius: 10, boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}
-                        />
-                        <span style={{ display: "block", color: FAINT, fontFamily: FONT, fontSize: 10.5, marginTop: 5 }}>
-                          {seconds >= 60
-                            ? t("icons.held_minutes", { count: Math.round(seconds / 60), defaultValue: `${Math.round(seconds / 60)} min` })
-                            : t("icons.held_seconds", { count: Math.round(seconds), defaultValue: `${Math.round(seconds)}s` })}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 6 }}>
+                {/* THE ONE THAT HELD YOU (owner, 2026-09-18: "The ones that held
+                    you" — never asked for — "The one that held you should be a
+                    card like the others"). So the row of thumbnails is gone and
+                    the single work the scroll held you longest on stands as a
+                    door, the same card as its neighbours. Skipped when it is the
+                    same work as another door, so no icon is offered twice. */}
+                {heldDoor && (
+                  <WeekDoor
+                    art={heldDoor}
+                    label={t("icons.week_held", { defaultValue: "The one that held you" })}
+                    note={null}
+                    onClick={() => chooseForWeek(heldDoor)}
+                  />
+                )}
                 {weekDoors.last && (
                   <WeekDoor
                     art={weekDoors.last}
@@ -1479,11 +1653,17 @@ export default function IconsPage() {
               outside the column so the pictures are not inset by it. */}
           {phase === "gallery" && (
             <GalleryFeed
-              works={galleryWorks}
+              works={galleryDay.works}
+              relatedFrom={galleryDay.relatedFrom}
               held={heldNowIds}
               onDwell={(id, seconds) => recordDwell(id, seconds, new Date().toLocaleDateString("en-CA"))}
               onPray={(art) => { setPhase("week"); choose(art as IconArtwork); }}
               onClose={() => setPhase("week")}
+              /* Owner: "Done should go to the home screen and mark it as a
+                 practice". Scrolling the gallery IS the icons practice kept —
+                 the same key a finished sit marks — and Done lands home, not
+                 back on the doors. */
+              onFinished={() => { markPracticeDoneToday("icons"); setLocation("/dashboard"); }}
             />
           )}
           {phase === "open" && chosen && (
@@ -1881,7 +2061,12 @@ export default function IconsPage() {
           sibling of the scroll it is simply always there.
 
           Only on the week screen — during a sit, a timer or the log it would
-          be a door out of the thing being done. */}
+          be a door out of the thing being done.
+
+          Capped at 440px and centred (owner: "on web dont have the bottom pill
+          be the fill lenght"). It sat full-bleed across a desktop window under
+          a column of cards a third that width. On a phone the cap is never
+          reached, so it stays the full width it always was there. */}
       {phase === "week" && (
         <div style={{ flex: "0 0 auto", padding: "10px 20px calc(env(safe-area-inset-bottom) + 14px)" }}>
           <button
@@ -1889,7 +2074,7 @@ export default function IconsPage() {
             onClick={() => setPhase("gallery")}
             style={{
               userSelect: "none", WebkitTapHighlightColor: "transparent",
-              width: "100%", borderRadius: 999, padding: "13px 20px", fontSize: 14, fontWeight: 600,
+              width: "100%", maxWidth: 440, display: "block", marginInline: "auto", borderRadius: 999, padding: "13px 20px", fontSize: 14, fontWeight: 600,
               fontFamily: FONT, cursor: "pointer", color: WARM,
               background: "rgba(240,237,230,0.08)", border: "1px solid rgba(200,212,192,0.3)",
               backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
