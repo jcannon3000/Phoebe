@@ -3816,7 +3816,15 @@ export default function WayOfLoveRuleFlow({
         border: `1px solid ${CARD_B}`,
         color: CREAM, borderRadius: 16, padding: "16px 18px", textAlign: "left",
         display: "flex", alignItems: "center", gap: 14, cursor: "pointer",
-        transition: "background 0.15s, border-color 0.15s",
+        /* BORDER ONLY, NEVER THE BACKGROUND (owner, 2026-09-19: picking a
+           different card moved the lit border, but "the old one that you used
+           to have, the background stays the one that's highlighted"). These
+           rows carry a backdrop blur, and on iOS the blurred layer does not
+           repaint its own background while a transition runs — the border and
+           the accent bar, painted outside it, switch at once, so two cards read
+           as chosen. The tint now lands in the same paint as everything else.
+           Any selectable frosted row here must do the same. */
+        transition: "border-color 0.15s",
       }}
     >
       <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, width: 28, textAlign: "center" }} aria-hidden>{emoji}</span>
@@ -3917,7 +3925,15 @@ export default function WayOfLoveRuleFlow({
         // with five different right edges. A row shouldn't care where it's put.
         width: "100%", boxSizing: "border-box",
         display: "flex", alignItems: "stretch", cursor: "pointer",
-        transition: "background 0.15s, border-color 0.15s",
+        /* BORDER ONLY, NEVER THE BACKGROUND (owner, 2026-09-19: picking a
+           different card moved the lit border, but "the old one that you used
+           to have, the background stays the one that's highlighted"). These
+           rows carry a backdrop blur, and on iOS the blurred layer does not
+           repaint its own background while a transition runs — the border and
+           the accent bar, painted outside it, switch at once, so two cards read
+           as chosen. The tint now lands in the same paint as everything else.
+           Any selectable frosted row here must do the same. */
+        transition: "border-color 0.15s",
       }}
     >
       <span style={{ width: 4, flexShrink: 0, background: on ? "#A8C5A0" : CARD_B }} aria-hidden />
@@ -4328,7 +4344,8 @@ export default function WayOfLoveRuleFlow({
                 ...FROST_BLUR,
                 background: CARD, border: `1px solid ${CARD_B}`, color: CREAM, borderRadius: 14,
                 padding: "14px 16px", textAlign: "left", cursor: "pointer", width: "100%",
-                transition: "background 0.15s, border-color 0.15s",
+                // Border only — see choiceRow's note.
+                transition: "border-color 0.15s",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -5166,7 +5183,7 @@ export default function WayOfLoveRuleFlow({
             background: on ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
             border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
             borderRadius: 16, padding: 16, display: "flex", alignItems: "center",
-            justifyContent: "space-between", gap: 12, transition: "background 0.2s, border-color 0.2s",
+            justifyContent: "space-between", gap: 12, transition: "border-color 0.2s", // border only — see choiceRow
           }}
         >
           <span style={{ minWidth: 0 }}>
@@ -6133,7 +6150,7 @@ export default function WayOfLoveRuleFlow({
               background: reminderIsOn(side) ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
               border: `1px solid ${reminderIsOn(side) ? CARD_B_ACTIVE : CARD_B}`,
               borderRadius: 16, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-              transition: "background 0.2s, border-color 0.2s",
+              transition: "border-color 0.2s", // border only — see choiceRow
             }}
           >
             <div style={{ minWidth: 0 }}>
@@ -7017,7 +7034,7 @@ export default function WayOfLoveRuleFlow({
                 background: on ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
                 border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
                 borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 14,
-                transition: "background 0.2s, border-color 0.2s",
+                transition: "border-color 0.2s", // border only — see choiceRow
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -7041,7 +7058,7 @@ export default function WayOfLoveRuleFlow({
                       display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", borderRadius: 12,
                       background: on ? "rgba(46,107,64,0.18)" : "rgba(255,255,255,0.03)",
                       border: `1px solid ${on ? "rgba(126,210,140,0.3)" : CARD_B}`,
-                      opacity: on ? 1 : 0.5, transition: "opacity 0.2s, background 0.2s",
+                      opacity: on ? 1 : 0.5, transition: "opacity 0.2s", // border/background instant — see choiceRow
                     }}
                   >
                     <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{p.emoji}</span>

@@ -647,7 +647,10 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
                   style={{
                     background: added ? "rgba(46,107,64,0.16)" : "rgba(46,107,64,0.07)",
                     border: `1px solid ${added ? "rgba(46,107,64,0.40)" : "rgba(46,107,64,0.18)"}`,
-                    transition: "background 0.2s, border-color 0.2s",
+                    // Border only: a blurred row's background does not
+                    // repaint mid-transition on iOS (see WayOfLoveRuleFlow's
+                    // choiceRow) and the old card stays looking chosen.
+                    transition: "border-color 0.2s",
                   }}
                 >
                   <span style={{ fontSize: 20 }}>{meta.emoji}</span>
