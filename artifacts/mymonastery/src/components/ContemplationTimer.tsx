@@ -21,6 +21,7 @@ import { WhatsNextCard } from "@/components/WhatsNextCard";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { CtaArrow } from "@/components/CtaArrow";
+import { SitMusicControls } from "@/components/SitMusicControls";
 
 // ALL CONTEMPLATION IS PRIVATE NOW (owner direction, 2026-07-02): a silent sit
 // neither broadcasts the sitter's live presence nor displays anyone else's —
@@ -148,6 +149,7 @@ export function ContemplationTimer({
   audioEndSec,
   whatsNext,
   musicLabel,
+  onMusicStop,
 }: {
   open: boolean;
   // `completed` is true when the user actually sat (reached the closing
@@ -160,6 +162,10 @@ export function ContemplationTimer({
    *  2026-09-18: "Display at the bottom what library they are listening
    *  to"). Only passed while that music is really set to play. */
   musicLabel?: string | null;
+  /** Stop from the sit's music controls (owner, 2026-09-19). With it, the
+   *  label becomes SitMusicControls: back · play-pause · next · shuffle ·
+   *  stop. */
+  onMusicStop?: () => void;
   audioUrl?: string | null;
   audioTitle?: string | null;
   eyebrowLabel?: string;
@@ -1751,7 +1757,10 @@ export function ContemplationTimer({
             >
               {t("contemplation_timer.discard_session")}
             </button>
-            {musicLabel && (
+            {musicLabel && onMusicStop && (
+              <SitMusicControls label={musicLabel} onStop={onMusicStop} />
+            )}
+            {musicLabel && !onMusicStop && (
               <p
                 aria-label={`Music: ${musicLabel}`}
                 style={{

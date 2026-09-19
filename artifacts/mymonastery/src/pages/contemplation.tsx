@@ -497,6 +497,9 @@ export default function ContemplationPage() {
    * under a line saying it was playing (audit, 2026-09-18).
    */
   const [musicPlaying, setMusicPlaying] = useState(false);
+  /** Stop from the running sit's controls: the music ends for this sit, and
+   *  the controls go with it. The effect's own cleanup stop is then a no-op. */
+  const stopSitMusic = () => { void stopAppleMusicNative(); setMusicPlaying(false); };
   useEffect(() => {
     if (!timerOpen || !playlist || !musicReady) { setMusicPlaying(false); return; }
     let alive = true;
@@ -1167,6 +1170,7 @@ export default function ContemplationPage() {
           open={timerOpen}
           startMinutes={startMinutes}
           musicLabel={musicPlaying && playlist ? playlist.label : null}
+          onMusicStop={stopSitMusic}
           onClose={(r) => { setTimerOpen(false); setStartMinutes(undefined); if (r?.completed) { attributeSit(); setLocation("/dashboard"); } }}
         />
       </>
@@ -1465,6 +1469,7 @@ export default function ContemplationPage() {
         open={timerOpen}
         startMinutes={startMinutes}
         musicLabel={musicPlaying && playlist ? playlist.label : null}
+        onMusicStop={stopSitMusic}
         onClose={(r) => { setTimerOpen(false); setStartMinutes(undefined); if (r?.completed) attributeSit(); }}
       />
     </Layout>
