@@ -11,7 +11,6 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 import { MenuHub, type MenuHubGroup } from "@/components/MenuHub";
 import { sundayLectionaryQuery } from "@/lib/sundayLectionary";
-import { isNativeShell } from "@/lib/isNativeShell";
 import { useTranslation } from "react-i18next";
 
 // ── /menu — the top-level navigation page (replaces the drawer) ─────────────
@@ -131,10 +130,11 @@ export default function MenuPage() {
   const thisSunday: MenuHubGroup = {
     items: [{ emoji: "🗓️", label: t("menu.this_sunday", { defaultValue: "This Sunday" }), sub: t("menu.this_sunday_sub", { defaultValue: "The readings, an image and a word for the coming Sunday" }), onClick: () => go("/this-sunday") }],
   };
-  if (!isNativeShell()) {
-    learn.items.push({ emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", onClick: () => go("/centering-prayer") });
-    learn.items.push({ emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") });
-  }
+  // Both video courses on every platform (owner, 2026-09-18: "Why am I still
+  // not seeing the centering prayer courses on mobile?") — they play in the app
+  // now (lib/videoEmbed), so the web-only gate that stood here is gone.
+  learn.items.push({ emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", onClick: () => go("/centering-prayer") });
+  learn.items.push({ emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") });
   learn.items.push({ emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") });
   groups.push(thisSunday);
   groups.push(learn);

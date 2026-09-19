@@ -1,18 +1,26 @@
 import { useLocation } from "wouter";
 import { useOnline } from "@/lib/offline";
 import { MenuHub } from "@/components/MenuHub";
-import { isNativeShell } from "@/lib/isNativeShell";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useMemo } from "react";
 import { useCacLibrary } from "@/hooks/useCacLibrary";
 import { useCacCourses } from "@/lib/cacCourses";
 
-// Learn — the guided courses, as their own menu category (the drawer's Learn
-// row and /menu's Learn group both land here). Centering Prayer and the deeper
-// Spiritual Journey are YouTube video courses → WEB ONLY; The Way of Love
-// (Bishop Budde) rides the podcast library, so it's the one course that also
-// works on iOS. Open to everyone, guests included — courses are part of the
-// light experience.
+// Courses — the guided courses, as their own menu category (the drawer's
+// Courses row and /menu's Courses group both land here). Open to everyone,
+// guests included — courses are part of the light experience.
+//
+// TWO SECTIONS, LISTEN AND WATCH (owner, 2026-09-18: "on courses make two
+// sections, one's audio one's video"). Listen leads, because The Way of Love
+// leads (owner, 2026-09-05).
+//
+// EVERY COURSE ON EVERY PLATFORM (owner, 2026-09-18: "Why am I still not
+// seeing the centering prayer courses on mobile?"). Centering Prayer and The
+// Spiritual Journey are YouTube courses, and this page used to hide them in
+// the app because YouTube wouldn't embed there. It does now — inline on
+// Android, through the in-app reader on iOS (lib/videoEmbed, ad450600) — but
+// only /learn and the home were changed then, and this page, the one the
+// menu actually opens, kept its web-only gate.
 export default function MenuLearnPage() {
   const [, setLocation] = useLocation();
   const go = (p: string) => setLocation(p);
@@ -27,9 +35,8 @@ export default function MenuLearnPage() {
    * a row shown less widely hides a feature from someone who can use it. If
    * that guard is ever widened, widen it here in the same change.
    *
-   * It rides CAC's podcast feeds, so — like The Way of Love, and unlike the two
-   * YouTube courses above — it works on iOS as well as web, and needs no
-   * isNativeShell() branch.
+   * It rides CAC's podcast feeds, so — like The Way of Love — it works on iOS
+   * as well as web.
    */
   const { isAdmin } = useBetaStatus();
   // Pilot groups too — the SAME test the three CAC pages use to admit a
@@ -54,34 +61,38 @@ export default function MenuLearnPage() {
       subtitle="Guided courses in the life of prayer."
       backLabel="Menu"
       backHref="/menu"
-      groups={[{
-        /**
-         * OFFLINE THE WHOLE PAGE IS OUT OF REACH (owner, 2026-09-06: "same
-         * thing with courses"). Every course is streamed audio or video and
-         * none of it is saved to the phone, so with no connection the section
-         * says so once at the top rather than letting someone tap into a dead
-         * player.
-         */
-        ...(online ? {} : { header: "Not available offline" }),
-        items: [
-          // Way of Love first (owner, 2026-09-05), then every CAC show as its
-          // own row — "bring them out of the folder of just CAC Courses" —
-          // then the web-only Keating courses.
-          { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", muted: !online, onClick: () => go("/way-of-love-course") },
-          ...(isAdmin || cacLibraryGranted
-            ? shows.map((show) => ({
-                emoji: "🌵",
-                label: show.showTitle,
-                sub: [show.author, show.seasonCount > 1 ? `${show.seasonCount} seasons` : "1 season"].filter(Boolean).join(" · "),
-                muted: !online, onClick: () => go(`/cac-show/${show.showSlug}`),
-              }))
-            : []),
-          ...(!isNativeShell() ? [
+      groups={[
+        {
+          /**
+           * OFFLINE NOTHING HERE PLAYS (owner, 2026-09-06: "same thing with
+           * courses"). Every course is streamed audio or video and none is
+           * saved to the phone, so with no connection the rows are muted and
+           * each section says so rather than letting someone tap into a dead
+           * player.
+           */
+          header: online ? "Listen" : "Listen · not available offline",
+          items: [
+            // Way of Love first (owner, 2026-09-05), then every CAC show as
+            // its own row — "bring them out of the folder of just CAC Courses".
+            { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", muted: !online, onClick: () => go("/way-of-love-course") },
+            ...(isAdmin || cacLibraryGranted
+              ? shows.map((show) => ({
+                  emoji: "🌵",
+                  label: show.showTitle,
+                  sub: [show.author, show.seasonCount > 1 ? `${show.seasonCount} seasons` : "1 season"].filter(Boolean).join(" · "),
+                  muted: !online, onClick: () => go(`/cac-show/${show.showSlug}`),
+                }))
+              : []),
+          ],
+        },
+        {
+          header: online ? "Watch" : "Watch · not available offline",
+          items: [
             { emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", muted: !online, onClick: () => go("/centering-prayer") },
             { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", muted: !online, onClick: () => go("/journey") },
-          ] : []),
-        ],
-      }]}
+          ],
+        },
+      ]}
     />
   );
 }

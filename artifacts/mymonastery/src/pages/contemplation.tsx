@@ -6,7 +6,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
-import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
@@ -1412,9 +1411,10 @@ export default function ContemplationPage() {
         </div>
         )}
 
-        {/* ── Learn the practice — Fr. Keating's two courses (web only; both
-            are YouTube video courses, so the iOS shell doesn't list them). */}
-        {!isNativeShell() && (
+        {/* ── Learn the practice — Fr. Keating's two courses, on every
+            platform. They were web-only because YouTube wouldn't embed in the
+            app; it does now (lib/videoEmbed), and the owner asked why they
+            weren't on the phone (2026-09-18). */}
           <div className="mt-10">
             <div className="flex items-center gap-3 mb-2">
               <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
@@ -1441,7 +1441,6 @@ export default function ContemplationPage() {
               </Link>
             </div>
           </div>
-        )}
         </>)}
       </motion.div>
 
