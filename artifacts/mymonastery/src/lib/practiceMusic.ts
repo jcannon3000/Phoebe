@@ -79,13 +79,6 @@ export const MUSIC_PLAYLISTS: readonly MusicPlaylist[] = [
     url: "https://music.apple.com/us/album/classic-african-american-gospel-from-smithsonian-folkways/272149140",
   },
   {
-    id: "pl.c3153f44394b41b09d8cc23d929d1058",
-    kind: "playlist",
-    label: "John Coltrane",
-    sub: "26 songs \u00b7 3 hr 26 min \u00b7 Apple Music Jazz",
-    url: "https://music.apple.com/us/playlist/john-coltrane-essentials/pl.c3153f44394b41b09d8cc23d929d1058",
-  },
-  {
     // Owner asked for "the whole library", so this is the ARTIST, not one
     // album — the plugin walks their albums.
     id: "535498745",

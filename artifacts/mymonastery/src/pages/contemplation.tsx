@@ -1150,6 +1150,7 @@ export default function ContemplationPage() {
         <ContemplationTimer
           open={timerOpen}
           startMinutes={startMinutes}
+          musicLabel={musicReady && playlist ? playlist.label : null}
           onClose={(r) => { setTimerOpen(false); setStartMinutes(undefined); if (r?.completed) { attributeSit(); setLocation("/dashboard"); } }}
         />
       </>
@@ -1447,6 +1448,7 @@ export default function ContemplationPage() {
       <ContemplationTimer
         open={timerOpen}
         startMinutes={startMinutes}
+        musicLabel={musicReady && playlist ? playlist.label : null}
         onClose={(r) => { setTimerOpen(false); setStartMinutes(undefined); if (r?.completed) attributeSit(); }}
       />
     </Layout>

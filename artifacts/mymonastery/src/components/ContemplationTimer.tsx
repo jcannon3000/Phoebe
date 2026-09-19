@@ -147,6 +147,7 @@ export function ContemplationTimer({
   audioStartSec,
   audioEndSec,
   whatsNext,
+  musicLabel,
 }: {
   open: boolean;
   // `completed` is true when the user actually sat (reached the closing
@@ -155,6 +156,10 @@ export function ContemplationTimer({
   // slideshow to the next slide.
   onClose: (result?: { completed: boolean }) => void;
   startMinutes?: number;
+  /** The library playing behind the sit, named at the bottom (owner,
+   *  2026-09-18: "Display at the bottom what library they are listening
+   *  to"). Only passed while that music is really set to play. */
+  musicLabel?: string | null;
   audioUrl?: string | null;
   audioTitle?: string | null;
   eyebrowLabel?: string;
@@ -1711,6 +1716,19 @@ export function ContemplationTimer({
             >
               {t("contemplation_timer.discard_session")}
             </button>
+            {musicLabel && (
+              <p
+                aria-label={`Music: ${musicLabel}`}
+                style={{
+                  margin: "6px 0 0", maxWidth: "80vw", textAlign: "center",
+                  color: "rgba(255,255,255,0.7)", fontFamily: SPACE_GROTESK, fontSize: 12.5,
+                  letterSpacing: "0.02em", textShadow: "0 2px 14px rgba(0,0,0,0.7)",
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}
+              >
+                <span aria-hidden style={{ marginRight: 6 }}>♪</span>{musicLabel}
+              </p>
+            )}
           </div>
         )}
       </motion.div>
