@@ -9,7 +9,6 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
-import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { apiRequest } from "@/lib/queryClient";
 import { enqueueWrite } from "@/lib/writeOutbox";
 import { isOnline } from "@/lib/offline";
@@ -971,8 +970,8 @@ export default function ContemplationPage() {
           opens the full page on the Stats tab. Owner, 2026-09-18, having asked
           for the half-width pair the day before: "i want the view stats and log
           prayer time to be reverted to how they were" — so this is c73292a2
-          undone, a link and a pill on separate rows, with the emojis they asked
-          for added. Only in the immersive begin mode; the full page already
+          undone, a link and a pill on separate rows, the emojis later
+          taken back out (owner, 2026-09-18). Only in the immersive begin mode; the full page already
           carries the History/Stats/Learn tabs. */}
       {beginMode && (
         <div className="flex items-center justify-center gap-3 mt-3.5">
@@ -982,7 +981,6 @@ export default function ContemplationPage() {
             className="text-center transition-opacity active:opacity-70"
             style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
           >
-            <span aria-hidden style={{ marginRight: 6 }}>📊</span>
             {t("contemplation.view_stats", { defaultValue: "View stats" })}<CtaArrow />
           </button>
         </div>
@@ -1004,7 +1002,6 @@ export default function ContemplationPage() {
             className="rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
             style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "10px 20px" }}
           >
-            <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>✍🏽</span>
             <span>{t("contemplation.log_prayer_time", { defaultValue: "Log Prayer Time" })}</span>
           </button>
         </div>
@@ -1015,8 +1012,13 @@ export default function ContemplationPage() {
           today picks one of these instead. The eyebrow is the owner's (2026-09-18:
           "above the last three pill there should be an eybrow that says more
           contemplative practices"), and it is what tells you the group below is
-          a different kind of thing from the sit above it. */}
-      <div className="mt-6">
+          a different kind of thing from the sit above it.
+          NO EMOJIS on this slide, and the sections stand apart (owner,
+          2026-09-18: "take out the emojis from each one, also have some space
+          between the sections"): Start, then stats + log, then the other
+          practices set well apart. View stats + the log pill keep their
+          original spacing under Start (owner's "before" screenshot). */}
+      <div className="mt-12">
         <p
           style={{
             color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK, fontSize: 10.5,
@@ -1043,7 +1045,6 @@ export default function ContemplationPage() {
               padding: "15px", cursor: "pointer",
             }}
           >
-            <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>🙇🏽</span>
             <span>{t("contemplation.guided_scripture", { defaultValue: "Guided Scripture Meditation" })}</span>
           </div>
         </Link>
@@ -1062,7 +1063,6 @@ export default function ContemplationPage() {
               padding: "15px", cursor: "pointer",
             }}
           >
-            <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>🎧</span>
             <span>{t("contemplation.guided_lectio", { defaultValue: "Guided Lectio Divina" })}</span>
           </div>
         </Link>
@@ -1079,7 +1079,6 @@ export default function ContemplationPage() {
               padding: "15px", cursor: "pointer",
             }}
           >
-            <CobreatheGlobe size={18} />
             <span>{t("cobreathe.title", { defaultValue: "Breathing Together" })}</span>
           </div>
         </Link>
