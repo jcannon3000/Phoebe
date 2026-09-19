@@ -6746,6 +6746,39 @@ export default function BcpDailyOfficePage() {
     () => practiceForLevel(getSideLevel(__h >= 14 ? "evening" : "morning")),
   );
   const [methodPick, setMethodPick] = useState<DefaultOfficeEntry>("read");
+  /**
+   * MUSIC, ON THE PICKER TOO (owner, 2026-09-18: "Add a drop down in that page
+   * too if they have apple music"). Begin from here skips the office's welcome
+   * slide, which is where the deck's own Music row lives, so without this the
+   * main way into an office offered no music choice at all.
+   *
+   * The row SHOWS getOfficeMusic() — the most recent playlist, as the owner
+   * asked the office to default to — and Begin COMMITS what it shows, because
+   * the deck only ever plays an explicit office choice (officeMusicToPlay,
+   * cd112055). Shown and played are then the same thing: a playlist someone
+   * saw on this screen plays; one they never saw doesn't. Gated on
+   * appleMusicPlaylistsReady — the Settings switch, iOS still agreeing, AND a
+   * build whose plugin can play a whole playlist.
+   */
+  const [landingMusicReady, setLandingMusicReady] = useState(false);
+  const [landingMusic, setLandingMusic] = useState<MusicPlaylist | null>(() => getOfficeMusic());
+  useEffect(() => {
+    let alive = true;
+    const ask = () => { void appleMusicPlaylistsReady().then((ok) => { if (alive) setLandingMusicReady(ok); }); };
+    ask();
+    // Once more after first paint: the native shell registers its plugins
+    // after the web view starts (the same retry office-settings makes).
+    const retry = window.setTimeout(ask, 600);
+    const sync = () => { setLandingMusic(getOfficeMusic()); ask(); };
+    window.addEventListener(PRACTICE_MUSIC_EVENT, sync);
+    window.addEventListener(APPLE_MUSIC_EVENT, sync);
+    return () => {
+      alive = false;
+      window.clearTimeout(retry);
+      window.removeEventListener(PRACTICE_MUSIC_EVENT, sync);
+      window.removeEventListener(APPLE_MUSIC_EVENT, sync);
+    };
+  }, []);
   // A leaf behind the landing, matching the office slideshow's leaf field.
   const landingLeaf = useMemo(
     () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
@@ -7132,6 +7165,33 @@ export default function BcpDailyOfficePage() {
                 ))}
               </select>
             </div>
+            {/* Music — only where it can play, and only when this Begin opens
+                the office on screen: Listen and Watch are sound of their own,
+                a Physical BCP guide is read in silence from the book, and the
+                Psalms slideshow is a different page with no music under it.
+                Sits under How and above Begin so it is in view when Begin is
+                pressed (see landingMusic). */}
+            {landingMusicReady && effMethod === "read" && !(todSide && practicePick === "psalms") && (
+              <div style={officeRow}>
+                <span style={officeRowLabel}>Music</span>
+                <span style={officeRowValue}>{landingMusic?.label ?? "None"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
+                <select
+                  value={landingMusic?.id ?? "none"}
+                  onChange={(e) => {
+                    const next = e.target.value === "none" ? null : e.target.value;
+                    setOfficeMusic(next);
+                    setLandingMusic(playlistById(next));
+                  }}
+                  style={officeRowSelect}
+                  aria-label="Music"
+                >
+                  <option value="none">None</option>
+                  {MUSIC_PLAYLISTS.map((pl) => (
+                    <option key={pl.id} value={pl.id}>{pl.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div style={{ height: 1, background: "rgba(var(--ot-mist, 200,212,192),0.14)", marginTop: 14, marginBottom: 20 }} />
 
             {/* Owner: "have their manual log pill button under the different
@@ -7156,7 +7216,16 @@ export default function BcpDailyOfficePage() {
             </button>
 
             <button
-              onClick={beginOffice}
+              onClick={() => {
+                // What the Music row showed is what plays — commit it, so the
+                // recent-playlist default becomes this office's own choice.
+                // Only when the row was actually on screen; otherwise leave the
+                // office's music exactly as it was.
+                if (landingMusicReady && effMethod === "read" && !(todSide && practicePick === "psalms")) {
+                  setOfficeMusic(landingMusic?.id ?? null);
+                }
+                beginOffice();
+              }}
               className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
               style={{ background: "rgba(var(--ot-green, 46,107,64),0.55)", ...FROST_BLUR, color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 17, fontWeight: 700, border: "1px solid rgba(var(--ot-fern, 168,197,160),0.5)", cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}
             >
