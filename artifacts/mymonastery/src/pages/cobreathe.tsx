@@ -4,12 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Layout } from "@/components/layout";
-import {
-  MUSIC_PLAYLISTS, getCobreatheMusic, setCobreatheMusic, playlistById, cobreatheMusicToPlay,
-  PRACTICE_MUSIC_EVENT, type MusicPlaylist,
-} from "@/lib/practiceMusic";
-import { appleMusicPlaylistsReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
-import { playAppleMusicCollectionNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { enqueueSession } from "@/lib/sessionOutbox";
@@ -552,48 +546,6 @@ export default function CobreathePage() {
    * and dropped whenever it wasn't longer, or folded into the first row when
    * it was. A new set starts with nothing logged.
    */
-  /**
-   * MUSIC UNDER THE BREATH (owner, 2026-09-18: "a music dropdown when Apple
-   * Music is on, defaulting to the last chosen or None").
-   *
-   * NO DROPDOWN AT ALL when Apple Music is off — not a dropdown whose only
-   * option is None. A control that offers music and cannot play it is worse
-   * than no control, and on this screen it would sit next to Begin promising
-   * something silence would then break.
-   */
-  const [musicReady, setMusicReady] = useState(false);
-  const [breathMusic, setBreathMusic] = useState<MusicPlaylist | null>(() => getCobreatheMusic());
-  useEffect(() => {
-    let alive = true;
-    const ask = () => { void appleMusicPlaylistsReady().then((ok) => { if (alive) setMusicReady(ok); }); };
-    ask();
-    const sync = () => { setBreathMusic(getCobreatheMusic()); ask(); };
-    window.addEventListener(PRACTICE_MUSIC_EVENT, sync);
-    window.addEventListener(APPLE_MUSIC_EVENT, sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      alive = false;
-      window.removeEventListener(PRACTICE_MUSIC_EVENT, sync);
-      window.removeEventListener(APPLE_MUSIC_EVENT, sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-
-  /**
-   * Starts with the breath and stops when it ends — including by leaving the
-   * page, which is what the cleanup is for. Shuffled and repeating so a long
-   * sit never falls silent; the breath's own swells sound over it, because
-   * mixWithOthers governs other apps rather than Phoebe's own players.
-   */
-  useEffect(() => {
-    // The DROPDOWN shows breathMusic (the recent as its default); what PLAYS is
-    // only ever an explicit choice made for the breath — see cobreatheMusicToPlay.
-    const toPlay = cobreatheMusicToPlay();
-    if (mode !== "breathing" || !toPlay || !musicReady) return;
-    void playAppleMusicCollectionNative(toPlay.kind, toPlay.id, { shuffle: true, repeatAll: true });
-    return () => { void stopAppleMusicNative(); };
-  }, [mode, breathMusic, musicReady]);
-
   const breathingNow = mode === "breathing";
   useEffect(() => {
     if (breathingNow) { loggedRef.current = null; pendingLogRef.current = null; }
@@ -1272,48 +1224,6 @@ export default function CobreathePage() {
                 12px — which is why it read as narrower and sat flush
                 against Start Breathing). Rows here space themselves with
                 their own mb-3; there is no container gap to inherit. */}
-            {musicReady && (
-              <div style={{ position: "relative", width: "100%", marginBottom: 12 }}>
-                <div
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                    gap: 12, borderRadius: 16, padding: "14px 16px", pointerEvents: "none",
-                    background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-                    border: "1px solid rgba(168,197,160,0.3)",
-                  }}
-                >
-                  <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 14.5, fontWeight: 600, flexShrink: 0 }}>
-                    {t("cobreathe.music", { defaultValue: "Music" })}
-                  </span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                    <span style={{ color: "rgba(200,212,192,0.72)", fontFamily: SPACE_GROTESK, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {breathMusic?.label ?? t("common.none", { defaultValue: "None" })}
-                    </span>
-                    <span aria-hidden style={{ color: "rgba(200,212,192,0.6)", fontSize: 16, lineHeight: 1, flexShrink: 0 }}>›</span>
-                  </span>
-                </div>
-                <select
-                  value={breathMusic?.id ?? "none"}
-                  aria-label={t("cobreathe.music", { defaultValue: "Music" })}
-                  onChange={(e) => {
-                    const v = e.target.value === "none" ? null : e.target.value;
-                    setCobreatheMusic(v);
-                    setBreathMusic(playlistById(v));
-                  }}
-                  style={{
-                    position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0,
-                    appearance: "none", WebkitAppearance: "none", border: "none",
-                    background: "transparent", color: "transparent", cursor: "pointer",
-                  }}
-                >
-                  <option value="none">{t("common.none", { defaultValue: "None" })}</option>
-                  {MUSIC_PLAYLISTS.map((pl) => (
-                    <option key={pl.id} value={pl.id}>{pl.label}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
             {/* Begin — into the synced breath (a first-timer sees the one-time
                 "how it works" intro first). */}
             <button

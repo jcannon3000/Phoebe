@@ -40,12 +40,6 @@ import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, getSideDaySwap, setSideDaySwap, clearSideDaySwap, getSideExtra, extraOfficeMode, getScriptureParts, type OfficeSide, type OfficeLevel, type DefaultOfficeEntry } from "@/lib/officePrefs";
-import {
-  MUSIC_PLAYLISTS, getOfficeMusic, setOfficeMusic, playlistById, officeMusicToPlay,
-  PRACTICE_MUSIC_EVENT, type MusicPlaylist,
-} from "@/lib/practiceMusic";
-import { appleMusicPlaylistsReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
-import { playAppleMusicCollectionNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
 
 /**
  * CHOOSING HOW TO PRAY TODAY IS NOT EDITING YOUR RULE.
@@ -897,67 +891,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const [listenPending, setListenPending] = useState(false);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
-  /**
-   * MUSIC UNDER THE OFFICE (owner, 2026-09-18: "at the beggining of the
-   * offices have an extra drop down button that says music, defualt is none,
-   * but then they could select one of these playlists" · "and defaults the
-   * most recent" · "but again this is only if a user has apple music turned
-   * on").
-   *
-   * The dropdown is on the welcome slide; the music starts when the reader
-   * leaves it, so nothing plays while they are still choosing. It stops
-   * whenever this deck goes away — finished, backed out of, or navigated past
-   * — which is what the cleanup is for.
-   */
-  const [musicReady, setMusicReady] = useState(false);
-  const [officeMusic, setOfficeMusicState] = useState<MusicPlaylist | null>(() => getOfficeMusic());
-  useEffect(() => {
-    let alive = true;
-    const ask = () => { void appleMusicPlaylistsReady().then((ok) => { if (alive) setMusicReady(ok); }); };
-    ask();
-    const sync = () => { setOfficeMusicState(getOfficeMusic()); ask(); };
-    window.addEventListener(PRACTICE_MUSIC_EVENT, sync);
-    window.addEventListener(APPLE_MUSIC_EVENT, sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      alive = false;
-      window.removeEventListener(PRACTICE_MUSIC_EVENT, sync);
-      window.removeEventListener(APPLE_MUSIC_EVENT, sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-  const officeBegun = slideIdx > 0;
-  /**
-   * WAS THE MUSIC ROW ACTUALLY ON SCREEN? Only the welcome slide carries it,
-   * and plenty of paths into a deck skip that slide entirely.
-   */
-  const musicRowSeenRef = useRef(false);
-  useEffect(() => {
-    if (slideIdx === 0 && musicReady) musicRowSeenRef.current = true;
-  }, [slideIdx, musicReady]);
-  useEffect(() => {
-    /**
-     * WHAT WAS SHOWN IS WHAT PLAYS. The row opens on the most recent playlist,
-     * but only an explicit choice ever played — so someone who saw "Hildegard"
-     * on the welcome slide and simply tapped Next got silence (audit,
-     * 2026-09-18). The outer picker already fixed this by committing on Begin;
-     * the deck's own row did not.
-     *
-     * Committed only when the row was really on screen: a deck entered past the
-     * welcome slide showed no control, and nothing should play that nobody
-     * picked.
-     */
-    if (officeBegun && musicReady && musicRowSeenRef.current && officeMusic && !officeMusicToPlay()) {
-      setOfficeMusic(officeMusic.id);
-    }
-    const toPlay = officeMusicToPlay();
-    if (!officeBegun || !toPlay || !musicReady) return;
-    // Shuffled and repeating: an office is twenty minutes and a playlist must
-    // not run out under it. Failure is silence — if MusicKit refuses, the
-    // office reads exactly as it always has.
-    void playAppleMusicCollectionNative(toPlay.kind, toPlay.id, { shuffle: true, repeatAll: true });
-    return () => { void stopAppleMusicNative(); };
-  }, [officeBegun, officeMusic, musicReady]);
   /**
    * Has the FINAL lesson's passage already been opened?
    *
@@ -3281,32 +3214,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               )
             ))}
           </>
-        )}
-        {/* Row 3 — MUSIC. Not part of "how to pray it", so it sits outside the
-            canChoose pair: an office someone arrived at with the way already
-            settled can still have music put under it. Only when Apple Music is
-            really on (the Settings switch AND iOS still agreeing), because
-            offering music we cannot play is worse than offering none. Defaults
-            to the most recently chosen playlist, and "None" is a real choice
-            that sticks — see lib/practiceMusic. */}
-        {musicReady && dropdown(
-          "office-music",
-          officeMusic?.id ?? "none",
-          officeMusic?.label ?? "None",
-          "Music",
-          (v) => {
-            const next = v === "none" ? null : v;
-            setOfficeMusic(next);
-            setOfficeMusicState(playlistById(next));
-          },
-          (
-            <>
-              <option value="none">None</option>
-              {MUSIC_PLAYLISTS.map((pl) => (
-                <option key={pl.id} value={pl.id}>{pl.label}</option>
-              ))}
-            </>
-          ),
         )}
         {/* Owner: "a pill under these to press if you prayed with the
             physical BCP" — same one-tap "already prayed it" as the outer
@@ -6742,39 +6649,6 @@ export default function BcpDailyOfficePage() {
     () => practiceForLevel(getSideLevel(__h >= 14 ? "evening" : "morning")),
   );
   const [methodPick, setMethodPick] = useState<DefaultOfficeEntry>("read");
-  /**
-   * MUSIC, ON THE PICKER TOO (owner, 2026-09-18: "Add a drop down in that page
-   * too if they have apple music"). Begin from here skips the office's welcome
-   * slide, which is where the deck's own Music row lives, so without this the
-   * main way into an office offered no music choice at all.
-   *
-   * The row SHOWS getOfficeMusic() — the most recent playlist, as the owner
-   * asked the office to default to — and Begin COMMITS what it shows, because
-   * the deck only ever plays an explicit office choice (officeMusicToPlay,
-   * cd112055). Shown and played are then the same thing: a playlist someone
-   * saw on this screen plays; one they never saw doesn't. Gated on
-   * appleMusicPlaylistsReady — the Settings switch, iOS still agreeing, AND a
-   * build whose plugin can play a whole playlist.
-   */
-  const [landingMusicReady, setLandingMusicReady] = useState(false);
-  const [landingMusic, setLandingMusic] = useState<MusicPlaylist | null>(() => getOfficeMusic());
-  useEffect(() => {
-    let alive = true;
-    const ask = () => { void appleMusicPlaylistsReady().then((ok) => { if (alive) setLandingMusicReady(ok); }); };
-    ask();
-    // Once more after first paint: the native shell registers its plugins
-    // after the web view starts (the same retry office-settings makes).
-    const retry = window.setTimeout(ask, 600);
-    const sync = () => { setLandingMusic(getOfficeMusic()); ask(); };
-    window.addEventListener(PRACTICE_MUSIC_EVENT, sync);
-    window.addEventListener(APPLE_MUSIC_EVENT, sync);
-    return () => {
-      alive = false;
-      window.clearTimeout(retry);
-      window.removeEventListener(PRACTICE_MUSIC_EVENT, sync);
-      window.removeEventListener(APPLE_MUSIC_EVENT, sync);
-    };
-  }, []);
   // A leaf behind the landing, matching the office slideshow's leaf field.
   const landingLeaf = useMemo(
     () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
@@ -7161,40 +7035,6 @@ export default function BcpDailyOfficePage() {
                 ))}
               </select>
             </div>
-            {/* Music — only where it can play, and only when this Begin opens
-                the office on screen: Listen and Watch are sound of their own,
-                a Physical BCP guide is read in silence from the book, and the
-                Psalms slideshow is a different page with no music under it.
-                Sits under How and above Begin so it is in view when Begin is
-                pressed (see landingMusic). */}
-            {landingMusicReady && effMethod === "read" && !(todSide && practicePick === "psalms") && (
-              <div style={officeRow}>
-                <span style={officeRowLabel}>Music</span>
-                <span style={officeRowValue}>{landingMusic?.label ?? "None"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
-                <select
-                  value={landingMusic?.id ?? "none"}
-                  onChange={(e) => {
-                    const next = e.target.value === "none" ? null : e.target.value;
-                    setOfficeMusic(next);
-                    setLandingMusic(playlistById(next));
-                  }}
-                  style={officeRowSelect}
-                  aria-label="Music"
-                >
-                  <option value="none">None</option>
-                  {MUSIC_PLAYLISTS.map((pl) => (
-                    <option key={pl.id} value={pl.id}>{pl.label}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div style={{ height: 1, background: "rgba(var(--ot-mist, 200,212,192),0.14)", marginTop: 14, marginBottom: 20 }} />
-
-            {/* Owner: "have their manual log pill button under the different
-                dropdowns" — a one-tap "I already prayed it" for whoever's
-                praying straight from their own book, without walking through
-                the in-app deck or guide at all. Mirrors markOfficeBookComplete's
-                existing use (BookOfficeLogSheet), just surfaced directly here. */}
             <button
               onClick={() => {
                 // Each time of day logs its own office: Midday Prayer its own
@@ -7213,13 +7053,6 @@ export default function BcpDailyOfficePage() {
 
             <button
               onClick={() => {
-                // What the Music row showed is what plays — commit it, so the
-                // recent-playlist default becomes this office's own choice.
-                // Only when the row was actually on screen; otherwise leave the
-                // office's music exactly as it was.
-                if (landingMusicReady && effMethod === "read" && !(todSide && practicePick === "psalms")) {
-                  setOfficeMusic(landingMusic?.id ?? null);
-                }
                 beginOffice();
               }}
               className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
