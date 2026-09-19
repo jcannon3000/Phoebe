@@ -78,15 +78,6 @@ export function usePracticeDirectory(): PracticeEntry[] {
      * everyone, as the route itself is — their feed is public.
      */
     { emoji: "🙇🏽", label: "Pray As You Go Daily", sub: "A guided audio meditation on scripture", href: "/reflect/payg" },
-    /**
-     * Meditating on the lives of the saints (owner, 2026-09-18). A prompt, the
-     * life read on Forward Movement's own page in the in-app reader, a moment
-     * to pray with what it stirred, and the company you've been keeping.
-     */
-    // Named Hagiographies (owner, 2026-09-18: "Call the life of a saint practice
-    // Haegriphoies") — spelled as the word, and as the home section heading
-    // above the saints row already is.
-    { emoji: "🕯️", label: "Hagiographies", sub: "Read a life slowly, and let it ask something of yours", href: "/saints" },
     // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no
     // ?side=), so it logs as a standalone practice rather than closing
     // out a morning/evening anchor.
@@ -158,5 +149,15 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // spirituals from the practices ... both on the main practice page
     // and in the customizer"). The practice itself and /spirituals still
     // exist — see lib/spiritualsFlag.ts — but nothing links to it here.
+    /**
+     * Meditating on the lives of the saints (owner, 2026-09-18). A prompt, the
+     * life read on Forward Movement's own page in the in-app reader, a moment
+     * to pray with what it stirred, and the company you've been keeping.
+     */
+    // Named Hagiographies (owner, 2026-09-18: "Call the life of a saint practice
+    // Haegriphoies") — spelled as the word, and as the home section heading
+    // above the saints row already is.
+    // AT THE BOTTOM (owner, 2026-09-18: "Move hagiographies to the bottom").
+    { emoji: "🕯️", label: "Hagiographies", sub: "Read a life slowly, and let it ask something of yours", href: "/saints" },
   ];
 }
