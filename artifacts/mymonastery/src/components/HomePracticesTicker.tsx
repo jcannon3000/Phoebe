@@ -89,7 +89,9 @@ function disperse(others: Pill[], offices: Pill[]): Pill[] {
   return out;
 }
 
-export function HomePracticesTicker() {
+/** `bare`: the row alone, no heading — HomeExploreSection supplies one
+ *  heading for both rows (owner, 2026-09-19). */
+export function HomePracticesTicker({ bare = false }: { bare?: boolean } = {}) {
   const [, setLocation] = useLocation();
   const practices = usePracticeDirectory();
   const online = useOnline();
@@ -125,12 +127,14 @@ export function HomePracticesTicker() {
   });
 
   return (
-    <div className="mt-6" ref={rootRef}>
+    <div className={bare ? "" : "mt-6"} ref={rootRef}>
       {/* HomeLearnSection's header recipe, word for word. */}
-      <motion.div {...enter(0)} className="flex items-center gap-3 mb-2">
-        <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>Practices</h3>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-      </motion.div>
+      {!bare && (
+        <motion.div {...enter(0)} className="flex items-center gap-3 mb-2">
+          <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>Practices</h3>
+          <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+        </motion.div>
+      )}
       <motion.div {...enter(1)}>
         <PillTicker
           label="Practices"

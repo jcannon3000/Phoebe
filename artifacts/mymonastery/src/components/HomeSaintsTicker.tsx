@@ -41,7 +41,9 @@ function shortName(name: string): string {
   return cut.length > 2 ? cut : name;
 }
 
-export function HomeSaintsTicker() {
+/** `bare`: the row alone, no heading — HomeExploreSection supplies one
+ *  heading for both rows (owner, 2026-09-19). */
+export function HomeSaintsTicker({ bare = false }: { bare?: boolean } = {}) {
   const [, setLocation] = useLocation();
 
   const pills = useMemo(() => {
@@ -94,11 +96,13 @@ export function HomeSaintsTicker() {
     transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: i * 0.1 },
   });
   return (
-    <div className="mt-6" ref={rootRef}>
-      <motion.div {...enter(0)} className="flex items-center gap-3 mb-2">
-        <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>Hagiographies</h3>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-      </motion.div>
+    <div className={bare ? "" : "mt-6"} ref={rootRef}>
+      {!bare && (
+        <motion.div {...enter(0)} className="flex items-center gap-3 mb-2">
+          <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>Hagiographies</h3>
+          <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+        </motion.div>
+      )}
       <motion.div {...enter(1)}>
         {/* `label` stays: it is the row's aria-label, not a visible heading. */}
         <PillTicker label="Hagiographies" pills={pills} />

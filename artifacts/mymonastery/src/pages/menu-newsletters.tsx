@@ -30,6 +30,7 @@ import {
   markNouwenRead, markSojoRead, markGristRead, markPaygRead,
 } from "@/lib/cacReadState";
 import type { TrackedReflection } from "@/lib/cacReadState";
+import { DAILY_REFLECTIONS, MARK_REFLECTION_READ, openDailyReflection } from "@/lib/dailyReflections";
 
 /**
  * /menu/newsletters — the newsletters: Daily or Weekly first, then, inside
@@ -89,23 +90,10 @@ type Entry = {
  * and a rename can't leave the two disagreeing. Only the publisher line —
  * decoration this page adds under the name — lives here.
  */
-const PUBLISHER: Record<DailySource, string> = {
-  cac: "Center for Action & Contemplation",
-  sojo: "Sojourners",
-  fdd: "Forward Movement",
-  ssje: "Society of St. John the Evangelist",
-  nouwen: "Henri Nouwen Society",
-  grist: "The day's climate reporting",
-  vts: "Virginia Theological Seminary · weekdays",
-  payg: "The Jesuits in Britain · listen",
-};
-const DAILY = TRACKED_REFLECTION_SOURCES.filter((s) => !UNOFFERED_REFLECTION_SOURCES.has(s)).map((source) => ({
-  source, emoji: REFLECTION_EMOJI[source], title: PUBLICATION_NAME[source], publisher: PUBLISHER[source],
-}));
-const MARK_READ: Record<DailySource, (dwellMs?: number) => void> = {
-  cac: markCacRead, fdd: markFddRead, ssje: markSsjeRead, vts: markVtsRead,
-  nouwen: markNouwenRead, sojo: markSojoRead, grist: markGristRead, payg: markPaygRead,
-};
+// The list, the publisher lines and the open-and-mark path now live in
+// lib/dailyReflections, shared with the home's Explore row.
+const DAILY = DAILY_REFLECTIONS;
+const MARK_READ = MARK_REFLECTION_READ;
 
 export default function MenuNewslettersPage() {
   const { t } = useTranslation();
@@ -216,16 +204,7 @@ export default function MenuNewslettersPage() {
         followed: on(d.source), done: !!r?.done,
         // Read-gated like the home card (owner, 2026-09-04: a long piece counts
         // only once scrolled through) — it used to mark read BEFORE opening.
-        open: () => {
-          // In-app sources open their own screen and mark themselves there:
-          // the VTS reader marks on the first step, the Pray As You Go player
-          // once the session has been heard.
-          const inApp = reflectionInAppRoute(d.source);
-          if (inApp) { if (d.source === "vts") MARK_READ[d.source](); setLocation(inApp); return; }
-          // This morning's copy when the walk got one — see lib/warmedPages.
-          const src = reflectionSourceUrl(d.source);
-          openExternalThenMarkRead(src, (ms) => MARK_READ[d.source](ms), { reader: true, savedHtml: warmedHtml(src) });
-        },
+        open: () => openDailyReflection(d.source, setLocation),
       };
     }),
     /**
