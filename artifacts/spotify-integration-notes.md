@@ -1,3 +1,38 @@
+> **SUPERSEDED IN PART — read this first (2026-09-18).**
+>
+> Two things below are now wrong, and acting on them would waste a session.
+>
+> **1. The architecture described here is gone.** `lib/musicPlayback.ts` and
+> `lib/appleMusic.ts` no longer exist, and neither does the `CobreatheMusic`
+> plugin. Apple Music now runs through `PhoebeMusicPlugin.swift` +
+> `lib/appleMusicNative.ts` + `lib/practiceMusic.ts`, and reaches nine surfaces
+> (sit, office deck, office picker, office settings, breath, Audio Divina, the
+> player, hymns, hildegard, Settings). The Spotify code below is wired into NO
+> surface at all.
+>
+> **2. Spotify access has closed since this was written.** The blocker is no
+> longer the four manual steps listed here; it is Spotify's policy:
+>
+> - A new app sits in **development mode**: max 5 authenticated listeners, each
+>   added by hand to an allowlist, and the app owner must hold Premium.
+> - **Extended quota mode** (what lifts that cap) requires, since 2025-05-15: a
+>   registered organisation — individuals are no longer accepted — a launched
+>   service, key-market presence, commercial viability, and **250k+ MAU**.
+>   Review up to six weeks; Spotify states 95%+ of applications fall short.
+> - The iOS/Android SDKs are **App Remote only**: audio plays in the listener's
+>   Spotify app, not in our process. Spotify must be installed; Free accounts get
+>   shuffle-only; no simulator. This is NOT parity with MusicKit.
+> - The Web Playback SDK is the only in-process path: Premium required
+>   (mobile-only tiers excluded), browser-based, undefined in an iOS WKWebView.
+> - Terms: "Streaming applications may not be commercial", and the Web Playback
+>   SDK "must not be used in commercial projects without Spotify's prior written
+>   approval."
+>
+> **Recommendation: keep the link-out, do not build in-app Spotify.** The full
+> write-up, with sources, is the "Spotify in Phoebe" research note
+> (2026-09-18). The Layer 1 deep-link approach described below is still sound
+> and is effectively what the /hymns and /hildegard service picker already does.
+
 # Music integration — readiness notes (Spotify + Apple Music)
 
 For the **Listening** practice (audio divina, `pages/listening.tsx`). Goal: let a
