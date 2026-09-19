@@ -74,6 +74,13 @@ const ARTISTS = [
   "Swanson, John August",
   "Hernández, Salvador",
   "Wesley, Frank, 1923-2002",
+  // Owner, 2026-09-18: "include these picture in the library" (80 works, all
+  // under the artist's recorded non-commercial grant). Added to the committed
+  // catalogue by hand-merge, not a full regen: a full regen would put back the
+  // 28 thumbnail-sized works 1b74c9fb removed (this script has no size floor).
+  "Koenig, Peter",
+  // Owner, 2026-09-18, the same day: "and these" (66 works, the same grant).
+  "Hochhalter, Cara B.",
 ];
 /** Collections included whole, by ACT's `building` value. */
 const BUILDINGS = ["Benaki Museum"];

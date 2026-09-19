@@ -8038,5 +8038,3698 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/59769",
   "licence": "Used by permission of the artist (non-commercial, with attribution)",
   "attribution": "Wesley, Frank, 1923-2002. The Presentation In the Temple, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Kate Colquitt, kcolquitt349@gmail.com."
+ },
+ {
+  "id": 57467,
+  "title": "On the Road to Emmaus",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/On the Road to Emmaus - CH.jpg",
+  "refs": [
+   "Luke 24:13-49"
+  ],
+  "days": [
+   "Year A Easter 3rd Sunday",
+   "Year B Easter Evening",
+   "Year A Easter Evening"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Emmaus: Road"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57467",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. On the Road to Emmaus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 57491,
+  "title": "Maundy Thursday Foot-Washing",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Maundy Thursday Foot-Washing  - CH.jpg",
+  "refs": [
+   "John 13:1-17, 31b-35"
+  ],
+  "days": [
+   "Year A Maundy Thursday",
+   "Year B Maundy Thursday",
+   "Year C Maundy Thursday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Footwashing",
+   "Jesus Washes Disciples Feet",
+   "Service"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57491",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Maundy Thursday Foot-Washing, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 57507,
+  "title": "A Parable - The Mustard Seed",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/A Parable - The Mustard Seed - CH.jpg",
+  "refs": [
+   "Mark 4:26-34",
+   "Luke 13:18-19"
+  ],
+  "days": [
+   "Year B Proper 6th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Parable of the Mustard Seed",
+   "Kingdom of God",
+   "Mustard Seed"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57507",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. A Parable - The Mustard Seed, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 57515,
+  "title": "Communion/Eucharist",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Communion - Eucharist - CH.jpg",
+  "refs": [
+   "John 6:24-35"
+  ],
+  "days": [
+   "Year B Proper 13th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Eucharist",
+   "Communion"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57515",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Communion/Eucharist, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 57553,
+  "title": "Feeding the Multitudes",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Feeding the Multitudes - CH.jpg",
+  "refs": [
+   "Matthew 14:13-21"
+  ],
+  "days": [
+   "Year A Proper 13th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Feeding the Multitude",
+   "Giving thanks",
+   "Stewardship"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57553",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Feeding the Multitudes, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 58481,
+  "title": "Abraham's Sacrifice",
+  "artist": "Koenig, Peter",
+  "date": "1970",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-sacrifice2398y8.jpg",
+  "refs": [
+   "Genesis 22:1-18",
+   "Genesis 22:1-14"
+  ],
+  "days": [
+   "Year A Easter Vigil",
+   "Year A Proper 8th Sunday"
+  ],
+  "people": [
+   "Abraham (Biblical figure)",
+   "Isaac (Biblical figure)",
+   "Angel (Biblical figure)"
+  ],
+  "subjects": [
+   "Sacrifice of Isaac"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58481",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Abraham's Sacrifice, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58482,
+  "title": "Boy and Snake",
+  "artist": "Koenig, Peter",
+  "date": "1985",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-snake897923yhe78.jpg",
+  "refs": [
+   "Isaiah 11:1-10"
+  ],
+  "days": [
+   "Year A Advent 2nd  Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Serpent",
+   "Peace",
+   "Boy"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58482",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Boy and Snake, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58483,
+  "title": "Jacob Wrestles with the Angel",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-jacob9382eh78.jpg",
+  "refs": [
+   "Genesis 32:22-31"
+  ],
+  "days": [
+   "Year A Proper 13th Sunday"
+  ],
+  "people": [
+   "Jacob (Biblical figure)",
+   "Angel (Biblical figure)"
+  ],
+  "subjects": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58483",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Jacob Wrestles with the Angel, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58484,
+  "title": "My Vineyard",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-vineyard89273.jpg",
+  "refs": [
+   "Isaiah 5:1-7"
+  ],
+  "days": [
+   "Year A Proper 22nd Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Vineyard"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58484",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. My Vineyard, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58485,
+  "title": "Swords into Ploughshares",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-Swords into Ploughshares-288275.jpg",
+  "refs": [
+   "Isaiah 2:1-5"
+  ],
+  "days": [
+   "Year A Advent 1st Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Peace"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58485",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Swords into Ploughshares, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58486,
+  "title": "Great Peace",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-peace9823hd8.jpg",
+  "refs": [
+   "Isaiah 11:1-10"
+  ],
+  "days": [
+   "Year A Advent 2nd  Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Peace",
+   "Lamb",
+   "Wolf"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58486",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Great Peace, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58487,
+  "title": "Grasshopper",
+  "artist": "Koenig, Peter",
+  "date": "1993",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-grass98hq78g.jpg",
+  "refs": [
+   "Isaiah 40:21-31"
+  ],
+  "days": [
+   "Year B Epiphany 5th Sunday"
+  ],
+  "people": [],
+  "subjects": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58487",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Grasshopper, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58488,
+  "title": "Hope for a Tree",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-tree896r.jpg",
+  "refs": [
+   "Job 14:1-14"
+  ],
+  "days": [
+   "Year A Holy Saturday"
+  ],
+  "people": [],
+  "subjects": [
+   "Hope",
+   "Tree"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58488",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Hope for a Tree, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58489,
+  "title": "Drowning of Pharaoh's Army",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-drown9823hd78.jpg",
+  "refs": [
+   "Exodus 14:19-31"
+  ],
+  "days": [
+   "Year A Proper 19th Sunday"
+  ],
+  "people": [],
+  "subjects": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58489",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Drowning of Pharaoh's Army, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58490,
+  "title": "The Ship of the Church",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-ship2983hd7.jpg",
+  "refs": [
+   "Genesis 6:9-22; 7:24; 8:14-19",
+   "Mark 4:35-41",
+   "Peter I, 3:18-22"
+  ],
+  "days": [
+   "Year A Proper 4th Sunday",
+   "Year B Lent 1st Sunday",
+   "Year B Proper 7th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Animals",
+   "Church",
+   "Flood in Genesis",
+   "Noahs Ark",
+   "Cross",
+   "Sea"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58490",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. The Ship of the Church, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58491,
+  "title": "Cross of the Eucharist",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "Parish of St. Edward, Kettering, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-cross387ye87.jpg",
+  "refs": [
+   "Luke 22:14-23:56",
+   "John 15:1-8",
+   "Matthew 14:13-21",
+   "John 6:24-35",
+   "Kings I, 19:4-8"
+  ],
+  "days": [
+   "Year C Liturgy of Pass",
+   "Year B Easter 5th Sunday",
+   "Year A Proper 13th Sunday",
+   "Year B Proper 14th Sunday",
+   "Year B Proper 13th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Elijah (Biblical figure)",
+   "Angel (Biblical figure)",
+   "Disciples (Biblical figures)",
+   "Jezebel (Biblical figure)"
+  ],
+  "subjects": [
+   "Fox",
+   "Vine",
+   "Passion of Jesus Christ: Last Supper",
+   "Feeding the Multitude",
+   "Eucharist",
+   "Pelican",
+   "Manna",
+   "Bread of Life"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58491",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Cross of the Eucharist, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58492,
+  "title": "Elijah and Elisha",
+  "artist": "Koenig, Peter",
+  "date": "1963",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-27386g76.jpg",
+  "refs": [
+   "Kings II, 2:1-18"
+  ],
+  "days": [
+   "Year C Proper 8th Sunday"
+  ],
+  "people": [
+   "Elijah (Biblical figure)",
+   "Elisha (Biblical figure)"
+  ],
+  "subjects": [
+   "Horses",
+   "Chariot"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58492",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Elijah and Elisha, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58493,
+  "title": "Shadow of Your Wings",
+  "artist": "Koenig, Peter",
+  "date": "1980",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-wings873yheu.jpg",
+  "refs": [
+   "Psalm 17:1-9"
+  ],
+  "days": [
+   "Year C Proper 27th Sunday"
+  ],
+  "people": [],
+  "subjects": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58493",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Shadow of Your Wings, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58495,
+  "title": "Like a Deer Leaping Mountains",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-deer32897y.jpg",
+  "refs": [
+   "Song of Solomon 2:8-13"
+  ],
+  "days": [
+   "Year B Proper 17th Sunday",
+   "Year A Proper 9th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Love",
+   "Culture: Black",
+   "Beloved"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58495",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Like a Deer Leaping Mountains, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58496,
+  "title": "Lattice Window",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-window8976t7.jpg",
+  "refs": [
+   "Song of Solomon 2:8-13"
+  ],
+  "days": [
+   "Year B Proper 17th Sunday",
+   "Year A Proper 9th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Love",
+   "Culture: Black",
+   "Beloved"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58496",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Lattice Window, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58497,
+  "title": "Daniel in the Lion's Den",
+  "artist": "Koenig, Peter",
+  "date": "1967",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-lions8956rf6.jpg",
+  "refs": [
+   "Daniel 6"
+  ],
+  "days": [],
+  "people": [
+   "Daniel (Biblical figure)"
+  ],
+  "subjects": [
+   "Lions"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58497",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Daniel in the Lion's Den, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58498,
+  "title": "Christmas Triptych",
+  "artist": "Koenig, Peter",
+  "date": "1990",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Peter_Koenig_Christmas_Triptych.jpg",
+  "refs": [
+   "John 2:1-11",
+   "Matthew 2:1-12",
+   "Acts 7:55-60",
+   "Isaiah 2:1-5",
+   "John 15:1-8",
+   "Matthew 3:13-17",
+   "Isaiah 40:1-11"
+  ],
+  "days": [
+   "Year C Epiphany 2nd Sunday",
+   "Year A Epiphany of the Lord",
+   "Year A Easter 5th Sunday",
+   "Year A Advent 1st Sunday",
+   "Year A Baptism of the Lord",
+   "Year B Advent 2nd  Sunday"
+  ],
+  "people": [
+   "Mary, the mother of Jesus (Biblical figure)",
+   "Jesus Christ (Biblical figure)",
+   "Stephen (martyr), ca.5-33",
+   "John, the Baptist (Biblical figure)",
+   "Wise Men (Biblical figures)"
+  ],
+  "subjects": [
+   "Marriage at Cana",
+   "Adoration of the Magi",
+   "Peace",
+   "Vine",
+   "Baptism of Christ",
+   "Stoning"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58498",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Christmas Triptych, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58499,
+  "title": "The Good Shepherd and the Leviathan",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "Private Collection, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-shepherd238276t.jpg",
+  "refs": [
+   "John 10:11-18",
+   "John 10:1-10"
+  ],
+  "days": [
+   "Year B Easter 4th Sunday",
+   "Year A Easter 4th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Sheep",
+   "Good Shepherd",
+   "Leviathan"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58499",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. The Good Shepherd and the Leviathan, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58500,
+  "title": "Christ the Vine",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-vine9567g7.jpg",
+  "refs": [
+   "John 15:1-8"
+  ],
+  "days": [
+   "Year B Easter 5th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Vine"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58500",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Christ the Vine, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58501,
+  "title": "Hen and Fox",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-hen9089y78.jpg",
+  "refs": [
+   "Luke 13:31-35"
+  ],
+  "days": [
+   "Year C Lent 2nd Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Fox",
+   "Jerusalem",
+   "Lament",
+   "Hen"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58501",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Hen and Fox, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58502,
+  "title": "Parable of the Yeast",
+  "artist": "Koenig, Peter",
+  "date": "1975",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-yeast9089yh.jpg",
+  "refs": [
+   "Matthew 13:31-33, 44-52"
+  ],
+  "days": [
+   "Year A Proper 12th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Woman",
+   "Parable of the Leaven"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58502",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Parable of the Yeast, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58503,
+  "title": "Lazarus at the Gate",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-lazar93829ye87.jpg",
+  "refs": [
+   "Luke 16:19-31"
+  ],
+  "days": [
+   "Year C Proper 21st Sunday"
+  ],
+  "people": [
+   "Lazarus (of Luke 16:19-21, Biblical figure)"
+  ],
+  "subjects": [
+   "Dog"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58503",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Lazarus at the Gate, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58504,
+  "title": "A House Built on Rock",
+  "artist": "Koenig, Peter",
+  "date": "2018",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-house23jhd8m.jpg",
+  "refs": [
+   "Mark 3:20-35",
+   "Matthew 7:21-29",
+   "Luke 6:39-49"
+  ],
+  "days": [
+   "Year A Proper 4th Sunday",
+   "Year B Proper 5th Sunday",
+   "Year C Epiphany 8th Sunday",
+   "Year A Epiphany 9th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Rock",
+   "Flood",
+   "House"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58504",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. A House Built on Rock, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58505,
+  "title": "Prodigal and the Pigs",
+  "artist": "Koenig, Peter",
+  "date": "2018",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-prodigal8932yhu.jpg",
+  "refs": [
+   "Luke 15:1-3, 11b-32"
+  ],
+  "days": [
+   "Year C Lent 4th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Parable of the Prodigal Son"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58505",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Prodigal and the Pigs, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58506,
+  "title": "Prodigal Son",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-prod-son0923879yh.jpg",
+  "refs": [
+   "Luke 15:1-3, 11b-32"
+  ],
+  "days": [
+   "Year C Lent 4th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Parable of the Prodigal Son",
+   "Feasting"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58506",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Prodigal Son, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58507,
+  "title": "Treasure in the Field",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-field899u87.jpg",
+  "refs": [
+   "Matthew 13:31-33, 44-52"
+  ],
+  "days": [
+   "Year A Proper 12th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Field"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58507",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Treasure in the Field, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58508,
+  "title": "A House Built on Rock (2)",
+  "artist": "Koenig, Peter",
+  "date": "2018",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-house2h89dhbk.jpg",
+  "refs": [
+   "Mark 3:20-35",
+   "Matthew 7:21-29",
+   "Luke 6:39-49"
+  ],
+  "days": [
+   "Year A Proper 4th Sunday",
+   "Year B Proper 5th Sunday",
+   "Year C Epiphany 8th Sunday",
+   "Year A Epiphany 9th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Rock",
+   "Flood",
+   "House"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58508",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. A House Built on Rock (2), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58509,
+  "title": "Christ the Teacher",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-teach2398749y78y.jpg",
+  "refs": [
+   "Luke 11:1-13",
+   "Luke 16:19-31",
+   "Luke 15:1-3, 11b-32",
+   "Matthew 7:21-29",
+   "Matthew 15:(10-20), 21-28",
+   "Mark 10:17-31"
+  ],
+  "days": [
+   "Year C Proper 12th Sunday",
+   "Year C Proper 21st Sunday",
+   "Year B Proper 23rd Sunday",
+   "Year C Lent 4th Sunday",
+   "Year A Proper 15th Sunday",
+   "Year A Epiphany 9th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Lazarus (of Luke 16:19-21, Biblical figure)"
+  ],
+  "subjects": [
+   "Scorpion",
+   "Rock",
+   "Parable of the Prodigal Son",
+   "House"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58509",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Christ the Teacher, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58510,
+  "title": "True Shepherd and the Wolves",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-shep9302jd78.jpg",
+  "refs": [
+   "John 10:11-18",
+   "John 10:1-10"
+  ],
+  "days": [
+   "Year B Easter 4th Sunday",
+   "Year A Easter 4th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Sheep",
+   "Good Shepherd",
+   "Wolf"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58510",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. True Shepherd and the Wolves, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58511,
+  "title": "I am the Gate",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-gate902378yhey78.jpg",
+  "refs": [
+   "John 10:1-10"
+  ],
+  "days": [
+   "Year A Easter 4th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58511",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. I am the Gate, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58512,
+  "title": "Mary and Elizabeth",
+  "artist": "Koenig, Peter",
+  "date": "1967",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-visita2398798yh78.jpg",
+  "refs": [
+   "Luke 1:39-57"
+  ],
+  "days": [
+   "Year A Visitation of Mary to Elizabeth"
+  ],
+  "people": [
+   "Mary, the mother of Jesus (Biblical figure)",
+   "Elizabeth (Biblical figure)"
+  ],
+  "subjects": [
+   "Visitation"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58512",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Mary and Elizabeth, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58514,
+  "title": "The Census",
+  "artist": "Koenig, Peter",
+  "date": "2015",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-census9876yg76.jpg",
+  "refs": [
+   "Luke 2:1-14, (15-20)"
+  ],
+  "days": [
+   "Year A Nativity of the Lord Proper I"
+  ],
+  "people": [
+   "Mary, the mother of Jesus (Biblical figure)",
+   "Jesus Christ (Biblical figure)",
+   "Joseph, the husband of Mary (Biblical figure)"
+  ],
+  "subjects": [
+   "Holy Family"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58514",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. The Census, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58515,
+  "title": "Baptism of Christ",
+  "artist": "Koenig, Peter",
+  "date": "1963",
+  "where": "Parish of St. Edward, Kettering, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-baptism298378tyg678h.jpg",
+  "refs": [
+   "Matthew 3:13-17"
+  ],
+  "days": [
+   "Year A Baptism of the Lord"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "John, the Baptist (Biblical figure)"
+  ],
+  "subjects": [
+   "Baptism of Christ"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58515",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Baptism of Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58516,
+  "title": "Temptation of Christ",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "Parish of St. Edward, Kettering, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-tempt2309798yhui.jpg",
+  "refs": [
+   "Luke 4:1-13"
+  ],
+  "days": [
+   "Year C Lent 1st Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Temptation of Christ"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58516",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Temptation of Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58517,
+  "title": "St. Peter and St. Andrew",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-fisherm23978t76tfv.jpg",
+  "refs": [
+   "Matthew 4:12-23"
+  ],
+  "days": [
+   "Year A Epiphany 3rd Sunday"
+  ],
+  "people": [
+   "Peter, the Apostle (Biblical figure)",
+   "Andrew, the Apostle (Biblical figure)"
+  ],
+  "subjects": [
+   "Fish",
+   "Calling of the disciples"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58517",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. St. Peter and St. Andrew, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58518,
+  "title": "Draft of Fishes",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/CEpip05bw.jpg",
+  "refs": [
+   "Luke 5:1-11"
+  ],
+  "days": [
+   "Year C Epiphany 5th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Fish",
+   "Calling of the disciples",
+   "Miraculous Catch of Fish"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58518",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Draft of Fishes, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58519,
+  "title": "Wedding at Cana",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-wedding3298y7u6ty87.jpg",
+  "refs": [
+   "John 2:1-11"
+  ],
+  "days": [
+   "Year C Epiphany 2nd Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Marriage at Cana"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58519",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Wedding at Cana, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58520,
+  "title": "Christ Overturns the Tables of the Moneylenders",
+  "artist": "Koenig, Peter",
+  "date": "2015",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-temple9238hei87tug6t.jpg",
+  "refs": [
+   "John 2:13-22"
+  ],
+  "days": [
+   "Year B Lent 3rd Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Cleansing of the Temple"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58520",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Christ Overturns the Tables of the Moneylenders, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58521,
+  "title": "Christ at the Well",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-well09856ghb.jpg",
+  "refs": [
+   "John 4:5-42"
+  ],
+  "days": [
+   "Year A Lent 3rd Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Woman at the well (Biblical figure)"
+  ],
+  "subjects": [
+   "Living Water"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58521",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Christ at the Well, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58522,
+  "title": "Calming of the Storm",
+  "artist": "Koenig, Peter",
+  "date": "1995",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-storm32895u4yuu78.jpg",
+  "refs": [
+   "Mark 4:35-41"
+  ],
+  "days": [
+   "Year B Proper 7th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Jesus Calms the Storm"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58522",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Calming of the Storm, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58523,
+  "title": "Ten Lepers",
+  "artist": "Koenig, Peter",
+  "date": "1972",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-lepers918236yegh67.jpg",
+  "refs": [
+   "Luke 17:11-19"
+  ],
+  "days": [
+   "Year A Thanksgiving Day"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Healing",
+   "Giving thanks",
+   "Cleansing Ten Lepers"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58523",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Ten Lepers, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58524,
+  "title": "Paralytic at Capernaum",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "Parish of St. Edward, Kettering, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-para2389jh78t665.jpg",
+  "refs": [
+   "Mark 2:1-12"
+  ],
+  "days": [
+   "Year B Epiphany 7th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Healing",
+   "Paralytic"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58524",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Paralytic at Capernaum, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58526,
+  "title": "Casting Out Evil Spirits",
+  "artist": "Koenig, Peter",
+  "date": "1991",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-demon2389785tgyuh78.jpg",
+  "refs": [
+   "Luke 8:26-39"
+  ],
+  "days": [
+   "Year C Proper 7th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Demons"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58526",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Casting Out Evil Spirits, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58527,
+  "title": "Walking on Water",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "Parish of St. Edward, Kettering, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-water8923juhe78.jpg",
+  "refs": [
+   "John 6:1-21",
+   "Matthew 14:22-33"
+  ],
+  "days": [
+   "Year B Proper 12th Sunday",
+   "Year A Proper 14th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Sea",
+   "Jesus Walks on Water"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58527",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Walking on Water, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58528,
+  "title": "Widow's Son",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-nain9302jnd87.jpg",
+  "refs": [
+   "Luke 7:11-17"
+  ],
+  "days": [
+   "Year C Proper 5th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Widow of Nain (Biblical figure)"
+  ],
+  "subjects": [
+   "Raising from the Dead"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58528",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Widow's Son, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58529,
+  "title": "Transfiguration",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-trans3892yef786.jpg",
+  "refs": [
+   "Mark 9:2-9"
+  ],
+  "days": [
+   "Year B Transfiguration Sunday"
+  ],
+  "people": [
+   "Moses (Biblical figure)",
+   "Jesus Christ (Biblical figure)",
+   "Elijah (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Transfiguration of Jesus"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58529",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Transfiguration, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58530,
+  "title": "The Daughter of the Canaanite Woman",
+  "artist": "Koenig, Peter",
+  "date": "2016",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-daughter2389n87d67.jpg",
+  "refs": [
+   "Mark 7:24-37",
+   "Matthew 15:(10-20), 21-28"
+  ],
+  "days": [
+   "Year B Proper 18th Sunday",
+   "Year A Proper 15th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Canaanite Woman (Biblical figure)"
+  ],
+  "subjects": [
+   "Dog"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58530",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. The Daughter of the Canaanite Woman, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58531,
+  "title": "Palm Sunday",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-palm84937trgybvh87.jpg",
+  "refs": [
+   "Luke 19:28-40",
+   "Matthew 21:1-11",
+   "Mark 11:1-11",
+   "John 12:12-16"
+  ],
+  "days": [
+   "Year C Liturgy of Palms",
+   "Year A Liturgy of Palms",
+   "Year B Liturgy of Palms"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Entry into Jerusalem",
+   "Nations",
+   "Donkey",
+   "Palm Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58531",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Palm Sunday, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58532,
+  "title": "Garden of Gethsemane",
+  "artist": "Koenig, Peter",
+  "date": "1967",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-garden2398eh87.jpg",
+  "refs": [
+   "Mark 14:1-15:47"
+  ],
+  "days": [
+   "Year B Liturgy of Pass"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Prayer",
+   "Passion of Jesus Christ: Gethsemane"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58532",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Garden of Gethsemane, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58533,
+  "title": "Christ Washes the Feet of Peter",
+  "artist": "Koenig, Peter",
+  "date": "1967",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-feet8923he78g.jpg",
+  "refs": [
+   "John 13:1-17, 31b-35"
+  ],
+  "days": [
+   "Year A Maundy Thursday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Peter, the Apostle (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Footwashing",
+   "Jesus Washes Disciples Feet"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58533",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Christ Washes the Feet of Peter, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58534,
+  "title": "Judas' Kiss",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "Parish of St. Edward, Kettering, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-kiss9023jnu7y8g.jpg",
+  "refs": [
+   "Matthew 26:14-27:66"
+  ],
+  "days": [
+   "Year A Liturgy of Pass"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Judas Iscariot (Biblical figure)"
+  ],
+  "subjects": [
+   "Kiss of Judas"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58534",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Judas' Kiss, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58535,
+  "title": "Mocking of Christ",
+  "artist": "Koenig, Peter",
+  "date": "1979",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-scourge2397yt8gb.jpg",
+  "refs": [
+   "Mark 14:1-15:47"
+  ],
+  "days": [
+   "Year B Liturgy of Pass"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Passion of Jesus Christ: Mocking of Christ"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58535",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Mocking of Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58536,
+  "title": "They Cast Lots",
+  "artist": "Koenig, Peter",
+  "date": "2018",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-lots2893hee78gb.jpg",
+  "refs": [
+   "Matthew 27:11-54",
+   "Psalm 22"
+  ],
+  "days": [
+   "Year A Liturgy of Pass",
+   "Year A Good Friday"
+  ],
+  "people": [],
+  "subjects": [
+   "Soldier",
+   "Casting Lots"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58536",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. They Cast Lots, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58537,
+  "title": "Pilate Washes His Hands",
+  "artist": "Koenig, Peter",
+  "date": "2019",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-pilate782ge67ff.jpg",
+  "refs": [
+   "Matthew 26:14-27:66"
+  ],
+  "days": [
+   "Year A Liturgy of Pass"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Pontius Pilate, 1st century"
+  ],
+  "subjects": [
+   "Passion of Jesus Christ: Jesus before Pilate"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58537",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Pilate Washes His Hands, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58538,
+  "title": "Mary Meets Jesus After the Resurrection",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-marym90j897y6.jpg",
+  "refs": [
+   "John 20:1-18"
+  ],
+  "days": [
+   "Year A Resurrection of the Lord"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Mary Magdalene (Biblical figure)"
+  ],
+  "subjects": [
+   "Resurrection of Jesus",
+   "Empty Tomb"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58538",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Mary Meets Jesus After the Resurrection, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58539,
+  "title": "Harvest Resurrection",
+  "artist": "Koenig, Peter",
+  "date": "1975",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-harvest2389hed78.jpg",
+  "refs": [
+   "Corinthians I, 15:12-20"
+  ],
+  "days": [
+   "Year B Easter 3rd Sunday",
+   "Year C Epiphany 6th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Harvesting",
+   "Resurrection"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58539",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Harvest Resurrection, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58540,
+  "title": "Road to Emmaus",
+  "artist": "Koenig, Peter",
+  "date": "1982",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-road89u2jb237f.jpg",
+  "refs": [
+   "Luke 24:13-35"
+  ],
+  "days": [
+   "Year A Easter 3rd Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Emmaus: Road"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58540",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Road to Emmaus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58541,
+  "title": "Breakfast on the Beach",
+  "artist": "Koenig, Peter",
+  "date": "late 20th century",
+  "where": "Parish of St. Edward, Kettering, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-beach2387wgd73.jpg",
+  "refs": [
+   "John 21:1-19"
+  ],
+  "days": [
+   "Year C Easter 3rd Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Miraculous Catch of Fish"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58541",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Breakfast on the Beach, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58542,
+  "title": "Pentecost",
+  "artist": "Koenig, Peter",
+  "date": "1964",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-pent389yh76.jpg",
+  "refs": [
+   "Acts 2:1-21"
+  ],
+  "days": [
+   "Year A Day of Pentecost"
+  ],
+  "people": [],
+  "subjects": [
+   "Holy Spirit",
+   "Pentecost"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58542",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Pentecost, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58543,
+  "title": "Conversion of St Paul",
+  "artist": "Koenig, Peter",
+  "date": "1965",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-paul89237eyhg6.jpg",
+  "refs": [
+   "Acts 9:1-6, (7-20)"
+  ],
+  "days": [
+   "Year C Easter 3rd Sunday"
+  ],
+  "people": [
+   "Paul, the Apostle (Biblical figure)"
+  ],
+  "subjects": [
+   "Conversion"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58543",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Conversion of St Paul, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58545,
+  "title": "Ceiling Painting for St Bede's",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "St Bede's Church, Newport Pagnell, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-ceiling9283ye78.jpg",
+  "refs": [
+   "Matthew 4:12-23"
+  ],
+  "days": [
+   "Year A Epiphany 3rd Sunday"
+  ],
+  "people": [
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Fishing"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58545",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Ceiling Painting for St Bede's, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58546,
+  "title": "Tree of Life, Tree of Death",
+  "artist": "Koenig, Peter",
+  "date": "1983",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-tree90ik3.jpg",
+  "refs": [],
+  "days": [],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Cross",
+   "Tree of Life"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58546",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Tree of Life, Tree of Death, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58548,
+  "title": "St Ignatius of Antioch",
+  "artist": "Koenig, Peter",
+  "date": "1984",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-Ignatius908765rtfgvh.jpg",
+  "refs": [],
+  "days": [],
+  "people": [
+   "Ignatius, Bishop of Antioch"
+  ],
+  "subjects": [
+   "Animals",
+   "Saints",
+   "Sea"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58548",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. St Ignatius of Antioch, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58549,
+  "title": "St Christopher",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-Chrisvmnjs8976yt.jpg",
+  "refs": [],
+  "days": [],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Christopher, Saint, died ca.251"
+  ],
+  "subjects": [
+   "Children",
+   "Saints",
+   "Cross"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58549",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. St Christopher, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58551,
+  "title": "St Augustine",
+  "artist": "Koenig, Peter",
+  "date": "2020",
+  "where": "St Augustine's Church, Milton Keynes, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-Augus95nckps5.jpg",
+  "refs": [],
+  "days": [],
+  "people": [
+   "Augustine, Bishop of Hippo, 354-430"
+  ],
+  "subjects": [
+   "Wisdom",
+   "Faith",
+   "Birds",
+   "Sea"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58551",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. St Augustine, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58552,
+  "title": "Pilate Washes His Hands, detail",
+  "artist": "Koenig, Peter",
+  "date": "2019",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-Pilate-hands.jpg",
+  "refs": [
+   "Matthew 26:14-27:66"
+  ],
+  "days": [
+   "Year A Liturgy of Pass"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Pontius Pilate, 1st century"
+  ],
+  "subjects": [
+   "Passion of Jesus Christ: Jesus before Pilate"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58552",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Pilate Washes His Hands, detail, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58553,
+  "title": "Pilate Washes His Hands, detail of Peter",
+  "artist": "Koenig, Peter",
+  "date": "2019",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-Pilate-detail-denial.jpg",
+  "refs": [
+   "Matthew 26:14-27:66",
+   "Mark 14:1-15:47",
+   "Luke 22:14-23:56"
+  ],
+  "days": [
+   "Year A Liturgy of Pass",
+   "Year B Liturgy of Pass",
+   "Year C Liturgy of Pass"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Peter, the Apostle (Biblical figure)",
+   "Pontius Pilate, 1st century"
+  ],
+  "subjects": [
+   "Passion of Jesus Christ: Denial of Peter"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58553",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Pilate Washes His Hands, detail of Peter, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58555,
+  "title": "I am the Gate, detail of Christ",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-gate-detail-God-Christ.jpg",
+  "refs": [
+   "John 10:1-10"
+  ],
+  "days": [
+   "Year A Easter 4th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Garden"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58555",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. I am the Gate, detail of Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58556,
+  "title": "I am the Gate, detail of Dove",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-gate-detail-dove.jpg",
+  "refs": [
+   "John 15:1-8",
+   "John 10:1-10"
+  ],
+  "days": [
+   "Year A Easter 4th Sunday",
+   "Year B Easter 6th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Dove",
+   "Garden",
+   "Holy Spirit"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58556",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. I am the Gate, detail of Dove, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58557,
+  "title": "Parable of the Yeast, detail",
+  "artist": "Koenig, Peter",
+  "date": "1975",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-yeast-seond-9089yh.jpg",
+  "refs": [
+   "Matthew 13:31-33, 44-52"
+  ],
+  "days": [
+   "Year A Proper 12th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Bread",
+   "Woman",
+   "Parable of the Leaven"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58557",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Parable of the Yeast, detail, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58558,
+  "title": "St Francis of Assisi",
+  "artist": "Koenig, Peter",
+  "date": "1989",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-Francis-birds.jpg",
+  "refs": [],
+  "days": [],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Francis, of Assisi, 1182-1226"
+  ],
+  "subjects": [
+   "Saints",
+   "Cross",
+   "Birds"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58558",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. St Francis of Assisi, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58559,
+  "title": "St Francis of Assisi",
+  "artist": "Koenig, Peter",
+  "date": "1989",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-Francis90nbvfd-second.jpg",
+  "refs": [],
+  "days": [],
+  "people": [
+   "Francis, of Assisi, 1182-1226"
+  ],
+  "subjects": [
+   "Animals"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58559",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. St Francis of Assisi, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58560,
+  "title": "Christ Overturns the Tables of the Moneylenders",
+  "artist": "Koenig, Peter",
+  "date": "2015",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-temple-detail-9238hei87tug6t.jpg",
+  "refs": [
+   "John 2:13-22"
+  ],
+  "days": [
+   "Year B Lent 3rd Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Cleansing of the Temple"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58560",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Christ Overturns the Tables of the Moneylenders, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58561,
+  "title": "Christ Overturns the Tables of the Moneylenders, detail",
+  "artist": "Koenig, Peter",
+  "date": "2015",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-temple-detail2-Christ.jpg",
+  "refs": [
+   "John 2:13-22"
+  ],
+  "days": [
+   "Year B Lent 3rd Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Cleansing of the Temple"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58561",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Christ Overturns the Tables of the Moneylenders, detail, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58607,
+  "title": "Good Shepherd and the Leviathan",
+  "artist": "Koenig, Peter",
+  "date": "late 29th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-leviat2njfd90.jpg",
+  "refs": [
+   "John 10:11-18"
+  ],
+  "days": [
+   "Year B Easter 4th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Good Shepherd",
+   "Leviathan"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58607",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Good Shepherd and the Leviathan, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58608,
+  "title": "Cross of the Eucharist",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "Parish of St. Edward, Kettering, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-cross-eucharist-full.jpg",
+  "refs": [
+   "Luke 22:14-23:56",
+   "John 15:1-8",
+   "Matthew 14:13-21",
+   "John 6:24-35",
+   "Kings I, 19:4-8"
+  ],
+  "days": [
+   "Year C Liturgy of Pass",
+   "Year B Easter 5th Sunday",
+   "Year A Proper 13th Sunday",
+   "Year B Proper 14th Sunday",
+   "Year B Proper 13th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Elijah (Biblical figure)",
+   "Angel (Biblical figure)",
+   "Disciples (Biblical figures)",
+   "Jezebel (Biblical figure)"
+  ],
+  "subjects": [
+   "Fox",
+   "Vine",
+   "Passion of Jesus Christ: Last Supper",
+   "Feeding the Multitude",
+   "Eucharist",
+   "Pelican",
+   "Manna",
+   "Bread of Life"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58608",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Cross of the Eucharist, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58798,
+  "title": "The Nativity",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/The Nativity - CH.jpg",
+  "refs": [
+   "Luke 2:(1-7), 8-20",
+   "Luke 2:1-14, (15-20)"
+  ],
+  "days": [
+   "Year A Nativity of the Lord Proper I",
+   "Year B Nativity of the Lord Proper I",
+   "Year C Nativity of the Lord Proper I"
+  ],
+  "people": [
+   "Mary, the mother of Jesus (Biblical figure)",
+   "Jesus Christ (Biblical figure)",
+   "Joseph, the husband of Mary (Biblical figure)"
+  ],
+  "subjects": [
+   "Nativity"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58798",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. The Nativity, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 58806,
+  "title": "Reading from the Torah",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Reading from the Torah - CH.jpg",
+  "refs": [
+   "Luke 4:14-21"
+  ],
+  "days": [
+   "Year C Epiphany 3rd Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Healing",
+   "Reading",
+   "Oppressed",
+   "Freedom"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58806",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Reading from the Torah, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 58852,
+  "title": "Draft of Fishes",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Koenig-draft23089hd8h7.jpg",
+  "refs": [
+   "Luke 5:1-11"
+  ],
+  "days": [
+   "Year C Epiphany 5th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Fish",
+   "Calling of the disciples",
+   "Miraculous Catch of Fish"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58852",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. Draft of Fishes, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 58910,
+  "title": "Martha and Mary",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Martha and Mary - CH.jpg",
+  "refs": [
+   "Luke 10:38-42"
+  ],
+  "days": [
+   "Year C Proper 11th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Martha, of Bethany (Biblical figure)",
+   "Mary, of Bethany (Biblical figure)"
+  ],
+  "subjects": [
+   "Work",
+   "Meditation"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58910",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Martha and Mary, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 58918,
+  "title": "On the Road to Emmaus",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/On the Road to Emmaus - CH.jpg",
+  "refs": [
+   "Luke 24:13-35",
+   "Luke 24:13-49"
+  ],
+  "days": [
+   "Year A Easter 3rd Sunday",
+   "Year C Easter Evening"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Emmaus: Road"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58918",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. On the Road to Emmaus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 58923,
+  "title": "Three Temptations",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Three Temptations  - CH.jpg",
+  "refs": [
+   "Matthew 4:1-11",
+   "Luke 4:1-13"
+  ],
+  "days": [
+   "Year A Lent 1st Sunday",
+   "Year C Lent 1st Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Temptation of Christ"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58923",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Three Temptations, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 58926,
+  "title": "As a Hen Gathers",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/As a Hen Gathers - CH.jpg",
+  "refs": [
+   "Luke 13:31-35"
+  ],
+  "days": [
+   "Year C Lent 2nd Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Birds",
+   "Motherhood",
+   "Caring",
+   "Hen"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58926",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. As a Hen Gathers, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 58929,
+  "title": "Maundy Thursday Foot-Washing",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Maundy Thursday Foot-Washing  - CH.jpg",
+  "refs": [
+   "John 13:1-17, 31b-35"
+  ],
+  "days": [
+   "Year A Maundy Thursday",
+   "Year B Maundy Thursday",
+   "Year C Maundy Thursday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Footwashing",
+   "Jesus Washes Disciples Feet",
+   "Service"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58929",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Maundy Thursday Foot-Washing, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 58944,
+  "title": "Even the Dogs",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Even the Dogs - CH.jpg",
+  "refs": [
+   "Mark 7:24-37",
+   "Matthew 15:(10-20), 21-28"
+  ],
+  "days": [
+   "Year B Proper 18th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Canaanite Woman (Biblical figure)"
+  ],
+  "subjects": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58944",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Even the Dogs, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 58947,
+  "title": "A Parable - The Lost Sheep",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/A Parable - The Lost Sheep - CH.jpg",
+  "refs": [
+   "John 10:11-18",
+   "Luke 15:1-10"
+  ],
+  "days": [
+   "Year B Proper 11th Sunday",
+   "Year C Proper 19th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Sheep",
+   "Good Shepherd",
+   "Parable of the Lost Sheep"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58947",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. A Parable - The Lost Sheep, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 58957,
+  "title": "On the Road to Emmaus",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/On the Road to Emmaus - CH.jpg",
+  "refs": [
+   "Luke 24:13-35"
+  ],
+  "days": [
+   "Year A Easter 3rd Sunday",
+   "Year A Easter Evening"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Emmaus: Road"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58957",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. On the Road to Emmaus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 58962,
+  "title": "A Parable - The Sower",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/A Parable - The Sower - CH.jpg",
+  "refs": [
+   "Luke 8:4-15",
+   "Matthew 13:1-9, 18-23"
+  ],
+  "days": [
+   "Year A Proper 10th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Parable of the Sower"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58962",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. A Parable - The Sower, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59015,
+  "title": "Transfiguration",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Transfiguration - CH.jpg",
+  "refs": [
+   "Matthew 17:1-9",
+   "Luke 9:28-36, (37-43)"
+  ],
+  "days": [
+   "Year A Transfiguration Sunday",
+   "Year C Transfiguration Sunday"
+  ],
+  "people": [
+   "Moses (Biblical figure)",
+   "Jesus Christ (Biblical figure)",
+   "Elijah (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Transfiguration of Jesus"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59015",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Transfiguration, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59018,
+  "title": "Palm Sunday: Even the Stones",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Palm Sunday - Even the Stones - CH.jpg",
+  "refs": [
+   "Luke 19:28-40"
+  ],
+  "days": [
+   "Year C Liturgy of Palms"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Entry into Jerusalem",
+   "Donkey",
+   "Palm Sunday",
+   "Palms"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59018",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Palm Sunday: Even the Stones, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59023,
+  "title": "Woman at the Well",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Woman at the Well - CH.jpg",
+  "refs": [
+   "John 4:5-42"
+  ],
+  "days": [
+   "Year A Lent 3rd Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Woman at the well (Biblical figure)"
+  ],
+  "subjects": [
+   "Love",
+   "Living Water"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59023",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Woman at the Well, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59025,
+  "title": "Three Temptations",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Three Temptations  - CH.jpg",
+  "refs": [
+   "Matthew 4:1-11",
+   "Luke 4:1-13"
+  ],
+  "days": [
+   "Year A Lent 1st Sunday",
+   "Year C Lent 1st Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Temptation of Christ"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59025",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Three Temptations, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59031,
+  "title": "A House Built on Rock",
+  "artist": "Koenig, Peter",
+  "date": "2018",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/AEpip09bw58504.jpg",
+  "refs": [
+   "Matthew 7:21-29"
+  ],
+  "days": [
+   "Year A Epiphany 9th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Rock",
+   "Flood",
+   "House"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59031",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. A House Built on Rock, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 59034,
+  "title": "Let Your Light Shine",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Let Your Light Shine - CH.jpg",
+  "refs": [
+   "Matthew 5:13-20"
+  ],
+  "days": [
+   "Year A Epiphany 5th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Light",
+   "Candles"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59034",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Let Your Light Shine, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59035,
+  "title": "St. Peter and St. Andrew",
+  "artist": "Koenig, Peter",
+  "date": "20th century",
+  "where": "United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/AEpip03bw58517.jpg",
+  "refs": [
+   "Matthew 4:12-23"
+  ],
+  "days": [
+   "Year A Epiphany 3rd Sunday"
+  ],
+  "people": [
+   "Peter, the Apostle (Biblical figure)",
+   "Andrew, the Apostle (Biblical figure)"
+  ],
+  "subjects": [
+   "Fish",
+   "Calling of the disciples"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59035",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Koenig, Peter. St. Peter and St. Andrew, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Peter Winfried (Canisius) Koenig, https://www.pwkoenig.co.uk/."
+ },
+ {
+  "id": 59043,
+  "title": "Swords Into Plowshares",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Swords into Plowshares - CH.jpg",
+  "refs": [
+   "Isaiah 2:1-5"
+  ],
+  "days": [
+   "Year A Advent 1st Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Peace",
+   "Peacemaking"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59043",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Swords Into Plowshares, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59048,
+  "title": "A Parable - Where to Sit",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/A Parable - Where to Sit - CH.jpg",
+  "refs": [
+   "Luke 14:1, 7-14"
+  ],
+  "days": [
+   "Year C Proper 17th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Poor",
+   "Humility",
+   "Hospitality"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59048",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. A Parable - Where to Sit, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59050,
+  "title": "Zacchaeus",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Zacchaeus - CH.jpg",
+  "refs": [
+   "Luke 19:1-10"
+  ],
+  "days": [
+   "Year C Proper 26th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Zacchaeus (Biblical figure)"
+  ],
+  "subjects": [
+   "Love"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59050",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Zacchaeus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59056,
+  "title": "A Parable - The Lost Coin",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/A Parable - The Lost Coin - CH.jpg",
+  "refs": [
+   "Luke 15:1-10"
+  ],
+  "days": [
+   "Year C Proper 19th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Parable of the Lost Coin"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59056",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. A Parable - The Lost Coin, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59064,
+  "title": "From the Lord's Prayer",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/From the Lord’s Prayer - CH.jpg",
+  "refs": [
+   "Luke 11:1-13"
+  ],
+  "days": [
+   "Year C Proper 12th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Forgiveness",
+   "Friendship",
+   "Lords Prayer",
+   "Equity"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59064",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. From the Lord's Prayer, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59253,
+  "title": "Swords Into Plowshares",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Swords into Plowshares - CH.jpg",
+  "refs": [
+   "Isaiah 2:1-5"
+  ],
+  "days": [
+   "Year A Advent 1st Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Peace",
+   "Peacemaking"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59253",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Swords Into Plowshares, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59268,
+  "title": "Mary Visits Elizabeth",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Mary Visits Elizabeth - CH.jpg",
+  "refs": [
+   "Luke 1:39-57"
+  ],
+  "days": [
+   "Year A Visitation of Mary to Elizabeth",
+   "Year B Visitation of Mary to Elizabeth",
+   "Year C Visitation of Mary to Elizabeth"
+  ],
+  "people": [
+   "Mary, the mother of Jesus (Biblical figure)",
+   "Elizabeth (Biblical figure)"
+  ],
+  "subjects": [
+   "Visitation"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59268",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Mary Visits Elizabeth, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59269,
+  "title": "On the Road to Emmaus",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/On the Road to Emmaus - CH.jpg",
+  "refs": [
+   "Luke 24:13-35"
+  ],
+  "days": [
+   "Year A Easter 3rd Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Emmaus: Road"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59269",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. On the Road to Emmaus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59270,
+  "title": "Easter Morning",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Easter Morning - CH.jpg",
+  "refs": [
+   "Luke 24:1-12"
+  ],
+  "days": [
+   "Year C Easter Vigil",
+   "Year C Resurrection of the Lord"
+  ],
+  "people": [
+   "Mary, the mother of Jesus (Biblical figure)",
+   "Angels (Biblical figures)",
+   "Mary Magdalene (Biblical figure)"
+  ],
+  "subjects": [
+   "Resurrection of Jesus",
+   "Empty Tomb"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59270",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Easter Morning, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59271,
+  "title": "When They Crucified Jesus",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/When they Crucified Jesus - CH.jpg",
+  "refs": [
+   "John 18:1-19:42",
+   "John 19:38-42"
+  ],
+  "days": [
+   "Year A Good Friday",
+   "Year A Holy Saturday",
+   "Year B Holy Saturday",
+   "Year C Holy Saturday",
+   "Year B Good Friday",
+   "Year C Good Friday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Passion of Jesus Christ: Crucifixion of Jesus",
+   "Passion of Jesus Christ: Entombment of Christ"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59271",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. When They Crucified Jesus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59272,
+  "title": "Communion/Eucharist",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Communion - Eucharist - CH.jpg",
+  "refs": [
+   "John 6:24-35",
+   "Mark 14:22-25"
+  ],
+  "days": [
+   "Year B Proper 13th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Eucharist",
+   "Communion"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59272",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Communion/Eucharist, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59273,
+  "title": "Maundy Thursday Foot-Washing",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Maundy Thursday Foot-Washing  - CH.jpg",
+  "refs": [
+   "John 13:1-17, 31b-35"
+  ],
+  "days": [
+   "Year A Maundy Thursday",
+   "Year B Maundy Thursday",
+   "Year C Maundy Thursday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Footwashing",
+   "Jesus Washes Disciples Feet",
+   "Service"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59273",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Maundy Thursday Foot-Washing, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59274,
+  "title": "Palm Sunday: Even the Stones",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Palm Sunday - Even the Stones - CH.jpg",
+  "refs": [
+   "Luke 19:28-40"
+  ],
+  "days": [
+   "Year C Liturgy of Palms"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Donkey",
+   "Palm Sunday",
+   "Palms"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59274",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Palm Sunday: Even the Stones, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59275,
+  "title": "As a Hen Gathers",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/As a Hen Gathers - CH.jpg",
+  "refs": [
+   "Luke 13:31-35"
+  ],
+  "days": [
+   "Year C Lent 2nd Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Caring",
+   "Hen"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59275",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. As a Hen Gathers, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59276,
+  "title": "Part 5 - The Prodigal's Elder Brother",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Part 5 -  The Prodigal's Elder Brother.jpg",
+  "refs": [
+   "Luke 15:1-3, 11b-32"
+  ],
+  "days": [
+   "Year C Lent 4th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Parable of the Prodigal Son"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59276",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Part 5 - The Prodigal's Elder Brother, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59277,
+  "title": "Part 4 - Celebrating the Prodigal",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Part 4 - Celebrating theProdigal - CH.jpg",
+  "refs": [
+   "Luke 15:1-3, 11b-32"
+  ],
+  "days": [
+   "Year C Lent 4th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Hospitality",
+   "Forgiveness",
+   "Parable of the Prodigal Son",
+   "Celebrations",
+   "Joy",
+   "Welcome"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59277",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Part 4 - Celebrating the Prodigal, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59278,
+  "title": "Part 3 - The Prodigal is Welcomed",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Part 3 - The Prodigal is Welcomed - CH.jpg",
+  "refs": [
+   "Luke 15:1-3, 11b-32"
+  ],
+  "days": [
+   "Year C Lent 4th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Forgiveness",
+   "Parable of the Prodigal Son"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59278",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Part 3 - The Prodigal is Welcomed, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59279,
+  "title": "Part 2 - The Prodigal Turns",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Part 2 - The Prodigal Turns - CH.jpg",
+  "refs": [
+   "Luke 15:1-3, 11b-32"
+  ],
+  "days": [
+   "Year C Lent 4th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Parable of the Prodigal Son",
+   "Repentance"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59279",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Part 2 - The Prodigal Turns, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59280,
+  "title": "Part 1 - The Prodigal Leaves",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/A Parable, Part 1 -  The Prodigal Leaves - CH.jpg",
+  "refs": [
+   "Luke 15:1-3, 11b-32"
+  ],
+  "days": [
+   "Year C Lent 4th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Parable of the Prodigal Son"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59280",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Part 1 - The Prodigal Leaves, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59281,
+  "title": "A Parable - The Sower",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/A Parable - The Sower - CH.jpg",
+  "refs": [
+   "Luke 8:4-15"
+  ],
+  "days": [],
+  "people": [],
+  "subjects": [
+   "Parable of the Sower"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59281",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. A Parable - The Sower, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59282,
+  "title": "A Parable - The Mustard Seed",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/A Parable - The Mustard Seed - CH.jpg",
+  "refs": [
+   "Luke 13:18-19"
+  ],
+  "days": [],
+  "people": [],
+  "subjects": [
+   "Parable of the Mustard Seed",
+   "Kingdom of God",
+   "Mustard Seed"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59282",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. A Parable - The Mustard Seed, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59283,
+  "title": "A Parable - The Lost Coin",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/A Parable - The Lost Coin - CH.jpg",
+  "refs": [
+   "Luke 15:1-10"
+  ],
+  "days": [
+   "Year C Proper 19th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Parable of the Lost Coin"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59283",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. A Parable - The Lost Coin, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59284,
+  "title": "A Parable - The Lost Sheep",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/A Parable - The Lost Sheep - CH.jpg",
+  "refs": [
+   "Luke 15:1-10"
+  ],
+  "days": [
+   "Year C Proper 19th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Parable of the Lost Sheep"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59284",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. A Parable - The Lost Sheep, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59285,
+  "title": "A Parable - Where to Sit",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/A Parable - Where to Sit - CH.jpg",
+  "refs": [
+   "Luke 14:1, 7-14"
+  ],
+  "days": [
+   "Year C Proper 17th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Humility",
+   "Hospitality"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59285",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. A Parable - Where to Sit, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59287,
+  "title": "A Parable - The Good Samaritan",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/A Parable -The Good Samaritan - CH.jpg",
+  "refs": [
+   "Luke 10:25-37"
+  ],
+  "days": [
+   "Year C Proper 10th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Good Samaritan",
+   "Love",
+   "Compassion"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59287",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. A Parable - The Good Samaritan, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59288,
+  "title": "Zacchaeus",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Zacchaeus - CH.jpg",
+  "refs": [
+   "Luke 19:1-10"
+  ],
+  "days": [
+   "Year C Proper 26th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Zacchaeus (Biblical figure)"
+  ],
+  "subjects": [
+   "Love"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59288",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Zacchaeus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59289,
+  "title": "Welcoming the Children",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Welcoming the Children - CH.jpg",
+  "refs": [
+   "Mark 10:2-16"
+  ],
+  "days": [
+   "Year B Proper 22nd Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Children",
+   "Hope",
+   "Love"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59289",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Welcoming the Children, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59290,
+  "title": "Even the Dogs",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Even the Dogs - CH.jpg",
+  "refs": [
+   "Mark 7:24-37"
+  ],
+  "days": [
+   "Year B Proper 18th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Canaanite Woman (Biblical figure)"
+  ],
+  "subjects": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59290",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Even the Dogs, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59291,
+  "title": "Feeding the Multitudes",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Feeding the Multitudes - CH.jpg",
+  "refs": [
+   "Matthew 14:13-21"
+  ],
+  "days": [
+   "Year A Proper 13th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Feeding the Multitude",
+   "Giving thanks",
+   "Stewardship"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59291",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Feeding the Multitudes, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59292,
+  "title": "Martha and Mary",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Martha and Mary - CH.jpg",
+  "refs": [
+   "Luke 10:38-42"
+  ],
+  "days": [
+   "Year C Proper 11th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Martha, of Bethany (Biblical figure)",
+   "Mary, of Bethany (Biblical figure)"
+  ],
+  "subjects": [
+   "Work",
+   "Meditation"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59292",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Martha and Mary, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59293,
+  "title": "Just a Touch",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Just a Touch - CV.jpg",
+  "refs": [
+   "Mark 5:21-43"
+  ],
+  "days": [
+   "Year B Proper 8th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Woman who touched the cloak of Jesus (Biblical figure)"
+  ],
+  "subjects": [
+   "Prayer",
+   "Healing"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59293",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Just a Touch, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59294,
+  "title": "Calming the Storm",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Calming the Storm - CH.jpg",
+  "refs": [
+   "Mark 4:35-41"
+  ],
+  "days": [
+   "Year B Proper 7th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Faith",
+   "Hope",
+   "Peace",
+   "Jesus Calms the Storm"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59294",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Calming the Storm, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59295,
+  "title": "Woman with the Alabaster Jar",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Woman with the Alabaster Jar - CH.jpg",
+  "refs": [
+   "Luke 7:36-8:3"
+  ],
+  "days": [
+   "Year C Proper 6th Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Woman Who Bathed Christs Feet with Tears (Biblical figure)"
+  ],
+  "subjects": [
+   "Love",
+   "Forgiveness"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59295",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Woman with the Alabaster Jar, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59296,
+  "title": "Woman at the Well",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Woman at the Well - CH.jpg",
+  "refs": [
+   "John 4:5-42"
+  ],
+  "days": [
+   "Year A Lent 3rd Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)",
+   "Woman at the well (Biblical figure)"
+  ],
+  "subjects": [
+   "Love",
+   "Living Water"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59296",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Woman at the Well, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59297,
+  "title": "Consider the Lilies",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Consider the Lilies - CH.jpg",
+  "refs": [
+   "Matthew 6:24-34"
+  ],
+  "days": [
+   "Year B Thanksgiving Day"
+  ],
+  "people": [],
+  "subjects": [
+   "Peace",
+   "Flowers"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59297",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Consider the Lilies, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59298,
+  "title": "Let Your Light Shine",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Let Your Light Shine - CH.jpg",
+  "refs": [
+   "Matthew 5:13-20"
+  ],
+  "days": [
+   "Year A Epiphany 5th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Light",
+   "Candles"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59298",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Let Your Light Shine, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59299,
+  "title": "Blessed are Those",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Blessed are those - CH.jpg",
+  "refs": [
+   "Luke 6:17-26"
+  ],
+  "days": [
+   "Year C Epiphany 6th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Poor",
+   "Rich",
+   "Equity"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59299",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Blessed are Those, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59300,
+  "title": "Transfiguration",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Transfiguration - CH.jpg",
+  "refs": [
+   "Luke 9:28-36, (37-43)"
+  ],
+  "days": [
+   "Year C Transfiguration Sunday"
+  ],
+  "people": [
+   "Moses (Biblical figure)",
+   "Jesus Christ (Biblical figure)",
+   "Elijah (Biblical figure)",
+   "Disciples (Biblical figures)"
+  ],
+  "subjects": [
+   "Transfiguration of Jesus"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59300",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Transfiguration, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59301,
+  "title": "From the Lord's Prayer",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/From the Lord’s Prayer - CH.jpg",
+  "refs": [
+   "Luke 11:1-13"
+  ],
+  "days": [
+   "Year C Proper 12th Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Forgiveness",
+   "Friendship",
+   "Lords Prayer",
+   "Equity"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59301",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. From the Lord's Prayer, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59302,
+  "title": "Reading from the Torah",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Reading from the Torah - CH.jpg",
+  "refs": [
+   "Luke 4:14-21"
+  ],
+  "days": [
+   "Year C Epiphany 3rd Sunday"
+  ],
+  "people": [],
+  "subjects": [
+   "Healing",
+   "Reading",
+   "Oppressed",
+   "Freedom"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59302",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Reading from the Torah, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59303,
+  "title": "Water into Wine",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Water into Wine - CH.jpg",
+  "refs": [
+   "John 2:1-11"
+  ],
+  "days": [
+   "Year C Epiphany 2nd Sunday"
+  ],
+  "people": [
+   "Mary, the mother of Jesus (Biblical figure)",
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Marriage at Cana",
+   "Water"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59303",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Water into Wine, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59304,
+  "title": "Three Temptations",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Three Temptations  - CH.jpg",
+  "refs": [
+   "Luke 4:1-13"
+  ],
+  "days": [
+   "Year C Lent 1st Sunday"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Temptation of Christ"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59304",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. Three Temptations, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59305,
+  "title": "The Baptism of Jesus",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/The Baptism of Jesus - CH.jpg",
+  "refs": [
+   "Luke 3:15-17, 21-22"
+  ],
+  "days": [
+   "Year C Baptism of the Lord"
+  ],
+  "people": [
+   "Jesus Christ (Biblical figure)"
+  ],
+  "subjects": [
+   "Dove",
+   "Baptism of Christ"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59305",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. The Baptism of Jesus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
+ },
+ {
+  "id": 59306,
+  "title": "The Magi",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/The Magi - CH.jpg",
+  "refs": [
+   "Matthew 2:1-12"
+  ],
+  "days": [
+   "Year A Epiphany of the Lord",
+   "Year B Epiphany of the Lord",
+   "Year C Epiphany of the Lord"
+  ],
+  "people": [
+   "Wise Men (Biblical figures)"
+  ],
+  "subjects": [
+   "Adoration of the Magi"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59306",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. The Magi, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter, hochhalter.cara@gmail.com."
+ },
+ {
+  "id": 59307,
+  "title": "The Nativity",
+  "artist": "Hochhalter, Cara B.",
+  "date": "2019",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/The Nativity - CH.jpg",
+  "refs": [
+   "Luke 2:(1-7), 8-20",
+   "Luke 2:1-14, (15-20)"
+  ],
+  "days": [
+   "Year A Nativity of the Lord Proper I",
+   "Year B Nativity of the Lord Proper I",
+   "Year C Nativity of the Lord Proper I"
+  ],
+  "people": [
+   "Mary, the mother of Jesus (Biblical figure)",
+   "Jesus Christ (Biblical figure)",
+   "Joseph, the husband of Mary (Biblical figure)"
+  ],
+  "subjects": [
+   "Nativity"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59307",
+  "licence": "Used by permission of the artist (non-commercial, with attribution)",
+  "attribution": "Hochhalter, Cara B.. The Nativity, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Cara B. Hochhalter."
  }
 ];
