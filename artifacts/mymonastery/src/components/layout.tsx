@@ -236,22 +236,46 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   // Admin Tools — beta users, community admins, feed creators, beta admins.
   const showAdminTools = rawIsBeta || rawIsAdmin || myFeeds.length > 0 || isCommunityAdmin;
 
-  return (
-    <AnimatePresence>
-      {open && (
-        <>
-          {/* Invisible tap-to-close area */}
-          <div className="fixed inset-0 z-40" onClick={onClose} />
+  /**
+   * THE PANEL IS ALWAYS MOUNTED, OFF-SCREEN WHEN CLOSED (owner, 2026-09-18:
+   * "The Home Screen shimmies when you open and close the menu").
+   *
+   * It used to mount on open and unmount on close. On iOS that meant a new
+   * compositing layer (the sliding panel) arriving over the home and then
+   * leaving again, and each time WebKit re-laid its layer tree and re-snapped
+   * the home's card list — which is its own layer on purpose (see "ONE LAYER
+   * PER LIST" in DailyProgressBody) and sits at a fractional offset under the
+   * wrapped welcome text. Measured in Safari on the iPhone 17 Pro Max
+   * Simulator: the list jumped 1–3 device px up the moment the panel appeared
+   * and came back 2 px off after it left, while everything above it stayed
+   * put. Hiding the full-screen tap layer changed nothing; it was the panel.
+   *
+   * So the panel's layer exists from the first paint (willChange: transform)
+   * and opening only slides it: the layer tree never changes, so nothing
+   * under it is re-snapped. Closed, it sits at translateX(100%) — outside the
+   * viewport, no hit area — and is inert and aria-hidden, so nothing in it can
+   * be focused, tapped or read out.
+   */
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = panelRef.current as (HTMLDivElement & { inert?: boolean }) | null;
+    if (el) el.inert = !open;
+  }, [open]);
 
-          {/* Drawer panel */}
-          <motion.div
-            key="drawer"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
+  return (
+    <>
+      {/* Invisible tap-to-close area — only while open. */}
+      {open && <div className="fixed inset-0 z-40" onClick={onClose} />}
+
+      {/* Drawer panel */}
+      <motion.div
+            ref={panelRef}
+            initial={false}
+            animate={{ x: open ? 0 : "100%" }}
             transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
+            aria-hidden={!open}
             className="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-y-auto"
-            style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(46,107,64,0.18)" }}
+            style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(46,107,64,0.18)", willChange: "transform" }}
           >
             {/* Close button. The drawer spans the full viewport height
                 from top: 0, which on a notched iPhone puts this row
@@ -495,9 +519,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               )}
             </div>
           </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+    </>
   );
 }
 
