@@ -1243,13 +1243,16 @@ function HomeDisplaySettings() {
   // HAS the plugin — on the web there is nothing to turn on, and a dead switch
   // explains itself worse than an absent one.
   const [appleOn, setAppleOn] = useState<boolean>(() => appleMusicEnabled());
-  const [appleOfferable, setAppleOfferable] = useState<boolean>(() => appleMusicOfferable());
+  // THE ROW IS GONE (owner, 2026-09-19: "take out all the new music features
+  // other than the hymn catalogue" · "just use youtube only"). Never offered,
+  // so the Apple Music switch doesn't render; the rest of this stays inert.
+  const [appleOfferable, setAppleOfferable] = useState<boolean>(false);
   const [appleBusy, setAppleBusy] = useState(false);
   const [appleNote, setAppleNote] = useState<string | null>(null);
   useEffect(() => {
     // The plugin is registered by the native shell, which can land after the
     // first paint — so re-ask once rather than deciding on mount alone.
-    const id = window.setTimeout(() => setAppleOfferable(appleMusicOfferable()), 600);
+    const id = window.setTimeout(() => setAppleOfferable(false), 600);
     return () => window.clearTimeout(id);
   }, []);
   // Granted means on (owner, 2026-09-18): the switch shows what is TRUE, so a

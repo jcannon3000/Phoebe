@@ -465,7 +465,12 @@ export default function ContemplationPage() {
   const [musicPickerOpen, setMusicPickerOpen] = useState(false);
   useEffect(() => {
     let alive = true;
-    const ask = () => { void appleMusicPlaylistsReady().then((ok) => { if (alive) setMusicReady(ok); }); };
+    // NO MUSIC BEHIND A SIT (owner, 2026-09-19: "take out all the new music
+    // features other than the hymn catalogue" · "Take it out of all the other
+    // features like contemplation and the offices"). musicReady stays false,
+    // so the Music pill, its sheet, the sit's music and its controls never
+    // appear, and nothing here reaches the native music player.
+    const ask = () => { if (alive) setMusicReady(false); };
     ask();
     const sync = () => { setPlaylist(getContemplationPlaylist()); ask(); };
     window.addEventListener(PRACTICE_MUSIC_EVENT, sync);

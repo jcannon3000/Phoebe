@@ -246,24 +246,7 @@ export default function ListeningPage() {
     };
   }, []);
 
-  /**
-   * Picking Apple Music is the consent moment (owner: "the first time someone
-   * picks apple music, aks them for permission"). Choosing it is deliberate, so
-   * the sheet belongs here rather than ambushing the first play. iOS shows it
-   * once per install and afterwards answers silently, so this can run on every
-   * pick without nagging.
-   */
-  function pickService(v: MusicService) {
-    setMusicService(v);
-    setService(v);
-    if (v !== "apple" || !hasAppleMusicNative()) return;
-    // Picking Apple Music here is the same deliberate act as the Settings
-    // switch, so it goes through the same door: enableAppleMusic asks iOS AND
-    // records the opt-in. Without that this screen could be authorized while
-    // lib/appleMusicFeatures still read "not opted in", and in-app playback
-    // would never start no matter what they granted.
-    void enableAppleMusic().then((r) => setCanPlayInApp(r.ok));
-  }
+
 
   /**
    * null = not known yet. It used to start false and flip when the check came
@@ -273,17 +256,15 @@ export default function ListeningPage() {
    * linking not actually playing in app"). A tap while it is null now waits
    * for the answer; see playableNow.
    */
-  const [canPlayInApp, setCanPlayInApp] = useState<boolean | null>(null);
-  useEffect(() => {
-    let alive = true;
-    // appleMusicFeaturesReady, NOT appleMusicNativeReady: it also requires the
-    // opt-in, which is what keeps a permission sheet from springing out of a
-    // play button somebody pressed expecting sound.
-    const ask = () => { void appleMusicFeaturesReady().then((ok) => { if (alive) setCanPlayInApp(ok); }); };
-    ask();
-    window.addEventListener(APPLE_MUSIC_EVENT, ask);
-    return () => { alive = false; window.removeEventListener(APPLE_MUSIC_EVENT, ask); };
-  }, []);
+  /**
+   * NO IN-APP MUSIC HERE ANY MORE (owner, 2026-09-19: "take out all the new
+   * music features other than the hymn catalogue" · "take out the apple and
+   * spotify options" · search should "just fill in the log"). Always false,
+   * so every play path below falls through to filling the log, and the
+   * Lately play icons and the in-slide search stay hidden. Hymns and
+   * Hildegard play as YouTube pages from their own catalogues.
+   */
+  const canPlayInApp = false as boolean;
   /**
    * Nothing may start playing after this screen is gone. The recents path takes
    * a round trip to look the song up, and unmount's stop used to run BEFORE the
@@ -327,9 +308,7 @@ export default function ListeningPage() {
    * inside the tap, where a popup blocker can't catch it.
    */
   function playableNow(): boolean | Promise<boolean> {
-    if (canPlayInApp !== null) return canPlayInApp;
-    if (!hasAppleMusicNative()) return false;
-    return appleMusicFeaturesReady();
+    return canPlayInApp;
   }
 
   /** Start a catalog song, or fall back to opening the service. */
@@ -476,7 +455,7 @@ export default function ListeningPage() {
     // Owner: "they could search for the song in phoebe and it would start
     // playing". Filling the log stays — what you played is what you listened
     // to, so the log writes itself instead of asking you to retype it.
-    playSearchResult(r);
+    // Search fills the log; nothing plays (owner, 2026-09-19).
   }
   const [medium, setMedium] = useState<ListeningMedium>(() => {
     try {
@@ -750,7 +729,12 @@ export default function ListeningPage() {
    * and search"). The one slide had grown past the screen, pushing the
    * Hymns/Hildegard pills under the deck's footer.
    */
-  const INTRO = 0, LISTEN = 1, FIND = 2, HOW = 3, LOG = 4, LIFT = 5, DONE = 6;
+  // ONE LISTENING BEAT AGAIN (owner, 2026-09-19: "Revert audio Divina to the
+  // previous slide order just with the hymn pill"). The Choose slide folds back
+  // into Listen: the prompt, then Lately and the catalogue pills under it.
+  // FIND stays as a name for the same step so the rest reads unchanged.
+  const INTRO = 0, LISTEN = 1, HOW = 2, LOG = 3, LIFT = 4, DONE = 5;
+  const FIND = LISTEN;
   /**
    * ?log=1 — a catalogue (Hymns, Hildegard) opened the music in another app
    * and sent the person here, so the deck starts on the log, which the
@@ -765,10 +749,10 @@ export default function ListeningPage() {
     } catch { /* no URL to read */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const DECK_TOTAL = 7;
+  const DECK_TOTAL = 6;
   const LAST = DONE;
   // The pill's section label — the office's "N of M · Section" shape.
-  const LISTEN_SECTION = ["Begin", "Listen", "Choose", "How", "Log", "Pray", "Done"];
+  const LISTEN_SECTION = ["Begin", "Listen", "How", "Log", "Pray", "Done"];
   /** Any beat before the prayer becomes the player once Phoebe is holding the
    *  music: LISTEN when a catalogue handed it over, FIND when it was chosen
    *  from Lately or the search — and HOW or LOG when a slow play finished
@@ -1103,48 +1087,8 @@ export default function ListeningPage() {
                     Browse the library<CtaArrow />
                   </button>
                   )}
-                  {/* Where your music comes from (owner: "maybe on the bottom
-                      of the first slide of audio divina there is a drop down
-                      where they would chose between the platforms"). The same
-                      stored choice the hymns catalogue uses, so answering it in
-                      either place answers it in both — and the same frosted
-                      pill over a transparent native <select>, so a tap opens
-                      the iOS wheel rather than a row of buttons.
-
-                      Picking Apple Music asks for permission then and there,
-                      which is the one moment it makes sense to ask: they have
-                      just said this is where their music lives. */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9, marginTop: 26 }}>
-                    <span style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 12 }}>Play with</span>
-                    <div style={{ position: "relative" }}>
-                      <div
-                        style={{
-                          display: "flex", alignItems: "center", gap: 7, borderRadius: 999,
-                          padding: "7px 14px", pointerEvents: "none",
-                          background: "rgba(240,237,230,0.06)", border: `1px solid ${DECK_BORDER}`,
-                          color: WARM, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600,
-                        }}
-                      >
-                        {service === "apple" ? <AppleMark size={15} /> : service === "youtube" ? <YouTubeMark size={15} /> : <SpotifyMark size={15} />}
-                        <span>{MUSIC_SERVICES.find((x) => x.id === service)?.label ?? "Spotify"}</span>
-                        <span aria-hidden style={{ color: SAGE, fontSize: 11, lineHeight: 1 }}>▾</span>
-                      </div>
-                      <select
-                        value={service}
-                        onChange={(e) => pickService(e.target.value as MusicService)}
-                        aria-label="Which app plays your music"
-                        style={{
-                          position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0,
-                          appearance: "none", WebkitAppearance: "none", border: "none",
-                          background: "transparent", color: "transparent", cursor: "pointer",
-                        }}
-                      >
-                        {MUSIC_SERVICES.map((x) => (
-                          <option key={x.id} value={x.id}>{x.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                  {/* No "Play with" chooser: YouTube is the only way music
+                      plays now (owner, 2026-09-19: "just use youtube only"). */}
                 </div>
               )}
 
@@ -1304,47 +1248,38 @@ export default function ListeningPage() {
                       )}
                     </div>
                   )}
-                  {/* ONE WIDE PILL, "Choose from library" (owner, 2026-09-18:
-                      "instead of those two pills there should be a wide pill
-                      that says chose from library, and then they would chose a
-                      catalogue"). It opens components/MusicLibrarySheet: the
-                      catalogues, with Hymns under Sakamoto. A real <button>:
-                      the deck pages forward on taps in its right half and
-                      stands down only for button/a/[role=button]. */}
-                  {/* NOT AN APPLE MUSIC LISTENER: no library (owner, 2026-09-19:
-                      "If the user is not using apple music, dont show library,
-                      just show hymns and hildegard", then "For non Apple users
-                      let's just show hymns"). The library is Apple's; the
-                      hymnal plays on every service. */}
-                  {service !== "apple" ? (
-                    <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
-                      <button
-                        type="button"
-                        onClick={() => setLocation("/hymns")}
-                        className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-                        style={{
-                          ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
-                          fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
-                          display: "flex", alignItems: "center", gap: 7,
-                        }}
-                      >
-                        <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
-                        Hymns
-                      </button>
-                    </div>
-                  ) : (
+                  {/* The catalogues, side by side, for everyone (owner,
+                      2026-09-19: "just with the hymn pill", then "could we also
+                      do Hildegard as well as youtube pages"). Both play their
+                      recordings as YouTube pages inside Phoebe. */}
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
                     <button
                       type="button"
-                      onClick={() => setLibraryOpen(true)}
-                      className="w-full rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                      onClick={() => setLocation("/hymns")}
+                      className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
                       style={{
                         ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
-                        fontSize: 15, fontWeight: 600, padding: "13px 22px", cursor: "pointer",
+                        fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 7,
                       }}
                     >
-                      Choose from library
+                      <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
+                      Hymns
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/hildegard")}
+                      className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+                      style={{
+                        ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
+                        fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 7,
+                      }}
+                    >
+                      <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
+                      Hildegard
+                    </button>
+                  </div>
                   {/* Room for the keyboard while searching, so the field can
                       scroll to the top of the slide (see the search onFocus). */}
                   {findFocused && <div aria-hidden style={{ height: "55vh", flex: "0 0 auto" }} />}
