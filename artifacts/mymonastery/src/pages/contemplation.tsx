@@ -1105,7 +1105,12 @@ export default function ContemplationPage() {
           className="fixed inset-0 flex flex-col items-center justify-center px-8"
           style={{
             background: "#0C1F12", zIndex: 60, overflow: "hidden",
-            paddingTop: "calc(var(--safe-top) + 24px)",
+            // A little lower (owner, 2026-09-18: "Move all the content down
+            // a little"). The content is centred, so this extra top padding
+            // moves it down by half of itself: ~32pt on a tall phone. On a
+            // short one (SE-size) it adds nothing, because the full slide
+            // already fills the screen and any more would clip the bottom row.
+            paddingTop: "calc(var(--safe-top) + 24px + clamp(0px, (100dvh - 700px) / 2, 64px))",
             paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
           }}
         >
