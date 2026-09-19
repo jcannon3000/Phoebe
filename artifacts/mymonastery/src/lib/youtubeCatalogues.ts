@@ -21,6 +21,15 @@
 //     __NEXT_DATA__). The misses are Oxford Camerata's O Euchari and O virga
 //     ac diadema, Joseph Wicks, Tapestry, Klaus Reimann, Samuel Jones, and
 //     three of Vox Animae's five Ordo Virtutum parts.
+//   - Taizé Songs: all 12 of the community's "Taizé Music" playlist, every one
+//     on Taizé's OWN channel (UC7eh2w-pOp8u8nf7afQbNgQ, author "Taizé"), so
+//     the channel check is the strongest it gets and no length matching was
+//     needed. Titles are cleaned for the row — the 🎶, the leading "Taizé -/|/"
+//     and the "New Songs 2020 (Acoustic)" series prefix come off, each
+//     language keeping its own spelling — and what was stripped is kept in the
+//     artist line where it says something ("New Songs 2020 (Acoustic)"). Two
+//     are not single chants and say so: "Songs in Arabic" runs an hour, and
+//     "Instrumental 4" is the New CD's untitled fourth track.
 //   - Mary Lou's Mass: 24 of 24, every track the official "Mary Lou
 //     Williams - Topic" upload of the Smithsonian Folkways album (tracks from
 //     itunes.apple.com/lookup?id=160593555&entity=song).
@@ -126,5 +135,27 @@ export const MARY_LOUS_MASS: YouTubeCatalogue = {
   {"n": 22, "title": "Jesus Is the Best", "artist": "Mary Lou Williams", "seconds": 178, "youtubeId": "VBgt2m189YA"},
   {"n": 23, "title": "Tell Him Not to Talk Too Long", "artist": "Mary Lou Williams", "seconds": 157, "youtubeId": "cOYQecik8Hg"},
   {"n": 24, "title": "I Have a Dream", "artist": "Mary Lou Williams", "seconds": 119, "youtubeId": "hjWxDgaeiXo"},
+  ],
+};
+
+export const TAIZE_SONGS: YouTubeCatalogue = {
+  path: "/taize-songs",
+  eyebrow: "Taizé Songs",
+  title: "Taizé Songs",
+  blurb: "Chants from the community at Taizé, sung by the brothers. Tap one to hear it here.",
+  videoEyebrow: "Taizé",
+  tracks: [
+  {"n": 1, "title": "Jubilate Coeli (canon)", "artist": "Taizé", "seconds": 168, "youtubeId": "tS9tQbXPFHc"},
+  {"n": 2, "title": "Jesús inclinó la cabeza", "artist": "Taizé", "seconds": 147, "youtubeId": "XhhMJYzWQOQ"},
+  {"n": 3, "title": "Meine Seele ist zu Tode betrübt", "artist": "Taizé", "seconds": 140, "youtubeId": "PhvwVuzP2Ao"},
+  {"n": 4, "title": "Benedictus qui venit", "artist": "Taizé", "seconds": 165, "youtubeId": "0ueVfbtA4vk"},
+  {"n": 5, "title": "Confitemini Domino", "artist": "Taizé", "seconds": 248, "youtubeId": "Nm0232sv47U"},
+  {"n": 6, "title": "Jésus, ma joie", "artist": "Taizé", "seconds": 185, "youtubeId": "TDzytd1ZjII"},
+  {"n": 7, "title": "Przybądź Duchu Boży", "artist": "Taizé · New Songs 2020 (Acoustic)", "seconds": 122, "youtubeId": "1J1FuPlYC8k"},
+  {"n": 8, "title": "Herre, visa mig vägen", "artist": "Taizé · New Songs 2020 (Acoustic)", "seconds": 116, "youtubeId": "k47fQ2CNqQU"},
+  {"n": 9, "title": "D'un arbre séculaire — Cantique de Noël", "artist": "Taizé", "seconds": 161, "youtubeId": "dTMkA_nlpr8"},
+  {"n": 10, "title": "Tu sei sorgente viva", "artist": "Taizé", "seconds": 163, "youtubeId": "6YXCUrcCUbg"},
+  {"n": 11, "title": "Songs in Arabic: Remain With Me", "artist": "Taizé · a continuous hour", "seconds": 3857, "youtubeId": "83Bt6fPthHo"},
+  {"n": 12, "title": "Instrumental 4", "artist": "Taizé · from the New CD", "seconds": 58, "youtubeId": "B3wBSpJnEvM"},
   ],
 };
