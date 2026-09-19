@@ -72,27 +72,11 @@ export const MUSIC_PLAYLISTS: readonly MusicPlaylist[] = [
     url: "https://music.apple.com/us/album/ryuichi-sakamoto-music-for-film/1833109181",
   },
   {
-    id: "192752238",
-    kind: "album",
-    label: "Freedom Highway",
-    sub: "The Staple Singers \u00b7 18 tracks \u00b7 Gospel Spirit Series",
-    url: "https://music.apple.com/us/album/freedom-highway-gospel-spirit-series/192752238",
-  },
-  {
     id: "272149140",
     kind: "album",
     label: "Classic African American Gospel",
     sub: "Various artists \u00b7 24 tracks \u00b7 Smithsonian Folkways",
     url: "https://music.apple.com/us/album/classic-african-american-gospel-from-smithsonian-folkways/272149140",
-  },
-  {
-    // Spelled as the artist and Apple's own playlist title spell it; the
-    // owner wrote "McMillian" in passing.
-    id: "pl.217641d5a0b64782b3c4a15748df5609",
-    kind: "playlist",
-    label: "John Mark McMillan",
-    sub: "18 songs \u00b7 1 hr 29 min \u00b7 Apple Music",
-    url: "https://music.apple.com/us/playlist/john-mark-mcmillan-essentials/pl.217641d5a0b64782b3c4a15748df5609",
   },
   {
     id: "pl.c3153f44394b41b09d8cc23d929d1058",

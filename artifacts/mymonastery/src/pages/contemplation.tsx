@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { motion } from "framer-motion";
+import { RollingLine } from "@/components/RollingLine";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -931,9 +932,12 @@ export default function ContemplationPage() {
                       <span style={{ display: "block", color: "#F0EDE6", fontFamily: SPACE_GROTESK, fontSize: 14.5, lineHeight: 1.3 }}>
                         {pl.label}
                       </span>
-                      <span style={{ display: "block", color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, fontSize: 11.5, marginTop: 3 }}>
-                        {pl.sub}
-                      </span>
+                      {/* One line, rolling through when it's too long (owner,
+                          2026-09-18) — so every row is the same height. */}
+                      <RollingLine
+                        text={pl.sub}
+                        style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, fontSize: 11.5, marginTop: 3 }}
+                      />
                     </span>
                     {/* The check. Always present as a box so the rows line up
                         whether or not one is chosen. */}
