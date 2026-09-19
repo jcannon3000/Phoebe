@@ -93,10 +93,23 @@ export default function DevotionWatchPage() {
     const onVisibility = () => {
       if (document.visibilityState === "visible") closeSpan();
     };
+    /**
+     * THE READER'S DISMISS IS THE ONLY SIGNAL THAT ACTUALLY ARRIVES on iOS.
+     * The in-app reader is presented .overFullScreen, so this web view never
+     * leaves the window and never gets a hidden/visible pair — the span above
+     * stayed open from the tap until the page unmounted. Someone who watched
+     * 20 seconds and then read the page for three minutes had all of it
+     * counted, and Morning Prayer was stamped on the strength of it (audit,
+     * 2026-09-18). The native side has always dispatched this on dismiss;
+     * nothing listened.
+     */
+    const onBrowserFinished = () => closeSpan();
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("phoebe:browserfinished", onBrowserFinished);
     window.addEventListener("pagehide", commit);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("phoebe:browserfinished", onBrowserFinished);
       window.removeEventListener("pagehide", commit);
       commit();
     };

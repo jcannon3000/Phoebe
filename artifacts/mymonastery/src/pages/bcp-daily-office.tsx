@@ -927,9 +927,29 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     };
   }, []);
   const officeBegun = slideIdx > 0;
+  /**
+   * WAS THE MUSIC ROW ACTUALLY ON SCREEN? Only the welcome slide carries it,
+   * and plenty of paths into a deck skip that slide entirely.
+   */
+  const musicRowSeenRef = useRef(false);
   useEffect(() => {
-    // The DROPDOWN shows officeMusic (recent as its default); what PLAYS is
-    // only ever an explicit office choice — see officeMusicToPlay.
+    if (slideIdx === 0 && musicReady) musicRowSeenRef.current = true;
+  }, [slideIdx, musicReady]);
+  useEffect(() => {
+    /**
+     * WHAT WAS SHOWN IS WHAT PLAYS. The row opens on the most recent playlist,
+     * but only an explicit choice ever played — so someone who saw "Hildegard"
+     * on the welcome slide and simply tapped Next got silence (audit,
+     * 2026-09-18). The outer picker already fixed this by committing on Begin;
+     * the deck's own row did not.
+     *
+     * Committed only when the row was really on screen: a deck entered past the
+     * welcome slide showed no control, and nothing should play that nobody
+     * picked.
+     */
+    if (officeBegun && musicReady && musicRowSeenRef.current && officeMusic && !officeMusicToPlay()) {
+      setOfficeMusic(officeMusic.id);
+    }
     const toPlay = officeMusicToPlay();
     if (!officeBegun || !toPlay || !musicReady) return;
     // Shuffled and repeating: an office is twenty minutes and a playlist must
@@ -3017,45 +3037,21 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // go STRAIGHT to the broadcast in the web view — but still credit the watch as
   // a national-cathedral prayer-session (what that page does on the way out).
   const goToWatch = () => {
-    if (isNativeShell()) {
-      /**
-       * Credit on the way BACK, at the real duration — not on the way out at 60s.
-       *
-       * Every server read of this surface gates on duration, not `completed`:
-       * `surface = 'national-cathedral' AND duration_seconds >= 180`, in office
-       * history, the weekly grid, yesterday's order and the office streak. So a
-       * 60-second row was stored and then filtered out of all of them — the
-       * office could never count, on any device, however long it was prayed.
-       * It also fired the instant Watch was tapped, before a word was heard.
-       *
-       * The web branch below already does this properly (/ncmp/watch measures
-       * 180 real seconds). This mirrors it: time the in-app browser, and on
-       * close credit the office the same way every other finish does — flag,
-       * completion moment, reminder swept.
-       */
-      const openedAt = Date.now();
-      const onWatchDone = () => {
-        window.removeEventListener("phoebe:browserfinished", onWatchDone);
-        const durationSeconds = Math.round((Date.now() - openedAt) / 1000);
-        if (durationSeconds < 180) return; // the server's own bar for this surface
-        const endedAt = new Date();
-        try {
-          stampCompleted();
-        } catch { /* private mode — non-fatal */ }
-        if (!creditsNoSide && !isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
-        const watched = {
-          surface: "national-cathedral", durationSeconds, completed: true,
-          startedAt: new Date(openedAt).toISOString(), endedAt: endedAt.toISOString(),
-        };
-        // Offline: the local flag already credited it; the account hears when
-        // the connection returns (owner audit, 2026-09-12).
-        void apiRequest("POST", "/api/prayer-sessions", watched).catch(() => { enqueueSession(watched); });
-      };
-      window.addEventListener("phoebe:browserfinished", onWatchDone);
-      openExternal("https://www.youtube.com/@WashingtonNationalCathedral/live");
-    } else {
-      setViewerLocation("/ncmp/watch");
-    }
+    /**
+     * ONE DOOR, AND IT IS OURS. The app used to send Watch to YouTube's own
+     * /live channel page in the reader — the very hand-off the in-app video
+     * work set out to remove — while only the web went through /ncmp/watch.
+     * Outside the live window /live is not even reliable: it can show a channel
+     * page, or tomorrow's scheduled stream (audit, 2026-09-18).
+     *
+     * /ncmp/watch now plays the service in Phoebe (inline on Android, in the
+     * reader on iOS) and does the crediting this branch used to do by hand:
+     * the same "national-cathedral" prayer-session, the same 180-second bar the
+     * server gates on, the same morning stamp, and the same offline enqueue.
+     * Watch is offered on weekday MORNINGS only, so that stamp is always the
+     * right side.
+     */
+    setViewerLocation("/ncmp/watch");
   };
   /**
    * Pray this office on venite.app.

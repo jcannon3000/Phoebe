@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Layout } from "@/components/layout";
 import {
-  MUSIC_PLAYLISTS, getCobreatheMusic, setCobreatheMusic, playlistById,
+  MUSIC_PLAYLISTS, getCobreatheMusic, setCobreatheMusic, playlistById, cobreatheMusicToPlay,
   PRACTICE_MUSIC_EVENT, type MusicPlaylist,
 } from "@/lib/practiceMusic";
 import { appleMusicPlaylistsReady, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
@@ -586,8 +586,11 @@ export default function CobreathePage() {
    * mixWithOthers governs other apps rather than Phoebe's own players.
    */
   useEffect(() => {
-    if (mode !== "breathing" || !breathMusic || !musicReady) return;
-    void playAppleMusicCollectionNative(breathMusic.kind, breathMusic.id, { shuffle: true, repeatAll: true });
+    // The DROPDOWN shows breathMusic (the recent as its default); what PLAYS is
+    // only ever an explicit choice made for the breath — see cobreatheMusicToPlay.
+    const toPlay = cobreatheMusicToPlay();
+    if (mode !== "breathing" || !toPlay || !musicReady) return;
+    void playAppleMusicCollectionNative(toPlay.kind, toPlay.id, { shuffle: true, repeatAll: true });
     return () => { void stopAppleMusicNative(); };
   }, [mode, breathMusic, musicReady]);
 

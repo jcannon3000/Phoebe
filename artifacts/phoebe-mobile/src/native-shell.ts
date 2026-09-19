@@ -1207,10 +1207,24 @@ function wireContemplation() {
     // is the path that survives a locked screen because it doesn't depend
     // on the notification system delivering an audible alert.
     try {
-      await getPhoebeAudio()?.scheduleBellAt?.({
+      const res = await getPhoebeAudio()?.scheduleBellAt?.({
         at: at.getTime(),
         sound: CONTEMPLATION_BELL_FILE,
       });
+      /**
+       * NO NATIVE BELL WAS LAID DOWN. The plugin stands down while Apple Music
+       * holds the audio session, and says so with `deferredToNotification` —
+       * which nothing used to read, so all three bell paths went quiet at once:
+       * no AVAudioPlayer here, no `.sound` on the foreground banner (AppDelegate
+       * presents "contemplation-bell" as banner + list only), and the timer
+       * skipping its own swell because it trusts the native bell. A sit with
+       * music behind it ended in silence (audit, 2026-09-18).
+       *
+       * Passing it on lets the timer ring its own swell instead.
+       */
+      if ((res as { deferredToNotification?: boolean } | undefined)?.deferredToNotification) {
+        window.dispatchEvent(new CustomEvent("phoebe:contemplation-bell-deferred"));
+      }
     } catch {
       /* fall through to the LocalNotification fallback */
     }

@@ -52,7 +52,7 @@ import {
   type OfficeSide,
 } from "@/lib/officePrefs";
 import {
-  MUSIC_PLAYLISTS, getOfficeMusic, setOfficeMusic, playlistById, type MusicPlaylist,
+  MUSIC_PLAYLISTS, getOfficeMusic, setOfficeMusic, playlistById, officeMusicToPlay, type MusicPlaylist,
 } from "@/lib/practiceMusic";
 import { appleMusicPlaylistsReady } from "@/lib/appleMusicFeatures";
 
@@ -511,7 +511,14 @@ export default function OfficeSettingsPage() {
             emoji={o.emoji}
             label={o.label}
             sub={o.sub}
-            selected={(officeMusic?.id ?? null) === o.value}
+            /* SHOWS WHAT WILL PLAY, not what a control elsewhere defaults to.
+               officeMusic falls back to the most recent playlist so the office's
+               own dropdown can open on it — but this is the screen where the
+               preference is SET, and only an explicit choice ever plays. Showing
+               Hildegard already selected here, while an office then ran in
+               silence, was the mismatch (audit, 2026-09-18). Until something is
+               picked, None is the truthful answer. */
+            selected={(officeMusicToPlay()?.id ?? null) === o.value}
             onSelect={() => {
               setOfficeMusic(o.value);
               setOfficeMusicState(playlistById(o.value));

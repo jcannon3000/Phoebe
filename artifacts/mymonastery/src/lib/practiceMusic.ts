@@ -214,6 +214,24 @@ export function getCobreatheMusic(): MusicPlaylist | null {
   return recentPlaylist();
 }
 
+/**
+ * WHAT ACTUALLY PLAYS UNDER THE BREATH — an explicit choice only, never the
+ * inherited recent. Same rule as officeMusicToPlay, and for the same reason:
+ * the dropdown lives on the "Before you begin" slide, and the quick-launch
+ * paths (?start=1 from the contemplation timer, the sessions card, the about
+ * page) go straight to "breathing" and never show it. Falling back to the
+ * recent there started a playlist somebody picked for an OFFICE under a breath,
+ * with no control on screen to see or stop it (audit, 2026-09-18).
+ *
+ * getCobreatheMusic still falls back, because that is what the CONTROL should
+ * open on. Nothing plays that nobody picked for this practice.
+ */
+export function cobreatheMusicToPlay(): MusicPlaylist | null {
+  const saved = read(KEY_COBREATHE);
+  if (!saved || saved === NONE) return null;
+  return playlistById(saved);
+}
+
 export function setCobreatheMusic(id: string | null): void {
   write(KEY_COBREATHE, id ?? NONE);
   remember(id);

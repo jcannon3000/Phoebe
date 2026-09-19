@@ -488,10 +488,25 @@ export default function ContemplationPage() {
    * Failure is silence, never an error: if MusicKit refuses (a revoke, a lapse,
    * no network) the sit simply proceeds the way it always has.
    */
+  /**
+   * WHETHER THE MUSIC IS ACTUALLY PLAYING, not merely chosen. The sit's footer
+   * names the library, and that label is a claim: the timer's own prop doc says
+   * it is "only passed while that music is really set to play". Discarding the
+   * play result meant a failed start — offline, a revoked grant, a catalogue id
+   * that no longer resolves, or a timeout — left the sit running in silence
+   * under a line saying it was playing (audit, 2026-09-18).
+   */
+  const [musicPlaying, setMusicPlaying] = useState(false);
   useEffect(() => {
-    if (!timerOpen || !playlist || !musicReady) return;
-    void playAppleMusicCollectionNative(playlist.kind, playlist.id, { shuffle: true, repeatAll: true });
-    return () => { void stopAppleMusicNative(); };
+    if (!timerOpen || !playlist || !musicReady) { setMusicPlaying(false); return; }
+    let alive = true;
+    void playAppleMusicCollectionNative(playlist.kind, playlist.id, { shuffle: true, repeatAll: true })
+      .then((ok) => { if (alive) setMusicPlaying(ok); });
+    return () => {
+      alive = false;
+      setMusicPlaying(false);
+      void stopAppleMusicNative();
+    };
   }, [timerOpen, playlist, musicReady]);
   // First-ever silent sit gets a one-card intro (what silence is, where it comes
   // from, what to do) so a beginner isn't dropped into a blank timer unguided.
@@ -1149,7 +1164,7 @@ export default function ContemplationPage() {
         <ContemplationTimer
           open={timerOpen}
           startMinutes={startMinutes}
-          musicLabel={musicReady && playlist ? playlist.label : null}
+          musicLabel={musicPlaying && playlist ? playlist.label : null}
           onClose={(r) => { setTimerOpen(false); setStartMinutes(undefined); if (r?.completed) { attributeSit(); setLocation("/dashboard"); } }}
         />
       </>
@@ -1447,7 +1462,7 @@ export default function ContemplationPage() {
       <ContemplationTimer
         open={timerOpen}
         startMinutes={startMinutes}
-        musicLabel={musicReady && playlist ? playlist.label : null}
+        musicLabel={musicPlaying && playlist ? playlist.label : null}
         onClose={(r) => { setTimerOpen(false); setStartMinutes(undefined); if (r?.completed) attributeSit(); }}
       />
     </Layout>

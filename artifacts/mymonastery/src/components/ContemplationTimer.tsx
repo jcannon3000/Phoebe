@@ -282,6 +282,13 @@ export function ContemplationTimer({
   const [recordedSessionId, setRecordedSessionId] = useState<number | null>(null);
 
   const endAtRef = useRef<number>(0);
+  /**
+   * True when the native shell reported that it laid down NO bell — it stands
+   * down while Apple Music holds the audio session. In that case this timer
+   * must ring its own swell, because the foreground notification carries no
+   * sound either. Set from the shell's event, reset on every fresh schedule.
+   */
+  const bellDeferredRef = useRef(false);
   /** Overtime as an ACCUMULATOR (seconds), and when it last advanced. */
   const overtimeRef = useRef(0);
   const lastOvertimeTickRef = useRef(0);
@@ -396,7 +403,16 @@ export function ContemplationTimer({
   useEffect(() => () => {
     if (webBellTimer.current) { window.clearTimeout(webBellTimer.current); webBellTimer.current = null; }
   }, []);
+
+  useEffect(() => {
+    const deferred = () => { bellDeferredRef.current = true; };
+    window.addEventListener("phoebe:contemplation-bell-deferred", deferred);
+    return () => window.removeEventListener("phoebe:contemplation-bell-deferred", deferred);
+  }, []);
   function scheduleEndBell(atMs: number) {
+    // A fresh schedule: assume the native bell is real until the shell tells
+    // us it stood down (see bellDeferredRef).
+    bellDeferredRef.current = false;
     nativeEvent("phoebe:contemplation-schedule-end", { at: new Date(atMs).toISOString() });
     if (isNativeShell()) return;
     try {
@@ -820,7 +836,14 @@ export function ContemplationTimer({
     // the bell, so a second one would double up. Either way drop the
     // pending notification.
     const onTime = Date.now() - endAtRef.current < 2500;
-    const native = isNativeShell();
+    /**
+     * "Native" here has to mean a native bell that will ACTUALLY RING, not
+     * merely a native shell. While Apple Music holds the audio session the
+     * plugin lays down no bell and resolves `deferredToNotification`; the
+     * foreground banner carries no sound either. Trusting the shell alone
+     * ended a sit-with-music in complete silence (audit, 2026-09-18).
+     */
+    const native = isNativeShell() && !bellDeferredRef.current;
     // On the native shell, the scheduled bell (PhoebeAudio.scheduleBellAt)
     // fires at endAt on the AUDIO clock — it IS the close bell, and by the
     // time this JS tick runs it may already be ringing. Cancelling here
