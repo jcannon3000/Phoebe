@@ -101,13 +101,6 @@ export const MUSIC_PLAYLISTS: readonly MusicPlaylist[] = [
     sub: "Mary Lou Williams \u00b7 24 tracks",
     url: "https://music.apple.com/us/album/mary-lous-mass/160593555",
   },
-  {
-    id: "262208338",
-    kind: "album",
-    label: "Black Christ of the Andes",
-    sub: "Mary Lou Williams \u00b7 14 tracks",
-    url: "https://music.apple.com/us/album/mary-lou-williams-presents-black-christ-of-the-andes/262208338",
-  },
 ];
 
 export function playlistById(id: string | null | undefined): MusicPlaylist | null {
