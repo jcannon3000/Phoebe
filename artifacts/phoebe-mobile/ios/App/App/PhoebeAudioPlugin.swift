@@ -433,6 +433,15 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     // call doesn't pay the latency of category-switch + activate. The
     // web side calls this when the contemplation timer mounts.
     @objc func prime(_ call: CAPPluginCall) {
+        // Apple Music playing behind the sit: leave its session exactly as it
+        // is. There is nothing to warm, and touching it at the hand-off from
+        // the antiphon to the timer is the moment the owner heard the music
+        // stop (2026-09-18: "The music was playing over the Antiphon once I
+        // started, but then stopped during the contemplative timer").
+        if PhoebeSessionOwner.musicHolds {
+            call.resolve()
+            return
+        }
         do {
             try ensureSessionActive(bell: call.getBool("bell") ?? false)
             call.resolve()
@@ -499,6 +508,18 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // Clear any prior schedule before laying down the new one so
         // we don't end up with two overlapping bells in edge cases.
         teardownPlayers()
+        // WHILE APPLE MUSIC HOLDS THE SESSION, NO SILENT LOOP AND NO IN-APP BELL.
+        // Starting our own AVAudioPlayers here at the sit's start, on MusicKit's
+        // exclusive .playback session, is what cut the sit's playlist off the
+        // moment the timer began (owner, 2026-09-18). The music already keeps
+        // the session alive, so the loop has nothing to do, and the end bell is
+        // carried by the time-sensitive notification the web side schedules
+        // right after this call (scheduleBellNotification). Resolving, not
+        // rejecting: the caller treats a rejection as a failure to report.
+        if PhoebeSessionOwner.musicHolds {
+            call.resolve(["deferredToNotification": true])
+            return
+        }
         do {
             try ensureSessionActive(bell: true) // the sit's bell rings through silence
 
