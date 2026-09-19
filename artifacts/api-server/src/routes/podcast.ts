@@ -60,6 +60,23 @@ export type Show = {
   // feed omits episode art (or uses generic imagery) but we have a good
   // canonical portrait for the host — e.g. Bishop Budde's photo.
   overrideEpisodeArtwork?: boolean;
+  /**
+   * How many episodes the SHOW PAGE lists, when the default isn't right.
+   *
+   * The default covers every finite show we carry whole. A DAILY feed is a
+   * different animal — the offices have 2,300 episodes each and Forward Day by
+   * Day 2,695 — and nobody arrives at those pages to scroll back to 2019; they
+   * come for today. So those keep a short window: it is what they have always
+   * shown, and 2,000 rows in an unvirtualized list would be a real cost for
+   * nobody's benefit.
+   */
+  browseEpisodes?: number;
+  /**
+   * Read a sermon's own name, its preacher and whether it IS a sermon out of
+   * what the feed gives us. Only for shows whose titles and descriptions have
+   * actually been looked at — see sermonMeta().
+   */
+  sermonMeta?: boolean;
 };
 
 // Show-level theme tags (slug → theme keys). A theme search surfaces a
@@ -88,6 +105,8 @@ const SHOW_THEMES: Record<string, string[]> = {
   "national-cathedral-sermons": ["learn", "worship"],
   "ssje-sermons": ["learn", "worship"],
   "grace-church-nyc": ["learn", "worship"],
+  "st-michael-albuquerque": ["learn", "worship"],
+  "st-john-divine": ["learn", "worship"],
   "forward-day-by-day": ["pray", "learn"],
   "scripture-day-by-day": ["pray", "learn", "scripture"],
 };
@@ -117,13 +136,20 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "way-of-love-curry",
     ],
   },
-  // Sermons — preaching from around the Episcopal world.
+  // Sermons — preaching from around the Episcopal world. This group is also
+  // the source of truth for the app's Sermons page (/menu/sermons), so a
+  // church added here appears there as well (GET /podcasts/sermon-sources).
+  // SSJE is listed here too: it is preaching from a community, and it is in
+  // HIDDEN_FROM_DISCOVER, so adding it changes nothing on Discover.
   sermons: {
     title: "Sermons",
     emoji: "🎙️",
     showSlugs: [
       "national-cathedral-sermons",
       "grace-church-nyc",
+      "ssje-sermons",
+      "st-michael-albuquerque",
+      "st-john-divine",
     ],
   },
   // Forward — Forward Movement's daily devotionals (Forward Day by Day +
@@ -224,6 +250,9 @@ const THEMES: Array<{ key: string; label: string; emoji: string; keywords: strin
 export const SHOWS: Record<string, Show> = {
   // ── Forward Movement daily offices ──────────────────────────────────
   "morning-office": {
+    // A daily feed: people come here for the day's Morning Prayer, not to scroll back
+    // years. Keeps the short browse window (see Show.browseEpisodes).
+    browseEpisodes: 50,
     slug: "morning-office",
     title: "Daily Morning Prayer",
     artist: "Forward Movement",
@@ -232,6 +261,9 @@ export const SHOWS: Record<string, Show> = {
     artwork: null,
   },
   "evening-office": {
+    // A daily feed: people come here for the day's Evening Prayer, not to scroll back
+    // years. Keeps the short browse window (see Show.browseEpisodes).
+    browseEpisodes: 50,
     slug: "evening-office",
     title: "An Evening at Prayer",
     artist: "Forward Movement",
@@ -244,6 +276,9 @@ export const SHOWS: Record<string, Show> = {
   // episode a night, titled by weekday and season ("Compline, Mondays in
   // Ordinary Time"); /today picks tonight's, not simply the newest.
   "compline": {
+    // A daily feed: people come here for tonight's Compline, not to scroll back
+    // years. Keeps the short browse window (see Show.browseEpisodes).
+    browseEpisodes: 50,
     slug: "compline",
     title: "Compline",
     artist: "Forward Movement",
@@ -279,6 +314,9 @@ export const SHOWS: Record<string, Show> = {
     artwork: null,
   },
   "pray-as-you-go": {
+    // A daily feed: people come here for today's session, not to scroll back
+    // years. Keeps the short browse window (see Show.browseEpisodes).
+    browseEpisodes: 50,
     slug: "pray-as-you-go",
     title: "Pray As You Go Daily",
     artist: "Pray As You Go",
@@ -416,6 +454,9 @@ export const SHOWS: Record<string, Show> = {
   },
   // ── Forward + affiliated podcasts (Discover section under CAC) ──────
   "forward-day-by-day": {
+    // A daily feed: people come here for today's reflection, not to scroll back
+    // years. Keeps the short browse window (see Show.browseEpisodes).
+    browseEpisodes: 50,
     slug: "forward-day-by-day",
     title: "Forward Day by Day",
     artist: "Forward Movement",
@@ -445,6 +486,32 @@ export const SHOWS: Record<string, Show> = {
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/7c/c6/91/7cc69120-abbd-ab9f-b7fd-6e8cb8c7c4ab/mza_6967511385700327856.jpg/600x600bb.jpg",
   },
   // Sermons by Washington National Cathedral — Sunday + feast-day preaching.
+  // St. Michael and All Angels, Albuquerque — Sunday preaching, the preacher
+  // named in each episode's title. RedCircle feed, no seasons.
+  // Voices from the Cathedral — the Cathedral of St. John the Divine's own
+  // preaching. Each item IS the sermon (8-22 minutes), titled after the
+  // service it was preached at, with the preacher named in the description.
+  // Anchor feed, no seasons. See sermonMeta for how both are read.
+  "st-john-divine": {
+    slug: "st-john-divine",
+    title: "Voices from the Cathedral",
+    artist: "Cathedral of St. John the Divine",
+    publisher: "sermons",
+    feedUrl: "https://anchor.fm/s/1349418/podcast/rss",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/46/a9/f8/46a9f83d-b1ff-0aa2-059e-57def6c1ec2a/mza_979478087588332071.jpg/600x600bb.jpg",
+    sermonMeta: true,
+  },
+  "st-michael-albuquerque": {
+    slug: "st-michael-albuquerque",
+    sermonMeta: true,
+    // The card says the parish; Albuquerque is the line underneath
+    // (SERMON_SOURCE_ABOUT), the way the other churches read.
+    title: "St. Michael and All Angels",
+    artist: "St. Michael and All Angels Episcopal Church",
+    publisher: "sermons",
+    feedUrl: "https://feeds.redcircle.com/e7bd9cab-5e2b-41f3-a15a-d6a994fe5c3f",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e8/3d/e0/e83de06e-dad1-07db-491b-aeb0b63bf66a/mza_8736870600381994675.jpg/600x600bb.jpg",
+  },
   "national-cathedral-sermons": {
     slug: "national-cathedral-sermons",
     title: "National Cathedral Sermons",
@@ -456,6 +523,9 @@ export const SHOWS: Record<string, Show> = {
   // Scripture Day by Day — Fr. Wiley Ammons reads the day's lectionary
   // scripture aloud. Forward Movement / Megaphone, a fresh daily episode.
   "scripture-day-by-day": {
+    // A daily feed: people come here for today's reading, not to scroll back
+    // years. Keeps the short browse window (see Show.browseEpisodes).
+    browseEpisodes: 50,
     slug: "scripture-day-by-day",
     title: "Scripture Day by Day",
     artist: "Forward Movement",
@@ -489,6 +559,16 @@ export type EpisodeFull = {
   // season. Null where a feed doesn't number (most don't) and, tellingly, on
   // the trailers and one-off specials of feeds that otherwise do.
   episodeNumber?: number | null;
+  // Sermon shows only (Show.sermonMeta). The quieter second line — the service
+  // and date the sermon was preached at — once the sermon's own name has been
+  // taken out of the title.
+  subtitle?: string | null;
+  // Who preached it, where the feed says.
+  preacher?: string | null;
+  // False for an episode from a sermon show that ISN'T preaching — a two-minute
+  // prayer, a vigil, a panel. Nothing is hidden by this; it lets "play the
+  // newest sermon" skip past one. Undefined means we never asked.
+  sermon?: boolean;
   /**
    * The episode's own page on the publisher's site (<link>) — where the
    * session's text lives. Phoebe never copies that text: the player's
@@ -505,7 +585,10 @@ export type ParsedFeed = {
 };
 
 const TTL_MS = 30 * 60_000;
-const cache = new Map<string, { at: number; data: ParsedFeed }>();
+// `limit` is how many episodes that parse was allowed to take — see loadFeed
+// for why a cached parse can't answer a request bigger than the one that
+// filled it.
+const cache = new Map<string, { at: number; data: ParsedFeed; limit: number }>();
 
 // Feed fetches hit fixed, trusted hosts (the static SHOWS registry — never a
 // user-supplied URL), so this isn't an SSRF surface. These bounds are
@@ -583,12 +666,16 @@ function decodeXmlText(s: string): string {
 // Strip HTML tags from a feed description + collapse whitespace, then
 // truncate. Feed descriptions are often full HTML show notes; we only
 // want a one/two-line preview on the episode row.
-function plainTextPreview(raw: string | null, max = 280): string | null {
+function plainText(raw: string | null): string | null {
   if (!raw) return null;
   const text = decodeXmlText(raw)
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+  return text || null;
+}
+function plainTextPreview(raw: string | null, max = 280): string | null {
+  const text = plainText(raw);
   if (!text) return null;
   return text.length > max ? text.slice(0, max - 1).trimEnd() + "…" : text;
 }
@@ -598,7 +685,46 @@ function firstMatch(block: string, re: RegExp): string | null {
   return m ? m[1] : null;
 }
 
-export function parseFeed(xml: string, limit: number): ParsedFeed {
+/**
+ * "…with The Very Reverend Winnie Varghese preaching." — and one item that
+ * opens with the name instead of "with". Read from the WHOLE description, not
+ * the 280-character preview the episode carries: the cathedral's lead-in often
+ * runs past that, and parsing the preview found the preacher on 35 of 87 items
+ * where the full text has it on 69.
+ */
+/** Anything but a full stop, plus a full stop that closes a short capitalised
+ *  abbreviation — "Dr.", "Rev.", "W." — which is what an honorific or an
+ *  initial looks like and what the end of a sentence does not. Nearly every
+ *  one of these names has one ("The Reverend Dr. Herschel Wade"), and a
+ *  pattern that stopped at the first period found 37 of the 69 the text has. */
+const PREACHER_CHARS = "(?:[^.;]|\\b[A-Z][a-z]{0,3}\\.)";
+const PREACHER_WITH = new RegExp(`\\bwith\\s+(${PREACHER_CHARS}{3,80}?)\\s+preaching\\b`);
+const PREACHER_LEADING = new RegExp(`^(${PREACHER_CHARS}{3,80}?)\\s+preaching\\b`);
+
+function preacherFrom(text: string | null): string | null {
+  if (!text) return null;
+  /**
+   * "with <name> preaching" FIRST, and only then the one item that opens with
+   * the name instead. Trying them as one alternation let the leading branch
+   * win from character nought — and these descriptions all open with the
+   * service and date, so it handed back "Sunday Holy Eucharist Service –
+   * September 13" as the preacher on forty of eighty-seven items.
+   */
+  const m = PREACHER_WITH.exec(text) ?? PREACHER_LEADING.exec(text);
+  let name = m?.[1]?.trim().replace(/^(?:and|by)\s+/i, "").replace(/[.,;]+$/, "").trim();
+  if (!name) return null;
+  /**
+   * A trailing role is theirs, not part of the name — but only cut it when
+   * what is left is still a NAME. "Archdeacon, the Venerable Denise LaVetty"
+   * puts the role first, and cutting the tail there left the word
+   * "Archdeacon" standing alone as the preacher.
+   */
+  const head = name.split(",")[0]?.trim() ?? name;
+  if (name.includes(",") && head.split(/\s+/).length >= 2) name = head;
+  return /^[A-Za-z]/.test(name) && name.length >= 4 && name.length <= 70 ? name : null;
+}
+
+export function parseFeed(xml: string, limit: number, opts?: { sermons?: boolean }): ParsedFeed {
   const channelPart = xml.split(/<item[\s>]/)[0] ?? "";
   const feedTitle = firstMatch(channelPart, /<title>([\s\S]*?)<\/title>/);
   const feedImageRaw =
@@ -642,6 +768,7 @@ export function parseFeed(xml: string, limit: number): ParsedFeed {
       imageUrl: itemImage ? decodeXmlText(itemImage) : null,
       season,
       episodeNumber,
+      ...(opts?.sermons ? { preacher: preacherFrom(plainText(desc)) } : {}),
       pageUrl: link ? decodeXmlText(link).trim() || null : null,
     });
   }
@@ -752,32 +879,143 @@ export function scrapeRoundtables(html: string, fallbackTitle: string): ParsedFe
 // every fetch/parse and before caching, so the override is baked in and
 // callers never need to think about it.
 function applyShowOverrides(data: ParsedFeed, show: Show): ParsedFeed {
-  if (!show.overrideEpisodeArtwork || !show.artwork) return data;
+  const withSermon = show.sermonMeta
+    ? { ...data, episodes: data.episodes.map(sermonMeta) }
+    : data;
+  if (!show.overrideEpisodeArtwork || !show.artwork) return withSermon;
   const art = show.artwork;
   return {
-    ...data,
-    episodes: data.episodes.map((ep) => ({ ...ep, imageUrl: art })),
+    ...withSermon,
+    episodes: withSermon.episodes.map((ep) => ({ ...ep, imageUrl: art })),
   };
+}
+
+/**
+ * WHAT A SERMON EPISODE IS CALLED, WHO PREACHED IT, AND WHETHER IT IS ONE.
+ *
+ * Owner, of the Cathedral of St. John the Divine (2026-09-19): "Make sure you
+ * get the title and not just holy Eucharist" · "And the preachers name".
+ *
+ * That cathedral publishes an episode titled after the SERVICE ("Sunday Holy
+ * Eucharist Service – September 13, 2026") and then goes back and puts the
+ * sermon's own name in front of it ("Return and Forgiveness — Sunday Holy
+ * Eucharist Service – September 13, 2026"). Both forms are in the feed at any
+ * moment, so we read whichever is there: a name in front becomes the title and
+ * the service line moves underneath; no name in front and the service line IS
+ * the title, as before.
+ *
+ * The split is deliberately narrow, because the cost of a wrong split is a
+ * title cut in half. It fires only when the tail begins with a service word
+ * AND carries a year, and the head does neither — so "Historical Voices From
+ * The Cathedral- Service of Confirmation … - March 5, 1989", a SERIES name
+ * rather than a sermon name, is left whole. At the time of writing it fires on
+ * nothing in the feed, which is correct: nothing has been re-titled yet.
+ *
+ * The preacher comes out of the description, which says "…with The Very
+ * Reverend Winnie Varghese preaching." on 69 of 87 items (one says it without
+ * the "with"). Anything that doesn't match leaves the preacher null rather
+ * than guessing a name out of prose.
+ */
+const SERMON_SERVICE_WORDS = "Sunday|Saturday|Choral|Holy|Morning|Evening|Solemn|Special|Service|Evensong";
+const SERMON_TITLE_SPLIT = new RegExp(
+  `^(.{3,80}?)\\s+[\\u2014\\u2013-]\\s+((?:${SERMON_SERVICE_WORDS})\\b.*\\b\\d{4}.*)$`,
+);
+// A head that is itself a series or a date is not a sermon's name.
+const SERMON_HEAD_STOP = new RegExp(`^(?:Historical|A Prayer|The Feast|Celebration of|${SERMON_SERVICE_WORDS})\\b|\\d{4}`);
+// Titles that name something other than preaching.
+const NOT_A_SERMON = /\b(Vigil|Dialogue on|Celebration of|Prayer for the Day|Ordination|Diaconate|Investiture|Historical Voices)\b/i;
+/** Under this it is a prayer or a reading, not a sermon. */
+const SERMON_MIN_SECONDS = 300;
+
+/** "The Rev. Mike Angell", "The Very Reverend Winnie Varghese", "Bishop …". */
+const PREACHER_STYLE = /^(?:The\s+)?(?:Rt\.?\s+|Very\s+|Right\s+)?(?:Rev|Reverend|Revd|Bishop|Canon|Archdeacon|Venerable|Deacon|Dean|Father|Fr|Mother|Br|Brother|Sister|Dr|Mtr)\b/i;
+
+function sermonMeta(ep: EpisodeFull): EpisodeFull {
+  let title = ep.title;
+  let subtitle: string | null = null;
+  let titlePreacher: string | null = null;
+  if (title) {
+    // St. Michael's writes "Sermon | The Rev. Name | September 13, 2026" —
+    // everything already separated, so take it as given rather than guessing.
+    const parts = title.split("|").map((x) => x.trim()).filter(Boolean);
+    if (parts.length >= 2 && parts[0]) {
+      title = parts[0];
+      const rest = parts.slice(1);
+      if (rest[0] && PREACHER_STYLE.test(rest[0])) titlePreacher = rest.shift() ?? null;
+      subtitle = rest.join(" · ") || null;
+    } else {
+      const m = SERMON_TITLE_SPLIT.exec(title);
+      if (m && m[1] && m[2] && !SERMON_HEAD_STOP.test(m[1])) {
+        title = m[1].trim();
+        subtitle = m[2].trim();
+      } else {
+        // "Life Comes Thru the Roots-The Rev. Mike Angell" — the same parish
+        // writing the same thing without the pipes. Only when what follows the
+        // dash reads as a name, so an ordinary hyphenated title is left alone.
+        const dashed = /^(.{3,90}?)\s*[\u2014\u2013-]\s*((?:The\s+)?(?:Rt\.?\s+|Very\s+|Right\s+)?(?:Rev|Reverend|Revd|Bishop|Canon|Father|Fr|Mother|Deacon|Dr|Br)\b.{2,60})$/.exec(title);
+        if (dashed?.[1] && dashed[2]) {
+          title = dashed[1].trim();
+          titlePreacher = dashed[2].trim();
+        }
+      }
+    }
+  }
+  // "…with The Very Reverend Winnie Varghese preaching." — and the one item
+  // that opens with the name instead. A trailing role after a comma is theirs,
+  // not part of the name we show.
+  // parseFeed already read the description in full; a name in the title wins,
+  // because it was written for this episode rather than inferred from prose.
+  const preacher = titlePreacher ?? ep.preacher ?? null;
+  /**
+   * IS IT PREACHING? The feed saying someone was PREACHING settles it — an
+   * ordination or an Easter Vigil has a sermon in it like any other liturgy,
+   * and the title naming the service is not evidence against. Only when there
+   * is no preacher named do we fall back to the title and the clock: a vigil,
+   * a panel, a two-minute prayer.
+   *
+   * Nothing is hidden either way. This only lets "play the newest sermon"
+   * step over an episode that isn't one.
+   */
+  const isSermon = preacher != null || (
+    (ep.durationSeconds == null || ep.durationSeconds >= SERMON_MIN_SECONDS) &&
+    !NOT_A_SERMON.test(ep.title ?? "")
+  );
+  return { ...ep, title, subtitle, preacher, sermon: isSermon };
 }
 
 export async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
   const hit = cache.get(show.slug);
-  // Cache stores the largest parse we've done; a small-limit request can
-  // be served from a larger cached parse by slicing.
-  if (hit && Date.now() - hit.at < TTL_MS && hit.data.episodes.length >= Math.min(limit, 1)) {
+  /**
+   * A cached parse can serve a request no BIGGER than the one that filled it.
+   *
+   * The test here was `episodes.length >= Math.min(limit, 1)`, which is
+   * `>= 1` for every limit — so any cached parse answered any request. Visit a
+   * show page first (50 episodes, as it was) and the courses endpoint, asking
+   * for 400, was handed those same 50 for the next half hour: seasons went
+   * missing from a course depending on which page you happened to open first.
+   * Nothing logged, and it healed itself when the entry expired.
+   *
+   * So: serve from cache when it was parsed at least as deep, or when the
+   * parse came back short of its own cap, which means the feed ended and we
+   * have all of it. Otherwise fall through and parse deeper.
+   */
+  const covers = hit && (hit.limit >= limit || hit.data.episodes.length < hit.limit);
+  if (hit && covers && Date.now() - hit.at < TTL_MS) {
     return { ...hit.data, episodes: hit.data.episodes.slice(0, limit) };
   }
   try {
     const body = await fetchFeedText(show.feedUrl);
+    const parseLimit = Math.max(limit, 50);
     const parsed = show.kind === "scrape-roundtables"
       ? scrapeRoundtables(body, show.title)
-      : parseFeed(body, Math.max(limit, 50));
+      : parseFeed(body, parseLimit, { sermons: show.sermonMeta });
     const data = applyShowOverrides(parsed, show);
-    cache.set(show.slug, { at: Date.now(), data });
+    cache.set(show.slug, { at: Date.now(), data, limit: parseLimit });
     return { ...data, episodes: data.episodes.slice(0, limit) };
   } catch (err) {
     logger.warn({ err, show: show.slug }, "[podcast] feed fetch failed");
-    if (hit) return { ...hit.data, episodes: hit.data.episodes.slice(0, limit) }; // stale
+    // Stale beats nothing, even if it is shallower than asked for.
+    if (hit) return { ...hit.data, episodes: hit.data.episodes.slice(0, limit) };
     return { feedTitle: show.title, feedImage: show.artwork, feedDescription: null, episodes: [] };
   }
 }
@@ -1031,6 +1269,43 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
   });
 });
 
+/**
+ * WHERE EACH CHURCH IS — the one line under its name on the Sermons page
+ * (owner, 2026-09-19: "make a sermons page from the menu" · "it would show
+ * churches to listen to them from"). A name alone doesn't say where you are
+ * listening from, and that is most of what choosing between them is.
+ */
+const SERMON_SOURCE_ABOUT: Record<string, string> = {
+  "national-cathedral-sermons": "Washington, DC · Sunday and feast-day preaching",
+  "grace-church-nyc": "Greenwich Village, New York · Episcopal parish since 1846",
+  "ssje-sermons": "Cambridge, Massachusetts · Society of Saint John the Evangelist",
+  "st-michael-albuquerque": "Albuquerque, New Mexico · Sunday preaching",
+  "st-john-divine": "Morningside Heights, New York · Sunday and feast-day preaching",
+};
+
+// ── GET /api/podcasts/sermon-sources — the churches you can hear ────────
+// The Sermons page's list. The PUBLISHERS "sermons" group is the source of
+// truth, so adding a church there adds it here; HIDDEN_FROM_DISCOVER is NOT
+// applied, because that flag is about the Discover grid, not about whether a
+// church preaches. Registry metadata only — the page asks each show's own
+// route for its newest sermon.
+router.get("/podcasts/sermon-sources", (_req: Request, res: Response): void => {
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  const group = PUBLISHERS.sermons;
+  res.json({
+    sources: (group?.showSlugs ?? [])
+      .map((slug) => SHOWS[slug])
+      .filter((s): s is Show => !!s)
+      .map((s) => ({
+        slug: s.slug,
+        title: s.artist || s.title,
+        showTitle: s.title,
+        artwork: s.artwork,
+        about: SERMON_SOURCE_ABOUT[s.slug] ?? null,
+      })),
+  });
+});
+
 // ── GET /api/podcasts — the full library, grouped by publisher ──────────
 // Powers the Discover index. Registry metadata only (no feed fetch), so
 // it's instant and long-cacheable. Order follows the PUBLISHERS object's
@@ -1171,11 +1446,29 @@ router.get("/podcasts/publisher/:publisher", (req: Request, res: Response): void
 });
 
 // ── GET /api/podcasts/show/:slug — show + recent episodes ────────────────
+/**
+ * HOW MANY EPISODES A SHOW PAGE LISTS.
+ *
+ * It was 50, which quietly hid the OLDEST episodes of any show with more —
+ * The Way of Love has 54, so its page was missing the trailer and the first
+ * two episodes of the season that is now a course. A show page that can't
+ * reach a show's beginning is broken in a way nobody reports.
+ *
+ * 300 carries every finite show in the registry whole: the longest are Grace
+ * Church at 228, The Living Church at 184 and Turning to the Mystics at 182.
+ * At roughly 850 bytes an episode that is ~250 KB uncompressed at the very
+ * top of the range and a fraction of that over the wire, for a list that is
+ * searchable and sortable and grouped by season — and typically far less,
+ * because most shows are nowhere near it. The daily feeds opt out via
+ * Show.browseEpisodes rather than dragging the default down for everyone.
+ */
+const BROWSE_EPISODES = 300;
+
 router.get("/podcasts/show/:slug", async (req: Request, res: Response): Promise<void> => {
   const show = SHOWS[String(req.params.slug ?? "")];
   if (!show) { res.status(404).json({ error: "Unknown show" }); return; }
   res.setHeader("Cache-Control", "public, max-age=600");
-  const feed = await loadFeed(show, 50);
+  const feed = await loadFeed(show, show.browseEpisodes ?? BROWSE_EPISODES);
   const pub = PUBLISHERS[show.publisher];
   res.json({
     show: {
