@@ -16,7 +16,7 @@ import { apiRequest, ApiError } from "@/lib/queryClient";
 import { enqueueWrite } from "@/lib/writeOutbox";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 import { openExternal } from "@/lib/openExternal";
-import { hasAppleMusicNative, playAppleMusicNative, pauseAppleMusicNative, resumeAppleMusicNative, stopAppleMusicNative } from "@/lib/appleMusicNative";
+import { hasAppleMusicNative, playAppleMusicNative, pauseAppleMusicNative, resumeAppleMusicNative, stopAppleMusicNative, hasAppleMusicCollectionNative, playAppleMusicCollectionNative } from "@/lib/appleMusicNative";
 import { appleMusicFeaturesReady, enableAppleMusic, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
 import { getMusicService, setMusicService, MUSIC_SERVICES, MUSIC_SERVICE_EVENT, type MusicService } from "@/lib/musicService";
 import { SpotifyMark, AppleMark, YouTubeMark } from "@/components/ServiceMarks";
@@ -323,7 +323,11 @@ export default function ListeningPage() {
     // `service` is THIS listener's chosen service; `r.service` is only where
     // the search result came from. Reading the result alone handed a Spotify
     // listener Apple Music (audit, 2026-09-18).
-    const id = service === "apple" && r.service === "apple" && r.kind === "song" ? r.appleId : undefined;
+    // Songs AND albums / EPs / playlists (owner, 2026-09-18: "I selected an
+    // ep with five tracks and it just played the first one"). A collection
+    // plays whole, in order; a song plays with its album around it.
+    const id = service === "apple" && r.service === "apple" ? r.appleId : undefined;
+    const collection = r.kind === "album" || r.kind === "playlist" || r.kind === "artist" ? r.kind : null;
     const title = r.subtitle ? `${r.title} — ${r.subtitle}` : r.title;
     /**
      * THE MUSIC OPENED SOMEWHERE ELSE — so this beat is done, and the log is
@@ -345,7 +349,11 @@ export default function ListeningPage() {
     // that promised music.
     void (async () => {
       if (!(await playable)) { openElsewhere(); return; }
-      if (await playAppleMusicNative(id!)) setNowPlaying({ id: id!, title });
+      const ok = collection
+        ? hasAppleMusicCollectionNative()
+          && await playAppleMusicCollectionNative(collection, id!, { shuffle: false, repeatAll: false })
+        : await playAppleMusicNative(id!);
+      if (ok) setNowPlaying({ id: id!, title });
       else openElsewhere();
     })();
   }
