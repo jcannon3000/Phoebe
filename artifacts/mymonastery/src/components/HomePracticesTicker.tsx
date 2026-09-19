@@ -61,7 +61,10 @@ const OFFICES_HREF = "/bcp/daily-office";
 const SCROLL_PILL = {
   key: "sacred-image-scroll",
   emoji: "🖼️",
-  label: "Sacred Image Doom Scroll",
+  // Renamed Sacred Image Browser (owner, 2026-09-18: "Call the sacred image
+  // scroll Sacred Image Browser"). The done screen still says "instead of doom
+  // scrolling": that is what the practice is set against, not its name.
+  label: "Sacred Image Browser",
   href: "/icon-prayer?gallery=1",
 } as const;
 

@@ -83,7 +83,10 @@ export function usePracticeDirectory(): PracticeEntry[] {
      * life read on Forward Movement's own page in the in-app reader, a moment
      * to pray with what it stirred, and the company you've been keeping.
      */
-    { emoji: "🕯️", label: "The Life of a Saint", sub: "Read a life slowly, and let it ask something of yours", href: "/saints" },
+    // Named Hagiographies (owner, 2026-09-18: "Call the life of a saint practice
+    // Haegriphoies") — spelled as the word, and as the home section heading
+    // above the saints row already is.
+    { emoji: "🕯️", label: "Hagiographies", sub: "Read a life slowly, and let it ask something of yours", href: "/saints" },
     // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no
     // ?side=), so it logs as a standalone practice rather than closing
     // out a morning/evening anchor.
@@ -131,7 +134,10 @@ export function usePracticeDirectory(): PracticeEntry[] {
      * Same door either way (/icon-prayer?gallery=1), so the two can't drift.
      * The name is the owner's, and it is the joke the practice is built on.
      */
-    { emoji: "🖼️", label: "Sacred Image Doom Scroll", sub: "Scroll through sacred images, and stay where one holds you", href: "/icon-prayer?gallery=1" },
+    // Renamed Sacred Image Browser (owner, 2026-09-18: "Call the sacred image
+    // scroll Sacred Image Browser"). The done screen still says "instead of doom
+    // scrolling": that is what the practice is set against, not its name.
+    { emoji: "🖼️", label: "Sacred Image Browser", sub: "Scroll through sacred images, and stay where one holds you", href: "/icon-prayer?gallery=1" },
     // NO SPIRITUALS ROW (owner, 2026-09-05: "take out reading and
     // spirituals from the practices ... both on the main practice page
     // and in the customizer"). The practice itself and /spirituals still

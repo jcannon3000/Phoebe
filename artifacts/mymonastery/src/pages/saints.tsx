@@ -228,7 +228,7 @@ export default function SaintsPage() {
     return shell(
       <motion.div {...fade} style={{ flex: "1 0 auto", display: "flex", flexDirection: "column" }}>
         <h1 style={{ color: WARM, fontFamily: FONT, fontSize: 23, fontWeight: 600, margin: "0 0 6px" }}>
-          The life of a saint
+          Hagiographies
         </h1>
         <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, margin: "0 0 22px" }}>
           Sit with someone who has gone before you — read their life slowly, and let
