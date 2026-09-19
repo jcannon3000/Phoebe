@@ -18,8 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, useInView } from "framer-motion";
-import { Play } from "lucide-react";
-import { FrostLayers, frostBox } from "@/components/FrostRing";
+import { PracticeCard } from "@/components/DailyProgressBody";
 import {
   useCourseProgress,
   useAnyCourseProgressTick,
@@ -45,10 +44,16 @@ import { useBetaStatus } from "@/hooks/useDemo";
 
 const FONT = "'Space Grotesk', sans-serif";
 const WARM = "#F0EDE6";
-const SAGE = "#8FAF96";
+/** The course cards' accent — the green their old progress bar ended on, so
+ *  the bar reads the same now that PracticeCard draws it. */
+const COURSE_RGB = "95,191,127";
 export type LearnCard = {
   key: string;
   title: string;
+  /** The card's emoji, in the rhythm card's left slot (owner, 2026-09-19:
+   *  "Emoji on the left, cta on the right"). One per course, none of them a
+   *  cross. */
+  emoji: string;
   nextLabel: string;
   href: string;
   done: number;
@@ -63,6 +68,7 @@ export type LearnCard = {
 // finished, else the first uncompleted one in course order.
 function videoCourseCard(
   course: { id: string; title: string },
+  emoji: string,
   index: CourseIndex,
   href: string,
   progress: { completed: Set<string>; completedCount: number; lastId?: string; started: boolean },
@@ -72,6 +78,7 @@ function videoCourseCard(
   const nextVid = resume ?? index.videos.find((v) => !completed.has(v.id)) ?? index.videos[0];
   return {
     key: course.id,
+    emoji,
     title: course.title,
     nextLabel: nextVid ? videoLabel(nextVid) : "",
     href: nextVid ? `${href}?v=${nextVid.id}` : href,
@@ -165,13 +172,15 @@ export function HomeLearnSection() {
    * on their home whatever they are holding.
    */
   {
-    cards.push({ ...videoCourseCard(CENTERING_PRAYER, CENTERING_INDEX, "/centering-prayer", centering), updatedAt: snapshotProgress(CENTERING_PRAYER.id).updatedAt ?? 0 });
-    cards.push({ ...videoCourseCard(SPIRITUAL_JOURNEY, JOURNEY_INDEX, "/journey", journey), updatedAt: snapshotProgress(SPIRITUAL_JOURNEY.id).updatedAt ?? 0 });
+    // 🧘🏽 the sit itself, 🧭 a journey — neither a cross.
+    cards.push({ ...videoCourseCard(CENTERING_PRAYER, "\u{1F9D8}\u{1F3FD}", CENTERING_INDEX, "/centering-prayer", centering), updatedAt: snapshotProgress(CENTERING_PRAYER.id).updatedAt ?? 0 });
+    cards.push({ ...videoCourseCard(SPIRITUAL_JOURNEY, "\u{1F9ED}", JOURNEY_INDEX, "/journey", journey), updatedAt: snapshotProgress(SPIRITUAL_JOURNEY.id).updatedAt ?? 0 });
   }
   {
     const nextLesson = WOL_LESSONS.find((l) => !wol.completed.has(l.key)) ?? WOL_LESSONS[0];
     cards.push({
       key: WAY_OF_LOVE.id,
+      emoji: "\u{1F49A}", // 💚
       title: WAY_OF_LOVE.title,
       // Text only — no lesson emoji on the course cards (owner).
       nextLabel: nextLesson ? nextLesson.practice : "",
@@ -199,6 +208,8 @@ export function HomeLearnSection() {
     if (!isStarted) continue;
     cards.push({
       key: `cac-${c.id}`,
+      // The CAC's own emoji, the one its daily meditation card wears.
+      emoji: "\u{1F335}",
       title: `${c.showTitle} · ${c.title}`,
       nextLabel: nextTitle ?? "",
       href: `/cac-course/${c.id}`,
@@ -280,49 +291,44 @@ export function HomeLearnSection() {
           Done lists, so every card shares one origin. */}
       <div className="space-y-3" style={{ willChange: "transform" }}>
         {show.map((c, cardIdx) => {
-          const pct = Math.round((c.done / Math.max(1, c.total)) * 100);
+          /**
+           * THE RHYTHM CARD ITSELF (owner, 2026-09-19: "Can we make the course
+           * cards more like the routine cards", then "Same ui", then "Emoji on
+           * the left, cta on the right", then "You could have a progress bar
+           * still like a contemplation card").
+           *
+           * Not a lookalike — PracticeCard, the component the practices above
+           * use, so frame, height, padding, stroke, type and the round action
+           * are the same by construction rather than by copying. The lesson
+           * count is the card's own quiet second line and its own progress bar,
+           * the shape the novena and contemplation cards already use, which is
+           * what replaced the separate bar-and-counter this section drew.
+           *
+           * `done` is always false: a course on the home is one in flight, and
+           * a ✓ here would claim the whole course was finished.
+           */
+          const lesson = Math.min(c.done + 1, c.total);
+          // The lesson's own name, unless it just repeats the course's (the
+          // Way of Love's first lesson IS "The Way of Love") — a second line
+          // that says the title again tells nobody anything.
+          const label = c.nextLabel && !c.title.includes(c.nextLabel) ? ` · ${c.nextLabel}` : "";
           return (
             <motion.div key={c.key} {...enterUp(cardIdx + 1)}>
-            {/* FrostRing, not blur + border on the button (owner, 2026-09-15:
-                "the ui is having the animation issues on the cards"). The
-                app-wide index.css rules turned that into a 1.5px border under
-                a ::before frost — the half-strokes and settle-after-load the
-                home cards had. Every line is a whole pixel, so a card is 96px
-                exactly: 1 + 14 + 40 + 10 + 16 + 14 + 1. The eyebrow truncates
-                rather than wraps, so a long season name can't make one card
-                taller than the rest. See reference_card_spacing_exact. */}
-            <button
-              onClick={() => setLocation(c.href)}
-              className="w-full text-left rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-95 active:scale-[0.99]"
-              style={{ ...frostBox("rgba(9,26,16,0.4)"), boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
-            >
-              <FrostLayers border="rgba(46,107,64,0.38)" />
-              <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-[10.5px] font-semibold uppercase tracking-widest leading-[14px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
-                    {c.started ? "Continue" : "Start course"} · {c.title}
-                  </p>
-                  <p className="truncate text-[15px] font-semibold mt-0.5 leading-5" style={{ color: WARM, fontFamily: FONT }}>
-                    {c.nextLabel}
-                  </p>
-                </div>
-                <span
-                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
-                  style={{ background: "#2D5E3F", color: WARM }}
-                  aria-hidden
-                >
-                  <Play size={16} style={{ marginLeft: 2 }} />
-                </span>
-              </div>
-              <div className="mt-2.5 flex items-center gap-2.5">
-                <div className="h-1 flex-1 overflow-hidden rounded-full" style={{ background: "rgba(200,212,192,0.12)" }}>
-                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg,#2D5E3F,#5FBF7F)" }} />
-                </div>
-                <span className="text-[11px] leading-4 flex-shrink-0" style={{ color: SAGE, fontFamily: FONT }}>
-                  {c.done} of {c.total}
-                </span>
-              </div>
-            </button>
+              <PracticeCard
+                href={c.href}
+                emoji={c.emoji}
+                title={c.title}
+                blurb={c.started
+                  ? `Lesson ${lesson} of ${c.total}${label}`
+                  : `${c.total} ${c.total === 1 ? "lesson" : "lessons"}${label}`}
+                cta={c.started ? "Continue" : "Start"}
+                done={false}
+                rgb={COURSE_RGB}
+                tint={Math.min(1, cardIdx * 0.2)}
+                progress={{ current: c.done, goal: c.total }}
+                alwaysShowProgress
+                pulseOnLoad={false}
+              />
             </motion.div>
           );
         })}
