@@ -331,6 +331,19 @@ const paygTracker = makeDailyReadTracker(
   "reflect-payg",
 );
 /**
+ * TAIZÉ DAILY PRAYER — Brother Matthew's short prayer for the day (owner,
+ * 2026-09-19: "create a new daily with the Taize daily prayer … like the SSJE
+ * reader"). The page lists several days; the reader keeps only today's card
+ * (BibleWebViewController readerJS, taizePick). Read-gated like SSJE: opening
+ * it is not reading it. Key "taizeprayer", NOT "taize" — that is the weekly
+ * meditation.
+ */
+const taizePrayerTracker = makeDailyReadTracker(
+  "phoebe:taizeprayer:last-read-day", "phoebe:taizeprayer-read",
+  (ymd) => { postOrQueue(`reflect-read:taizeprayer:${ymd}`, "/api/reflections/read", { source: "taizeprayer", ymd }); },
+  "reflect-taizeprayer",
+);
+/**
  * THE DAY'S COMMEMORATION — the life behind the feast.
  *
  * Synced as reflection_reads source "hagiography" (2026-09-15). It was a
@@ -366,10 +379,11 @@ const gristTracker = makeDailyReadTracker(
  * is a compile error at every site that must learn about it, which is what
  * you want from a list this widely consulted.
  */
-export type TrackedReflection = "cac" | "fdd" | "ssje" | "vts" | "nouwen" | "sojo" | "grist" | "payg";
+export type TrackedReflection = "cac" | "fdd" | "ssje" | "vts" | "nouwen" | "sojo" | "grist" | "payg" | "taizeprayer";
 const DAY_TRACKERS: Record<TrackedReflection, ReturnType<typeof makeDailyReadTracker>> = {
   cac: cacTracker, fdd: fddTracker, ssje: ssjeTracker, vts: vtsTracker,
   nouwen: nouwenTracker, sojo: sojoTracker, grist: gristTracker, payg: paygTracker,
+  taizeprayer: taizePrayerTracker,
 };
 
 /**
@@ -676,6 +690,8 @@ const gristTrackerMorning = makeDailyReadTracker("phoebe:grist:morning:last-read
 const gristTrackerEvening = makeDailyReadTracker("phoebe:grist:evening:last-read-day", "phoebe:grist-prayed", () => syncVtsSession("evening"), "evening");
 const paygTrackerMorning = makeDailyReadTracker("phoebe:payg:morning:last-read-day", "phoebe:payg-prayed", () => syncVtsSession("morning"), "morning");
 const paygTrackerEvening = makeDailyReadTracker("phoebe:payg:evening:last-read-day", "phoebe:payg-prayed", () => syncVtsSession("evening"), "evening");
+const taizePrayerTrackerMorning = makeDailyReadTracker("phoebe:taizeprayer:morning:last-read-day", "phoebe:taizeprayer-prayed", () => syncVtsSession("morning"), "morning");
+const taizePrayerTrackerEvening = makeDailyReadTracker("phoebe:taizeprayer:evening:last-read-day", "phoebe:taizeprayer-prayed", () => syncVtsSession("evening"), "evening");
 
 /** Per-side kept flag for every tracked source — see DAY_TRACKERS' note on
  *  why this is a map and not another ternary chain. */
@@ -685,6 +701,7 @@ const SIDE_TRACKERS: Record<TrackedReflection, (side: "morning" | "evening") => 
   sojo: (side) => (side === "evening" ? sojoTrackerEvening : sojoTrackerMorning),
   grist: (side) => (side === "evening" ? gristTrackerEvening : gristTrackerMorning),
   payg: (side) => (side === "evening" ? paygTrackerEvening : paygTrackerMorning),
+  taizeprayer: (side) => (side === "evening" ? taizePrayerTrackerEvening : taizePrayerTrackerMorning),
 };
 
 /**
@@ -999,6 +1016,11 @@ export function hasReadSojoToday(): boolean { return sojoTracker.hasReadToday();
 export function markSojoRead(dwellMs?: number): void { sojoTracker.markRead(dwellMs); creditAnchorsFor("sojo"); }
 
 export const SSJE_TODAY_URL = "https://www.ssje.org/word/";
+/** The whole Prayer & Reflection page — the reader picks today's card out of it. */
+export const TAIZE_PRAYER_TODAY_URL = "https://www.taize.fr/en/prayer-and-reflection#daily-prayers-of-brother-matthew";
+
+export function hasReadTaizePrayerToday(): boolean { return taizePrayerTracker.hasReadToday(); }
+export function markTaizePrayerRead(dwellMs?: number): void { taizePrayerTracker.markRead(dwellMs); creditAnchorsFor("taizeprayer"); }
 
 /**
  * A reflection source → the page to open. ONE place, because the two callers
@@ -1017,6 +1039,7 @@ export function reflectionSourceUrl(source: string): string {
     case "nouwen": return NOUWEN_TODAY_URL;
     case "sojo": return sojournersTodayUrl();
     case "grist": return GRIST_TODAY_URL;
+    case "taizeprayer": return TAIZE_PRAYER_TODAY_URL;
     // Pray As You Go has no page to open: its card plays the day's session in
     // Phoebe (reflectionInAppRoute below). Empty rather than the FDD default,
     // which would open somebody else's writing.
@@ -1078,6 +1101,7 @@ export function reflectionDwellMsToday(source: string): number | null {
   const t = ({
     cac: cacTracker, fdd: fddTracker, ssje: ssjeTracker, vts: vtsTracker,
     nouwen: nouwenTracker, sojo: sojoTracker, grist: gristTracker, payg: paygTracker,
+    taizeprayer: taizePrayerTracker,
   } as Record<string, { dwellMsToday(): number | null } | undefined>)[source];
   return t ? t.dwellMsToday() : null;
 }
@@ -1087,6 +1111,7 @@ export function hasReadReflectionToday(source: string): boolean {
   const t = ({
     cac: cacTracker, fdd: fddTracker, ssje: ssjeTracker, vts: vtsTracker,
     nouwen: nouwenTracker, sojo: sojoTracker, grist: gristTracker, payg: paygTracker,
+    taizeprayer: taizePrayerTracker,
   } as Record<string, { hasReadToday(): boolean } | undefined>)[source];
   return t ? t.hasReadToday() : false;
 }
@@ -1108,6 +1133,7 @@ export function recordReflectionDwell(source: string, dwellMs: number): void {
     ssje: "phoebe:ssje:last-read-day", vts: "phoebe:vts:last-read-day",
     nouwen: "phoebe:nouwen:last-read-day", sojo: "phoebe:sojo:last-read-day",
     grist: "phoebe:grist:last-read-day", payg: "phoebe:payg:last-read-day",
+    taizeprayer: "phoebe:taizeprayer:last-read-day",
   };
   const base = KEYS[source];
   if (!base) return;

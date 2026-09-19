@@ -862,6 +862,7 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
               ? [{ value: "sojo", label: "Sojourners Daily Devotion" }]
               : []),
             { value: "payg", label: "Pray As You Go Daily" },
+            { value: "taizeprayer", label: "Taizé Daily Prayer" },
             { value: "nouwen", label: "Nouwen Daily Devotion" },
             { value: "fdd", label: "Forward Day by Day" },
             { value: "ssje", label: "SSJE — Brother, Give Us a Word" },

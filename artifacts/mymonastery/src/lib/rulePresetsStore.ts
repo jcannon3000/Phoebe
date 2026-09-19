@@ -181,7 +181,7 @@ const PRAY_OF_LEVEL: Record<string, RulePreset["pray"]> = {
   "reflect-sit": "contemplation", creation: "creation", custom: "ownPractice",
   intercessions: "community", ask: "none",
 };
-const NEWSLETTER_KEYS = ["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "payg"];
+const NEWSLETTER_KEYS = ["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "payg", "taizeprayer"];
 /** layout key → the RulePreset.practices flag, where the two differ. */
 const FLAG_OF_CARD: Record<string, string> = {
   cobreathe: "cobreathe", listening: "audio", examen: "examen",

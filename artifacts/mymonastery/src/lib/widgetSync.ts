@@ -79,6 +79,11 @@ const REFLECTION_NAME: Record<string, string> = {
   ssje: "Brother, Give Us a Word",
   cac: "CAC Daily Meditation",
   vts: "VTS Dean's Commentary",
+  nouwen: "Nouwen Daily Devotion",
+  sojo: "Sojourners Daily Devotion",
+  grist: "Grist Climate News",
+  payg: "Pray As You Go Daily",
+  taizeprayer: "Taizé Daily Prayer",
 };
 
 const HOME_URL = "https://withphoebe.app/";
@@ -220,10 +225,7 @@ export function useWidgetSync(): void {
       // is why both now answer this from the same stored per-side source.
       if (lvl === "fdd") {
         const src = getSideReflectionExplicit(side.toLowerCase() as "morning" | "evening") ?? "fdd";
-        if (src === "cac") return "CAC Daily Meditation";
-        if (src === "ssje") return "Brother, Give Us a Word";
-        if (src === "vts") return "VTS Dean's Commentary";
-        return "Forward Day by Day";
+        return REFLECTION_NAME[src] ?? "Forward Day by Day";
       }
       if (r.prayerKind === "community") return "Pray together";
       if (r.prayerKind === "devotion") return `${side} Devotion`;

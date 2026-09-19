@@ -30,7 +30,8 @@ function isValidYmd(s: string): boolean {
 // is precisely "it didn't save".
 // "hagiography" (2026-09-15): the feast-day life, so App Metrics can count it.
 // "payg" (2026-09-17): Pray As You Go's daily session, heard rather than read.
-const SOURCES = new Set(["fdd", "ssje", "vts", "nouwen", "sojo", "grist", "hagiography", "payg"]);
+// "taizeprayer" (2026-09-19): Brother Matthew's daily prayer from Taizé.
+const SOURCES = new Set(["fdd", "ssje", "vts", "nouwen", "sojo", "grist", "hagiography", "payg", "taizeprayer"]);
 
 function uid(req: Request): number | null {
   const u = req.user as { id?: number } | undefined;

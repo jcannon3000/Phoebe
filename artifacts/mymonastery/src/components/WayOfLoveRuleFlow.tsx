@@ -760,6 +760,7 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   // Heard, not read: its card opens the audio player on the day's session
   // (owner, 2026-09-17), and it is kept once most of it has played.
   { id: "payg", label: "🙇🏽 Pray As You Go Daily", sub: "Guided prayer and reflection on scripture" },
+  { id: "taizeprayer", label: "🌄 Taizé Daily Prayer", sub: "A short prayer from Brother Matthew of Taizé" },
   // Read-only sources (see ReflectionSource): they sit in the rule and open in
   // the reader like the others, but opening one is not scored.
   { id: "nouwen", label: "😊 Nouwen Daily Devotion", sub: "Henri Nouwen Society" },

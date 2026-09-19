@@ -18,7 +18,7 @@ import {
   reflectionSourceUrl,
   reflectionInAppRoute,
   markCacRead, markFddRead, markSsjeRead, markVtsRead,
-  markNouwenRead, markSojoRead, markGristRead, markPaygRead,
+  markNouwenRead, markSojoRead, markGristRead, markPaygRead, markTaizePrayerRead,
   type TrackedReflection,
 } from "@/lib/cacReadState";
 
@@ -32,6 +32,7 @@ export const REFLECTION_PUBLISHER: Record<TrackedReflection, string> = {
   grist: "The day's climate reporting",
   vts: "Virginia Theological Seminary · weekdays",
   payg: "The Jesuits in Britain · listen",
+  taizeprayer: "Brother Matthew · Taizé",
 };
 
 export type DailyReflection = { source: TrackedReflection; emoji: string; title: string; publisher: string };
@@ -44,6 +45,7 @@ export const DAILY_REFLECTIONS: readonly DailyReflection[] = TRACKED_REFLECTION_
 export const MARK_REFLECTION_READ: Record<TrackedReflection, (dwellMs?: number) => void> = {
   cac: markCacRead, fdd: markFddRead, ssje: markSsjeRead, vts: markVtsRead,
   nouwen: markNouwenRead, sojo: markSojoRead, grist: markGristRead, payg: markPaygRead,
+  taizeprayer: markTaizePrayerRead,
 };
 
 /**

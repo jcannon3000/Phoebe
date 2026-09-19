@@ -40,7 +40,7 @@ export const DEFAULT_SLUG = "__default__";
 const PRAY = new Set(["none", "community", "devotion", "offices", "compline", "contemplation",
   "fdd", "readings", "psalms", "examen", "creation", "guidedPrayer", "ownPractice"]);
 // officePrefs.ts ReflectionSource
-const SOURCES = new Set(["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "payg", "none"]);
+const SOURCES = new Set(["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "payg", "taizeprayer", "none"]);
 // officePrefs.ts OfficeLevel — what a side's level may be (the default's shape)
 const LEVELS = new Set(["ask", "devotion", "office", "intercessions", "reflect-sit", "fdd",
   "readings", "psalms", "examen", "creation", "guided-prayer", "custom", "compline"]);

@@ -957,6 +957,7 @@ function OfficeCloseExtrasSettings() {
     { value: "sojo", label: "Sojourners Daily Devotion", sub: "Verse, voice and prayer of the day.", emoji: "🕊️" },
     { value: "nouwen", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society.", emoji: "😊" },
     { value: "payg", label: "Pray As You Go Daily", sub: "Guided prayer and reflection on scripture.", emoji: "🙇🏽" },
+    { value: "taizeprayer", label: "Taizé Daily Prayer", sub: "A short prayer from Brother Matthew of Taizé.", emoji: "🌄" },
     { value: "none", label: "No reflection", sub: "No pill at the close.", emoji: "—" },
   ];
   return (

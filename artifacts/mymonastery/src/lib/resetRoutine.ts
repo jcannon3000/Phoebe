@@ -38,7 +38,7 @@ const DEFAULT_HIDDEN_MODULES = [
   "listening", "reading", "walk", "cobreathe", "compline", "noonday",
   "examen", "ssje", "vts", "prayer-list",
   "ncmp", "podcasts", "contemplation",
-  "icons", "taize", "andrews", "nouwen", "sojo", "grist", "payg", "spirituals", "lectio",
+  "icons", "taize", "andrews", "nouwen", "sojo", "grist", "payg", "taizeprayer", "spirituals", "lectio",
   // v8 (2026-09-05): Forward Day by Day is the default's newsletter now, so
   // CAC joins the hidden list and "fdd" stays out of it.
   "cac",
@@ -52,7 +52,7 @@ const DEFAULT_HIDDEN_MODULES = [
 const ALL_OPTIONAL_MODULES = [
   "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "noonday", "examen",
   "visio", "icons", "lectio", "rosary", "taize", "andrews", "spirituals", "cac", "fdd", "ssje", "vts",
-  "nouwen", "sojo", "grist", "payg", "hagiography", "ncmp", "podcasts", "prayer-list",
+  "nouwen", "sojo", "grist", "payg", "taizeprayer", "hagiography", "ncmp", "podcasts", "prayer-list",
 ];
 
 export async function resetRoutineToDefault(opts: {

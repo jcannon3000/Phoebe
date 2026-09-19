@@ -15,7 +15,7 @@ import {
   hasPrayedGuidedPrayerToday, GUIDED_PRAYER_READ_EVENT,
   hasPrayedFddToday, FDD_PRAYED_EVENT,
   hasPrayedReflectionToday, CAC_PRAYED_EVENT, SSJE_PRAYED_EVENT, VTS_PRAYED_EVENT,
-  hasPrayedReadingsToday, READINGS_PRAYED_EVENT, hasReadPaygToday,
+  hasPrayedReadingsToday, READINGS_PRAYED_EVENT, hasReadPaygToday, hasReadTaizePrayerToday,
   hasPrayedCustomToday, CUSTOM_PRAYER_READ_EVENT,
   hasReadNouwenToday,
   hasReadSojoToday,
@@ -1679,11 +1679,11 @@ export function useRhythmState(): RhythmState {
   // customizer and they save when a user implements them" — a source missing
   // from this list can be turned on in a layout and still never appear, since
   // this is what turns a saved module into a card with a dot.
-  const REFLECT_SOURCES = ["fdd", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "payg"] as const;
+  const REFLECT_SOURCES = ["fdd", "cac", "ssje", "vts", "nouwen", "sojo", "grist", "payg", "taizeprayer"] as const;
   const reflectLocalDone: Record<TrackedReflection, boolean> = {
     fdd: hasReadFddToday(), cac: hasReadCacToday(), ssje: hasReadSsjeToday(),
     vts: hasReadVtsToday(), nouwen: hasReadNouwenToday(), sojo: hasReadSojoToday(),
-    grist: hasReadGristToday(), payg: hasReadPaygToday(),
+    grist: hasReadGristToday(), payg: hasReadPaygToday(), taizeprayer: hasReadTaizePrayerToday(),
   };
   const reflectDoneFor = (s: TrackedReflection): boolean =>
     reflectLocalDone[s] || !!reflRead?.[s];

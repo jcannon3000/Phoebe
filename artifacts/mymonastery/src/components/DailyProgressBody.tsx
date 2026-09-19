@@ -24,7 +24,7 @@ import { useOnline, cardAvailableOffline } from "@/lib/offline";
 import { daySwapNote } from "@/components/PracticeSwitcher";
 import { rowIdToCardKeys } from "@/lib/routineOrder";
 import { recordPracticeOpen, sortCardsByLearnedOrder, dayGroupFor, isMorningAnchorKey } from "@/lib/practiceOrderLearning";
-import { hasReadReflectionToday, reflectionDwellMsToday, reflectionSourceUrl, reflectionInAppRoute, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markPaygRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
+import { hasReadReflectionToday, reflectionDwellMsToday, reflectionSourceUrl, reflectionInAppRoute, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markPaygRead, markTaizePrayerRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markInboxRead, unmarkInboxRead } from "@/lib/taizeInbox";
 import { markCustomDoneToday, setCustomNotToday, unmarkCustomDoneToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig , curatedPromptFor } from "@/lib/customAnchors";
@@ -57,6 +57,9 @@ export const REFLECTION_EMOJI: Record<TrackedReflection, string> = {
   cac: "🌵", fdd: "📔", ssje: "✍🏽", vts: "🦩", nouwen: "😊", sojo: "🕊️", grist: "🌎",
   // Heard, not read — the headphones say so on every surface it appears on.
   payg: "🙇🏽",
+  // The hill of Taizé at dawn — no cross; 🕯️ is already the weekly Taizé
+  // meditation and Contemplation.
+  taizeprayer: "🌄",
 };
 
 export const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
@@ -68,6 +71,7 @@ export const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string>
   sojo: "Sojourners Daily Devotion",
   grist: "Grist Climate News",
   payg: "Pray As You Go Daily",
+  taizeprayer: "Taizé Daily Prayer",
 };
 
 const WARM = "#F0EDE6";
@@ -1949,6 +1953,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         // it has been heard. The map has to be complete, so it points at the
         // same mark rather than a no-op that could hide a wiring mistake.
         payg: markPaygRead,
+        taizeprayer: markTaizePrayerRead,
       };
       const mark = MARK_READ[r.source];
       const scrapedTitle = r.source === "cac" ? cacTitle : r.source === "vts" ? vtsTitle : r.source === "payg" ? paygTitle : "";
@@ -2286,7 +2291,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(() => {
       const EXTRA_READ_MS = 10_000;
       const inRhythm = new Set(reflections.map((r) => r.source));
-      return (["cac", "fdd", "ssje", "nouwen", "sojo", "grist", "payg", "vts"] as TrackedReflection[])
+      return (["cac", "fdd", "ssje", "nouwen", "sojo", "grist", "payg", "taizeprayer", "vts"] as TrackedReflection[])
         .filter((src) => !inRhythm.has(src)
           && hasReadReflectionToday(src)
           && (reflectionDwellMsToday(src) ?? 0) >= EXTRA_READ_MS)

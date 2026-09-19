@@ -67,6 +67,8 @@ export const HOME_MODULE_KEYS = [
   "grist",
   // Heard, not read: the card opens Phoebe's player on the day's session.
   "payg",
+  // Brother Matthew's daily prayer from Taizé ("taize" is the weekly meditation).
+  "taizeprayer",
   "ncmp",
   "podcasts",
   "requests",

@@ -29,7 +29,7 @@
  *   examen                                      — session or completion.
  *   prayer-list                                 — the list opened, prayed in
  *       an office or in the slideshow, or an Amen on a request.
- *   read:<fdd|ssje|vts|nouwen|sojo|grist|payg|hagiography|cac|scripture>
+ *   read:<fdd|ssje|vts|nouwen|sojo|grist|payg|taizeprayer|hagiography|cac|scripture>
  *       — one per reading. A side CREDIT for a reading ("credit:fdd" etc.)
  *       maps onto the same key, so it can never count beside the reading.
  *   <psalms|guided-prayer|custom>:<side>        — a side's prayer that has no

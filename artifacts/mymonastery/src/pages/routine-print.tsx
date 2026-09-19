@@ -33,6 +33,7 @@ const REFLECTION_NAME: Record<TrackedReflection, string> = {
   payg: "Pray As You Go Daily",
   sojo: "Sojourners Daily Devotion",
   grist: "Grist Climate News",
+  taizeprayer: "Taizé Daily Prayer",
 };
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 

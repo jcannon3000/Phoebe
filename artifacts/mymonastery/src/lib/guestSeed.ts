@@ -294,7 +294,7 @@ function applyDefaultSeed(d: DefaultSeed | null, mode: "fresh" | "migrate" = "fr
    * it"). A fresh apply has no personal choice to protect, so the default's
    * own list is the whole answer.
    */
-  const NEWSLETTER_CARDS = ["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "payg"] as const;
+  const NEWSLETTER_CARDS = ["cac", "fdd", "ssje", "vts", "nouwen", "sojo", "grist", "payg", "taizeprayer"] as const;
   const keepNewsletters = new Set<string>(
     (d.cards ?? []).filter((k) => (NEWSLETTER_CARDS as readonly string[]).includes(k)),
   );

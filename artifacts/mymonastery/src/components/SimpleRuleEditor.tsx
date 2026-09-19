@@ -57,6 +57,7 @@ const REFLECTION_CHOICES: { value: ReflectionSource; label: string; sub: string 
   // see UNOFFERED_REFLECTION_SOURCES in lib/officePrefs.
   { value: "nouwen", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society" },
   { value: "payg", label: "Pray As You Go Daily", sub: "Guided prayer and reflection on scripture" },
+  { value: "taizeprayer", label: "Taizé Daily Prayer", sub: "A short prayer from Brother Matthew of Taizé" },
   // VTS BELONGS HERE TOO. Without it this editor did something worse than
   // omit an option: the label lookup below falls back to "Forward Day by Day",
   // so a reader whose reflection IS the Dean's Commentary was shown a screen

@@ -383,7 +383,16 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          view") — a weekly commentary on the coming Sunday's lessons, on
          WordPress with tagDiv's Newspaper theme. */
       var isTlc = (h === 'livingchurch.org' || h.slice(-17) === '.livingchurch.org');
-      if (!isOremus && !isSsje && !isNouwen && !isFdd && !isSojo && !isSubstack && !isTlc) return;
+      /* Taizé — Brother Matthew's daily prayer (owner, 2026-09-19: "create a
+         new daily with the Taize daily prayer … like the SSJE reader" · "The
+         reader would need to just show that days prayer"). The page carries
+         several days' prayers, then live prayers, a letter, songs and more;
+         the reader keeps ONLY today's card (taizePick). Scoped to the prayer
+         page: the weekly Taizé meditation lives on the same host and keeps its
+         own design. isReaderPage() in Swift scopes it the same way. */
+      var isTaize = (h === 'taize.fr' || h.slice(-9) === '.taize.fr')
+        && /prayer-and-reflection/.test(location.pathname || '');
+      if (!isOremus && !isSsje && !isNouwen && !isFdd && !isSojo && !isSubstack && !isTlc && !isTaize) return;
 
       /**
        * KEEP ONE BLOCK, HIDE ITS SIBLINGS — the technique three of these five
@@ -411,6 +420,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                          : isSojo ? 'article.node-versevoice'
                          : isSubstack ? 'article.post'
                          : isTlc ? '.tdb_single_content'
+                         : isTaize ? '.phoebe-taize-today'
                          : null;
 
       /**
@@ -703,6 +713,39 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
            12px, and in our face: the block's own rule sets Rufina on itself,
            and the note inherits from the block. */
         '.tdb_single_content.tdb_single_content .phoebe-reader-note{padding:10px 20px 40px!important;font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
+        'a,a:visited{color:#A8C5A0!important;}',
+      ] : isTaize ? [
+        /* ---- Taizé · Brother Matthew's daily prayer ----------------------
+           Measured on taize.fr/en/prayer-and-reflection: each day is a card in
+           the #daily-prayers-of-brother-matthew grid — a row of two
+           decorative quote marks, the prayer as plain text, and the date on an
+           orange bar at the FOOT. taizePick() marks today's card and its
+           parts; the isolate keeps that card and hides every other day and
+           section. In the reader the date moves up to an eyebrow above the
+           prayer, the quote marks go, and the prayer is set in the reader's
+           type at the reader's size. The text itself is the publisher's page,
+           shown as they serve it — nothing is copied into Phoebe. */
+        'html,body{background:transparent!important;margin:0!important;padding:0!important;',
+        'padding-top:calc(env(safe-area-inset-top) + 8px)!important;color:#F0EDE6!important;}',
+        /* The spine the isolate clears: the site's container, its section
+           margins, and a grid that is three columns wide on a tablet. */
+        '[data-phoebe-cleared]{float:none!important;width:auto!important;max-width:none!important;min-width:0!important;',
+        'margin-left:0!important;margin-right:0!important;padding-left:0!important;padding-right:0!important;background:transparent!important;}',
+        '[data-phoebe-cleared]:not(body){display:block!important;margin-top:0!important;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important;}',
+        /* Class named twice: isolate() marks the kept card itself as cleared,
+           and the flattening rule above (display:block, no padding) would
+           otherwise win — the date then fell BELOW the prayer. */
+        '.phoebe-taize-today.phoebe-taize-today{display:flex!important;flex-direction:column!important;background:transparent!important;border:none!important;',
+        'box-shadow:none!important;border-radius:0!important;margin:0!important;padding:0 20px 24px!important;transform:none!important;transition:none!important;}',
+        '.phoebe-taize-marks{display:none!important;}',
+        /* Class named twice: the site's utility classes (bg-orange-300, p-4,
+           font-bold) sit on the same element. */
+        '.phoebe-taize-date.phoebe-taize-date{order:-1!important;background:transparent!important;margin:0!important;padding:18px 0 12px!important;',
+        'font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;font-size:13px!important;letter-spacing:.16em!important;',
+        'text-transform:uppercase!important;font-weight:600!important;color:#A8C5A0!important;}',
+        '.phoebe-taize-text.phoebe-taize-text,.phoebe-taize-text.phoebe-taize-text *{margin:0!important;padding:0!important;',
+        'font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;font-size:22px!important;line-height:1.7!important;',
+        'font-weight:400!important;color:#F0EDE6!important;}',
         'a,a:visited{color:#A8C5A0!important;}',
       ] : [
         /* ---- Henri Nouwen · Forward Day by Day ---------------------------
@@ -1103,6 +1146,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                 : isFdd    ? 'Forward Movement'
                 : isSubstack ? (substackWho() || 'the author')
                 : isTlc    ? 'The Living Church'
+                : isTaize  ? 'the Taiz\\u00e9 Community'
                            : 'Benetvision';
         var note = document.createElement('div');
         note.className = 'phoebe-reader-note';
@@ -1351,6 +1395,52 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         }
       }
 
+      /**
+       * TODAY'S PRAYER, BY ITS DATE (owner, 2026-09-19: "The reader would need
+       * to just show that days prayer").
+       *
+       * Each card's date sits on its own bar in the page's words — "Saturday,
+       * September 19, 2026" — so the card whose bar reads today's LOCAL date,
+       * written the same way, is today's. The page runs on Taizé's clock and
+       * can lag a reader west of it, so with no card for today the NEWEST date
+       * on the page is kept instead: an earlier prayer, never a blank page.
+       * data-phoebe-taize says which it was ("today" or "newest").
+       *
+       * Found by the date's own text, not by the site's utility classes
+       * (bg-orange-300, grid-cols-3), which are styling and can change.
+       */
+      var TAIZE_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      function taizePick() {
+        if (document.querySelector('.phoebe-taize-today')) return;
+        var sec = document.getElementById('daily-prayers-of-brother-matthew');
+        if (!sec) return;
+        var today = '';
+        try { today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }); } catch (e) {}
+        var exact = null, newest = null, newestKey = -1;
+        var nodes = sec.querySelectorAll('div');
+        for (var i = 0; i < nodes.length; i++) {
+          var el = nodes[i];
+          if (el.children.length) continue;
+          var t = (el.textContent || '').replace(/\\s+/g, ' ').trim();
+          var m = /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), ([A-Z][a-z]+) (\\d{1,2}), (\\d{4})$/.exec(t);
+          if (!m || !el.parentElement) continue;
+          var found = { card: el.parentElement, date: el };
+          if (t === today) { exact = found; break; }
+          var key = Number(m[4]) * 10000 + (TAIZE_MONTHS.indexOf(m[2]) + 1) * 100 + Number(m[3]);
+          if (key > newestKey) { newestKey = key; newest = found; }
+        }
+        var pick = exact || newest;
+        if (!pick) return;
+        pick.card.classList.add('phoebe-taize-today');
+        pick.card.setAttribute('data-phoebe-taize', exact ? 'today' : 'newest');
+        pick.date.classList.add('phoebe-taize-date');
+        for (var c = pick.card.firstElementChild; c; c = c.nextElementSibling) {
+          if (c === pick.date) continue;
+          if (c.querySelector('svg') && !(c.textContent || '').trim()) c.classList.add('phoebe-taize-marks');
+          else c.classList.add('phoebe-taize-text');
+        }
+      }
+
       function isolate() {
         if (!ISOLATE_TARGET) return;
         var post = document.querySelector(ISOLATE_TARGET);
@@ -1457,6 +1547,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          * page that never has one simply reads as the publisher built it,
          * which is the correct answer for an error page.
          */
+        if (isTaize) taizePick();
         var sheet = document.getElementById('phoebe-reader');
         if (!isOremus && ISOLATE_TARGET && !document.querySelector(ISOLATE_TARGET)) {
           if (sheet) sheet.media = 'not all';
@@ -1773,8 +1864,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          *  ones where a Standard/Reader toggle would do anything. Kept beside
          *  readerJS's hostname gate; add to both or the button appears over a
          *  page it can't change (or, worse, doesn't appear over one it can). */
-        let readerHost = (url.host ?? "").lowercased()
-        let isReaderHost = Self.isReaderHostName(readerHost)
+        let isReaderHost = Self.isReaderPage(url)
         if officeChrome {
             // Owner: "take the settings and the X button out of the top
             // right and move the Next button ... to the top right." Gear
@@ -2186,8 +2276,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      * never hangs behind the veil.
      */
     private func hideVeilWhenReaderReady(attempt: Int = 0) {
-        let host = (webView.url?.host ?? url.host ?? "")
-        guard readerViewOn, Self.isReaderHostName(host), attempt < 15 else { hideVeil(); return }
+        guard readerViewOn, Self.isReaderPage(webView.url ?? url), attempt < 15 else { hideVeil(); return }
         webView.evaluateJavaScript("document.documentElement.getAttribute('data-phoebe-reader-applied') === '1'") { [weak self] result, _ in
             if (result as? Bool) == true { self?.hideVeil() }
             else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self?.hideVeilWhenReaderReady(attempt: attempt + 1) } }
@@ -2320,7 +2409,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          * so that mismatch is the first thing on screen.
          */
         let readerOwnsGround = readerViewOn
-            && Self.isReaderHostName(webView?.url?.host ?? url.host ?? "")
+            && Self.isReaderPage(webView?.url ?? url)
         let bar: UIColor = readerOwnsGround
             ? PhoebeBrowserColor.deck
             : (statusStrip ?? (isLight ? .white : .black))
@@ -2629,15 +2718,15 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      * already right.
      */
     private func refreshReaderChrome() {
-        let host = (webView.url?.host ?? url.host ?? "").lowercased()
         // THE ONE LIST. This used to carry its own hand-copied hosts, and it
         // drifted the moment VCS left the reader: readerJS returned early on
         // thevcs.org while this still forced dark chrome over the VCS's light
         // exhibition page and hung a Standard button on it that toggled
         // nothing — window.__phoebeReaderSet was never defined there. Every
         // Visio commentary is a VCS link, so that was most of the practice.
-        // Never re-inline these hosts; ask isReaderHostName.
-        guard Self.isReaderHostName(host) else { return }
+        // Never re-inline these hosts; ask isReaderPage (the host list, plus
+        // the one page-scoped host).
+        guard Self.isReaderPage(webView.url ?? url) else { return }
         // Dark, because the reader view paints the page dark green — but ONLY
         // while the reader is actually on. In Standard the page is the
         // publisher's own, usually white, and a dark bar over it is the
@@ -2688,6 +2777,20 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      * divina", "Grist i dont want a reader"). They still open in the in-app
      * browser; they simply arrive as their publishers built them.
      */
+    /**
+     * The page, not just the host — for the one reader host that shares its
+     * domain with pages the reader leaves alone. taize.fr's daily prayers get
+     * the reader view (readerJS's isTaize, the same test); its weekly
+     * meditations do not, so the host alone would hang a Standard button and
+     * the loading veil's wait over a page nothing restyles.
+     */
+    static func isReaderPage(_ url: URL?) -> Bool {
+        guard let url = url, let host = url.host?.lowercased() else { return false }
+        if isReaderHostName(host) { return true }
+        let isTaize = host == "taize.fr" || host.hasSuffix(".taize.fr")
+        return isTaize && url.path.contains("prayer-and-reflection")
+    }
+
     static func isReaderHostName(_ host: String) -> Bool {
         let h = host.lowercased()
         // EXACT OR A SUBDOMAIN — the shape readerJS's own gate uses. Plain
@@ -2945,6 +3048,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // too, so `html body` still puts the aA on top. The rebuilt title and
         // by-line sit outside `.tdb-block-inner`, so they keep their size.
         ([".tdb_single_content.tdb_single_content .tdb-block-inner p", ".tdb_single_content.tdb_single_content .tdb-block-inner li"], 22),
+        // Taizé's daily prayer, 22px in readerJS, class doubled there against
+        // the site's utility classes — doubled here too, under `html body`.
+        // The date eyebrow above it is furniture and keeps its size.
+        ([".phoebe-taize-text.phoebe-taize-text", ".phoebe-taize-text.phoebe-taize-text *"], 22),
     ]
     private static let readerFamilySelectors: [String] = [
         ".bible", ".bibletext", ".bibletext *",
@@ -2955,6 +3062,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         "html.phoebe-saint .pray-container ldf-liturgical-document", "html.phoebe-saint .pray-container ldf-liturgical-document *",
         "article.node-versevoice", "article.node-versevoice *",
         ".tdb_single_content.tdb_single_content .tdb-block-inner", ".tdb_single_content.tdb_single_content .tdb-block-inner *",
+        ".phoebe-taize-text.phoebe-taize-text", ".phoebe-taize-text.phoebe-taize-text *",
     ]
     /** The same selector, two ancestors deeper — so it outranks the readerJS
      *  rule it mirrors whatever order the two stylesheets land in. A selector

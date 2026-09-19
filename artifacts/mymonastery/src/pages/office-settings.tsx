@@ -477,6 +477,7 @@ export default function OfficeSettingsPage() {
           { value: "sojo" as const, emoji: "🕊️", label: "Sojourners Daily Devotion", sub: "Verse, voice and prayer of the day" },
           { value: "nouwen" as const, emoji: "😊", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society" },
           { value: "payg" as const, emoji: "🙇🏽", label: "Pray As You Go Daily", sub: "Guided prayer and reflection on scripture" },
+          { value: "taizeprayer" as const, emoji: "🌄", label: "Taizé Daily Prayer", sub: "A short prayer from Brother Matthew of Taizé" },
           { value: "none" as const, emoji: "🚫", label: t("office_settings.reflection_none_label"), sub: t("office_settings.reflection_none_sub") },
         ]).map((o) => (
           <OptionCard
