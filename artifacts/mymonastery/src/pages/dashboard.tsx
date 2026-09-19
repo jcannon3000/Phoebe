@@ -7482,8 +7482,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           under them — the calendar in upcoming order, each pill
                           opening that life's first prompt. */}
                       {SHOW_COURSES && <HomePracticesTicker />}
-                      {SHOW_COURSES && <HomeSaintsTicker />}
                       {SHOW_COURSES && <motion.div layout initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.3, layout: HOME_REFLOW_TRANSITION }}><HomeLearnSection /></motion.div>}
+                      {SHOW_COURSES && <HomeSaintsTicker />}
                     </div>
                   );
                 }
@@ -7539,8 +7539,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         transition.layout — a top-level transition would drive
                         the fade-in too and shorten it from 0.55s to 0.32s. */}
                     {SHOW_COURSES && <HomePracticesTicker />}
-                    {SHOW_COURSES && <HomeSaintsTicker />}
                     {SHOW_COURSES && <motion.div layout {...enterUp(3)} transition={{ ...enterUp(3).transition, layout: HOME_REFLOW_TRANSITION }}><HomeLearnSection /></motion.div>}
+                    {SHOW_COURSES && <HomeSaintsTicker />}
                   </div>
                 );
               })() : (
@@ -7588,8 +7588,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     web-only; the iOS shell shows only the Way of Love (audio).
                     See HomeLearnSection. */}
                 {SHOW_COURSES && <HomePracticesTicker />}
-                {SHOW_COURSES && <HomeSaintsTicker />}
                 {SHOW_COURSES && <motion.div layout transition={HOME_REFLOW_TRANSITION}><HomeLearnSection /></motion.div>}
+                {SHOW_COURSES && <HomeSaintsTicker />}
                 </>
               )}
             </div>

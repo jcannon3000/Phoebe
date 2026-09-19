@@ -54,5 +54,9 @@ export function HomeSaintsTicker() {
   }, [setLocation]);
 
   if (!pills.length) return null;
-  return <PillTicker label="Saints" pills={pills} />;
+  // Owner, 2026-09-18: "the life of a saint should have its own header, call
+  // it Haegriphopies". Spelled Hagiographies — the word, and the spelling the
+  // rest of the app already uses for this practice (the routine seed, the
+  // customizer and the reflection sources all say Hagiographies).
+  return <PillTicker label="Hagiographies" pills={pills} />;
 }
