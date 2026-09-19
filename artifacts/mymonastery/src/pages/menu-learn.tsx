@@ -4,7 +4,8 @@ import { MenuHub } from "@/components/MenuHub";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useMemo } from "react";
 import { useCacLibrary } from "@/hooks/useCacLibrary";
-import { useCacCourses, useShowCourses } from "@/lib/cacCourses";
+import { useCacCourses, useShowCourses, courseCompletion } from "@/lib/cacCourses";
+import { seasonCardLines } from "@/components/HomeLearnSection";
 
 // Courses — the guided courses, as their own menu category (the drawer's
 // Courses row and /menu's Courses group both land here). Open to everyone,
@@ -57,7 +58,7 @@ export default function MenuLearnPage() {
    * everyone, like Bishop Budde's above it.
    */
   const { data: curryData } = useShowCourses("way-of-love-curry");
-  const currySeasons = curryData?.courses.length ?? 0;
+  const currySeasons = curryData?.courses ?? [];
   const shows = useMemo(() => {
     const byShow = new Map<string, { showSlug: string; showTitle: string; author: string; seasonCount: number }>();
     for (const c of cacData?.courses ?? []) {
@@ -89,16 +90,33 @@ export default function MenuLearnPage() {
             // Way of Love first (owner, 2026-09-05), then every CAC show as
             // its own row — "bring them out of the folder of just CAC Courses".
             { emoji: "❤️", label: "Experiencing Jesus", sub: "Bishop Budde on the Way of Love", muted: !online, onClick: () => go("/way-of-love-course") },
-            // Two rows named the Way of Love, so each says WHOSE — the first
-            // course is Bishop Budde's, this one is the Presiding Bishop's.
-            {
-              emoji: "\u{1F49A}", // 💚 — no cross emojis (owner)
-              label: "The Way of Love",
-              sub: ["Bishop Michael Curry", currySeasons > 0 ? `${currySeasons} seasons` : null]
-                .filter(Boolean).join(" · "),
-              muted: !online,
-              onClick: () => go("/cac-show/way-of-love-curry"),
-            },
+            /**
+             * ONE ROW PER SEASON of the Presiding Bishop's Way of Love (owner,
+             * 2026-09-19: "And have its own card on the courses page"). It was
+             * a single row for the show that you then drilled into, so someone
+             * part-way through Season 1 who wanted Season 2 could not see
+             * either from here. Each row carries its own progress, so starting
+             * one while the other is half-done reads correctly.
+             *
+             * Named so each says WHOSE: the row above is Bishop Budde's course.
+             * The CAC's own shows keep a row per SHOW below — there are dozens
+             * of seasons there, and listing them flat would bury everything
+             * else on this page.
+             */
+            ...currySeasons.map((c) => {
+              const { completedCount, total } = courseCompletion(c);
+              const { title, sub } = seasonCardLines(c.showTitle, c.title);
+              return {
+                emoji: "\u{1F49A}", // 💚 — no cross emojis (owner)
+                label: title,
+                // "0 of 12 complete" is just the length said awkwardly, so a
+                // season nobody has played says how long it is instead.
+                sub: [sub, c.author, completedCount > 0 ? `${completedCount} of ${total} complete` : `${total} episodes`]
+                  .filter(Boolean).join(" · "),
+                muted: !online,
+                onClick: () => go(`/cac-course/${c.id}`),
+              };
+            }),
             ...(isAdmin || cacLibraryGranted
               ? shows.map((show) => ({
                   emoji: "🌵",

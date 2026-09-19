@@ -50,6 +50,9 @@ const COURSE_RGB = "95,191,127";
 export type LearnCard = {
   key: string;
   title: string;
+  /** Extra context before the lesson count on the quiet second line — a
+   *  season's own name, where the title carries only its number. */
+  sub?: string;
   /** The card's emoji, in the rhythm card's left slot (owner, 2026-09-19:
    *  "Emoji on the left, cta on the right"). One per course, none of them a
    *  cross. */
@@ -91,6 +94,26 @@ function videoCourseCard(
     // count here or browsing the Learn tab fills the home with Continue cards).
     started: completedCount > 0 || progress.started,
   };
+}
+
+/**
+ * A SEASON CARD'S TWO LINES.
+ *
+ * These courses are seasons of a show, and the show's name is the long part:
+ * "The Way of Love with Bishop Michael Curry · Season 2: Hope for the World
+ * and in Our Lives" wanted 628px in a 237px line, so both cards read "The Way
+ * of Love with Bish…" and the one thing telling the seasons apart was the part
+ * that got cut (owner, 2026-09-19: each season is its own card, and it must be
+ * clear which is which).
+ *
+ * So the season leads — what truncates is then the SHOW, which the cards share
+ * anyway — and the season's own name goes to the second line, in front of the
+ * lesson count. A course that is not a season of anything is unchanged.
+ */
+export function seasonCardLines(showTitle: string, courseTitle: string): { title: string; sub?: string } {
+  const m = /^\s*(Season\s+\d+)\s*(?:[:\u2014-]\s*(.+))?$/i.exec(courseTitle);
+  if (!m) return { title: `${showTitle} · ${courseTitle}` };
+  return { title: `${m[1]} · ${showTitle}`, sub: m[2]?.trim() || undefined };
 }
 
 /**
@@ -220,7 +243,7 @@ export function HomeLearnSection() {
       // ❤️‍🔥 for the Way of Love's seasons: 💚 is the whole course's card
       // above, and these are the same love, taught.
       emoji: "\u{2764}\u{FE0F}\u{200D}\u{1F525}",
-      title: `${c.showTitle} · ${c.title}`,
+      ...seasonCardLines(c.showTitle, c.title),
       nextLabel: nextTitle ?? "",
       href: `/cac-course/${c.id}`,
       done: completedCount,
@@ -237,7 +260,7 @@ export function HomeLearnSection() {
       key: `cac-${c.id}`,
       // The CAC's own emoji, the one its daily meditation card wears.
       emoji: "\u{1F335}",
-      title: `${c.showTitle} · ${c.title}`,
+      ...seasonCardLines(c.showTitle, c.title),
       nextLabel: nextTitle ?? "",
       href: `/cac-course/${c.id}`,
       done: completedCount,
@@ -347,9 +370,10 @@ export function HomeLearnSection() {
                 href={c.href}
                 emoji={c.emoji}
                 title={c.title}
-                blurb={c.started
-                  ? `Lesson ${lesson} of ${c.total}${label}`
-                  : `${c.total} ${c.total === 1 ? "lesson" : "lessons"}${label}`}
+                blurb={[
+                  c.sub,
+                  c.started ? `Lesson ${lesson} of ${c.total}` : `${c.total} ${c.total === 1 ? "lesson" : "lessons"}`,
+                ].filter(Boolean).join(" · ") + (c.sub ? "" : label)}
                 cta={c.started ? "Continue" : "Start"}
                 done={false}
                 rgb={COURSE_RGB}
