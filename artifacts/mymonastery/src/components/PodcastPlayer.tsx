@@ -496,6 +496,35 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // ends (expanded), cleared when any new episode starts or the user dismisses.
   const [fddOffer, setFddOffer] = useState(false);
 
+  /**
+   * THE SIT AFTER THE REFLECTION (owner, 2026-09-19: "For things like Pray as
+   * You Go and The Guided Lectio, can you do extra time tracking after, that
+   * after it's done, in the same ui, fade out the progress bar, and start
+   * counting up extra time of contemplation, then have a done pull or a
+   * discard under it").
+   *
+   * A guided reflection ends in silence more often than it ends in an ending:
+   * the voice stops and the prayer carries on. So when an episode that counts
+   * as contemplation finishes ON ITS OWN, this player stops being a player —
+   * the scrubber and its clocks fade out and a clock counts UP in their place,
+   * with Done and Discard beneath it. Only an episode that runs out does this;
+   * closing or skipping one never does.
+   *
+   * ONLY THE EXTRA SECONDS ARE AT STAKE. The listened seconds went to
+   * contemplation the moment the audio ended (commitSession, below), and the
+   * reflection was credited two thirds of the way in. Discard drops the sit
+   * and nothing else — owner: "It will still log the completion of listening
+   * to the practice card if they hit discard, just not count the contemplation
+   * to their extra time."
+   *
+   * The start instant lives in a ref and the clock is derived from wall time
+   * on every tick, so a phone that sleeps, backgrounds or throttles its timers
+   * still counts the minutes the person actually sat.
+   */
+  const afterSitRef = useRef<{ source: string; startedAt: number } | null>(null);
+  const [afterSitOn, setAfterSitOn] = useState(false);
+  const [afterSitSeconds, setAfterSitSeconds] = useState(0);
+
   const pendingSeekRef = useRef<number | null>(null);
   const lastSaveRef = useRef(0);
   // Whether playback was active when the app last went to the background,
@@ -594,6 +623,48 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [closeSeg, user, queryClient]);
 
+  /**
+   * End the after-sit. `keep` decides only whether the counted-up seconds are
+   * logged: Done keeps them, Discard drops them, and every other way out
+   * (closing, minimising, starting something else, the page going away, audio
+   * starting again) keeps them — time already sat is time already sat.
+   *
+   * The seconds ride the SAME path as the listened ones, so they ADD to the
+   * day rather than replacing it, and the contemplation stats, the history
+   * list and App Metrics all see one more sit from this practice.
+   *
+   * That path ignores anything under a minute, because the tally is in whole
+   * minutes — so a Done tapped after forty seconds closes without adding a
+   * row. That is the existing rule for listened time and this is the same kind
+   * of time; it is not a special case invented here.
+   */
+  const endAfterSit = useCallback((keep: boolean) => {
+    const sit = afterSitRef.current;
+    afterSitRef.current = null;
+    setAfterSitOn(false);
+    setAfterSitSeconds(0);
+    if (!sit || !keep) return;
+    const seconds = Math.round((Date.now() - sit.startedAt) / 1000);
+    if (seconds <= 0) return;
+    logListenedContemplation({ seconds, source: sit.source, user });
+    queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+  }, [user, queryClient]);
+
+  // The count-up itself. Recomputed from the start instant on every tick
+  // rather than incremented, so it cannot drift and it is already right the
+  // moment the app comes back from the background.
+  useEffect(() => {
+    if (!afterSitOn) return;
+    const tick = () => {
+      const sit = afterSitRef.current;
+      if (sit) setAfterSitSeconds(Math.max(0, Math.round((Date.now() - sit.startedAt) / 1000)));
+    };
+    tick();
+    const id = window.setInterval(tick, 500);
+    return () => window.clearInterval(id);
+  }, [afterSitOn]);
+
   // Count an office podcast as PRAYED TODAY (≥60% listened). Stamps the local
   // office-completed flag (instant dashboard flip) and POSTs a completed=TRUE
   // office-podcast prayer-session that the office-history rollup counts (so it
@@ -623,6 +694,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const startEpisode = useCallback((ep: PlayingEpisode) => {
     if (!ep.audioUrl) return;
     setFddOffer(false); // any new episode clears the post-office FDD offer
+    endAfterSit(true);  // something new to listen to ends the sit, keeping it
     setCurrent((prev) => {
       if (prev && prev.showSlug === ep.showSlug && prev.episodeId === ep.episodeId) {
         // Same episode already loaded — jump to the requested segment (e.g.
@@ -667,7 +739,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       segmentStopRef.current = ep.stopAtSeconds ?? null;
       return ep;
     });
-  }, [commitSession]);
+  }, [commitSession, endAfterSit]);
 
   const play = useCallback((ep: PlayingEpisode, opts?: { expand?: boolean }) => {
     // User-initiated tap: clear any running queue. Open full-screen unless
@@ -872,6 +944,12 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       const a = audioRef.current;
       if (a && current) savePos(current, a.currentTime);
       commitSession();
+      // The page is going away for good — bank the sit rather than lose it.
+      // NOTE that `onVis` above deliberately does NOT: a phone in a pocket is
+      // the ordinary way to sit, so backgrounding keeps counting, exactly as
+      // the contemplation timer does. The clock is wall-time derived, so the
+      // minutes are right however long the WebView was frozen.
+      endAfterSit(true);
     };
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("pagehide", onHide);
@@ -890,7 +968,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("pageshow", resumeForeground);
       window.removeEventListener("focus", resumeForeground);
     };
-  }, [current, closeSeg, commitSession, openSeg]);
+  }, [current, closeSeg, commitSession, openSeg, endAfterSit]);
 
   // Lock-screen / Control Center controls (MediaSession API). Publishes
   // now-playing metadata + routes remote play/pause/seek back to the same
@@ -1076,7 +1154,13 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // suspended audio on background, and that must not read as "user stopped"
   // — otherwise resume on return is skipped). It's cleared only on explicit
   // user stops: toggle-to-pause, lock-screen pause, ended, and close.
-  const onPlayEv = () => { wasPlayingRef.current = true; setIsPlaying(true); openSeg(); syncMediaPlaybackState(); };
+  const onPlayEv = () => {
+    // Audio playing again ends the sit — a lock-screen Play after the episode
+    // ran out would otherwise have the count-up and a fresh listened session
+    // running at the same time, counting one stretch of time twice.
+    if (afterSitRef.current) endAfterSit(true);
+    wasPlayingRef.current = true; setIsPlaying(true); openSeg(); syncMediaPlaybackState();
+  };
   const onPauseEv = () => {
     setIsPlaying(false); closeSeg(); syncMediaPlaybackState();
     const a = audioRef.current; if (a && current) savePos(current, a.currentTime);
@@ -1114,6 +1198,24 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     if (after && expanded) {
       setExpanded(false);
       setLocation(after);
+      return;
+    }
+    /**
+     * A reflection that counts as contemplation has run out, with nothing
+     * queued and nowhere to hand off to: stay in this player and let the
+     * silence after it count too (see afterSitRef above). The source comes
+     * from sessionMetaRef, the one place the accumulating session's identity
+     * lives, so the extra minutes are filed under the same practice as the
+     * listened ones.
+     *
+     * Ahead of the FDD offer and returning, so the two can never be on at
+     * once — an office never carries a contemplation source, but that is a
+     * fact about today's surfaces rather than a guarantee.
+     */
+    if (expanded && sessionMetaRef.current.contemplationSource && !afterSitRef.current) {
+      afterSitRef.current = { source: sessionMetaRef.current.contemplationSource, startedAt: Date.now() };
+      setAfterSitOn(true);
+      setAfterSitSeconds(0);
       return;
     }
     // No explicit handoff: if a daily office just finished (and we're still in
@@ -1254,13 +1356,14 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
 
   const closePlayer = useCallback(() => {
     cancelAdvance();
+    endAfterSit(true); // leaving mid-sit keeps what was counted; only Discard drops it
     const a = audioRef.current;
     if (a && current) savePos(current, a.currentTime);
     wasPlayingRef.current = false;
     commitSession();
     if (a) a.pause();
     setCurrent(null); setIsPlaying(false); setCurrentTime(0); setDuration(0); setExpanded(false);
-  }, [current, commitSession]);
+  }, [current, commitSession, endAfterSit]);
 
   const isCurrent = useCallback(
     (slug: string, id: string) => !!current && current.showSlug === slug && current.episodeId === id,
@@ -1657,7 +1760,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
           <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
             {/* Top bar: minimize chevron (left) · share (right) */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 18px", flexShrink: 0 }}>
-              <button type="button" onClick={() => setExpanded(false)} aria-label={t("podcasts.a11y_minimize")}
+              <button type="button" onClick={() => { endAfterSit(true); setExpanded(false); }} aria-label={t("podcasts.a11y_minimize")}
                 style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 6, lineHeight: 0, opacity: 0.95 }}>
                 <IconChevronDown />
               </button>
@@ -1684,7 +1787,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                     {current.title}
                   </p>
                 </div>
-              ) : transportRow}
+              ) : afterSitOn ? null : transportRow}
             </div>
 
             {/* Lower block on the solid colour: big remaining time, scrubber,
@@ -1695,16 +1798,54 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               {current.segmentEyebrow && (
                 <div style={{ marginBottom: 22 }}>{transportRow}</div>
               )}
-              <div {...scrubHandlers} role="slider" aria-label={t("podcasts.a11y_seek")} aria-valuenow={Math.round(displayPct)}
-                style={{ position: "relative", padding: "11px 0", marginTop: 5, cursor: "pointer", touchAction: "none" }}>
-                <div style={{ height: 5, borderRadius: 999, background: "rgba(246,240,230,0.22)", overflow: "hidden" }}>
-                  <div style={{ width: `${displayPct}%`, height: "100%", background: "#F6F0E6" }} />
+              {/* The progress bar and its clocks — and, once the reflection
+                  has run out, the count-up that takes their place. Both sit in
+                  ONE box so the bar's height is held and nothing moves as one
+                  fades into the other; the bar goes inert as it fades, so a
+                  stray touch can't scrub a finished episode. Opacity only —
+                  nothing rises (reference_page_rise_end_snap). */}
+              <div style={{ position: "relative" }}>
+                <div
+                  aria-hidden={afterSitOn || undefined}
+                  style={{
+                    opacity: afterSitOn ? 0 : 1,
+                    transition: "opacity 0.7s ease",
+                    pointerEvents: afterSitOn ? "none" : undefined,
+                  }}
+                >
+                  <div {...scrubHandlers} role="slider" aria-label={t("podcasts.a11y_seek")} aria-valuenow={Math.round(displayPct)}
+                    style={{ position: "relative", padding: "11px 0", marginTop: 5, cursor: "pointer", touchAction: "none" }}>
+                    <div style={{ height: 5, borderRadius: 999, background: "rgba(246,240,230,0.22)", overflow: "hidden" }}>
+                      <div style={{ width: `${displayPct}%`, height: "100%", background: "#F6F0E6" }} />
+                    </div>
+                    <div style={{ position: "absolute", top: "50%", left: `${displayPct}%`, width: 14, height: 14, borderRadius: "50%", background: "#F6F0E6", transform: "translate(-50%, -50%)", boxShadow: "0 1px 5px rgba(0,0,0,0.45)", pointerEvents: "none" }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(246,240,230,0.7)", margin: "2px 1px 0" }}>
+                    <span>{fmtClock(displayTime)}</span>
+                    <span>{duration > 0 ? `-${fmtClock(displayRemaining)}` : "--:--"}</span>
+                  </div>
                 </div>
-                <div style={{ position: "absolute", top: "50%", left: `${displayPct}%`, width: 14, height: 14, borderRadius: "50%", background: "#F6F0E6", transform: "translate(-50%, -50%)", boxShadow: "0 1px 5px rgba(0,0,0,0.45)", pointerEvents: "none" }} />
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(246,240,230,0.7)", margin: "2px 1px 0" }}>
-                <span>{fmtClock(displayTime)}</span>
-                <span>{duration > 0 ? `-${fmtClock(displayRemaining)}` : "--:--"}</span>
+                {afterSitOn && (
+                  <div
+                    style={{
+                      position: "absolute", inset: 0,
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                      // The bar fades for 0.7s; this arrives as it goes, so the
+                      // two cross rather than swap.
+                      animation: "office-enter 0.9s ease 0.25s both",
+                    }}
+                  >
+                    <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.22em", color: "rgba(246,240,230,0.62)", margin: 0 }}>
+                      {t("podcasts.after_sit_eyebrow", { defaultValue: "Staying with it" })}
+                    </p>
+                    <p
+                      aria-live="off"
+                      style={{ fontSize: 30, fontWeight: 700, color: "#F6F0E6", margin: "3px 0 0", letterSpacing: "0.01em", fontVariantNumeric: "tabular-nums" }}
+                    >
+                      {fmtClock(afterSitSeconds)}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* The verse is already shown over the photo for scripture
@@ -1765,10 +1906,14 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                 /* Podcast actions: playback speed, and — when the episode has
                    a page of its own — the transcript, at the right (owner). */
                 <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0 0", width: "100%" }}>
+                  {/* Speed has nothing left to act on once the episode has
+                      run out; the Transcript link still does, so it stays. */}
+                  {!afterSitOn && (
                   <button type="button" onClick={cycleRate} aria-label={t("podcasts.a11y_speed")}
                     style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.18)", color: "#F6F0E6", fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 12px", cursor: "pointer", fontFamily: FONT }}>
                     {rate}×
                   </button>
+                  )}
                   {current.transcriptUrl && (
                     <button
                       type="button"
@@ -1778,6 +1923,46 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                       {t("podcasts.transcript", { defaultValue: "Transcript" })}
                     </button>
                   )}
+                </div>
+              )}
+
+              {/* Done, and Discard beneath it — the shape the sit already uses,
+                  with Done as the pill the owner asked for. Done keeps the
+                  counted-up minutes; Discard drops ONLY those. Neither touches
+                  what the finished reflection already earned: the practice card
+                  and the listened minutes were credited while it played. */}
+              {afterSitOn && (
+                <div
+                  style={{
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                    margin: "22px 0 0",
+                    animation: "office-enter 0.9s ease 0.35s both",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => { endAfterSit(true); closePlayer(); }}
+                    className="active:scale-[0.98]"
+                    style={{
+                      background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)",
+                      color: "#FFFFFF", fontFamily: FONT, fontSize: 16, fontWeight: 700,
+                      borderRadius: 999, padding: "11px 34px", cursor: "pointer",
+                      transition: "opacity 0.15s",
+                    }}
+                  >
+                    {t("common.done", { defaultValue: "Done" })}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { endAfterSit(false); closePlayer(); }}
+                    style={{
+                      background: "none", border: "none", padding: "8px 16px",
+                      color: "rgba(246,240,230,0.7)", fontFamily: FONT, fontSize: 13, fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t("contemplation_timer.discard_session", { defaultValue: "Discard session" })}
+                  </button>
                 </div>
               )}
             </div>
