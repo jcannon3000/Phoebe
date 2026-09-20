@@ -2,7 +2,7 @@ import { Fragment, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   getReadingBook, startReadingBook, logReadingPage,
-  type ReadingBook,
+  type ReadingBook, clearReadingBook,
 } from "@/lib/readingBook";
 import { todayLocalISO } from "@/lib/practiceCompletion";
 
@@ -162,6 +162,24 @@ export function ReadingBookSheet({
             </button>
             <button type="button" onClick={() => { onSkip(); onClose(); }} style={quiet}>
               {t("rhythm.not_today", { defaultValue: "Not today" })}
+            </button>
+            {/**
+              * A WAY OUT OF THE BOOK YOU ARE IN (owner, 2026-09-19: "why i am
+              * seeing a test book").
+              *
+              * Once a book was set there was nothing here but "what page are
+              * you on" — no way to finish it, change it, or undo a book typed
+              * to try the feature out. So a card set up in a minute of testing
+              * stayed on the home for good. This puts the book away (it keeps
+              * its place in `past`) and hands the sheet back to the setup
+              * form, which is the same door a second book comes through.
+              */}
+            <button
+              type="button"
+              onClick={() => { clearReadingBook(); setBook(null); }}
+              style={{ ...quiet, opacity: 0.75 }}
+            >
+              {t("reading.change_book", { defaultValue: "Finish or change this book" })}
             </button>
           </Fragment>
         )}

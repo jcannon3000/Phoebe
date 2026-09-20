@@ -665,45 +665,6 @@ export default function ListeningPage() {
   const todayYmd = new Date().toLocaleDateString("en-CA");
 
   /**
-   * WHAT THE FIELD OFFERS while it has focus: the distinct things logged
-   * lately, newest first, narrowed by what has been typed. Six is as many as
-   * fit above the keyboard.
-   */
-  const listenSuggestions = useMemo(() => {
-    const q = findQuery.trim().toLowerCase();
-    const seen = new Set<string>();
-    const out: Array<{ what: string; artworkUrl?: string; medium: ListeningMedium }> = [];
-    for (const e of sortedEntries) {
-      const what = (e.what ?? "").trim();
-      if (!what) continue;
-      const key = what.toLowerCase();
-      if (seen.has(key)) continue;
-      if (q && !key.includes(q)) continue;
-      seen.add(key);
-      out.push({ what, artworkUrl: e.artworkUrl ?? undefined, medium: e.medium });
-      if (out.length >= 6) break;
-    }
-    return out;
-  }, [sortedEntries, findQuery]);
-
-  /**
-   * LOG IT FROM HERE and carry on into the prayer. The beat's question is
-   * "what did you listen to"; once it is answered there is nothing left to do
-   * on this slide, and the lifting of what the music stirred is the next one.
-   */
-  function logFromListen(title: string, art?: string) {
-    const clean = title.trim();
-    if (!clean) return;
-    logListenNow(clean, art);
-    setFindQuery("");
-    setFindFocused(false);
-    setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false);
-    loggedHere.current = true;
-    setDeckStep(LIFT);
-  }
-
-
-  /**
    * LATELY, CONDENSED (owner, 2026-09-18: "Last three: condense. Same thing
    * three days running collapses to one; show the last two, and make the third
    * 'your most listened to this month'").
@@ -1220,11 +1181,7 @@ export default function ListeningPage() {
                     * forward on any tap in its right half and stands down only
                     * for button/a/[role=button].
                     */}
-                  {/* Hidden while the field is focused: the search takes the
-                      slide over and its own RECENT list stands in for these
-                      (owner, 2026-09-19: "once they click into it hide the
-                      content bellow and show the recents"). */}
-                  {!findFocused && lately.rows.length > 0 && (
+                  {lately.rows.length > 0 && (
                     <div className="w-full flex flex-col gap-2">
                       <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
                         Lately
@@ -1296,99 +1253,13 @@ export default function ListeningPage() {
                     * fills the log as well as starting the music — which is
                     * what makes "just hit log" true.
                     */}
-                  {/**
-                    * THE FIELD, UNDER THE PROMPT (owner, 2026-09-19: "Why
-                    * don't we just put the search field on that first slide
-                    * under the prompt, once they click into it hide the
-                    * content bellow and show the recents and if they chose one
-                    * let them log it").
-                    *
-                    * It writes the log — it does not search anyone's
-                    * catalogue. Music plays on YouTube now, so the only
-                    * question left at this beat is what you listened to, and
-                    * the answer is usually something you have listened to
-                    * before: tapping in shows what you have logged lately,
-                    * narrowing as you type, and a tap writes it down and
-                    * carries you on to the prayer.
-                    *
-                    * No "how did you listen" here (owner: "Don't worry about
-                    * the platform") — streaming is what nearly everyone means,
-                    * and the log page still has the choice for anyone who
-                    * cares.
-                    */}
-                  <div className="w-full">
-                    <input
-                      value={findQuery}
-                      onChange={(e) => { setFindQuery(e.target.value); setQuery(e.target.value); setPicked(false); setWhat(e.target.value); setArtworkUrl(""); }}
-                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); logFromListen(findQuery); } }}
-                      placeholder="What did you listen to?"
-                      inputMode="search"
-                      enterKeyHint="done"
-                      // Typing lifts the field above the keyboard (owner,
-                      // 2026-09-18: "When you type the page needs to scroll
-                      // up"). The keyboard animates in over ~250ms, so wait
-                      // for it, then bring the field to the TOP of the slide
-                      // so the recents open into the space below it.
-                      onFocus={(e) => {
-                        setFindFocused(true);
-                        const el = e.currentTarget;
-                        window.setTimeout(() => { try { el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch { /* old WebKit */ } }, 320);
-                      }}
-                      onBlur={() => window.setTimeout(() => setFindFocused(false), 200)}
-                      aria-label="What did you listen to?"
-                      style={{
-                        width: "100%", boxSizing: "border-box", fontSize: 16, padding: "12px 14px",
-                        borderRadius: 12, outline: "none", color: WARM, fontFamily: SPACE_GROTESK,
-                        background: "rgba(240,237,230,0.06)", border: `1px solid ${DECK_BORDER}`,
-                      }}
-                    />
-                    {findFocused && (
-                      <div className="mt-2 flex flex-col gap-1.5 max-h-[38vh] overflow-y-auto">
-                        {listenSuggestions.length > 0 && (
-                          <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: "2px 0 2px" }}>
-                            Recent
-                          </p>
-                        )}
-                        {listenSuggestions.map((r) => (
-                          <button
-                            key={r.what}
-                            type="button"
-                            // onMouseDown, not onClick: the field's blur fires
-                            // first on a tap and would unmount this row before
-                            // the click landed.
-                            onMouseDown={(e) => { e.preventDefault(); logFromListen(r.what, r.artworkUrl); }}
-                            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left active:scale-[0.99]"
-                            style={glassRow}
-                          >
-                            {r.artworkUrl ? (
-                              <img src={r.artworkUrl} alt="" loading="lazy" decoding="async"
-                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                                style={{ width: 34, height: 34, borderRadius: 6, objectFit: "cover", flex: "0 0 auto", backgroundColor: "rgba(46,107,64,0.3)" }} />
-                            ) : (
-                              <span aria-hidden style={{ width: 34, height: 34, borderRadius: 6, flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, background: "rgba(46,107,64,0.3)" }}>
-                                {MEDIUM_EMOJI[r.medium] ?? "🎧"}
-                              </span>
-                            )}
-                            <span className="min-w-0">
-                              <span className="block text-[14px] truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.what}</span>
-                            </span>
-                          </button>
-                        ))}
-                        {findQuery.trim().length > 0 && (
-                          <button
-                            type="button"
-                            onMouseDown={(e) => { e.preventDefault(); logFromListen(findQuery); }}
-                            className="rounded-xl px-3 py-2.5 text-left active:scale-[0.99]"
-                            style={glassRow}
-                          >
-                            <span className="block text-[14px]" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                              Log “{findQuery.trim()}”
-                            </span>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  {/* NO SEARCH FIELD HERE (owner, 2026-09-19: "Take out the
+                      search field from the second slide of audio divina").
+                      It stood under the prompt for part of an evening and came
+                      straight back out: this beat asks you to let a song come
+                      to mind, and a text field answers a different question.
+                      The log slide further on is where what you listened to
+                      gets written down. */}
                   {/* ONE PILL FOR THE CATALOGUES (owner, 2026-09-19: "For the
                       catalogues, let do a browse catalogue pill again that
                       brings up different options"). The row of them — Hymns,
@@ -1396,7 +1267,6 @@ export default function ListeningPage() {
                       becoming a wall; the sheet lists them from
                       lib/youtubeCatalogues' MUSIC_CATALOGUES, so the next one
                       needs nothing here. */}
-                  {!findFocused && (
                   <div style={{ display: "flex", justifyContent: "center" }}>
                     <button
                       type="button"
@@ -1413,10 +1283,6 @@ export default function ListeningPage() {
                       Browse catalogues
                     </button>
                   </div>
-                  )}
-                  {/* Room for the keyboard while searching, so the field can
-                      scroll to the top of the slide (see the search onFocus). */}
-                  {findFocused && <div aria-hidden style={{ height: "55vh", flex: "0 0 auto" }} />}
                 </div>
               )}
 

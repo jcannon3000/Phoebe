@@ -238,7 +238,10 @@ router.delete("/users/me", async (req, res): Promise<void> => {
 // syncs to the account"). Local-first, last write wins by updatedAt (ms):
 // a PUT older than what is stored is answered with the stored copy, which the
 // device then adopts. Keys are allow-listed; a value is capped at 32 KB.
-const CLIENT_STATE_KEYS = new Set(["icon-history"]);
+// "reading-book" joined it 2026-09-19 (owner: "and save a users progress"):
+// the book someone is reading and the page they are on, which was device-only
+// and therefore lost on a reinstall or a second phone.
+const CLIENT_STATE_KEYS = new Set(["icon-history", "reading-book"]);
 const CLIENT_STATE_MAX_BYTES = 32 * 1024;
 
 router.get("/me/client-state/:key", async (req, res): Promise<void> => {

@@ -15,7 +15,7 @@ import { Link, useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence, type TargetAndTransition, type Transition } from "framer-motion";
 import { ReadingBookSheet } from "@/components/ReadingBookSheet";
-import { getReadingBook, unlogReadingToday } from "@/lib/readingBook";
+import { getReadingBook, unlogReadingToday, pullReadingBookFromAccount, READING_BOOK_EVENT } from "@/lib/readingBook";
 import { useTranslation } from "react-i18next";
 import { getQueryClient, apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -973,6 +973,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     } catch { /* ignore */ }
   }, [search]);
   const [readingBook, setReadingBook] = useState(() => getReadingBook());
+  /**
+   * THE BOOK FOLLOWS THE ACCOUNT (owner, 2026-09-19: "and save a users
+   * progress"). Local-first as it always was — this only asks the account
+   * whether it holds a newer copy, and pushes ours when it does not. A guest
+   * gets a 401 and keeps their device's copy, which is the whole point of
+   * local-first. Also listens, so logging a page anywhere redraws the card.
+   */
+  useEffect(() => {
+    let alive = true;
+    void pullReadingBookFromAccount().then((changed) => { if (alive && changed) setReadingBook(getReadingBook()); });
+    const onChanged = () => setReadingBook(getReadingBook());
+    window.addEventListener(READING_BOOK_EVENT, onChanged);
+    return () => { alive = false; window.removeEventListener(READING_BOOK_EVENT, onChanged); };
+  }, []);
   // ── The just-completed moment ────────────────────────────────────────────
   // Coming back from a practice, the card is already Done in state — so
   // without this it would simply be sitting in the Done list, with nothing to
