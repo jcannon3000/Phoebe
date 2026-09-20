@@ -646,11 +646,26 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const beginAfterSit = useCallback((): boolean => {
     const source = sessionMetaRef.current.contemplationSource;
     if (!source || afterSitRef.current) return false;
+    /**
+     * CLOSE THE LISTENING DOWN FIRST, whichever door opened the sit.
+     * `ended` does this itself; the timeupdate door — the one that exists for
+     * the times `ended` never arrives — did not, so the listened clock kept
+     * running through the sit and the same minutes were logged twice, once as
+     * listening and once as contemplation. And with the play INTENT left
+     * standing, coming back to the app restarted the episode from the top and
+     * banked the sit without the person ever seeing Done (2026-09-19).
+     */
+    wasPlayingRef.current = false;
+    closeSeg();
+    commitSession();
+    const a = audioRef.current;
+    if (a && !a.paused) { try { a.pause(); } catch { /* already gone */ } }
+    if (current) clearPos(current);
     afterSitRef.current = { source, startedAt: Date.now() };
     setAfterSitOn(true);
     setAfterSitSeconds(0);
     return true;
-  }, []);
+  }, [closeSeg, commitSession, current]);
 
   const endAfterSit = useCallback((keep: boolean) => {
     const sit = afterSitRef.current;
@@ -658,7 +673,15 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     setAfterSitOn(false);
     setAfterSitSeconds(0);
     if (!sit || !keep) return;
-    const seconds = Math.round((Date.now() - sit.startedAt) / 1000);
+    /**
+     * CAPPED AT AN HOUR, like the icon sit ("so a phone left open on the
+     * picture cannot report an hour"). This clock deliberately keeps running
+     * in the background — a phone in a pocket is how people sit — so without
+     * a ceiling a player left open overnight reported the whole night as
+     * contemplation. The server clamps an account's row to an hour anyway;
+     * the guest tally, kept on the device, had nothing above it at all.
+     */
+    const seconds = Math.min(Math.round((Date.now() - sit.startedAt) / 1000), 60 * 60);
     if (seconds <= 0) return;
     logListenedContemplation({ seconds, source: sit.source, user });
     queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });

@@ -47,10 +47,17 @@ export function guestBreathKeptToday(): boolean {
 
 /** Add a finished sit's WHOLE minutes to today's tally (0/negative = no-op). */
 export function addGuestSilenceMinutes(min: number): void {
-  const add = Math.floor(min);
+  /**
+   * ONE HOUR AT A TIME, and no more than a day's worth in a day. The server
+   * clamps an account's session to an hour; this tally is kept on the device
+   * and had nothing above it, so a player or a picture left open in a pocket
+   * could report the whole afternoon as silence (2026-09-19).
+   */
+  const add = Math.min(Math.floor(min), 60);
   if (!Number.isFinite(add) || add <= 0) return;
   try {
-    localStorage.setItem(KEY, JSON.stringify({ ymd: todayYmd(), min: getGuestSilenceMinutesToday() + add }));
+    const today = Math.min(getGuestSilenceMinutesToday() + add, 24 * 60);
+    localStorage.setItem(KEY, JSON.stringify({ ymd: todayYmd(), min: today }));
     window.dispatchEvent(new Event(GUEST_SILENCE_EVENT));
   } catch { /* private mode — the sit still happened */ }
 }

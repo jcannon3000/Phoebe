@@ -1365,10 +1365,36 @@ export default function IconsPage() {
    */
   const sitStartRef = useRef<number | null>(null);
   const sitSecondsRef = useRef(0);
+  /**
+   * SECONDS SAT WITH THE APP IN FRONT, closed out whenever it goes away —
+   * Visio's own pattern. Wall clock counted a locked phone, so a sit begun
+   * with "no timer" and set down reported up to the cap an hour later; this
+   * screen's whole claim is an honest one about time spent looking.
+   */
+  const sitSatRef = useRef(0);
+  useEffect(() => {
+    if (phase !== "pray") return;
+    const close = () => {
+      if (sitStartRef.current === null) return;
+      sitSatRef.current += (Date.now() - sitStartRef.current) / 1000;
+      sitStartRef.current = null;
+    };
+    const onVis = () => {
+      if (document.visibilityState === "visible") { if (sitStartRef.current === null) sitStartRef.current = Date.now(); }
+      else close();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", close);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", close);
+    };
+  }, [phase]);
 
   const begin = () => {
     if (!chosen) return;
     sitStartRef.current = Date.now();
+    sitSatRef.current = 0;
     sitSecondsRef.current = 0;
     setEndsAt(minutes != null ? Date.now() + minutes * 60_000 : null);
     // Prime the remaining time IN THE SAME UPDATE. Left stale (its initial 0,
@@ -1428,12 +1454,13 @@ export default function IconsPage() {
      */
     markPracticeDoneToday("icons");
     const startedAt = sitStartRef.current;
-    if (startedAt !== null) {
+    if (startedAt !== null || sitSatRef.current > 0) {
       sitStartRef.current = null;
-      const sat = (Date.now() - startedAt) / 1000;
+      const sat = sitSatRef.current + (startedAt !== null ? (Date.now() - startedAt) / 1000 : 0);
+      sitSatRef.current = 0;
       const cap = minutes != null ? minutes * 60 : 60 * 60;
       sitSecondsRef.current = Math.min(sat, cap);
-      logListenedContemplation({ seconds: sitSecondsRef.current, source: "icons", user });
+      if (sitSecondsRef.current > 0) logListenedContemplation({ seconds: sitSecondsRef.current, source: "icons", user });
     }
     setHistory((h) => [{ id: chosen.id, ymd }, ...h.filter((v) => v.id !== chosen.id)]);
     setPhase("done");

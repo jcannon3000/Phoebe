@@ -72,6 +72,9 @@ export function useSundayCommentaries(sundayYmd?: string | null): SundayCommenta
     return (livingChurchQ.data ?? []).find((p) => !!p.published && p.published > weekBefore && p.published <= ymd) ?? null;
   }, [livingChurchQ.data, sundayYmd]);
 
+  // Memoised: the reflections ticker lists this in a dependency array, and a
+  // fresh array on every render rebuilt its pills for nothing.
+  return useMemo(() => {
   const out: SundayCommentary[] = [];
   if (andrewsVisible) {
     out.push({
@@ -99,4 +102,6 @@ export function useSundayCommentaries(sundayYmd?: string | null): SundayCommenta
     });
   }
   return out;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [andrewsVisible, andrewsQ.data, andrewsPrevious, livingChurchVisible, livingChurchPost, livingChurchPrevious]);
 }

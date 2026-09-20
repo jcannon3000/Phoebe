@@ -427,7 +427,10 @@ export default function RosaryPage() {
    * purely because of list order.
    */
   const dayArtIds = useMemo(
-    () => artIdsForDay(def, (id) => artworkById(id)?.artist ?? null),
+    // null means the work is GONE from the library, "" means it is there
+    // without an attribution — artIdsForDay needs to tell those apart, since
+    // only the first is a picture that cannot be shown.
+    () => artIdsForDay(def, (id) => { const a = artworkById(id); return a ? (a.artist ?? "") : null; }),
     [def],
   );
   const mysteryArt = (() => {

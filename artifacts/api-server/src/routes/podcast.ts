@@ -306,6 +306,9 @@ export const SHOWS: Record<string, Show> = {
   // reads it as any podcast client does — their page, their audio, their
   // attribution — and brings none of their text into the app.
   "abiding-way-lectio": {
+    // A daily feed like the offices and Pray As You Go: keeps the short browse
+    // window (see Show.browseEpisodes) rather than growing a row a day.
+    browseEpisodes: 50,
     slug: "abiding-way-lectio",
     title: "Guided Lectio Divina",
     artist: "Abiding Way Ministries",
@@ -711,16 +714,27 @@ function preacherFrom(text: string | null): string | null {
    * September 13" as the preacher on forty of eighty-seven items.
    */
   const m = PREACHER_WITH.exec(text) ?? PREACHER_LEADING.exec(text);
-  let name = m?.[1]?.trim().replace(/^(?:and|by)\s+/i, "").replace(/[.,;]+$/, "").trim();
+  return tidyPreacher(m?.[1]?.replace(/^(?:and|by)\s+/i, "") ?? null);
+}
+
+/**
+ * A preacher's name, however we came by it — out of a description or out of a
+ * title. ONE cleanup for both: a name read off a title used to skip this and
+ * keep whatever the dash left behind, so "Reverend Jesse Jackson, Deans
+ * Conference Lecture- 2 May, 1992" stood as a preacher (2026-09-19).
+ *
+ * A trailing role is theirs, not part of the name — but only cut it when what
+ * is left is still a NAME. "Archdeacon, the Venerable Denise LaVetty" puts the
+ * role first, and cutting the tail there left the word "Archdeacon" standing
+ * alone. A year means we are reading a date or a lecture title, not a person.
+ */
+function tidyPreacher(raw: string | null | undefined): string | null {
+  let name = raw?.trim().replace(/[.,;-]+$/, "").trim();
   if (!name) return null;
-  /**
-   * A trailing role is theirs, not part of the name — but only cut it when
-   * what is left is still a NAME. "Archdeacon, the Venerable Denise LaVetty"
-   * puts the role first, and cutting the tail there left the word
-   * "Archdeacon" standing alone as the preacher.
-   */
   const head = name.split(",")[0]?.trim() ?? name;
   if (name.includes(",") && head.split(/\s+/).length >= 2) name = head;
+  name = name.replace(/[.,;-]+$/, "").trim();
+  if (/\b\d{4}\b/.test(name)) return null;
   return /^[A-Za-z]/.test(name) && name.length >= 4 && name.length <= 70 ? name : null;
 }
 
@@ -763,7 +777,12 @@ export function parseFeed(xml: string, limit: number, opts?: { sermons?: boolean
       title: decodedTitle,
       audioUrl: decodeXmlText(enclosure),
       durationSeconds: parseDurationSeconds(duration),
-      publishedAt: pub ? pub.trim() : null,
+      // DECODED like every other field. RedCircle writes the UTC offset as an
+      // entity — "Sun, 13 Sep 2026 18:56:18 &#43;0000" — and pubDate was the
+      // one field that never went through decodeXmlText, so Date.parse gave
+      // NaN on all 176 St. Michael episodes: the church read as permanently
+      // stale on the Sermons page and never got a home pill (2026-09-19).
+      publishedAt: pub ? decodeXmlText(pub).trim() : null,
       description: plainTextPreview(desc),
       imageUrl: itemImage ? decodeXmlText(itemImage) : null,
       season,
@@ -952,10 +971,18 @@ function sermonMeta(ep: EpisodeFull): EpisodeFull {
         // "Life Comes Thru the Roots-The Rev. Mike Angell" — the same parish
         // writing the same thing without the pipes. Only when what follows the
         // dash reads as a name, so an ordinary hyphenated title is left alone.
-        const dashed = /^(.{3,90}?)\s*[\u2014\u2013-]\s*((?:The\s+)?(?:Rt\.?\s+|Very\s+|Right\s+)?(?:Rev|Reverend|Revd|Bishop|Canon|Father|Fr|Mother|Deacon|Dr|Br)\b.{2,60})$/.exec(title);
-        if (dashed?.[1] && dashed[2]) {
+        // Case-insensitive: the same parish writes "the Rev." as often as
+        // "The Rev.", and without the flag four of their titles kept the name
+        // glued on. The head is held to the same series/date stop as the
+        // service split, and the tail through the same name cleanup, so
+        // "Historical Voices From The Cathedral- Reverend Jesse Jackson, Deans
+        // Conference Lecture- 2 May, 1992" is left whole rather than cut down
+        // to the series name with a lecture title standing in for a preacher.
+        const dashed = /^(.{3,90}?)\s*[\u2014\u2013-]\s*((?:The\s+)?(?:Rt\.?\s+|Very\s+|Right\s+)?(?:Rev|Reverend|Revd|Bishop|Canon|Father|Fr|Mother|Deacon|Dr|Br)\b.{2,60})$/i.exec(title);
+        const dashedName = dashed?.[1] && !SERMON_HEAD_STOP.test(dashed[1]) ? tidyPreacher(dashed[2]) : null;
+        if (dashed?.[1] && dashedName) {
           title = dashed[1].trim();
-          titlePreacher = dashed[2].trim();
+          titlePreacher = dashedName;
         }
       }
     }

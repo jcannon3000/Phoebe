@@ -103,15 +103,15 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
     days: "Mondays and Saturdays",
     blurb: "The coming of Christ, and the ordinary lives that carried him.",
     mysteries: [
-      { n: 1, title: "The Annunciation", ref: "Luke 1:26-38", artIds: [48278, 59673, 59234], fruit: "Humility",
+      { n: 1, title: "The Annunciation", ref: "Luke 1:26-38", artIds: [48278, 59673], fruit: "Humility",
         meditation: "The angel Gabriel brings God's message to Mary in Nazareth, and she gives her yes, offering herself as the servant of the Lord." },
-      { n: 2, title: "The Visitation", ref: "Luke 1:39-56", artIds: [48279, 59190, 58365], fruit: "Love of neighbor",
+      { n: 2, title: "The Visitation", ref: "Luke 1:39-56", artIds: [48279, 58365], fruit: "Love of neighbor",
         meditation: "Mary goes in haste to her kinswoman Elizabeth. The child in Elizabeth's womb leaps for joy, Elizabeth calls Mary blessed, and Mary praises God." },
-      { n: 3, title: "The Nativity", ref: "Luke 2:1-20", artIds: [48387, 59201, 57108], fruit: "Poverty of spirit",
+      { n: 3, title: "The Nativity", ref: "Luke 2:1-20", artIds: [48387, 57108], fruit: "Poverty of spirit",
         meditation: "Born in a stable, laid in a manger, because there was no room for them. The news goes first to shepherds keeping watch in the night." },
-      { n: 4, title: "The Presentation in the Temple", ref: "Luke 2:22-38", artIds: [54414, 59646, 59769], fruit: "Obedience",
+      { n: 4, title: "The Presentation in the Temple", ref: "Luke 2:22-38", artIds: [54414], fruit: "Obedience",
         meditation: "Mary and Joseph present the child Jesus in the Temple. Simeon takes him in his arms and blesses God, and the prophet Anna gives thanks for him." },
-      { n: 5, title: "The Finding in the Temple", ref: "Luke 2:41-52", artIds: [59224, 48280, 59221], fruit: "Joy in finding Jesus",
+      { n: 5, title: "The Finding in the Temple", ref: "Luke 2:41-52", artIds: [48280], fruit: "Joy in finding Jesus",
         meditation: "After three days of searching, Mary and Joseph find Jesus in the Temple, in his Father's house. Mary treasures all these things in her heart." },
     ],
   },
@@ -128,9 +128,9 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
         meditation: "Pilate has Jesus scourged. He bears the blows in silence, and suffers them for our sake." },
       { n: 3, title: "The Crowning with Thorns", ref: "Matthew 27:27-31", artIds: [46134, 58355], fruit: "Moral courage",
         meditation: "The soldiers put a scarlet robe on Jesus, press a crown of thorns onto his head, and kneel before him in mockery as King of the Jews." },
-      { n: 4, title: "The Carrying of the Cross", ref: "John 19:17", artIds: [59353, 59166, 59352], fruit: "Patience",
+      { n: 4, title: "The Carrying of the Cross", ref: "John 19:17", artIds: [59353, 59352], fruit: "Patience",
         meditation: "Jesus goes out carrying his cross to the place of the Skull, and Simon of Cyrene is made to carry it with him." },
-      { n: 5, title: "The Crucifixion", ref: "John 19:18-30", artIds: [48390, 59218, 58356, 56778], fruit: "Perseverance",
+      { n: 5, title: "The Crucifixion", ref: "John 19:18-30", artIds: [48390, 58356, 56778], fruit: "Perseverance",
         meditation: "Jesus is crucified. From the cross he gives his mother to the beloved disciple, and the disciple to her, and then he says it is finished." },
     ],
   },
@@ -141,7 +141,7 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
     days: "Wednesdays and Sundays",
     blurb: "Easter and what followed — death undone, and the Church begun.",
     mysteries: [
-      { n: 1, title: "The Resurrection", ref: "Matthew 28:1-10", artIds: [48301, 59213, 59246], fruit: "Faith",
+      { n: 1, title: "The Resurrection", ref: "Matthew 28:1-10", artIds: [48301], fruit: "Faith",
         meditation: "At dawn the women come to the tomb and find it empty. An angel tells them that Jesus has been raised, as he said." },
       { n: 2, title: "The Ascension", ref: "Acts 1:6-11", artIds: [48398, 59720, 57474], fruit: "Hope",
         meditation: "He is taken up before their eyes, and a cloud receives him. He goes to prepare a place, and sends them to be his witnesses." },
@@ -163,7 +163,7 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
        *    nobody later "fixes" it back. The fruit went back to the standard
        *    list on 2026-09-10, so reverting is now one field:
        *    ref → "Revelation 12:1". */
-      { n: 4, title: "The Assumption of Mary", ref: "Revelation 12:1-6", artIds: [57111, 59249, 59657], fruit: "The grace of a happy death",
+      { n: 4, title: "The Assumption of Mary", ref: "Revelation 12:1-6", artIds: [57111, 59657], fruit: "The grace of a happy death",
         meditation: "The Church's tradition holds that when her earthly life was complete, Mary, the mother of the Lord, was taken up body and soul into heaven." },
       { n: 5, title: "The Coronation of Mary", ref: "Luke 1:46-55", artIds: [58434, 57112], fruit: "Trust in Mary's intercession",
         meditation: "The tradition sees Mary crowned in heaven: the lowly servant who sang of God's mercy, lifted up in glory." },
@@ -180,7 +180,7 @@ export const MYSTERY_SETS: Record<MysterySet, MysterySetDef> = {
         meditation: "Jesus is baptized by John in the Jordan. The heavens open, the Spirit comes down like a dove, and the Father's voice calls him his beloved Son." },
       { n: 2, title: "The Wedding at Cana", ref: "John 2:1-11", artIds: [59676, 48305, 58825], fruit: "To Jesus through Mary",
         meditation: "The wine runs out. His mother sees it before anyone and says only, they have no wine. Then, to the servants: do whatever he tells you." },
-      { n: 3, title: "The Proclamation of the Kingdom", ref: "Mark 1:14-15", artIds: [48379, 57121, 48284, 59266], fruit: "Repentance",
+      { n: 3, title: "The Proclamation of the Kingdom", ref: "Mark 1:14-15", artIds: [48379, 57121, 48284], fruit: "Repentance",
         meditation: "Jesus goes through Galilee proclaiming the good news of God: the kingdom is near, so turn back to God and believe." },
       { n: 4, title: "The Transfiguration", ref: "Matthew 17:1-8", artIds: [48307, 57114, 59679], fruit: "Desire for holiness",
         meditation: "On the mountain Jesus is transfigured before Peter, James and John, his face shining like the sun, and the Father's voice tells them to listen to him." },
@@ -228,17 +228,25 @@ export function artIdsForDay(
     const natural = artIdForDay(set, m, d);
     if (natural === null) return null;
     const ids = m.artIds ?? [];
+    // A picture the owner has DELETED from the library is not merely absent:
+    // artistOf returns null for it, so the neighbours rule reads it as "no
+    // artist" and takes it in preference to a live one — a blank bead. When
+    // seventeen Frank Wesley works went (181ec061) that is what happened, so
+    // a dead id is skipped here as well as swept out of the lists above.
+    const alive = (id: number) => artistOf(id) !== null;
     const start = Math.max(0, ids.indexOf(natural));
     for (let k = 0; k < ids.length; k++) {
       const id = ids[(start + k) % ids.length]!;
+      if (!alive(id)) continue;
       const who = (artistOf(id) ?? "").trim().toLowerCase();
       if (who && used.has(who)) continue;
       if (who) used.add(who);
       return id;
     }
     // Every one of this mystery's artists is already on the wall. Keep the
-    // picture rather than showing none — a repeated hand beats a blank slide.
-    return natural;
+    // picture rather than showing none — a repeated hand beats a blank slide,
+    // but only if the picture is still there to repeat.
+    return alive(natural) ? natural : (ids.find(alive) ?? null);
   });
 }
 
@@ -512,7 +520,7 @@ export const ANGLICAN_SETS: Record<AnglicanSet, AnglicanSetDef> = {
     weekTitle: "The Jesus Prayer",
     // Latimore's working Christ · an Eastern icon (the prayer's own tradition)
     // · Wesley's Christ the Lord · the Kariye Camii mosaic.
-    artIds: [57124, 55553, 59227, 54557],
+    artIds: [57124, 55553, 54557],
   },
   julian: {
     key: "julian",
@@ -528,7 +536,7 @@ export const ANGLICAN_SETS: Record<AnglicanSet, AnglicanSetDef> = {
     // The Cloud of Unknowing · Wesley's Churinga (pure light) · Church's
     // Twilight in the Wilderness · Wesley's Light of the World. Julian's
     // showings are of light and enclosing love rather than of scenes.
-    artIds: [57119, 59222, 58478, 59168],
+    artIds: [57119, 58478],
   },
   trisagion: {
     key: "trisagion",
@@ -543,7 +551,7 @@ export const ANGLICAN_SETS: Record<AnglicanSet, AnglicanSetDef> = {
     weekTitle: "Kyrie eleison",
     // Latimore's Trinity · Miller's Holy Trinity · Wesley's Burning Bush ·
     // a Book of Hours Trinity. Holy God, holy and mighty.
-    artIds: [57123, 59672, 59170, 58383],
+    artIds: [57123, 59672, 58383],
   },
   lamb: {
     key: "lamb",

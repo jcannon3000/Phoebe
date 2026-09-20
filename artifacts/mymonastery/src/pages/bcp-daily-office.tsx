@@ -7035,6 +7035,11 @@ export default function BcpDailyOfficePage() {
                 ))}
               </select>
             </div>
+            {/* The line that closes the dropdown group off from the log action
+                below it. It sat after the music row and came out with it
+                (0cf7ec3e) although it was never music's; without it the "I
+                already prayed it" pill reads as a fourth dropdown. */}
+            <div style={{ height: 1, background: "rgba(var(--ot-mist, 200,212,192),0.14)", marginTop: 14, marginBottom: 20 }} />
             <button
               onClick={() => {
                 // Each time of day logs its own office: Midday Prayer its own

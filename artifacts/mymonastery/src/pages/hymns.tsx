@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { canEmbedVideoHere, openVideoInReader, videoPath, youtubeIdFrom } from "@/lib/videoEmbed";
-import { logListenNow } from "@/lib/logListenNow";
 import { setAfterReader } from "@/lib/afterReader";
 import { HYMNS, hymnNumberLabel, hymnKey, type Hymn } from "@/lib/hymnsCatalogue";
 
@@ -26,12 +25,14 @@ import { HYMNS, hymnNumberLabel, hymnKey, type Hymn } from "@/lib/hymnsCatalogue
 // origin (web, Android), in the in-app reader on iOS, whose capacitor:// origin
 // YouTube refuses (Error 153). Phoebe holds no audio.
 //
-// Logging is the video page's own "Log this listening", in place. In the iOS
-// reader, which has no sign-in and its own storage, the app logs as it opens
-// the video instead (lib/logListenNow).
+// Logging is the video page's own Done, in place. In the iOS reader, which has
+// no sign-in and its own storage, the APP logs when the reader closes on Done
+// — the track rides the hand-off note (lib/afterReader), so the reader's Back
+// leaves nothing behind.
 //
 // A recording with no YouTube match (see lib/hymnsCatalogue for the rule: the
-// same RECORDING, never a length-alike) stays in the list, dimmed, saying so.
+// same RECORDING, never a length-alike) is NOT SHOWN at all (owner,
+// 2026-09-19: "Don't show any song not on YouTube in the catalogs").
 // One play button per row (owner: "dont have all the icons on the right, just
 // a play button"). See lib/hymnTexts for the words, shown only where they are
 // public domain.
@@ -106,14 +107,14 @@ export default function HymnsPage() {
       setLocation(videoPath(vid, { ...sleeve, from: "/hymns" }));
       return;
     }
-    // iOS: the reader can't log (no sign-in, its own storage), so the app
-    // logs now and the page says "Logged" (logged=1).
-    if (openVideoInReader(videoPath(vid, { ...sleeve, logged: true }))) {
-      // The reader can't move the app behind it, so its own Done is the way
-      // on: the app lands on the deck's closing prompt when it closes
-      // (lib/afterReader), the same beat /video's Done reaches directly.
-      setAfterReader("/listening?lift=1");
-      logListenNow(sleeve.logAs);
+    // iOS: the reader can't log (no sign-in, its own storage), so the APP
+    // logs — when the reader closes on Done, not now. The bar there has two
+    // exits and Back must leave nothing behind, so the track to log travels
+    // with the hand-off note (lib/afterReader) and is written by whichever
+    // close follows. Logging on the way IN meant a glance at the wrong
+    // recording still counted the practice for the day (2026-09-19).
+    if (openVideoInReader(videoPath(vid, sleeve))) {
+      setAfterReader("/listening?lift=1", sleeve.logAs);
       return;
     }
     // No reader (an old shell): YouTube itself, as a last resort.

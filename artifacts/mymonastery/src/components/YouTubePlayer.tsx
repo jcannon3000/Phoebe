@@ -55,6 +55,7 @@ export function YouTubePlayer({
   onPlaying,
   onPaused,
   onPlayedSeconds,
+  onError,
   frame = "card",
 }: {
   videoId: string;
@@ -87,6 +88,14 @@ export function YouTubePlayer({
    * started at, so nothing here can credit time nobody watched.
    */
   onPlayedSeconds?: (secondsPlayed: number) => void;
+  /**
+   * THE VIDEO ITSELF CANNOT PLAY — taken down, made private, or barred from
+   * embedding (YouTube's codes 2, 5, 100, 101, 150). The catalogues are a
+   * hand-harvested list of ids with no refresh, so an upload that disappears
+   * would otherwise show a silent black frame under its own title. The page
+   * decides what to say; the player only reports it.
+   */
+  onError?: (code: number) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -100,6 +109,8 @@ export function YouTubePlayer({
   const onPlayingRef = useRef(onPlaying);
   const onPausedRef = useRef(onPaused);
   const onPlayedSecondsRef = useRef(onPlayedSeconds);
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
   /** Set once keepPlace exists — the player's own handlers are built before it. */
   const keepPlaceRef = useRef<(() => void) | null>(null);
   onPlayedSecondsRef.current = onPlayedSeconds;
@@ -141,6 +152,7 @@ export function YouTubePlayer({
               else e.target.cueVideoById({ videoId: desiredRef.current, startSeconds: at });
             }
           },
+          onError: (e: any) => { onErrorRef.current?.(Number(e?.data ?? 0)); },
           onStateChange: (e: any) => {
             // 1 === YT.PlayerState.PLAYING — covers pressing play INSIDE the
             // iframe on the initially-cued video (no openVideo call happens).
@@ -163,6 +175,10 @@ export function YouTubePlayer({
     });
     return () => {
       cancelled = true;
+      // BEFORE the player is destroyed. React runs cleanups in definition
+      // order, so the ticker's own parting keepPlace() below would find the
+      // player already gone and save nothing.
+      keepPlaceRef.current?.();
       try { playerRef.current?.destroy(); } catch { /* ignore */ }
       playerRef.current = null;
       readyRef.current = false;
@@ -176,10 +192,14 @@ export function YouTubePlayer({
   useEffect(() => {
     endedRef.current = false;
     const p = playerRef.current;
+    if (p && readyRef.current) keepPlace(); // the place in the one being left
+    // OUTSIDE the ready guard: the ticker must follow the video even when the
+    // swap happened while the API was still loading. It used to stay on the id
+    // captured at mount, so a lesson chosen during that window saved ITS
+    // position under the first lesson's key (2026-09-19).
+    playedRef.current = 0;
+    tickingIdRef.current = videoId;
     if (p && readyRef.current) {
-      keepPlace();
-      playedRef.current = 0;
-      tickingIdRef.current = videoId;
       const at = readVideoPosition(videoId);
       if (autoplayRef.current) p.loadVideoById({ videoId, startSeconds: at });
       else p.cueVideoById({ videoId, startSeconds: at });
@@ -196,6 +216,11 @@ export function YouTubePlayer({
   const keepPlace = useCallback(() => {
     const p = playerRef.current;
     if (!p || !readyRef.current) return;
+    // NOTHING PLAYED, NOTHING TO KEEP. A cued-but-unstarted player reports
+    // 0:00, and saveVideoPosition reads a sub-floor reading as "forget where
+    // they were" — so merely opening a video and leaving used to wipe the
+    // place it was meant to protect (2026-09-19).
+    if (playedRef.current === 0) return;
     try {
       saveVideoPosition(tickingIdRef.current, Number(p.getCurrentTime?.() ?? 0), Number(p.getDuration?.() ?? 0));
     } catch { /* the player was torn down mid-call */ }

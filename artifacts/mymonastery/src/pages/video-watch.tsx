@@ -3,6 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { YouTubePlayer } from "@/components/YouTubePlayer";
 import { isInReaderWatch, YOUTUBE_ID } from "@/lib/videoEmbed";
 import { logListenNow } from "@/lib/logListenNow";
+import { openExternal } from "@/lib/openExternal";
 import { hymnTextFor } from "@/lib/hymnTexts";
 import { LISTEN_PROMPT } from "@/lib/listenPrompt";
 import { ReaderShell } from "@/components/CoursePage";
@@ -102,6 +103,8 @@ export default function VideoWatchPage() {
   }, [eyebrow, title]);
 
   const [leaving, setLeaving] = useState(false);
+  /** The video itself refused to play (taken down, private, embedding off). */
+  const [failed, setFailed] = useState(false);
   /** Done: log it (once), then the deck's closing prompt. */
   const done = () => {
     if (leaving) return;
@@ -183,14 +186,32 @@ export default function VideoWatchPage() {
             padding using var(--app-vw) — not 100vw, which Android's web zoom
             makes a different number (d2322451) — plus the player's frameless
             "bleed" so no border or corner fights it. */}
-        {id ? (
+        {id && !failed ? (
           <div className="video-bleed">
-            <YouTubePlayer videoId={id} autoplay frame="bleed" onEnded={() => {}} />
+            <YouTubePlayer videoId={id} autoplay frame="bleed" onEnded={() => {}} onError={() => setFailed(true)} />
           </div>
         ) : (
-          <p style={{ color: FAINT, fontSize: 14, textAlign: "center", marginTop: 40 }}>
-            This video could not be found.
-          </p>
+          /* A recording that has gone: the catalogues are a hand-made list of
+             ids and uploads do get taken down, so say so rather than showing a
+             silent black box, and offer YouTube's own page as a way through. */
+          <div style={{ textAlign: "center", marginTop: 40, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+            <p style={{ color: FAINT, fontSize: 14, margin: 0, maxWidth: 320, lineHeight: 1.5 }}>
+              {id ? "This recording isn't available to play here any more." : "This video could not be found."}
+            </p>
+            {id && (
+              <button
+                type="button"
+                onClick={() => { openExternal(`https://www.youtube.com/watch?v=${id}`, { system: true }); }}
+                style={{
+                  background: "rgba(46,107,64,0.42)", border: "1px solid rgba(143,175,150,0.45)",
+                  color: WARM, fontFamily: FONT, fontSize: 13, fontWeight: 600,
+                  borderRadius: 999, padding: "9px 20px", cursor: "pointer",
+                }}
+              >
+                Open on YouTube
+              </button>
+            )}
+          </div>
         )}
 
         <p

@@ -52,13 +52,10 @@ export const GUIDED_PRAYER_ART: Record<1 | 2 | 3 | 4, GuidedPrayerArt[]> = {
   // Confession
   2: [
     { id: 48268, ratio: 1.512 }, // JESUS MAFA, The Pharisee and the Publican
-    { id: 59181, ratio: 0.766 }, // Wesley, Peter's Denial — Peter weeping
     { id: 54666, ratio: 0.891 }, // Rembrandt, Prodigal Son
     { id: 54662, ratio: 1.501 }, // JESUS MAFA, Prodigal Son
-    { id: 59187, ratio: 1.556 }, // Wesley, Mary Magdalene Washing the Feet of Jesus
     { id: 55695, ratio: 0.787 }, // Rembrandt, Jeremiah Lamenting the Destruction of Jerusalem
     { id: 48384, ratio: 1.502 }, // JESUS MAFA, Jesus Speaks about Forgiveness — the woman at his feet
-    { id: 59165, ratio: 0.781 }, // Wesley, The Publican and the Pharisee
   ],
   // Thanksgiving
   3: [
@@ -94,7 +91,6 @@ export const GUIDED_PRAYER_ART: Record<1 | 2 | 3 | 4, GuidedPrayerArt[]> = {
     // (Confession 1·4·7) at 2, and Swanson (Praise 0·2·5) at 6.
     { id: 58468, ratio: 1.268 }, // Gauguin, Vision of the Sermon — the Breton women, eyes closed, hands folded
     { id: 9235894, ratio: 1.279 }, // Drouais, Christ and the Canaanite Woman — on her knees, hands joined, asking him
-    { id: 59261, ratio: 0.9 }, // Wesley, The Hand of God is My Refuge — face lifted into the light
     { id: 57729, ratio: 0.794 }, // Blake, Sacrifice of Job — "my servant Job shall pray for you"
     { id: 48391, ratio: 1.476 }, // JESUS MAFA, Christ on Gethsemane — kneeling, hands up to the Father
     { id: 59677, ratio: 0.741 }, // Miller, Peter Walking on Water — both arms up to Christ, "Lord, save me"

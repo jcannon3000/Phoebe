@@ -1011,6 +1011,16 @@ const GUEST_ALLOWED_PREFIX = [
    * Round Table on Race stays off, as the owner took it off (2026-09-11).
    */
   "/cac-show/cac-", "/cac-course/cac-",
+  /**
+   * BISHOP CURRY'S WAY OF LOVE, whose seasons are courses of the same shape
+   * but the Episcopal Church's, not CAC's — so the cac- prefixes above did not
+   * cover it and every door (the Menu's Courses row, both season rows on
+   * /menu/learn, the home's Continue card) bounced to the dashboard for
+   * everyone who is not a pilot or a super admin (2026-09-19). The pages gate
+   * CAC content on their own grant, and this show is not CAC, so the route
+   * admits nobody the page would not.
+   */
+  "/cac-show/way-of-love-curry", "/cac-course/way-of-love-curry-",
   // Saints index + detail pages (guest Resources → Saints).
   "/saints",
   /**

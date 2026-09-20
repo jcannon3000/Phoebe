@@ -337,14 +337,19 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
   const activeDone = isComplete(activeId);
 
   // Remember where we are (Resume) + reflect it in the URL for shareable links.
+  // NOT where this page hands straight to the reader: there the route is
+  // already /dashboard by the time this runs, and the ?v= would be written
+  // onto the home's URL, a route this component no longer owns.
+  const handsOffToReader = isNativeShell() && !canEmbedVideoHere();
   useEffect(() => {
     setLast(activeId);
+    if (handsOffToReader && !inReader) return;
     try {
       const url = new URL(window.location.href);
       url.searchParams.set("v", activeId);
       window.history.replaceState(null, "", url.toString());
     } catch { /* ignore */ }
-  }, [activeId, setLast]);
+  }, [activeId, setLast, handsOffToReader, inReader]);
 
   const openVideo = useCallback((id: string, opts?: { autoplay?: boolean }) => {
     if (!index.get(id)) return;
@@ -381,7 +386,20 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
     const seeded = seedFromApp(course.id);
     let pinned = false;
     try { pinned = !!new URLSearchParams(window.location.search).get("v"); } catch { /* ignore */ }
-    if (seeded?.resumeId && !pinned && index.get(seeded.resumeId)) setActiveId(seeded.resumeId);
+    if (seeded && !pinned) {
+      /**
+       * WHERE THE APP'S CONTINUE CARD POINTS, not where the reader last was.
+       * A lesson that ENDS is marked complete without moving `lastId`, so on
+       * the second opening the reader resumed the talk just finished while
+       * the home card said "Continue · the next one" (2026-09-19). A finished
+       * lesson therefore falls through to the first one still unwatched.
+       */
+      const done = new Set(seeded.completed);
+      const resume = seeded.resumeId && index.get(seeded.resumeId) && !done.has(seeded.resumeId)
+        ? seeded.resumeId
+        : index.videos.find((v) => !done.has(v.id))?.id ?? seeded.resumeId;
+      if (resume && index.get(resume)) setActiveId(resume);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   /** …and after every change, send the snapshot back under the code. */
@@ -392,14 +410,17 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
     if (!token) return;
     const t = window.setTimeout(() => { void pushToApp(course.id, token); }, 400);
     return () => window.clearTimeout(t);
-  }, [inReader, course.id, completedKey, lastId, started]);
+    // hiddenFromHome is in here because "Remove from my home screen" is one of
+    // the things the snapshot carries: without it the only push was the one at
+    // mount, saying hidden:false, and a removal made inside the reader never
+    // reached the home (2026-09-19).
+  }, [inReader, course.id, completedKey, lastId, started, hiddenFromHome]);
 
   /**
    * THE APP'S HALF: when the reader closes (phoebe:browserfinished), when the
    * app comes back to the front, and on arriving here, take back whatever was
    * watched in the reader. Only where this page hands off to the reader.
    */
-  const handsOffToReader = isNativeShell() && !canEmbedVideoHere();
   useEffect(() => {
     if (!handsOffToReader) return;
     const collect = () => { void collectFromReader(course.id); };

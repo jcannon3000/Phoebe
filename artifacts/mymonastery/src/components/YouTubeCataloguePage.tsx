@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { canEmbedVideoHere, openVideoInReader, videoPath } from "@/lib/videoEmbed";
-import { logListenNow } from "@/lib/logListenNow";
 import { setAfterReader } from "@/lib/afterReader";
 import type { YouTubeCatalogue, YouTubeTrack } from "@/lib/youtubeCatalogues";
 
@@ -14,7 +13,8 @@ import type { YouTubeCatalogue, YouTubeTrack } from "@/lib/youtubeCatalogues";
 // the /video page (pages/video-watch) the way a hymn does. Inline where the
 // page has an http(s) origin (web, Android); in the in-app reader on iOS,
 // whose capacitor:// origin YouTube refuses (Error 153), and there the app
-// logs the listen as it opens, because the reader can't (lib/logListenNow).
+// logs the listen when the reader closes on DONE, because the reader can't
+// (lib/afterReader carries the track; its Back logs nothing).
 //
 // A track with no proven YouTube upload of the same recording is NOT SHOWN
 // (owner, 2026-09-19: "Don't show any song not on YouTube in the catalogs"),
@@ -66,12 +66,11 @@ export function YouTubeCataloguePage({ cat }: { cat: YouTubeCatalogue }) {
       setLocation(videoPath(t.youtubeId, { ...sleeve, from: cat.path }));
       return;
     }
-    if (openVideoInReader(videoPath(t.youtubeId, { ...sleeve, logged: true }))) {
-      // The reader can't move the app behind it, so its own Done is the way
-      // on: the app lands on the deck's closing prompt when it closes
-      // (lib/afterReader), the same beat /video's Done reaches directly.
-      setAfterReader("/listening?lift=1");
-      logListenNow(logAs);
+    // The reader can't move the app behind it, so its own Done is the way on:
+    // the app lands on the deck's closing prompt when it closes, and logs the
+    // track THERE — its Back logs nothing (lib/afterReader).
+    if (openVideoInReader(videoPath(t.youtubeId, sleeve))) {
+      setAfterReader("/listening?lift=1", logAs);
       return;
     }
     void openExternal(`https://www.youtube.com/watch?v=${t.youtubeId}`, { system: true });

@@ -107,9 +107,17 @@ export async function collectFromReader(courseId: string): Promise<boolean> {
  * reader opens, and whatever was watched comes home to the app the moment it
  * closes — which is what makes the Continue card and the lesson count right.
  *
- * Self-disarming: the close event, or twenty minutes, whichever comes first.
- * Re-arming for the same course replaces the old one rather than stacking.
+ * Self-disarming: the close event, or the relay's own lifetime, whichever
+ * comes first. Re-arming for the same course replaces the old one rather than
+ * stacking.
+ *
+ * The backstop was twenty minutes, which is SHORTER THAN A LESSON — Keating's
+ * talks run twenty to thirty. Watch one to the end and the collector had
+ * already disarmed before Done was pressed, so the home kept the old count
+ * and the old Continue lesson until the course was opened again (2026-09-19).
+ * It now matches the hand-back code's own twelve-hour life on the server.
  */
+const COLLECT_FOR_MS = 12 * 60 * 60_000;
 const armed = new Map<string, () => void>();
 
 export function collectWhenReaderCloses(courseId: string): void {
@@ -124,7 +132,7 @@ export function collectWhenReaderCloses(courseId: string): void {
   // Coming back to the app by any other road counts as closing too — iOS can
   // dismiss the reader without the app ever hearing the close event.
   const onVisible = () => { if (document.visibilityState === "visible") { void collectFromReader(courseId); done(); } };
-  const timer = window.setTimeout(done, 20 * 60_000);
+  const timer = window.setTimeout(done, COLLECT_FOR_MS);
   window.addEventListener("phoebe:browserfinished", onClose);
   document.addEventListener("visibilitychange", onVisible);
   armed.set(courseId, done);
@@ -146,22 +154,23 @@ export function readerRelayToken(): string | null {
  * Seed this page's progress from what the app handed over, united with
  * anything this origin already had. Returns the lesson to resume at.
  */
-export function seedFromApp(courseId: string): { resumeId: string | null } | null {
+export function seedFromApp(courseId: string): { resumeId: string | null; completed: string[] } | null {
   if (!readerRelayToken()) return null;
   const q = new URLSearchParams(window.location.search);
   const done = (q.get("done") ?? "").split(".").filter((x) => LESSON_ID.test(x));
   const appLast = q.get("last");
   const own = snapshotProgress(courseId);
   const resumeId = own.lastId ?? (appLast && LESSON_ID.test(appLast) ? appLast : null);
+  const completed = [...new Set([...own.completed, ...done])];
   adoptProgress(courseId, {
-    completed: [...own.completed, ...done],
+    completed,
     lastId: resumeId,
     started: q.get("started") === "1" || own.started === true,
   });
   // The app's answer wins on arrival: it is the device whose home screen this
   // is, and the reader's own copy is only ever what a previous opening left.
   setCourseHiddenFromHome(courseId, q.get("off") === "1");
-  return { resumeId };
+  return { resumeId, completed };
 }
 
 /** Send this page's progress back under the code. Best-effort. */

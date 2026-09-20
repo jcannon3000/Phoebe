@@ -238,7 +238,9 @@ export function HomeLearnSection() {
     const { completedCount, total, nextTitle, isStarted, updatedAt } = courseCompletion(c);
     if (!isStarted) continue;
     cards.push({
-      key: `cac-${c.id}`,
+      // show- rather than cac-: the two loops would collide the day the Way of
+      // Love joins CAC_COURSE_SHOW_SLUGS, which that list invites.
+      key: `show-${c.id}`,
       // ❤️‍🔥 for the Way of Love's seasons: 💚 is the whole course's card
       // above, and these are the same love, taught.
       emoji: "\u{2764}\u{FE0F}\u{200D}\u{1F525}",
