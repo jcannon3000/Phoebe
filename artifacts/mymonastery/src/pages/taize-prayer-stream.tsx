@@ -23,8 +23,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Layout } from "@/components/layout";
+import { RouteFallback } from "@/components/RouteFallback";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { ReaderShell } from "@/components/CoursePage";
 import { YouTubePlayer } from "@/components/YouTubePlayer";
 import { apiRequest } from "@/lib/queryClient";
@@ -62,9 +64,26 @@ function prayerLines(meta: TaizePrayerMeta | undefined): { name: string; when: s
   return { name, when };
 }
 
+/** Stops the reader reopening over itself when it closes onto this page. */
+let lastOpenAt = 0;
+const REOPEN_GUARD_MS = 1500;
+
 export default function TaizePrayerStreamPage() {
   const [, setLocation] = useLocation();
   const inReader = isInReaderWatch();
+  /**
+   * NO BANNER ON iOS (owner, 2026-09-19: "Taize Saturday prayer has the same
+   * banner issue" · "Clicking it should go straight to browser" · "And
+   * clicking done should go to the Home Screen").
+   *
+   * The same shape a course has: where YouTube will not embed, this page is
+   * not a page at all — it hands straight to the reader before it can paint,
+   * and puts the app on the home behind it, so the reader's Done lands there
+   * rather than on a poster of what you have just watched.
+   */
+  const handsOffToReader = isNativeShell() && !canEmbedVideoHere() && !isInReaderWatch();
+  const [readerRefused, setReaderRefused] = useState(false);
+  const autoOpenedRef = useRef(false);
   const leafBg = useMemo(
     () => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
     [],
@@ -87,6 +106,50 @@ export default function TaizePrayerStreamPage() {
   const watch = () => {
     if (!openVideoInReader()) openExternal(meta?.url ?? "https://www.youtube.com/@taize/streams");
   };
+
+  useLayoutEffect(() => {
+    if (!handsOffToReader) return;
+    let guardTimer = 0;
+    const openNow = () => {
+      if (autoOpenedRef.current) return;
+      // Not while the app is in the background — a page built behind the
+      // reader must not steal the front when it comes back.
+      if (document.visibilityState !== "visible") return;
+      const since = Date.now() - lastOpenAt;
+      if (since < REOPEN_GUARD_MS) {
+        guardTimer = window.setTimeout(openNow, REOPEN_GUARD_MS - since + 50);
+        return;
+      }
+      autoOpenedRef.current = true;
+      lastOpenAt = Date.now();
+      if (!openVideoInReader()) { setReaderRefused(true); autoOpenedRef.current = false; return; }
+      // A reader that closes at once never opened (the course page's lesson):
+      // openExternal answers before the shell has presented anything, so a
+      // refusal would otherwise read as success and drop the person on the
+      // home with nothing said.
+      const openedAt = Date.now();
+      let refused = false;
+      const onInstantClose = () => {
+        if (Date.now() - openedAt > 500) return;
+        refused = true;
+        autoOpenedRef.current = false;
+        setReaderRefused(true);
+      };
+      window.addEventListener("phoebe:browserfinished", onInstantClose);
+      window.setTimeout(() => {
+        window.removeEventListener("phoebe:browserfinished", onInstantClose);
+        if (!refused) setLocation("/dashboard", { replace: true });
+      }, 500);
+    };
+    openNow();
+    const onVisible = () => { if (document.visibilityState === "visible") openNow(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      if (guardTimer) window.clearTimeout(guardTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handsOffToReader]);
 
   const body = (
     <div className="mx-auto w-full max-w-2xl">
@@ -159,6 +222,41 @@ export default function TaizePrayerStreamPage() {
       </div>
     </div>
   );
+
+  /**
+   * On iOS this page is a door, not a destination: the leaf loading screen
+   * while the reader comes up (never a poster of the prayer — never `null`,
+   * see reference_blank_screen_bug_class), and only if the reader refuses
+   * does the page have anything of its own to say.
+   */
+  if (handsOffToReader) {
+    if (!readerRefused) return <RouteFallback />;
+    return (
+      <Layout bgPhoto={leafBg}>
+        <div className="mx-auto w-full max-w-md px-6 py-16 text-center">
+          <p className="text-[15px]" style={{ color: WARM, fontFamily: FONT }}>
+            The prayer couldn't open just now.
+          </p>
+          <button
+            type="button"
+            onClick={() => { autoOpenedRef.current = false; setReaderRefused(false); watch(); }}
+            className="mt-5 rounded-full px-5 py-2.5 text-[13.5px] font-semibold"
+            style={{ background: "rgba(46,107,64,0.45)", border: "1px solid rgba(143,175,150,0.55)", color: WARM, fontFamily: FONT, cursor: "pointer" }}
+          >
+            Try again
+          </button>
+          <button
+            type="button"
+            onClick={() => setLocation("/dashboard")}
+            className="mt-3 block w-full text-[13px]"
+            style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, cursor: "pointer" }}
+          >
+            Back to the home screen
+          </button>
+        </div>
+      </Layout>
+    );
+  }
 
   return inReader ? <ReaderShell photo={leafBg}>{body}</ReaderShell> : <Layout bgPhoto={leafBg}>{body}</Layout>;
 }

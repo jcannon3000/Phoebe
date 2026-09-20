@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
-import { toggleShowFollowed, useIsShowFollowed } from "@/lib/podcastHome";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -241,7 +240,6 @@ export default function PodcastShowPage() {
   // hook count changed the moment auth settled (or on the 60s re-poll's
   // transient null), throwing "Rendered more hooks than during the previous
   // render." on a plain cold open of a shared podcast link.
-  const followed = useIsShowFollowed(slug);
   if (authLoading) return null;
 
   const show = data?.show;
@@ -289,25 +287,10 @@ export default function PodcastShowPage() {
               {show.description}
             </p>
           )}
-          {/* Add this show to the home screen — renders a progress card on
-              the dashboard (see lib/podcastHome + PodcastHomeCard). */}
-          {show && (
-            <button
-              type="button"
-              onClick={() => toggleShowFollowed({ slug: show.slug, title: show.title, artwork: show.artwork })}
-              style={{
-                marginTop: 18,
-                display: "inline-flex", alignItems: "center", gap: 7,
-                background: followed ? "rgba(46,107,64,0.30)" : "transparent",
-                border: `1px solid ${followed ? "rgba(46,107,64,0.55)" : "rgba(143,175,150,0.4)"}`,
-                color: followed ? "#A8C5A0" : PALETTE.sage,
-                fontFamily: FONT, fontSize: 13, fontWeight: 600,
-                padding: "8px 16px", borderRadius: 999, cursor: "pointer",
-              }}
-            >
-              {followed ? "✓ On your home" : "+ Add to home"}
-            </button>
-          )}
+          {/* No "Add to home" here (owner, 2026-09-19: "Take out the add to
+              home screen"). A show a person wants every day belongs in their
+              rhythm, not as a second way of pinning things to the home; the
+              ones already pinned still render their card. */}
         </div>
 
         {isLoading && episodes.length === 0 ? (

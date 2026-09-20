@@ -27,11 +27,13 @@ import { apiRequest } from "@/lib/queryClient";
 // the player.
 //
 // PREVIOUS, the commentaries' affordance: the last SEVEN sermons, newest
-// first, each opening in the same player (?ep=<id>). It is in two places
-// because a page of churches has no single "previous" of its own: on each row
-// (the church you are looking at) and at the TOP RIGHT, where the owner asked
-// for it, which opens the list for the church you last played from here —
-// the first church, the cathedral, until you have played one.
+// first, each opening in the same player (?ep=<id>). It lives in two places,
+// neither of them a pill on a row: at the TOP RIGHT here, where the owner
+// first asked for it, opening the list for the church you last played from
+// (the cathedral until you have played one) — and on the PLAYER'S own bottom
+// right once a sermon is playing (components/PodcastPlayer), which is where
+// the owner moved it: "the previous should not be here but on the bottom
+// right of the player".
 //
 // WHO PREACHED is shown where the feed says so (the server's sermonMeta:
 // `preacher`, null rather than guessed), in the row and in Previous.
@@ -181,10 +183,11 @@ export default function MenuSermonsPage() {
       emoji: "🎙️",
       label: s.title,
       sub: sub || s.about || "",
-      // The row plays; its own Previous opens the last seven.
-      actions: sermonsFor(s.slug).length > 1
-        ? [{ emoji: "🕘", label: "Previous", variant: "gold" as const, onClick: () => setPreviousFor(s) }]
-        : undefined,
+      // No Previous pill here: earlier sermons belong on the player, at its
+      // bottom right, where you are already listening (owner, 2026-09-19:
+      // "The previous should not be here but on the bottom right of the
+      // player"). The row plays, and nothing else.
+
       // The newest SERMON by id, not ?play=latest: "latest" is the feed's
       // newest item, which at the cathedral can be a two-minute Prayer for the
       // Day. Same player, same trims, same history — just the right episode.

@@ -139,15 +139,18 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
   // Sermons — preaching from around the Episcopal world. This group is also
   // the source of truth for the app's Sermons page (/menu/sermons), so a
   // church added here appears there as well (GET /podcasts/sermon-sources).
-  // SSJE is listed here too: it is preaching from a community, and it is in
-  // HIDDEN_FROM_DISCOVER, so adding it changes nothing on Discover.
+  //
+  // SSJE and Grace Church came OUT at the owner's word (2026-09-19, looking
+  // at the list on his phone: "Take out SSJE and Grace"). SSJE's feed had
+  // stopped being fetchable from the deploy, so its row could say nothing
+  // about what it last preached. Both shows stay in SHOWS — their pages,
+  // links and listening history still work — they are simply not offered
+  // here. Putting either back is one line.
   sermons: {
     title: "Sermons",
     emoji: "🎙️",
     showSlugs: [
       "national-cathedral-sermons",
-      "grace-church-nyc",
-      "ssje-sermons",
       "st-michael-albuquerque",
       "st-john-divine",
     ],
@@ -510,7 +513,10 @@ export const SHOWS: Record<string, Show> = {
     // The card says the parish; Albuquerque is the line underneath
     // (SERMON_SOURCE_ABOUT), the way the other churches read.
     title: "St. Michael and All Angels",
-    artist: "St. Michael and All Angels Episcopal Church",
+    // The parish's full legal name runs to two lines in a row that has one
+    // (owner, 2026-09-19: "Take out episcopal church … so it fits in one
+    // line"). Their own description, which is theirs, still names them whole.
+    artist: "St. Michael and All Angels",
     publisher: "sermons",
     feedUrl: "https://feeds.redcircle.com/e7bd9cab-5e2b-41f3-a15a-d6a994fe5c3f",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e8/3d/e0/e83de06e-dad1-07db-491b-aeb0b63bf66a/mza_8736870600381994675.jpg/600x600bb.jpg",
@@ -957,6 +963,43 @@ const SERMON_MIN_SECONDS = 300;
 /** "The Rev. Mike Angell", "The Very Reverend Winnie Varghese", "Bishop …". */
 const PREACHER_STYLE = /^(?:The\s+)?(?:Rt\.?\s+|Very\s+|Right\s+)?(?:Rev|Reverend|Revd|Bishop|Canon|Archdeacon|Venerable|Deacon|Dean|Father|Fr|Mother|Br|Brother|Sister|Dr|Mtr)\b/i;
 
+/**
+ * THE DATE AND THE PREACHER ARE SHOWN SEPARATELY, so a title that is mostly
+ * those two things wastes the line it is given.
+ *
+ * The Cathedral of St. John the Divine names every episode for the service and
+ * the day — "Sunday Holy Eucharist Service – September 13, 2026" — and puts
+ * the preacher in the description. I looked through all 87 items for a sermon
+ * title in any other field (itunes:subtitle, summary, description, the lot):
+ * THERE IS NONE. The feed does not carry one, so there is nothing to find and
+ * nothing to invent (owner, 2026-09-19: "Try to find the title … in the
+ * metadata"). What is left once the date goes — "Sunday Holy Eucharist" — is
+ * the honest name of what you are about to hear, on one line, with the date
+ * and the preacher already beside it in the row.
+ *
+ * Washington National Cathedral writes the date at the FRONT and the preacher
+ * after a colon; both come off for the same reason.
+ */
+const TRAILING_DATE = /\s*[\u2014\u2013-]?\s*(?:on\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\s*$/i;
+const LEADING_DATE = /^\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\s*[:\u2014\u2013-]?\s*/i;
+/** "… Service" adds nothing once the words before it name the service. */
+const TRAILING_SERVICE = /\s+Service\s*$/i;
+
+function tidySermonTitle(title: string | null, preacher: string | null): string | null {
+  if (!title) return title;
+  let out = title.trim().replace(LEADING_DATE, "").replace(TRAILING_DATE, "").trim();
+  // "Sunday Sermon: The Rev. Canon Jan Naylor Cope" — the name is already the
+  // row's second line, and only cut where what follows really is the preacher.
+  const colon = out.indexOf(":");
+  if (colon > 2 && preacher) {
+    const tail = out.slice(colon + 1).trim();
+    if (PREACHER_STYLE.test(tail) || tail.toLowerCase() === preacher.toLowerCase()) out = out.slice(0, colon).trim();
+  }
+  out = out.replace(TRAILING_SERVICE, "").trim().replace(/[\u2014\u2013-]\s*$/, "").trim();
+  // Never cut a title down to nothing, or to a word: better whole than wrong.
+  return out.length >= 4 ? out : title.trim();
+}
+
 function sermonMeta(ep: EpisodeFull): EpisodeFull {
   let title = ep.title;
   let subtitle: string | null = null;
@@ -1015,7 +1058,7 @@ function sermonMeta(ep: EpisodeFull): EpisodeFull {
     (ep.durationSeconds == null || ep.durationSeconds >= SERMON_MIN_SECONDS) &&
     !NOT_A_SERMON.test(ep.title ?? "")
   );
-  return { ...ep, title, subtitle, preacher, sermon: isSermon };
+  return { ...ep, title: tidySermonTitle(title, preacher), subtitle, preacher, sermon: isSermon };
 }
 
 export async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {

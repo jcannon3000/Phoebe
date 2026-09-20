@@ -491,6 +491,16 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const [rate, setRate] = useState(1);
   // Full-screen "now playing" listener (vs. the bottom mini-bar).
   const [expanded, setExpanded] = useState(false);
+  /**
+   * PREVIOUS, ON THE PLAYER (owner, 2026-09-19, looking at the Sermons list:
+   * "The previous should not be here but on the bottom right of the player").
+   *
+   * A church's earlier sermons belong where you are listening, beside the
+   * speed pill, rather than as a row of pills in the list of churches. Only
+   * for the churches on the Sermons page — every other show has its own page
+   * with the whole feed on it.
+   */
+  const [previousOpen, setPreviousOpen] = useState(false);
   // After a daily office finishes, gently offer Forward Day by Day next — an
   // optional "up next" banner, not an auto-play. Set when an office episode
   // ends (expanded), cleared when any new episode starts or the user dismisses.
@@ -1478,6 +1488,31 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // Office regardless of launch path (the office launcher's "office-morning" OR
   // the Audio library's "morning-office").
   const officeSide = officeSideFromSlug(current?.showSlug) ?? current?.creditMode ?? null;
+
+  /**
+   * IS THIS ONE OF THE CHURCHES? The same list the Sermons page is built from,
+   * so a church added there gains the pill here without a second hand-kept
+   * list. Asked for only while the full player is open, and cached for an
+   * hour — the mini bar pays nothing for it.
+   */
+  const sermonSourcesQ = useQuery<{ sources: Array<{ slug: string; title: string }> }>({
+    queryKey: ["/api/podcasts/sermon-sources"],
+    queryFn: () => apiRequest("GET", "/api/podcasts/sermon-sources"),
+    enabled: expanded && !!current?.showSlug && !officeSide,
+    staleTime: 60 * 60_000,
+  });
+  const sermonChurch = (sermonSourcesQ.data?.sources ?? []).find((x) => x.slug === current?.showSlug) ?? null;
+  /** That church's recent episodes, only once Previous is actually opened. */
+  const previousQ = useQuery<{ episodes?: Array<{ id: string; title: string | null; audioUrl: string | null; publishedAt: string | null; imageUrl?: string | null; durationSeconds?: number | null; preacher?: string | null; sermon?: boolean }> }>({
+    queryKey: [`/api/podcasts/show/${current?.showSlug ?? ""}`, "recent"],
+    queryFn: () => apiRequest("GET", `/api/podcasts/show/${current?.showSlug}?limit=21`),
+    enabled: previousOpen && !!current?.showSlug,
+    staleTime: 15 * 60_000,
+  });
+  /** Sermons only, newest first, and never the one already playing. */
+  const previousSermons = (previousQ.data?.episodes ?? [])
+    .filter((e) => e.sermon !== false && !!e.audioUrl && e.id !== current?.episodeId)
+    .slice(0, 7);
   // The immersive photographic player (full-bleed LANDSCAPE photo melting into a
   // sampled colour) is now used for ALL audio — offices, podcasts, FDD, sermons,
   // everything — so every listen happens in the same prayerful space. officeSide
@@ -1987,6 +2022,19 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                       {t("podcasts.transcript", { defaultValue: "Transcript" })}
                     </button>
                   )}
+                  {/* PREVIOUS — the bottom right of the player, where the
+                      owner put it: this church's last seven sermons, opened
+                      from where you are listening rather than from a row of
+                      pills in the list of churches. */}
+                  {sermonChurch && !current.transcriptUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviousOpen(true)}
+                      style={{ marginLeft: "auto", background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.18)", color: "#F6F0E6", fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 12px", cursor: "pointer", fontFamily: FONT }}
+                    >
+                      Previous
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -2075,6 +2123,87 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               style={{ flexShrink: 0, background: "rgba(96,141,209,0.85)", color: "#F0EDE6", border: "1px solid rgba(96,141,209,0.6)", borderRadius: 999, padding: "9px 18px", fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer", whiteSpace: "nowrap" }}
             >
               🎧 {t("podcasts.fdd_up_next_listen", { defaultValue: "Listen" })}
+            </button>
+          </div>
+        </div>
+      )}
+      {/* The church's last seven, from the player's own Previous pill. Tapping
+          one plays it here — same player, same history, same trims. */}
+      {previousOpen && current && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Previous sermons from ${sermonChurch?.title ?? current.showTitle ?? "this church"}`}
+          onClick={() => setPreviousOpen(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(4,14,8,0.72)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full"
+            style={{
+              maxWidth: 460, maxHeight: "calc(var(--app-dvh, 100dvh) - 80px)", display: "flex", flexDirection: "column",
+              borderRadius: 18, padding: 18, boxSizing: "border-box",
+              background: "rgba(9,26,16,0.96)", border: "1px solid rgba(46,107,64,0.38)",
+            }}
+          >
+            <p style={{ color: "#F0EDE6", fontFamily: FONT, fontSize: 16, fontWeight: 600, margin: "0 0 4px" }}>
+              {sermonChurch?.title ?? current.showTitle ?? "Previous sermons"}
+            </p>
+            <p style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT, fontSize: 12, margin: "0 0 14px" }}>
+              {previousQ.isLoading ? "Looking…" : `The last ${previousSermons.length} sermons.`}
+            </p>
+            <div className="flex flex-col gap-2" style={{ overflowY: "auto", minHeight: 0 }}>
+              {previousSermons.map((ep) => (
+                <button
+                  key={ep.id}
+                  type="button"
+                  onClick={() => {
+                    setPreviousOpen(false);
+                    play({
+                      showSlug: current.showSlug,
+                      episodeId: ep.id,
+                      title: ep.title,
+                      audioUrl: ep.audioUrl!,
+                      imageUrl: ep.imageUrl ?? null,
+                      showTitle: current.showTitle ?? null,
+                      showArtwork: current.showArtwork ?? null,
+                      durationSeconds: ep.durationSeconds ?? null,
+                      publishedAt: ep.publishedAt,
+                      showHref: current.showHref,
+                    });
+                  }}
+                  style={{
+                    flex: "0 0 auto", textAlign: "left", borderRadius: 12, padding: "11px 13px", cursor: "pointer",
+                    background: "rgba(240,237,230,0.05)", border: "1px solid rgba(46,107,64,0.38)",
+                  }}
+                >
+                  <span style={{ display: "block", color: "#F0EDE6", fontFamily: FONT, fontSize: 14.5, lineHeight: 1.3 }}>
+                    {ep.title ?? "Sermon"}
+                  </span>
+                  <span style={{ display: "block", color: "rgba(143,175,150,0.55)", fontFamily: FONT, fontSize: 11.5, marginTop: 3 }}>
+                    {[ep.preacher?.trim() || null, ep.publishedAt ? new Date(ep.publishedAt).toLocaleDateString(undefined, { month: "long", day: "numeric" }) : null].filter(Boolean).join(" · ")}
+                  </span>
+                </button>
+              ))}
+              {!previousQ.isLoading && previousSermons.length === 0 && (
+                <p style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT, fontSize: 13, textAlign: "center", padding: "18px 0" }}>
+                  Nothing older to show yet.
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPreviousOpen(false)}
+              className="w-full rounded-full text-center mt-4"
+              style={{
+                flex: "0 0 auto", background: "rgba(46,107,64,0.45)", border: "1px solid rgba(143,175,150,0.55)",
+                color: "#F0EDE6", fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "12px 10px",
+              }}
+            >
+              Close
             </button>
           </div>
         </div>
