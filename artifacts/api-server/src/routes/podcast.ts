@@ -585,6 +585,14 @@ export type ParsedFeed = {
   feedImage: string | null;
   feedDescription: string | null;
   episodes: EpisodeFull[];
+  /**
+   * WE COULD NOT READ THE FEED — as opposed to reading it and finding nothing.
+   * An empty 200 is indistinguishable from a church that has never preached,
+   * which is what SSJE looked like on the Sermons page while its fetch was
+   * failing from the deploy (2026-09-19). Callers pass this on so a page can
+   * say so.
+   */
+  unavailable?: boolean;
 };
 
 const TTL_MS = 30 * 60_000;
@@ -1043,7 +1051,7 @@ export async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
     logger.warn({ err, show: show.slug }, "[podcast] feed fetch failed");
     // Stale beats nothing, even if it is shallower than asked for.
     if (hit) return { ...hit.data, episodes: hit.data.episodes.slice(0, limit) };
-    return { feedTitle: show.title, feedImage: show.artwork, feedDescription: null, episodes: [] };
+    return { feedTitle: show.title, feedImage: show.artwork, feedDescription: null, episodes: [], unavailable: true };
   }
 }
 
@@ -1332,15 +1340,19 @@ router.get("/podcasts/sermon-sources", async (req: Request, res: Response): Prom
   res.setHeader("Cache-Control", `public, max-age=${wantLatest ? 900 : 3600}`);
 
   const latestBySlug = new Map<string, EpisodeFull | null>();
+  /** Churches whose feed we could not READ — different from having nothing. */
+  const unreadable = new Set<string>();
   if (wantLatest) {
     await Promise.all(shows.map(async (show) => {
       try {
         const feed = await loadFeed(show, 20);
+        if (feed.unavailable) unreadable.add(show.slug);
         // The newest that IS a sermon: a feed carries other things, and the
         // cathedral's two-minute Prayer for the Day sits near the top.
         latestBySlug.set(show.slug, feed.episodes.find((ep) => (ep as EpisodeFull).sermon !== false) ?? null);
       } catch {
         latestBySlug.set(show.slug, null);
+        unreadable.add(show.slug);
       }
     }));
   }
@@ -1354,6 +1366,7 @@ router.get("/podcasts/sermon-sources", async (req: Request, res: Response): Prom
         showTitle: s.title,
         artwork: s.artwork,
         about: SERMON_SOURCE_ABOUT[s.slug] ?? null,
+        ...(wantLatest && unreadable.has(s.slug) ? { unavailable: true as const } : {}),
         ...(wantLatest
           ? {
               latest: latest
@@ -1532,7 +1545,6 @@ const BROWSE_EPISODES = 300;
 router.get("/podcasts/show/:slug", async (req: Request, res: Response): Promise<void> => {
   const show = SHOWS[String(req.params.slug ?? "")];
   if (!show) { res.status(404).json({ error: "Unknown show" }); return; }
-  res.setHeader("Cache-Control", "public, max-age=600");
   /**
    * ?limit= — for a caller that wants the newest few rather than the show.
    *
@@ -1547,6 +1559,7 @@ router.get("/podcasts/show/:slug", async (req: Request, res: Response): Promise<
   const askedRaw = Number(req.query.limit);
   const asked = Number.isFinite(askedRaw) && askedRaw > 0 ? Math.min(Math.floor(askedRaw), BROWSE_EPISODES) : null;
   const feed = await loadFeed(show, asked ?? show.browseEpisodes ?? BROWSE_EPISODES);
+  res.setHeader("Cache-Control", feed.unavailable ? "no-store" : "public, max-age=600");
   const pub = PUBLISHERS[show.publisher];
   res.json({
     show: {
@@ -1560,6 +1573,9 @@ router.get("/podcasts/show/:slug", async (req: Request, res: Response): Promise<
       description: show.description ?? feed.feedDescription ?? null,
     },
     episodes: feed.episodes,
+    // "We could not read it", not "there is nothing in it" — and a failure is
+    // not worth ten minutes of edge cache, because the next try might work.
+    ...(feed.unavailable ? { unavailable: true as const } : {}),
   });
 });
 

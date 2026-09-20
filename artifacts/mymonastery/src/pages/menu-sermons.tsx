@@ -37,9 +37,14 @@ import { apiRequest } from "@/lib/queryClient";
 // `preacher`, null rather than guessed), in the row and in Previous.
 //
 // A CHURCH THAT HASN'T PREACHED LATELY STILL LISTS, and says so rather than
-// playing something months old: over 90 days since its newest sermon (or a
-// feed we can't read) shows the date instead, and the tap opens the list
-// without starting anything.
+// playing something months old: over 90 days since its newest sermon shows
+// the date instead, and the tap opens the list without starting anything.
+//
+// AND A FEED WE CANNOT READ SAYS THAT INSTEAD — "We couldn't reach their feed
+// just now". An unreadable feed and an empty one look identical from here,
+// and left unsaid the row claims the church has never preached, which is a
+// thing about somebody else's ministry that we have no business implying
+// (2026-09-19, when SSJE's feed stopped being fetchable from the deploy).
 
 const STALE_DAYS = 90;
 const PREVIOUS_COUNT = 7;
@@ -74,7 +79,7 @@ type Episode = {
   sermon?: boolean;
 };
 
-type ShowResponse = { show?: { title?: string }; episodes?: Episode[] };
+type ShowResponse = { show?: { title?: string }; episodes?: Episode[]; unavailable?: boolean };
 
 function daysSince(iso: string | null | undefined): number | null {
   if (!iso) return null;
@@ -131,6 +136,17 @@ export default function MenuSermonsPage() {
     return (i >= 0 ? feeds[i]?.data?.episodes : undefined) ?? [];
   };
   /**
+   * COULD NOT READ IT, as against read it and found nothing. The server says
+   * which (ParsedFeed.unavailable). SSJE's feed cannot be fetched from the
+   * deploy at the moment, and with nothing said the row read as a church that
+   * has never preached — the one thing a list of churches must not imply.
+   */
+  const unreadable = (slug: string): boolean => {
+    const i = sources.findIndex((s) => s.slug === slug);
+    const q = i >= 0 ? feeds[i] : undefined;
+    return !!q?.data?.unavailable || (!!q?.isError && !q?.data);
+  };
+  /**
    * SERMONS ONLY. A sermon feed carries other things — the cathedral's
    * Prayer for the Day sits at index 3 — and "play the newest" must not hand
    * someone a two-minute BBC slot or a 92-minute panel. `sermon: false` is the
@@ -158,7 +174,9 @@ export default function MenuSermonsPage() {
       ? [ep?.title?.trim() || "Latest sermon", ep?.preacher?.trim() || null, said].filter(Boolean).join(" · ")
       : ep
         ? `No sermon since ${said ?? "a while ago"}`
-        : s.about ?? "";
+        : unreadable(s.slug)
+          ? "We couldn't reach their feed just now"
+          : s.about ?? "";
     return {
       emoji: "🎙️",
       label: s.title,
