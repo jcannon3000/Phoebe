@@ -815,7 +815,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         durationSeconds: ep.durationSeconds,
         publishedAt: ep.publishedAt,
         sessionSurface: "fdd-audio",
-        showHref: "/podcast/forward-day-by-day",
+        showHref: "/podcasts/show/forward-day-by-day",
       });
     } catch { setFddOffer(false); }
   }, [play]);

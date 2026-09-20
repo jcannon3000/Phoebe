@@ -106,7 +106,7 @@ export default function BeginPrayerPage() {
         if (id === "side:evening") return "/begin-prayer?side=evening";
         if (id.startsWith("slot:")) {
           const k = id.slice(5);
-          if (k === "walk") return "/walk";
+          if (k === "walk") return "/walk-log";
           if (k === "listening" || k === "audio") return "/listening";
           if (k === "visio") return "/visio";
           if (k === "examen") return `/examen?side=${side}`;

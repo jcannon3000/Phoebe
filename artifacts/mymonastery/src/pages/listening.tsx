@@ -1496,7 +1496,7 @@ export default function ListeningPage() {
                     */}
                   {!online && (
                     <p className="text-[13.5px] mb-3" style={{ color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.5 }}>
-                      We can't search the Apple Music library while you're offline — but type what you listened to and you can still log it.
+                      We can't search while you're offline — but type what you listened to and you can still log it.
                     </p>
                   )}
                   <input

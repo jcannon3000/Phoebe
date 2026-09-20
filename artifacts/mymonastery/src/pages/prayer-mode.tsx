@@ -2246,7 +2246,7 @@ export default function PrayerModePage() {
   // flash the full-app home + fire its queries, then get bounced to
   // /parish by the router gate.
   const tierHome = (user?.accessTier === "offices-only" || user?.accessTier === "parish-only")
-    ? "/parish"
+    ? "/pray"
     : "/dashboard";
   const finishHref = returnToHref ?? tierHome;
 

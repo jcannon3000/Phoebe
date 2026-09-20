@@ -3250,7 +3250,7 @@ function FddHomeCard() {
         durationSeconds: episode.durationSeconds,
         publishedAt: episode.publishedAt,
         sessionSurface: "fdd-audio",
-        showHref: "/podcast/forward-day-by-day",
+        showHref: "/podcasts/show/forward-day-by-day",
       });
       // Listening to today's FDD counts as taking it — flip the card to done.
       recordOpened();

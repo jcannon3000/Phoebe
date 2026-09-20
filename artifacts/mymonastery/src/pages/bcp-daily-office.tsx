@@ -2295,7 +2295,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     } catch { /* non-fatal */ }
     if (!creditsNoSide && !isSecondPracticeRun) clearOfficeReminderNotifications(officeSide);
     if (onComplete) { onComplete(); return; }
-    if (officesOnlyViewer) { setViewerLocation("/parish"); return; }
+    if (officesOnlyViewer) { setViewerLocation("/pray"); return; }
     // Same warm-cache handoff as amen()/handleEnd — closingOnly=1 can't
     // render until these queries resolve, so warm them first.
     // skipListCredit=1 — unlike the digital slide deck (which splices the
@@ -2331,7 +2331,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         playerDocked={!!player.current}
         // onComplete marks "public mode" (the unauthenticated /pray page)
         // — /prayer-mode is auth-only, so hide the intercessions card.
-        showIntercessions={!onComplete}
+        //
+        // AND ONLY WHERE /prayer-mode WILL ACTUALLY OPEN. It is wrapped in
+        // PrayerGate, which sends anyone without a prayer surface to the
+        // dashboard — so outside the pilot this card threw people out of the
+        // office they were praying (swept 2026-09-19). The slideshow's own
+        // closingHref has always checked this; the book guide did not.
+        showIntercessions={!onComplete && hasPrayerSurface(viewerUser)}
         alreadyDoneToday={readOfficeProgress(resolvedMode).kind === "done"}
         /**
          * "Enter Digital Slideshow" is a FORMAT CHANGE, not a peek.
@@ -2503,7 +2509,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (parishOnly) {
       setViewerLocation(`/parish/celebration?surface=${encodeURIComponent(resolvedMode)}`);
     } else if (officesOnlyViewer) {
-      setViewerLocation("/parish");
+      setViewerLocation("/pray");
     } else if (isReadingDeck) {
       /**
        * A READING GOES HOME, not into the morning office's closing summary.
@@ -2940,7 +2946,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // The public /pray page handles its own close (a sign-up invite)
     // rather than the auth-only /prayer-mode recap.
     if (onComplete) { onComplete(); return; }
-    if (officesOnlyViewer) { setViewerLocation("/parish"); return; }
+    if (officesOnlyViewer) { setViewerLocation("/pray"); return; }
     // Every office finish lands on /prayer-mode?closingOnly=1 — the
     // "you prayed for N people this week" summary followed by the
     // prayer-rhythm habit slide. Parish-only users get their own

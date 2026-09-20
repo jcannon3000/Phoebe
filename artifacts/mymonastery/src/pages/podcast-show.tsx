@@ -254,7 +254,11 @@ export default function PodcastShowPage() {
             type="button"
             onClick={() => {
               if (window.history.length > 1) window.history.back();
-              else if (show?.publisher) setLocation(`/podcasts/${show.publisher}`);
+              // Opened cold from a share link or a push: the publisher page is
+              // not open to a guest (and gates itself besides), so Back went
+              // to the dashboard by way of a bounce. The sermons list is where
+              // these shows are offered.
+              else if (show?.publisher === "sermons") setLocation("/menu/sermons");
               else setLocation("/dashboard");
             }}
             style={{ background: "none", border: "none", color: PALETTE.sage, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}

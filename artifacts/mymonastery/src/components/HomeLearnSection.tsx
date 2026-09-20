@@ -384,7 +384,11 @@ export function HomeLearnSection() {
                 </div>
                 <span
                   className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
-                  style={{ background: "#2D5E3F", color: WARM }}
+                  // Darker than the palette's green (owner, 2026-09-19: "Make
+                  // the continue a little darker") — the circle is the card's
+                  // Continue, and at #2D5E3F it glared against the frosted
+                  // ground it sits on.
+                  style={{ background: "#23492F", color: WARM }}
                   aria-hidden
                 >
                   <Play size={16} style={{ marginLeft: 2 }} />
@@ -392,7 +396,7 @@ export function HomeLearnSection() {
               </div>
               <div className="mt-2.5 flex items-center gap-2.5">
                 <div className="h-1 flex-1 overflow-hidden rounded-full" style={{ background: "rgba(200,212,192,0.12)" }}>
-                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg,#2D5E3F,#5FBF7F)" }} />
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg,#23492F,#4EA96C)" }} />
                 </div>
                 <span className="text-[11px] leading-4 flex-shrink-0" style={{ color: SAGE, fontFamily: FONT }}>
                   {c.done} of {c.total}

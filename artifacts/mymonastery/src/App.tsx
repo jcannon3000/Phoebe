@@ -994,6 +994,25 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // no session yet, which useGuestMode treats as a guest; without this the
   // gate bounced them to /dashboard before they ever saw the invite.
   "/invite", "/invite/share",
+  /**
+   * DOORS THAT WERE OPEN WHILE THE ROUTE WAS SHUT (swept 2026-09-19, after
+   * the Way of Love turned out to be bouncing everyone).
+   *
+   * Two families. The first is pages an ORDINARY person is offered and could
+   * not reach: Daily Progress' own "Print a weekly version", which every
+   * visitor sees, and Pray the Breath, listed as available offline and
+   * tappable from that page. The second is the rows a BETA TESTER or a
+   * community admin is shown BECAUSE they are one — and this gate's older
+   * comments claim it exempts them, which has not been true since guest mode
+   * became `!inPilotGroup && !isSuperAdmin`: they are guests like everyone
+   * else, so every one of those rows bounced them.
+   *
+   * Each page keeps its own gate — /home-beta and /news check isBeta for
+   * themselves, and Admin Tools shows its admin-only sections on rawIsAdmin —
+   * so opening the route admits nobody the page would not.
+   */
+  "/routine-print", "/pray-breath",
+  "/admin/tools", "/daily-practice", "/home-beta", "/way-of-love", "/news",
 ]);
 const GUEST_ALLOWED_PREFIX = [
   "/bcp", "/prayer-mode", "/cobreathe",
