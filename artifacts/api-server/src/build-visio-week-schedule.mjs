@@ -203,6 +203,13 @@ const WALK = [[0, 3], [1, 3], [2, 3], [0, 2], [1, 2], [2, 2]];
  * An icon named here is reachable by id alone; the icon harvest is NOT in the
  * pool, so it appears on the week it was chosen for and nowhere else.
  */
+/**
+ * Two picks were Frank Wesley's and went with him (owner, 2026-09-19: "Take
+ * out the Wesley Frank images"): "Luke 10:17-24" (Jai Krist) and
+ * "Matt. 23:13-24" (The Publican and the Pharisee). They are NOT replaced by
+ * guesswork — a theme pick is a picture somebody chose on purpose — so those
+ * two weeks fall back to the builder's own search until someone picks again.
+ */
 const THEME_PICKS = {
   // Christ in Majesty from Sant Climent de Taüll, the open book lettered EGO
   // SUM LUX MUNDI: the Son of Man coming in glory. The owner rejected the
@@ -241,7 +248,6 @@ const THEME_PICKS = {
   "John 12:44-50": 48051,
   // "Hidden from the wise and revealed to infants" — Matthew 11:25-30, the same
   // saying, is what this painting is tagged to.
-  "Luke 10:17-24": 59245,
   // "First be reconciled to your brother or sister."
   "Matt. 5:21-26": 54666,
   // Jesus standing with the book in the synagogue at Nazareth — the scene the
@@ -267,7 +273,6 @@ const THEME_PICKS = {
   // Commons wood engraving won this Sunday instead.
   "Matt. 13:44-52": 48286,
   // The Pharisee who tithes mint and dill and misses justice and mercy.
-  "Matt. 23:13-24": 59165,
   // The crowds who went out into the wilderness to see John.
   "Luke 7:28-35": 58375,
   // "He must increase, but I must decrease."

@@ -73,7 +73,6 @@ const ARTISTS = [
   "Catlett, Elizabeth, 1915-2012",
   "Swanson, John August",
   "Hernández, Salvador",
-  "Wesley, Frank, 1923-2002",
   // Owner, 2026-09-18: "include these picture in the library" (80 works, all
   // under the artist's recorded non-commercial grant). Added to the committed
   // catalogue by hand-merge, not a full regen: a full regen would put back the
@@ -111,6 +110,16 @@ const DEAD_IMAGE_IDS = [55261, 56543, 59210, 59244];
  * of the Eucharist" (58608, the whole cross, is sharp and stays), 58557 and
  * 58561 (details), 58514 "The Census", 58559 "St Francis" (58558 stays).
  */
+/**
+ * FRANK WESLEY, ALL OF HIM (owner, 2026-09-19: "Take out the Wesley Frank
+ * images"). 112 works, after one had already gone for the same reason
+ * (59238). Named as an artist rather than as 112 ids, and taken off the
+ * allowlist above, so neither a regen nor a re-add can bring them back by
+ * accident. The owner has asked for them twice — once as a spacing rule, then
+ * as a removal — so the second reading is the one that holds.
+ */
+const EXCLUDED_ARTISTS = ["wesley, frank"];
+
 const OWNER_REMOVED_IDS = [59238, 58491, 58557, 58561, 58514, 58559];
 const EXCLUDED_IDS = new Set([59230, ...DEAD_IMAGE_IDS, ...OWNER_REMOVED_IDS]);
 
@@ -239,6 +248,7 @@ const main = async () => {
     // ACT keeps placeholder rows ("Sample record for Frank Wesley artwork").
     if (/^sample record\b/i.test(a.title ?? "")) { dropped.sampleRecord++; continue; }
     if (EXCLUDED_IDS.has(a.id)) { dropped.excludedWork++; continue; }
+    if (EXCLUDED_ARTISTS.some((x) => String(a.artist ?? "").toLowerCase().includes(x))) { dropped.excludedWork++; continue; }
     const screen = [a.title, a.notes, ...(a.subjects ?? [])].filter(Boolean).join(" ");
     if (NUDITY.test(screen)) { dropped.nudity++; continue; }
     const ct = commonsTitle(a.copyright_source);

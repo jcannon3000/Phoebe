@@ -233,6 +233,9 @@ export function galleryForDayWithMarker(
         if (a && !seen.has(a.id)) { works.push(a); seen.add(a.id); }
       });
       for (const a of pool) if (!seen.has(a.id)) works.push(a);
+      // The floor applies to a restored day too, or a rule added today would
+      // not reach anyone until tomorrow.
+      spaceOutLatimore(works);
       return { works, relatedFrom: saved.relatedFrom >= 0 ? Math.max(0, relatedFrom) : -1, tailIsRelated: saved.tailIsRelated === true };
     }
   } catch { /* unreadable: build afresh */ }
@@ -378,7 +381,46 @@ function buildGalleryDay(
   }
   // Already met: in the day's shuffle, after everything new.
   for (const a of shuffled) if (seenIds.has(a.id) && !used.has(a.id)) works.push(a);
+  spaceOutLatimore(works);
   return { works, relatedFrom: works.length > relatedFrom ? relatedFrom : -1, tailIsRelated: tailRelated };
+}
+
+/**
+ * A KELLY LATIMORE AT LEAST EVERY TWENTY (owner, 2026-09-19: "Make sure it
+ * shows a Kelly Latinate atleast once every 20" — his spelling of Latimore,
+ * the icon painter).
+ *
+ * A FLOOR, not a filter: nothing is dropped and nothing is repeated. Walking
+ * the finished order, wherever twenty pictures have passed without one, the
+ * next Latimore still to come is MOVED UP to that place; everything else keeps
+ * its order. So the day's shuffle, the one-in-three stranger, the fold, the
+ * held works and the met-pictures-last tail all survive it.
+ *
+ * THE POOL IS 25 OF HIM, against a library of some 780. Twenty-five placements
+ * at one per twenty covers the first five hundred pictures; past that there is
+ * no Latimore left to move and the rule simply stops, because the alternative
+ * would be showing the same icon twice. "At least every twenty, as often as
+ * there are Latimores" is the honest reading.
+ */
+const LATIMORE = /latimore/i;
+const LATIMORE_EVERY = 20;
+
+function spaceOutLatimore(works: GalleryWork[]): void {
+  let since = 0;
+  for (let i = 0; i < works.length; i++) {
+    if (LATIMORE.test(works[i]!.artist ?? "")) { since = 0; continue; }
+    since += 1;
+    if (since < LATIMORE_EVERY) continue;
+    // Due one: take the next still to come, and put it here.
+    let j = -1;
+    for (let k = i + 1; k < works.length; k++) {
+      if (LATIMORE.test(works[k]!.artist ?? "")) { j = k; break; }
+    }
+    if (j < 0) return; // none left — the rule stops rather than repeating one
+    const [pick] = works.splice(j, 1);
+    works.splice(i, 0, pick!);
+    since = 0;
+  }
 }
 
 /** Held rows with folded ids merged into the id the gallery shows. */
