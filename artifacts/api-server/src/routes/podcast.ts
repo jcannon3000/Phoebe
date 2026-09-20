@@ -1289,20 +1289,58 @@ const SERMON_SOURCE_ABOUT: Record<string, string> = {
 // applied, because that flag is about the Discover grid, not about whether a
 // church preaches. Registry metadata only — the page asks each show's own
 // route for its newest sermon.
-router.get("/podcasts/sermon-sources", (_req: Request, res: Response): void => {
-  res.setHeader("Cache-Control", "public, max-age=3600");
+//
+// WITH ?latest=1 it also carries each church's NEWEST SERMON, so a caller that
+// only wants "what did each church last preach" makes ONE request instead of
+// one per church. That is what the home's reflections ticker needs (owner,
+// 2026-09-19: "In the ticker with the reflections put the last sermons from
+// each feed"), and the home must not pay a fan-out to render a row. The feeds
+// come from the same 30-minute cache the show route fills, and a feed that
+// fails simply has no `latest`.
+router.get("/podcasts/sermon-sources", async (req: Request, res: Response): Promise<void> => {
   const group = PUBLISHERS.sermons;
+  const shows = (group?.showSlugs ?? []).map((slug) => SHOWS[slug]).filter((s): s is Show => !!s);
+  const wantLatest = req.query.latest === "1";
+  // Shorter than the registry-only answer, because it carries feed content.
+  res.setHeader("Cache-Control", `public, max-age=${wantLatest ? 900 : 3600}`);
+
+  const latestBySlug = new Map<string, EpisodeFull | null>();
+  if (wantLatest) {
+    await Promise.all(shows.map(async (show) => {
+      try {
+        const feed = await loadFeed(show, 20);
+        // The newest that IS a sermon: a feed carries other things, and the
+        // cathedral's two-minute Prayer for the Day sits near the top.
+        latestBySlug.set(show.slug, feed.episodes.find((ep) => (ep as EpisodeFull).sermon !== false) ?? null);
+      } catch {
+        latestBySlug.set(show.slug, null);
+      }
+    }));
+  }
+
   res.json({
-    sources: (group?.showSlugs ?? [])
-      .map((slug) => SHOWS[slug])
-      .filter((s): s is Show => !!s)
-      .map((s) => ({
+    sources: shows.map((s) => {
+      const latest = latestBySlug.get(s.slug);
+      return {
         slug: s.slug,
         title: s.artist || s.title,
         showTitle: s.title,
         artwork: s.artwork,
         about: SERMON_SOURCE_ABOUT[s.slug] ?? null,
-      })),
+        ...(wantLatest
+          ? {
+              latest: latest
+                ? {
+                    id: latest.id,
+                    title: latest.title,
+                    publishedAt: latest.publishedAt,
+                    preacher: (latest as EpisodeFull).preacher ?? null,
+                  }
+                : null,
+            }
+          : {}),
+      };
+    }),
   });
 });
 

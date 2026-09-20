@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { LISTEN_INVITATION } from "@/lib/listenPrompt";
 import { LISTENING_LOG_EVENT, listeningHistory, saveListeningEntry } from "@/lib/listeningLog";
 import { useOnline } from "@/lib/offline";
 import { motion } from "framer-motion";
@@ -1112,7 +1113,10 @@ export default function ListeningPage() {
                   Space Grotesk, upright, 21px, same measure. */}
               {deckStep === LISTEN && !nowPlaying && (
                 <p className="prompt-rise text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
-                  Let a song come to mind that feels sacred to you in this moment. Listen to it once — rest in the music, and listen for what touches your heart as you do.
+                  {/* The second half moved to the track page (owner: "Take
+                      this off that page and put it under the YouTube") — both
+                      halves live in lib/listenPrompt so they can't drift. */}
+                  {LISTEN_INVITATION}
                 </p>
               )}
 

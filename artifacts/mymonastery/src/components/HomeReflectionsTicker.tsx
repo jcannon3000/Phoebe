@@ -11,34 +11,88 @@
 // "Put Yale Commentary & Living Church Commentary in the reflection ticker"
 // · "Dispersed"): Yale after the second daily, Living Church after the
 // fourth. Same gates and same opening as This Sunday (lib/sundayCommentaries).
+//
+// AND THE CHURCHES' NEWEST SERMONS (owner, 2026-09-19: "In the ticker with the
+// reflections put the last sermons from each feed"), dispersed the same way.
+// The Sermons page's own source of truth, in ONE request:
+// /api/podcasts/sermon-sources?latest=1 carries each church's newest episode
+// that IS a sermon — never the cathedral's two-minute Prayer for the Day — so
+// the home pays one cached call rather than a fan-out, and nothing here
+// blocks the paint: the row renders its reflections and the sermons join when
+// the answer arrives. A church silent for more than 90 days gets no pill, the
+// same rule the Sermons page keeps.
 
 import { useMemo, useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { PillTicker } from "@/components/PillTicker";
 import { DAILY_REFLECTIONS, openDailyReflection } from "@/lib/dailyReflections";
 import { useSundayCommentaries } from "@/lib/sundayCommentaries";
+import { apiRequest } from "@/lib/queryClient";
+
+/** Over this many days since a church's newest sermon, it gets no pill. */
+const STALE_DAYS = 90;
+
+type SermonSource = {
+  slug: string;
+  title: string;
+  latest?: { id: string; title: string | null; publishedAt: string | null; preacher: string | null } | null;
+};
 
 export function HomeReflectionsTicker() {
   const [, setLocation] = useLocation();
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { once: true, amount: 0.25 });
   const commentaries = useSundayCommentaries();
+  const { data: sermonData } = useQuery<{ sources: SermonSource[] }>({
+    queryKey: ["/api/podcasts/sermon-sources?latest=1"],
+    queryFn: () => apiRequest("GET", "/api/podcasts/sermon-sources?latest=1"),
+    staleTime: 15 * 60_000,
+  });
   const pills = useMemo(() => {
     const daily = DAILY_REFLECTIONS
       .filter((d) => d.source !== "vts")
       .map((d) => ({ key: d.source, emoji: d.emoji, label: d.title, onSelect: () => openDailyReflection(d.source, setLocation) }));
-    const extra = commentaries.map((c) => ({ key: c.key, emoji: c.emoji, label: c.title, onSelect: c.open }));
-    // Dispersed: one commentary after every second daily, the rest at the end.
-    const out: Array<{ key: string; emoji: string; label: string; onSelect: () => void }> = [];
+    type Pill = { key: string; emoji: string; label: string; onSelect: () => void };
+    const extra: Pill[] = commentaries.map((c) => ({ key: c.key as string, emoji: c.emoji, label: c.title, onSelect: c.open }));
+    /**
+     * A pill per church, carrying its newest sermon. The LABEL is the sermon,
+     * not the church: the microphone and the row already say what these are,
+     * and a ticker of five identical church names tells you nothing about
+     * what is waiting. The tap is the Sermons page's own — the episode by id,
+     * in Phoebe's player.
+     */
+    const sermons = (sermonData?.sources ?? [])
+      .filter((s) => {
+        const at = s.latest?.publishedAt ? Date.parse(s.latest.publishedAt) : NaN;
+        return !!s.latest?.id && !Number.isNaN(at) && (Date.now() - at) / 86_400_000 <= STALE_DAYS;
+      })
+      .map((s) => ({
+        key: `sermon:${s.slug}`,
+        emoji: "🎙️",
+        label: s.latest!.title?.trim() || s.title,
+        onSelect: () => setLocation(`/podcasts/show/${s.slug}?ep=${encodeURIComponent(s.latest!.id)}`),
+      }));
+    extra.push(...sermons);
+    /**
+     * DISPERSED, not clumped (owner, of the commentaries: "Dispersed"). It was
+     * one extra after every second daily, which was right for two of them; with
+     * the sermons there can be seven, and the tail of the row became all
+     * sermons. So the gap is measured against how many there are: evenly
+     * spaced through the dailies, and anything left over still lands at the
+     * end rather than being dropped.
+     */
+    const out: Pill[] = [];
+    const step = extra.length > 0 ? Math.max(1, Math.floor(daily.length / (extra.length + 1))) : 0;
     let e = 0;
     daily.forEach((p, i) => {
       out.push(p);
-      if (i % 2 === 1 && e < extra.length) out.push(extra[e++]!);
+      if (step > 0 && (i + 1) % step === 0 && e < extra.length) out.push(extra[e++]!);
     });
     while (e < extra.length) out.push(extra[e++]!);
     return out;
-  }, [setLocation, commentaries]);
+  }, [setLocation, commentaries, sermonData]);
   if (pills.length === 0) return null;
   return (
     <div ref={rootRef}>

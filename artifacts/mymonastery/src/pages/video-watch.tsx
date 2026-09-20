@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { YouTubePlayer } from "@/components/YouTubePlayer";
 import { isInReaderWatch, YOUTUBE_ID } from "@/lib/videoEmbed";
 import { logListenNow } from "@/lib/logListenNow";
 import { hymnTextFor } from "@/lib/hymnTexts";
+import { LISTEN_PROMPT } from "@/lib/listenPrompt";
+import { ReaderShell } from "@/components/CoursePage";
+import { Layout } from "@/components/layout";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { pickWideBackground } from "@/lib/wideBackgrounds";
 
 // ── /video — one YouTube video, inside Phoebe ───────────────────────────────
 //
@@ -46,6 +51,16 @@ import { hymnTextFor } from "@/lib/hymnTexts";
 // the rule in its header). Owner: "have the lyrics" · "in space grotesk". A
 // hymn whose words are under copyright, or merely might be, shows none.
 //
+// THE PROMPT under the player is the second half of Audio Divina's own
+// invitation (owner: "Take this off that page and put it under the YouTube"),
+// read from lib/listenPrompt so the deck and this page can't drift. No rise
+// animation here — reference_page_rise_end_snap: entrances fade in place.
+//
+// THE LEAF GROUND is the course page's own ReaderShell (leaf photo, dark
+// gradient, and the top fade that stops the native bar reading as a separate
+// slab), so this is not a third copy of that backdrop. It works inside the
+// reader, which is where it is most needed.
+//
 // `v` must be a bare YouTube id (11 characters of [A-Za-z0-9_-]), so this page
 // can never be handed an arbitrary embed; `from` accepts in-app paths only.
 
@@ -67,6 +82,10 @@ export default function VideoWatchPage() {
   const from = fromRaw && fromRaw.startsWith("/") && !fromRaw.startsWith("//") ? fromRaw : "/listening";
   const inReader = isInReaderWatch();
   const words = hymnTextFor(params.get("hymn"));
+  const leafBg = useMemo(
+    () => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
+    [],
+  );
   /**
    * THE READER'S OWN TITLE BAR reads document.title (owner, 2026-09-19: "The
    * top of that reader shouldn't say Phoebe it should be related to the
@@ -91,11 +110,10 @@ export default function VideoWatchPage() {
     setLocation("/listening?lift=1");
   };
 
-  return (
+  const body = (
     <div
       style={{
         minHeight: "var(--app-dvh)",
-        background: "#091A10",
         color: WARM,
         fontFamily: FONT,
         display: "flex",
@@ -175,6 +193,15 @@ export default function VideoWatchPage() {
           </p>
         )}
 
+        <p
+          style={{
+            width: "100%", maxWidth: 560, alignSelf: "center", margin: 0, padding: "0 4px",
+            color: SAGE, fontFamily: FONT, fontSize: 15, fontWeight: 500, lineHeight: 1.6,
+          }}
+        >
+          {LISTEN_PROMPT}
+        </p>
+
         {words && (
           <section
             aria-label="Words"
@@ -222,4 +249,9 @@ export default function VideoWatchPage() {
       </main>
     </div>
   );
+
+  /* The leaf ground behind it all — the course page's own shell inside the
+     reader (it carries the fade that joins the native bar to the page), and
+     the app's Layout backdrop outside it. */
+  return inReader ? <ReaderShell photo={leafBg}>{body}</ReaderShell> : <Layout bgPhoto={leafBg}>{body}</Layout>;
 }
