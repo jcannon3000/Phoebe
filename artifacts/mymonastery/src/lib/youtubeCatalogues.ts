@@ -29,7 +29,8 @@
 //     language keeping its own spelling — and what was stripped is kept in the
 //     artist line where it says something ("New Songs 2020 (Acoustic)"). Two
 //     are not single chants and say so: "Songs in Arabic" runs an hour, and
-//     "Instrumental 4" is the New CD's untitled fourth track.
+//     "Instrumental 4" is the New CD's untitled fourth track — BOTH hidden at
+//     the owner's word (2026-09-19), leaving ten single chants.
 //   - Mary Lou's Mass: 24 of 24, every track the official "Mary Lou
 //     Williams - Topic" upload of the Smithsonian Folkways album (tracks from
 //     itunes.apple.com/lookup?id=160593555&entity=song).
@@ -42,6 +43,12 @@ export type YouTubeTrack = {
   seconds: number;
   /** The same recording on YouTube, or null when none could be proved. */
   youtubeId: string | null;
+  /**
+   * Kept in the catalogue but NOT LISTED — the owner asked for it out, and a
+   * record of what was here is worth more than a silent deletion, so it can
+   * come back by deleting one word. The reason belongs on the row.
+   */
+  hidden?: true;
 };
 
 export type YouTubeCatalogue = {
@@ -52,6 +59,14 @@ export type YouTubeCatalogue = {
   blurb: string;
   /** Shown above each track's title on the /video page. */
   videoEyebrow: string;
+  /** A line for the browse sheet — what this catalogue IS, in a few words. */
+  browse: string;
+  /**
+   * A note at the TOP of the catalogue's own page, and nowhere else. Sakamoto
+   * carries the owner's own account of listening to it; it is his voice, so it
+   * is quoted here rather than rewritten, and his name stays in it.
+   */
+  note?: string;
   tracks: readonly YouTubeTrack[];
 };
 
@@ -60,6 +75,7 @@ export const HILDEGARD_YOUTUBE: YouTubeCatalogue = {
   eyebrow: "Hildegard",
   title: "Hildegard von Bingen",
   blurb: "Her chants, sung by many voices. Tap one to hear it here.",
+  browse: "Chants of Hildegard von Bingen",
   videoEyebrow: "Hildegard von Bingen",
   tracks: [
   {"n": 1, "title": "Ave generosa", "artist": "Oxford Camerata, Jeremy Summerly", "seconds": 392, "youtubeId": "zgtLcTrZNJE"},
@@ -109,6 +125,7 @@ export const MARY_LOUS_MASS: YouTubeCatalogue = {
   eyebrow: "Mary Lou's Mass",
   title: "Mary Lou's Mass",
   blurb: "Mary Lou Williams's jazz Mass (Smithsonian Folkways), in album order. Tap a track to hear it here.",
+  browse: "Mary Lou Williams's jazz Mass",
   videoEyebrow: "Mary Lou's Mass",
   tracks: [
   {"n": 1, "title": "Willis", "artist": "Mary Lou Williams", "seconds": 221, "youtubeId": "9nxLp_eZKA8"},
@@ -143,6 +160,7 @@ export const TAIZE_SONGS: YouTubeCatalogue = {
   eyebrow: "Taizé Songs",
   title: "Taizé Songs",
   blurb: "Chants from the community at Taizé, sung by the brothers. Tap one to hear it here.",
+  browse: "Songs from the Taizé community",
   videoEyebrow: "Taizé",
   tracks: [
   {"n": 1, "title": "Jubilate Coeli (canon)", "artist": "Taizé", "seconds": 168, "youtubeId": "tS9tQbXPFHc"},
@@ -155,7 +173,107 @@ export const TAIZE_SONGS: YouTubeCatalogue = {
   {"n": 8, "title": "Herre, visa mig vägen", "artist": "Taizé · New Songs 2020 (Acoustic)", "seconds": 116, "youtubeId": "k47fQ2CNqQU"},
   {"n": 9, "title": "D'un arbre séculaire — Cantique de Noël", "artist": "Taizé", "seconds": 161, "youtubeId": "dTMkA_nlpr8"},
   {"n": 10, "title": "Tu sei sorgente viva", "artist": "Taizé", "seconds": 163, "youtubeId": "6YXCUrcCUbg"},
-  {"n": 11, "title": "Songs in Arabic: Remain With Me", "artist": "Taizé · a continuous hour", "seconds": 3857, "youtubeId": "83Bt6fPthHo"},
-  {"n": 12, "title": "Instrumental 4", "artist": "Taizé · from the New CD", "seconds": 58, "youtubeId": "B3wBSpJnEvM"},
+  // Owner, 2026-09-19: "Take out those two songs" — the list is ten single
+  // chants. These two were the odd ones out: an hour-long continuous track and
+  // an untitled instrumental.
+  {"n": 11, "title": "Songs in Arabic: Remain With Me", "artist": "Taizé · a continuous hour", "seconds": 3857, "youtubeId": "83Bt6fPthHo", "hidden": true},
+  {"n": 12, "title": "Instrumental 4", "artist": "Taizé · from the New CD", "seconds": 58, "youtubeId": "B3wBSpJnEvM", "hidden": true},
   ],
 };
+
+// ── Ryuichi Sakamoto ────────────────────────────────────────────────────────
+//
+// Owner, 2026-09-19, with YouTube's album playlist for "Music For Film":
+// "Call this Ryuchi Sakamoto" — so the catalogue is the composer, not the
+// album. All 13 are on the official "Ryuichi Sakamoto - Topic" channel
+// (UCfWELfxrSN1ryuNWZtXqR3g), checked here. Titles are the piece; the film
+// goes to the quieter line, and stays off it where the title already names
+// the film ("The Sheltering Sky Main Theme").
+//
+// THE NOTE is the owner's own, and it names him: "have at the top of the page
+// say Jeremy would listen to this album as a contemplative practice between
+// matins and Eucharist on contemplative walks outside the monastery. Edit the
+// grammar for that, but don't take out my name like you did last time."
+export const SAKAMOTO: YouTubeCatalogue = {
+  path: "/sakamoto",
+  eyebrow: "Ryuichi Sakamoto",
+  title: "Ryuichi Sakamoto",
+  blurb: "Music for film. Tap a piece to hear it here.",
+  browse: "Ryuichi Sakamoto's music for film",
+  note: "Jeremy listened to this album as a contemplative practice in the monastery, between Matins and the Eucharist, on walks outside.",
+  videoEyebrow: "Ryuichi Sakamoto",
+  tracks: [
+  {"n": 1, "title": "Merry Christmas Mr. Lawrence Main Theme", "artist": "Ryuichi Sakamoto", "seconds": 362, "youtubeId": "OJyPNbmDigY"},
+  {"n": 2, "title": "Endroll", "artist": "from The Last Emperor", "seconds": 483, "youtubeId": "FSlO95CB1xM"},
+  {"n": 3, "title": "Rain", "artist": "from The Last Emperor", "seconds": 256, "youtubeId": "0Wdblp8g61s"},
+  {"n": 4, "title": "The Sheltering Sky Main Theme", "artist": "Ryuichi Sakamoto", "seconds": 386, "youtubeId": "_F64Gg27T40"},
+  {"n": 5, "title": "High Heels Main Theme", "artist": "Ryuichi Sakamoto", "seconds": 188, "youtubeId": "IxIgcokL2sM"},
+  {"n": 6, "title": "Wild Palms Main Theme", "artist": "Ryuichi Sakamoto", "seconds": 152, "youtubeId": "ny4YdpUk9Lk"},
+  {"n": 7, "title": "Acceptance", "artist": "from Little Buddha", "seconds": 529, "youtubeId": "t8gKYl_RS08"},
+  {"n": 8, "title": "Snake Eyes Main Theme (Long Version)", "artist": "Ryuichi Sakamoto", "seconds": 326, "youtubeId": "7cBXYcV0rx4"},
+  {"n": 9, "title": "Bolerish", "artist": "from Femme Fatale", "seconds": 371, "youtubeId": "gLkvGzVcy7g"},
+  {"n": 10, "title": "Bibo No Aozora", "artist": "from Babel", "seconds": 388, "youtubeId": "EsW3h4Ohsn0"},
+  {"n": 11, "title": "Small Hope", "artist": "from Hara-Kiri (Ichimei)", "seconds": 300, "youtubeId": "D-SDpOFs4Hg"},
+  {"n": 12, "title": "Yae No Sakura Opening Theme", "artist": "Ryuichi Sakamoto", "seconds": 183, "youtubeId": "jAjSB_BCxbM"},
+  {"n": 13, "title": "The Revenant Main Theme", "artist": "Ryuichi Sakamoto", "seconds": 190, "youtubeId": "ZSTA7Q2JEJU"},
+  ],
+};
+
+// ── Spirituals ──────────────────────────────────────────────────────────────
+//
+// Owner, 2026-09-19, with the Smithsonian Folkways page: "Call it Spirityals"
+// — his typo; the catalogue is "Spirituals". Dock Reed's "Negro Folk Music of
+// Alabama, Vol. 5: Spirituals" (Folkways, 1953), sung by Dock Reed with Vera
+// Hall on three of the sixteen.
+//
+// ASSEMBLED FROM THE ALBUM'S OWN YouTube playlist (OLAK5uy_mfIolxcx…, found
+// from a track's watch page), which gives the album's ORDER; every track is an
+// official "- Topic" upload, Dock Reed's or Vera Hall's, credited here as the
+// album credits them. Not the whole-album video, which would be one 35-minute
+// row. Nothing of the singing is held here, as everywhere: a title, a length
+// and a link. No lyrics.
+//
+// NOT THE SAME THING as lib/spirituals' 136 Slave Songs (project
+// spirituals-library), which are TEXTS said as canticles. This is a recording
+// to listen to. Both can be called "spirituals"; if that ever confuses anyone,
+// this one is the music catalogue.
+export const SPIRITUALS: YouTubeCatalogue = {
+  path: "/spirituals-album",
+  eyebrow: "Spirituals",
+  title: "Spirituals",
+  blurb: "Dock Reed and Vera Hall, Alabama, 1953 (Smithsonian Folkways). Tap one to hear it here.",
+  browse: "Dock Reed and Vera Hall, Alabama, 1953",
+  videoEyebrow: "Spirituals",
+  tracks: [
+  {"n": 1, "title": "I'm Going Home on the Morning Train", "artist": "Dock Reed", "seconds": 122, "youtubeId": "kT32EJbc_AQ"},
+  {"n": 2, "title": "My God Ain't No Lying Man", "artist": "Dock Reed", "seconds": 133, "youtubeId": "INt-TfXmXTA"},
+  {"n": 3, "title": "Where the Sun Will Never Go Down", "artist": "Dock Reed", "seconds": 126, "youtubeId": "xvCWG3NrI44"},
+  {"n": 4, "title": "Troubled Lord I'm Troubled", "artist": "Dock Reed", "seconds": 92, "youtubeId": "6Vzhq6fSBJQ"},
+  {"n": 5, "title": "Look How They Done My Lord", "artist": "Dock Reed", "seconds": 123, "youtubeId": "sUFTuhGkIMw"},
+  {"n": 6, "title": "Job Job", "artist": "Dock Reed", "seconds": 136, "youtubeId": "JxyTZVRITY8"},
+  {"n": 7, "title": "What Month Was Jesus Born In", "artist": "Vera Hall", "seconds": 130, "youtubeId": "v8Zl2y79YAw"},
+  {"n": 8, "title": "Somebody's Talking About Jesus", "artist": "Dock Reed", "seconds": 91, "youtubeId": "ZaGFNqhxLhs"},
+  {"n": 9, "title": "Death is Awful", "artist": "Dock Reed", "seconds": 106, "youtubeId": "ktfcHiAVwXE"},
+  {"n": 10, "title": "I'm Climbing Up the Hills of Mt. Zion", "artist": "Dock Reed", "seconds": 103, "youtubeId": "bp_glJ2H3xM"},
+  {"n": 11, "title": "Low Down the Chariot and Let Me Ride", "artist": "Dock Reed", "seconds": 129, "youtubeId": "pseqiycD2Q0"},
+  {"n": 12, "title": "The Blood Done Signed My Name", "artist": "Dock Reed", "seconds": 203, "youtubeId": "jW3_YbbixbU"},
+  {"n": 13, "title": "Everybody Talkin’ about Heaven Ain’t Goin’ There", "artist": "Dock Reed", "seconds": 171, "youtubeId": "TIGDytf4J-k"},
+  {"n": 14, "title": "Noah, Noah", "artist": "Vera Hall", "seconds": 85, "youtubeId": "3C6YTQ-nz0g"},
+  {"n": 15, "title": "Plumb the Line", "artist": "Dock Reed", "seconds": 99, "youtubeId": "wdsNZ11VPGQ"},
+  {"n": 16, "title": "Travelling Shoes", "artist": "Vera Hall", "seconds": 104, "youtubeId": "LlTLLtJ9rJc"},
+  ],
+};
+
+/**
+ * EVERY MUSIC CATALOGUE, in one list (owner, 2026-09-19: "let do a browse
+ * catalogue pill again that brings up different options"). The browse sheet
+ * reads this, so adding a catalogue here is the whole procedure. /hymns is its
+ * own page rather than a YouTubeCatalogue — it has hymn numbers, the hymnal's
+ * order and the public-domain words — so it is named here by hand.
+ */
+export const MUSIC_CATALOGUES: ReadonlyArray<{ path: string; title: string; browse: string }> = [
+  { path: "/hymns", title: "Hymns", browse: "The Hymnal 1982, as recorded" },
+  ...[HILDEGARD_YOUTUBE, MARY_LOUS_MASS, TAIZE_SONGS, SAKAMOTO, SPIRITUALS].map((c) => ({
+    path: c.path, title: c.title, browse: c.browse,
+  })),
+];

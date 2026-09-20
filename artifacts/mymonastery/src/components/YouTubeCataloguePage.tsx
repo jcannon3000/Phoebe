@@ -17,9 +17,11 @@ import type { YouTubeCatalogue, YouTubeTrack } from "@/lib/youtubeCatalogues";
 // logs the listen as it opens, because the reader can't (lib/logListenNow).
 //
 // A track with no proven YouTube upload of the same recording is NOT SHOWN
-// (owner, 2026-09-19: "Don't show any song not on YouTube in the catalogs").
-// The catalogue keeps it — lib/youtubeCatalogues has the matching rule — so a
-// later match brings it back; the list is simply what can be played.
+// (owner, 2026-09-19: "Don't show any song not on YouTube in the catalogs"),
+// and neither is one marked `hidden` (a track the owner asked to take out).
+// The catalogue keeps both — lib/youtubeCatalogues has the matching rule and
+// the reason each was hidden — so either can come back; the list is simply
+// what is meant to be heard.
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -45,7 +47,7 @@ export function YouTubeCataloguePage({ cat }: { cat: YouTubeCatalogue }) {
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState("");
 
-  const playable = useMemo(() => cat.tracks.filter((t) => !!t.youtubeId), [cat]);
+  const playable = useMemo(() => cat.tracks.filter((t) => !!t.youtubeId && !t.hidden), [cat]);
   const results = useMemo(() => {
     const q = norm(query.trim());
     if (!q) return playable;
@@ -161,6 +163,22 @@ export function YouTubeCataloguePage({ cat }: { cat: YouTubeCatalogue }) {
           <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, margin: "0 0 14px" }}>
             {cat.blurb}
           </p>
+
+          {/* A catalogue's own note, at the top of its page and nowhere else
+              (owner, of Sakamoto: "at the top of the page say Jeremy would
+              listen to this album as a contemplative practice…"). Set apart
+              like something said rather than something labelled. */}
+          {cat.note && (
+            <p
+              style={{
+                color: WARM, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.6,
+                margin: "0 0 16px", padding: "12px 14px", borderRadius: 12,
+                background: "rgba(240,237,230,0.05)", border: `1px solid ${BORDER}`,
+              }}
+            >
+              {cat.note}
+            </p>
+          )}
 
           <input
             value={query}

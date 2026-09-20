@@ -223,7 +223,7 @@ export default function ListeningPage() {
   const [paused, setPaused] = useState(false);
   /** The Choose beat's search is focused — room is made under it for the keyboard. */
   const [findFocused, setFindFocused] = useState(false);
-  /** The "Choose from library" sheet (components/MusicLibrarySheet). */
+  /** The "Browse catalogues" sheet (components/MusicLibrarySheet). */
   const [libraryOpen, setLibraryOpen] = useState(false);
   /**
    * Can Phoebe itself play music right now? Owner: "If they have apple music
@@ -1262,69 +1262,27 @@ export default function ListeningPage() {
                       )}
                     </div>
                   )}
-                  {/* The catalogues, side by side, for everyone (owner,
-                      2026-09-19: "just with the hymn pill", then "could we also
-                      do Hildegard as well as youtube pages"). Both play their
-                      recordings as YouTube pages inside Phoebe. */}
-                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
+                  {/* ONE PILL FOR THE CATALOGUES (owner, 2026-09-19: "For the
+                      catalogues, let do a browse catalogue pill again that
+                      brings up different options"). The row of them — Hymns,
+                      Hildegard, Mary Lou's Mass, Taizé Songs, Sakamoto — was
+                      becoming a wall; the sheet lists them from
+                      lib/youtubeCatalogues' MUSIC_CATALOGUES, so the next one
+                      needs nothing here. */}
+                  <div style={{ display: "flex", justifyContent: "center" }}>
                     <button
                       type="button"
-                      onClick={() => setLocation("/hymns")}
+                      onClick={() => setLibraryOpen(true)}
                       className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
                       style={{
                         ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
-                        fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 7,
+                        fontSize: 14, fontWeight: 600, padding: "12px 26px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 8, width: "100%", maxWidth: 320,
+                        justifyContent: "center",
                       }}
                     >
                       <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
-                      Hymns
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLocation("/hildegard")}
-                      className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-                      style={{
-                        ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
-                        fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 7,
-                      }}
-                    >
-                      <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
-                      Hildegard
-                    </button>
-                    {/* Owner, 2026-09-19: "Try to find Mary Lou's Mass on YouTube
-                        and make that a third pill." All 24 tracks are the
-                        official Topic uploads (lib/youtubeCatalogues). */}
-                    <button
-                      type="button"
-                      onClick={() => setLocation("/mary-lous-mass")}
-                      className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-                      style={{
-                        ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
-                        fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 7,
-                      }}
-                    >
-                      <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
-                      Mary Lou's Mass
-                    </button>
-                    {/* Owner, 2026-09-19: "Add a Taize catalogue for audio
-                        Divina" — the community's own playlist. "Songs",
-                        because the weekly Taizé meditation and Taizé Daily
-                        Prayer are the app's other two Taizés. */}
-                    <button
-                      type="button"
-                      onClick={() => setLocation("/taize-songs")}
-                      className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-                      style={{
-                        ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK,
-                        fontSize: 14, fontWeight: 600, padding: "10px 22px", cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 7,
-                      }}
-                    >
-                      <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>♪</span>
-                      Taizé Songs
+                      Browse catalogues
                     </button>
                   </div>
                   {/* Room for the keyboard while searching, so the field can
@@ -1350,8 +1308,7 @@ export default function ListeningPage() {
                 <MusicLibrarySheet
                   open={libraryOpen}
                   onClose={() => setLibraryOpen(false)}
-                  onPick={playFromLibrary}
-                  onHymns={() => { setLibraryOpen(false); setLocation("/hymns"); }}
+                  onPick={(path) => { setLibraryOpen(false); setLocation(path); }}
                 />
               </div>
 
