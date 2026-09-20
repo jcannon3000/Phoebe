@@ -24,7 +24,7 @@ import { useOnline, cardAvailableOffline } from "@/lib/offline";
 import { daySwapNote } from "@/components/PracticeSwitcher";
 import { rowIdToCardKeys } from "@/lib/routineOrder";
 import { recordPracticeOpen, sortCardsByLearnedOrder, dayGroupFor, isMorningAnchorKey } from "@/lib/practiceOrderLearning";
-import { hasReadReflectionToday, reflectionDwellMsToday, reflectionSourceUrl, reflectionInAppRoute, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markPaygRead, markTaizePrayerRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
+import { hasReadReflectionToday, reflectionDwellMsToday, reflectionSourceUrl, reflectionInAppRoute, CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markNouwenRead, markSojoRead, markGristRead, markPaygRead, markTaizePrayerRead, markReflectionRead, markCustomPrayed, unmarkCustomPrayed, unlogReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markInboxRead, unmarkInboxRead } from "@/lib/taizeInbox";
 import { markCustomDoneToday, setCustomNotToday, unmarkCustomDoneToday, markAnchorOfficeIntent, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, anchorOnDay, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig , curatedPromptFor } from "@/lib/customAnchors";
@@ -2294,19 +2294,41 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         .filter((src) => !inRhythm.has(src)
           && hasReadReflectionToday(src)
           && (reflectionDwellMsToday(src) ?? 0) >= EXTRA_READ_MS)
-        .map((src) => ({
-          key: `extra-reflect-${src}`,
-          slot: "anytime" as CustomSlot,
-          emoji: REFLECTION_EMOJI[src],
-          rgb: "150,140,160",
-          done: true,
-          href: reflectionInAppRoute(src) ?? reflectionSourceUrl(src),
-          onUnlog: () => unlogReflectionToday(src),
-          title: PUBLICATION_NAME[src],
-          blurb: kept,
-          cta: t("rhythm.read", { defaultValue: "Read" }),
-          later: false,
-        }));
+        .map((src) => {
+          /**
+           * A PUBLISHER'S URL IS NOT AN href (owner, 2026-09-19: "For some
+           * reason when Taize prayer is in done it doesn't open" — and "But I
+           * can click the card in practice and it opens", which is what
+           * placed it here rather than in the card itself).
+           *
+           * This row used `href: inAppRoute ?? reflectionSourceUrl(src)`, and
+           * for every source that opens at its publisher's own page — Taizé,
+           * CAC, SSJE, Nouwen, Sojourners, Grist, Forward Day by Day — that
+           * put an https:// address into a wouter <Link>, which pushStates a
+           * cross-origin value and throws. The card looked ordinary and did
+           * nothing. Only VTS and Pray As You Go, which have real in-app
+           * routes, ever worked.
+           *
+           * So: an in-app route stays an href; everything else opens the way
+           * its own rhythm card opens it, in Phoebe's reader.
+           */
+          const inApp = reflectionInAppRoute(src);
+          const url = reflectionSourceUrl(src);
+          return {
+            key: `extra-reflect-${src}`,
+            slot: "anytime" as CustomSlot,
+            emoji: REFLECTION_EMOJI[src],
+            rgb: "150,140,160",
+            done: true,
+            href: inApp ?? "",
+            ...(inApp || !url ? {} : { onClick: () => openExternalThenMarkRead(url, () => markReflectionRead(src), { reader: true, savedHtml: warmedHtml(url) }) }),
+            onUnlog: () => unlogReflectionToday(src),
+            title: PUBLICATION_NAME[src],
+            blurb: kept,
+            cta: t("rhythm.read", { defaultValue: "Read" }),
+            later: false,
+          };
+        });
     })(),
     // The day's saint, read from the feast line by someone who does NOT keep
     // the hagiography card: it still lands in Done (owner, 2026-09-12). The
