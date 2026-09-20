@@ -1533,7 +1533,20 @@ router.get("/podcasts/show/:slug", async (req: Request, res: Response): Promise<
   const show = SHOWS[String(req.params.slug ?? "")];
   if (!show) { res.status(404).json({ error: "Unknown show" }); return; }
   res.setHeader("Cache-Control", "public, max-age=600");
-  const feed = await loadFeed(show, show.browseEpisodes ?? BROWSE_EPISODES);
+  /**
+   * ?limit= — for a caller that wants the newest few rather than the show.
+   *
+   * The Sermons page draws five one-line rows and was pulling five WHOLE
+   * feeds to do it, about 400 KB over a phone's connection, because the only
+   * shape on offer was the browse list (2026-09-19). It asks for what it
+   * shows: the newest sermon plus the seven under Previous.
+   *
+   * The cache is unaffected — a shallow request is served from a deep parse
+   * and never overwrites it (see loadFeed).
+   */
+  const askedRaw = Number(req.query.limit);
+  const asked = Number.isFinite(askedRaw) && askedRaw > 0 ? Math.min(Math.floor(askedRaw), BROWSE_EPISODES) : null;
+  const feed = await loadFeed(show, asked ?? show.browseEpisodes ?? BROWSE_EPISODES);
   const pub = PUBLISHERS[show.publisher];
   res.json({
     show: {

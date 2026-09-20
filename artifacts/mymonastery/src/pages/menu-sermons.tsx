@@ -109,12 +109,20 @@ export default function MenuSermonsPage() {
   });
   const sources = data?.sources ?? [];
 
-  // One feed read per church, for the newest sermon and the Previous list.
-  // The same query key the show page uses, so opening a church is warm.
+  /**
+   * One feed read per church, for the newest sermon and the Previous list —
+   * and only as deep as those need. Asking for the whole feed pulled about
+   * 400 KB across five churches to draw five one-line rows (2026-09-19);
+   * ?limit= serves the newest few from the same cache the show page fills,
+   * so opening a church is still warm and the page is a tenth of the weight.
+   * Three times PREVIOUS_COUNT, so a church whose recent posts include a
+   * vigil, an ordination or a Prayer for the Day still has eight SERMONS left
+   * once the non-sermons are filtered out.
+   */
   const feeds = useQueries({
     queries: sources.map((s) => ({
-      queryKey: [`/api/podcasts/show/${s.slug}`],
-      queryFn: () => apiRequest("GET", `/api/podcasts/show/${s.slug}`) as Promise<ShowResponse>,
+      queryKey: [`/api/podcasts/show/${s.slug}`, "recent"],
+      queryFn: () => apiRequest("GET", `/api/podcasts/show/${s.slug}?limit=${PREVIOUS_COUNT * 3}`) as Promise<ShowResponse>,
       staleTime: 15 * 60_000,
     })),
   });

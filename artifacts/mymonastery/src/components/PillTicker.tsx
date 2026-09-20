@@ -117,7 +117,14 @@ export function PillTicker({ pills, label }: { pills: TickerPill[]; label?: stri
       if (anim && lap === lapRef.current) return;
       // A width can change under a running row (Space Grotesk arriving after
       // first paint); keep its place as a share of the lap.
-      const share = anim && lapMs() > 0 ? mod(Number(anim.currentTime ?? 0), lapMs()) / lapMs() : 0;
+      //
+      // From animRef, not the effect-local `anim`: when the PILLS change —
+      // the sermon pills arriving half a second after the reflections — the
+      // effect tears down and re-runs with `anim` null, and the row snapped
+      // back to its first pill mid-lap, recolouring every pill as the indices
+      // shifted. The running animation is the one to ask.
+      const live = anim ?? animRef.current;
+      const share = live && lapMs() > 0 ? mod(Number(live.currentTime ?? 0), lapMs()) / lapMs() : 0;
       anim?.cancel();
       lapRef.current = lap;
       anim = track.animate(
