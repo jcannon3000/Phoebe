@@ -386,6 +386,8 @@ const HymnsPage = lazy(() => import("./pages/hymns"));
 const HildegardPage = lazy(() => import("./pages/hildegard"));
 const MaryLousMassPage = lazy(() => import("./pages/mary-lous-mass"));
 const TaizeSongsPage = lazy(() => import("./pages/taize-songs"));
+const SakamotoPage = lazy(() => import("./pages/sakamoto"));
+const SpiritualsAlbumPage = lazy(() => import("./pages/spirituals-album"));
 const SaintsPage = lazy(() => import("./pages/saints"));
 const LectioPage = lazy(() => import("./pages/lectio"));
 const ReadingLogPage = lazy(() => import("./pages/reading-log"));
@@ -477,6 +479,7 @@ const AdminNewsletterPage = lazy(() => import("./pages/admin-newsletter"));
 const LearnPage = lazy(() => import("./pages/learn"));
 const SpiritualJourneyPage = lazy(() => import("./pages/spiritual-journey"));
 const CenteringPrayerCoursePage = lazy(() => import("./pages/centering-prayer"));
+const TaizePrayerStreamPage = lazy(() => import("./pages/taize-prayer-stream"));
 const WayOfLoveCoursePage = lazy(() => import("./pages/way-of-love-course"));
 const CacCoursesPage = lazy(() => import("./pages/cac-courses"));
 const CacShowPage = lazy(() => import("./pages/cac-show"));
@@ -947,7 +950,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // non-beta, non-community-admin account, so the bounce hit ordinary users.)
   // All personal practices — a reflection reader, a listening session, and
   // three tap-to-log surfaces — with no social surface between them.
-  "/reflect/cac", "/reflect/payg", "/reflect/lectio", "/listening", "/hymns", "/hildegard", "/mary-lous-mass", "/taize-songs", "/saints", "/lectio", "/walk-log", "/reading-log", "/podcast-log",
+  "/reflect/cac", "/reflect/payg", "/reflect/lectio", "/listening", "/hymns", "/hildegard", "/mary-lous-mass", "/taize-songs", "/sakamoto", "/spirituals-album", "/saints", "/lectio", "/walk-log", "/reading-log", "/podcast-log",
   /**
    * THE DEAN'S COMMENTARY'S OWN READER. Owner: "THE VTS NEWSLETTER IS STILL
    * ADMIN GATED … EVEN THOUGH IT SHOWS UP IN THE ROUTINE, it cant be viewed
@@ -968,7 +971,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // already-allowlisted /rule-of-life flow, so excluding it broke that flow
   // partway through.
   "/find-your-rhythm", "/routine-interview", "/routine-audit", "/routine-history",
-  "/journey", "/centering-prayer", "/way-of-love-course", "/learn",
+  "/journey", "/centering-prayer", "/taize-prayer", "/way-of-love-course", "/learn",
   "/begin-prayer", "/prayer-chooser",
   // Media the guest's OWN office routes to: the listen-medium office podcasts
   // (begin-prayer's flow=daily hand-off) and the watch-medium pages (the
@@ -1394,6 +1397,8 @@ function Router() {
       <Route path="/hildegard" component={HildegardPage} />
       <Route path="/mary-lous-mass" component={MaryLousMassPage} />
       <Route path="/taize-songs" component={TaizeSongsPage} />
+      <Route path="/sakamoto" component={SakamotoPage} />
+      <Route path="/spirituals-album" component={SpiritualsAlbumPage} />
       <Route path="/saints" component={SaintsPage} />
       <Route path="/lectio" component={LectioPage} />
       <Route path="/reading-log" component={ReadingLogPage} />
@@ -1468,6 +1473,7 @@ function Router() {
       <Route path="/learn" component={LearnPage} />
       <Route path="/journey" component={SpiritualJourneyPage} />
       <Route path="/centering-prayer" component={CenteringPrayerCoursePage} />
+      <Route path="/taize-prayer" component={TaizePrayerStreamPage} />
       <Route path="/way-of-love-course" component={WayOfLoveCoursePage} />
       <Route path="/cac-home" component={CacHomePage} />
       <Route path="/cac-reflection" component={CacReflectionPage} />

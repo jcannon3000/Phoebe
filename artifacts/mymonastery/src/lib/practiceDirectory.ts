@@ -161,5 +161,22 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // above the saints row already is.
     // AT THE BOTTOM (owner, 2026-09-18: "Move hagiographies to the bottom").
     { emoji: "🕯️", label: "Hagiographies", sub: "Read a life slowly, and let it ask something of yours", href: "/saints" },
+    /**
+     * LAST, under the lives (owner, 2026-09-19: "At the bottom of practices
+     * could we have Taize prayers which would love there daily stream").
+     *
+     * It is the community PRAYING ALOUD, streamed from their church — not the
+     * weekly Taizé meditation to read, not Brother Matthew's written daily
+     * prayer, and not the Taizé Songs in Audio Divina. The owner named it
+     * "Taizé Saturday Prayer", which says which of the four it is AND when
+     * they pray — their channel streams Saturday evenings, not daily.
+     *
+     * No offlineKey: it is their live stream, so with no connection it belongs
+     * under "Not available" rather than being offered and failing.
+     *
+     * 🪔 a lamp, not 🕯️ — the candle is Contemplation's and Hagiographies',
+     * and three candles in one list name nothing.
+     */
+    { emoji: "\u{1FA94}", label: "Taiz\u00e9 Saturday Prayer", sub: "Their sung evening prayer, streamed from the community", href: "/taize-prayer" },
   ];
 }

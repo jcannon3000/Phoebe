@@ -266,7 +266,7 @@ function UnitBlock({
  * page-backdrop pattern; a fixed backdrop bleeds through the safe-area padding
  * on iOS. No entrance animation either.
  */
-function ReaderShell({ children, photo }: { children: ReactNode; photo: string | null }) {
+export function ReaderShell({ children, photo }: { children: ReactNode; photo: string | null }) {
   return (
     <div
       style={{
