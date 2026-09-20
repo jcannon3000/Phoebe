@@ -59,14 +59,17 @@ class MainViewController: CAPBridgeViewController {
         // with a bare ✕ and a toolbar that collapses on scroll: the custom
         // controller built to avoid exactly that has been dead code.
         bridge?.registerPluginInstance(BibleBrowserPlugin())
-        // PhoebeMusic — in-app Apple Music playback for the hymns catalogue.
-        // Registered explicitly for the same reason as every plugin above it:
-        // nothing in Swift references the class, so Capacitor 8 dead-strips it
-        // and window.Capacitor.Plugins.PhoebeMusic would simply not exist. The
-        // JS side guards on that and falls back to opening music.apple.com, so
-        // a missing registration would look like "the native path never works"
-        // rather than like an error.
-        bridge?.registerPluginInstance(PhoebeMusicPlugin())
+        // PhoebeMusic is NOT registered, on purpose (2026-09-19). The owner
+        // pulled Apple Music from the app — offices, the breath, the sit,
+        // the Settings switch — so registering a music plugin, and asking iOS
+        // for the media-library permission that goes with it, claims a
+        // capability Phoebe no longer has. The class stays in the tree so the
+        // decision is cheap to reverse; NSAppleMusicUsageDescription came out
+        // of Info.plist in the same breath, and the two belong together — a
+        // registered plugin that asks without the key is a crash. Same
+        // reasoning as the HealthKit keys (see the removed-features index).
+        // The web guards on the plugin's absence already: appleMusicFeatures
+        // asks it every time and answers "not ready" when it is not there.
 
         // A SIMULATOR SAYS SO. App Metrics must not count test runs (owner,
         // 2026-09-16: "make sure simulator sessions are not being counted"),

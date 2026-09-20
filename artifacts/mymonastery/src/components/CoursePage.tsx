@@ -584,20 +584,6 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
     if (secs >= START_AFTER_S) markStarted();
   }, [markStarted]);
 
-  /**
-   * NAME THE PAGE, for the reader's top bar (owner, 2026-09-19: "The top of
-   * that reader shouldn't say Phoebe it should be related to the content, or
-   * course"). The native bar takes the document's title and refuses only the
-   * literal "Phoebe", which is what every page of ours is called until it says
-   * otherwise. The lesson is named too, since that is what they are watching.
-   */
-  useEffect(() => {
-    if (!inReader) return;
-    const was = document.title;
-    document.title = active ? `${course.title} · ${active.lessonTitle}` : course.title;
-    return () => { document.title = was; };
-  }, [inReader, course.title, active]);
-
   /** The quiet "off my home screen" line — the bottom of both shells. */
   const removeFromHome = (
     <button

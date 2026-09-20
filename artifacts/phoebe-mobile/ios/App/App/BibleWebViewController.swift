@@ -2174,8 +2174,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                titled "Phoebe" until it says otherwise, so that one word is the
                only title refused here — a course names itself as soon as it
                knows which course it is. */
+            /* Every page of OURS names itself on the page, so the bar's centre
+               stays empty there (owner, of a track: "We don't also need the
+               browser title", and of a course: "I don't think it needs the
+               dublicate title"). Only other publishers' readers take a title
+               from the document. */
             if Self.isSelfTitledPage(webView.url) { return }
-            if Self.isPhoebeWatchPage(webView.url) && t == "Phoebe" { return }
             self.title = t
         }
 

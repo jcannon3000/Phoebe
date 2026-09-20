@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect, useRef, useMemo, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { anchorOnDay } from "@/lib/customAnchors";
 import { useGroupFeatures } from "@/hooks/useGroupFeatures";
 import { HIDE_COMMUNITY_KEY } from "@/lib/displayPrefs";
@@ -255,10 +256,34 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     if (el) el.inert = !open;
   }, [open]);
 
-  return (
+  /**
+   * THE DRAWER BELONGS TO THE BODY, not to the page.
+   *
+   * Layout's root is `isolation: isolate` (it has to be — see the backdrop
+   * pattern), which makes it a stacking context: a z-index inside it, however
+   * large, can only order things WITHIN it. The bottom prompt stack and the
+   * audio player mount at the app root, OUTSIDE that context, so they painted
+   * over an open drawer — the panel's foot, its own "Sign in / Sign up" row
+   * among it, sat under the notification banner and the mini player. Seen on
+   * a real build on the simulator, 2026-09-19; it is very likely what the
+   * owner photographed and called a glitch.
+   *
+   * A portal to the body puts the panel in the same context as the things
+   * that were covering it, where its z-index means what it says.
+   */
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <>
       {/* Invisible tap-to-close area — only while open. */}
-      {open && <div className="fixed inset-0 z-40" onClick={onClose} />}
+      {open && (
+        /* ABOVE THE PLAYER AND THE BANNER (seen on a real build, 2026-09-19:
+           the mini audio player and the notification banner painted over the
+           open drawer, hiding its foot — its own "Sign in / Sign up" row
+           among it). Tailwind's z-50 sits UNDER PodcastPlayer's fixed bars,
+           which are 60, 70 and 80. A drawer is the frontmost thing while it
+           is open, so it and its tap layer go above all of them. */
+        <div className="fixed inset-0" style={{ zIndex: 84 }} onClick={onClose} />
+      )}
 
       {/* Drawer panel */}
       <motion.div
@@ -267,8 +292,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             animate={{ x: open ? 0 : "100%" }}
             transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
             aria-hidden={!open}
-            className="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-y-auto"
-            style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(46,107,64,0.18)", willChange: "transform" }}
+            className="fixed top-0 right-0 bottom-0 flex flex-col overflow-y-auto"
+            style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(46,107,64,0.18)", willChange: "transform", zIndex: 85 }}
           >
             {/* Close button. The drawer spans the full viewport height
                 from top: 0, which on a notched iPhone puts this row
@@ -517,7 +542,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               )}
             </div>
           </motion.div>
-    </>
+    </>,
+    document.body,
   );
 }
 
@@ -643,15 +669,15 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
     <AnimatePresence>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={onClose} />
+          <div className="fixed inset-0" style={{ zIndex: 84 }} onClick={onClose} />
           <motion.div
             key="wol-drawer"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
-            className="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-y-auto"
-            style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(46,107,64,0.18)" }}
+            className="fixed top-0 right-0 bottom-0 flex flex-col overflow-y-auto"
+            style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(46,107,64,0.18)", zIndex: 85 }}
           >
             <div
               className="flex items-center justify-between px-5 pb-2"
