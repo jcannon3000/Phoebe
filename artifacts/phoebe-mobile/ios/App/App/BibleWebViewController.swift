@@ -226,6 +226,18 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      *  owner: "take out the scrolling feature at all levels"; a read marks on
      *  close again.) */
     var onDismiss: (() -> Void)?
+    /**
+     * WHICH EXIT WAS TAKEN, for the pages that have two (owner, 2026-09-19, of
+     * a track page: "Have it one the right, have a back button on the left to
+     * take you to pick a different song" — Back returns to the catalogue and
+     * logs nothing, Done logs and goes on to the closing prompt).
+     *
+     * When this is set the web is told; when it is not, a dismissal is what it
+     * always was. eleanor-3b's AfterReaderRedirect reads `detail.action ===
+     * "back"` and drops its hand-off; anything else counts as Done.
+     */
+    var onDismissAction: ((String?) -> Void)?
+    private var dismissAction: String?
     private var dismissFired = false
 
     // The persistent store below is supposed to keep a site's "accept" choice,
@@ -743,6 +755,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         '.phoebe-taize-date.phoebe-taize-date{order:-1!important;background:transparent!important;margin:0!important;padding:18px 0 12px!important;',
         'font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;font-size:13px!important;letter-spacing:.16em!important;',
         'text-transform:uppercase!important;font-weight:600!important;color:#A8C5A0!important;}',
+        /* Ours, under a hairline — see taizeAbout(). It rides the shared note
+           rules below for its type, so it can never be read as the prayer. */
+        '.phoebe-taize-about{border-top:1px solid rgba(168,197,160,0.22)!important;padding-top:14px!important;margin-top:16px!important;}',
         '.phoebe-taize-text.phoebe-taize-text,.phoebe-taize-text.phoebe-taize-text *{margin:0!important;padding:0!important;',
         'font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;font-size:22px!important;line-height:1.7!important;',
         'font-weight:400!important;color:#F0EDE6!important;}',
@@ -1154,6 +1169,33 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
           '<a href="' + location.href + '">' + who + '</a>' +
           ' \\u2014 Phoebe only changes how it looks on this screen. Tap Standard for their page.';
         post.appendChild(note);
+        taizeAbout(post);
+      }
+
+      /**
+       * WHO TAIZE IS (owner, 2026-09-19: "Maybe add a little discription of
+       * what Taize is under a divider").
+       *
+       * OURS, NOT THEIRS - none of this is on the page we are showing, so it
+       * sits with the attribution rather than with the prayer: same small grey
+       * type, under a hairline, below the line that says Phoebe only changed
+       * how their page looks. Nobody should be able to read it as Brother
+       * Matthew's words.
+       */
+      function taizeAbout(post) {
+        if (!isTaize) return;
+        if (document.querySelector('.phoebe-taize-about')) return;
+        var about = document.createElement('div');
+        about.className = 'phoebe-reader-note phoebe-taize-about';
+        about.innerHTML =
+          'Taiz\\u00e9 is an ecumenical community of brothers in Burgundy, France, ' +
+          'founded in 1940 by Brother Roger and led today by Brother Matthew, its prior. ' +
+          'The brothers come from many Christian traditions and some thirty countries, ' +
+          'and live by a rule of prayer three times a day. ' +
+          'Tens of thousands of young pilgrims go there each year for a week of silence, ' +
+          'scripture and the community\\u2019s short sung phrases, repeated until they are ' +
+          'prayed rather than read.';
+        post.appendChild(about);
       }
 
       /**
@@ -1766,7 +1808,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // side's return handler credited the office and navigated home, for an
         // office the person had just said they wanted to pray a different way.
         if handingOff { return }
-        onDismiss?()
+        if let onDismissAction { onDismissAction(dismissAction) } else { onDismiss?() }
     }
 
     override func viewDidLoad() {
@@ -1942,6 +1984,25 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             } else {
                 navigationItem.rightBarButtonItem = previousItem
             }
+            title = nil
+        } else if Self.isTrackPage(url) {
+            /**
+             * TWO EXITS, and the owner's own words for each: Back on the left
+             * "to take you to pick a different song", Done on the right, which
+             * logs it and goes on to the closing prompt. Both dismiss; what
+             * differs is what the app does next, which it learns from the
+             * action this sends with the close (see onDismissAction).
+             *
+             * The page's own heading names the track, so the bar's centre
+             * stays empty here as on every page of ours.
+             */
+            let backItem = UIBarButtonItem(title: "Back", style: .plain, target: self, action: #selector(closeAsBack))
+            backItem.accessibilityLabel = "Back to the catalogue"
+            navigationItem.leftBarButtonItem = backItem
+            let doneItem = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(close))
+            doneItem.accessibilityLabel = "Done"
+            self.doneItem = doneItem
+            navigationItem.rightBarButtonItem = doneItem
             title = nil
         } else if Self.isPhoebeWatchPage(url) {
             // Phoebe's own watch pages — a hymn or a video in the in-app
@@ -2830,6 +2891,18 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private static let WATCH_PATHS = ["/video", "/ncmp/watch", "/devotion/watch"]
 
     /**
+     * A TRACK PAGE — one song, opened from a catalogue (hymns, Hildegard,
+     * Sakamoto, the spirituals, Taizé Songs). The only page with two exits.
+     * Courses, the cathedral, the devotion, SSJE, Taizé and the newsletters
+     * keep their single Done.
+     */
+    static func isTrackPage(_ url: URL?) -> Bool {
+        guard let url, let host = url.host?.lowercased() else { return false }
+        guard host == "withphoebe.app" || host == "www.withphoebe.app" else { return false }
+        return url.path == "/video"
+    }
+
+    /**
      * A page that names itself ON the page, so the bar must not name it again.
      *
      * Owner, first of a hymn — its own heading read "HYMN 8 / Morning Has
@@ -2923,6 +2996,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
     // ── Actions ───────────────────────────────────────────────────────────
     @objc private func close() { dismiss(animated: true) }
+    /** The track page's LEFT button: leave, and say it was Back — so the app
+     *  returns to the catalogue to pick another, and logs nothing. */
+    @objc private func closeAsBack() {
+        dismissAction = "back"
+        dismiss(animated: true)
+    }
     @objc private func openReaderMode() {
         handingOff = true
         let current = webView.url ?? url
@@ -3616,6 +3695,9 @@ final class BibleBrowser: NSObject {
         savedHTML: String? = nil,
         onJournal: (() -> Void)? = nil,
         onDismiss: (() -> Void)? = nil,
+        /// Told which exit was taken, where a page has more than one (a track
+        /// page's Back and Done). When given, it replaces onDismiss.
+        onDismissAction: ((String?) -> Void)? = nil,
         onChangeFormat: (() -> Void)? = nil,
         onListen: (() -> Void)? = nil,
         isArticle: Bool = false,
@@ -3698,6 +3780,7 @@ final class BibleBrowser: NSObject {
         vc.onOpenReaderView = onOpenReaderView
         vc.onJournal = onJournal
         vc.onDismiss = onDismiss
+        vc.onDismissAction = onDismissAction
         vc.onChangeFormat = onChangeFormat
         vc.onListen = onListen
         // Office-chrome pages are light pages too (bible.com / oremus) — one

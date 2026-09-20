@@ -179,6 +179,21 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
             let onDismiss: () -> Void = { [weak self] in
                 self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:browserfinished")
             }
+            /**
+             * WHICH EXIT, for a page that has two (a track page's Back and
+             * Done — owner, 2026-09-19). The app reads `detail.action` and
+             * decides: "back" returns to the catalogue and logs nothing,
+             * anything else is Done. One event either way, so a page that
+             * never learned about actions behaves exactly as before.
+             */
+            let onDismissAction: (String?) -> Void = { [weak self] action in
+                guard let action else {
+                    self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:browserfinished")
+                    return
+                }
+                let json = "{\"action\":\"\(action)\"}"
+                self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:browserfinished", data: json)
+            }
             // Options → the two hand-offs. The browser dismisses first, then
             // the app routes: the office intro chooser owns the formats, the
             // podcast player owns the audio. Fired as window events so the web
@@ -230,6 +245,7 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                         savedHTML: savedHtml,
                         onJournal: onJournal,
                         onDismiss: onDismiss,
+                        onDismissAction: onDismissAction,
                         onChangeFormat: onChangeFormat,
                         onListen: onListen,
                         isArticle: isArticle,
@@ -255,6 +271,7 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                 savedHTML: savedHtml,
                 onJournal: onJournal,
                 onDismiss: onDismiss,
+                onDismissAction: onDismissAction,
                 onChangeFormat: onChangeFormat,
                 onListen: onListen,
                 isArticle: isArticle,
