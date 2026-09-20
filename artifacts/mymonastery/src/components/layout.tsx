@@ -423,11 +423,15 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   Newsletters"). */}
               <MenuRow emoji="🗓️" label={t("menu.this_sunday", { defaultValue: "This Sunday" })} onClick={() => goCategory("/this-sunday")} />
               <MenuRow emoji="🎓" label={t("menu.learn", { defaultValue: "Courses" })} onClick={() => goCategory("/menu/learn")} />
-              {/* Sermons — the churches you can hear preaching from (owner,
-                  2026-09-19: "make a sermons page from the menu"). BELOW
-                  COURSES at his word ("The should be bellow courses on the
-                  menu"); it was above This Sunday, beside Reflections. */}
-              <MenuRow emoji="🎙️" label={t("menu.sermons", { defaultValue: "Sermons" })} onClick={() => goCategory("/menu/sermons")} />
+              {/* SERMONS IS OFF THE MENU (owner, 2026-09-19: "i want to take
+                  out the sermons tab from the menu and hide it"). The page and
+                  its route are untouched — /menu/sermons still renders for
+                  anyone who has the link — but with the sermon pills also out
+                  of the reflections ticker (88934cae), NOTHING IN THE APP
+                  LINKS TO IT any more. Kept rather than deleted because the
+                  owner asked for the page itself a day ago. To show it again,
+                  restore this row, directly after Courses:
+                    <MenuRow emoji="🎙️" label={t("menu.sermons", { defaultValue: "Sermons" })} onClick={() => goCategory("/menu/sermons")} /> */}
             </div>
 
             {/* Communities block MOVED here (owner, 2026-09-02): it now sits
