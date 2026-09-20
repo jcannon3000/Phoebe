@@ -239,7 +239,7 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                     if handled { call.resolve(); return }
                     // No app installed for this domain → present the
                     // in-app browser, same as the non-Bible path.
-                    BibleBrowser.shared.present(
+                    let presented = BibleBrowser.shared.present(
                         url: url,
                         from: self?.bridge?.viewController,
                         savedHTML: savedHtml,
@@ -261,11 +261,13 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                         onOfficeDisplaySettings: onOfficeDisplaySettings,
                         onOpenReaderView: onOpenReaderView
                     )
-                    call.resolve()
+                    // Whether a reader is actually on screen — the web decides what to
+                    // say when it is not (audit, 2026-09-19).
+                    call.resolve(["presented": presented])
                 }
                 return
             }
-            BibleBrowser.shared.present(
+            let presented = BibleBrowser.shared.present(
                 url: url,
                 from: self?.bridge?.viewController,
                 savedHTML: savedHtml,
@@ -287,7 +289,9 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                 onOfficeDisplaySettings: onOfficeDisplaySettings,
                 onOpenReaderView: onOpenReaderView
             )
-            call.resolve()
+            // Whether a reader is actually on screen — the web decides what to
+            // say when it is not (audit, 2026-09-19).
+            call.resolve(["presented": presented])
         }
     }
 }

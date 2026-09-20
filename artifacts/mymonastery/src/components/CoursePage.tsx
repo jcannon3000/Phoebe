@@ -492,16 +492,32 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
       autoOpenedRef.current = true;
       if (!openCourseInReader()) { setReaderRefused(true); return; }
       /**
-       * AND STEP OUT OF THE WAY (owner, 2026-09-19: pressing Done in the
-       * reader "still went to this, this page should be totally deleted", and
-       * "It flashed this page too on load").
+       * A READER THAT CLOSES INSTANTLY NEVER OPENED — and the app must not
+       * have stepped aside by then.
        *
-       * The app's copy of a video course has nothing to show on iOS — the
-       * course is being read in the reader — so the app goes to the home
-       * behind it, replacing this route rather than pushing. Nothing flashes
-       * on the way in, and Done reveals the home.
+       * openExternal answers synchronously (it has handed the URL to the
+       * shell, not watched it appear), so a native refusal came back as
+       * success: this page went home and the person was left where they
+       * started with nothing said (audit, 2026-09-19). The shell reports a
+       * refusal the only way it can from here — phoebe:browserfinished, at
+       * once — so the hand-off waits half a second before replacing the
+       * route. That is far longer than the round trip and far shorter than
+       * anyone reads a lesson, and it is spent underneath a reader that is
+       * already covering the screen.
        */
-      handOffAndGoHome();
+      const openedAt = Date.now();
+      let refused = false;
+      const onInstantClose = () => {
+        if (Date.now() - openedAt > 500) return;
+        refused = true;
+        autoOpenedRef.current = false;
+        setReaderRefused(true);
+      };
+      window.addEventListener("phoebe:browserfinished", onInstantClose);
+      window.setTimeout(() => {
+        window.removeEventListener("phoebe:browserfinished", onInstantClose);
+        if (!refused) handOffAndGoHome();
+      }, 500);
     };
     openNow();
     /**

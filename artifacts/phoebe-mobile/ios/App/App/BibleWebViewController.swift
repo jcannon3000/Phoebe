@@ -3688,6 +3688,14 @@ final class BibleBrowser: NSObject {
         return wv
     }
 
+    /**
+     * Returns whether a reader is now on screen (or committed to appearing, if
+     * it is waiting out a dismissal). FALSE means nothing opened and nothing
+     * will — the plugin hands that back to the web, so a page can say so
+     * instead of sitting there looking unchanged (audit, 2026-09-19: the
+     * silence is what made the owner's "it opened nothing" so hard to find).
+     */
+    @discardableResult
     func present(
         url: URL,
         from presenter: UIViewController?,
@@ -3711,8 +3719,10 @@ final class BibleBrowser: NSObject {
         onOfficePrev: (() -> Void)? = nil,
         onOfficeNext: (() -> Void)? = nil,
         onOfficeDisplaySettings: (() -> Void)? = nil,
-        onOpenReaderView: ((URL) -> Void)? = nil
-    ) {
+        onOpenReaderView: ((URL) -> Void)? = nil,
+        /// False on the one retry a mid-dismissal earns, so it cannot loop.
+        retryOnDismissal: Bool = true,
+    ) -> Bool {
         /**
          * A PRESENTATION THAT CANNOT HAPPEN STILL HAS TO TELL THE WEB
          * (native audit, 2026-09-08).
@@ -3728,7 +3738,7 @@ final class BibleBrowser: NSObject {
          * view controller that is already presenting, with nothing but a
          * console warning to show for it.
          */
-        guard let root = presenter else { onDismiss?(); return }
+        guard let root = presenter else { onDismiss?(); return false }
         /**
          * PRESENT FROM THE TOP OF THE STACK, not from the root.
          *
@@ -3736,26 +3746,65 @@ final class BibleBrowser: NSObject {
          * the app — and refuse silently, as far as the person tapping was
          * concerned: the web was told "the reader closed" and left showing
          * whatever it had been showing. The owner met it as a course that
-         * would not open (2026-09-19): tapping a video course opens the reader
-         * on arrival, and any modal still on screen — one just dismissed, a
-         * system alert, a sheet — meant nothing happened at all.
+         * would not open (2026-09-19).
          *
          * UIKit only refuses to present from a controller that is ALREADY
          * presenting something; the thing it is presenting can present in
          * turn. So walk to the top and present from there.
          */
         var presenter = root
-        while let above = presenter.presentedViewController, !above.isBeingDismissed {
+        var onItsWayOut: UIViewController? = nil
+        while let above = presenter.presentedViewController {
+            if above.isBeingDismissed { onItsWayOut = above; break }
             presenter = above
+        }
+        /**
+         * SOMETHING ON ITS WAY OUT IS NOT A REFUSAL — it is a moment to wait
+         * (audit, 2026-09-19). Closing a sheet and tapping a course in the
+         * same beat used to present nothing at all, which is precisely the
+         * case the comment above says it handles. So ride the dismissal's own
+         * transition and try again when it has finished. ONCE: a second
+         * failure is a real one, and a retry that can retry is a loop.
+         */
+        if let leaving = onItsWayOut, retryOnDismissal {
+            let again = { [weak self] in
+                _ = self?.present(
+                    url: url, from: root, savedHTML: savedHTML, onJournal: onJournal,
+                    onDismiss: onDismiss, onDismissAction: onDismissAction,
+                    onChangeFormat: onChangeFormat, onListen: onListen, isArticle: isArticle,
+                    backChrome: backChrome, officeChrome: officeChrome, officeTitle: officeTitle,
+                    officeSlideLabel: officeSlideLabel, officeSectionLabel: officeSectionLabel,
+                    previousIssues: previousIssues, snapshotVeilImage: snapshotVeilImage,
+                    onOfficePrev: onOfficePrev, onOfficeNext: onOfficeNext,
+                    onOfficeDisplaySettings: onOfficeDisplaySettings,
+                    onOpenReaderView: onOpenReaderView, retryOnDismissal: false,
+                )
+            }
+            if let coordinator = leaving.transitionCoordinator {
+                coordinator.animate(alongsideTransition: nil) { _ in again() }
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: again)
+            }
+            return true
         }
         /**
          * …EXCEPT OVER OURSELVES. A second reader stacked on the first is
          * never what anyone meant, and the one underneath would be stranded
-         * with no way back. That case keeps the old answer: tell the web the
-         * reader closed, and leave the open one alone.
+         * with no way back.
+         *
+         * THE READER IS ALWAYS WRAPPED IN A UINavigationController (see the
+         * tail of this function), so the walk lands on the NAV controller and
+         * `presenter is BibleWebViewController` is false — which let a second
+         * reader stack over the first on a double tap, with the first
+         * newsletter's pending read cancelled by the second open (audit,
+         * 2026-09-19, a regression from the walk above). Ask what the nav is
+         * SHOWING, not what it is.
          */
-        if presenter is BibleWebViewController { onDismiss?(); return }
-        if presenter.presentedViewController != nil { onDismiss?(); return }
+        if (presenter as? UINavigationController)?.viewControllers.first is BibleWebViewController {
+            onDismiss?(); return false
+        }
+        if presenter is BibleWebViewController { onDismiss?(); return false }
+        if presenter.presentedViewController != nil { onDismiss?(); return false }
         // A warm view is already loading the LIVE url — never reuse it for a
         // saved page, or the network copy wins the race we are trying to avoid.
         let vc = BibleWebViewController(
@@ -3840,5 +3889,6 @@ final class BibleBrowser: NSObject {
         nav.transitioningDelegate = vc.slideDelegate
 
         presenter.present(nav, animated: true)
+        return true
     }
 }
