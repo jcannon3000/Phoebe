@@ -18,7 +18,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, useInView } from "framer-motion";
-import { PracticeCard } from "@/components/DailyProgressBody";
+import { FrostLayers, frostBox } from "@/components/FrostRing";
+import { Play } from "lucide-react";
 import {
   useCourseProgress,
   useAnyCourseProgressTick,
@@ -44,9 +45,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 
 const FONT = "'Space Grotesk', sans-serif";
 const WARM = "#F0EDE6";
-/** The course cards' accent — the green their old progress bar ended on, so
- *  the bar reads the same now that PracticeCard draws it. */
-const COURSE_RGB = "95,191,127";
+const SAGE = "#8FAF96";
 export type LearnCard = {
   key: string;
   title: string;
@@ -344,44 +343,60 @@ export function HomeLearnSection() {
       <div className="space-y-3" style={{ willChange: "transform" }}>
         {show.map((c, cardIdx) => {
           /**
-           * THE RHYTHM CARD ITSELF (owner, 2026-09-19: "Can we make the course
-           * cards more like the routine cards", then "Same ui", then "Emoji on
-           * the left, cta on the right", then "You could have a progress bar
-           * still like a contemplation card").
-           *
-           * Not a lookalike — PracticeCard, the component the practices above
-           * use, so frame, height, padding, stroke, type and the round action
-           * are the same by construction rather than by copying. The lesson
-           * count is the card's own quiet second line and its own progress bar,
-           * the shape the novena and contemplation cards already use, which is
-           * what replaced the separate bar-and-counter this section drew.
-           *
-           * `done` is always false: a course on the home is one in flight, and
-           * a ✓ here would claim the whole course was finished.
+           * THE OLD CARD, BACK (owner, 2026-09-19: "I actually like the old
+           * Home Screen Ui better", of the PracticeCard treatment that briefly
+           * replaced it in e06de496). Its own frame, the eyebrow, the lesson,
+           * its bar and counter, and the round play. What stayed from the
+           * days in between is the naming: the eyebrow leads with the SEASON
+           * (seasonCardLines), so two seasons of one show no longer truncate
+           * to the same words.
            */
-          const lesson = Math.min(c.done + 1, c.total);
-          // The lesson's own name, unless it just repeats the course's (the
-          // course's first lesson can carry the course's own name) — a second line
-          // that says the title again tells nobody anything.
-          const label = c.nextLabel && !c.title.includes(c.nextLabel) ? ` · ${c.nextLabel}` : "";
+          const pct = Math.round((c.done / Math.max(1, c.total)) * 100);
           return (
             <motion.div key={c.key} {...enterUp(cardIdx + 1)}>
-              <PracticeCard
-                href={c.href}
-                emoji={c.emoji}
-                title={c.title}
-                blurb={[
-                  c.sub,
-                  c.started ? `Lesson ${lesson} of ${c.total}` : `${c.total} ${c.total === 1 ? "lesson" : "lessons"}`,
-                ].filter(Boolean).join(" · ") + (c.sub ? "" : label)}
-                cta={c.started ? "Continue" : "Start"}
-                done={false}
-                rgb={COURSE_RGB}
-                tint={Math.min(1, cardIdx * 0.2)}
-                progress={{ current: c.done, goal: c.total }}
-                alwaysShowProgress
-                pulseOnLoad={false}
-              />
+            {/* FrostRing, not blur + border on the button (owner, 2026-09-15:
+                "the ui is having the animation issues on the cards"). The
+                app-wide index.css rules turned that into a 1.5px border under
+                a ::before frost — the half-strokes and settle-after-load the
+                home cards had. Every line is a whole pixel, so a card is 96px
+                exactly: 1 + 14 + 40 + 10 + 16 + 14 + 1. The eyebrow truncates
+                rather than wraps, so a long season name can't make one card
+                taller than the rest. See reference_card_spacing_exact. */}
+            <button
+              onClick={() => setLocation(c.href)}
+              className="w-full text-left rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-95 active:scale-[0.99]"
+              style={{ ...frostBox("rgba(9,26,16,0.4)"), boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
+            >
+              <FrostLayers border="rgba(46,107,64,0.38)" />
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-[10.5px] font-semibold uppercase tracking-widest leading-[14px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
+                    {c.started ? "Continue" : "Start course"} · {c.title}
+                  </p>
+                  <p className="truncate text-[15px] font-semibold mt-0.5 leading-5" style={{ color: WARM, fontFamily: FONT }}>
+                    {/* The season's own name rides here, since this card has
+                        two lines and the eyebrow above carries "Season 2 ·
+                        <show>" (see seasonCardLines). */}
+                    {[c.sub, c.nextLabel].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+                <span
+                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+                  style={{ background: "#2D5E3F", color: WARM }}
+                  aria-hidden
+                >
+                  <Play size={16} style={{ marginLeft: 2 }} />
+                </span>
+              </div>
+              <div className="mt-2.5 flex items-center gap-2.5">
+                <div className="h-1 flex-1 overflow-hidden rounded-full" style={{ background: "rgba(200,212,192,0.12)" }}>
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg,#2D5E3F,#5FBF7F)" }} />
+                </div>
+                <span className="text-[11px] leading-4 flex-shrink-0" style={{ color: SAGE, fontFamily: FONT }}>
+                  {c.done} of {c.total}
+                </span>
+              </div>
+            </button>
             </motion.div>
           );
         })}

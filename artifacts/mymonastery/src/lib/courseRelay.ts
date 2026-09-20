@@ -97,6 +97,39 @@ export async function collectFromReader(courseId: string): Promise<boolean> {
   }
 }
 
+/**
+ * COLLECT WHEN THE READER CLOSES, WITHOUT A PAGE TO HANG IT ON.
+ *
+ * On iOS the course page hands straight to the reader and takes itself out of
+ * the way (owner, 2026-09-19: the poster "page should be totally deleted"), so
+ * the component that used to listen for phoebe:browserfinished is gone before
+ * the reader closes. This keeps the listening outside React: arm it as the
+ * reader opens, and whatever was watched comes home to the app the moment it
+ * closes — which is what makes the Continue card and the lesson count right.
+ *
+ * Self-disarming: the close event, or twenty minutes, whichever comes first.
+ * Re-arming for the same course replaces the old one rather than stacking.
+ */
+const armed = new Map<string, () => void>();
+
+export function collectWhenReaderCloses(courseId: string): void {
+  armed.get(courseId)?.();
+  const done = () => {
+    window.removeEventListener("phoebe:browserfinished", onClose);
+    document.removeEventListener("visibilitychange", onVisible);
+    window.clearTimeout(timer);
+    armed.delete(courseId);
+  };
+  const onClose = () => { void collectFromReader(courseId); done(); };
+  // Coming back to the app by any other road counts as closing too — iOS can
+  // dismiss the reader without the app ever hearing the close event.
+  const onVisible = () => { if (document.visibilityState === "visible") { void collectFromReader(courseId); done(); } };
+  const timer = window.setTimeout(done, 20 * 60_000);
+  window.addEventListener("phoebe:browserfinished", onClose);
+  document.addEventListener("visibilitychange", onVisible);
+  armed.set(courseId, done);
+}
+
 // ── The reader's side ──────────────────────────────────────────────────────
 
 /** The hand-back code, when the app opened this page with one. */

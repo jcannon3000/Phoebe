@@ -27,7 +27,7 @@ import { Layout } from "@/components/layout";
 import { YouTubePlayer } from "@/components/YouTubePlayer";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { canEmbedVideoHere, isInReaderWatch, openVideoInReader, youtubePoster } from "@/lib/videoEmbed";
-import { collectFromReader, pushToApp, readerCoursePath, readerRelayToken, seedFromApp } from "@/lib/courseRelay";
+import { collectFromReader, collectWhenReaderCloses, pushToApp, readerCoursePath, readerRelayToken, seedFromApp } from "@/lib/courseRelay";
 import {
   videoLabel,
   type CourseIndex,
@@ -311,6 +311,7 @@ const START_AFTER_S = 30;
 export function CoursePage({ course, index }: { course: JourneyCourse; index: CourseIndex }) {
   const { completed, completedCount, isComplete, toggleComplete, markComplete, setLast, lastId, markStarted, started } = useCourseProgress(course.id);
   const inReader = isInReaderWatch();
+  const [, setLocation] = useLocation();
   const [hiddenFromHome, setHiddenFromHome] = useState(() => isCourseHiddenFromHome(course.id));
   // Leaf backdrop (frosted-glass cards float over it) — one photo per visit,
   // and the same one behind the reader view (see ReaderShell).
@@ -416,6 +417,9 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
     // NOT markStarted(): opening is not starting any more — thirty seconds of
     // watching is (see onPlayedSeconds), and the reader relays that home.
     lastReaderOpenAt.set(course.id, Date.now());
+    // Listening OUTSIDE React, because this page is about to step out of the
+    // way (see below) and will not be here when the reader closes.
+    collectWhenReaderCloses(course.id);
     return openVideoInReader(readerCoursePath(course.id, window.location.pathname));
   }, [course.id]);
 
@@ -435,6 +439,22 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
    * reopen on its own: once per arrival, and never within a moment of the last
    * open, or closing the reader would throw them back into it.
    */
+  /**
+   * BACK TO WHERE THE TAP CAME FROM. history.back() when there is somewhere
+   * to go — the home, Courses, the menu — and the home when there is not (a
+   * deep link, or the first screen of a cold start), because going back from
+   * there leaves Phoebe altogether.
+   */
+  const backToWhereTheyWere = useCallback(() => {
+    let canGoBack = false;
+    try { canGoBack = window.history.length > 1; } catch { /* ignore */ }
+    if (canGoBack) window.history.back();
+    else setLocation("/dashboard");
+  }, [setLocation]);
+
+  /** Set when the reader refused to open — the one case this page still has
+   *  something to say on iOS. */
+  const [readerRefused, setReaderRefused] = useState(false);
   const autoOpenedRef = useRef(false);
   useEffect(() => {
     if (!handsOffToReader) return;
@@ -447,7 +467,20 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
       const last = lastReaderOpenAt.get(course.id) ?? 0;
       if (Date.now() - last < REOPEN_GUARD_MS) return;
       autoOpenedRef.current = true;
-      openCourseInReader();
+      if (!openCourseInReader()) { setReaderRefused(true); return; }
+      /**
+       * AND STEP OUT OF THE WAY (owner, 2026-09-19: pressing Done in the
+       * reader "still went to this, this page should be totally deleted", and
+       * "It flashed this page too on load").
+       *
+       * The app's copy of a video course has nothing to show on iOS — the
+       * course is being read in the reader — so it goes back to where the tap
+       * came from. Done then lands on the home, or Courses, or the menu: the
+       * screen they were on. Replacing the entry rather than pushing means
+       * there is no poster underneath to reveal, and nothing to flash on the
+       * way in.
+       */
+      backToWhereTheyWere();
     };
     openNow();
     /**
@@ -461,7 +494,7 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
     const onVisible = () => { if (document.visibilityState === "visible") openNow(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [handsOffToReader, course.id, openCourseInReader]);
+  }, [handsOffToReader, course.id, openCourseInReader, backToWhereTheyWere]);
 
   /**
    * WHERE YOUTUBE WON'T EMBED — the iOS shell, whose capacitor:// origin the
@@ -517,47 +550,44 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
   );
 
   if (handsOffToReader) {
+    /**
+     * NOTHING TO SHOW — the course is in the reader (see the effect above).
+     *
+     * This used to be a poster page with a play button, which the owner met
+     * twice: flashing on the way in, and revealed again when he pressed Done.
+     * The decision is synchronous (isNativeShell + canEmbedVideoHere), so it
+     * happens before the first paint rather than after an effect.
+     *
+     * NOT `return null`, and not a spinner that can spin forever (see memory's
+     * blank-screen class): the ground is the page's own, and if the reader
+     * actually refused to open, that is said out loud with a way forward —
+     * rather than the silent fallback that made this confusing in the first
+     * place.
+     */
     return (
       <Layout bgPhoto={leafBg}>
-        <div className="mx-auto w-full max-w-md px-2 py-10">
-          <h1 className="text-2xl font-bold" style={{ color: C.text, fontFamily: C.font }}>
-            {course.title}
-          </h1>
-          <p className="mt-0.5 text-sm" style={{ color: C.sage }}>with {course.author}</p>
-          <button
-            onClick={openCourseInReader}
-            className="mt-4 w-full overflow-hidden rounded-2xl text-left transition-opacity active:opacity-90"
-            style={{ border: `1px solid ${C.border}`, background: "#000" }}
-          >
-            <span className="relative block w-full" style={{ aspectRatio: "16 / 9" }}>
-              <img
-                src={youtubePoster(activeId)}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-                style={{ opacity: 0.72 }}
-              />
-              <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
-                <span
-                  className="flex h-14 w-14 items-center justify-center rounded-full"
-                  style={{ background: C.green, color: C.text }}
-                >
-                  <Play size={22} style={{ marginLeft: 3 }} />
-                </span>
-              </span>
-            </span>
-            <span className="block px-4 py-3" style={{ background: C.greenSoft }}>
-              <span className="block text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.7)" }}>
-                {completedCount} of {index.total} lessons complete
-              </span>
-              <span className="mt-0.5 block text-[15px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>
-                {active ? active.lessonTitle : course.title}
-              </span>
-            </span>
-          </button>
-          <p className="mt-3 text-[13px] leading-relaxed" style={{ color: C.dim }}>
-            {course.tagline}
-          </p>
-          <div className="mt-6 flex justify-center">{removeFromHome}</div>
+        <div className="mx-auto w-full max-w-md px-4 py-16 text-center">
+          {readerRefused ? (
+            <>
+              <h1 className="text-xl font-bold" style={{ color: C.text, fontFamily: C.font }}>
+                {course.title}
+              </h1>
+              <p className="mt-2 text-[14px] leading-relaxed" style={{ color: C.dim }}>
+                This course plays in Phoebe's reader, and it would not open just now.
+              </p>
+              <button
+                type="button"
+                onClick={() => { setReaderRefused(false); autoOpenedRef.current = false; if (!openCourseInReader()) setReaderRefused(true); }}
+                className="mt-5 w-full rounded-2xl px-5 py-3 text-[15px] font-semibold"
+                style={{ background: C.green, color: C.text, border: "none", fontFamily: C.font, cursor: "pointer" }}
+              >
+                Try again
+              </button>
+              <div className="mt-6 flex justify-center">{removeFromHome}</div>
+            </>
+          ) : (
+            <p className="text-[13px]" style={{ color: C.sage, fontFamily: C.font }}>Opening…</p>
+          )}
         </div>
       </Layout>
     );
