@@ -112,7 +112,20 @@ function videoCourseCard(
 export function seasonCardLines(showTitle: string, courseTitle: string): { title: string; sub?: string } {
   const m = /^\s*(Season\s+\d+)\s*(?:[:\u2014-]\s*(.+))?$/i.exec(courseTitle);
   if (!m) return { title: `${showTitle} · ${courseTitle}` };
-  return { title: `${m[1]} · ${showTitle}`, sub: m[2]?.trim() || undefined };
+  /**
+   * A SEASON WITH A NAME IS CALLED BY IT (owner, 2026-09-19, of Bishop
+   * Curry's two: "Let's do The Way of Love: Seven Practices and The Way of
+   * Love: Beyond the Church Walls").
+   *
+   * "Season 1 · The Way of Love" with the theme underneath told you the
+   * ordinal and hid the subject. Where the show has named its season, that
+   * name IS the course; the ordinal only stands in when there is nothing
+   * better, and the leading "The" comes off so the line does not read
+   * "The Way of Love: The Seven Practices".
+   */
+  const name = m[2]?.trim().replace(/^The\s+/i, "") || "";
+  if (name) return { title: `${showTitle}: ${name}` };
+  return { title: `${m[1]} · ${showTitle}` };
 }
 
 /**

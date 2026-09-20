@@ -31,8 +31,6 @@ import { DAILY_REFLECTIONS, openDailyReflection } from "@/lib/dailyReflections";
 import { useSundayCommentaries } from "@/lib/sundayCommentaries";
 import { apiRequest } from "@/lib/queryClient";
 
-/** Over this many days since a church's newest sermon, it gets no pill. */
-const STALE_DAYS = 90;
 
 type SermonSource = {
   slug: string;
@@ -45,11 +43,6 @@ export function HomeReflectionsTicker() {
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { once: true, amount: 0.25 });
   const commentaries = useSundayCommentaries();
-  const { data: sermonData } = useQuery<{ sources: SermonSource[] }>({
-    queryKey: ["/api/podcasts/sermon-sources?latest=1"],
-    queryFn: () => apiRequest("GET", "/api/podcasts/sermon-sources?latest=1"),
-    staleTime: 15 * 60_000,
-  });
   const pills = useMemo(() => {
     const daily = DAILY_REFLECTIONS
       .filter((d) => d.source !== "vts")
@@ -57,24 +50,12 @@ export function HomeReflectionsTicker() {
     type Pill = { key: string; emoji: string; label: string; onSelect: () => void };
     const extra: Pill[] = commentaries.map((c) => ({ key: c.key as string, emoji: c.emoji, label: c.title, onSelect: c.open }));
     /**
-     * A pill per church, carrying its newest sermon. The LABEL is the sermon,
-     * not the church: the microphone and the row already say what these are,
-     * and a ticker of five identical church names tells you nothing about
-     * what is waiting. The tap is the Sermons page's own — the episode by id,
-     * in Phoebe's player.
+     * NO SERMON PILLS (owner, 2026-09-19: "Take the sermons out of the
+     * tickers"). They were a pill per church carrying its newest sermon; the
+     * row is the day's reading and the Sunday commentaries again, and sermons
+     * are a tap away under Menu → Sermons, which is where they are chosen
+     * rather than met in passing.
      */
-    const sermons = (sermonData?.sources ?? [])
-      .filter((s) => {
-        const at = s.latest?.publishedAt ? Date.parse(s.latest.publishedAt) : NaN;
-        return !!s.latest?.id && !Number.isNaN(at) && (Date.now() - at) / 86_400_000 <= STALE_DAYS;
-      })
-      .map((s) => ({
-        key: `sermon:${s.slug}`,
-        emoji: "🎙️",
-        label: s.latest!.title?.trim() || s.title,
-        onSelect: () => setLocation(`/podcasts/show/${s.slug}?ep=${encodeURIComponent(s.latest!.id)}`),
-      }));
-    extra.push(...sermons);
     /**
      * DISPERSED, not clumped (owner, of the commentaries: "Dispersed"). It was
      * one extra after every second daily, which was right for two of them; with
@@ -92,7 +73,7 @@ export function HomeReflectionsTicker() {
     });
     while (e < extra.length) out.push(extra[e++]!);
     return out;
-  }, [setLocation, commentaries, sermonData]);
+  }, [setLocation, commentaries]);
   if (pills.length === 0) return null;
   return (
     <div ref={rootRef}>

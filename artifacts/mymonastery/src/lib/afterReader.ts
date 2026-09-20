@@ -20,7 +20,7 @@
 const KEY = "phoebe:after-reader";
 const GOOD_FOR_MS = 60 * 60_000;
 
-type AfterReader = { to: string; at: number; logAs?: string };
+type AfterReader = { to: string; at: number; logAs?: string; art?: string };
 
 /**
  * ONLY THE SESSION THAT ARMED IT MAY FOLLOW IT. The note lives in
@@ -41,14 +41,14 @@ let armed = false;
  * you to pick a different song"). Logging at open time meant a glance at the
  * wrong recording still counted as the practice kept for the day.
  */
-export function setAfterReader(to: string, logAs?: string): void {
+export function setAfterReader(to: string, logAs?: string, art?: string): void {
   if (!to.startsWith("/") || to.startsWith("//")) return;
   armed = true;
-  try { localStorage.setItem(KEY, JSON.stringify({ to, at: Date.now(), logAs } satisfies AfterReader)); } catch { /* private mode */ }
+  try { localStorage.setItem(KEY, JSON.stringify({ to, at: Date.now(), logAs, art } satisfies AfterReader)); } catch { /* private mode */ }
 }
 
 /** Read it and clear it — one hand-off, never twice. */
-export function takeAfterReader(): { to: string; logAs?: string } | null {
+export function takeAfterReader(): { to: string; logAs?: string; art?: string } | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
@@ -58,7 +58,11 @@ export function takeAfterReader(): { to: string; logAs?: string } | null {
     const v = JSON.parse(raw) as AfterReader;
     if (!v?.to || typeof v.at !== "number" || Date.now() - v.at > GOOD_FOR_MS) return null;
     if (!v.to.startsWith("/") || v.to.startsWith("//")) return null;
-    return { to: v.to, logAs: typeof v.logAs === "string" ? v.logAs : undefined };
+    return {
+      to: v.to,
+      logAs: typeof v.logAs === "string" ? v.logAs : undefined,
+      art: typeof v.art === "string" && v.art.startsWith("https://") ? v.art : undefined,
+    };
   } catch {
     return null;
   }

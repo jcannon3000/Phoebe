@@ -4,7 +4,9 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { canEmbedVideoHere, openVideoInReader, videoPath } from "@/lib/videoEmbed";
 import { setAfterReader } from "@/lib/afterReader";
+import { trackArtwork } from "@/lib/trackArtwork";
 import type { YouTubeCatalogue, YouTubeTrack } from "@/lib/youtubeCatalogues";
+import { trackLoggedAs } from "@/lib/youtubeCatalogues";
 
 // ── A catalogue whose tracks play on YouTube, inside Phoebe ─────────────────
 //
@@ -60,8 +62,14 @@ export function YouTubeCataloguePage({ cat }: { cat: YouTubeCatalogue }) {
 
   const play = (t: YouTubeTrack) => {
     if (!t.youtubeId) return;
-    const logAs = `${t.title} — ${t.artist}`;
-    const sleeve = { title: t.title, eyebrow: cat.videoEyebrow, sub: t.artist, logAs };
+    const logAs = trackLoggedAs(t);
+    // The record's sleeve, matched against Apple's catalogue (lib/trackArtwork)
+    // so the listening log keeps a cover rather than a headphones placeholder
+    // (owner, 2026-09-19: "Match the YouTube's with the Apple catalogue so we
+    // can have album covers"). Undefined for anything that had no confident
+    // match — a wrong sleeve is worse than none.
+    const art = trackArtwork(cat.path, t.n);
+    const sleeve = { title: t.title, eyebrow: cat.videoEyebrow, sub: t.artist, logAs, art };
     if (canEmbedVideoHere()) {
       setLocation(videoPath(t.youtubeId, { ...sleeve, from: cat.path }));
       return;
@@ -70,7 +78,7 @@ export function YouTubeCataloguePage({ cat }: { cat: YouTubeCatalogue }) {
     // the app lands on the deck's closing prompt when it closes, and logs the
     // track THERE — its Back logs nothing (lib/afterReader).
     if (openVideoInReader(videoPath(t.youtubeId, sleeve))) {
-      setAfterReader("/listening?lift=1", logAs);
+      setAfterReader("/listening?lift=1", logAs, art);
       return;
     }
     void openExternal(`https://www.youtube.com/watch?v=${t.youtubeId}`, { system: true });

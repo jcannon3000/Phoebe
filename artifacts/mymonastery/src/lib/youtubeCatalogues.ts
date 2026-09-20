@@ -277,3 +277,34 @@ export const MUSIC_CATALOGUES: ReadonlyArray<{ path: string; title: string; brow
     path: c.path, title: c.title, browse: c.browse,
   })),
 ];
+
+/**
+ * THE TRACK BEHIND A LOGGED LISTEN (owner, 2026-09-19, of the Lately rows:
+ * "If one of these is from the catalogue if they hit it it should open the
+ * browser page").
+ *
+ * A logged entry keeps only the TEXT of what was heard — "O Magne Pater —
+ * Dominik Johnson, Daniela Kosinova" — which is exactly the string the
+ * catalogue pages write, so the way back is to read it again. Matched on the
+ * whole line, case- and space-insensitively, and only when the track still
+ * has a YouTube recording: a row that cannot play must not pretend it can.
+ */
+const CATALOGUES = [HILDEGARD_YOUTUBE, MARY_LOUS_MASS, TAIZE_SONGS, SAKAMOTO, SPIRITUALS] as const;
+
+/** How a track is written into the listening log. Kept in ONE place so the
+ *  page that logs it and the lookup that reads it back cannot drift. */
+export function trackLoggedAs(t: YouTubeTrack): string {
+  return `${t.title} — ${t.artist}`;
+}
+
+export function findCatalogueTrack(what: string): { catalogue: YouTubeCatalogue; track: YouTubeTrack } | null {
+  const key = (what ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  if (!key) return null;
+  for (const catalogue of CATALOGUES) {
+    for (const track of catalogue.tracks) {
+      if (!track.youtubeId) continue;
+      if (trackLoggedAs(track).replace(/\s+/g, " ").trim().toLowerCase() === key) return { catalogue, track };
+    }
+  }
+  return null;
+}

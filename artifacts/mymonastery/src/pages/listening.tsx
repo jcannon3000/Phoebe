@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LISTEN_INVITATION } from "@/lib/listenPrompt";
-import { LISTENING_LOG_EVENT, listeningHistory, saveListeningEntry } from "@/lib/listeningLog";
+import { LISTENING_LOG_EVENT, listeningHistory, removeListeningEntry, saveListeningEntry } from "@/lib/listeningLog";
 import { useOnline } from "@/lib/offline";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
@@ -10,6 +10,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { logListenNow } from "@/lib/logListenNow";
 import DeckNavPill from "@/components/DeckNavPill";
 import { type ListeningMedium } from "@/lib/listeningLog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +18,10 @@ import { apiRequest, ApiError } from "@/lib/queryClient";
 import { enqueueWrite } from "@/lib/writeOutbox";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 import { openExternal } from "@/lib/openExternal";
+import { canEmbedVideoHere, openVideoInReader, videoPath } from "@/lib/videoEmbed";
+import { setAfterReader } from "@/lib/afterReader";
+import { findCatalogueTrack, trackLoggedAs } from "@/lib/youtubeCatalogues";
+import { trackArtwork } from "@/lib/trackArtwork";
 import { hasAppleMusicNative, playAppleMusicNative, pauseAppleMusicNative, resumeAppleMusicNative, stopAppleMusicNative, hasAppleMusicCollectionNative, playAppleMusicCollectionNative } from "@/lib/appleMusicNative";
 import { appleMusicFeaturesReady, enableAppleMusic, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
 import { getMusicService, setMusicService, MUSIC_SERVICES, MUSIC_SERVICE_EVENT, type MusicService } from "@/lib/musicService";
@@ -360,6 +365,31 @@ export default function ListeningPage() {
    * the log and stops, exactly as tapping a recent always has.
    */
   function playRecent(r: { what: string; artworkUrl?: string; medium: ListeningMedium }) {
+    /**
+     * IT MAY BE ONE OF OURS. A row logged from a catalogue reads back to the
+     * track it came from, and that track can simply be played again (owner,
+     * 2026-09-19: "If one of these is from the catalogue if they hit it it
+     * should open the browser page"). The same door the catalogue page uses:
+     * inline where YouTube will embed, in the reader where it will not, and
+     * the log written by whichever close follows.
+     */
+    const known = findCatalogueTrack(r.what);
+    const knownId = known?.track.youtubeId ?? null;
+    if (known && knownId) {
+      const { catalogue, track } = known;
+      const logAs = trackLoggedAs(track);
+      const sleeve = {
+        title: track.title, eyebrow: catalogue.videoEyebrow, sub: track.artist, logAs,
+        art: trackArtwork(catalogue.path, track.n),
+      };
+      if (canEmbedVideoHere()) { setLocation(videoPath(knownId, { ...sleeve, from: catalogue.path })); return; }
+      if (openVideoInReader(videoPath(knownId, sleeve))) {
+        setAfterReader("/listening?lift=1", logAs, sleeve.art);
+        return;
+      }
+      openExternal(`https://www.youtube.com/watch?v=${knownId}`, { system: true });
+      return;
+    }
     chooseRecent(r);
     // Owner, 2026-09-18: "if they are listening in app do a player, if they are
     // not go to the log screen and autofill it". Two outcomes, no third: either
@@ -571,6 +601,19 @@ export default function ListeningPage() {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/listening/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
+  /**
+   * DELETE IT IN BOTH PLACES. The list is the server's rows merged with
+   * anything logged locally that the server has not confirmed — and those
+   * carry NEGATIVE ids, so the bin was calling DELETE /api/listening/-1 and
+   * nothing happened (owner, 2026-09-19: "The trash button isn't working").
+   * A device with no account has only the local copy, so that is every row it
+   * has. Forget the local entry first, then the server's if it has one.
+   */
+  function deleteEntry(e: ServerEntry) {
+    removeListeningEntry(e.day, e.what ?? "");
+    setLocalTick((n) => n + 1);
+    if (e.id >= 0) deleteMutation.mutate(e.id);
+  }
 
   /**
    * The whole log: what you listened to + how, mark it done, then show the log.
@@ -620,6 +663,45 @@ export default function ListeningPage() {
     [entries],
   );
   const todayYmd = new Date().toLocaleDateString("en-CA");
+
+  /**
+   * WHAT THE FIELD OFFERS while it has focus: the distinct things logged
+   * lately, newest first, narrowed by what has been typed. Six is as many as
+   * fit above the keyboard.
+   */
+  const listenSuggestions = useMemo(() => {
+    const q = findQuery.trim().toLowerCase();
+    const seen = new Set<string>();
+    const out: Array<{ what: string; artworkUrl?: string; medium: ListeningMedium }> = [];
+    for (const e of sortedEntries) {
+      const what = (e.what ?? "").trim();
+      if (!what) continue;
+      const key = what.toLowerCase();
+      if (seen.has(key)) continue;
+      if (q && !key.includes(q)) continue;
+      seen.add(key);
+      out.push({ what, artworkUrl: e.artworkUrl ?? undefined, medium: e.medium });
+      if (out.length >= 6) break;
+    }
+    return out;
+  }, [sortedEntries, findQuery]);
+
+  /**
+   * LOG IT FROM HERE and carry on into the prayer. The beat's question is
+   * "what did you listen to"; once it is answered there is nothing left to do
+   * on this slide, and the lifting of what the music stirred is the next one.
+   */
+  function logFromListen(title: string, art?: string) {
+    const clean = title.trim();
+    if (!clean) return;
+    logListenNow(clean, art);
+    setFindQuery("");
+    setFindFocused(false);
+    setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false);
+    loggedHere.current = true;
+    setDeckStep(LIFT);
+  }
+
 
   /**
    * LATELY, CONDENSED (owner, 2026-09-18: "Last three: condense. Same thing
@@ -1138,7 +1220,11 @@ export default function ListeningPage() {
                     * forward on any tap in its right half and stands down only
                     * for button/a/[role=button].
                     */}
-                  {lately.rows.length > 0 && (
+                  {/* Hidden while the field is focused: the search takes the
+                      slide over and its own RECENT list stands in for these
+                      (owner, 2026-09-19: "once they click into it hide the
+                      content bellow and show the recents"). */}
+                  {!findFocused && lately.rows.length > 0 && (
                     <div className="w-full flex flex-col gap-2">
                       <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
                         Lately
@@ -1210,62 +1296,99 @@ export default function ListeningPage() {
                     * fills the log as well as starting the music — which is
                     * what makes "just hit log" true.
                     */}
-                  {canPlayInApp && (
-                    <div className="w-full">
-                      <input
-                        value={findQuery}
-                        onChange={(e) => { setFindQuery(e.target.value); setQuery(e.target.value); setPicked(false); setWhat(e.target.value); setArtworkUrl(""); }}
-                        placeholder="Search for something to listen to…"
-                        inputMode="search"
-                        // Typing lifts the field above the keyboard (owner,
-                        // 2026-09-18: "When you type the page needs to scroll
-                        // up"). The keyboard animates in over ~250ms, so wait
-                        // for it, then bring the field to the TOP of the slide
-                        // so its results open into the space below it. The
-                        // spacer under the slide makes that scroll possible
-                        // even when the slide is short.
-                        onFocus={(e) => {
-                          setFindFocused(true);
-                          const el = e.currentTarget;
-                          window.setTimeout(() => { try { el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch { /* old WebKit */ } }, 320);
-                        }}
-                        onBlur={() => window.setTimeout(() => setFindFocused(false), 200)}
-                        aria-label="Search for something to listen to"
-                        style={{
-                          width: "100%", boxSizing: "border-box", fontSize: 16, padding: "12px 14px",
-                          borderRadius: 12, outline: "none", color: WARM, fontFamily: SPACE_GROTESK,
-                          background: "rgba(240,237,230,0.06)", border: `1px solid ${DECK_BORDER}`,
-                        }}
-                      />
-                      {!picked && results.length > 0 && (
-                        <div className="mt-2 flex flex-col gap-1.5 max-h-[34vh] overflow-y-auto">
-                          {results.map((r, i) => (
-                            <button key={`lr-${i}`} type="button" onClick={() => chooseResult(r)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left active:scale-[0.99]" style={glassRow}>
-                              {r.artworkUrl ? (
-                                <img
-                                  src={r.artworkUrl}
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                                  style={{ width: 34, height: 34, borderRadius: 6, objectFit: "cover", flex: "0 0 auto", backgroundColor: "rgba(46,107,64,0.3)" }}
-                                />
-                              ) : (
-                                <span aria-hidden>{KIND_EMOJI[r.kind]}</span>
-                              )}
-                              <span className="min-w-0">
-                                <span className="block text-[14px] truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.title}</span>
-                                {r.subtitle && <span className="block text-[12px] truncate" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{r.subtitle}</span>}
+                  {/**
+                    * THE FIELD, UNDER THE PROMPT (owner, 2026-09-19: "Why
+                    * don't we just put the search field on that first slide
+                    * under the prompt, once they click into it hide the
+                    * content bellow and show the recents and if they chose one
+                    * let them log it").
+                    *
+                    * It writes the log — it does not search anyone's
+                    * catalogue. Music plays on YouTube now, so the only
+                    * question left at this beat is what you listened to, and
+                    * the answer is usually something you have listened to
+                    * before: tapping in shows what you have logged lately,
+                    * narrowing as you type, and a tap writes it down and
+                    * carries you on to the prayer.
+                    *
+                    * No "how did you listen" here (owner: "Don't worry about
+                    * the platform") — streaming is what nearly everyone means,
+                    * and the log page still has the choice for anyone who
+                    * cares.
+                    */}
+                  <div className="w-full">
+                    <input
+                      value={findQuery}
+                      onChange={(e) => { setFindQuery(e.target.value); setQuery(e.target.value); setPicked(false); setWhat(e.target.value); setArtworkUrl(""); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); logFromListen(findQuery); } }}
+                      placeholder="What did you listen to?"
+                      inputMode="search"
+                      enterKeyHint="done"
+                      // Typing lifts the field above the keyboard (owner,
+                      // 2026-09-18: "When you type the page needs to scroll
+                      // up"). The keyboard animates in over ~250ms, so wait
+                      // for it, then bring the field to the TOP of the slide
+                      // so the recents open into the space below it.
+                      onFocus={(e) => {
+                        setFindFocused(true);
+                        const el = e.currentTarget;
+                        window.setTimeout(() => { try { el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch { /* old WebKit */ } }, 320);
+                      }}
+                      onBlur={() => window.setTimeout(() => setFindFocused(false), 200)}
+                      aria-label="What did you listen to?"
+                      style={{
+                        width: "100%", boxSizing: "border-box", fontSize: 16, padding: "12px 14px",
+                        borderRadius: 12, outline: "none", color: WARM, fontFamily: SPACE_GROTESK,
+                        background: "rgba(240,237,230,0.06)", border: `1px solid ${DECK_BORDER}`,
+                      }}
+                    />
+                    {findFocused && (
+                      <div className="mt-2 flex flex-col gap-1.5 max-h-[38vh] overflow-y-auto">
+                        {listenSuggestions.length > 0 && (
+                          <p style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: "2px 0 2px" }}>
+                            Recent
+                          </p>
+                        )}
+                        {listenSuggestions.map((r) => (
+                          <button
+                            key={r.what}
+                            type="button"
+                            // onMouseDown, not onClick: the field's blur fires
+                            // first on a tap and would unmount this row before
+                            // the click landed.
+                            onMouseDown={(e) => { e.preventDefault(); logFromListen(r.what, r.artworkUrl); }}
+                            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left active:scale-[0.99]"
+                            style={glassRow}
+                          >
+                            {r.artworkUrl ? (
+                              <img src={r.artworkUrl} alt="" loading="lazy" decoding="async"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                                style={{ width: 34, height: 34, borderRadius: 6, objectFit: "cover", flex: "0 0 auto", backgroundColor: "rgba(46,107,64,0.3)" }} />
+                            ) : (
+                              <span aria-hidden style={{ width: 34, height: 34, borderRadius: 6, flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, background: "rgba(46,107,64,0.3)" }}>
+                                {MEDIUM_EMOJI[r.medium] ?? "🎧"}
                               </span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {searching && (
-                        <p className="text-center mt-2" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 12 }}>Searching…</p>
-                      )}
-                    </div>
-                  )}
+                            )}
+                            <span className="min-w-0">
+                              <span className="block text-[14px] truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.what}</span>
+                            </span>
+                          </button>
+                        ))}
+                        {findQuery.trim().length > 0 && (
+                          <button
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); logFromListen(findQuery); }}
+                            className="rounded-xl px-3 py-2.5 text-left active:scale-[0.99]"
+                            style={glassRow}
+                          >
+                            <span className="block text-[14px]" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                              Log “{findQuery.trim()}”
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   {/* ONE PILL FOR THE CATALOGUES (owner, 2026-09-19: "For the
                       catalogues, let do a browse catalogue pill again that
                       brings up different options"). The row of them — Hymns,
@@ -1273,6 +1396,7 @@ export default function ListeningPage() {
                       becoming a wall; the sheet lists them from
                       lib/youtubeCatalogues' MUSIC_CATALOGUES, so the next one
                       needs nothing here. */}
+                  {!findFocused && (
                   <div style={{ display: "flex", justifyContent: "center" }}>
                     <button
                       type="button"
@@ -1289,6 +1413,7 @@ export default function ListeningPage() {
                       Browse catalogues
                     </button>
                   </div>
+                  )}
                   {/* Room for the keyboard while searching, so the field can
                       scroll to the top of the slide (see the search onFocus). */}
                   {findFocused && <div aria-hidden style={{ height: "55vh", flex: "0 0 auto" }} />}
@@ -1639,7 +1764,7 @@ export default function ListeningPage() {
             ) : (
               <div className="flex flex-col gap-2">
                 {sortedEntries.map((e) => (
-                  <EntryRow key={e.id} e={e} onDelete={(id) => deleteMutation.mutate(id)} deleting={deleteMutation.isPending} />
+                  <EntryRow key={e.id} e={e} onDelete={() => deleteEntry(e)} deleting={deleteMutation.isPending} />
                 ))}
               </div>
             )}
@@ -1656,7 +1781,7 @@ export default function ListeningPage() {
    and nothing else ever rendered them — the deck's closing slide carries the
    recent listening now, with its own View all.) */
 
-function EntryRow({ e, onDelete, deleting }: { e: ServerEntry; onDelete: (id: number) => void; deleting: boolean }) {
+function EntryRow({ e, onDelete, deleting }: { e: ServerEntry; onDelete: () => void; deleting: boolean }) {
   const label = e.what?.trim() || (e.medium === "streaming" ? "Streaming" : e.medium.toUpperCase());
   return (
     <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={glassRow}>
@@ -1672,7 +1797,7 @@ function EntryRow({ e, onDelete, deleting }: { e: ServerEntry; onDelete: (id: nu
         </p>
       </div>
       <button
-        onClick={() => onDelete(e.id)}
+        onClick={onDelete}
         disabled={deleting}
         aria-label="Delete entry"
         className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-100 disabled:opacity-40 self-start"

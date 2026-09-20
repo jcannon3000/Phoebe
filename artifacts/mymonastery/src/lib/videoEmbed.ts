@@ -110,10 +110,12 @@ export function youtubeIdFrom(url: string | null | undefined): string | null {
  *   - from: where Back returns (in-app paths only);
  *   - logAs: what "Log this listening" writes, in place (lib/logListenNow);
  *   - logged: the caller already logged it (the iOS reader, which can't);
+ *   - art: the record's sleeve (lib/trackArtwork), so the listening log keeps
+ *     a cover rather than a headphones placeholder;
  *   - hymn: lib/hymnTexts key, for the public-domain words beneath. */
 export function videoPath(
   id: string,
-  opts: { title?: string | null; eyebrow?: string | null; sub?: string | null; from?: string | null; logAs?: string | null; logged?: boolean; hymn?: string | null } = {},
+  opts: { title?: string | null; eyebrow?: string | null; sub?: string | null; from?: string | null; logAs?: string | null; logged?: boolean; art?: string | null; hymn?: string | null } = {},
 ): string {
   const q = new URLSearchParams({ v: id });
   if (opts.title) q.set("title", opts.title);
@@ -122,6 +124,7 @@ export function videoPath(
   if (opts.from && opts.from.startsWith("/")) q.set("from", opts.from);
   if (opts.logAs) q.set("logAs", opts.logAs);
   if (opts.logged) q.set("logged", "1");
+  if (opts.art && /^https:\/\//.test(opts.art)) q.set("art", opts.art);
   if (opts.hymn) q.set("hymn", opts.hymn);
   return `/video?${q.toString()}`;
 }

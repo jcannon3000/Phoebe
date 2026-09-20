@@ -38,7 +38,7 @@ export function AfterReaderRedirect() {
       if (!note) return;
       // THE LOG BELONGS TO DONE, not to the tap that opened the reader: Back
       // consumes nothing, so it writes nothing (see lib/afterReader).
-      if (note.logAs) logListenNow(note.logAs);
+      if (note.logAs) logListenNow(note.logAs, note.art);
       if (location !== note.to) setLocation(note.to);
     };
     const checkVisible = () => {

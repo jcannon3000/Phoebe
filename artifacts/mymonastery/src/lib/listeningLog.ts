@@ -134,3 +134,25 @@ export function saveListeningEntry(e: { minutes: number; songs: number; medium: 
     /* private mode / quota — non-fatal */
   }
 }
+
+/**
+ * FORGET ONE, by the day and the title it was logged under.
+ *
+ * The listening list shows the server's rows AND anything logged here that
+ * the server has not confirmed, and the trash button only ever deleted by
+ * server id — so a song logged from a catalogue (which writes here first, and
+ * on a device with no account writes ONLY here) had a bin that did nothing at
+ * all (owner, 2026-09-19: "The trash button isn't working"). Deleting a row
+ * has to forget it in both places or it comes straight back.
+ */
+export function removeListeningEntry(ymd: string, what: string): void {
+  const key = (what ?? "").trim().toLowerCase();
+  if (!key) return;
+  try {
+    const hist = listeningHistory().filter((e) => !(e.ymd === ymd && (e.what ?? "").trim().toLowerCase() === key));
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+    window.dispatchEvent(new Event(LISTENING_LOG_EVENT));
+  } catch {
+    /* private mode — nothing was stored to forget */
+  }
+}
