@@ -1,12 +1,12 @@
 /**
  * The breath's timing and its rings — ONE definition, shared.
  *
- * Creation Prayer's breath (components/CobreatheBreath) and the three-breath
- * intro after the app-open splash (components/BreathIntro) draw the SAME rings.
- * Owner, 2026-09-16, of the intro: "have the circles ui the same as breathing
- * together". They live here rather than being exported from CobreatheBreath so
- * the launch path doesn't pull in that component's photo library and its
- * server-clock sync just to learn a radius.
+ * Creation Prayer's breath (components/CobreatheBreath) draws these rings. A
+ * three-breath intro after the app-open splash shared them too until the owner
+ * took that intro out (2026-09-19, "Take out the breathing splash"); the
+ * pacing and geometry stay here rather than in CobreatheBreath so a caller
+ * doesn't have to pull in that component's photo library and its server-clock
+ * sync just to learn a radius.
  */
 
 // Breath pacing — a simple in / out breath, 6s each: a slow inhale and an

@@ -5,13 +5,13 @@ import { HIDE_COMMUNITY_KEY } from "@/lib/displayPrefs";
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth, useLogout, hasEverAuthenticated } from "@/hooks/useAuth";
+import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, LogIn, ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { FROST, FROST_DARK } from "@/lib/frost";
 import { LEAF_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
-import { useBetaStatus, useBetaViewToggle } from "@/hooks/useDemo";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
 import { useGuestMode } from "@/hooks/useGuestMode";
@@ -19,15 +19,8 @@ import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
-import { BreathIntro } from "@/components/BreathIntro";
 import { feastIconFor, type FeastIcon } from "@/lib/feastIcons";
 import { cachedImageUrl, cacheImage } from "@/lib/imageCache";
-import { CYCLE_MS } from "@/lib/breathRings";
-import {
-  BREATH_INTRO_BREATHS, BREATH_INTRO_SLACK_MS,
-  breathIntroDueNow, beginBreathIntro, endBreathIntro, isBreathIntroActive, breathIntroStartedAt,
-  rememberBreathIntroEligible, breathIntroRememberedEligible,
-} from "@/lib/breathIntro";
 import { FirstOpenOnboarding } from "@/components/FirstOpenOnboarding";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
@@ -1066,16 +1059,13 @@ const FEAST_LOOKUP_MS = 400;
 const FEAST_HOLD_MS = 2000;
 
 function OpeningSplash() {
-  const { user, isLoading: authLoading, settled: authSettled } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const native = isNativeShell();
-  const [phase, setPhase] = useState<"in" | "breath" | "out" | "gone">(() => {
+  const [phase, setPhase] = useState<"in" | "out" | "gone">(() => {
     if (typeof window === "undefined") return "gone";
     // Brand-new user (very first launch on this device): NO app-open splash —
     // land straight on the home with the seeded routine already there.
     if (isFirstOpen()) return "gone";
-    // Mounting again MID-BREATH (a Layout remount while sign-in resolves):
-    // pick the same breaths back up rather than vanish and release the home.
-    if (isBreathIntroActive()) return "breath";
     try { return sessionStorage.getItem("phoebe:splash-shown") ? "gone" : "in"; } catch { return "in"; }
   });
   // Splash backdrop — ONE fixed leaf photo (owner), not a random pick: the
@@ -1084,47 +1074,19 @@ function OpeningSplash() {
   // forest shot only if the asset glob somehow came back empty.
   const splashLeafPhoto = SPLASH_PHOTO || splashForestPath;
 
-  // THREE BREATHS BEFORE THE HOME (components/BreathIntro). Owner, 2026-09-16:
-  // super admins first, and every launch but no more than once every 15
-  // minutes. Read from the PERSISTED sign-in record, so it is already known on
-  // a returning launch when the beat ends — useBetaStatus().isAdmin waits on a
-  // network query and would usually still be empty 0.7s into a cold start,
-  // hiding the intro from exactly the people it is for. Honours the beta-view
-  // toggle like every other admin-only surface.
-  const [betaView] = useBetaViewToggle();
-  // Kept for the next launch's first frame, when the record isn't in yet.
-  useEffect(() => {
-    if (!native) return;
-    if (user) rememberBreathIntroEligible(!!user.isSuperAdmin);
-    // Only a settled answer from someone who has actually signed in on this
-    // device clears the flag. useAuth's user is null for a TRANSIENT failure
-    // (offline, the auth timeout) just as readily as for a real logout
-    // (useAuth.ts's own note), and this flag is what the beat falls back to
-    // before the record arrives — so one stumbling launch used to cost the
-    // NEXT launch its breaths, silently (audit, 2026-09-17).
-    else if (authSettled && !hasEverAuthenticated()) rememberBreathIntroEligible(false);
-  }, [native, user, authSettled]);
-  const breathEligibleRef = useRef(false);
-  // Until the record is in, go by what this device last knew: the answer the
-  // icon below was hidden on, so a launch that hid it for the breaths breathes.
-  breathEligibleRef.current = native && betaView && (user ? !!user.isSuperAdmin : !authSettled && breathIntroRememberedEligible());
+  /**
+   * THE BREATHING SPLASH IS GONE (owner, 2026-09-19: "Take out the breathing
+   * splash"). Every launch now goes splash → fade → home, the way it did
+   * before 2d29e847. Removed with it: the eligibility record this read off the
+   * persisted sign-in, the "breath" phase, and the rule that a launch which
+   * was going to breathe showed NO app icon — so the icon is simply always
+   * there again.
+   *
+   * lib/breathRings STAYS: Breathing Together is a practice and draws the same
+   * rings from it. Only the launch intro went.
+   */
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
-  const breathStartedAtRef = useRef<number | null>(breathIntroStartedAt());
-  /**
-   * NO ICON ON A LAUNCH THAT BREATHES (owner, 2026-09-16: "For people who have
-   * the 3 breath intro in there, dont load the phoebe icon on the splsh" ·
-   * "cause they get in the way"). The icon used to hold for the beat and then
-   * fade out under the rings as they came in, and fade back in over the
-   * splash's own fade once they ended. Decided on the first frame, before the
-   * icon would paint, from the same answer the beat's end acts on; a launch
-   * that turns out to breathe anyway (the device had never been told) drops
-   * the icon the moment the breaths begin.
-   */
-  const [breathLaunch, setBreathLaunch] = useState(
-    () => phase === "breath" || (phase === "in" && breathEligibleRef.current && breathIntroDueNow()),
-  );
-
   /**
    * A FEAST DAY'S ICON IN PLACE OF THE APP ICON (owner, 2026-09-17: "If it is
    * feast day and we have an icon of the saint, could we display it on the
@@ -1136,11 +1098,11 @@ function OpeningSplash() {
    * FEAST_LOOKUP_MS and decoded before it appears, so it lands whole or not at
    * all; otherwise this launch shows the Phoebe icon as on any day and saves
    * the icon for the next one. Only a launch that actually SHOWS it holds the
-   * splash longer. A launch that takes the three breaths shows neither icon.
+   * splash longer.
    */
   const feastIcon = useMemo<FeastIcon | null>(
-    () => (native && phase === "in" && !breathLaunch ? feastIconFor(new Date()) : null),
-    // Decided once, on the first frame, like breathLaunch above.
+    () => (native && phase === "in" ? feastIconFor(new Date()) : null),
+    // Decided once, on the first frame.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
@@ -1215,16 +1177,7 @@ function OpeningSplash() {
       if (feastPendingRef.current) { id = window.setTimeout(endBeat, 50); return; }
       const hold = beatHoldUntilRef.current - Date.now();
       if (hold > 0) { id = window.setTimeout(endBeat, hold); return; }
-      // End of the beat: three breaths, or straight into the fade. Decided
-      // here, once the sign-in record has had the beat to settle — and never
-      // waited on beyond it. A launch slow enough to need the failsafe or the
-      // Enter button below goes straight home; it has waited long enough.
-      if (breathEligibleRef.current && breathIntroDueNow()) {
-        breathStartedAtRef.current = beginBreathIntro(BREATH_INTRO_BREATHS * CYCLE_MS + BREATH_INTRO_SLACK_MS);
-        setBreathLaunch(true);
-        setPhase("breath");
-        return;
-      }
+      // End of the beat: straight into the fade.
       setPhase("out");
     }, 700);
     return () => window.clearTimeout(id);
@@ -1287,25 +1240,6 @@ function OpeningSplash() {
     setPhase((cur) => (cur === "in" ? "out" : cur));
   };
 
-  // The breaths end — kept or skipped — down the same fade as every other way
-  // out, so splash-done fires once they have faded and the home cascades then.
-  const finishBreath = () => {
-    endBreathIntro();
-    setPhase((cur) => (cur === "breath" ? "out" : cur));
-  };
-  // A hard cap, for the reason the beat has a failsafe: a screen that holds
-  // the whole app must not be able to hold it forever (a stalled animation
-  // frame, a suspended WebView). Timed from the stored start, so a resumed
-  // intro keeps its original end rather than starting the clock again.
-  useEffect(() => {
-    if (phase !== "breath") return;
-    const started = breathStartedAtRef.current ?? Date.now();
-    const cap = BREATH_INTRO_BREATHS * CYCLE_MS + BREATH_INTRO_SLACK_MS;
-    const id = setTimeout(finishBreath, Math.max(0, started + cap - Date.now()));
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
-
   // Unmount is driven by the fade-out's onAnimationComplete (below) so it lands
   // exactly when opacity hits 0 — not a racing timeout that could snap the
   // splash back to visible for a frame (the "flash" on close). This timeout is
@@ -1324,11 +1258,6 @@ function OpeningSplash() {
   // come: say done on the way out.
   useEffect(() => () => {
     try {
-      // Torn down MID-BREATH: don't release the home. The remounted splash
-      // resumes the breaths from their stored start and says done when they
-      // end — and if it never remounts, the cards' own fallbacks stop
-      // waiting once the breaths' deadline has passed.
-      if (isBreathIntroActive()) return;
       if (!sessionStorage.getItem("phoebe:splash-done-once")) {
         sessionStorage.setItem("phoebe:splash-done-once", "1");
         window.dispatchEvent(new CustomEvent("phoebe:splash-done"));
@@ -1370,10 +1299,9 @@ function OpeningSplash() {
       className="fixed inset-0 flex items-center justify-center"
       style={{
         background: "#0C1F12", zIndex: 200, isolation: "isolate",
-        // Taps pass through the brief beat so it never swallows the home. The
-        // breaths last half a minute over a home that is still hidden behind
-        // them, so while they run the screen takes the taps — Skip is the way on.
-        pointerEvents: phase === "breath" ? "auto" : "none",
+        // Taps pass through: the splash is a brief beat and must never
+        // swallow a tap meant for the home behind it.
+        pointerEvents: "none",
       }}
     >
       <img
@@ -1393,7 +1321,7 @@ function OpeningSplash() {
           backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
         }}
       />
-      {!breathLaunch && feastImg !== "pending" && (feastImg && feastIcon ? (
+      {feastImg !== "pending" && (feastImg && feastIcon ? (
         // The feast's icon, the name beneath, and the iconographer's credit
         // (most of these are shown by the artist's permission, with
         // attribution). Fades in place — no scale, no rise.
@@ -1426,9 +1354,6 @@ function OpeningSplash() {
           style={{ width: 96, height: 96, borderRadius: 22, boxShadow: "0 8px 32px rgba(0,0,0,0.35)" }}
         />
       ))}
-      {phase === "breath" && breathStartedAtRef.current != null && (
-        <BreathIntro startedAt={breathStartedAtRef.current} breaths={BREATH_INTRO_BREATHS} onDone={finishBreath} />
-      )}
       {showEnter && (
         <motion.button
           type="button"
