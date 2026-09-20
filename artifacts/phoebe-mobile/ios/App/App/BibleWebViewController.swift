@@ -3646,7 +3646,33 @@ final class BibleBrowser: NSObject {
          * view controller that is already presenting, with nothing but a
          * console warning to show for it.
          */
-        guard let presenter = presenter else { onDismiss?(); return }
+        guard let root = presenter else { onDismiss?(); return }
+        /**
+         * PRESENT FROM THE TOP OF THE STACK, not from the root.
+         *
+         * This used to refuse outright whenever ANYTHING was presented over
+         * the app — and refuse silently, as far as the person tapping was
+         * concerned: the web was told "the reader closed" and left showing
+         * whatever it had been showing. The owner met it as a course that
+         * would not open (2026-09-19): tapping a video course opens the reader
+         * on arrival, and any modal still on screen — one just dismissed, a
+         * system alert, a sheet — meant nothing happened at all.
+         *
+         * UIKit only refuses to present from a controller that is ALREADY
+         * presenting something; the thing it is presenting can present in
+         * turn. So walk to the top and present from there.
+         */
+        var presenter = root
+        while let above = presenter.presentedViewController, !above.isBeingDismissed {
+            presenter = above
+        }
+        /**
+         * …EXCEPT OVER OURSELVES. A second reader stacked on the first is
+         * never what anyone meant, and the one underneath would be stranded
+         * with no way back. That case keeps the old answer: tell the web the
+         * reader closed, and leave the open one alone.
+         */
+        if presenter is BibleWebViewController { onDismiss?(); return }
         if presenter.presentedViewController != nil { onDismiss?(); return }
         // A warm view is already loading the LIVE url — never reuse it for a
         // saved page, or the network copy wins the race we are trying to avoid.

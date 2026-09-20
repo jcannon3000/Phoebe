@@ -437,14 +437,30 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
    */
   const autoOpenedRef = useRef(false);
   useEffect(() => {
-    if (!handsOffToReader || autoOpenedRef.current) return;
-    autoOpenedRef.current = true;
-    // Not while the app is in the background: a course page built behind the
-    // reader (or off screen) must not steal the front when it comes back.
-    if (document.visibilityState !== "visible") return;
-    const last = lastReaderOpenAt.get(course.id) ?? 0;
-    if (Date.now() - last < REOPEN_GUARD_MS) return;
-    openCourseInReader();
+    if (!handsOffToReader) return;
+    const openNow = () => {
+      if (autoOpenedRef.current) return;
+      // Not while the app is in the background: a course page built behind the
+      // reader (or off screen) must not steal the front when it comes back.
+      // This is a WAIT, not a refusal — see the listener below.
+      if (document.visibilityState !== "visible") return;
+      const last = lastReaderOpenAt.get(course.id) ?? 0;
+      if (Date.now() - last < REOPEN_GUARD_MS) return;
+      autoOpenedRef.current = true;
+      openCourseInReader();
+    };
+    openNow();
+    /**
+     * ONE SHOT, BUT NOT A WASTED ONE. This used to mark itself done before
+     * testing visibility, so a page that mounted while the app was not in
+     * front — a cold start still on the splash, a route built behind
+     * something — spent its only attempt and left the person on the poster
+     * with no way back but another tap. Now the attempt is spent only when
+     * the reader actually opens, and becoming visible tries again.
+     */
+    const onVisible = () => { if (document.visibilityState === "visible") openNow(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [handsOffToReader, course.id, openCourseInReader]);
 
   /**
