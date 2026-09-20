@@ -12,6 +12,7 @@
 // make it a daily morning/evening rhythm (the customizer's Centering preset).
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { RouteFallback } from "@/components/RouteFallback";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -440,24 +441,37 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
    * open, or closing the reader would throw them back into it.
    */
   /**
-   * BACK TO WHERE THE TAP CAME FROM. history.back() when there is somewhere
-   * to go — the home, Courses, the menu — and the home when there is not (a
-   * deep link, or the first screen of a cold start), because going back from
-   * there leaves Phoebe altogether.
+   * THE HOME, WHATEVER DOOR THEY CAME IN BY (owner, 2026-09-19: "The done on
+   * the course banner needs to go back home").
+   *
+   * This briefly went back to wherever the tap came from, which meant Done
+   * landed somewhere different depending on the door — the home, Courses, the
+   * menu. One destination is what he asked for. REPLACE, not push: the course
+   * route leaves history, so there is nothing underneath for Done to reveal.
+   *
+   * Courses only. A track page (/video) has its own two exits in the reader's
+   * bar — Back to the catalogue, Done to the closing prompt — and the two
+   * rules must not bleed into each other.
    */
-  const backToWhereTheyWere = useCallback(() => {
-    let canGoBack = false;
-    try { canGoBack = window.history.length > 1; } catch { /* ignore */ }
-    if (canGoBack) window.history.back();
-    else setLocation("/dashboard");
+  const handOffAndGoHome = useCallback(() => {
+    setLocation("/dashboard", { replace: true });
   }, [setLocation]);
 
   /** Set when the reader refused to open — the one case this page still has
    *  something to say on iOS. */
   const [readerRefused, setReaderRefused] = useState(false);
   const autoOpenedRef = useRef(false);
-  useEffect(() => {
+  /**
+   * BEFORE THE FIRST PAINT (owner, 2026-09-19: "when I open the course it
+   * needs to go straight to the browser not use the banner as a splash").
+   * useEffect runs AFTER the browser has painted, so the hand-off asked for a
+   * frame of this page first; useLayoutEffect runs before it. What can still
+   * show — a cold start where the app is not in front yet — is the app's own
+   * leaf loading screen, never anything that reads as the course.
+   */
+  useLayoutEffect(() => {
     if (!handsOffToReader) return;
+    let guardTimer = 0;
     const openNow = () => {
       if (autoOpenedRef.current) return;
       // Not while the app is in the background: a course page built behind the
@@ -465,7 +479,16 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
       // This is a WAIT, not a refusal — see the listener below.
       if (document.visibilityState !== "visible") return;
       const last = lastReaderOpenAt.get(course.id) ?? 0;
-      if (Date.now() - last < REOPEN_GUARD_MS) return;
+      const since = Date.now() - last;
+      if (since < REOPEN_GUARD_MS) {
+        // Coming STRAIGHT back to the same course (closing the reader and
+        // tapping it again) lands inside the guard that stops the reader
+        // reopening over itself. Waiting out the remainder is the whole
+        // answer; returning here without one left the loading screen up for
+        // good.
+        guardTimer = window.setTimeout(openNow, REOPEN_GUARD_MS - since + 50);
+        return;
+      }
       autoOpenedRef.current = true;
       if (!openCourseInReader()) { setReaderRefused(true); return; }
       /**
@@ -474,13 +497,11 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
        * "It flashed this page too on load").
        *
        * The app's copy of a video course has nothing to show on iOS — the
-       * course is being read in the reader — so it goes back to where the tap
-       * came from. Done then lands on the home, or Courses, or the menu: the
-       * screen they were on. Replacing the entry rather than pushing means
-       * there is no poster underneath to reveal, and nothing to flash on the
-       * way in.
+       * course is being read in the reader — so the app goes to the home
+       * behind it, replacing this route rather than pushing. Nothing flashes
+       * on the way in, and Done reveals the home.
        */
-      backToWhereTheyWere();
+      handOffAndGoHome();
     };
     openNow();
     /**
@@ -493,8 +514,11 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
      */
     const onVisible = () => { if (document.visibilityState === "visible") openNow(); };
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [handsOffToReader, course.id, openCourseInReader, backToWhereTheyWere]);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      if (guardTimer) window.clearTimeout(guardTimer);
+    };
+  }, [handsOffToReader, course.id, openCourseInReader, handOffAndGoHome]);
 
   /**
    * WHERE YOUTUBE WON'T EMBED — the iOS shell, whose capacitor:// origin the
@@ -564,6 +588,9 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
      * rather than the silent fallback that made this confusing in the first
      * place.
      */
+    // Waiting on the hand-off: the app's own leaf loading screen, the one every
+    // lazy route shows. Never the course, never a blank.
+    if (!readerRefused) return <RouteFallback />;
     return (
       <Layout bgPhoto={leafBg}>
         <div className="mx-auto w-full max-w-md px-4 py-16 text-center">
@@ -585,9 +612,7 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
               </button>
               <div className="mt-6 flex justify-center">{removeFromHome}</div>
             </>
-          ) : (
-            <p className="text-[13px]" style={{ color: C.sage, fontFamily: C.font }}>Opening…</p>
-          )}
+          ) : null}
         </div>
       </Layout>
     );

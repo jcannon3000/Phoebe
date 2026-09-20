@@ -1,6 +1,6 @@
 import { COMMUNITY_FEATURES_ENABLED, COMMUNITY_ROUTE_PREFIXES } from "@/lib/communityFlag";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
-import splashForestPath from "@/assets/splash/forest-path.jpg";
+import { RouteFallback } from "@/components/RouteFallback";
 import { hasPrayerSurface } from "@/lib/prayerSurface";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-query-persist-client";
@@ -1147,47 +1147,6 @@ function GuestGate({ children }: { children: ReactNode }) {
  * It stands in for EVERY lazy route, so it stays cheap: one bundled image
  * (already in the app-open path, so it is warm), no data, no query.
  */
-function RouteFallback() {
-  return (
-    <div
-      style={{
-        position: "fixed", inset: 0, minHeight: "var(--app-dvh)", background: "#091A10",
-        isolation: "isolate", overflow: "hidden",
-      }}
-    >
-      <img
-        src={splashForestPath}
-        alt=""
-        aria-hidden
-        decoding="async"
-        style={{
-          position: "absolute", inset: 0, width: "100%", height: "100%",
-          objectFit: "cover", zIndex: -1, opacity: 0.55,
-        }}
-      />
-      <div
-        aria-hidden
-        style={{
-          position: "absolute", inset: 0, zIndex: -1,
-          background: "linear-gradient(180deg, rgba(8,18,12,0.62) 0%, rgba(8,18,12,0.78) 100%)",
-        }}
-      />
-      {/* Same size, same 64px-from-the-bottom placement as the office veil's
-          spinner, so it does not jump when the deck takes over. */}
-      <div
-        aria-hidden
-        className="animate-spin"
-        style={{
-          position: "absolute", bottom: 64, left: "50%", marginLeft: -11,
-          width: 22, height: 22, borderRadius: "50%",
-          border: "2px solid rgba(143,175,150,0.25)",
-          borderTopColor: "rgba(143,175,150,0.85)",
-        }}
-      />
-    </div>
-  );
-}
-
 function Router() {
   return (
     // Suspense boundary for the lazy-loaded route chunks (code-splitting,
