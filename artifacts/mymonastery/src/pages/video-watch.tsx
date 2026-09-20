@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { YouTubePlayer } from "@/components/YouTubePlayer";
 import { isInReaderWatch, YOUTUBE_ID } from "@/lib/videoEmbed";
@@ -87,21 +87,10 @@ export default function VideoWatchPage() {
     () => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
     [],
   );
-  /**
-   * THE READER'S OWN TITLE BAR reads document.title (owner, 2026-09-19: "The
-   * top of that reader shouldn't say Phoebe it should be related to the
-   * content"), and on iOS this page IS what the reader is showing. So it
-   * names the track while it is open and hands the old title back on the way
-   * out, for the app's other pages.
-   */
-  useEffect(() => {
-    const name = [eyebrow, title].filter(Boolean).join(" · ");
-    if (!name) return;
-    const prior = document.title;
-    document.title = name;
-    return () => { document.title = prior; };
-  }, [eyebrow, title]);
-
+  // No document.title effect here. The reader's bar is deliberately BLANK on
+  // our own pages (owner: "I don't think it needs the dublicate title" — the
+  // sleeve heading is right below it), and the native side never reads a
+  // title from them, so setting one only looked like it did something.
   const [leaving, setLeaving] = useState(false);
   /** The video itself refused to play (taken down, private, embedding off). */
   const [failed, setFailed] = useState(false);
