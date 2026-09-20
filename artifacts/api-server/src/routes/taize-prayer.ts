@@ -91,6 +91,48 @@ export function parseEntries(xml: string): Entry[] {
 }
 
 /**
+ * THE STREAMS PAGE, when the feed will not answer.
+ *
+ * `feeds/videos.xml?channel_id=…` 404s for this channel — verified 2026-09-19
+ * against the id the channel itself publishes as its externalId, so it is
+ * YouTube's own feed that is gone, not a wrong id. That left the resolver
+ * returning nothing at all and the practice with nothing to play (owner:
+ * "make sure the taize prayer plays"). The same thing happened to the
+ * cathedral's playlist and was answered the same way (routes/ncmp.ts).
+ *
+ * Their streams page lists thirty broadcasts as lockup view models: an id in
+ * `contentId` and the name in `lockupMetadataViewModel.title.content`, newest
+ * first, which is all this needs. The page carries no publish DATE we can
+ * trust, but their titles are dated — "Evening prayer, Saturday 19.09.2026",
+ * and sometimes with a pipe — so the date is read from the title and left
+ * null when it cannot be.
+ */
+export function parseStreamsPage(html: string): Entry[] {
+  const out: Entry[] = [];
+  for (const block of html.split('"lockupViewModel"').slice(1)) {
+    const videoId = block.match(/"contentId":"([A-Za-z0-9_-]{11})"/)?.[1];
+    const title = block.match(/"lockupMetadataViewModel":\{"title":\{"content":"([^"]+)"/)?.[1];
+    if (!videoId || !title) continue;
+    out.push({ videoId, title: unescapeJson(title), publishedAt: dateFromTitle(title) });
+  }
+  return out;
+}
+
+/** The page is JSON inside HTML, so a title can carry \u escapes. */
+function unescapeJson(s: string): string {
+  try { return JSON.parse(`"${s.replace(/"/g, '\\"')}"`) as string; } catch { return s; }
+}
+
+/** "…Saturday 19.09.2026" → an ISO day, or null if it is written another way. */
+function dateFromTitle(title: string): string | null {
+  const m = /(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(title);
+  if (!m) return null;
+  const [, d, mo, y] = m;
+  const day = `${y}-${String(Number(mo)).padStart(2, "0")}-${String(Number(d)).padStart(2, "0")}`;
+  return Number.isNaN(Date.parse(day)) ? null : `${day}T00:00:00Z`;
+}
+
+/**
  * IS ONE ON AIR? The channel's /live address redirects to the watch page of
  * whatever is streaming and, when nothing is, to the channel itself. So the
  * question is answered by where we land, and the id we land on is the one to
@@ -124,6 +166,22 @@ async function resolveLive(): Promise<{ videoId: string; title: string | null } 
   }
 }
 
+/** The streams page, parsed — empty rather than thrown, like every other leg. */
+async function entriesFromStreamsPage(feedStatus: number): Promise<Entry[]> {
+  if (feedStatus) logger.warn({ status: feedStatus }, "[taize] channel RSS non-ok — reading the streams page");
+  try {
+    const res = await safeFetch(CHANNEL_URL, {
+      timeoutMs: 8_000,
+      headers: { "User-Agent": UA, "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8" },
+    });
+    if (!res.ok) return [];
+    return parseStreamsPage(await res.text());
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[taize] streams page failed");
+    return [];
+  }
+}
+
 async function resolvePrayer(): Promise<TaizePrayerMeta> {
   const now = Date.now();
   if (cache && now - cache.at < (cache.data.live ? LIVE_TTL_MS : TTL_MS)) return cache.data;
@@ -149,15 +207,13 @@ async function resolvePrayer(): Promise<TaizePrayerMeta> {
       headers: { "User-Agent": UA, "Accept": "application/atom+xml, application/xml, */*" },
       signal: AbortSignal.timeout(6_000),
     });
-    if (!res.ok) {
-      logger.warn({ status: res.status }, "[taize] channel RSS non-ok");
-      cache = { at: now, data: fallback };
-      return fallback;
-    }
-    const entries = parseEntries(await res.text());
+    const entries = res.ok ? parseEntries(await res.text()) : await entriesFromStreamsPage(res.status);
     // The newest thing that is a PRAYER. Their channel is mostly prayer, but
     // a talk at the top of the feed must not be opened as one.
-    const prayer = entries.find((e) => looksLikePrayer(e.title));
+    const prayer = entries.find((e) => looksLikePrayer(e.title))
+      // The feed answered but had no prayer in it — ask the page before
+      // giving up, since the two do not always carry the same thing.
+      ?? (res.ok ? (await entriesFromStreamsPage(0)).find((e) => looksLikePrayer(e.title)) : undefined);
     if (!prayer) {
       logger.warn({ entries: entries.length }, "[taize] no prayer in the feed");
       cache = { at: now, data: fallback };
