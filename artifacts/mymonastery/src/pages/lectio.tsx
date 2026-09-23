@@ -644,7 +644,16 @@ export default function LectioPage() {
                     "Also on the lectio page, do a pill at the bottom that is
                     Guided Lectio Divina that would bring this up"). Abiding
                     Way's daily reading, heard: a passage read slowly, with
-                    silence and a guide, in the app's own player. */}
+                    silence and a guide, in the app's own player.
+
+                    NOT IN SUNDAY MODE (owner, 2026-09-23: "The sunday lectio
+                    page should not have the guided audio pill cause its not
+                    relevant"). The guided session is the DAILY reading read
+                    aloud — it has nothing to do with the readings this coming
+                    Sunday, so from This Sunday it would lead somewhere else
+                    entirely. Same reason the kept-as-audio redirect above
+                    leaves ?sunday=1 alone. */}
+                {!sundayMode && (
                 <button
                   type="button"
                   onClick={() => setLocation("/reflect/lectio")}
@@ -665,6 +674,7 @@ export default function LectioPage() {
                   <span aria-hidden style={{ fontSize: 15, lineHeight: 1 }}>🎧</span>
                   Guided Lectio Divina
                 </button>
+                )}
               </>
             )}
 
