@@ -386,7 +386,6 @@ const HymnsPage = lazy(() => import("./pages/hymns"));
 const HildegardPage = lazy(() => import("./pages/hildegard"));
 const MaryLousMassPage = lazy(() => import("./pages/mary-lous-mass"));
 const TaizeSongsPage = lazy(() => import("./pages/taize-songs"));
-const SakamotoPage = lazy(() => import("./pages/sakamoto"));
 const SpiritualsAlbumPage = lazy(() => import("./pages/spirituals-album"));
 const SaintsPage = lazy(() => import("./pages/saints"));
 const LectioPage = lazy(() => import("./pages/lectio"));
@@ -950,7 +949,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // non-beta, non-community-admin account, so the bounce hit ordinary users.)
   // All personal practices — a reflection reader, a listening session, and
   // three tap-to-log surfaces — with no social surface between them.
-  "/reflect/cac", "/reflect/payg", "/reflect/lectio", "/listening", "/hymns", "/hildegard", "/mary-lous-mass", "/taize-songs", "/sakamoto", "/spirituals-album", "/saints", "/lectio", "/walk-log", "/reading-log", "/podcast-log",
+  "/reflect/cac", "/reflect/payg", "/reflect/lectio", "/listening", "/hymns", "/hildegard", "/mary-lous-mass", "/taize-songs", "/spirituals-album", "/saints", "/lectio", "/walk-log", "/reading-log", "/podcast-log",
   /**
    * THE DEAN'S COMMENTARY'S OWN READER. Owner: "THE VTS NEWSLETTER IS STILL
    * ADMIN GATED … EVEN THOUGH IT SHOWS UP IN THE ROUTINE, it cant be viewed
@@ -1385,7 +1384,6 @@ function Router() {
       <Route path="/hildegard" component={HildegardPage} />
       <Route path="/mary-lous-mass" component={MaryLousMassPage} />
       <Route path="/taize-songs" component={TaizeSongsPage} />
-      <Route path="/sakamoto" component={SakamotoPage} />
       <Route path="/spirituals-album" component={SpiritualsAlbumPage} />
       <Route path="/saints" component={SaintsPage} />
       <Route path="/lectio" component={LectioPage} />

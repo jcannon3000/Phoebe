@@ -62,9 +62,10 @@ export type YouTubeCatalogue = {
   /** A line for the browse sheet — what this catalogue IS, in a few words. */
   browse: string;
   /**
-   * A note at the TOP of the catalogue's own page, and nowhere else. Sakamoto
-   * carries the owner's own account of listening to it; it is his voice, so it
-   * is quoted here rather than rewritten, and his name stays in it.
+   * A note at the TOP of the catalogue's own page, and nowhere else — a line
+   * about why this music, in the voice of whoever said it. No catalogue
+   * carries one today (the one that did, Sakamoto, was taken out 2026-09-23);
+   * the field and its rendering stay for the next one that wants it.
    */
   note?: string;
   tracks: readonly YouTubeTrack[];
@@ -181,44 +182,6 @@ export const TAIZE_SONGS: YouTubeCatalogue = {
   ],
 };
 
-// ── Ryuichi Sakamoto ────────────────────────────────────────────────────────
-//
-// Owner, 2026-09-19, with YouTube's album playlist for "Music For Film":
-// "Call this Ryuchi Sakamoto" — so the catalogue is the composer, not the
-// album. All 13 are on the official "Ryuichi Sakamoto - Topic" channel
-// (UCfWELfxrSN1ryuNWZtXqR3g), checked here. Titles are the piece; the film
-// goes to the quieter line, and stays off it where the title already names
-// the film ("The Sheltering Sky Main Theme").
-//
-// THE NOTE is the owner's own, and it names him: "have at the top of the page
-// say Jeremy would listen to this album as a contemplative practice between
-// matins and Eucharist on contemplative walks outside the monastery. Edit the
-// grammar for that, but don't take out my name like you did last time."
-export const SAKAMOTO: YouTubeCatalogue = {
-  path: "/sakamoto",
-  eyebrow: "Ryuichi Sakamoto",
-  title: "Ryuichi Sakamoto",
-  blurb: "Music for film. Tap a piece to hear it here.",
-  browse: "Ryuichi Sakamoto's music for film",
-  note: "Jeremy listened to this album as a contemplative practice in the monastery, between Matins and the Eucharist, on walks outside.",
-  videoEyebrow: "Ryuichi Sakamoto",
-  tracks: [
-  {"n": 1, "title": "Merry Christmas Mr. Lawrence Main Theme", "artist": "Ryuichi Sakamoto", "seconds": 362, "youtubeId": "OJyPNbmDigY"},
-  {"n": 2, "title": "Endroll", "artist": "from The Last Emperor", "seconds": 483, "youtubeId": "FSlO95CB1xM"},
-  {"n": 3, "title": "Rain", "artist": "from The Last Emperor", "seconds": 256, "youtubeId": "0Wdblp8g61s"},
-  {"n": 4, "title": "The Sheltering Sky Main Theme", "artist": "Ryuichi Sakamoto", "seconds": 386, "youtubeId": "_F64Gg27T40"},
-  {"n": 5, "title": "High Heels Main Theme", "artist": "Ryuichi Sakamoto", "seconds": 188, "youtubeId": "IxIgcokL2sM"},
-  {"n": 6, "title": "Wild Palms Main Theme", "artist": "Ryuichi Sakamoto", "seconds": 152, "youtubeId": "ny4YdpUk9Lk"},
-  {"n": 7, "title": "Acceptance", "artist": "from Little Buddha", "seconds": 529, "youtubeId": "t8gKYl_RS08"},
-  {"n": 8, "title": "Snake Eyes Main Theme (Long Version)", "artist": "Ryuichi Sakamoto", "seconds": 326, "youtubeId": "7cBXYcV0rx4"},
-  {"n": 9, "title": "Bolerish", "artist": "from Femme Fatale", "seconds": 371, "youtubeId": "gLkvGzVcy7g"},
-  {"n": 10, "title": "Bibo No Aozora", "artist": "from Babel", "seconds": 388, "youtubeId": "EsW3h4Ohsn0"},
-  {"n": 11, "title": "Small Hope", "artist": "from Hara-Kiri (Ichimei)", "seconds": 300, "youtubeId": "D-SDpOFs4Hg"},
-  {"n": 12, "title": "Yae No Sakura Opening Theme", "artist": "Ryuichi Sakamoto", "seconds": 183, "youtubeId": "jAjSB_BCxbM"},
-  {"n": 13, "title": "The Revenant Main Theme", "artist": "Ryuichi Sakamoto", "seconds": 190, "youtubeId": "ZSTA7Q2JEJU"},
-  ],
-};
-
 // ── Spirituals ──────────────────────────────────────────────────────────────
 //
 // Owner, 2026-09-19, with the Smithsonian Folkways page: "Call it Spirityals"
@@ -273,7 +236,7 @@ export const SPIRITUALS: YouTubeCatalogue = {
  */
 export const MUSIC_CATALOGUES: ReadonlyArray<{ path: string; title: string; browse: string }> = [
   { path: "/hymns", title: "Hymns", browse: "The Hymnal 1982, as recorded" },
-  ...[HILDEGARD_YOUTUBE, MARY_LOUS_MASS, TAIZE_SONGS, SAKAMOTO, SPIRITUALS].map((c) => ({
+  ...[HILDEGARD_YOUTUBE, MARY_LOUS_MASS, TAIZE_SONGS, SPIRITUALS].map((c) => ({
     path: c.path, title: c.title, browse: c.browse,
   })),
 ];
@@ -289,7 +252,7 @@ export const MUSIC_CATALOGUES: ReadonlyArray<{ path: string; title: string; brow
  * whole line, case- and space-insensitively, and only when the track still
  * has a YouTube recording: a row that cannot play must not pretend it can.
  */
-const CATALOGUES = [HILDEGARD_YOUTUBE, MARY_LOUS_MASS, TAIZE_SONGS, SAKAMOTO, SPIRITUALS] as const;
+const CATALOGUES = [HILDEGARD_YOUTUBE, MARY_LOUS_MASS, TAIZE_SONGS, SPIRITUALS] as const;
 
 /** How a track is written into the listening log. Kept in ONE place so the
  *  page that logs it and the lookup that reads it back cannot drift. */

@@ -171,10 +171,10 @@ export function YouTubeCataloguePage({ cat }: { cat: YouTubeCatalogue }) {
             {cat.blurb}
           </p>
 
-          {/* A catalogue's own note, at the top of its page and nowhere else
-              (owner, of Sakamoto: "at the top of the page say Jeremy would
-              listen to this album as a contemplative practice…"). Set apart
-              like something said rather than something labelled. */}
+          {/* A catalogue's own note, at the top of its page and nowhere
+              else — set apart like something said rather than something
+              labelled. Optional, and nothing sets it today; see the `note`
+              field in lib/youtubeCatalogues. */}
           {cat.note && (
             <p
               style={{

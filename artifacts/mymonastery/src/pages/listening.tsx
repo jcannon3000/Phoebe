@@ -1259,9 +1259,8 @@ export default function ListeningPage() {
                       gets written down. */}
                   {/* ONE PILL FOR THE CATALOGUES (owner, 2026-09-19: "For the
                       catalogues, let do a browse catalogue pill again that
-                      brings up different options"). The row of them — Hymns,
-                      Hildegard, Mary Lou's Mass, Taizé Songs, Sakamoto — was
-                      becoming a wall; the sheet lists them from
+                      brings up different options"). A row of them was becoming
+                      a wall; the sheet lists them from
                       lib/youtubeCatalogues' MUSIC_CATALOGUES, so the next one
                       needs nothing here. */}
                   <div style={{ display: "flex", justifyContent: "center" }}>

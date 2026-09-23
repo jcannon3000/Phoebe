@@ -60,18 +60,6 @@ export const MUSIC_PLAYLISTS: readonly MusicPlaylist[] = [
     url: "https://music.apple.com/us/playlist/ambient-chill/pl.bed492442a53481f98e98c6c4da9e01d",
   },
   {
-    /**
-     * THE OWNER'S OWN, and the description is theirs, to be used wherever this
-     * option is described: in the monastery Jeremy listened to this album on
-     * CD between Matins and Eucharist, on contemplative walks.
-     */
-    id: "1833109181",
-    kind: "album",
-    label: "Ryuichi Sakamoto \u00b7 Music For Film",
-    sub: "Listened to on CD in the monastery, between Matins and Eucharist, on contemplative walks",
-    url: "https://music.apple.com/us/album/ryuichi-sakamoto-music-for-film/1833109181",
-  },
-  {
     id: "272149140",
     kind: "album",
     label: "Classic African American Gospel",
