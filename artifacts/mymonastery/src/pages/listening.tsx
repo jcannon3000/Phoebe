@@ -711,27 +711,20 @@ export default function ListeningPage() {
   const alreadyLoggedThis = !!what.trim()
     && entries.some((e) => e.day === todayYmd && e.what.trim().toLowerCase() === what.trim().toLowerCase());
   /**
-   * Coming back through the deck: today's song is already in the field.
+   * THE FIELD STARTS EMPTY (owner, 2026-09-20: "if they did not chose a
+   * recent or a catalogue, the search field should be blank").
    *
-   * logToday() clears the form, so a second pass used to meet a blank one with
-   * the listen safely recorded — which is why the gate carried a "or they
-   * already logged today" escape, and that escape was the hole that let
-   * someone advance having named nothing. Putting the song back is the better
-   * answer to the same problem: they can SEE what they logged, change it if
-   * they want, and the gate stays strict without ever trapping anyone.
+   * It used to put today's logged song back, so that coming through the deck
+   * a second time met a filled field. That answered a gate problem — the log
+   * beat holds the pill until something is named, and logToday() clears the
+   * form — but it answered it in the field, where the words look like
+   * something the person chose. Nobody chose them.
    *
-   * Runs once per arrival, and only into an empty field, so it can never
-   * overwrite something being typed.
+   * The gate carries its own answer now: a log that already exists today
+   * releases the pill (it reads "Continue"), so the field can be what it
+   * should be — blank until they pick a recent, pick from a catalogue, or
+   * type. See logSatisfied below.
    */
-  const prefilledRef = useRef(false);
-  useEffect(() => {
-    if (prefilledRef.current || !todayEntry) return;
-    const song = todayEntry.what?.trim();
-    if (!song) return;
-    prefilledRef.current = true;
-    setWhat((prev) => (prev.trim() ? prev : song));
-    setQuery((prev) => (prev.trim() ? prev : song));
-  }, [todayEntry]);
   // Today's listen when there is one, otherwise the last one — the page always
   // opens on music rather than on an empty form.
   const heroEntry = todayEntry ?? sortedEntries[0] ?? null;
@@ -965,7 +958,11 @@ export default function ListeningPage() {
      * trap nobody. The ✕ closes the deck from this beat regardless, so the
      * door is only ever to the next beat, never out of the practice.
      */
-    const logSatisfied = !!what.trim();
+    // Named something — or already logged today, in which case this beat is
+    // behind them and the pill reads "Continue" (see the label below). Both,
+    // because the field no longer refills itself and an empty one would
+    // otherwise trap someone who logged an hour ago.
+    const logSatisfied = !!what.trim() || keptToday;
     /**
      * Log what Phoebe is playing — the player's "Log this listening", and the
      * deck's Next while the player is up. The music keeps going: the
@@ -1283,6 +1280,22 @@ export default function ListeningPage() {
                       Browse catalogues
                     </button>
                   </div>
+                  {/* What the pill does NOT say on its own (owner, 2026-09-20:
+                      "under the catalouge, have some text under it about 'or
+                      play a new selection and log it in on the following
+                      slides'"). Eyebrow type, so it reads as a note about the
+                      practice rather than a second invitation competing with
+                      the pill. */}
+                  <p
+                    className="text-center"
+                    style={{
+                      marginTop: 10, color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK,
+                      fontSize: 10.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Or play a new selection and log it in on the following slides
+                  </p>
                 </div>
               )}
 
