@@ -914,7 +914,11 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             { value: "examen", label: "The Examen" },
             { value: "walk", label: "Contemplative Walk" },
             { value: "visio", label: "Visio Divina" },
-            { value: "taize", label: "Taizé meditation" },
+            /* The weekly Taizé meditation is retired (owner, 2026-09-23:
+               "Get ride of the weekly Taize reflection") — its gate is held
+               false in useRhythmState, so offering it here would hand someone
+               a practice that cannot appear. Taizé's daily prayer, songs and
+               Saturday stream are untouched. */
             { value: "icons", label: "Praying with Icons" },
             { value: "lectio", label: "Lectio Divina" },
             { value: "payg", label: "Pray As You Go Daily" },

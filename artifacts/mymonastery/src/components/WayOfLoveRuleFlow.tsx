@@ -345,7 +345,7 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // An INBOX, not a daily: it waits until it is read, and goes quiet until
   // Taizé posts the next one. Offered here because it is a reflection you sit
   // with, not because it behaves like the others in this list.
-  { title: () => "Taizé meditation", emoji: "🕯️", sub: "A meditation from Taizé — it waits until you read it.", excludes: "__none__", maps: { kind: "practice", key: "taize" } , group: "contemplative" },
+  // The weekly Taizé meditation was here; it is retired (owner, 2026-09-23).
   // Slave Songs of the United States (1867), one song a day. A practice
   // rather than a reading: the song is the prayer.
   { title: () => "Meditating on Spirituals", emoji: "🎶", sub: "Read a spiritual, then sit with it.", excludes: "__none__", maps: { kind: "practice", key: "spirituals" } , group: "contemplative" },
@@ -6492,12 +6492,10 @@ export default function WayOfLoveRuleFlow({
               is. It also still appears among the contemplative practices —
               the SAME state either way, so ticking it in one place shows it
               ticked in the other rather than the two disagreeing. */}
-          {choiceRow(
-            contemplative.taize,
-            `🕯️ ${t("wol_rule.learn_taize", { defaultValue: "Taizé meditation" })}`,
-            t("wol_rule.learn_taize_sub", { defaultValue: "A meditation from Taizé — it waits until you read it." }),
-            () => toggleContemplative("taize"),
-          )}
+          {/* The weekly Taizé meditation's row is gone with the practice
+              itself (owner, 2026-09-23: "Get ride of the weekly Taize
+              reflection"). Its key and state stay so a rhythm that carries it
+              still loads; nothing offers it. */}
           {/* THE WEEKLY ONE — admin only for now (owner: "create a weekly
               like taize version and make it admin only"). Same inbox terms as
               Taizé above it, same reason it isn't a NEWSLETTERS entry, and

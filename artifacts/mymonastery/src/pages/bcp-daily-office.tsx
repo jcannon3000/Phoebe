@@ -5118,17 +5118,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               canticle that actually follows it; this is an optional side
               reading, not the slide's only path forward. */}
           {currentSlide.type === "lesson_title" && (() => {
-            const meta = currentSlide.metadata as { gospelReadUrl?: unknown; extraReadingLabel?: unknown } | undefined;
+            const meta = currentSlide.metadata as { gospelReadUrl?: unknown } | undefined;
             const gospelUrl = typeof meta?.gospelReadUrl === "string" ? meta.gospelReadUrl : null;
             if (!gospelUrl) return null;
-            /* WHICH reading this opens changed with the year (owner,
-               2026-09-23): Morning Prayer reads the Epistle in Year One and
-               the Gospel in Year Two, so the side reading here is whichever
-               of the two the office did not. The server names it; "Gospel" is
-               the fallback for a page saved before it did. */
-            const extraLabel = typeof meta?.extraReadingLabel === "string" && meta.extraReadingLabel
-              ? meta.extraReadingLabel
-              : "Gospel";
             return (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
                 <button
@@ -5151,7 +5143,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     cursor: "pointer",
                   }}
                 >
-                  <>Read {extraLabel}<CtaArrow /></>
+                  <>Read Gospel<CtaArrow /></>
                 </button>
               </div>
             );

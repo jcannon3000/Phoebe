@@ -58,8 +58,7 @@ type LessonOption = LectioOption;
 const KIND_LABEL: Record<LessonOption["kind"], string> = {
   oldTestament: "Old Testament",
   psalm: "Psalm",
-  // The Epistle by name — see officePrefs' SCRIPTURE_PART_LABEL.
-  newTestament: "Epistle",
+  newTestament: "New Testament",
   gospel: "Gospel",
 };
 /** The eyebrow over a reading. In Eastertide the RCL reads Acts in the Old

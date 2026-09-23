@@ -230,17 +230,18 @@ export default function MenuNewslettersPage() {
         else setLocation("/saints");
       },
     }] : []),
-    {
-      key: "taize", emoji: "🕯️", title: "Taizé meditation", publisher: "Taizé", cadence: "weekly",
-      followed: on("taize"), done: rs.taizeDone, latestTitle: taizeLatest?.title,
-      open: openWeekly("taize", taizeLatest, "https://www.taize.fr/en/tag/meditations", true),
-    },
-    ...(andrewsVisible ? [{
-      key: "andrews", emoji: "📰", title: "Andrew's Version", publisher: "Yale Divinity School", cadence: "weekly" as const,
-      about: "A lectionary commentary from Yale Divinity School",
-      followed: on("andrews"), done: rs.andrewsDone, latestTitle: andrewsLatest?.title,
-      open: openWeekly("andrews", andrewsLatest, andrewsLatest?.url ?? "https://abmcg.substack.com/", true),
-    } satisfies Entry] : []),
+    /**
+     * NEITHER THE WEEKLY TAIZÉ MEDITATION NOR THE YALE COMMENTARY (owner,
+     * 2026-09-23: "Get ride of the weekly Taize reflection, and dont show the
+     * yale comentary in reflections").
+     *
+     * Taizé's meditation is retired outright — its gate is held false in
+     * useRhythmState, so the card and the layout pill go with this row.
+     * Andrew's Version is NOT retired: it is a commentary on the coming
+     * Sunday's readings rather than a daily reflection, and it keeps its
+     * place on This Sunday and in the home's Explore row. It is only this
+     * list it comes off.
+     */
     ...weeklySources.map((w): Entry => {
       const key = weeklySourceId(w.slug);
       const state = rs.weeklies.find((x) => x.slug === w.slug);

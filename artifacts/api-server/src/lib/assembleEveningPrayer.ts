@@ -463,50 +463,41 @@ export async function assembleEveningPrayer(
     );
   }
 
-  // 8. The evening's one reading — reference only.
+  // 8. The Gospel — reference only.
   //
-  // The prayer book appoints THREE readings a day (OT, Epistle, Gospel) and
-  // its rubric puts two in the morning and one in the evening. Morning Prayer
-  // now takes the Old Testament and — by the year — the Epistle in Year One or
-  // the Gospel in Year Two (see planMorningLessons). So the evening reads THE
-  // ONE THE MORNING DID NOT: the Gospel in Year One, the Epistle in Year Two.
+  // BCP Daily Office Lectionary appoints THREE readings per day per
+  // year (OT, Epistle, Gospel). Per user direction the distribution
+  // is "two readings at MP, the third at EP" regardless of the
+  // year's Gospel-placement convention. So MP shows lesson1 (OT) +
+  // lesson2 (Epistle), and EP shows lesson3 (Gospel) only — no
+  // duplication of MP's lessons here. Earlier the server emitted
+  // lesson1+lesson2 in EP too, which mirrored MP and read as a bug.
   //
-  // It used to read the Gospel always, which was right while the morning
-  // always took OT + Epistle. Left alone, Year Two would have read the same
-  // Gospel twice in one day and never opened the Epistle at all.
+  // "Eve of …" entries (Ascension Eve, Pentecost Eve, Trinity Eve)
+  // are an exception: the BCP appoints only 2 lessons for First
+  // Evensong (OT + NT), and the lectionary file stores them in
+  // lesson1/lesson2 with lesson3 blank. On regular days the three
+  // appointed lessons are SPLIT across MP (OT+Epistle) and EP
+  // (Gospel); on Eves both eve lessons are FOR EP exclusively
+  // (morning uses the regular weekday entry). For the single
+  // EP-lesson slot we use lesson2 (NT) rather than lesson1 (OT)
+  // since EP's normal lesson is its NT/Gospel counterpart.
   //
-  // "Eve of …" entries (Ascension Eve, Pentecost Eve, Trinity Eve) are an
-  // exception: the BCP appoints only 2 lessons for First Evensong (OT + NT),
-  // and the lectionary file stores them in lesson1/lesson2 with lesson3 blank.
-  // On those days both lessons are FOR EP exclusively (morning uses the
-  // regular weekday entry), and the single EP slot takes lesson2 — EP's normal
-  // lesson is its NT counterpart.
-  //
-  // Gated on isEveOverride so the fallback does NOT fire on regular days that
-  // happen to have lesson3 blank (e.g. Palm Sunday, or a Major Holy Day, which
-  // appoint their own morning pair — falling back would duplicate what the
-  // morning just read).
+  // Gated on isEveOverride so the fallback does NOT fire on regular
+  // days that happen to have lesson3 blank (e.g. Palm Sunday, which
+  // appoints lesson1+lesson2 for MP only — falling back would
+  // duplicate the Epistle MP just read).
   const lesson3Trimmed = (readings.lesson3 ?? "").trim();
   const hasLesson3 = lesson3Trimmed.length > 0 && !/^-+$/.test(lesson3Trimmed);
   const useEveFallback = !hasLesson3 && readings.isEveOverride;
-  const eveningTakesTheGospel = liturgicalDay.liturgicalYear === 1;
-  const lesson2Trimmed = (readings.lesson2 ?? "").trim();
-  const hasLesson2 = lesson2Trimmed.length > 0 && !/^-+$/.test(lesson2Trimmed);
   const lessonForEvening = hasLesson3
-    ? (eveningTakesTheGospel ? readings.lesson3 : (hasLesson2 ? readings.lesson2 : readings.lesson3))
+    ? readings.lesson3
     : useEveFallback
       ? readings.lesson2
       : "";
-  // Eyebrow + emoji track the lesson actually being shown: the Gospel cross on
-  // Gospel days, the scroll on the Epistle and on Eve NT-fallback days. The
-  // Epistle is NAMED (owner, 2026-09-23: do not call it "New Testament" — the
-  // Gospel is New Testament too); an Eve's single NT lesson keeps the neutral
-  // "first lesson", since the book does not say which it is.
-  const showingGospelTonight = hasLesson3 && (eveningTakesTheGospel || !hasLesson2);
-  const showingEpistleTonight = hasLesson3 && !showingGospelTonight;
-  const lessonKindForEvening = showingGospelTonight
-    ? "gospel_evening"
-    : showingEpistleTonight ? "epistle_evening" : "first_evening";
+  // Eyebrow + emoji track the lesson actually being shown: the Gospel
+  // cross on Gospel days, the scroll on Eve NT-fallback days.
+  const lessonKindForEvening = hasLesson3 ? "gospel_evening" : "first_evening";
   // Title card + chunked numbered-verse slides — same shape as MP's
   // lessons. The reference-only fallback fires automatically inside
   // buildLessonSlides if the lesson happens to land on a deuteron-

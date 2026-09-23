@@ -897,7 +897,18 @@ export function useRhythmState(): RhythmState {
   // the ten lists that must agree.
   const spiritualsActive = spiritualsVisible(user?.isSuperAdmin)
     && homeCardActive(hl, "spirituals");
-  const taizeActive = homeCardActive(hl, "taize");
+  /**
+   * THE WEEKLY TAIZÉ MEDITATION IS RETIRED (owner, 2026-09-23: "Get ride of
+   * the weekly Taize reflection").
+   *
+   * Held false at the ONE gate the card, the layout pill and the Reflections
+   * row all read, so it cannot come back through a stale home layout on a
+   * device that already had it — the same shape the Sojourners pause uses.
+   * The tracking and read-state stay (a device that read one keeps its
+   * record), and Taizé's other three things are untouched: the daily prayer,
+   * the songs catalogue and the Saturday stream.
+   */
+  const taizeActive = false;
   // …and the weekly one, gated on the layout AND on being an admin. Both
   // halves matter: the gate is what makes it admin-only, and the layout key is
   // what lets an admin turn it off like any other card.
