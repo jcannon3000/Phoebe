@@ -120,10 +120,11 @@ export default function MenuPage() {
   // Courses belong to the LIGHT experience too — their routes are in the guest
   // allowlist and the home's Learn band starts the Way of Love for a fresh
   // guest — so there's no guest gating here, only the platform rule.
-  // "Courses" (owner, 2026-09-04: "rename Learn as Courses"; a same-day
-  // "Podcasts" rename on 2026-09-11 was reverted — "keep it courses"). The
-  // route stays /menu/learn.
-  const learn: MenuHubGroup = { header: "Courses", items: [] };
+  // "LEARN" (owner, 2026-09-23: "What if we change the Courses tab to Learn").
+  // It was named Learn until 2026-09-04 ("rename Learn as Courses"), briefly
+  // "Podcasts" on 2026-09-11 before that was reverted, and is Learn again now
+  // that it holds more than courses. The route was always /menu/learn.
+  const learn: MenuHubGroup = { header: "Learn", items: [] };
   // "This Sunday" — its own option right below Learn (owner, 2026-09-04:
   // "below Learn like the next option, not in it"). Its own group so it reads
   // as a sibling of Learn, not a course inside it.

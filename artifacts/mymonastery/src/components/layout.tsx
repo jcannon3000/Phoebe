@@ -422,7 +422,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   after Newsletters (owner, 2026-09-04: "put This Sunday after
                   Newsletters"). */}
               <MenuRow emoji="🗓️" label={t("menu.this_sunday", { defaultValue: "This Sunday" })} onClick={() => goCategory("/this-sunday")} />
-              <MenuRow emoji="🎓" label={t("menu.learn", { defaultValue: "Courses" })} onClick={() => goCategory("/menu/learn")} />
+              <MenuRow emoji="🎓" label={t("menu.learn", { defaultValue: "Learn" })} onClick={() => goCategory("/menu/learn")} />
               {/* SERMONS IS OFF THE MENU (owner, 2026-09-19: "i want to take
                   out the sermons tab from the menu and hide it"). The page and
                   its route are untouched — /menu/sermons still renders for

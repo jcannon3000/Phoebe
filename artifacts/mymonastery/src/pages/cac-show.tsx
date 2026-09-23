@@ -97,7 +97,7 @@ export default function CacShowPage() {
   // ("bring them out of the folder", 2026-09-05), so Back landed somewhere
   // the reader had never been. Admin Tools still opens that grid directly.
   const backHref = "/menu/learn";
-  const backLabel = "Courses";
+  const backLabel = "Learn";
   const leafBg = useCacLeafBg();
   const online = useOnline();
   useAnyCourseProgressTick();

@@ -1039,6 +1039,11 @@ const GUEST_ALLOWED_PREFIX = [
    * admits nobody the page would not.
    */
   "/cac-show/way-of-love-curry", "/cac-course/way-of-love-curry-",
+  // The Interior Castle, read aloud — same reasoning as Curry's show above:
+  // not CAC, so the page gates nobody, and it is offered on the Learn tab to
+  // everyone. Without these two prefixes a guest tapping the row lands back
+  // on the dashboard.
+  "/cac-show/interior-castle", "/cac-course/interior-castle-",
   // Saints index + detail pages (guest Resources → Saints).
   "/saints",
   /**

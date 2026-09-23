@@ -55,6 +55,15 @@ export type Show = {
   description?: string;
   // Per-show glyph for the show page eyebrow; the publisher's otherwise.
   emoji?: string;
+  /**
+   * A boilerplate tail this feed puts on EVERY episode title, as a regex
+   * source, stripped before anything renders. The Interior Castle's items are
+   * all "<chapter> – The Interior Castle by St. Teresa of Avila audio mp3
+   * edition", which in a lesson list says the show's name 28 times and the
+   * chapter's once. Anchored at the end and applied per show, so it can only
+   * ever shorten the titles of the feed it was written for.
+   */
+  titleTail?: string;
   // When true, the show's artwork is used as the imageUrl for EVERY
   // episode, ignoring per-episode <itunes:image> tags. Useful when the
   // feed omits episode art (or uses generic imagery) but we have a good
@@ -426,6 +435,33 @@ export const SHOWS: Record<string, Show> = {
     publisher: "way-of-love",
     feedUrl: "https://feeds.megaphone.fm/the-way-of-love",
     artwork: "/podcast-art/curry.jpg",
+  },
+  /**
+   * THE INTERIOR CASTLE, read aloud (owner, 2026-09-23, with the Apple link:
+   * "COULD WE PUT THIS IN A COURSE UI?").
+   *
+   * St. Teresa's book, one chapter per episode, recorded by Discerning
+   * Hearts. NOT IN ANY PUBLISHERS GROUP on purpose: the owner asked for a
+   * course, not another row in the podcast browse grid, and a publisher key
+   * that names no group simply leaves the show out of it (the show page falls
+   * back to the artist for its eyebrow).
+   *
+   * Its feed carries no season or episode tags, so buildCourses makes it ONE
+   * course covering the whole book — see feedOrderIsCourseOrder there for why
+   * it is not reversed.
+   */
+  "interior-castle": {
+    slug: "interior-castle",
+    title: "The Interior Castle",
+    artist: "St. Teresa of Ávila · read by Discerning Hearts",
+    publisher: "discerning-hearts",
+    feedUrl: "https://www.discerninghearts.com/catholic-podcasts/category/audio-book/interior-castle-audio/feed/",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/66/79/a3/6679a39f-05e0-85cc-ce0f-70f82deca130/mza_17747298343110086331.jpg/600x600bb.jpg",
+    emoji: "🏰",
+    // "Introduction – The Interior Castle by St. Teresa of Avila audio mp3
+    // edition" → "Introduction". The dash is an en dash in the feed.
+    titleTail: "\\s*[–-]\\s*The Interior Castle by St\\.? ?Teresa of Avila.*$",
+    description: "St. Teresa of Ávila's Interior Castle, read one chapter at a time — the soul as a castle of many rooms, and the way through them to the King at its centre.",
   },
   // ── The Living Church ───────────────────────────────────────────────
   "living-church": {
@@ -915,6 +951,12 @@ function applyShowOverrides(data: ParsedFeed, show: Show): ParsedFeed {
   const withSermon = show.sermonMeta
     ? { ...data, episodes: data.episodes.map(sermonMeta) }
     : data;
+  if (show.titleTail) {
+    const tail = new RegExp(show.titleTail);
+    withSermon.episodes = withSermon.episodes.map((ep) => (
+      ep.title ? { ...ep, title: ep.title.replace(tail, "").trim() } : ep
+    ));
+  }
   if (!show.overrideEpisodeArtwork || !show.artwork) return withSermon;
   const art = show.artwork;
   return {
@@ -1746,9 +1788,22 @@ type ShowCourseMeta = {
    */
   courseSeasons?: readonly number[];
   numberedOnly?: boolean;
+  /**
+   * THE FEED IS ALREADY IN COURSE ORDER, so don't reverse it.
+   *
+   * A course plays oldest-first because a podcast publishes newest-first —
+   * true of every show we carry except a book read straight through and
+   * posted in reading order, where the newest item is chapter one (The
+   * Interior Castle: "Introduction" is the most recent post, "The Seventh
+   * Mansions chapter 4" the oldest). Reversing that starts a reader at the
+   * end of the book.
+   */
+  feedOrderIsCourseOrder?: boolean;
   seasons?: Record<number, { title?: string; minEpisode?: number; maxEpisode?: number }>;
 };
 const SHOW_COURSE_META: Record<string, ShowCourseMeta> = {
+  // A book, posted a chapter at a time in reading order — see the flag.
+  "interior-castle": { feedOrderIsCourseOrder: true },
   "way-of-love-curry": {
     /**
      * THE TWO THE SHOW ITSELF NAMED (owner, 2026-09-19: "What if we just do
@@ -1829,8 +1884,11 @@ async function buildCourses(shows: Show[]): Promise<CacCourse[]> {
     for (const season of seasons) {
       // Offered as a course at all? A season left out stays in the library.
       if (meta?.courseSeasons && !meta.courseSeasons.includes(season)) continue;
-      // The feed lists newest-first; a course plays oldest-first.
-      let episodes = [...(bySeason.get(season) ?? [])].reverse();
+      // The feed lists newest-first; a course plays oldest-first — unless the
+      // show posts in reading order (feedOrderIsCourseOrder).
+      let episodes = meta?.feedOrderIsCourseOrder
+        ? [...(bySeason.get(season) ?? [])]
+        : [...(bySeason.get(season) ?? [])].reverse();
       const seasonMeta = meta?.seasons?.[season];
       if (seasonMeta) {
         const { minEpisode, maxEpisode } = seasonMeta;

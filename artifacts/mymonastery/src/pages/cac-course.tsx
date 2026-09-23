@@ -127,7 +127,7 @@ export default function CacCoursePage() {
                 {online ? (
                   <>
                     We couldn't find that course. Head back to{" "}
-                    <Link href="/menu/learn" style={{ color: CAC.gold, textDecoration: "underline" }}>Courses</Link>.
+                    <Link href="/menu/learn" style={{ color: CAC.gold, textDecoration: "underline" }}>Learn</Link>.
                   </>
                 ) : (
                   // Offline the season never loaded; it isn't missing (see

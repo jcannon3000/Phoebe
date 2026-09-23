@@ -59,6 +59,16 @@ export default function MenuLearnPage() {
    */
   const { data: curryData } = useShowCourses("way-of-love-curry");
   const currySeasons = curryData?.courses ?? [];
+  /**
+   * THE INTERIOR CASTLE, read aloud (owner, 2026-09-23, with the Apple link:
+   * "COULD WE PUT THIS IN A COURSE UI?"). Same answer as Curry's show: no new
+   * page, no new endpoint — the feed is in the shows registry and the per-show
+   * courses endpoint hands it back as ONE course (it has no seasons), so this
+   * row goes straight to the course rather than to a show page with a single
+   * row on it. It follows the endpoint, so the count is never written down.
+   */
+  const { data: castleData } = useShowCourses("interior-castle");
+  const castleCourses = castleData?.courses ?? [];
   const shows = useMemo(() => {
     const byShow = new Map<string, { showSlug: string; showTitle: string; author: string; seasonCount: number }>();
     for (const c of cacData?.courses ?? []) {
@@ -71,7 +81,7 @@ export default function MenuLearnPage() {
   const online = useOnline();
   return (
     <MenuHub
-      title="Courses"
+      title="Learn"
       emoji="🎓"
       subtitle="Guided courses in the life of prayer."
       backLabel="Menu"
@@ -127,6 +137,29 @@ export default function MenuLearnPage() {
               : []),
           ],
         },
+        /**
+         * AUDIOBOOKS — a section of its own (owner, 2026-09-23: "Make the
+         * second section 'Audiobooks'" · "put it in there"). A book read
+         * straight through is a different thing from a course of talks, and
+         * saying so lets more of them arrive here without crowding Listen.
+         */
+        // Nothing to head when the feed hasn't answered yet — a lone header
+        // over empty space reads as a section that failed.
+        ...(castleCourses.length === 0 ? [] : [{
+          header: online ? "Audiobooks" : "Audiobooks · not available offline",
+          items: castleCourses.map((c) => {
+            const { completedCount, total } = courseCompletion(c);
+            return {
+              emoji: "🏰",
+              label: c.showTitle,
+              // Chapters, not episodes — it is a book.
+              sub: [c.author, completedCount > 0 ? `${completedCount} of ${total} complete` : `${total} chapters`]
+                .filter(Boolean).join(" · "),
+              muted: !online,
+              onClick: () => go(`/cac-course/${c.id}`),
+            };
+          }),
+        }]),
         {
           header: online ? "Watch" : "Watch · not available offline",
           items: [
