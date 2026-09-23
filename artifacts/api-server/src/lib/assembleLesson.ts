@@ -32,9 +32,16 @@ const LESSON_CHUNK_BUDGET_CHARS = 650;
 const INLINE_WEB_LESSONS = false;
 
 export type LessonKind =
+  // The office names its readings (owner, 2026-09-23: "use 'Old Testament',
+  // 'Epistle', and 'Gospel'"). first_/second_morning stay for the days that
+  // appoint their own morning pair — a Major Holy Day's two readings are not
+  // labelled in the book, so calling one of them the Epistle would be a guess.
+  | "ot_morning"
+  | "epistle_morning"
   | "first_morning"
   | "second_morning"
   | "gospel_morning"
+  | "epistle_evening"
   | "first_evening"
   | "gospel_evening"
   | "devotion_morning"
@@ -49,9 +56,12 @@ export type LessonKind =
 // the server so the title card is unambiguous (the client used to
 // derive it from a fragile eyebrow-string check).
 const LESSON_SUBTITLE: Record<LessonKind, string> = {
+  ot_morning: "The Old Testament Reading Appointed For This Morning",
+  epistle_morning: "The Epistle Appointed For This Morning",
   first_morning: "The First Lesson Appointed For This Morning",
   second_morning: "The Second Lesson Appointed For This Morning",
   gospel_morning: "The Gospel Appointed For This Morning",
+  epistle_evening: "The Epistle Appointed For This Evening",
   first_evening: "The First Lesson Appointed For This Evening",
   gospel_evening: "The Gospel Appointed For This Evening",
   devotion_morning: "The Lesson Appointed For This Morning",
@@ -62,9 +72,12 @@ const LESSON_SUBTITLE: Record<LessonKind, string> = {
 };
 
 const LESSON_EYEBROW: Record<LessonKind, string> = {
+  ot_morning: "THE OLD TESTAMENT",
+  epistle_morning: "THE EPISTLE",
   first_morning: "THE FIRST LESSON",
   second_morning: "THE SECOND LESSON",
   gospel_morning: "THE GOSPEL",
+  epistle_evening: "THE EPISTLE",
   first_evening: "THE FIRST LESSON",
   gospel_evening: "THE GOSPEL",
   devotion_morning: "A READING FROM SCRIPTURE",
@@ -75,9 +88,12 @@ const LESSON_EYEBROW: Record<LessonKind, string> = {
 };
 
 const LESSON_EMOJI: Record<LessonKind, string> = {
+  ot_morning: "📜",
+  epistle_morning: "📜",
   first_morning: "📜",
   second_morning: "📜",
   gospel_morning: "✝️",
+  epistle_evening: "📜",
   first_evening: "📜",
   gospel_evening: "✝️",
   devotion_morning: "📜",

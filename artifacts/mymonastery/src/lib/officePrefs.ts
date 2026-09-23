@@ -623,7 +623,10 @@ export function setPsalmCycle(v: PsalmCycle): void {
 export type ScripturePart = "psalms" | "ot" | "nt" | "gospel";
 export const SCRIPTURE_PARTS: ScripturePart[] = ["psalms", "ot", "nt", "gospel"];
 export const SCRIPTURE_PART_LABEL: Record<ScripturePart, string> = {
-  psalms: "Psalms", ot: "Old Testament", nt: "New Testament", gospel: "Gospel",
+  // "Epistle", not "New Testament" (owner, 2026-09-23: "Do not label the
+  // Epistle as 'New Testament', since the Gospel is also New Testament"). The
+  // stored key stays `nt`, so nobody's saved choice changes meaning.
+  psalms: "Psalms", ot: "Old Testament", nt: "Epistle", gospel: "Gospel",
 };
 const SCRIPTURE_SCOPE_KEY = "phoebe:scripture-scope";
 export function getScriptureParts(): ScripturePart[] {

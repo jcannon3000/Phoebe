@@ -118,23 +118,41 @@ export function computeAdvent1(year: number): Date {
   return addDays(dec3, -dow); // roll back to Sunday
 }
 
-// ── Liturgical Year (1 or 2) ───────────────────────────────────────────────────
+// ── The Daily Office Lectionary's year (One or Two) ────────────────────────────
 
-export function getLiturgicalYear(date: Date): 1 | 2 {
+/**
+ * WHICH YEAR OF THE TWO-YEAR CYCLE a date falls in — 1 or 2.
+ *
+ * The 1979 BCP's Daily Office Lectionary runs on two years, and the church
+ * year they turn on begins on the First Sunday of Advent (the Sunday between
+ * November 27 and December 3). The year is named for the calendar year that
+ * church year ENDS in: odd is Year One, even is Year Two.
+ *
+ * So 23 September 2026 is Year Two (its church year began in Advent 2025 and
+ * ends in 2026), and 29 November 2026 — Advent Sunday — begins Year One, which
+ * runs to the end of the church year in 2027. Computed from the date, never
+ * from a table of years.
+ *
+ * NOT the Sunday lectionary's year. The RCL that Sunday readings follow runs
+ * on a THREE-year cycle named A, B and C (lib/rclLectionary), and calling both
+ * of them "the liturgical year" is how they get confused for each other. This
+ * one is the Daily Office's, and its name says so.
+ */
+export function getDailyOfficeLectionaryYear(date: Date): 1 | 2 {
   const d = startOfDay(date);
   const year = d.getFullYear();
 
-  // Find most recent Advent 1 on or before this date
+  // The most recent Advent 1 on or before this date — which, before Advent,
+  // is last year's.
   let advent1 = computeAdvent1(year);
   if (advent1 > d) {
     advent1 = computeAdvent1(year - 1);
   }
 
-  // The church year that starts on this Advent 1 runs into the NEXT civil year.
-  // Year One: that next civil year is odd.
-  // Year Two: that next civil year is even.
-  const nextCivilYear = advent1.getFullYear() + 1;
-  return nextCivilYear % 2 === 1 ? 1 : 2;
+  // The church year that starts on that Advent 1 runs into the NEXT civil
+  // year, and that is the year it is named for. Odd → One, even → Two.
+  const churchYearEndsIn = advent1.getFullYear() + 1;
+  return churchYearEndsIn % 2 === 1 ? 1 : 2;
 }
 
 // ── Season ─────────────────────────────────────────────────────────────────────
@@ -1039,7 +1057,7 @@ export function getOfficeDay(date: Date): LiturgicalDay {
   const properNumber = getProperNumber(d);
   const feast = getObservedFeast(d);
   const holyDayReadings = feast ? HOLY_DAY_READINGS[feast.collectKey] ?? null : null;
-  const liturgicalYear = getLiturgicalYear(d);
+  const liturgicalYear = getDailyOfficeLectionaryYear(d);
   const collectKey = getCollectKey(
     season,
     weekInSeason,
