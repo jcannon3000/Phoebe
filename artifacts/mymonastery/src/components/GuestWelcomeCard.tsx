@@ -10,6 +10,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { hasUsedAPractice } from "@/lib/practiceOrderLearning";
+import { noteDayUsed, WELCOME_RETIRES_AFTER_DAYS } from "@/lib/daysUsed";
 import { CtaArrow } from "@/components/CtaArrow";
 
 const FONT = "'Space Grotesk', sans-serif";
@@ -42,6 +43,22 @@ export function GuestWelcomeCard() {
   const [usedAPractice] = useState<boolean>(() => hasUsedAPractice());
   const hasPrayed = usedAPractice
     || (!!prayerDays && (prayerDays.keptToday || prayerDays.last7 > 0 || prayerDays.streak > 0));
+  /**
+   * AND IT RETIRES ITSELF (owner, 2026-09-20: "after a use has been using
+   * phoebe for three days even if they are signed out, have it take away the
+   * welcome banners").
+   *
+   * Counted on the DEVICE (lib/daysUsed), so it is true with or without an
+   * account — which is the whole of the owner's "even if they are signed
+   * out". Noted here rather than in an effect because this card renders on
+   * every open of the home, and the count must include the open you are in:
+   * a third visit should be the one that takes the welcome away, not the
+   * fourth. Someone who has come back on three separate days is not a
+   * newcomer, and "Begin here" starts to read as an app that has not noticed
+   * them.
+   */
+  const [days] = useState<number>(() => noteDayUsed());
+  if (days >= WELCOME_RETIRES_AFTER_DAYS) return null;
   if (dismissed) return null;
   const dismiss = () => {
     try { localStorage.setItem(SEEN_KEY, "1"); } catch { /* private mode — hides for the session */ }
