@@ -199,6 +199,11 @@ export function HomeLearnSection() {
   // No gate: the Way of Love show is the Episcopal Church's, not CAC's, and
   // every course in the app is offered to everyone (see /menu/learn).
   const { data: curryData } = useShowCourses("way-of-love-curry");
+  // The Interior Castle, read aloud — a course like any other here, and a long
+  // one, so a reader part-way through the Sixth Mansions needs the way back in
+  // (owner, 2026-09-23: "Why is the audiobook not showing up in the home
+  // screen when it is being done?"). Same show endpoint, same no-gate reason.
+  const { data: castleData } = useShowCourses("interior-castle");
 
   const cards: LearnCard[] = [];
   /*
@@ -258,6 +263,28 @@ export function HomeLearnSection() {
       // above, and these are the same love, taught.
       emoji: "\u{2764}\u{FE0F}\u{200D}\u{1F525}",
       ...seasonCardLines(c.showTitle, c.title),
+      nextLabel: nextTitle ?? "",
+      href: `/cac-course/${c.id}`,
+      done: completedCount,
+      total,
+      started: true,
+      updatedAt,
+    });
+  }
+
+  /**
+   * …and the audiobook, which is one course of 28 chapters rather than a set
+   * of seasons. Its own loop rather than a shared one because each of these
+   * shows picks its own emoji and card lines; the shared filter below still
+   * decides whether it is offered.
+   */
+  for (const c of castleData?.courses ?? []) {
+    const { completedCount, total, nextTitle, isStarted, updatedAt } = courseCompletion(c);
+    if (!isStarted) continue;
+    cards.push({
+      key: `show-${c.id}`,
+      emoji: "\u{1F3F0}", // 🏰 — the castle of the title
+      title: c.showTitle,
       nextLabel: nextTitle ?? "",
       href: `/cac-course/${c.id}`,
       done: completedCount,
