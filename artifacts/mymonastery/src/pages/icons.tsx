@@ -48,7 +48,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
-import { logListenedContemplation } from "@/lib/listenedContemplation";
+import { logListenedContemplationAndRefresh } from "@/lib/listenedContemplation";
 import { useAuth } from "@/hooks/useAuth";
 
 const BG = "#091A10";
@@ -1460,7 +1460,7 @@ export default function IconsPage() {
       sitSatRef.current = 0;
       const cap = minutes != null ? minutes * 60 : 60 * 60;
       sitSecondsRef.current = Math.min(sat, cap);
-      if (sitSecondsRef.current > 0) logListenedContemplation({ seconds: sitSecondsRef.current, source: "icons", user });
+      if (sitSecondsRef.current > 0) logListenedContemplationAndRefresh({ seconds: sitSecondsRef.current, source: "icons", user });
     }
     setHistory((h) => [{ id: chosen.id, ymd }, ...h.filter((v) => v.id !== chosen.id)]);
     setPhase("done");

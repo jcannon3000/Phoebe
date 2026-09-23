@@ -48,7 +48,7 @@ import { isOnline } from "@/lib/offline";
 import { cachedImageUrl } from "@/lib/imageCache";
 import { FROST_BLUR } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
-import { logListenedContemplation } from "@/lib/listenedContemplation";
+import { logListenedContemplationAndRefresh } from "@/lib/listenedContemplation";
 import { useAuth } from "@/hooks/useAuth";
 import { artworkForDay } from "@/lib/visioArtworks";
 import { chooseArtwork, artworkById, alternatesForDay, readingUrl, canonicalRef, type Chosen } from "@/lib/visioSelect";
@@ -1018,7 +1018,7 @@ export default function VisioPage() {
       lookMsRef.current += Date.now() - lookSinceRef.current;
       lookSinceRef.current = null;
     }
-    logListenedContemplation({ seconds: lookMsRef.current / 1000, source: "visio", user });
+    logListenedContemplationAndRefresh({ seconds: lookMsRef.current / 1000, source: "visio", user });
   }, [step, DONE, user]);
   useEffect(() => { if (view?.essayUrl) preloadExternal(view.essayUrl); }, [view?.essayUrl]);
   useEffect(() => { if (passageUrl) preloadExternal(passageUrl); }, [passageUrl]);

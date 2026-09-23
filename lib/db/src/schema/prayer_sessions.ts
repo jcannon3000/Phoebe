@@ -85,6 +85,31 @@ export const prayerSurfaces = [
   // Compline listened to (Forward Movement's recording, ≥60% heard) — counts
   // as Compline, like the morning/evening office podcasts count as theirs.
   "compline-office-podcast",
+  /**
+   * THE FIVE THE PLAYER WAS ALREADY SENDING, and the server was rejecting
+   * (owner, 2026-09-23: "The pray as you go time is not logging").
+   *
+   * Each of these practices plays its audio through the one player and passes
+   * its own `sessionSurface`, so its listening time can be told apart from
+   * general podcast listening. None of them was ever added here — so every
+   * commit answered 400 "Unknown surface" and the time went nowhere. Silent,
+   * because the post is fire-and-forget: nothing in the app waits on it or
+   * says a word when it fails.
+   *
+   * The contemplation half of a listen was unaffected — that posts
+   * surface "contemplation" — which is why Pray As You Go could show
+   * contemplation minutes and still log no listening time at all.
+   *
+   * A new sessionSurface MUST be added here in the same change. The column is
+   * text, so nothing migrates; the allowlist in routes/prayer-sessions is the
+   * only gate. None of these credits an office: the office rollups name their
+   * surfaces one by one (routes/users.ts).
+   */
+  "payg-audio",
+  "fdd-audio",
+  "scripture-audio",
+  "abiding-lectio-audio",
+  "weekly-plan-episode",
 ] as const;
 export type PrayerSurface = (typeof prayerSurfaces)[number];
 

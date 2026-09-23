@@ -614,9 +614,13 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
      * the last commit, which is what Breathing Together logs too.
      */
     if (contemplationSource && total > 0) {
-      logListenedContemplation({ seconds: total, source: contemplationSource, user });
-      queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+      // AFTER the row lands, not beside it: invalidating first refetched the
+      // total from before this listen and cached it for the stale window, so
+      // the home showed yesterday's number until it was reloaded by hand.
+      void logListenedContemplation({ seconds: total, source: contemplationSource, user }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+      });
     }
     if (total > 0 && startedAt && user) {
       // Listening-time row (community metrics + streak). The office "prayed
@@ -693,9 +697,12 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
      */
     const seconds = Math.min(Math.round((Date.now() - sit.startedAt) / 1000), 60 * 60);
     if (seconds <= 0) return;
-    logListenedContemplation({ seconds, source: sit.source, user });
-    queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+    // Same order as above: the minutes must be on the server before anything
+    // asks for the total again, or the home greets you with the old one.
+    void logListenedContemplation({ seconds, source: sit.source, user }).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+    });
   }, [user, queryClient]);
 
   // The count-up itself. Recomputed from the start instant on every tick
