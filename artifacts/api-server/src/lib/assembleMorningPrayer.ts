@@ -17,7 +17,7 @@ import {
 } from "@workspace/db";
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getCanticles } from "./canticleSelector";
-import { getLectionaryReadings } from "./lectionary";
+import { getLectionaryReadings, planMorningLessons } from "./lectionary";
 import { bibleGatewayUrl } from "./bibleGatewayUrl";
 import {
   parsePsalmRef,
@@ -520,7 +520,19 @@ export async function assembleMorningPrayer(
 
   // 2. Assemble
   const liturgicalDay = getOfficeDay(date);
-  const { psalms, lesson1, lesson2, lesson3 } = getLectionaryReadings(liturgicalDay);
+  const { psalms, lesson1, lesson2, lesson3, weekKey } = getLectionaryReadings(liturgicalDay);
+  /**
+   * TWO READINGS, BY THE YEAR (owner, 2026-09-23). Year One reads the Epistle
+   * in the morning and Year Two the Gospel; the Old Testament is always first
+   * and the third reading is not shown. See planMorningLessons for the rule
+   * and for the days that appoint their own morning pair.
+   */
+  const morning = planMorningLessons(
+    { lesson1, lesson2, lesson3 },
+    liturgicalDay.liturgicalYear === 1 ? 1 : 2,
+  );
+  /** A day that names its own morning readings — see planMorningLessons. */
+  const dayAppointsItsOwn = weekKey === "holy_day" || !(lesson3 ?? "").trim();
   const { afterOT, afterNT } = getCanticles(liturgicalDay);
 
   // Parse appointed psalms up front — we keep both the bare number
@@ -951,8 +963,11 @@ export async function assembleMorningPrayer(
   // chunked numbered-verse slides (matching the psalm treatment) when
   // the local Bible JSON has the book; deuterocanonical readings fall
   // back to a single reference-only "open your bible" card.
-  if (isLessonPresent(lesson1)) {
-    for (const s of buildLessonSlides(lesson1, "first_morning", id)) {
+  if (isLessonPresent(morning.first)) {
+    // A holy day's own pair is not labelled in the book, so it keeps the
+    // neutral "first lesson"; an ordinary day's first reading IS the Old
+    // Testament and says so.
+    for (const s of buildLessonSlides(morning.first, dayAppointsItsOwn ? "first_morning" : "ot_morning", id)) {
       slides.push(s);
     }
   }
@@ -968,21 +983,31 @@ export async function assembleMorningPrayer(
     bcpReference: afterOTData?.bcpReference ?? null,
   });
 
-  // Second Lesson — Epistle (the new layout: MP shows OT + Epistle,
-  // EP shows Gospel only). Skipped on feast days where the BCP
-  // appoints no Epistle at MP.
-  //
-  // The SAME day's Gospel (lesson3, which Evening Prayer reads as its own
-  // lesson) rides along as an optional extra on this slide — see
-  // buildLessonSlides' extraMetadata param and the "Read Gospel" button it
-  // powers client-side. Owner: "the Gospel is what the evening prayer shows" —
-  // confirming lesson3 (not a fresh lookup) is the right source.
-  if (isLessonPresent(lesson2)) {
-    const gospelTrimmed = (lesson3 ?? "").trim();
-    const gospelExtra = isLessonPresent(gospelTrimmed)
-      ? { gospelReference: gospelTrimmed, gospelReadUrl: bibleGatewayUrl(gospelTrimmed) }
+  /**
+   * The second reading: the Epistle in Year One, the Gospel in Year Two
+   * (owner, 2026-09-23). The one the morning does NOT read rides along as an
+   * optional extra on this slide — the button the client draws under the
+   * title — so the day's third reading is still a tap away. Its name travels
+   * with it, because in Year One that extra is the Gospel and in Year Two it
+   * is the Epistle, and a button that says the wrong one is worse than none.
+   *
+   * The metadata keys keep the `gospel*` names they have always had: saved
+   * offline pages and lib/officeReadUrls read them, and renaming them would
+   * strand the copies already on people's phones.
+   */
+  if (isLessonPresent(morning.second)) {
+    const extraTrimmed = (morning.extra ?? "").trim();
+    const extra = isLessonPresent(extraTrimmed)
+      ? {
+          gospelReference: extraTrimmed,
+          gospelReadUrl: bibleGatewayUrl(extraTrimmed),
+          extraReadingLabel: morning.extraKind === "gospel" ? "Gospel" : "Epistle",
+        }
       : undefined;
-    for (const s of buildLessonSlides(lesson2, "second_morning", id, gospelExtra)) {
+    const secondKind = dayAppointsItsOwn
+      ? "second_morning"
+      : morning.secondKind === "gospel" ? "gospel_morning" : "epistle_morning";
+    for (const s of buildLessonSlides(morning.second, secondKind, id, extra)) {
       slides.push(s);
     }
   }
