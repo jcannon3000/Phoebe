@@ -947,6 +947,21 @@ export function scrapeRoundtables(html: string, fallbackTitle: string): ParsedFe
 // Apply show-level artwork overrides to a parsed feed — called after
 // every fetch/parse and before caching, so the override is baked in and
 // callers never need to think about it.
+/**
+ * PER-SHOW TITLE TIDYING, past what titleTail can do with one regex.
+ *
+ * The Interior Castle's feed capitalises "Chapter" for the Third and Fourth
+ * Mansions and not for the First, Fifth, Sixth or Seventh, and calls the
+ * Second Mansions — which really does have only one chapter — "The Second
+ * Mansions Only Chapter". In a list of 28 rows read top to bottom, both read
+ * as mistakes. Nothing is renamed, only cased and shortened.
+ */
+const TITLE_REWRITES: Record<string, (title: string) => string> = {
+  "interior-castle": (t) => t
+    .replace(/^The Second Mansions Only Chapter$/i, "The Second Mansions")
+    .replace(/\bchapter\b/g, "Chapter"),
+};
+
 function applyShowOverrides(data: ParsedFeed, show: Show): ParsedFeed {
   const withSermon = show.sermonMeta
     ? { ...data, episodes: data.episodes.map(sermonMeta) }
@@ -955,6 +970,12 @@ function applyShowOverrides(data: ParsedFeed, show: Show): ParsedFeed {
     const tail = new RegExp(show.titleTail);
     withSermon.episodes = withSermon.episodes.map((ep) => (
       ep.title ? { ...ep, title: ep.title.replace(tail, "").trim() } : ep
+    ));
+  }
+  const rewrite = TITLE_REWRITES[show.slug];
+  if (rewrite) {
+    withSermon.episodes = withSermon.episodes.map((ep) => (
+      ep.title ? { ...ep, title: rewrite(ep.title) } : ep
     ));
   }
   if (!show.overrideEpisodeArtwork || !show.artwork) return withSermon;
