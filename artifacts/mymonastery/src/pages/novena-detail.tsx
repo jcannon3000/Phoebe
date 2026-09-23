@@ -7,14 +7,14 @@ import { useRhythmState } from "@/hooks/useRhythmState";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
-import { playOpeningSwell } from "@/lib/amenFeedback";
 import { NOVENAS_ENABLED } from "@/lib/novenaFlag";
 
-// Novena preview — a slideshow, same shell as novena.tsx's reading deck (and
-// guided-prayer/the Examen): title, then one slide per piece of context
-// (History, Intention, Source), then a closing slide that starts the flow.
-// Tapping Begin there moves to a final "options" slide — replace-vs-addition,
-// with addition presented first/primary — instead of a separate popup.
+// Novena preview — ONE PAGE, the way today's prayer is (owner, 2026-09-23:
+// "We dont need a slideshow, just have then be like a relfection"). The title,
+// then whatever this novena actually has to say for itself — History,
+// Intention, Source — read in one scroll, with Begin at the foot of it.
+// Begin moves to the replace-vs-addition choice, addition first/primary,
+// which stays a step of its own because it is a question, not reading.
 
 const FONT = "'Space Grotesk', sans-serif";
 const BG = "#0C1F12";
@@ -22,8 +22,6 @@ const WARM = "#F0EDE6";
 const EYEBROW = "rgba(143,175,150,0.75)";
 const SAGE = "#8FAF96";
 const ACCENT = "rgba(143,175,150,0.5)";
-const DOT_ON = "#8FAF96";
-const DOT_OFF = "rgba(143,175,150,0.3)";
 const FAINT = "rgba(143,175,150,0.6)";
 const CARD_BG = "rgba(9,26,16, 0.4)";
 const CARD_BORDER = "rgba(46,107,64,0.4)";
@@ -43,50 +41,9 @@ type Novena = {
   id: number; title: string; saint: string | null; sourceNote: string | null; dayCount: number;
   history: string | null; intention: string | null; isCurrent: boolean; lastCompletedAt: string | null;
 };
-// After the fixed slides, "options" is the replace-vs-addition choice,
+// After the page itself, "options" is the replace-vs-addition choice,
 // "slot" is the morning/evening sub-choice, "added" is the confirmation.
 type Stage = "deck" | "options" | "slot" | "added";
-
-// A long History/Intention/Source paragraph reads as cramped (and can
-// overflow) on one mobile slide — split it at paragraph, then sentence,
-// breaks into chunks under maxChars so each stays comfortably on-screen.
-function splitSlideText(text: string, maxChars = 420): string[] {
-  const paragraphs = text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-  const chunks: string[] = [];
-  let current = "";
-  const flush = () => { if (current.trim()) chunks.push(current.trim()); current = ""; };
-  for (const para of paragraphs) {
-    if (para.length > maxChars) {
-      // A single overlong paragraph — break on sentence boundaries instead.
-      /**
-       * NO LOOKBEHIND. Safari gained it in 16.4 and the build targets
-       * safari16, so esbuild ships this as `new RegExp("(?<=…")` — which
-       * throws SyntaxError at RUNTIME on iOS 16.0–16.3 and drops the whole app
-       * to the error boundary, on any novena with a paragraph past the limit.
-       * Splitting on the punctuation and rejoining it does the same work with
-       * no lookbehind at all.
-       */
-      const sentences = para
-        .split(/([.!?])\s+/)
-        .reduce<string[]>((acc, part, i) => {
-          if (i % 2 === 1) acc[acc.length - 1] = (acc[acc.length - 1] ?? "") + part;
-          else acc.push(part);
-          return acc;
-        }, [])
-        .filter((x) => x.trim().length > 0);
-      for (const sentence of sentences) {
-        if (current.length + sentence.length + 1 > maxChars) flush();
-        current += (current ? " " : "") + sentence;
-      }
-      flush();
-      continue;
-    }
-    if (current.length + para.length + 2 > maxChars) flush();
-    current += (current ? "\n\n" : "") + para;
-  }
-  flush();
-  return chunks.length > 0 ? chunks : [text];
-}
 
 export default function NovenaDetailPage() {
   const params = useParams<{ id: string }>();
@@ -112,7 +69,6 @@ export default function NovenaDetailPage() {
   const otherActive = activeNovena && !isCurrent;
   const bothSidesOn = morningActive && eveningActive;
 
-  const [step, setStep] = useState(0);
   const [stage, setStage] = useState<Stage>("deck");
   const [skipChecked, setSkipChecked] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -166,36 +122,12 @@ export default function NovenaDetailPage() {
     );
   }
 
-  // The fixed slides — title, then only the pieces this novena actually has,
-  // then the closing slide with the primary action. A long History/Intention/
-  // Source is split into multiple same-kind slides (part label in the
-  // eyebrow) rather than crowding one mobile screen.
-  type Slide = { kind: "title" } | { kind: "history" | "intention" | "source"; text: string; part?: string } | { kind: "close" };
-  const textSlides = (kind: "history" | "intention" | "source", text: string | null): Slide[] =>
-    text ? splitSlideText(text).map((chunk, i, all) => ({ kind, text: chunk, part: all.length > 1 ? `${i + 1}/${all.length}` : undefined })) : [];
-  const slides: Slide[] = [
-    { kind: "title" },
-    ...textSlides("history", novena.history),
-    ...textSlides("intention", novena.intention),
-    ...textSlides("source", novena.sourceNote),
-    { kind: "close" },
-  ];
-  const slide = slides[step]!;
-  const isFirst = step === 0;
-  const isLast = step === slides.length - 1;
-
-  function next() {
-    if (isLast) {
-      if (isCurrent) { setLocation("/novena"); return; }
-      setStage("options");
-      return;
-    }
-    setStep((s) => s + 1);
-    if (step === 0) { try { playOpeningSwell(); } catch { /* non-fatal */ } }
+  function begin() {
+    if (isCurrent) { setLocation("/novena"); return; }
+    setStage("options");
   }
   function back() {
-    if (step === 0) { setLocation("/novena-library"); return; }
-    setStep((s) => s - 1);
+    setLocation("/novena-library");
   }
 
   function chooseAddition() {
@@ -205,8 +137,6 @@ export default function NovenaDetailPage() {
     if (bothSidesOn) { setStage("slot"); return; }
     start.mutate(morningActive ? "morning" : eveningActive ? "evening" : null);
   }
-
-  const primaryLabel = isLast ? (isCurrent ? "Continue" : "Begin") : "Continue";
 
   return (
     <div className="relative" style={{ minHeight: "var(--app-dvh)", background: BG, color: WARM, fontFamily: FONT, isolation: "isolate", overflow: "hidden" }}>
@@ -241,63 +171,73 @@ export default function NovenaDetailPage() {
       </header>
 
       <main
-        className="flex flex-col items-center text-center px-6 w-full"
+        className={stage === "deck" ? "flex flex-col px-6 w-full" : "flex flex-col items-center text-center px-6 w-full"}
         style={{
-          maxWidth: 560, margin: "0 auto", minHeight: "var(--app-dvh)", justifyContent: "center",
-          paddingTop: "clamp(24px, 6dvh, 72px)",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 168px)",
+          maxWidth: 560, margin: "0 auto", minHeight: "var(--app-dvh)",
+          justifyContent: stage === "deck" ? "flex-start" : "center",
+          paddingTop: stage === "deck" ? "calc(var(--safe-top) + 60px)" : "clamp(24px, 6dvh, 72px)",
+          paddingBottom: stage === "deck"
+            ? "calc(env(safe-area-inset-bottom, 0px) + 48px)"
+            : "calc(env(safe-area-inset-bottom, 0px) + 168px)",
           position: "relative", zIndex: 1,
         }}
       >
         <AnimatePresence mode="wait">
           {stage === "deck" && (
             <motion.div
-              key={`slide-${step}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "center" }}
+              key="deck"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              style={{ width: "100%", textAlign: "left" }}
             >
-              {slide.kind === "title" && (
-                <>
-                  <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
-                    {novena.dayCount}-Day Novena{novena.saint ? ` · ${novena.saint}` : ""}
-                  </p>
-                  <h1 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(24px, 6.2vw, 34px)", lineHeight: 1.2, letterSpacing: "-0.01em" }}>
-                    {novena.title}
-                  </h1>
-                  {isCurrent && (
-                    <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13, marginTop: 14 }}>
-                      Day {activeNovena!.currentDay} of {activeNovena!.dayCount} · already in your routine
+              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 10 }}>
+                {novena.dayCount}-Day Novena{novena.saint ? ` · ${novena.saint}` : ""}
+              </p>
+              <h1 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(24px, 6.2vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", margin: 0 }}>
+                {novena.title}
+              </h1>
+              {isCurrent && (
+                <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13, marginTop: 12 }}>
+                  Day {activeNovena!.currentDay} of {activeNovena!.dayCount} · already in your routine
+                </p>
+              )}
+              {!isCurrent && novena.lastCompletedAt && (
+                <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13, marginTop: 12 }}>
+                  Last completed {new Date(novena.lastCompletedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                </p>
+              )}
+
+              {/* Only the parts this novena actually has — nothing is padded
+                  out to fill a slide any more, because there are no slides. */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 26, marginTop: 30 }}>
+                {([
+                  ["History", novena.history],
+                  ["Intention", novena.intention],
+                  ["Source", novena.sourceNote],
+                ] as const).map(([label, text]) => text ? (
+                  <section key={label}>
+                    <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", margin: "0 0 10px" }}>
+                      {label}
                     </p>
-                  )}
-                  {!isCurrent && novena.lastCompletedAt && (
-                    <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13, marginTop: 14 }}>
-                      Last completed {new Date(novena.lastCompletedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                    <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: FONT, fontSize: "clamp(15px, 4.2vw, 17px)", lineHeight: 1.6, whiteSpace: "pre-line" }}>
+                      {text}
                     </p>
-                  )}
-                </>
-              )}
-              {(slide.kind === "history" || slide.kind === "intention" || slide.kind === "source") && (
-                <>
-                  <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
-                    {slide.kind === "history" ? "History" : slide.kind === "intention" ? "Intention" : "Source"}
-                    {slide.part ? ` · ${slide.part}` : ""}
-                  </p>
-                  <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: FONT, fontSize: "clamp(15px, 4.2vw, 19px)", lineHeight: 1.5, whiteSpace: "pre-line" }}>
-                    {slide.text}
-                  </p>
-                </>
-              )}
-              {slide.kind === "close" && (
-                <>
-                  <p style={{ fontSize: 36, marginBottom: 16 }} aria-hidden>🕊️</p>
-                  <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: FONT, fontSize: "clamp(15px, 4.2vw, 19px)", lineHeight: 1.5 }}>
-                    One day rides in your daily routine at a time — it only advances when you mark that day complete, never automatically by the calendar. You can stop at any point.
-                  </p>
-                </>
-              )}
+                  </section>
+                ) : null)}
+              </div>
+
+              <div style={{ background: CARD_BG, border: `1px solid ${CARD_BORDER}`, borderRadius: 12, padding: "14px 16px", marginTop: 30 }}>
+                <p style={{ color: "rgba(240,237,230,0.88)", margin: 0, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.6 }}>
+                  One day rides in your daily routine at a time — it only advances when you mark that day complete, never automatically by the calendar. You can stop at any point.
+                </p>
+              </div>
+
+              <div className="flex justify-center" style={{ marginTop: 30 }}>
+                <button type="button" onClick={begin} className="rounded-full py-3 px-12 transition-opacity hover:opacity-90 active:scale-[0.99]" style={PILL}>
+                  {isCurrent ? "Today's prayer" : "Begin"}
+                </button>
+              </div>
             </motion.div>
           )}
 
@@ -393,18 +333,6 @@ export default function NovenaDetailPage() {
       </main>
 
       <div className="absolute left-0 right-0 flex flex-col items-center" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 22px)", zIndex: 2 }}>
-        {stage === "deck" && (
-          <div className="flex items-center justify-center gap-1.5" style={{ marginBottom: 16 }}>
-            {slides.map((_, i) => (
-              <span key={i} className="block rounded-full" style={{ width: 6, height: 6, background: i <= step ? DOT_ON : DOT_OFF }} />
-            ))}
-          </div>
-        )}
-        {stage === "deck" && (
-          <button type="button" onClick={next} className="rounded-full py-3 px-12 transition-opacity hover:opacity-90 active:scale-[0.99]" style={PILL}>
-            {primaryLabel}
-          </button>
-        )}
         {stage === "options" && (
           <button type="button" onClick={() => setStage("deck")} style={{ color: FAINT, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, fontSize: 12.5 }}>
             Cancel

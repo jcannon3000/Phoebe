@@ -2,6 +2,7 @@ import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { NOVENAS_ENABLED } from "@/lib/novenaFlag";
 
 // ── The practices, as one list ───────────────────────────────────────────────
 //
@@ -63,8 +64,20 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // there is no side to take a length from, so their own default stands.
     { offlineKey: "contemplation", emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", href: "/contemplation?begin=1" },
     { offlineKey: "lectio", emoji: "📜", label: "Lectio Divina", sub: "Meditate on today's readings", href: "/lectio" },
-    // Novenas hidden for all users per owner request (2026-08-07) — see
-    // useRhythmState.ts's NOVENAS_ENABLED comment for why.
+    /**
+     * NOVENAS (owner, 2026-09-23: "Could we try to do novanas again, we would
+     * put it under practices"). This row IS the entry point — it opens the
+     * library, where one novena at a time is taken into the routine; the
+     * novena already in the routine opens straight into today's prayer
+     * (pages/novena-detail redirects when it's the current one).
+     *
+     * NO offlineKey: the library, the day's text and marking a day complete
+     * all need the server, so with no connection it belongs under "Not
+     * available" rather than being offered and failing.
+     */
+    ...(NOVENAS_ENABLED ? [
+      { emoji: "🕊️", label: "Novenas", sub: "Nine days of prayer, one day at a time", href: "/novena-library" },
+    ] : []),
     { offlineKey: "examen", emoji: "🌗", label: "The Examen", sub: "Review the day with God", href: "/examen" },
     /**
      * PRAY AS YOU GO DAILY (owner, 2026-09-18: "Have pray as you ago availible
