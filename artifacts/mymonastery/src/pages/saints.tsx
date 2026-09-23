@@ -5,6 +5,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { allCommemorations, searchCommemorations, type Commemoration } from "@/lib/commemorations";
 import { getSaintsRead, markSaintRead } from "@/lib/saintsRead";
+import { markHagiographyRead } from "@/lib/cacReadState";
 import { pictureFor } from "@/lib/commemorationPictures";
 
 // ── Meditating on the lives of the saints ───────────────────────────────────
@@ -115,6 +116,11 @@ export default function SaintsPage() {
   const readIt = () => {
     if (!chosen) return;
     markSaintRead({ id: `${chosen.month}-${chosen.day}`, name: chosen.name, when: chosen.when });
+    // …and the day's reading, the way the home's card records it. markSaintRead
+    // is this page's own history and never left the device, so a life read
+    // from Practices counted as nothing at all — for the person's own record
+    // and for the analytics (owner, 2026-09-23).
+    markHagiographyRead();
     void openExternal(chosen.url, { reader: true });
     // A face for the life, where there is one (owner: "if you find a picture
     // for that person, put it on a slide after the heigriohpy"). Only 216 of

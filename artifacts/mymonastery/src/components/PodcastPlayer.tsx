@@ -832,6 +832,11 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         durationSeconds: ep.durationSeconds,
         publishedAt: ep.publishedAt,
         sessionSurface: "fdd-audio",
+        // HEARD IS READ (owner, 2026-09-23, on the analytics): every other
+        // door to Forward Day by Day credits the reading once it has been
+        // taken in; this one — the offer after the office — did not, so a
+        // person who listened here had no record of the day's reading at all.
+        creditReflection: "fdd",
         showHref: "/podcasts/show/forward-day-by-day",
       });
     } catch { setFddOffer(false); }

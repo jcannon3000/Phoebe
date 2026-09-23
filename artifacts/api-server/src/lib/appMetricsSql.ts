@@ -172,6 +172,56 @@ kept_raw AS (
   FROM sess WHERE source IN ('credit:fdd', 'credit:cac', 'credit:ssje', 'credit:vts')
   UNION ALL
   SELECT person, day, 'reading', 'read:scripture' FROM sess WHERE source = 'credit:readings'
+  UNION ALL
+  /**
+   * PRAYER HEARD, NOT READ (owner, 2026-09-23: "the analitics are not
+   * accurate, they are not counting all the practices").
+   *
+   * Four practices play their audio through the one player and tag the
+   * session with their own surface. Those rows were being REJECTED by the
+   * server's surface allowlist until today, so there was nothing here to
+   * count; now they land, and this counts them under the SAME key the read
+   * version uses. the kept CTE is DISTINCT person/day/practice, so someone who
+   * both reads Forward Day by Day and hears it is one kept practice, not two.
+   *
+   * The listen is the whole practice for these: Pray As You Go and Guided
+   * Lectio have no page to read, and a scripture reading heard is the
+   * reading kept.
+   */
+  SELECT person, day, 'reading', 'read:payg' FROM sess WHERE surface = 'payg-audio'
+  UNION ALL
+  SELECT person, day, 'reading', 'read:fdd' FROM sess WHERE surface = 'fdd-audio'
+  UNION ALL
+  SELECT person, day, 'reading', 'read:scripture' FROM sess WHERE surface = 'scripture-audio'
+  UNION ALL
+  SELECT person, day, 'other', 'lectio' FROM sess WHERE surface = 'abiding-lectio-audio'
+  UNION ALL
+  SELECT person, day, 'other', 'weekly-plan' FROM sess WHERE surface = 'weekly-plan-episode'
+  UNION ALL
+  /**
+   * A NOVENA IS A PRACTICE KEPT. Nothing here read its table, so a person
+   * praying a novena every day for nine days counted as praying on none of
+   * them.
+   *
+   * HONEST LIMIT: novena_progress keeps only the LAST day completed (it is
+   * state, not a log — see the schema's own note), so this can credit that
+   * day and no earlier one. Counting all nine would need a per-day row, which
+   * is a change to the novena route rather than to this query.
+   */
+  SELECT p.person, np.last_completed_local_date AS day, 'other', 'novena'
+  FROM novena_progress np JOIN people p ON p.user_id = np.user_id
+  WHERE np.last_completed_local_date >= $6
+  UNION ALL
+  /**
+   * LISTENING TO A TALK, A SERMON OR A COURSE LESSON. Surface 'podcast' is
+   * what every one of those posts, and it was counted nowhere: only people
+   * who already keep the Podcasts card got a practice_completion row for it,
+   * so the same act counted for one person and not another.
+   */
+  SELECT person, day, 'other', 'podcasts' FROM sess WHERE surface = 'podcast'
+  UNION ALL
+  -- The daily prayer slideshow — its own surface, never counted.
+  SELECT person, day, 'other', 'slideshow' FROM sess WHERE surface = 'slideshow'
 
   UNION ALL
   -- ── Everything else ───────────────────────────────────────────────────
