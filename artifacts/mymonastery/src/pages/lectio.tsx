@@ -128,7 +128,23 @@ export default function LectioPage() {
    */
   useEffect(() => {
     if (getLectioMode() !== "audio") return;
-    try { if (new URLSearchParams(search).get("read") === "1") return; } catch { /* fall through */ }
+    try {
+      const q = new URLSearchParams(search);
+      if (q.get("read") === "1") return;
+      /**
+       * NOT THIS SUNDAY'S (owner, 2026-09-23: "the this sunday lectio card got
+       * wired to open the daily audio, return it to the text lectio on this
+       * sunday").
+       *
+       * The audio session is the DAILY one — today's reading, read aloud. This
+       * Sunday's card asks for something else: lectio on one of the readings
+       * for the coming Sunday, which that session does not have and cannot
+       * play. The hand-off was reading the rule alone, so anyone whose rule
+       * kept lectio as audio tapped This Sunday and landed in today's
+       * recording, with the Sunday it came from nowhere on screen.
+       */
+      if (q.get("sunday") === "1") return;
+    } catch { /* fall through */ }
     setLocation("/reflect/lectio");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
