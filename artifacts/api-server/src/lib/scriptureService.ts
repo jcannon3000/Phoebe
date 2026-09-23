@@ -20,6 +20,7 @@ import {
 } from "@workspace/db";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { cleanReference } from "./referenceText";
 
 /* ------------------------------------------------------------------ */
 /*  Load Bible JSON once at module init                                */
@@ -96,6 +97,9 @@ const BOOK_MAP: Record<string, string> = {
   "1 sam": "I Samuel", "2 sam": "II Samuel",
   "1 kgs": "I Kings", "2 kgs": "II Kings",
   "1 chr": "I Chronicles", "2 chr": "II Chronicles",
+  // The Daily Office table writes "2 Chron." — without these two keys its
+  // eight Chronicles readings found no text at all (swept 2026-09-23).
+  "1 chron": "I Chronicles", "2 chron": "II Chronicles",
   neh: "Nehemiah", esth: "Esther",
   prov: "Proverbs", eccl: "Ecclesiastes", eccles: "Ecclesiastes",
   isa: "Isaiah", jer: "Jeremiah", lam: "Lamentations",
@@ -146,6 +150,14 @@ interface VerseRange {
  * Resolve a book name string (possibly abbreviated, with periods)
  * to the canonical name used in the JSON data.
  */
+/**
+ * BOOKS WITH ONE CHAPTER, where the table cites verses alone: "Jude 17-25",
+ * "Obadiah 15-21". Everywhere else a bare number is a CHAPTER, so without this
+ * the parser read "17-25" as chapters 17 to 25 of a book that has one, and
+ * found nothing.
+ */
+const SINGLE_CHAPTER_BOOKS = new Set(["Obadiah", "Philemon", "2 John", "3 John", "Jude"]);
+
 function resolveBookName(raw: string): string | null {
   const key = raw
     .replace(/\./g, "")
@@ -246,8 +258,19 @@ function parseReference(reference: string): {
   bookName: string;
   ranges: VerseRange[];
 } | null {
+  // Footnote marks first — the printed table carries them beside a citation
+  // ("Esther 4:4-17*") and they are not part of it. See lib/referenceText.
   // Strip parenthetical optional verses: "1:1-7(8-10)" → "1:1-7"
-  const ref = reference
+  /**
+   * A CHOICE IS NOT A CITATION. Three readings offer one ("Luke 1:67-80 or
+   * Matt. 1:1-17", "John 11:1-27, or 12:1-10"): the book lets the reader pick,
+   * and the parser could do neither. The first is what the book prints first,
+   * so it is what we read; the reference on the slide still shows both, so
+   * nobody is told the choice does not exist.
+   */
+  const firstAlternative = (cleanReference(reference).split(/,?\s+\bor\b\s+/i)[0] ?? "").trim();
+
+  const ref = firstAlternative
     .trim()
     // Normalize em/en dashes to a hyphen, then collapse the lectionary's
     // chapter-spanning double-hyphen ("1 Cor. 10:14--11:1") to a single "-" so
@@ -269,6 +292,21 @@ function parseReference(reference: string): {
 
   const bookName = resolveBookName(rawBook);
   if (!bookName) return null;
+
+  // "Jude 17-25" means verses, not chapters — see SINGLE_CHAPTER_BOOKS.
+  if (SINGLE_CHAPTER_BOOKS.has(bookName) && !location.includes(":")) {
+    const segments = location.split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+    const ranges: VerseRange[] = segments.map((seg) => {
+      const [from, to] = seg.split("-").map((x) => parseInt(x, 10));
+      return {
+        startChapter: 1,
+        startVerse: Number.isFinite(from) ? from : 1,
+        endChapter: 1,
+        endVerse: Number.isFinite(to) ? to : (Number.isFinite(from) ? from : Infinity),
+      };
+    });
+    if (ranges.length > 0) return { bookName, ranges };
+  }
 
   if (!location) {
     return {

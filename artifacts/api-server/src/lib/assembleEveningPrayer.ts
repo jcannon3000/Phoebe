@@ -12,7 +12,7 @@ import { inArray } from "drizzle-orm";
 import { db, bcpTextsTable } from "@workspace/db";
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getEveningCanticles } from "./eveningCanticleSelector";
-import { getLectionaryReadings } from "./lectionary";
+import { getLectionaryReadings, planEveningLesson } from "./lectionary";
 import { bibleGatewayUrl } from "./bibleGatewayUrl";
 import {
   parsePsalmRef,
@@ -486,27 +486,14 @@ export async function assembleEveningPrayer(
   // happen to have lesson3 blank (e.g. Palm Sunday, or a Major Holy Day, which
   // appoint their own morning pair — falling back would duplicate what the
   // morning just read).
-  const lesson3Trimmed = (readings.lesson3 ?? "").trim();
-  const hasLesson3 = lesson3Trimmed.length > 0 && !/^-+$/.test(lesson3Trimmed);
-  const useEveFallback = !hasLesson3 && readings.isEveOverride;
-  const eveningTakesTheGospel = liturgicalDay.liturgicalYear === 1;
-  const lesson2Trimmed = (readings.lesson2 ?? "").trim();
-  const hasLesson2 = lesson2Trimmed.length > 0 && !/^-+$/.test(lesson2Trimmed);
-  const lessonForEvening = hasLesson3
-    ? (eveningTakesTheGospel ? readings.lesson3 : (hasLesson2 ? readings.lesson2 : readings.lesson3))
-    : useEveFallback
-      ? readings.lesson2
-      : "";
+  const evening = planEveningLesson(readings, liturgicalDay.liturgicalYear === 1 ? 1 : 2);
+  const lessonForEvening = evening.reference;
   // Eyebrow + emoji track the lesson actually being shown: the Gospel cross on
-  // Gospel days, the scroll on the Epistle and on Eve NT-fallback days. The
-  // Epistle is NAMED (owner, 2026-09-23: do not call it "New Testament" — the
-  // Gospel is New Testament too); an Eve's single NT lesson keeps the neutral
-  // "first lesson", since the book does not say which it is.
-  const showingGospelTonight = hasLesson3 && (eveningTakesTheGospel || !hasLesson2);
-  const showingEpistleTonight = hasLesson3 && !showingGospelTonight;
-  const lessonKindForEvening = showingGospelTonight
-    ? "gospel_evening"
-    : showingEpistleTonight ? "epistle_evening" : "first_evening";
+  // Gospel nights, the scroll on the Epistle and on an Eve's unnamed lesson.
+  const lessonKindForEvening =
+    evening.kind === "gospel" ? "gospel_evening"
+    : evening.kind === "epistle" ? "epistle_evening"
+    : "first_evening";
   // Title card + chunked numbered-verse slides — same shape as MP's
   // lessons. The reference-only fallback fires automatically inside
   // buildLessonSlides if the lesson happens to land on a deuteron-

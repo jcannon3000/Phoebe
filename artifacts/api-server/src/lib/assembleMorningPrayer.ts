@@ -1004,9 +1004,10 @@ export async function assembleMorningPrayer(
           extraReadingLabel: morning.extraKind === "gospel" ? "Gospel" : "Epistle",
         }
       : undefined;
-    const secondKind = dayAppointsItsOwn
-      ? "second_morning"
-      : morning.secondKind === "gospel" ? "gospel_morning" : "epistle_morning";
+    // The plan names the reading even on days that appoint their own, by the
+    // book it comes from — so the Presentation's John 8 reads "THE GOSPEL"
+    // rather than "THE SECOND LESSON".
+    const secondKind = morning.secondKind === "gospel" ? "gospel_morning" : "epistle_morning";
     for (const s of buildLessonSlides(morning.second, secondKind, id, extra)) {
       slides.push(s);
     }

@@ -18,6 +18,7 @@
 import { lookupLessonVerses, type LessonVerse } from "./scriptureService";
 import { bibleGatewayUrl } from "./bibleGatewayUrl";
 import type { Slide } from "./assembleMorningPrayer";
+import { cleanReference } from "./referenceText";
 
 // Pack whole verses onto a slide up to a CHARACTER BUDGET, then break at the
 // verse boundary and continue on the next slide — so a slide never cuts a verse
@@ -167,7 +168,11 @@ export function buildLessonSlides(
    */
   extraMetadata?: Record<string, unknown>,
 ): Slide[] {
-  const trimmed = reference?.trim() ?? "";
+  // The citation without the printed book's footnote marks — the reader sees
+  // this, the link is built from it, and the passage is looked up by it
+  // (owner, 2026-09-23: no asterisks on the title slides). See
+  // lib/referenceText for why they are there in the first place.
+  const trimmed = cleanReference(reference);
   if (!trimmed || /^-+$/.test(trimmed)) return [];
 
   const subtitle = LESSON_SUBTITLE[kind];

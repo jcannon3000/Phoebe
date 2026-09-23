@@ -17,7 +17,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { getDailyOfficeLectionaryYear, computeAdvent1 } from "./liturgicalCalendar";
-import { planMorningLessons } from "./lectionary";
+import { planMorningLessons, planEveningLesson, readingIsGospel } from "./lectionary";
+import { cleanReference } from "./referenceText";
 
 /** A local civil date, which is what the calendar functions work in. */
 const day = (y: number, m: number, d: number) => new Date(y, m - 1, d);
@@ -134,4 +135,118 @@ test("a day with no Epistle reads the Gospel in both years", () => {
     assert.equal(plan.secondKind, "gospel");
     assert.equal(plan.extra, "", "there is no third reading to offer");
   }
+});
+
+// ── The evening's one reading ───────────────────────────────────────────────
+//
+// Phoebe prays Evening Prayer too, so the morning taking two of the three has
+// to leave the evening the right one rather than a repeat.
+
+const day3 = { ...threeReadings, isEveOverride: false };
+
+test("Year One: the morning reads the Epistle, so the evening reads the Gospel", () => {
+  assert.deepEqual(planEveningLesson(day3, 1), { reference: "Matt. 25:1-13", kind: "gospel" });
+});
+
+test("Year Two: the morning reads the Gospel, so the evening reads the Epistle", () => {
+  assert.deepEqual(planEveningLesson(day3, 2), { reference: "2 Pet. 3:1-10", kind: "epistle" });
+});
+
+test("the two offices never read the same passage on the same day", () => {
+  for (const year of [1, 2] as const) {
+    const morning = planMorningLessons(day3, year);
+    const evening = planEveningLesson(day3, year);
+    assert.notEqual(evening.reference, morning.first);
+    assert.notEqual(evening.reference, morning.second);
+    // And between them they read all three the book appoints.
+    assert.deepEqual(
+      [morning.first, morning.second, evening.reference].sort(),
+      [day3.lesson1, day3.lesson2, day3.lesson3].sort(),
+      `year ${year}`,
+    );
+  }
+});
+
+test("a day that appoints its own morning pair leaves the evening nothing", () => {
+  // A Major Holy Day or Palm Sunday: the morning read both, and lesson2 is
+  // what it just read, so the evening must not repeat it.
+  const ownMorning = { lesson2: "Heb. 1:1-12", lesson3: "", isEveOverride: false };
+  for (const year of [1, 2] as const) {
+    assert.equal(planEveningLesson(ownMorning, year).reference, "");
+  }
+});
+
+test("an Eve's two lessons belong to First Evensong", () => {
+  // Ascension/Pentecost/Trinity Eve: the morning of that date uses the
+  // ordinary weekday entry, so both of these are the evening's.
+  const eve = { lesson2: "Heb. 2:5-18", lesson3: "", isEveOverride: true };
+  for (const year of [1, 2] as const) {
+    const plan = planEveningLesson(eve, year);
+    assert.equal(plan.reference, "Heb. 2:5-18");
+    // The book does not say which it is, so it is not named.
+    assert.equal(plan.kind, "unnamed");
+  }
+});
+
+test("a day with no Epistle leaves Year Two's evening nothing to read", () => {
+  // 26-28 December and Easter Day: the morning reads OT + Gospel in both
+  // years, and there is no third reading left over.
+  const noEpistle = { lesson2: "", lesson3: "Matt. 1:18-25", isEveOverride: false };
+  assert.equal(planEveningLesson(noEpistle, 2).reference, "");
+  // Year One's morning had no Epistle to read either, so it read the Gospel —
+  // the evening must not read it again.
+  assert.equal(planMorningLessons({ lesson1: "Isa. 62:6-7", ...noEpistle }, 1).second, "Matt. 1:18-25");
+});
+
+// ── Naming a reading by its book ────────────────────────────────────────────
+//
+// A day that appoints its own readings does not put them in named slots, so
+// the only thing that says what they are is the book they come from.
+
+test("a Gospel is Matthew, Mark, Luke or John — and not a letter of John", () => {
+  for (const ref of ["Matt. 5:27-37", "Mark 5:21-43", "Luke 3:1-14", "John 8:31-36", "John 1:1-18"]) {
+    assert.equal(readingIsGospel(ref), true, ref);
+  }
+  // The numbered letters are epistles. This is the whole reason the test
+  // is on the book and not on a substring.
+  for (const ref of ["1 John 3:1-8", "2 John 1-13", "3 John 1-15", "Heb. 1:1-14", "Acts 18:1-11", "Rom. 8:1-11"]) {
+    assert.equal(readingIsGospel(ref), false, ref);
+  }
+  assert.equal(readingIsGospel(""), false);
+});
+
+test("a holy day's morning is named by its book, not by its slot", () => {
+  // The Presentation reads a Gospel second; the Annunciation a letter. Both
+  // arrive the same way — as the day's own pair with no third reading.
+  const presentation = { lesson1: "1 Sam. 2:1-10", lesson2: "John 8:31-36", lesson3: "" };
+  const annunciation = { lesson1: "Isa. 52:7-12", lesson2: "Heb. 2:5-10", lesson3: "" };
+  for (const year of [1, 2] as const) {
+    assert.equal(planMorningLessons(presentation, year).secondKind, "gospel");
+    assert.equal(planMorningLessons(annunciation, year).secondKind, "epistle");
+  }
+});
+
+test("a holy day's evening reading is read, whatever the year", () => {
+  // It comes through the same slot as a weekday Gospel, but it is appointed
+  // FOR the evening — so it is read, and named by its book.
+  const holyEvening = { lesson2: "", lesson3: "1 John 3:1-8", isEveOverride: false, weekKey: "holy_day" };
+  for (const year of [1, 2] as const) {
+    const plan = planEveningLesson(holyEvening, year);
+    assert.equal(plan.reference, "1 John 3:1-8");
+    assert.equal(plan.kind, "epistle", "a letter of John is not the Gospel");
+  }
+});
+
+// ── The printed book's footnote marks ───────────────────────────────────────
+
+test("a citation is stripped of the marks the book prints beside it", () => {
+  assert.equal(cleanReference("Esther 4:4-17*"), "Esther 4:4-17");
+  assert.equal(cleanReference("Exod. 12:1-14**"), "Exod. 12:1-14");
+  assert.equal(cleanReference("Rom. 8:1-11***"), "Rom. 8:1-11");
+  assert.equal(cleanReference("Zech. 9:9-12**"), "Zech. 9:9-12");
+  // Everything else is left exactly as it was, parentheses included.
+  assert.equal(cleanReference("2 Cor. 6:3-13 (14--7:1)"), "2 Cor. 6:3-13 (14--7:1)");
+  assert.equal(cleanReference("Luke (1:1-4); 3:1-14"), "Luke (1:1-4); 3:1-14");
+  assert.equal(cleanReference(""), "");
+  assert.equal(cleanReference(null), "");
 });

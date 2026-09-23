@@ -1,3 +1,5 @@
+import { cleanReference } from "./referenceText";
+
 /**
  * Bible.com (YouVersion) URL builder
  *
@@ -128,7 +130,9 @@ export function bibleUrl(reference: string): string | null {
   // It takes the passage string as a query param, so we just strip lectionary
   // parentheticals, normalize dashes, collapse spaces, and pass it through
   // URL-encoded.
-  const passage = trimmed
+  const passage = cleanReference(trimmed)
+    // Footnote marks are not part of the citation — without this, the
+    // twenty-eight readings that carry one had no working link at all.
     .replace(/\([^)]*\)/g, " ")
     .replace(/--/g, "-")
     .replace(/[–—]/g, "-")

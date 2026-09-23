@@ -292,7 +292,7 @@ export const lectionary: Record<string, LectionaryEntry> = {
     lesson3_y1: "Luke 1:67-80",
     lesson1_y2: "Baruch 4:36--5:9",
     lesson2_y2: "Gal. 3:23--4:7",
-    lesson3_y2: "Mat. 1:18-25",
+    lesson3_y2: "Matt. 1:18-25",
   },
   christmas_dec25: {
     psalms_mp: ["2", "85"],
@@ -508,7 +508,7 @@ export const lectionary: Record<string, LectionaryEntry> = {
     psalms_mp: ["146", "147"],
     psalms_ep: ["111", "112", "113"],
     lesson1_y1: "Isa. 40:1-11",
-    lesson2_y1: "Heb, 1:1-12",
+    lesson2_y1: "Heb. 1:1-12",
     lesson3_y1: "John 1:1-7, 19-20, 29-34",
     lesson1_y2: "Gen. 1:1--2:3",
     lesson2_y2: "Eph. 1:3-14",

@@ -122,6 +122,28 @@ export function getLectionaryReadings(
  * The same path covers ordinary days the book leaves a rule against, such as
  * Palm Sunday.
  */
+/**
+ * IS THIS REFERENCE A GOSPEL? By its book, which is the only thing that says.
+ *
+ * The weekday table keeps the three readings in fixed slots, so their names
+ * are known by position. A day that appoints its OWN readings does not: the
+ * prayer book's Holy Days table gives Morning and Evening two lessons each and
+ * they are whatever they are — the Presentation reads John 8 in the morning
+ * and 1 John 3 in the evening, and calling both "the Gospel" (as we did) is
+ * wrong about one of them.
+ *
+ * "1 John" IS NOT JOHN. The numbered letters are epistles and the bare name is
+ * the Gospel, which is the whole reason this is a function and not a substring
+ * test.
+ */
+export function readingIsGospel(reference: string): boolean {
+  const ref = (reference ?? "").trim();
+  if (!ref) return false;
+  // Strip a leading "The " and any numeral: "1 John" and "II John" are letters.
+  if (/^(?:the\s+)?(?:[123]|i{1,3})\s/i.test(ref)) return false;
+  return /^(?:the\s+)?(?:matt|mark|luke|john)/i.test(ref);
+}
+
 export type MorningLessonPlan = {
   /** Always the Old Testament, and always first. */
   first: string;
@@ -145,7 +167,16 @@ export function planMorningLessons(
   // a rule against): take the pair as given rather than reaching for a third
   // reading that was never appointed.
   if (!gospel.trim()) {
-    return { first: ot, second: epistle, secondKind: "epistle", extra: "", extraKind: "gospel" };
+    // Named by its book, not by its slot: a Major Holy Day's second morning
+    // reading is a Gospel as often as a letter (the Presentation reads John 8,
+    // the Annunciation Hebrews 2), and the slot cannot tell you which.
+    return {
+      first: ot,
+      second: epistle,
+      secondKind: readingIsGospel(epistle) ? "gospel" : "epistle",
+      extra: "",
+      extraKind: "gospel",
+    };
   }
 
   /**
@@ -164,4 +195,79 @@ export function planMorningLessons(
   return lectionaryYear === 1
     ? { first: ot, second: epistle, secondKind: "epistle", extra: gospel, extraKind: "gospel" }
     : { first: ot, second: gospel, secondKind: "gospel", extra: epistle, extraKind: "epistle" };
+}
+
+/**
+ * WHICH ONE READING EVENING PRAYER SHOWS.
+ *
+ * The complement of planMorningLessons, and it has to be: the morning takes
+ * two of the day's three, so the evening reads the one left over — the Gospel
+ * in Year One, the Epistle in Year Two. Before the year rule the evening read
+ * the Gospel every night, which was right while the morning always took Old
+ * Testament and Epistle; after it, Year Two would have read the same Gospel
+ * twice in a day and never opened the Epistle at all.
+ *
+ * Phoebe prays both offices, so this is not hypothetical — it is what somebody
+ * reads tonight (owner, 2026-09-23: "Phoebe definetly has a evning parayer").
+ *
+ * TWO DAYS THIS DOES NOT DESCRIBE, both handled here:
+ *  - An "Eve of …" (Ascension, Pentecost, Trinity) appoints only two lessons,
+ *    for First Evensong alone, stored in lesson1/lesson2 with nothing third.
+ *    The morning of those dates uses the ordinary weekday entry, so the
+ *    evening takes lesson2 — its NT counterpart — and keeps the neutral name,
+ *    since the book does not say whether it is Epistle or Gospel.
+ *  - A day that appoints its own morning pair (a Major Holy Day, Palm Sunday)
+ *    has nothing left for the evening in this table: reading lesson2 there
+ *    would repeat what the morning has just read, so the evening shows none.
+ */
+export type EveningLessonPlan = {
+  /** Empty when the day leaves the evening nothing of its own. */
+  reference: string;
+  kind: "gospel" | "epistle" | "unnamed";
+};
+
+export function planEveningLesson(
+  readings: Pick<LectionaryReadings, "lesson2" | "lesson3" | "isEveOverride"> & { weekKey?: string },
+  lectionaryYear: 1 | 2,
+): EveningLessonPlan {
+  const present = (v: string | undefined | null): boolean =>
+    !!v && v.trim().length > 0 && !/^-+$/.test(v.trim());
+  const epistle = readings.lesson2 ?? "";
+  const gospel = readings.lesson3 ?? "";
+
+  /**
+   * A DAY WITH ITS OWN EVENING READINGS — a Major Holy Day. The table hands
+   * them over through this same lesson3 slot (getLectionaryReadings turns
+   * holyDayReadings.epLesson2 into it), and they are appointed FOR the evening,
+   * so they are read whatever the year and whatever the morning did. Named by
+   * their book, because they are as often a letter as a Gospel.
+   */
+  if (readings.weekKey === "holy_day") {
+    return present(gospel)
+      ? { reference: gospel, kind: readingIsGospel(gospel) ? "gospel" : "epistle" }
+      : { reference: "", kind: "unnamed" };
+  }
+
+  if (!present(gospel)) {
+    // First Evensong of an Eve: both its lessons belong to the evening.
+    return readings.isEveOverride && present(epistle)
+      ? { reference: epistle, kind: "unnamed" }
+      : { reference: "", kind: "unnamed" };
+  }
+
+  /**
+   * WHEN THE DAY APPOINTS NO EPISTLE the morning reads the Gospel in BOTH
+   * years (see planMorningLessons), so there is nothing left for the evening —
+   * 26, 27 and 28 December, and Easter Day. This mirrors that fallback
+   * deliberately: without it Year One read the Gospel at both offices, the
+   * same passage twice in a day, which is exactly what the split exists to
+   * avoid.
+   */
+  if (!present(epistle)) return { reference: "", kind: "unnamed" };
+
+  // Otherwise the evening reads whichever the morning did not: the Gospel in
+  // Year One, the Epistle in Year Two.
+  return lectionaryYear === 1
+    ? { reference: gospel, kind: "gospel" }
+    : { reference: epistle, kind: "epistle" };
 }
