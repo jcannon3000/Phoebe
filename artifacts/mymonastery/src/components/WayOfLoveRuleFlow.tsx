@@ -759,6 +759,19 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
   // Heard, not read: its card opens the audio player on the day's session
   // (owner, 2026-09-17), and it is kept once most of it has played.
+  /**
+   * PRAY AS YOU GO IS NO LONGER OFFERED AS A REFLECTION (owner, 2026-09-20:
+   * "lets actually take it out of the customizers reflection page and just
+   * make it aviable as a contmeplative practice"). It was offered in both
+   * places, so the same twelve minutes could be chosen twice and the two
+   * choices fought over one card.
+   *
+   * The ENTRY stays, because every reflection step filters it out unless it is
+   * already that person's own choice — dropping a row out from under someone's
+   * current pick is how this file's other retirements (Grist, Sojourners, VTS)
+   * have silently reassigned a choice before. It is also still a
+   * ReflectionSource, so an existing rule keeps working.
+   */
   { id: "payg", label: "🙇🏽 Pray As You Go Daily", sub: "Guided prayer and reflection on scripture" },
   { id: "taizeprayer", label: "🌄 Taizé Daily Prayer", sub: "A short prayer from Brother Matthew of Taizé" },
   // Read-only sources (see ReflectionSource): they sit in the rule and open in
@@ -1696,7 +1709,16 @@ export default function WayOfLoveRuleFlow({
     setContemplative((c) => {
       const next = { ...c };
       let changed = false;
-      for (const f of ["audio", "walk", "visio"] as const) {
+      /**
+       * EVERY FORM THAT CAN ALSO BE A STANDING PRACTICE, not just the first
+       * three (owner, 2026-09-20: Pray As You Go "will show up as an option
+       * again in contemplation or reflection" once it is a side's practice).
+       * Icons, the Rosary, Lectio and Pray As You Go grew rows of their own in
+       * the multi-select and were never added here, so their flag stayed true
+       * behind a hidden row and commit() gave each a SECOND card beside the
+       * side's own.
+       */
+      for (const f of ["audio", "walk", "visio", "icons", "rosary", "lectio", "payg"] as const) {
         if (anchored.includes(f) && next[f]) { next[f] = false; changed = true; }
       }
       return changed ? next : c;
@@ -2293,7 +2315,22 @@ export default function WayOfLoveRuleFlow({
       morningTime: reminderIsOn("morning") ? shownReminderTime("morning") : null,
       eveningTime: reminderIsOn("evening") ? shownReminderTime("evening") : null,
     };
-    const others = TRACKED_REFLECTION_SOURCES.filter((n) => !newsletters.includes(n));
+    /**
+     * PRAY AS YOU GO IS A PRACTICE NOW, so an unchosen NEWSLETTER list must not
+     * hide it (owner, 2026-09-20: "Pray as you go is not holding when i select
+     * it in the customizer anymore" · "it doesn't show up in the routine").
+     *
+     * It is a tracked reflection source — that is how its card and dot work —
+     * so it was swept into `others` and written into `hidden` on every save.
+     * `hidden` governs, and onKeys had already put it in `order`: the key was
+     * in BOTH lists, which reads as off. Whichever way it was chosen — the
+     * contemplative toggle or a side's own practice — it vanished on Save.
+     */
+    const paygAsPractice = contemplative.payg
+      || contemplativeForm.morning === "payg" || contemplativeForm.evening === "payg";
+    const others = TRACKED_REFLECTION_SOURCES.filter(
+      (n) => !newsletters.includes(n) && !(n === "payg" && paygAsPractice),
+    );
     // Breathing Together earns a home card either through the per-side "way"
     // choice (a side's contemplation IS the breath) OR the standalone
     // "Add an additional practice" toggle (contemplative.cobreathe) — the
@@ -2648,7 +2685,22 @@ export default function WayOfLoveRuleFlow({
     // Rewrite the home to match the rule (the rule is the source of truth):
     // requests (pinned) → Return (contemplation) → Pray (the office card) → ALL
     // chosen reflections. Unselected reflections + secondary panels hidden.
-    const others = TRACKED_REFLECTION_SOURCES.filter((n) => !newsletters.includes(n));
+    /**
+     * PRAY AS YOU GO IS A PRACTICE NOW, so an unchosen NEWSLETTER list must not
+     * hide it (owner, 2026-09-20: "Pray as you go is not holding when i select
+     * it in the customizer anymore" · "it doesn't show up in the routine").
+     *
+     * It is a tracked reflection source — that is how its card and dot work —
+     * so it was swept into `others` and written into `hidden` on every save.
+     * `hidden` governs, and onKeys had already put it in `order`: the key was
+     * in BOTH lists, which reads as off. Whichever way it was chosen — the
+     * contemplative toggle or a side's own practice — it vanished on Save.
+     */
+    const paygAsPractice = contemplative.payg
+      || contemplativeForm.morning === "payg" || contemplativeForm.evening === "payg";
+    const others = TRACKED_REFLECTION_SOURCES.filter(
+      (n) => !newsletters.includes(n) && !(n === "payg" && paygAsPractice),
+    );
     // Feast Day Hagiographies ride their own row now (the Learn step) — and a
     // key Save leaves out is stored HIDDEN, so both lists name it, on or off.
     // Added optional practices are surfaced (in order, not hidden); unselected
@@ -5006,7 +5058,7 @@ export default function WayOfLoveRuleFlow({
               prayer ("if was already put in morning or evening, then also make
               sure then it isnt able to be chosen again"), the same rule
               anchoredAsForm keeps for the rest. */}
-          {!paygIsSidePrayer && choiceRow(contemplative.payg, `🙇🏽 ${t("wol_rule.cp_payg", { defaultValue: "Pray As You Go Daily" })}`, t("wol_rule.cp_payg_sub", { defaultValue: "Guided prayer and reflection on scripture." }), () => toggleContemplative("payg"))}
+          {!paygIsSidePrayer && !anchoredAsForm("payg") && choiceRow(contemplative.payg, `🙇🏽 ${t("wol_rule.cp_payg", { defaultValue: "Pray As You Go Daily" })}`, t("wol_rule.cp_payg_sub", { defaultValue: "Guided prayer and reflection on scripture." }), () => toggleContemplative("payg"))}
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
           {/* Lectio sits right after the Examen (owner, 2026-09-05: "move
               Lectio Divina up to be after the Examen"); it was last but one. */}
@@ -6029,6 +6081,9 @@ export default function WayOfLoveRuleFlow({
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
               {NEWSLETTERS
                 .filter((n) => n.id !== "vts" || entitlements.vts || newsletters.includes("vts"))
+                // Pray As You Go is a contemplative practice now, not a
+                // reflection — shown only to a side that already keeps it.
+                .filter((n) => n.id !== "payg" || (anchorReflectionBySide[side] ?? getSideReflectionExplicit(side)) === "payg")
                 .map((n) => choiceRow(
                   (anchorReflectionBySide[side] ?? getSideReflectionExplicit(side) ?? "fdd") === n.id,
                   n.label,
@@ -6401,7 +6456,11 @@ export default function WayOfLoveRuleFlow({
             // option here as well (owner, 2026-09-18: "if someone selects it as
             // a contemplative practice make sure it doesnt show up as an option
             // when they get to reflections").
-            .filter((n) => n.id !== "payg" || !contemplative.payg)
+            // Pray As You Go is a contemplative practice now (owner,
+            // 2026-09-20), so it is not offered here at all — only kept
+            // visible for someone who already follows it, who would otherwise
+            // have it silently dropped.
+            .filter((n) => n.id !== "payg" || (newsletters.includes("payg") && !contemplative.payg))
             .map((n) => {
               // FDD chosen as the morning PRAYER (not just a reflection) stays
               // noted here even if unchecked as a reflection below — the two
@@ -6498,6 +6557,10 @@ export default function WayOfLoveRuleFlow({
               // the moment the first was read. Morning CAC + evening SSJE is
               // fine; CAC twice is not.
               .filter((n) => n.id !== extraNewsletterBySide[side === "morning" ? "evening" : "morning"])
+              // Pray As You Go is a contemplative practice now (owner,
+              // 2026-09-20), so it is not offered as a second practice either
+              // — unless this side already keeps it.
+              .filter((n) => n.id !== "payg" || extraNewsletterBySide[side] === "payg")
               .map((n) => choiceRow(
                 extraNewsletterBySide[side] === n.id,
                 n.label,

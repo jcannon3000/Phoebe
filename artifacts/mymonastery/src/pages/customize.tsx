@@ -50,14 +50,20 @@ type DailyPrayer = "guided-prayer" | "psalms" | "devotion" | "office" | "reading
 // Contemplative Walk / Visio Divina / Taize / Spirituals), just ONE at a time here (this page is meant to stay a
 // few quick dropdowns, not a multi-select). Backed by the same home-layout
 // module keys those toggles write in WayOfLoveRuleFlow.tsx.
-type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spirituals" | "taize" | "icons" | "lectio" | "rosary";
+type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spirituals" | "taize" | "icons" | "lectio" | "rosary" | "payg";
 // NOTE: the day's commemoration ("hagiography") is deliberately NOT here.
 // This row is SINGLE-select — applyAddPractice strips every key in this list
 // from the layout and puts back only the chosen one — so listing it would mean
 // turning on the commemoration turned OFF Visio Divina, and vice versa. It is
 // a reading, not a practice competing for that one slot, so it is followed
 // from the Reflections page instead, where following is additive per source.
-const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio", "spirituals", "taize", "icons", "lectio", "rosary"];
+// "payg" joined 2026-09-20, when Pray As You Go left the newsletter row above
+// (owner: "lets actually take it out of the customizers reflection page and
+// just make it aviable as a contmeplative practice"). Its card is a home-layout
+// key like the rest, which is why it can sit in this list at all — and the
+// newsletter row no longer hides it, or choosing a newsletter would turn the
+// practice off.
+const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio", "spirituals", "taize", "icons", "lectio", "rosary", "payg"];
 function homeCardOn(hl: HomeLayout | null, key: string): boolean {
   return !!hl && hl.order.includes(key) && !hl.hidden.includes(key);
 }
@@ -628,6 +634,13 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
       hidden.delete(id);
       for (const other of TRACKED_REFLECTION_SOURCES) {
         if (other === id) continue;
+        /**
+         * NOT PRAY AS YOU GO. It is a contemplative practice now, not a
+         * newsletter (owner, 2026-09-20), so choosing a newsletter must leave
+         * it alone — hiding it here is how a practice chosen in the full
+         * customizer disappeared the next time anyone touched this row.
+         */
+        if (other === "payg") continue;
         if (!order.includes(other)) order.push(other);
         hidden.add(other);
       }
@@ -657,7 +670,10 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
     // source missing from here is a source left UNHIDDEN, which (see
     // cleanHomeLayout: every known key gets backfilled into `order`) is how a
     // card nobody asked for arrives on the home screen.
-    const otherNewsletters = TRACKED_REFLECTION_SOURCES.filter((n) => n !== newsletter);
+    // Pray As You Go is a practice, not a newsletter (owner, 2026-09-20): it
+    // is never hidden as "some other newsletter", or the practice it now is
+    // would be turned off by a newsletter choice.
+    const otherNewsletters = TRACKED_REFLECTION_SOURCES.filter((n) => n !== newsletter && n !== "payg");
     const baseOrder = existing?.order ?? ["requests", "office", "contemplation", newsletter, "feeds", "ncmp", "podcasts", ...otherNewsletters];
     const baseHidden = existing?.hidden ?? ["ncmp", "podcasts", "reading", "cobreathe", "prayer-list", ...otherNewsletters];
     /**
@@ -861,7 +877,14 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             ...(!UNOFFERED_REFLECTION_SOURCES.has("sojo") || newsletter === "sojo"
               ? [{ value: "sojo", label: "Sojourners Daily Devotion" }]
               : []),
-            { value: "payg", label: "Pray As You Go Daily" },
+            // Pray As You Go left the newsletter list (owner, 2026-09-20:
+            // "lets actually take it out of the customizers reflection page and
+            // just make it aviable as a contmeplative practice") — it is on the
+            // "Add a practice" row below instead. Kept visible for someone
+            // whose newsletter it already IS, the same rule VTS and Sojourners
+            // keep here, or the next touch of any other row would silently
+            // reassign their reflection.
+            ...(newsletter === "payg" ? [{ value: "payg", label: "Pray As You Go Daily" }] : []),
             { value: "taizeprayer", label: "Taizé Daily Prayer" },
             { value: "nouwen", label: "Nouwen Daily Devotion" },
             { value: "fdd", label: "Forward Day by Day" },
@@ -894,6 +917,7 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             { value: "taize", label: "Taizé meditation" },
             { value: "icons", label: "Praying with Icons" },
             { value: "lectio", label: "Lectio Divina" },
+            { value: "payg", label: "Pray As You Go Daily" },
             /**
              * THE ROSARY WAS IN PRACTICE_KEYS BUT NOT IN THIS LIST — which is
              * worse than merely missing. applyAddPractice STRIPS every
