@@ -168,7 +168,7 @@ export function CobreatheHowToIntro({ onDone, photos }: { onDone: () => void; ph
       {photo && (
         <>
           <Backdrop key={photo} src={photo} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,calc(0.62 * var(--bg-wash, 1))) 0%, rgba(8,22,15,calc(0.80 * var(--bg-wash, 1))) 52%, rgba(8,22,15,calc(0.90 * var(--bg-wash, 1))) 100%)" }} />
         </>
       )}
 

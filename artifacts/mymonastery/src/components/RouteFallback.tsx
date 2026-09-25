@@ -32,7 +32,7 @@ export function RouteFallback() {
         aria-hidden
         style={{
           position: "absolute", inset: 0, zIndex: -1,
-          background: "linear-gradient(180deg, rgba(8,18,12,0.62) 0%, rgba(8,18,12,0.78) 100%)",
+          background: "linear-gradient(180deg, rgba(8,18,12,calc(0.62 * var(--bg-wash, 1))) 0%, rgba(8,18,12,calc(0.78 * var(--bg-wash, 1))) 100%)",
         }}
       />
       {/* Same size, same 64px-from-the-bottom placement as the office veil's

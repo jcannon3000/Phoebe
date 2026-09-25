@@ -41,7 +41,7 @@ export function PracticeIntro({
       {leaf ? (
         <>
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -2, backgroundImage: `url(${leaf})`, backgroundSize: "cover", backgroundPosition: "center" }} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.70) 0%, rgba(8,22,15,0.84) 52%, rgba(8,22,15,0.93) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,calc(0.70 * var(--bg-wash, 1))) 0%, rgba(8,22,15,calc(0.84 * var(--bg-wash, 1))) 52%, rgba(8,22,15,calc(0.93 * var(--bg-wash, 1))) 100%)" }} />
         </>
       ) : (
         <AnimatedBackground base={BG} variant="subtle" />

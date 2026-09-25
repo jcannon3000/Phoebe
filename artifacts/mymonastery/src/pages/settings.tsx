@@ -6,6 +6,7 @@ import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { checkPushPermission, enablePushNotifications, type PermState } from "@/lib/pushPermission";
 import { HIDE_COMMUNITY_KEY } from "@/lib/displayPrefs";
+import { backgroundStronger, setBackgroundStronger } from "@/lib/backgroundStrength";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { useGuestMode } from "@/hooks/useGuestMode";
@@ -1292,6 +1293,15 @@ function HomeDisplaySettings() {
     writeLsBool(HIDE_COMMUNITY_KEY, next);
     try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
   };
+  // The background's strength — both layers of it (lib/backgroundStrength).
+  const [bgStronger, setBgStronger] = useState<boolean>(() => backgroundStronger());
+  const toggleBgStrength = () => {
+    const next = !bgStronger;
+    setBgStronger(next);
+    // Writes the variables on the root as well as the preference, so the page
+    // behind this one is already at the new strength when Settings closes.
+    setBackgroundStronger(next);
+  };
   const hapticsOn = !hapticsOff;
   const toggleHaptics = () => {
     const nextOff = hapticsOn;
@@ -1354,6 +1364,41 @@ function HomeDisplaySettings() {
           >
             <div
               className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${doneShown ? "left-[21px]" : "left-[3px]"}`}
+              style={{ background: "#F0EDE6" }}
+            />
+          </div>
+        </button>
+
+        <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
+
+        {/* STRONGER BACKGROUND (owner, 2026-09-25: "in settings … a way to
+            increase the backround color by 20%" · "for the whole app"), and,
+            asked which of the two layers he meant, BOTH: the leaf photograph
+            and the green wash over it, each by a fifth. It is one switch
+            rather than a set of steps, at his word.
+
+            It writes two CSS variables on the document root, so every backdrop
+            in the app follows it without a re-render (lib/backgroundStrength);
+            the pages themselves do nothing. Device-local, like the rest of
+            this section — it is about the screen in front of somebody, not
+            about their account. */}
+        <button
+          onClick={toggleBgStrength}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="text-left">
+            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+              Stronger background
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+              Deepens the photograph and its wash across the whole app, by a fifth.
+            </p>
+          </div>
+          <div
+            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${bgStronger ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+          >
+            <div
+              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${bgStronger ? "left-[21px]" : "left-[3px]"}`}
               style={{ background: "#F0EDE6" }}
             />
           </div>

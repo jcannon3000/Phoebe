@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { applyBackgroundStrength } from "@/lib/backgroundStrength";
 import App from "./App";
 import "./index.css";
 import { recoverFromStaleChunk } from "./lib/staleChunk";
@@ -30,6 +31,11 @@ installGlobalErrorReporting();
 // screen paints WITH its image rather than flashing the background colour and
 // swapping the photo in a beat later.
 preloadSplashPhoto();
+
+// The background strength, on the root before the first frame — so a page
+// never paints at the plain strength and then corrects itself (lib/
+// backgroundStrength).
+applyBackgroundStrength();
 
 createRoot(document.getElementById("root")!).render(<App />);
 

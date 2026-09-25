@@ -1347,7 +1347,7 @@ function OpeningSplash() {
         aria-hidden
         style={{
           position: "absolute", inset: 0, zIndex: -1,
-          background: "linear-gradient(180deg, rgba(8,18,12,0.5) 0%, rgba(8,18,12,0.38) 45%, rgba(8,18,12,0.66) 100%)",
+          background: "linear-gradient(180deg, rgba(8,18,12,calc(0.5 * var(--bg-wash, 1))) 0%, rgba(8,18,12,calc(0.38 * var(--bg-wash, 1))) 45%, rgba(8,18,12,calc(0.66 * var(--bg-wash, 1))) 100%)",
           backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
         }}
       />
@@ -1522,8 +1522,8 @@ function LayoutBackdrop({ photo, opacity }: { photo: string; opacity: number }) 
   const BLEED = "var(--layout-backdrop-bleed, 0px)";
   return (
     <>
-      <img src={photo} alt="" aria-hidden onLoad={() => setLoaded(true)} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: `calc(100% + ${BLEED})`, objectFit: "cover", opacity: loaded ? opacity : 0, transition: "opacity 0.8s ease", zIndex: -1 }} />
-      <div aria-hidden style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: `calc(-1 * ${BLEED})`, zIndex: -1, opacity: loaded ? 1 : 0, transition: "opacity 0.8s ease", background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+      <img src={photo} alt="" aria-hidden onLoad={() => setLoaded(true)} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: `calc(100% + ${BLEED})`, objectFit: "cover", opacity: loaded ? `calc(${opacity} * var(--bg-photo, 1))` : 0, transition: "opacity 0.8s ease", zIndex: -1 }} />
+      <div aria-hidden style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: `calc(-1 * ${BLEED})`, zIndex: -1, opacity: loaded ? 1 : 0, transition: "opacity 0.8s ease", background: "linear-gradient(180deg, rgba(8,22,15,calc(0.45 * var(--bg-wash, 1))) 0%, rgba(8,22,15,calc(0.62 * var(--bg-wash, 1))) 38%, rgba(8,22,15,calc(0.80 * var(--bg-wash, 1))) 100%)" }} />
     </>
   );
 }
@@ -1838,7 +1838,7 @@ function CreateSheet({ onClose }: { onClose: () => void }) {
       className="fixed inset-0"
       style={{
         zIndex: 80, backgroundColor: "#091A10", display: "flex", flexDirection: "column",
-        ...(leafBg ? { backgroundImage: `linear-gradient(rgba(8,22,15,0.62), rgba(8,22,15,0.82)), url(${leafBg})`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
+        ...(leafBg ? { backgroundImage: `linear-gradient(rgba(8,22,15,calc(0.62 * var(--bg-wash, 1))), rgba(8,22,15,calc(0.82 * var(--bg-wash, 1)))), url(${leafBg})`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
       }}
     >
       {/* X close — top-right. */}
