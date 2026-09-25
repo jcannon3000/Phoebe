@@ -1,3 +1,4 @@
+import { useState } from "react";
 // ─── CAC Course (beta) — one CAC podcast season, played Coursera-style ───────
 //
 // Detail view for a single (show, season) course from GET
@@ -14,7 +15,7 @@ import { Layout } from "@/components/layout";
 import { FrostLayers, frostBox } from "@/components/FrostRing";
 import { useOnline } from "@/lib/offline";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
-import { useCourseProgress } from "@/lib/courseProgress";
+import { useCourseProgress, isCourseHiddenFromHome, setCourseHiddenFromHome } from "@/lib/courseProgress";
 import { useShowCourses, showSlugFromCourseId, formatDuration, type CacEpisode } from "@/lib/cacCourses";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useCacLibrary } from "@/hooks/useCacLibrary";
@@ -29,6 +30,9 @@ export default function CacCoursePage() {
   const player = usePodcastPlayer();
   const { completedCount, isComplete, toggleComplete, setLast, markStarted } = useCourseProgress(id ?? "cac-unknown");
   const leafBg = useCacLeafBg();
+  // Whether this course's card is off the home screen — the same device-local
+  // store the video courses use, keyed by the course's OWN id.
+  const [hiddenFromHome, setHiddenFromHome] = useState(() => isCourseHiddenFromHome(id ?? ""));
   const online = useOnline();
 
   const { data, isLoading } = useShowCourses(showSlugFromCourseId(id));
@@ -168,6 +172,21 @@ export default function CacCoursePage() {
                     <ListMusic size={13} /> Play all
                   </CacButton>
                 </div>
+
+                {/* OFF MY HOME SCREEN (owner, 2026-09-25: "make sure someone
+                    can removed the bishop budde podcast from their home
+                    screen"). The video courses have had this line since
+                    2026-09-19 (components/CoursePage); a podcast course had
+                    no way at all — once it was started its card stayed until
+                    the last episode was finished. Same words, same store. */}
+                <button
+                  type="button"
+                  onClick={() => { setCourseHiddenFromHome(course.id, !hiddenFromHome); setHiddenFromHome((v) => !v); }}
+                  className="mt-3 text-[12px] underline underline-offset-2 transition-opacity hover:opacity-80"
+                  style={{ color: CAC.inkMuted, background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                >
+                  {hiddenFromHome ? "Show this course on my home screen" : "Remove from my home screen"}
+                </button>
               </div>
 
               <div className="h-px" style={{ background: CAC.divider }} />

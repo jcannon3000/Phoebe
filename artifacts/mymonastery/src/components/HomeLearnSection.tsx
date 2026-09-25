@@ -48,6 +48,17 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 export type LearnCard = {
   key: string;
+  /**
+   * THE COURSE'S OWN ID — what lib/courseProgress stores progress and
+   * "off my home screen" under.
+   *
+   * It is NOT the key: the podcast courses prefix theirs ("show-…", "cac-…")
+   * so two lists can't collide, and the hidden-from-home filter was asking
+   * about the prefixed key while every page wrote the raw id. So "Remove from
+   * my home screen" wrote a row nothing ever read, and the card stayed
+   * (owner, 2026-09-25, of the Bishop Budde podcast).
+   */
+  courseId: string;
   title: string;
   /** Extra context before the lesson count on the quiet second line — a
    *  season's own name, where the title carries only its number. */
@@ -80,6 +91,9 @@ function videoCourseCard(
   const nextVid = resume ?? index.videos.find((v) => !completed.has(v.id)) ?? index.videos[0];
   return {
     key: course.id,
+    // A video course's key IS its id — the prefixes belong to the podcast
+    // lists, which have two sources that could collide.
+    courseId: course.id,
     emoji,
     title: course.title,
     nextLabel: nextVid ? videoLabel(nextVid) : "",
@@ -152,7 +166,16 @@ export function selectHomeCourses(
   const active = onHome
     .filter((c) => c.started && c.done < c.total && fresh(c))
     .sort((a, b) => b.updatedAt - a.updatedAt);
-  if (active.length > 0) return active;
+  /**
+   * ONE AT A TIME (owner, 2026-09-25: "Lets also show only one course at a
+   * time").
+   *
+   * Someone part-way through three courses had three cards, and the home is a
+   * day's rhythm rather than a shelf. The one they had on last leads — the
+   * sort above is by when each was touched — so the card follows what they
+   * are actually doing, and the others are a tap away under Courses.
+   */
+  if (active.length > 0) return active.slice(0, 1);
   const wol = onHome.find((c) => c.key === wolId);
   if (!wol || wol.done >= wol.total) return [];
   if (wol.started) return fresh(wol) ? [wol] : [];
@@ -223,6 +246,7 @@ export function HomeLearnSection() {
     const nextLesson = WOL_LESSONS.find((l) => !wol.completed.has(l.key)) ?? WOL_LESSONS[0];
     cards.push({
       key: WAY_OF_LOVE.id,
+      courseId: WAY_OF_LOVE.id,
       emoji: "\u{1F49A}", // 💚
       title: WAY_OF_LOVE.title,
       // Text only — no lesson emoji on the course cards (owner).
@@ -259,6 +283,7 @@ export function HomeLearnSection() {
       // show- rather than cac-: the two loops would collide the day the Way of
       // Love joins CAC_COURSE_SHOW_SLUGS, which that list invites.
       key: `show-${c.id}`,
+      courseId: c.id,
       // ❤️‍🔥 for the Way of Love's seasons: 💚 is the whole course's card
       // above, and these are the same love, taught.
       emoji: "\u{2764}\u{FE0F}\u{200D}\u{1F525}",
@@ -283,6 +308,7 @@ export function HomeLearnSection() {
     if (!isStarted) continue;
     cards.push({
       key: `show-${c.id}`,
+      courseId: c.id,
       emoji: "\u{1F3F0}", // 🏰 — the castle of the title
       title: c.showTitle,
       nextLabel: nextTitle ?? "",
@@ -299,6 +325,7 @@ export function HomeLearnSection() {
     if (!isStarted) continue;
     cards.push({
       key: `cac-${c.id}`,
+      courseId: c.id,
       // The CAC's own emoji, the one its daily meditation card wears.
       emoji: "\u{1F335}",
       ...seasonCardLines(c.showTitle, c.title),
@@ -347,7 +374,7 @@ export function HomeLearnSection() {
    */
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { once: true, amount: 0.25 });
-  const onHome = cards.filter((c) => !isCourseHiddenFromHome(c.key));
+  const onHome = cards.filter((c) => !isCourseHiddenFromHome(c.courseId));
   const show = selectHomeCourses(onHome, WAY_OF_LOVE.id, courseOfferedSince(WAY_OF_LOVE.id));
   // The never-started offer starts its 14-day clock the first time it is
   // actually shown. An effect (not a write during render), and above the
