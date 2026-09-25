@@ -166,7 +166,8 @@ const BUILT_IN_PLACE_ROWS: Record<string, {
     lat: 38.8216625,
     lng: -77.0932562,
     radiusMeters: 161,
-    centerEmoji: "\u{1F4DA}",
+    // The flamingo marks every VTS place (owner, 2026-09-25).
+    centerEmoji: "\u{1F9A9}",
     photoUrls: ["bundled:bishop-payne"],
   },
   "immanuel-chapel": {
@@ -175,8 +176,28 @@ const BUILT_IN_PLACE_ROWS: Record<string, {
     lat: 38.8197408,
     lng: -77.0925096,
     radiusMeters: 161,
-    centerEmoji: "\u{1F514}",
+    centerEmoji: "\u{1F9A9}",
     photoUrls: ["bundled:immanuel-chapel"],
+  },
+  // Two in New York (owner, 2026-09-25). Same rules, same slugs as the
+  // client's BUILT_IN_PLACES — the slug is the contract between them.
+  "washington-square-park": {
+    name: "Washington Square Park",
+    subtitle: "Greenwich Village, New York",
+    lat: 40.7308,
+    lng: -73.9973,
+    radiusMeters: 161,
+    centerEmoji: "\u{1F333}",
+    photoUrls: ["bundled:washington-square-park"],
+  },
+  "grace-church-village": {
+    name: "Grace Church",
+    subtitle: "Episcopal parish in Greenwich Village",
+    lat: 40.7317,
+    lng: -73.9924,
+    radiusMeters: 161,
+    centerEmoji: "\u{1F54A}\u{FE0F}",
+    photoUrls: ["bundled:grace-church-village"],
   },
 };
 

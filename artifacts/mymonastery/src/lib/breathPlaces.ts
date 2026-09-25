@@ -76,7 +76,11 @@ export const BUILT_IN_PLACES: BuiltInPlace[] = [
     lat: 38.8216625,
     lng: -77.0932562,
     radiusMeters: 161,
-    centerEmoji: "📚",
+    // THE FLAMINGO IS THE SEMINARY'S MARK (owner, 2026-09-25: "Only do the
+    // flamigo emojis for the VTS Locations" — in the breathing UI). All three
+    // VTS places wear it, so the bird says "you are on that campus"; the
+    // places away from it keep glyphs of their own.
+    centerEmoji: "🦩",
     photoSet: "bishop-payne",
   },
   {
@@ -88,10 +92,46 @@ export const BUILT_IN_PLACES: BuiltInPlace[] = [
     lat: 38.8197408,
     lng: -77.0925096,
     radiusMeters: 161,
-    // The bell that calls the community, not a cross (owner's standing rule
-    // about cross emojis).
-    centerEmoji: "🔔",
+    // The seminary's flamingo here too (owner, 2026-09-25) — it was a bell,
+    // chosen so the chapel wasn't a cross (the owner's standing rule about
+    // cross emojis, which still holds for anything that replaces it).
+    centerEmoji: "🦩",
     photoSet: "immanuel-chapel",
+  },
+  /**
+   * TWO IN NEW YORK (owner, 2026-09-25: "Put Washington Square Park in NYC as
+   * a location for Breathing Together too" · "and put Grace Episcopal in
+   * Greenwhich Village in there too") — the first places away from the
+   * seminary, and the first that are not one institution's own ground.
+   *
+   * Both keep the 0.1-mile radius. From the fountain that covers nearly all
+   * of Washington Square; the two circles are about 430 m apart, so standing
+   * in one is never standing in the other.
+   */
+  {
+    slug: "washington-square-park",
+    name: "Washington Square Park",
+    subtitle: "Greenwich Village, New York",
+    // The fountain at the centre of the square, under the arch.
+    lat: 40.7308,
+    lng: -73.9973,
+    radiusMeters: 161,
+    // The park's trees rather than its arch: the arch emoji reads as a bank.
+    centerEmoji: "🌳",
+    photoSet: "washington-square-park",
+  },
+  {
+    slug: "grace-church-village",
+    name: "Grace Church",
+    subtitle: "Episcopal parish in Greenwich Village",
+    // 802 Broadway at East 10th Street.
+    lat: 40.7317,
+    lng: -73.9924,
+    radiusMeters: 161,
+    // A dove, not a cross (owner's standing rule) — and this parish's own
+    // sermons are already in Phoebe under the same name.
+    centerEmoji: "🕊️",
+    photoSet: "grace-church-village",
   },
 ];
 

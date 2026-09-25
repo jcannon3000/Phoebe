@@ -1919,13 +1919,56 @@ export async function migrate() {
      */
     await run(client, `
       INSERT INTO breath_places (name, subtitle, lat, lng, radius_meters, center_emoji, photo_urls)
-      SELECT 'Bishop Payne Library', 'Virginia Theological Seminary', 38.8216625, -77.0932562, 161, '📚', '["bundled:bishop-payne"]'::jsonb
+      SELECT 'Bishop Payne Library', 'Virginia Theological Seminary', 38.8216625, -77.0932562, 161, '🦩', '["bundled:bishop-payne"]'::jsonb
       WHERE NOT EXISTS (SELECT 1 FROM breath_places WHERE name = 'Bishop Payne Library')
     `);
     await run(client, `
       INSERT INTO breath_places (name, subtitle, lat, lng, radius_meters, center_emoji, photo_urls)
-      SELECT 'Immanuel Chapel', 'Virginia Theological Seminary', 38.8197408, -77.0925096, 161, '🔔', '["bundled:immanuel-chapel"]'::jsonb
+      SELECT 'Immanuel Chapel', 'Virginia Theological Seminary', 38.8197408, -77.0925096, 161, '🦩', '["bundled:immanuel-chapel"]'::jsonb
       WHERE NOT EXISTS (SELECT 1 FROM breath_places WHERE name = 'Immanuel Chapel')
+    `);
+    /**
+     * THE FLAMINGO ON ALL THREE VTS PLACES (owner, 2026-09-25: "Only do the
+     * flamigo emojis for the VTS Locations", of the breathing screen).
+     *
+     * The seeds above never upsert, on purpose — an admin's later edit must
+     * stand — so changing the literal reaches new installs only. These rows
+     * already exist in production wearing the emoji the first seed gave them,
+     * and the row's own value wins over the built-in at read time, so without
+     * this the change would be invisible to everyone who matters.
+     *
+     * Narrow on purpose: it moves a row ONLY if it still holds exactly what
+     * the seed wrote (📚 / 🔔). An admin who has since chosen something else
+     * keeps their choice, and re-running this is a no-op.
+     */
+    await run(client, `
+      UPDATE breath_places SET center_emoji = '🦩'
+      WHERE name = 'Bishop Payne Library' AND center_emoji = '📚'
+    `);
+    await run(client, `
+      UPDATE breath_places SET center_emoji = '🦩'
+      WHERE name = 'Immanuel Chapel' AND center_emoji = '🔔'
+    `);
+    /**
+     * Two in New York (owner, 2026-09-25: "Put Washington Square Park in NYC
+     * as a location for Breathing Together too" · "and put Grace Episcopal in
+     * Greenwhich Village in there too"). The first places that are not the
+     * seminary's own ground, and the first a stranger might be standing in.
+     *
+     * Same rules as the three above: keyed on the name so a re-run never
+     * duplicates, never an upsert so an admin's later edit stands, 0.1 mile.
+     * From the fountain that covers nearly all of the square; the two circles
+     * sit about 430 m apart, so being in one is never being in the other.
+     */
+    await run(client, `
+      INSERT INTO breath_places (name, subtitle, lat, lng, radius_meters, center_emoji, photo_urls)
+      SELECT 'Washington Square Park', 'Greenwich Village, New York', 40.7308, -73.9973, 161, '🌳', '["bundled:washington-square-park"]'::jsonb
+      WHERE NOT EXISTS (SELECT 1 FROM breath_places WHERE name = 'Washington Square Park')
+    `);
+    await run(client, `
+      INSERT INTO breath_places (name, subtitle, lat, lng, radius_meters, center_emoji, photo_urls)
+      SELECT 'Grace Church', 'Episcopal parish in Greenwich Village', 40.7317, -73.9924, 161, '🕊️', '["bundled:grace-church-village"]'::jsonb
+      WHERE NOT EXISTS (SELECT 1 FROM breath_places WHERE name = 'Grace Church')
     `);
     /**
      * Say out loud whether the place actually exists after that.
