@@ -158,6 +158,26 @@ const BUILT_IN_PLACE_ROWS: Record<string, {
     centerEmoji: "\u{1F9A9}",
     photoUrls: ["bundled:flamingos"],
   },
+  // Two more at the seminary (owner, 2026-09-25). Keep these in step with the
+  // client's BUILT_IN_PLACES — the slug is the contract.
+  "bishop-payne-library": {
+    name: "Bishop Payne Library",
+    subtitle: "Virginia Theological Seminary",
+    lat: 38.8216625,
+    lng: -77.0932562,
+    radiusMeters: 161,
+    centerEmoji: "\u{1F4DA}",
+    photoUrls: ["bundled:bishop-payne"],
+  },
+  "immanuel-chapel": {
+    name: "Immanuel Chapel",
+    subtitle: "Virginia Theological Seminary",
+    lat: 38.8197408,
+    lng: -77.0925096,
+    radiusMeters: 161,
+    centerEmoji: "\u{1F514}",
+    photoUrls: ["bundled:immanuel-chapel"],
+  },
 };
 
 /**

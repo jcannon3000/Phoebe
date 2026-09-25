@@ -1906,6 +1906,28 @@ export async function migrate() {
       WHERE NOT EXISTS (SELECT 1 FROM breath_places WHERE name = 'The Flamingo')
     `);
     /**
+     * Two more at the seminary (owner, 2026-09-25: "We want two new locations
+     * for breathing together, Bishop Payne Libary and Immanuel Chapel, both
+     * at vts"). Same shape and the same rules as The Flamingo above: keyed on
+     * the name so a re-run never duplicates, never an upsert so an admin's
+     * later edit stands. Coordinates are the buildings' own; the chapel is the
+     * one ON CAMPUS, not Immanuel Church on the Hill half a mile south.
+     *
+     * routes/breath.ts seeds these on first use too (resolvePlaceId), so a
+     * failed INSERT here costs the row's existence before anyone breathes at
+     * it, not the attribution itself.
+     */
+    await run(client, `
+      INSERT INTO breath_places (name, subtitle, lat, lng, radius_meters, center_emoji, photo_urls)
+      SELECT 'Bishop Payne Library', 'Virginia Theological Seminary', 38.8216625, -77.0932562, 161, '📚', '["bundled:bishop-payne"]'::jsonb
+      WHERE NOT EXISTS (SELECT 1 FROM breath_places WHERE name = 'Bishop Payne Library')
+    `);
+    await run(client, `
+      INSERT INTO breath_places (name, subtitle, lat, lng, radius_meters, center_emoji, photo_urls)
+      SELECT 'Immanuel Chapel', 'Virginia Theological Seminary', 38.8197408, -77.0925096, 161, '🔔', '["bundled:immanuel-chapel"]'::jsonb
+      WHERE NOT EXISTS (SELECT 1 FROM breath_places WHERE name = 'Immanuel Chapel')
+    `);
+    /**
      * Say out loud whether the place actually exists after that.
      *
      * run() deliberately swallows statement errors — right for a migration

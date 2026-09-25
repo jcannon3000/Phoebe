@@ -60,6 +60,39 @@ export const BUILT_IN_PLACES: BuiltInPlace[] = [
     centerEmoji: "🦩",
     photoSet: "flamingos",
   },
+  /**
+   * Two more at the seminary (owner, 2026-09-25: "We want two new locations
+   * for breathing together, Bishop Payne Libary and Immanuel Chapel, both at
+   * vts"). Coordinates are the buildings' own, to about a metre.
+   *
+   * The same 161 m radius as The Flamingo, which means the three circles
+   * overlap across the middle of campus — deliberately harmless: the person
+   * PICKS the place they mean, and the radius only confirms they are there.
+   */
+  {
+    slug: "bishop-payne-library",
+    name: "Bishop Payne Library",
+    subtitle: "Virginia Theological Seminary",
+    lat: 38.8216625,
+    lng: -77.0932562,
+    radiusMeters: 161,
+    centerEmoji: "📚",
+    photoSet: "bishop-payne",
+  },
+  {
+    slug: "immanuel-chapel",
+    name: "Immanuel Chapel",
+    subtitle: "Virginia Theological Seminary",
+    // The chapel on campus — NOT Immanuel Church on the Hill, the parish half
+    // a mile south, which shares the name.
+    lat: 38.8197408,
+    lng: -77.0925096,
+    radiusMeters: 161,
+    // The bell that calls the community, not a cross (owner's standing rule
+    // about cross emojis).
+    centerEmoji: "🔔",
+    photoSet: "immanuel-chapel",
+  },
 ];
 
 /** Metres between two points on the earth (haversine, mean earth radius). */
