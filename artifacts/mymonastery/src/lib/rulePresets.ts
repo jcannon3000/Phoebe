@@ -52,9 +52,12 @@ export type RulePreset = {
    * titled "CAC Daily Meditation" without this.
    *
    * NO PRESET USES IT TODAY. Canterbury Downtown was the case it was written
-   * for, and the owner has since reshaped that rule to the Psalter; this is
-   * kept because the seam it covers is real and the next rule pairing an
-   * anchor-reflection with a different newsletter would hit it again.
+   * for, and the owner has reshaped that rule twice since; this is kept
+   * because the seam it covers is real and the next rule pairing an
+   * anchor-reflection with a different newsletter would hit it again — all
+   * the more so now that Canterbury carries TWO newsletters, where "the
+   * side's reflection" and "the rule's newsletters" are no longer the same
+   * single thing.
    * Omitted = the side follows the rule's newsletter, as before.
    */
   anchorReflection?: Partial<Record<OfficeSideKey, ReflectionSource>>;
@@ -174,63 +177,84 @@ export const RULE_PRESETS: RulePreset[] = [
       { emoji: "🖼️", label: "Visio Divina" },
       { emoji: "🌗", label: "The Examen in the evening" },
     ] },
-  // CONTEMPLATIVE ART (owner) — a rule for someone who prays with their eyes.
-  // The morning is Visio Divina, which is a practice with its OWN card rather
-  // than an office, so the morning side takes no anchor (`pray: "none"`) and
-  // the practice is turned on instead. Richard Rohr's daily meditation is the
-  // word between them, the day closes with the Examen, and the contemplation
-  // is a walk rather than a sit — nothing here asks you to sit still, which is
-  // the point of it.
-  { id: "contemplative-art", emoji: "🖼️", sides: { morning: true, evening: true },
-    pray: "none", evening: "examen",
-    practices: { visio: true, walk: true },
-    practiceSlots: { visio: "morning", walk: "afternoon" },
+  // CONTEMPLATIVE ART (owner) — v2, 2026-09-25: "Morning: Pray as You Go /
+  // Reflection: Taize Daily / Contemplative: Visio Divina / Evening: Audio
+  // Divina."
+  //
+  // THE MORNING IS A REFLECTION, AND A DIFFERENT ONE FROM THE RULE'S. This is
+  // what `pray: "fdd"` + `anchorReflection` are for, and the first rule to use
+  // them: "fdd" is the sentinel meaning "a reflection is this side's prayer",
+  // and anchorReflection says WHICH — Pray As You Go, which is listened to
+  // rather than read, so the morning card opens the player. The rule's
+  // newsletter card is Taizé Daily Prayer, a different source, which without
+  // anchorReflection would have retitled the morning after it.
+  //
+  // Pray As You Go is deliberately NOT in `reflections`: it is the morning
+  // anchor, and listing it would put a second card for the same session
+  // underneath the one that already is it.
+  //
+  // Visio Divina and Audio Divina both have their own cards, so the evening
+  // side takes no anchor (`evening: "none"`) and both are turned on as
+  // practices — Visio unpinned, because "Contemplative" is not a time of day,
+  // and Audio Divina slotted to the evening because the owner put it there.
+  //
+  // NOTE THE TWO VOCABULARIES for Audio Divina: `practices` calls it "audio",
+  // `practiceSlots` and the home layout call it "listening". Both adopt paths
+  // map between them, but only because a bug that hid it was fixed the last
+  // time a preset asked — this is the first rule to ask since.
+  //
+  // Gone with v1: the Contemplative Walk, and Richard Rohr's meditation.
+  { id: "contemplative-art", emoji: "\u{1F5BC}\u{FE0F}", sides: { morning: true, evening: true },
+    pray: "fdd", evening: "none",
+    anchorReflection: { morning: "payg" },
+    practices: { visio: true, audio: true },
+    practiceSlots: { visio: "anytime", listening: "evening" },
     silence: false, goalMin: 0,
-    reflections: ["cac"],
-    title: "Contemplative Art", blurb: "Praying with your eyes — an artwork in the morning, Richard Rohr's meditation in the day, a walk instead of a sit, and the Examen at its close.",
+    reflections: ["taizeprayer"],
+    title: "Contemplative Art", blurb: "Pray As You Go to open the day, the daily prayer from Taiz\u00e9 to carry, an artwork to sit with, and music as prayer in the evening.",
     rows: [
-      { emoji: "🖼️", label: "Visio Divina in the morning" },
-      { emoji: "📖", label: "The CAC Daily Meditation" },
-      { emoji: "🚶🏽", label: "A Contemplative Walk" },
-      { emoji: "🌗", label: "The Examen in the evening" },
+      { emoji: "\u{1F647}\u{1F3FD}", label: "Pray As You Go in the morning" },
+      { emoji: "\u{1F304}", label: "Taiz\u00e9 Daily Prayer" },
+      { emoji: "\u{1F5BC}\u{FE0F}", label: "Visio Divina" },
+      { emoji: "\u{1F3A7}", label: "Audio Divina in the evening" },
     ] },
-  // CANTERBURY DOWNTOWN (owner) — the chaplaincy's rhythm, reshaped: "Morning
-  // Psalms / Breathing Together for Contemplation / Evening Psalms."
+  // CANTERBURY DOWNTOWN (owner) — v3, 2026-09-25: "Morning: Simple Guided /
+  // Newsletter: Henri Nowen / Newsletter: Taize / Evening: Breathing
+  // Together."
   //
-  // The Psalter on both sides, and the contemplation is Breathing Together rather
-  // than a silent sit — `contemplationStyle: "cobreathe"` is that practice
-  // (the creation OFFICE, PrayChoice "creation", is flag-off and degrades to a
-  // normal office, so a preset must never reach for it by that name).
+  // TWO NEWSLETTERS, which is new for a named rule — every other one carries a
+  // single reflection. `reflections` is already a list and the customizer sets
+  // them all, so this needs nothing special; it is worth saying only because
+  // one of them will be the side's reflection card and BOTH show as their own
+  // newsletter cards.
   //
-  // `silence: true` with no silenceSide is what carries the contemplation onto
-  // every side the rule turns on; goalMin 10 sizes it, as VTS's does.
+  // "Taize" here is `taizeprayer`, Brother Matthew's DAILY prayer — not the
+  // weekly Taizé meditation, which is a practice rather than a newsletter and
+  // is not what a line reading "Newsletter: Taize" asks for.
   //
-  // Audio Divina and the standing Breathing Together practice are BOTH gone from
-  // here: music WAS this rule's contemplation and Breathing Together has taken
-  // that seat, so keeping either would leave the rule holding two answers to
-  // one question. The CAC meditation stays — a reflection is a different axis
-  // from the anchors, and the owner's three lines didn't touch it.
-  { id: "canterbury-downtown", emoji: "🏙️", sides: { morning: true, evening: true },
-    // v2 (owner, 2026-09-06): "the Canterbury Downtown routine should be
-    // Simple / Forward Day by Day / Gratitude / Visio / and the Examen." The
-    // Psalter morning and evening, Breathing Together and the CAC are gone with
-    // it — a rule is what the owner says it is, and re-adopting sweeps the
-    // old shape away as any rule swap does.
-    pray: "guidedPrayer", evening: "examen",
+  // THE EVENING IS A PRACTICE, NOT AN OFFICE. Breathing Together has its own
+  // card, so the evening side takes no anchor (`evening: "none"`) and the
+  // practice is turned on and slotted to the evening — the same shape
+  // Contemplative Art uses for a morning that is Visio Divina. Said this way
+  // rather than as `silence: true, contemplationStyle: "cobreathe"`: that
+  // vocabulary makes the breath a SIDE'S SIT, which would leave the evening
+  // holding both an anchor and a sit for one line of the owner's four.
+  //
+  // Gone with v2: Forward Day by Day, Visio Divina, gratitude and the Examen.
+  // A rule is what the owner says it is, and re-adopting sweeps the old shape
+  // away as any rule swap does — except the relational gratitude, which adopt
+  // never removes from anyone who already keeps it.
+  { id: "canterbury-downtown", emoji: "\u{1F3D9}\u{FE0F}", sides: { morning: true, evening: true },
+    pray: "guidedPrayer", evening: "none",
     silence: false, goalMin: 0,
-    reflections: ["fdd"],
-    // Visio Divina has its own card rather than replacing an office, so it is
-    // said with `practices` — see the note on RulePreset.practices.
-    practices: { visio: true },
-    practiceSlots: { visio: "anytime" },
-    // Adopting ADDS a relational practice and never removes one.
-    relational: ["gratitude"],
-    title: "Canterbury Downtown", blurb: "Simple Guided Prayer to open the day, Forward Day by Day to carry, gratitude expressed, Visio Divina, and the Examen to close it.",
+    reflections: ["nouwen", "taizeprayer"],
+    practices: { cobreathe: true },
+    practiceSlots: { cobreathe: "evening" },
+    title: "Canterbury Downtown", blurb: "Simple Guided Prayer to open the day, Henri Nouwen and Taiz\u00e9 to carry through it, and Breathing Together to close it.",
     rows: [
-      { emoji: "🙌🏽", label: "Simple Guided Prayer in the morning" },
-      { emoji: "📖", label: "Forward Day by Day" },
-      { emoji: "🙏🏽", label: "Express gratitude" },
-      { emoji: "🖼️", label: "Visio Divina" },
-      { emoji: "🌗", label: "The Examen in the evening" },
-    ] },
+      { emoji: "\u{1F64C}\u{1F3FD}", label: "Simple Guided Prayer in the morning" },
+      { emoji: "\u{1F60A}", label: "The Nouwen Daily Devotion" },
+      { emoji: "\u{1F304}", label: "Taiz\u00e9 Daily Prayer" },
+      { emoji: "\u{1F30D}", label: "Breathing Together in the evening" },
+    ] }
 ];

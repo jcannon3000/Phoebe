@@ -523,7 +523,22 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
          * the rule doesn't name is hidden"). Full list now, so the claim is
          * actually true.
          */
-        ...Object.fromEntries(TRACKED_REFLECTION_SOURCES.map((n) => [n, refl === n])),
+        /**
+         * EVERY newsletter the rule names, not just its first.
+         *
+         * This asked `refl === n`, and `refl` is `reflections[0]` — fine while
+         * every preset carried exactly one. Canterbury Downtown carries two
+         * (owner, 2026-09-25: "Newsletter: Henri Nowen / Newsletter: Taize"),
+         * and adopting it HERE would have given Nouwen a card and silently
+         * dropped Taizé, while the full customizer — which does
+         * setNewsletters(preset.reflections) — gave both. That is the exact
+         * thing this file's header forbids: a rule meaning two different
+         * things depending on which editor you opened.
+         *
+         * `refl` still stands alone below as the SIDE'S reflection: a side
+         * reads one newsletter as its word, even when the rule keeps several.
+         */
+        ...Object.fromEntries(TRACKED_REFLECTION_SOURCES.map((n) => [n, preset.reflections.includes(n)])),
         // Its standing practices, and only those. NOTE the one name that
         // differs between the two vocabularies: the home-layout key is
         // "listening", the preset's practices key is "audio". Looking up
