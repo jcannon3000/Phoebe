@@ -30,6 +30,7 @@ import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
 import { AndroidPwaInstallPrompt } from "@/components/AndroidPwaInstallPrompt";
 import { BottomPromptStack } from "@/components/BottomPromptStack";
 import { isInReaderWatch } from "@/lib/videoEmbed";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { ReflectionReturnRedirect } from "@/components/ReflectionReturnRedirect";
 import { AfterReaderRedirect } from "@/components/AfterReaderRedirect";
 import { ReflectionPreheater } from "@/components/ReflectionPreheater";
@@ -1307,7 +1308,16 @@ function Router() {
       <Route path="/admin/presets" component={AdminPresetsPage} />
       <Route path="/admin/weeklies" component={AdminWeekliesPage} />
       <Route path="/admin/cac-library" component={AdminCacLibraryPage} />
-      <Route path="/admin/users" component={AdminUserMetricsPage} />
+      {/* App Metrics is web-only (owner, 2026-09-26: "make it so that I
+          cannot see the admin stats on my ios … and its only on web"). The
+          Admin Tools row is hidden in the app; this is the other half, so a
+          bookmark, a pasted link or a stale history entry can't reach it
+          there either. It sends you back to the tools rather than the
+          dashboard: you were somewhere deliberate, and that is the nearest
+          place you meant to be. */}
+      <Route path="/admin/users">
+        {() => (isNativeShell() ? <RedirectTo to="/admin/tools" /> : <AdminUserMetricsPage />)}
+      </Route>
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />
       <Route path="/prayer-list">{() => <PrayerGate><PrayerListPage /></PrayerGate>}</Route>

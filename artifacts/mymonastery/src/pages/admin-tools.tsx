@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { ToggleRow as Toggle } from "@/components/ToggleRow";
@@ -311,12 +312,22 @@ export default function AdminToolsPage() {
                     (094181c0) and /admin/parishes 404s. Its capabilities live on
                     the community now (directory listing, standing intercessions,
                     Get Involved), reachable from the community's own admin tools. */}
-                <LinkRow
-                  emoji="📊"
-                  label="App Metrics"
-                  description="People, practices kept, readings — today, the last 7 days, this month"
-                  onClick={() => setLocation("/admin/users")}
-                />
+                {/* APP METRICS IS A DESK TOOL, NOT A POCKET ONE (owner,
+                    2026-09-26: "make it so that I cannot see the admin stats
+                    on my ios, it hides that tool and its only on web").
+                    Hidden in the app — iOS and Android both, since "only on
+                    web" is the line he drew — and the route itself refuses
+                    there too, so an old link or a bookmark can't reach it.
+                    Nothing is removed: the page is the same page, on a
+                    browser. */}
+                {!isNativeShell() && (
+                  <LinkRow
+                    emoji="📊"
+                    label="App Metrics"
+                    description="People, practices kept, readings — today, the last 7 days, this month"
+                    onClick={() => setLocation("/admin/users")}
+                  />
+                )}
                 <LinkRow
                   emoji="🎞️"
                   label="Formation Deck"
