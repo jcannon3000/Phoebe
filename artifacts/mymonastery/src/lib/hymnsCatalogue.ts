@@ -174,3 +174,36 @@ export function hymnNumberLabel(h: Hymn): string {
 export function hymnKey(h: Hymn): string {
   return h.num.length ? h.num.join("-") : h.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
+
+/** What the listening log records for a hymn: the number, the hymn and who
+ *  sang it. Kept here, beside the table, so the page that logs it (/hymns)
+ *  and Audio Divina's Lately rows, which read it back, cannot drift. */
+export function hymnLoggedAs(h: Hymn): string {
+  return h.num.length ? `Hymn ${hymnNumberLabel(h)} · ${h.name} — ${h.artist}` : `${h.name} — ${h.artist}`;
+}
+
+/** The /video page's sleeve for a hymn: title, number, choir, log line, words key. */
+export function hymnVideoSleeve(h: Hymn) {
+  return {
+    title: h.name,
+    eyebrow: h.num.length ? `Hymn ${hymnNumberLabel(h)}` : null,
+    sub: h.artist,
+    logAs: hymnLoggedAs(h),
+    hymn: hymnKey(h),
+  };
+}
+
+/**
+ * THE HYMN BEHIND A LOGGED LISTEN (owner, 2026-09-28: "When you click a past
+ * song on audio divina, have it go to the youtube player not the logger").
+ * lib/youtubeCatalogues' findCatalogueTrack reads back the four smaller
+ * catalogues but never the hymnal, so a hymn in Lately fell through to the
+ * log. Matched the same way — the whole logged line, case- and
+ * space-insensitively — and only when the recording has a YouTube link.
+ */
+export function findHymnByLog(what: string): Hymn | null {
+  const flat = (s: string) => (s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  const key = flat(what);
+  if (!key) return null;
+  return HYMNS.find((h) => !!h.youtubeUrl && flat(hymnLoggedAs(h)) === key) ?? null;
+}
