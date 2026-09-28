@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { MenuHub, type MenuHubGroup } from "@/components/MenuHub";
 import { OFFLINE_PRACTICES, useOnline } from "@/lib/offline";
 import { usePracticeDirectory } from "@/lib/practiceDirectory";
@@ -8,7 +8,20 @@ import { usePracticeDirectory } from "@/lib/practiceDirectory";
 // and why each row is there — lives in lib/practiceDirectory.
 export default function MenuPracticesPage() {
   const [, setLocation] = useLocation();
-  const practices = usePracticeDirectory();
+  const all = usePracticeDirectory();
+  /**
+   * THE QUIET HALF (owner, 2026-09-28, of the newcomer's third card:
+   * "practice contemplation, it takes them to a menu like the practices page,
+   * but doesn't have the offices, daily scripture reading").
+   *
+   * The same page and the same list, with those two rows taken out — not a
+   * second directory to keep in step. Anything added to practiceDirectory
+   * appears here too, which is the point: one list, two doors.
+   */
+  const contemplativeOnly = new URLSearchParams(useSearch()).get("contemplative") === "1";
+  const practices = contemplativeOnly
+    ? all.filter((p) => p.offlineKey !== "office" && p.offlineKey !== "scripture")
+    : all;
   const go = (p: string) => setLocation(p);
   /**
    * OFFLINE, THE LIST SPLITS IN TWO (owner, 2026-09-06: "on the practices page
@@ -51,9 +64,11 @@ export default function MenuPracticesPage() {
   }];
   return (
     <MenuHub
-      title="Practices"
+      title={contemplativeOnly ? "Contemplation" : "Practices"}
       emoji="🕯️"
-      subtitle="Contemplative practices to weave through your day."
+      subtitle={contemplativeOnly
+        ? "Ways of praying in silence, with scripture, with a picture."
+        : "Contemplative practices to weave through your day."}
       backLabel="Menu"
       backHref="/menu"
       groups={online ? hubGroups : splitForOffline(hubGroups)}

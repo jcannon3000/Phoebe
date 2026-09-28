@@ -10,8 +10,16 @@
 import { HomePracticesTicker } from "@/components/HomePracticesTicker";
 import { HomeSaintsTicker } from "@/components/HomeSaintsTicker";
 import { HomeReflectionsTicker } from "@/components/HomeReflectionsTicker";
+import { routineStarted, inheritedRoutine } from "@/lib/routineStart";
 
 export function HomeExploreSection() {
+  /**
+   * NOT UNTIL THERE IS A ROUTINE (owner, 2026-09-28). Before one is started
+   * the home is five cards and nothing else; a wall of tickers underneath
+   * would be the noise those cards exist to replace.
+   */
+  if (!routineStarted() && !inheritedRoutine()) return null;
+
   return (
     <div className="mt-6">
       <div className="flex items-center gap-3 mb-2">

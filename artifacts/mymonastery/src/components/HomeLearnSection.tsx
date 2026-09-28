@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, useInView } from "framer-motion";
+import { routineStarted, inheritedRoutine } from "@/lib/routineStart";
 import { FrostLayers, frostBox } from "@/components/FrostRing";
 import { Play } from "lucide-react";
 import {
@@ -183,6 +184,15 @@ export function selectHomeCourses(
 }
 
 export function HomeLearnSection() {
+  /**
+   * NOT BEFORE THERE IS A ROUTINE (owner, 2026-09-28). The newcomer's home is
+   * five cards, one of which IS Learn — a courses band underneath would be
+   * the same offer twice, and the noise those cards replace. Declared above
+   * every hook below it is not possible (hooks must run unconditionally), so
+   * this sits with them: see the note on hiddenTick for what that cost once.
+   */
+  const beforeRoutine = !routineStarted() && !inheritedRoutine();
+
   const [, setLocation] = useLocation();
   const centering = useCourseProgress(CENTERING_PRAYER.id);
   const journey = useCourseProgress(SPIRITUAL_JOURNEY.id);
@@ -384,6 +394,7 @@ export function HomeLearnSection() {
   useEffect(() => {
     if (offeringWol) markCourseOffered(WAY_OF_LOVE.id);
   }, [offeringWol]);
+  if (beforeRoutine) return null;
   if (show.length === 0) return null;
 
   // Fade-up cascade like the rhythm cards — the header rises first, each course

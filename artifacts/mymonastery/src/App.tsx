@@ -474,6 +474,7 @@ function RoutinePresetRefresh(): null {
 }
 import { refreshRoutinePresets } from "@/lib/rulePresetsStore";
 const AdminUserMetricsPage = lazy(() => import("./pages/admin-user-metrics"));
+const MenuPrayPage = lazy(() => import("./pages/menu-pray"));
 const MyPrayerFeedsPage = lazy(() => import("./pages/my-prayer-feeds"));
 const AdminNewsletterPage = lazy(() => import("./pages/admin-newsletter"));
 const LearnPage = lazy(() => import("./pages/learn"));
@@ -876,7 +877,7 @@ function OfficeBrowserOptions() {
 const PILOT_ALLOWED_EXACT = new Set<string>([
   "/", "/pilot/home", "/pilot/build",
   "/prayer-list", "/pray-request/new", "/intentions",
-  "/menu", "/menu/practices", "/menu/reflections", "/menu/newsletters", "/menu/bcp",
+  "/menu", "/menu/practices", "/menu/pray", "/menu/reflections", "/menu/newsletters", "/menu/bcp",
   "/contemplation", "/contemplation-log", "/cobreathe", "/offices", "/vts-reading",
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
   "/pray",
@@ -925,6 +926,10 @@ function PilotGate({ children }: { children: ReactNode }) {
 const GUEST_ALLOWED_EXACT = new Set<string>([
   "/", "/dashboard", "/daily-progress",
   "/menu", "/menu/bcp", "/menu/practices", "/menu/learn", "/menu/reflections", "/menu/newsletters", "/menu/resources", "/menu/sermons",
+  // The newcomer's "Pray" card opens this, and a newcomer is a guest by
+  // definition — the first version of this line went into the PILOT list by
+  // mistake and the card bounced straight back to the home.
+  "/menu/pray",
   "/this-sunday",
   "/offline",
   // Practices that need no account to pray — the Examen and the Simple Guided
@@ -1213,6 +1218,9 @@ function Router() {
       <Route path="/office/:side/pray-along" component={OfficePrayAlongPage} />
       <Route path="/menu" component={MenuPage} />
       <Route path="/menu/bcp" component={MenuBcpPage} />
+      {/* The newcomer's "Pray" card (owner, 2026-09-28) — four ways to pray
+          right now, rather than the whole directory. */}
+      <Route path="/menu/pray" component={MenuPrayPage} />
       <Route path="/menu/practices" component={MenuPracticesPage} />
       <Route path="/menu/learn" component={MenuLearnPage} />
       {/* Newsletters — Daily/Weekly hub, then Subscriptions and All as home cards. /menu/reflections

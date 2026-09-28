@@ -10,6 +10,8 @@
 
 import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { warmedHtml, warmPages } from "@/lib/warmedPages";
+import { BeginHere } from "@/components/BeginHere";
+import { routineStarted, inheritedRoutine } from "@/lib/routineStart";
 import { markHagiographyRead, unmarkHagiographyToday } from "@/lib/cacReadState";
 import { Link, useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -973,6 +975,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     } catch { /* ignore */ }
   }, [search]);
   const [readingBook, setReadingBook] = useState(() => getReadingBook());
+  /** Bumped when the routine begins, so this body swaps to the real rhythm. */
+  const [, setStartTick] = useState(0);
   /**
    * THE BOOK FOLLOWS THE ACCOUNT (owner, 2026-09-19: "and save a users
    * progress"). Local-first as it always was — this only asks the account
@@ -2029,13 +2033,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // silent + manual → no navigation, just marks the sit done.
       href: namedSide("morning") ? namedSide("morning")!.href
         : sideIsCreation("morning") || contemplationLogMethod === "timer" ? (sideIsCreation("morning") ? "/cobreathe?side=morning" : `/contemplation?begin=1&side=morning&sit=${sideSitMin("morning")}`) : "",
-      ...(!sideIsCreation("morning") && contemplationLogMethod === "manual" ? { onClick: () => markContemplationSideDone("morning", "silent") } : {}),
+      // Manual marks a SILENT sit only. A named practice (Pray As You Go,
+      // Visio, the Rosary…) opens its own page and keeps itself; marking a
+      // sit here celebrated it without the practice being done (2026-09-28).
+      ...(!namedSide("morning") && !sideIsCreation("morning") && contemplationLogMethod === "manual" ? { onClick: () => markContemplationSideDone("morning", "silent") } : {}),
       // Reading is logged in its sheet, not by marking the sit done — so this
       // spread comes AFTER the manual one and wins for that kind.
       ...(sideKind("morning") === "reading" ? { onClick: () => setReadingSheetOpen(true) } : {}),
+      // A walk side has no page (href ""): it logs in the same sheet the
+      // standing walk card opens. It had no tap at all in timer mode, and in
+      // manual mode marked a silent sit the walk side never reads.
+      ...(sideKind("morning") === "walk" ? { onClick: () => setLogAnchorId("walk") } : {}),
       title: namedSide("morning")?.title ?? (sideIsCreation("morning") ? creationTitle("morning") : t("rhythm.card_morning_contemplation", { defaultValue: "Morning Contemplation" })),
       blurb: namedSide("morning")?.blurb ?? (sideIsCreation("morning") ? creationBlurb(morningContemplationDone) : contemplationBlurbFor(morningContemplationDone, sideSitMin("morning"))),
-      cta: !sideIsCreation("morning") && contemplationLogMethod === "manual" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+      cta: !namedSide("morning") && !sideIsCreation("morning") && contemplationLogMethod === "manual" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
       // Breathing Together, once done, just reads as kept (checked) like the other
       // rhythm cards — no "breathe again" repeat CTA. Silent contemplation keeps
       // "Sit again" (it has no ceiling) unless it's a manual mark (nothing to redo).
@@ -2050,13 +2061,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       key: "contemplation-evening", slot: "evening" as CustomSlot, emoji: namedSide("evening")?.emoji ?? (sideIsCreation("evening") ? "🌍" : "🕯️"), rgb: "62,124,122", done: eveningContemplationDone,
       href: namedSide("evening") ? namedSide("evening")!.href
         : sideIsCreation("evening") || contemplationLogMethod === "timer" ? (sideIsCreation("evening") ? "/cobreathe?side=evening" : `/contemplation?begin=1&side=evening&sit=${sideSitMin("evening")}`) : "",
-      ...(!sideIsCreation("evening") && contemplationLogMethod === "manual" ? { onClick: () => markContemplationSideDone("evening", "silent") } : {}),
+      // Manual marks a SILENT sit only. A named practice (Pray As You Go,
+      // Visio, the Rosary…) opens its own page and keeps itself; marking a
+      // sit here celebrated it without the practice being done (2026-09-28).
+      ...(!namedSide("evening") && !sideIsCreation("evening") && contemplationLogMethod === "manual" ? { onClick: () => markContemplationSideDone("evening", "silent") } : {}),
       // Reading is logged in its sheet, not by marking the sit done — so this
       // spread comes AFTER the manual one and wins for that kind.
       ...(sideKind("evening") === "reading" ? { onClick: () => setReadingSheetOpen(true) } : {}),
+      // A walk side has no page (href ""): it logs in the same sheet the
+      // standing walk card opens. It had no tap at all in timer mode, and in
+      // manual mode marked a silent sit the walk side never reads.
+      ...(sideKind("evening") === "walk" ? { onClick: () => setLogAnchorId("walk") } : {}),
       title: namedSide("evening")?.title ?? (sideIsCreation("evening") ? creationTitle("evening") : t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" })),
       blurb: namedSide("evening")?.blurb ?? (sideIsCreation("evening") ? creationBlurb(eveningContemplationDone) : contemplationBlurbFor(eveningContemplationDone, sideSitMin("evening"))),
-      cta: !sideIsCreation("evening") && contemplationLogMethod === "manual" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), ...eveningLater,
+      cta: !namedSide("evening") && !sideIsCreation("evening") && contemplationLogMethod === "manual" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), ...eveningLater,
       // See the morning card above — the ✓ is the whole done state.
     }] : []),
     // SOLO "Silence" goal card — ONE card with a PROGRESS BAR of today's
@@ -3026,6 +3044,21 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         ))}
       </div>
     );
+  }
+
+  /**
+   * BEFORE THERE IS A ROUTINE, THERE IS NO RHYTHM TO DRAW (owner,
+   * 2026-09-28). A person who has not asked for one meets five ways to pray
+   * instead of a day already planned for them — see components/BeginHere.
+   *
+   * Below the ready gate on purpose: the cards should arrive with the rest of
+   * the home rather than flashing in before the queries settle. `inherited`
+   * covers everyone from before this existed — a saved layout or a chosen
+   * office side means they have a rhythm, whatever this flag says, and their
+   * home must not empty itself out from under them.
+   */
+  if (!routineStarted() && !inheritedRoutine()) {
+    return <BeginHere onStarted={() => setStartTick((n) => n + 1)} />;
   }
 
   // Gap above Done — the same whether Next holds cards or only the hero. The

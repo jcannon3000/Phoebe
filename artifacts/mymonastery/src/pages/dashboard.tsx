@@ -20,6 +20,8 @@ import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { HomeLearnSection } from "@/components/HomeLearnSection";
 import { HomeExploreSection } from "@/components/HomeExploreSection";
+import { routineStarted, inheritedRoutine } from "@/lib/routineStart";
+import { RoutineStartedCard } from "@/components/BeginHere";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
@@ -7247,7 +7249,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     // rule — seedGuestRule is a no-op when the device already has one. The
     // ANONYMOUS DEVICE USER counts as a guest: it holds a session cookie, but
     // its rhythm lives on the device.
-    if (!authLoading && PHOEBE_GUEST_ENABLED && (!user || user.isAnonymous)) seedGuestRule();
+    /**
+     * …BUT ONLY ONCE THEY HAVE ASKED FOR ONE (owner, 2026-09-28). The seed
+     * used to run on every first open, so a newcomer met a rhythm nobody
+     * chose. It now waits for "Start a routine" (lib/routineStart), which
+     * calls this same seed. A device from before this change already carries
+     * a layout or a chosen side, so inheritedRoutine() keeps it seeding for
+     * them exactly as before.
+     */
+    if (!authLoading && PHOEBE_GUEST_ENABLED && (!user || user.isAnonymous)
+      && (routineStarted() || inheritedRoutine())) seedGuestRule();
     // New users land on a coherent GIVEN rhythm (Morning Devotion · Forward Day
     // by Day · Evening Devotion) — not a config screen. Onboarding is just the
     // intro + push + photo, then home; they grow into Customize later. LIGHT
@@ -7367,6 +7378,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               the date: names the given rhythm and promises the daily
               walk-through. Guests only. */}
           {!eventsOnly && isGuestShape && <GuestWelcomeCard />}
+          {/* Shown once, straight after "Start a routine": what they now have
+              and where to change it (owner, 2026-09-28). */}
+          {!eventsOnly && <RoutineStartedCard />}
           {/* BETA — the one-time "your community keeps a rule of life" offer:
               new accounts that registered through an invite never saw the
               join-time offer, so the home makes it once (Not now dismisses). */}

@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { hasUsedAPractice } from "@/lib/practiceOrderLearning";
 import { noteDayUsed, WELCOME_RETIRES_AFTER_DAYS } from "@/lib/daysUsed";
+import { routineStarted, inheritedRoutine, routineJustStarted } from "@/lib/routineStart";
 import { CtaArrow } from "@/components/CtaArrow";
 
 const FONT = "'Space Grotesk', sans-serif";
@@ -41,6 +42,8 @@ export function GuestWelcomeCard() {
    * home remounts on the way back from a practice.
    */
   const [usedAPractice] = useState<boolean>(() => hasUsedAPractice());
+  /** No routine yet — the home below is the five cards, not a rhythm. */
+  const beforeRoutine = !routineStarted() && !inheritedRoutine();
   const hasPrayed = usedAPractice
     || (!!prayerDays && (prayerDays.keptToday || prayerDays.last7 > 0 || prayerDays.streak > 0));
   /**
@@ -59,6 +62,8 @@ export function GuestWelcomeCard() {
    */
   const [days] = useState<number>(() => noteDayUsed());
   if (days >= WELCOME_RETIRES_AFTER_DAYS) return null;
+  // The just-started pointer says the same thing better, for that one visit.
+  if (routineJustStarted()) return null;
   if (dismissed) return null;
   const dismiss = () => {
     try { localStorage.setItem(SEEN_KEY, "1"); } catch { /* private mode — hides for the session */ }
@@ -85,9 +90,18 @@ export function GuestWelcomeCard() {
         {hasPrayed ? "Develop a daily habit of prayer 🌿" : "Begin here 🌿"}
       </p>
       <p className="text-[13.5px] mt-1.5" style={{ color: "rgba(200,212,192,0.78)", fontFamily: FONT, lineHeight: 1.55 }}>
+        {/* THE PROMISE HAD TO CHANGE WITH THE HOME (owner, 2026-09-28: "The
+            bgin here needs to change too"). It used to say the rhythm was
+            "laid out below" and that Phoebe would walk you through it — true
+            when every device was handed a routine on its first open, and a
+            plain untruth now that the day below is five ways in and an
+            invitation. So before a routine exists it describes what is
+            actually there; afterwards it says what it always said. */}
         {hasPrayed
           ? "You've begun. Return each day and let the rhythm hold you — one practice at a time."
-          : "Phoebe carries a simple daily rhythm of prayer, laid out below. Each day it will walk you through it, one practice at a time."}
+          : beforeRoutine
+            ? "A few ways to pray, whenever you have a moment. When you're ready, start a routine and Phoebe will carry a day with you."
+            : "Phoebe carries a simple daily rhythm of prayer, laid out below. Each day it will walk you through it, one practice at a time."}
       </p>
       {/* The customize hint rides the SECOND card — the returning "Develop a
           daily habit" state — not "Begin here". On day one the ask is simply
