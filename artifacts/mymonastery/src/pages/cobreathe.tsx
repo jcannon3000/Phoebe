@@ -167,10 +167,25 @@ export default function CobreathePage() {
    * tomorrow, so this is never persisted as a preference.
    */
   const [place, setPlace] = useState<BreathPlace | null>(null);
-  // Did the device confirm they're within the place's radius? Checked on pick
-  // (see the location slide), never re-checked, and false is a normal state —
-  // see lib/breathPlaces.
-  const [placeVerified, setPlaceVerified] = useState(false);
+  /**
+   * BEING THERE IS THE CHECK-IN (owner, 2026-09-28: "for breathing together
+   * locations lets make sure you can only check into that location if you are
+   * actually there").
+   *
+   * Until now the pick WAS the check-in and the GPS answer only decorated it:
+   * an unverified breath still joined the place, and `verifiedToday` was a
+   * quieter tally beside the real one. So the number under a chapel's name
+   * counted people who had tapped its name from anywhere on earth, which is
+   * not what "everyone who breathed here today" says.
+   *
+   * Now `place` is only ever a place the device CONFIRMED, and the one being
+   * checked waits in `pendingPlace` — named on screen while the fix comes in,
+   * dropped if it doesn't. A failure is not an error state: it says why, and
+   * the prayer goes on without a place, which was always allowed.
+   */
+  const [pendingPlace, setPendingPlace] = useState<BreathPlace | null>(null);
+  /** A place is joined only once verified, so this is simply "am I in one?". */
+  const placeVerified = !!place;
   // WHY the check failed, so the slide can tell the truth. "Phoebe couldn't
   // confirm you're here" reads as "you're not there" when the real cause is
   // that location was never allowed — which, before the Info.plist usage
@@ -394,18 +409,21 @@ export default function CobreathePage() {
    * which is a real state and not an error: the breath counts either way.
    */
   const pickPlace = useCallback(async (p: BreathPlace) => {
-    setPlace(p);
-    setPlaceVerified(false);
+    setPlace(null);
+    setPendingPlace(p);
     setPlaceReason(null);
-    // Straight to the place's own slide — what you just joined is the
-    // interesting thing, and waiting on the GPS check to show it would make
-    // the tap feel unresponsive indoors, which is where chapels are.
+    // Straight to the place's own slide — waiting on a GPS fix before moving
+    // would make the tap feel unresponsive indoors, which is where chapels
+    // are. The slide names the place and says it is checking.
     setMode("placeStats");
     setVerifying(true);
     try {
       const v = await verifyAtPlace(p);
-      setPlaceVerified(v.verified);
       setPlaceReason(v.reason);
+      // ONLY IF THEY'RE ACTUALLY THERE (owner). Every other outcome — too
+      // far, permission off, no fix, a browser with no geolocation — leaves
+      // them un-checked-in, and the slide says which it was.
+      if (v.verified) setPlace(p);
     } finally {
       setVerifying(false);
     }
@@ -843,7 +861,9 @@ export default function CobreathePage() {
                 {t("cobreathe.location_title", { defaultValue: "Where are you breathing?" })}
               </h1>
               <p style={{ color: "rgba(240,237,230,0.85)", fontFamily: SPACE_GROTESK, fontSize: 15.5, lineHeight: 1.55, maxWidth: 420, marginBottom: 22 }}>
-                {t("cobreathe.location_blurb", { defaultValue: "Choose a place and your breath joins everyone who has breathed there today." })}
+                {/* The rule, said before the tap rather than after it fails: you have
+                    to be standing there (owner, 2026-09-28). */}
+                {t("cobreathe.location_blurb", { defaultValue: "Choose a place you're standing in, and your breath joins everyone who has breathed there today." })}
               </p>
 
               <div className="w-full flex flex-col gap-2" style={{ maxWidth: 440 }}>
@@ -852,7 +872,10 @@ export default function CobreathePage() {
                     hasn't arrived reads as "Be the first here today", which is
                     a true and welcoming thing to say while it's in flight. */}
                 {places.map((p) => {
-                  const on = place?.id === p.id;
+                  // BY SLUG, not id: every place carries the synthetic -1
+                  // until the server's rows arrive, and `place?.id === p.id`
+                  // then lit up the whole list at once.
+                  const on = (place?.slug ?? pendingPlace?.slug) === p.slug;
                   return (
                     <button
                       key={p.id}
@@ -902,17 +925,19 @@ export default function CobreathePage() {
                       </span>
                       {on && (
                         <span style={{ flexShrink: 0, fontSize: 13, color: "rgba(200,212,192,0.85)" }}>
-                          {verifying ? "…" : placeVerified ? "✓ here" : "✓"}
+                          {/* Checking · you're here · you're not. There is no
+                              fourth state now that being there IS the join. */}
+                          {verifying ? "…" : place ? "✓ here" : "not here"}
                         </span>
                       )}
                     </button>
                   );
                 })}
 
-                {place && (
+                {(place || pendingPlace) && (
                   <button
                     type="button"
-                    onClick={() => { setPlace(null); setPlaceVerified(false); }}
+                    onClick={() => { setPlace(null); setPendingPlace(null); setPlaceReason(null); }}
                     style={{ background: "none", border: "none", color: "rgba(200,212,192,0.65)", fontFamily: SPACE_GROTESK, fontSize: 13.5, cursor: "pointer", padding: "8px 0", marginTop: 2 }}
                   >
                     {t("cobreathe.location_clear", { defaultValue: "Breathe without a place" })}
@@ -949,6 +974,11 @@ export default function CobreathePage() {
    * once — so the two spans carry both.
    */
   if (mode === "placeStats") {
+    /** The place on screen: the joined one, or the one being checked. */
+    const shownPlace = place ?? pendingPlace;
+    /** Not there — the one outcome that is about where they're standing. */
+    const tooFar = !verifying && !place && placeReason === "too-far";
+    const noFix = !verifying && !place && placeReason !== "too-far" && placeReason !== null;
     return (
       <Layout bgPhoto={introBgPhoto}>
         <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "var(--app-dvh)" }}>
@@ -957,22 +987,48 @@ export default function CobreathePage() {
               <p className="text-[11px] uppercase tracking-[0.22em] font-semibold mb-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
                 {verifying
                   ? t("cobreathe.place_checking", { defaultValue: "Checking you're here…" })
-                  : placeVerified
+                  : place
                     ? t("cobreathe.place_here", { defaultValue: "You're here" })
-                    : t("cobreathe.place_chosen", { defaultValue: "Breathing with" })}
+                    // Named, but not joined — see `pickPlace`.
+                    : t("cobreathe.place_not_here", { defaultValue: "Not checked in" })}
               </p>
               <h1 style={{ color: WARM, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(30px, 8vw, 44px)", lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 8 }}>
-                {place?.name ?? ""}
+                {shownPlace?.name ?? ""}
               </h1>
-              {place?.subtitle && (
-                <p style={{ color: "rgba(200,212,192,0.72)", fontFamily: SPACE_GROTESK, fontSize: 14.5, marginBottom: 20 }}>{place.subtitle}</p>
+              {shownPlace?.subtitle && (
+                <p style={{ color: "rgba(200,212,192,0.72)", fontFamily: SPACE_GROTESK, fontSize: 14.5, marginBottom: 20 }}>{shownPlace.subtitle}</p>
               )}
-              {!verifying && !placeVerified && (placeReason === "denied" || placeReason === "unavailable") && (
+              {/**
+                * WHY THEY AREN'T IN (owner: only someone actually at a place
+                * can check into it). Three different truths, and saying the
+                * wrong one is worse than saying nothing: "you're too far away"
+                * reads as an accusation when the real cause is that location
+                * was never allowed. Every one of them ends the same way —
+                * the prayer is not blocked, only the place is.
+                */}
+              {tooFar && (
+                <p style={{ color: "rgba(200,212,192,0.62)", fontFamily: SPACE_GROTESK, fontSize: 13, lineHeight: 1.5, maxWidth: 330, marginBottom: 18 }}>
+                  {t("cobreathe.place_too_far", { defaultValue: "You can only check in at a place while you're there, and Phoebe can't find you here yet. You can breathe anyway, or choose another place." })}
+                </p>
+              )}
+              {noFix && (
                 <p style={{ color: "rgba(200,212,192,0.62)", fontFamily: SPACE_GROTESK, fontSize: 13, lineHeight: 1.5, maxWidth: 330, marginBottom: 18 }}>
                   {placeReason === "denied"
-                    ? t("cobreathe.place_denied", { defaultValue: "Location is off for Phoebe, so this breath won't be counted as prayed here. Turn it on in Settings › Privacy › Location Services. You can pray either way." })
-                    : t("cobreathe.place_unavailable", { defaultValue: "Phoebe couldn't read your location, so this breath won't be counted as prayed here. You can pray either way." })}
+                    ? t("cobreathe.place_denied", { defaultValue: "Checking in needs your location, and it's off for Phoebe. Turn it on in Settings › Privacy › Location Services. You can pray either way." })
+                    : t("cobreathe.place_unavailable", { defaultValue: "Phoebe couldn't read your location, so it can't check you in here. You can pray either way." })}
                 </p>
+              )}
+              {/* One more try — indoors a first fix often times out and the
+                  second one lands. */}
+              {(tooFar || noFix) && shownPlace && (
+                <button
+                  type="button"
+                  onClick={() => { void pickPlace(shownPlace); }}
+                  className="rounded-full px-5 py-2.5"
+                  style={{ marginBottom: 18, background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {t("cobreathe.place_retry", { defaultValue: "Check again" })}
+                </button>
               )}
 
               {/**

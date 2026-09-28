@@ -18,9 +18,10 @@ import { apiRequest, ApiError } from "@/lib/queryClient";
 import { enqueueWrite } from "@/lib/writeOutbox";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 import { openExternal } from "@/lib/openExternal";
-import { canEmbedVideoHere, openVideoInReader, videoPath } from "@/lib/videoEmbed";
+import { canEmbedVideoHere, openVideoInReader, videoPath, youtubeIdFrom } from "@/lib/videoEmbed";
 import { setAfterReader } from "@/lib/afterReader";
 import { findCatalogueTrack, trackLoggedAs } from "@/lib/youtubeCatalogues";
+import { findHymnByLog, hymnVideoSleeve } from "@/lib/hymnsCatalogue";
 import { trackArtwork } from "@/lib/trackArtwork";
 import { hasAppleMusicNative, playAppleMusicNative, pauseAppleMusicNative, resumeAppleMusicNative, stopAppleMusicNative, hasAppleMusicCollectionNative, playAppleMusicCollectionNative } from "@/lib/appleMusicNative";
 import { appleMusicFeaturesReady, enableAppleMusic, APPLE_MUSIC_EVENT } from "@/lib/appleMusicFeatures";
@@ -32,6 +33,8 @@ import { MusicPlayer, MUSIC_PLAYER_PILL } from "@/components/MusicPlayer";
 import { MusicLibrarySheet } from "@/components/MusicLibrarySheet";
 import type { MusicPlaylist } from "@/lib/practiceMusic";
 import { CtaArrow } from "@/components/CtaArrow";
+import { useAuth } from "@/hooks/useAuth";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
 
 // Audio Divina — sacred listening. You listen, then note what you listened to
 // + how, and mark it done for the day. No timer and no goal; every entry is
@@ -118,6 +121,14 @@ function relDay(day: string): string {
 
 type View = "deck" | "log" | "history" | "library";
 
+// The deck's beats. Module scope so every handler above the render can name
+// them (they used to sit in the middle of the component, which meant the play
+// handlers wrote `setDeckStep(3)`-by-another-name from inside a closure).
+const INTRO = 0, LISTEN = 1, HOW = 2, LOG = 3, LIFT = 4, DONE = 5;
+const FIND = LISTEN;
+const LAST = DONE;
+const LISTEN_SECTION = ["Begin", "Listen", "How", "Log", "Pray", "Done"];
+
 type CuratedTrack = {
   id: number; trackNumber: number; title: string;
   appleUrl: string | null; spotifyUrl: string | null;
@@ -134,6 +145,26 @@ export default function ListeningPage() {
   const [, setLocation] = useLocation();
   const [view, setView] = useState<View>("deck");
   const [deckStep, setDeckStep] = useState(0);
+  /**
+   * NO LOG FOR SOMEONE WITHOUT AN ACCOUNT (owner, 2026-09-28: "we want audio
+   * divina to be open to all users even if they are not logged in, just don't
+   * have the log").
+   *
+   * The listening itself needs nothing: the catalogues, the player and the
+   * search are all public. The LOG beat is the one part that wants somewhere
+   * to write — a device-local guest has no account for the entry to belong
+   * to, and a required form that saves nowhere is worse than no form. So the
+   * deck is five beats for them: begin · listen · how · pray · done.
+   *
+   * Everything that would have written stays quiet for them too (logToday,
+   * logNowPlaying): the practice can still be marked kept for the day, which
+   * is device-local, but nothing is posted and nothing is put in the log.
+   */
+  const { user } = useAuth();
+  const noLog = isDeviceLocalGuest(user);
+  /** Where "the music is playing somewhere else" lands: the log, or past it. */
+  const logStep = noLog ? LIFT : LOG;
+  const DECK_TOTAL = noLog ? 5 : 6;
   // The curated album library (admin-picked — see admin-audio-library.tsx).
   // Public, no auth needed — same as the ACT art library.
   const [libraryAlbum, setLibraryAlbum] = useState<CuratedAlbum | null>(null);
@@ -338,7 +369,7 @@ export default function ListeningPage() {
     const openElsewhere = () => {
       if (!r.url) return;
       openExternal(r.url, { system: true });
-      setDeckStep(LOG);
+      setDeckStep(logStep);
     };
     if (id && nowPlaying?.id === id) { void stopAppleMusicNative(); setNowPlaying(null); return; }
     const playable = id ? playableNow() : false;
@@ -390,16 +421,46 @@ export default function ListeningPage() {
       openExternal(`https://www.youtube.com/watch?v=${knownId}`, { system: true });
       return;
     }
+    /**
+     * OR A HYMN (owner, 2026-09-28: "When you click a past song on audio
+     * divina, have it go to the youtube player not the logger"). The hymnal
+     * is its own table, which findCatalogueTrack never reads — so a hymn
+     * logged from /hymns came back here as unknown and dropped to the log.
+     * The same door /hymns plays through, with the same sleeve.
+     */
+    const hymn = findHymnByLog(r.what);
+    const hymnVid = hymn ? youtubeIdFrom(hymn.youtubeUrl) : null;
+    if (hymn && hymnVid) {
+      const sleeve = hymnVideoSleeve(hymn);
+      if (canEmbedVideoHere()) { setLocation(videoPath(hymnVid, { ...sleeve, from: "/hymns" })); return; }
+      if (openVideoInReader(videoPath(hymnVid, sleeve))) {
+        setAfterReader("/listening?lift=1", sleeve.logAs);
+        return;
+      }
+      openExternal(hymn.youtubeUrl!, { system: true });
+      return;
+    }
     chooseRecent(r);
+    /**
+     * NOT ONE OF OURS — typed in, or picked from search — so there is no
+     * recording to play in Phoebe. Still YouTube, not the log (owner,
+     * 2026-09-28): YouTube's own search for what was logged, and the log
+     * behind it already filled in by chooseRecent for when they come back.
+     */
+    if (!canPlayInApp && r.what?.trim()) {
+      openExternal(`https://www.youtube.com/results?search_query=${encodeURIComponent(r.what.trim())}`, { system: true });
+      setDeckStep(logStep);
+      return;
+    }
     // Owner, 2026-09-18: "if they are listening in app do a player, if they are
     // not go to the log screen and autofill it". Two outcomes, no third: either
     // Phoebe is holding the music and this beat becomes the player, or the
     // music is somewhere else and there is nothing left to do here but write it
     // down — so it goes straight to the log, already filled in by chooseRecent.
     const playable = service === "apple" ? playableNow() : false;
-    if (playable === false) { setDeckStep(LOG); return; }
+    if (playable === false) { setDeckStep(logStep); return; }
     void (async () => {
-      if (!(await playable)) { setDeckStep(LOG); return; }
+      if (!(await playable)) { setDeckStep(logStep); return; }
       const hits = await searchCatalog(r.what).catch(() => [] as SearchResult[]);
       /**
        * WHAT WAS LOGGED, not merely the first song (owner, 2026-09-19: "If
@@ -431,7 +492,7 @@ export default function ListeningPage() {
         setPaused(false);
         return;
       }
-      setDeckStep(LOG);
+      setDeckStep(logStep);
     })();
   }
 
@@ -455,7 +516,7 @@ export default function ListeningPage() {
         : `https://open.spotify.com/search/${q}`;
       openExternal(url, { system: true });
       setWhat(title); setQuery(title); setPicked(true); setArtworkUrl("");
-      setDeckStep(LOG);
+      setDeckStep(logStep);
     };
     // playableNow, not the raw canPlayInApp: null means "still asking", and
     // treating that as "no" opened the Music app for a listener who could
@@ -506,6 +567,9 @@ export default function ListeningPage() {
     queryKey: ["/api/listening"],
     queryFn: () => apiRequest("GET", "/api/listening"),
     staleTime: 60_000,
+    // No account, no account-wide log: asking would 401 on every open of a
+    // practice that is now open to everyone (see `noLog`).
+    enabled: !noLog,
   });
   /**
    * WHAT THE PERSON LOGGED IS SHOWN EVEN WHEN THE SERVER HASN'T HEARD (audit,
@@ -630,6 +694,9 @@ export default function ListeningPage() {
    * artist and artwork). Typing is the fallback, not the preference.
    */
   function logToday() {
+    // A guest never reaches the log beat, but the ?log=1 hand-off and the
+    // player both call this — nothing of theirs is kept anywhere.
+    if (noLog) return;
     if (!what.trim()) return;
     // Never log the same title twice in a day — the prefill puts today's entry
     // back in the field, and the table has no unique day+title index.
@@ -770,8 +837,6 @@ export default function ListeningPage() {
   // previous slide order just with the hymn pill"). The Choose slide folds back
   // into Listen: the prompt, then Lately and the catalogue pills under it.
   // FIND stays as a name for the same step so the rest reads unchanged.
-  const INTRO = 0, LISTEN = 1, HOW = 2, LOG = 3, LIFT = 4, DONE = 5;
-  const FIND = LISTEN;
   /**
    * ?log=1 — a catalogue (Hymns, Hildegard) opened the music in another app
    * and sent the person here, so the deck starts on the log, which the
@@ -795,15 +860,12 @@ export default function ListeningPage() {
       const toLift = q.get("lift") === "1";
       if (!toLog && !toLift) return;
       if (toLift) loggedHere.current = true;
-      setDeckStep(toLift ? LIFT : LOG);
+      setDeckStep(toLift ? LIFT : logStep);
       window.history.replaceState(window.history.state, "", window.location.pathname);
     } catch { /* no URL to read */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const DECK_TOTAL = 6;
-  const LAST = DONE;
   // The pill's section label — the office's "N of M · Section" shape.
-  const LISTEN_SECTION = ["Begin", "Listen", "How", "Log", "Pray", "Done"];
   /** Any beat before the prayer becomes the player once Phoebe is holding the
    *  music: LISTEN when a catalogue handed it over, FIND when it was chosen
    *  from Lately or the search — and HOW or LOG when a slow play finished
@@ -971,6 +1033,8 @@ export default function ListeningPage() {
      */
     const logNowPlaying = () => {
       if (!nowPlaying) return;
+      // Kept for the day, but not written down (see `noLog`).
+      if (noLog) { markPracticeDoneToday("listening"); loggedHere.current = true; return; }
       const title = (nowPlaying.title ?? "").trim();
       const already = entries.some((e) => e.day === todayYmd
         && e.what.trim().toLowerCase() === title.toLowerCase());
@@ -989,6 +1053,8 @@ export default function ListeningPage() {
       // somewhere else. Phoebe is playing this one and already knows what it
       // is — so Next logs it and goes on to the prayer beat.
       if (playerShowing) { logNowPlaying(); setDeckStep(LIFT); return; }
+      // Without a log, HOW leads straight to the prayer.
+      if (noLog && deckStep === HOW) { setDeckStep(LIFT); return; }
       if (deckStep < LAST) setDeckStep((n) => n + 1);
     };
     const prev = () => {
@@ -996,6 +1062,7 @@ export default function ListeningPage() {
       // logToday clears the form, so going back to it showed an empty one,
       // which reads as "it didn't save".
       if (deckStep === LIFT && loggedHere.current) { setDeckStep(FIND); return; }
+      if (noLog && deckStep === LIFT) { setDeckStep(HOW); return; }
       // Sent here by a catalogue's play button: they came from a shelf and
       // want the rest of it, not the deck's Begin slide they never saw.
       if (playerShowing && cameFrom.current) { setLocation(cameFrom.current); return; }
@@ -1375,7 +1442,11 @@ export default function ListeningPage() {
                   the deck waits. */}
               {deckStep === HOW && (
                 <p className="prompt-rise text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
-                  Listen to the song in the way that is best for you at this moment. Then come back to log it and continue in this practice.
+                  {/* Nothing to come back TO when there is no log (see `noLog`) —
+                      they come back to the prayer instead. */}
+                  {noLog
+                    ? "Listen to the song in the way that is best for you at this moment. Then come back and continue in this practice."
+                    : "Listen to the song in the way that is best for you at this moment. Then come back to log it and continue in this practice."}
                 </p>
               )}
 
@@ -1445,9 +1516,12 @@ export default function ListeningPage() {
                       </span>
                     </div>
                   ))}
+                  {/* "Your listening will gather here" is a promise, and with
+                      no account there is nothing for it to gather into (see
+                      `noLog`) — the closing slide is just the closing then. */}
                   {sortedEntries.length === 0 && (
                     <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 14, lineHeight: 1.6, margin: "8px 0 0" }}>
-                      Your listening will gather here.
+                      {noLog ? "Go in peace." : "Your listening will gather here."}
                     </p>
                   )}
                   {/* VIEW ALL (owner) — the slide shows the five most recent,
@@ -1590,7 +1664,9 @@ export default function ListeningPage() {
             The labels keep their jobs: "Log it" names what's missing on the
             log beat, "Done" closes. See DeckNavPill. */}
         <DeckNavPill
-          label={`${deckStep + 1} of ${DECK_TOTAL} · ${LISTEN_SECTION[deckStep] ?? ""}`}
+          // Without the log beat the numbering closes up behind it, so a
+          // five-beat deck doesn't end on "6 of 5".
+          label={`${noLog && deckStep > LOG ? deckStep : deckStep + 1} of ${DECK_TOTAL} · ${LISTEN_SECTION[deckStep] ?? ""}`}
           back={{ onClick: prev, disabled: deckStep === INTRO }}
           primary={{
             // Held (inert, dimmed) until something is named on the log beat —

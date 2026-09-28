@@ -32,12 +32,44 @@ const FLOOR_S = 10;
  */
 const END_S = 20;
 
+/**
+ * TODAY ONLY (owner, 2026-09-28: "if they click on a song and had played it
+ * yesterday, reset the progress").
+ *
+ * A place kept is for coming back to the thing you are in the middle of. Come
+ * back TOMORROW and you are not in the middle of it — you are praying with it
+ * again, and a song that starts two thirds through is not the practice. A
+ * lesson is different from a song in principle, but the same rule reads right
+ * for both: a talk resumed a week later is more likely a fresh sitting than a
+ * continuation.
+ *
+ * The stamp is the LOCAL day the place was kept. An older stamp is forgotten
+ * on read rather than merely ignored, so nothing lingers in storage for a
+ * video nobody will resume. A value written before this existed has no stamp
+ * and is dropped the same way — one silent reset, once, and never again.
+ */
+function todayYmd(): string {
+  try { return new Date().toLocaleDateString("en-CA"); } catch { return ""; }
+}
+
 /** Where to resume this video, or 0 for the beginning. Never throws. */
 export function readVideoPosition(videoId: string): number {
   if (!videoId) return 0;
   try {
-    const n = Number(localStorage.getItem(KEY(videoId)));
-    return Number.isFinite(n) && n >= FLOOR_S ? Math.floor(n) : 0;
+    const raw = localStorage.getItem(KEY(videoId));
+    if (!raw) return 0;
+    let seconds = 0;
+    let ymd = "";
+    if (raw.startsWith("{")) {
+      const v = JSON.parse(raw) as { s?: unknown; ymd?: unknown };
+      seconds = Number(v?.s);
+      ymd = typeof v?.ymd === "string" ? v.ymd : "";
+    } else {
+      // The old shape: bare seconds, no day. Treat as yesterday's.
+      seconds = Number(raw);
+    }
+    if (ymd !== todayYmd()) { clearVideoPosition(videoId); return 0; }
+    return Number.isFinite(seconds) && seconds >= FLOOR_S ? Math.floor(seconds) : 0;
   } catch {
     return 0;
   }
@@ -54,7 +86,9 @@ export function saveVideoPosition(videoId: string, seconds: number, duration: nu
   if (!videoId || !Number.isFinite(seconds)) return;
   if (seconds < FLOOR_S) { clearVideoPosition(videoId); return; }
   if (duration > 0 && seconds >= duration - END_S) { clearVideoPosition(videoId); return; }
-  try { localStorage.setItem(KEY(videoId), String(Math.floor(seconds))); } catch { /* private mode */ }
+  try {
+    localStorage.setItem(KEY(videoId), JSON.stringify({ s: Math.floor(seconds), ymd: todayYmd() }));
+  } catch { /* private mode */ }
 }
 
 /** Forget it — the video ended, or was watched to within END_S of the end. */

@@ -1,7 +1,5 @@
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { useGuestMode } from "@/hooks/useGuestMode";
-import { useAuth } from "@/hooks/useAuth";
-import { isDeviceLocalGuest } from "@/lib/guestFlag";
 
 // ── The practices, as one list ───────────────────────────────────────────────
 //
@@ -26,15 +24,11 @@ export interface PracticeEntry {
 }
 
 export function usePracticeDirectory(): PracticeEntry[] {
-  // PUBLIC no-login version: guests keep exactly Contemplation · Co-Breathe —
-  // no Audio Divina anywhere in the public version (owner re-reversal
-  // 2026-07-02), and Breathing Together stays behind its own flag. See memory
-  // "project_public_no_login".
+  // PUBLIC no-login version: a few rows still wait for an account, and
+  // Breathing Together stays behind its own flag. See memory
+  // "project_public_no_login". Audio Divina is NOT one of them any more
+  // (owner, 2026-09-28) — see its entry below.
   const { isGuest } = useGuestMode();
-  const { user } = useAuth();
-  // Signed in = a real account. A device-local guest has a provisioned
-  // anonymous user, which is not one.
-  const signedIn = !isDeviceLocalGuest(user);
   return [
     // Daily Offices leads the list — also reachable from the BCP page
     // (menu.tsx → /menu/bcp), but Practices gets its own entry point too.
@@ -102,21 +96,22 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // from nearly everyone, not just visitors without an account.
     { offlineKey: "visio", emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image, slowly", href: "/visio" },
     /**
-     * EVERY SIGNED-IN PERSON SEES IT (owner, 2026-09-06: "I want all
-     * signed in users to see it"). The gate was `!isGuest`, and the
-     * public shape covers every ordinary account — so this row reached
-     * pilot-group members and super admins only, which is not what
-     * "not in the public version" was meant to mean. The no-login
-     * version still doesn't carry it (owner, 2026-07-02), and that is
-     * what `signedIn` now says: an anonymous device user is not an
-     * account. /listening itself was never gated.
+     * NO GATE AT ALL (owner, 2026-09-28: "we want audio divina to be open to
+     * all users even if they are not logged in, just don't have the log").
+     *
+     * It has been gated twice over: `!isGuest` hid it from every ordinary
+     * account, then `signedIn` hid it from the no-login version. Nothing in
+     * the listening needs an account — the catalogues, the player and the
+     * search are all public, and /listening itself was never gated — so what
+     * was left was a row that named a practice anyone could do and then
+     * refused to show it. The deck now simply leaves the LOG beat out for a
+     * device-local guest (pages/listening), which is the one part that wanted
+     * somewhere to write.
      *
      * ABOVE THE ROSARY (owner, 2026-09-18: "Move audio Divina above the
      * rosary"). It sat at the bottom of Practices before that.
      */
-    ...(signedIn ? [
-      { offlineKey: "listening", emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", href: "/listening" },
-    ] : []),
+    { offlineKey: "listening", emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", href: "/listening" },
     // BELOW VISIO (owner, 2026-09-18: "move the rosay bellow visio on the
     // practice page and option pages").
     // The Rosary — a guided walk through a set of mysteries, on Simple
