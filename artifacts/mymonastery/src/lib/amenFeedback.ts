@@ -383,7 +383,7 @@ export function triggerSubmitFeedback() {
   }
 }
 
-type NativePad = (o: { octaveStep: number }) => Promise<unknown>;
+type NativePad = (o: { octaveStep: number; exhale?: boolean }) => Promise<unknown>;
 function nativePad(): NativePad | null {
   try {
     return (window as unknown as {
@@ -416,7 +416,12 @@ function nativePad(): NativePad | null {
  * Call fire-and-forget. Safe on web (plays) and iOS (plays once the
  * AudioContext resumes on the user gesture that triggered it).
  */
-export function playBreathTone(octaveStep: number = 0) {
+export function playBreathTone(octaveStep: number = 0, opts: { exhale?: boolean } = {}) {
+  // `exhale` (owner, 2026-09-29: "we want a sound on the out too now"): the
+  // same pad a perfect fourth lower and a little softer, so a breath rises on
+  // the in-breath and settles on the out-breath. A-E-A in, E-B-E out: they
+  // share the E, and the overlap reads as an open suspension, never a clash.
+  const exhale = !!opts.exhale;
   // NOT OVER MUSIC (owner, 2026-09-19). Even the native pad stops Apple Music
   // playing in-app — the chime at a slide turn was cutting off the office's
   // music, and the breath's tone would do the same to Breathing Together's.
@@ -430,7 +435,7 @@ export function playBreathTone(octaveStep: number = 0) {
   // without the method fall through to the WebAudio pad below.
   const pad = nativePad();
   if (pad) {
-    void pad({ octaveStep }).catch(() => { /* silent fallback */ });
+    void pad({ octaveStep, exhale }).catch(() => { /* silent fallback */ });
     return;
   }
   try {
@@ -450,7 +455,7 @@ export function playBreathTone(octaveStep: number = 0) {
     ensureAppActiveResume();
     if (isAudioStillLocked()) {
       void ctx.resume().then(drainPendingAudio).catch(() => { /* ignore */ });
-      _pendingAudio.push(() => playBreathTone(octaveStep));
+      _pendingAudio.push(() => playBreathTone(octaveStep, opts));
       return;
     }
     if (ctx.state === "suspended") void ctx.resume();
@@ -467,12 +472,12 @@ export function playBreathTone(octaveStep: number = 0) {
     // chord into ultrasound and lose the entire sound to the lowpass.
     const safeStep = Math.max(0, Math.min(4, Math.floor(octaveStep) || 0));
     const octMult = Math.pow(2, safeStep);
-    const rootFreq = 110 * octMult;
+    const rootFreq = 110 * octMult * (exhale ? 0.75 : 1);
 
     // Master volume taper — pull higher steps back a touch so the +2
     // step doesn't read as much louder than the base, and so the
     // brightness doesn't fatigue across a long slideshow.
-    const masterPeak = safeStep >= 2 ? 0.18 : safeStep >= 1 ? 0.20 : 0.22;
+    const masterPeak = (safeStep >= 2 ? 0.18 : safeStep >= 1 ? 0.20 : 0.22) * (exhale ? 0.8 : 1);
     const master = ctx.createGain();
     master.gain.setValueAtTime(0, now);
     master.gain.linearRampToValueAtTime(masterPeak, now + SWELL_IN);

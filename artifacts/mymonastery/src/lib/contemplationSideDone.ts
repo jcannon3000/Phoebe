@@ -108,8 +108,30 @@ const EVENING_OPENS_HOUR = EVENING_OPEN_HOUR;
  *  prayer and contemplative prayer") — a rule can keep the breath in the
  *  evening and silence in the morning, and a single global answer would send
  *  one of the two sits to the wrong card. */
-function configuredKindFor(side: ContemplationSide): ContemplationKind {
-  return getSideContemplationKind(side) === "creation" ? "cobreathe" : "silent";
+function configuredKindFor(side: ContemplationSide): ContemplationKind | null {
+  /**
+   * EVERY KIND NAMED (owner, 2026-09-28: "Sometimes when I do contemplation
+   * before I do pray as you go, it does the check animation on pray as you
+   * go"). This used to read "creation → the breath, ANYTHING ELSE → silence",
+   * so a side whose practice is Pray As You Go — or Visio, the Rosary, a walk —
+   * counted as a silent side. A sit from the goal card or Practices (no
+   * ?side=) then claimed it, stamped `contemplation-<side>`, and that side's
+   * card celebrated a practice nobody had done. Only a sit-shaped side can be
+   * claimed by a sit; the named practices keep themselves (useRhythmState's
+   * kindKept). The switch is exhaustive so a new kind has to choose.
+   */
+  const kind = getSideContemplationKind(side);
+  switch (kind) {
+    case "silent": return "silent";
+    case "creation": return "cobreathe";
+    case "walk": case "audio": case "visio": case "lectio": case "reading":
+    case "rosary": case "icons": case "payg":
+      return null;
+    default: {
+      const never: never = kind;
+      return never;
+    }
+  }
 }
 
 /**

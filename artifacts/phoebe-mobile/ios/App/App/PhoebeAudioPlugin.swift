@@ -72,6 +72,8 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "cancelBellNotification", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "smoothSwell", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "playPad", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "scheduleBreath", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cancelBreath", returnType: CAPPluginReturnPromise),
     ]
 
     private let bellNotificationId = "phoebe-contemplation-bell"
@@ -94,59 +96,17 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func playPad(_ call: CAPPluginCall) {
         let step = max(0, min(4, Int(call.getDouble("octaveStep") ?? 0)))
+        let exhale = call.getBool("exhale") ?? false
         do {
             try ensureSessionActive(bell: call.getBool("bell") ?? false)
-            let sr = 44100.0
-            let swellIn = 2.5, hold = 0.8, fadeOut = 3.7
-            let total = swellIn + hold + fadeOut
-            let frames = AVAudioFrameCount(total * sr)
-            guard let fmt = AVAudioFormat(standardFormatWithSampleRate: sr, channels: 1),
-                  let buf = AVAudioPCMBuffer(pcmFormat: fmt, frameCapacity: frames),
-                  let out = buf.floatChannelData?[0] else {
-                call.reject("pad buffer"); return
-            }
-            buf.frameLength = frames
-            let octMult = pow(2.0, Double(step))
-            let root = 110.0 * octMult
-            let masterPeak = step >= 2 ? 0.18 : step >= 1 ? 0.20 : 0.22
-            let voices: [(freq: Double, gain: Double, triangle: Bool)] = [
-                (root, 0.55, false), (root * 1.5, 0.28, true), (root * 2.0, 0.22, false)
-            ]
-            var phase = [Double](repeating: 0, count: voices.count)
-            let lpStart = 380.0 * octMult, lpPeak = 1800.0 * octMult
-            var lpY = 0.0
-            let n = Int(frames)
-            for i in 0..<n {
-                let t = Double(i) / sr
-                // Master envelope: linear swell, hold, exponential fade to -80 dB.
-                let env: Double
-                if t < swellIn { env = masterPeak * (t / swellIn) }
-                else if t < swellIn + hold { env = masterPeak }
-                else { env = masterPeak * pow(0.0001 / masterPeak, (t - swellIn - hold) / fadeOut) }
-                // ~0.3% upward drift over the swell, back to pitch by the end.
-                let drift = t < swellIn ? 1.0 + 0.003 * (t / swellIn) : 1.0 + 0.003 * max(0.0, 1.0 - (t - swellIn) / (total - swellIn))
-                var x = 0.0
-                for (vi, v) in voices.enumerated() {
-                    phase[vi] += v.freq * drift / sr
-                    if phase[vi] >= 1.0 { phase[vi] -= 1.0 }
-                    let ph = phase[vi]
-                    let sample = v.triangle ? (2.0 * abs(2.0 * (ph - floor(ph + 0.5))) - 1.0) : sin(2.0 * Double.pi * ph)
-                    x += sample * v.gain
-                }
-                // Low-pass sweep lpStart → lpPeak over the swell → 2×lpStart by the end.
-                let fc = t < swellIn ? lpStart + (lpPeak - lpStart) * (t / swellIn)
-                    : lpPeak + (lpStart * 2.0 - lpPeak) * ((t - swellIn) / (total - swellIn))
-                let a = 1.0 - exp(-2.0 * Double.pi * fc / sr)
-                lpY += a * (x - lpY)
-                out[i] = Float(lpY * env)
-            }
+            guard let buf = padBuffer(step: step, exhale: exhale) else { call.reject("pad buffer"); return }
             if padEngine == nil {
                 let engine = AVAudioEngine()
                 var players: [AVAudioPlayerNode] = []
                 for _ in 0..<3 {
                     let p = AVAudioPlayerNode()
                     engine.attach(p)
-                    engine.connect(p, to: engine.mainMixerNode, format: fmt)
+                    engine.connect(p, to: engine.mainMixerNode, format: buf.format)
                     players.append(p)
                 }
                 padEngine = engine
@@ -163,6 +123,168 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         } catch {
             call.reject("playPad failed: \(error.localizedDescription)")
         }
+    }
+
+    /// The pad, rendered once per (octave, in/out) and reused. `exhale` is the
+    /// out-breath variant: a perfect fourth lower and 0.8× as loud, matching
+    /// lib/amenFeedback.ts playBreathTone({ exhale: true }).
+    private var padCache: [String: AVAudioPCMBuffer] = [:]
+    private func padBuffer(step: Int, exhale: Bool) -> AVAudioPCMBuffer? {
+        let key = "\(step)-\(exhale)"
+        if let hit = padCache[key] { return hit }
+        let sr = 44100.0
+        let swellIn = 2.5, hold = 0.8, fadeOut = 3.7
+        let total = swellIn + hold + fadeOut
+        let frames = AVAudioFrameCount(total * sr)
+        guard let fmt = AVAudioFormat(standardFormatWithSampleRate: sr, channels: 1),
+              let buf = AVAudioPCMBuffer(pcmFormat: fmt, frameCapacity: frames),
+              let out = buf.floatChannelData?[0] else { return nil }
+        buf.frameLength = frames
+        let octMult = pow(2.0, Double(step))
+        let root = 110.0 * octMult * (exhale ? 0.75 : 1.0)
+        let masterPeak = (step >= 2 ? 0.18 : step >= 1 ? 0.20 : 0.22) * (exhale ? 0.8 : 1.0)
+        let voices: [(freq: Double, gain: Double, triangle: Bool)] = [
+            (root, 0.55, false), (root * 1.5, 0.28, true), (root * 2.0, 0.22, false)
+        ]
+        var phase = [Double](repeating: 0, count: voices.count)
+        let lpStart = 380.0 * octMult, lpPeak = 1800.0 * octMult
+        var lpY = 0.0
+        let n = Int(frames)
+        for i in 0..<n {
+            let t = Double(i) / sr
+            // Master envelope: linear swell, hold, exponential fade to -80 dB.
+            let env: Double
+            if t < swellIn { env = masterPeak * (t / swellIn) }
+            else if t < swellIn + hold { env = masterPeak }
+            else { env = masterPeak * pow(0.0001 / masterPeak, (t - swellIn - hold) / fadeOut) }
+            // ~0.3% upward drift over the swell, back to pitch by the end.
+            let drift = t < swellIn ? 1.0 + 0.003 * (t / swellIn) : 1.0 + 0.003 * max(0.0, 1.0 - (t - swellIn) / (total - swellIn))
+            var x = 0.0
+            for (vi, v) in voices.enumerated() {
+                phase[vi] += v.freq * drift / sr
+                if phase[vi] >= 1.0 { phase[vi] -= 1.0 }
+                let ph = phase[vi]
+                let sample = v.triangle ? (2.0 * abs(2.0 * (ph - floor(ph + 0.5))) - 1.0) : sin(2.0 * Double.pi * ph)
+                x += sample * v.gain
+            }
+            // Low-pass sweep lpStart → lpPeak over the swell → 2×lpStart by the end.
+            let fc = t < swellIn ? lpStart + (lpPeak - lpStart) * (t / swellIn)
+                : lpPeak + (lpStart * 2.0 - lpPeak) * ((t - swellIn) / (total - swellIn))
+            let a = 1.0 - exp(-2.0 * Double.pi * fc / sr)
+            lpY += a * (x - lpY)
+            out[i] = Float(lpY * env)
+        }
+        padCache[key] = buf
+        return buf
+    }
+
+    // ─── Breathing Together, with the screen off ─────────────────────────────
+    // Owner, 2026-09-29: "we want the sounds to play even if your … screen is
+    // off", and "a sound on the out too". The web view's animation loop is what
+    // rings each breath, and iOS stops it the moment the screen goes dark. So
+    // the page hands us the whole set up front — when the first in-breath is,
+    // how long a breath is, how many — and we lay every tone down on the audio
+    // clock, the way scheduleBellAt lays down the sit's bell: .playback (it
+    // sounds through the ringer switch, like that bell — owner's call), the
+    // silent keep-alive loop so iOS keeps the process running, and
+    // AVAudioPlayerNode buffers scheduled at host times. In-breath k plays the
+    // pad at octave k % 3; its out-breath plays the exhale pad at the same
+    // octave; one closing tone lands when the set is complete.
+    private var breathEngine: AVAudioEngine?
+    private var breathNodes: [AVAudioPlayerNode] = []
+    private var breathSilence: AVAudioPlayer?
+    private var breathCleanup: Timer?
+
+    @objc func scheduleBreath(_ call: CAPPluginCall) {
+        let firstInMs = call.getDouble("firstInMs") ?? 0      // from now
+        let inhaleMs = call.getDouble("inhaleMs") ?? 6000
+        let cycleMs = call.getDouble("cycleMs") ?? 12000
+        let fromBreath = max(0, Int(call.getDouble("fromBreath") ?? 0))
+        let count = max(0, min(200, Int(call.getDouble("count") ?? 0)))
+        let closing = call.getBool("closingTone") ?? true
+        teardownBreath()
+        // Apple Music is the sound while it plays (lib/amenFeedback's rule).
+        if PhoebeSessionOwner.musicHolds { call.resolve(["deferred": true]); return }
+        if count == 0 || firstInMs < 0 { call.resolve(["scheduled": 0]); return }
+        do {
+            // Arm the cleanup timer FIRST so ensureSessionActive keeps .playback.
+            let lastMs = firstInMs + Double(count) * cycleMs
+            let cleanup = Timer(timeInterval: lastMs / 1000.0 + 10.0, repeats: false) { [weak self] _ in
+                self?.teardownBreath()
+            }
+            RunLoop.main.add(cleanup, forMode: .common)
+            breathCleanup = cleanup
+            try ensureSessionActive(bell: true)
+
+            if let url = silenceURL() {
+                let silence = try AVAudioPlayer(contentsOf: url)
+                silence.numberOfLoops = -1
+                silence.volume = 0.001
+                silence.prepareToPlay()
+                silence.play()
+                breathSilence = silence
+            }
+
+            guard let fmt = padBuffer(step: 0, exhale: false)?.format else { throw NSError(domain: "PhoebeAudio", code: 1) }
+            let engine = AVAudioEngine()
+            var nodes: [AVAudioPlayerNode] = []
+            // Two in-breath and two out-breath nodes, alternating, so a tone's
+            // tail (7 s) is never cut by the next tone on the same node; one
+            // more for the closing tone.
+            for _ in 0..<5 {
+                let node = AVAudioPlayerNode()
+                engine.attach(node)
+                engine.connect(node, to: engine.mainMixerNode, format: fmt)
+                nodes.append(node)
+            }
+            try engine.start()
+            breathEngine = engine
+            breathNodes = nodes
+            for node in nodes { node.play() }
+
+            let nowHost = mach_absolute_time()
+            func at(_ ms: Double) -> AVAudioTime {
+                AVAudioTime(hostTime: nowHost + AVAudioTime.hostTime(forSeconds: ms / 1000.0))
+            }
+            var scheduled = 0
+            for i in 0..<count {
+                let k = fromBreath + i
+                let inMs = firstInMs + Double(i) * cycleMs
+                if let buf = padBuffer(step: k % 3, exhale: false), inMs >= 0 {
+                    nodes[k % 2].scheduleBuffer(buf, at: at(inMs), options: [], completionHandler: nil)
+                    scheduled += 1
+                }
+                if let buf = padBuffer(step: k % 3, exhale: true) {
+                    nodes[2 + k % 2].scheduleBuffer(buf, at: at(inMs + inhaleMs), options: [], completionHandler: nil)
+                    scheduled += 1
+                }
+            }
+            if closing, let buf = padBuffer(step: 0, exhale: false) {
+                nodes[4].scheduleBuffer(buf, at: at(lastMs), options: [], completionHandler: nil)
+            }
+            call.resolve(["scheduled": scheduled])
+        } catch {
+            teardownBreath()
+            call.reject("scheduleBreath failed: \(error.localizedDescription)")
+        }
+    }
+
+    @objc func cancelBreath(_ call: CAPPluginCall) {
+        teardownBreath()
+        call.resolve()
+    }
+
+    private func teardownBreath() {
+        breathCleanup?.invalidate()
+        breathCleanup = nil
+        for node in breathNodes { node.stop() }
+        breathNodes = []
+        breathEngine?.stop()
+        breathEngine = nil
+        breathSilence?.stop()
+        breathSilence = nil
+        // Back to the ringer-honouring category, unless the sit's bell is armed.
+        if !(cleanupTimer?.isValid ?? false) { relaxSession() }
     }
 
     // ─── Smooth completion haptic (Core Haptics) ─────────────────────────────
@@ -322,7 +444,7 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // phone locked the keep-alive loop lost its background licence (audit,
         // 2026-09-14). The cleanup timer is valid from scheduling until ~10s
         // after the bell, when it relaxes the session itself.
-        let bellPending = cleanupTimer?.isValid ?? false
+        let bellPending = (cleanupTimer?.isValid ?? false) || (breathCleanup?.isValid ?? false)
         // WHILE APPLE MUSIC HOLDS THE SESSION, LEAVE THE CATEGORY ALONE.
         // There is one shared session and two plugins with opposite needs, and
         // before this the last writer won: a chime mid-office set .ambient,
@@ -575,7 +697,7 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private func teardownPlayers() {
         cleanupTimer?.invalidate()
-        relaxSession()
+        if !(breathCleanup?.isValid ?? false) { relaxSession() }
         cleanupTimer = nil
         silencePlayer?.stop()
         silencePlayer = nil

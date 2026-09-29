@@ -4,7 +4,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { canEmbedVideoHere, openVideoInReader, videoPath, youtubeIdFrom } from "@/lib/videoEmbed";
 import { setAfterReader } from "@/lib/afterReader";
-import { HYMNS, hymnNumberLabel, hymnKey, type Hymn } from "@/lib/hymnsCatalogue";
+import { HYMNS, hymnNumberLabel, hymnVideoSleeve, type Hymn } from "@/lib/hymnsCatalogue";
 
 // ── Hymns ───────────────────────────────────────────────────────────────────
 //
@@ -89,20 +89,12 @@ export default function HymnsPage() {
     });
   }, [query, PLAYABLE]);
 
-  /** What the log records: the number, the hymn and who sang it. */
-  const listenedAs = (h: Hymn) =>
-    h.num.length ? `Hymn ${hymnNumberLabel(h)} · ${h.name} — ${h.artist}` : `${h.name} — ${h.artist}`;
-
   const play = (h: Hymn) => {
     const vid = youtubeIdFrom(h.youtubeUrl);
     if (!vid) return;
-    const sleeve = {
-      title: h.name,
-      eyebrow: h.num.length ? `Hymn ${hymnNumberLabel(h)}` : null,
-      sub: h.artist,
-      logAs: listenedAs(h),
-      hymn: hymnKey(h),
-    };
+    // The log line lives in lib/hymnsCatalogue (hymnLoggedAs), so Audio
+    // Divina's Lately rows can read a hymn back and play it again.
+    const sleeve = hymnVideoSleeve(h);
     if (canEmbedVideoHere()) {
       setLocation(videoPath(vid, { ...sleeve, from: "/hymns" }));
       return;

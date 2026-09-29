@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { CenteredGlobe } from "@/components/CenteredGlobe";
 import { playBreathTone, primeAudio } from "@/lib/amenFeedback";
+import { appleMusicPlayingInApp } from "@/lib/appleMusicNative";
+import { canScheduleNativeBreath, scheduleNativeBreath, cancelNativeBreath } from "@/lib/breathSound";
 import { buildCanonical, photoForGlobalIndex, randomSeed, type Canonical } from "@/lib/cobreatheOrder";
 import { syncedNow, ensureClockSynced } from "@/lib/serverClock";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -389,6 +391,17 @@ export function CobreatheBreath({
   // suspended (app/tab backgrounded), even if visibilitychange hasn't fired
   // its handler yet on resume. Used to invalidate before the reach check.
   const lastTickRef = useRef(0);
+  /**
+   * THE PHONE IS RINGING THE BREATHS (owner, 2026-09-29: sounds with the screen
+   * off). Once the set is handed to PhoebeAudio.scheduleBreath, breaths
+   * `nativeFrom` … `totalBreaths - 1` and the closing tone are the native
+   * side's, and the page stays quiet for them. `nativeAnchor` is the count
+   * start they were laid down for: a clock sync that moves it during the
+   * pre-roll re-lays them.
+   */
+  const nativeActiveRef = useRef(false);
+  const nativeFromRef = useRef(0);
+  const nativeAnchorRef = useRef<number | null>(null);
   // Phase at the previous frame — used to fire a soft haptic + tone at the
   // start of each of the four box-breathing phases. null until the first frame
   // so we don't buzz mid-phase on mount.
@@ -438,14 +451,17 @@ export function CobreatheBreath({
         if (isCounting) {
           // A haptic on each phase turn; the exhale is 1.618× the inhale.
           breathHaptic(phase === "out");
-          // Sound ONLY on the inhale (the start of each breath), not the
-          // exhale — one tone per breath, rising through the three lower slide
-          // octaves (0,1,2) from a per-session counter that starts at 0.
-          if (phase === "in") {
-            // Start on the lowest octave, then rotate 0,1,2 per breath.
-            const octave = inhaleToneCountRef.current % 3;
-            inhaleToneCountRef.current += 1;
-            try { playBreathTone(octave); } catch { /* audio locked — non-fatal */ }
+          // A tone on EACH turn now (owner, 2026-09-29: "a sound on the out
+          // too"): the in-breath pad rising through the three octaves (0,1,2)
+          // by breath, and on the out-breath the exhale pad — a fourth lower,
+          // softer — at the same octave. Keyed on the breath's own index, not
+          // a counter, so it matches what the phone lays down natively and a
+          // stretch with the screen off can't knock it out of step.
+          const k = Math.floor((now - countStartRef.current) / CYCLE_MS);
+          const octave = ((k % 3) + 3) % 3;
+          const nativeHas = nativeActiveRef.current && k >= nativeFromRef.current && k < totalBreaths;
+          if (!nativeHas) {
+            try { playBreathTone(octave, { exhale: phase === "out" }); } catch { /* audio locked — non-fatal */ }
           }
         }
       }
@@ -653,7 +669,28 @@ export function CobreatheBreath({
           onSessionRef.current?.(plan);
         }
       }
-      if (!reachedRef.current &&
+      // Hand the set to the phone just before it begins (or, if we got here
+      // late, from the next whole breath). Re-laid if a sync moves the start.
+      if (canScheduleNativeBreath() && !reachedRef.current && !endedRef.current && !appleMusicPlayingInApp()
+          && nativeAnchorRef.current !== countStartRef.current && (!frozenRef.current || !nativeActiveRef.current)) {
+        const cs = countStartRef.current;
+        const k0 = Math.max(0, Math.ceil((now + 400 - cs) / CYCLE_MS));
+        const count = totalBreaths - k0;
+        if (count > 0 && (cs - now > 400 || frozenRef.current)) {
+          nativeAnchorRef.current = cs;
+          const firstInMs = cs + k0 * CYCLE_MS - now;
+          void scheduleNativeBreath({ firstInMs, inhaleMs: INHALE_MS, cycleMs: CYCLE_MS, fromBreath: k0, count })
+            .then((ok) => {
+              if (nativeAnchorRef.current !== cs) return; // superseded
+              nativeActiveRef.current = ok;
+              nativeFromRef.current = k0;
+            });
+        }
+      }
+      // Hidden or suspended means "not breathing" — EXCEPT while the phone is
+      // ringing the breaths: then a dark screen is how the set is meant to be
+      // kept (owner, 2026-09-29), so it no longer voids it.
+      if (!reachedRef.current && !nativeActiveRef.current &&
           ((typeof document !== "undefined" && document.hidden) || gap > 1500)) {
         invalidRef.current = true;
       }
@@ -666,15 +703,24 @@ export function CobreatheBreath({
         // The seconds the SET took. Everything after this is the summary
         // screen, not breathing, and must never be added to it — see the
         // unmount commit below.
-        reachedElapsedRef.current = Math.round((syncedNow() - startRef.current) / 1000);
+        // Measured to the moment the set ENDED, not to now: with the screen
+        // off the page only notices on unlock, which may be long after.
+        const reachAt = Math.min(now, countStartRef.current + totalBreaths * CYCLE_MS);
+        reachedElapsedRef.current = Math.round((reachAt - startRef.current) / 1000);
+        const lateNotice = now - reachAt > 3000;
         // The payoff when all twelve breaths are kept: a GENTLE swell haptic
         // (soft rise-and-fall, no jolts) paired with Phoebe's swell tone — a calm
         // exhale of a moment, not a buzz. See `breath-complete` in native-shell.
-        try {
-          window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "breath-complete" } }));
-        } catch { /* no native shell on web — silent */ }
-        try { playBreathTone(); } catch { /* audio locked — non-fatal */ }
-        onReachTarget?.(Math.round((now - startRef.current) / 1000));
+        // Not when noticed late (the phone already rang it, on the dark screen).
+        if (!lateNotice) {
+          try {
+            window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "breath-complete" } }));
+          } catch { /* no native shell on web — silent */ }
+          if (!nativeActiveRef.current) {
+            try { playBreathTone(); } catch { /* audio locked — non-fatal */ }
+          }
+        }
+        onReachTarget?.(reachedElapsedRef.current);
       }
       // Re-render only when a VISIBLE value steps. Computed the SAME way the
       // render body does: while counting, the phase word (phaseAt, every
@@ -712,7 +758,7 @@ export function CobreatheBreath({
       } else {
         const away = hiddenAt ? Date.now() - hiddenAt : 0;
         hiddenAt = 0;
-        if (away > 1200 && !reachedRef.current) invalidRef.current = true;
+        if (away > 1200 && !reachedRef.current && !nativeActiveRef.current) invalidRef.current = true;
         if (invalidRef.current && !reachedRef.current && !endedRef.current) {
           endedRef.current = true;
           // End at the breaths kept BEFORE backgrounding — never voided, never
@@ -725,6 +771,9 @@ export function CobreatheBreath({
     // iOS Capacitor: the native shell also signals app resume/suspend.
     window.addEventListener("phoebe:appactive", onVis);
     return () => {
+      // Leaving the breath stops the phone's tones with it.
+      cancelNativeBreath();
+      nativeActiveRef.current = false;
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("phoebe:appactive", onVis);
       /**
@@ -1009,6 +1058,7 @@ export function CobreatheBreath({
            */
           if (endedRef.current) return;
           endedRef.current = true;
+          cancelNativeBreath();
           onEnd(Math.round((syncedNow() - startRef.current) / 1000), reachedNow ? true : reachedRef.current);
         }}
         style={{
