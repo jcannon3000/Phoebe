@@ -69,7 +69,10 @@
 
   /* ── Phone frame around a real screenshot ── */
   .phone { --w: 300px; width: var(--w); max-width: 100%; aspect-ratio: 300 / 620; flex: 0 0 auto; border-radius: 48px; padding: 11px; position: relative; background: linear-gradient(145deg, #2B3A30, #111A14 40%, #1F2B23); box-shadow: 0 40px 90px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.6); }
-  .screen { position: relative; width: 100%; height: 100%; border-radius: 38px; overflow: hidden; background: #0A1D12; }
+  /* Pinned inside the frame rather than height:100% — Safari does not resolve a
+     percentage height against an aspect-ratio box, and the frame ran on past
+     the screen (owner's screenshot, 2026-09-29). */
+  .screen { position: absolute; inset: 11px; border-radius: 38px; overflow: hidden; background: #0A1D12; }
   .screen::before { content: ""; position: absolute; z-index: 3; top: 11px; left: 50%; transform: translateX(-50%); width: 86px; height: 25px; border-radius: 20px; background: #000; }
   .status { position: absolute; z-index: 2; top: 14px; left: 26px; right: 24px; display: flex; justify-content: space-between; font: 600 12px -apple-system, BlinkMacSystemFont, var(--font); color: var(--warm); }
   .status .bars { letter-spacing: 1px; font-size: 10px; opacity: 0.9; }
@@ -96,7 +99,7 @@
   .tstep:not(.active) p { color: rgba(240,237,230,0.3); }
   .tstep .inline-phone { display: none; }
   .tour-stage { position: sticky; top: calc(52px + env(safe-area-inset-top, 0px)); height: calc(100vh - 52px); display: grid; place-items: center; }
-  .tour-stage .phone { --w: min(320px, 100%); }
+  .tour-stage .phone { --w: min(320px, 100%, calc((100vh - 52px - 48px) * 300 / 620)); }
   .layer { position: absolute; inset: 0; transition: opacity .55s ease, transform .55s ease; }
   .layer:not(.on) { opacity: 0; transform: translateY(14px) scale(0.985); pointer-events: none; }
   .ticks { position: absolute; right: -22px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; }
@@ -120,7 +123,18 @@
   .trio .mid { margin-top: -26px; }
   figcaption { font-size: 14px; color: var(--sage); text-align: center; max-width: 24ch; }
   figcaption b { display: block; color: var(--warm); font-size: 15px; font-weight: 600; margin-bottom: 2px; }
-  @media (max-width: 760px) { .trio { flex-direction: column; align-items: center; } .trio figure { flex-basis: auto; width: min(280px, 100%); } .trio .mid { margin-top: 0; } }
+  /* On a phone the three slides become a sideways swipe — the way the office
+     itself moves — instead of three full-screen phones stacked (owner: "it may
+     need different ui for mobile and web"). */
+  @media (max-width: 760px) {
+    .trio { justify-content: flex-start; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+            margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter) 24px; scroll-padding-inline: var(--gutter); gap: 18px; }
+    .trio::-webkit-scrollbar { display: none; }
+    .trio figure { flex: 0 0 230px; scroll-snap-align: start; }
+    .trio .mid { margin-top: 0; }
+    .swipe-hint { display: block; }
+  }
+  .swipe-hint { display: none; margin-top: 6px; font-size: 13px; color: var(--sage-faint); }
   .ways { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 56px auto 0; max-width: 860px; }
   .ways div { border-radius: 18px; padding: 18px; background: rgba(46,107,64,0.12); border: 1px solid rgba(46,107,64,0.35); }
   .ways b { display: block; font-size: 16px; margin-top: 6px; }
@@ -134,7 +148,7 @@
   .shelf::-webkit-scrollbar { display: none; }
   .shelf figure { margin: 0; scroll-snap-align: start; flex: 0 0 auto; width: 250px; display: flex; flex-direction: column; gap: 18px; }
   .shelf .phone { --w: 250px; border-radius: 42px; padding: 10px; }
-  .shelf .screen { border-radius: 33px; }
+  .shelf .screen { inset: 10px; border-radius: 33px; }
   .shelf figcaption { text-align: left; max-width: none; }
   .shelf-nav { display: flex; justify-content: flex-end; gap: 10px; }
   .shelf-nav button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(168,197,160,0.35); background: rgba(46,107,64,0.2); color: var(--warm); font: 600 18px var(--font); cursor: pointer; }
@@ -321,6 +335,7 @@
       <figure class="mid" data-rise="up"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide2.jpg" alt="Morning Prayer slide: Psalm 89:1-18, appointed for this morning" loading="lazy" decoding="async"></div></div><figcaption><b>The psalm, appointed</b>From the Daily Office Lectionary, with its BCP page.</figcaption></figure>
       <figure data-rise="right"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide3.jpg" alt="Morning Prayer slide: Psalm 89 set verse by verse" loading="lazy" decoding="async"></div></div><figcaption><b>Set to be prayed</b>Verse by verse, in large, quiet type.</figcaption></figure>
     </div>
+    <div class="swipe-hint">Swipe through the slides ›</div>
     <div class="ways" data-rise="up" aria-label="Ways to pray the office">
       <div><span class="e" aria-hidden="true">📖</span><b>Slideshow</b><span>At your own pace</span></div>
       <div><span class="e" aria-hidden="true">📕</span><b>Physical BCP</b><span>The page numbers, in your own book</span></div>
@@ -472,6 +487,7 @@
       if (r.bottom < -200 || r.top > vh + 200) return;
       var t = Math.max(0, Math.min(1, (vh - r.top) / (vh * 0.55)));
       var e = 1 - Math.pow(1 - t, 3), k = 1 - e, kind = el.getAttribute('data-rise');
+      if ((kind === 'left' || kind === 'right') && window.innerWidth <= 760) kind = 'up';
       var tf = kind === 'left' ? 'translate(' + (-90 * k) + 'px,' + (50 * k) + 'px) rotate(' + (-5 * k) + 'deg)'
              : kind === 'right' ? 'translate(' + (90 * k) + 'px,' + (50 * k) + 'px) rotate(' + (5 * k) + 'deg)'
              : kind === 'tile' ? 'translateY(' + (60 * k) + 'px) scale(' + (0.94 + 0.06 * e) + ')'
