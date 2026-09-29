@@ -361,6 +361,7 @@ const PrayerRequestNew = lazy(() => import("./pages/prayer-request-new"));
 const MyPrayerRequestsPage = lazy(() => import("./pages/my-prayer-requests"));
 const SettingsPage = lazy(() => import("./pages/settings"));
 const AboutPage = lazy(() => import("./pages/about"));
+const FlyerPage = lazy(() => import("./pages/flyer"));
 const PrivacyPage = lazy(() => import("./pages/privacy"));
 const TermsPage = lazy(() => import("./pages/terms"));
 const InvitationsPage = lazy(() => import("./pages/invitations"));
@@ -882,7 +883,7 @@ const PILOT_ALLOWED_EXACT = new Set<string>([
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
   "/pray",
   "/creation-devotion", "/creation-prayers",
-  "/about", "/about-deck", "/overview-deck", "/privacy", "/terms", "/invite", "/invite/share",
+  "/about", "/about-deck", "/overview-deck", "/privacy", "/terms", "/invite", "/invite/share", "/flyer",
 ]);
 // Podcasts is an intended pilot feature — allow its show/publisher/episode
 // subpaths, not just the index. Same for /cobreathe (intro → breath).
@@ -999,6 +1000,8 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // no session yet, which useGuestMode treats as a guest; without this the
   // gate bounced them to /dashboard before they ever saw the invite.
   "/invite", "/invite/share",
+  // The parish flyer (pages/flyer): a leader who hasn't signed in can make one.
+  "/flyer",
   /**
    * DOORS THAT WERE OPEN WHILE THE ROUTE WAS SHUT (swept 2026-09-19, after
    * the Way of Love turned out to be bouncing everyone).
@@ -1349,6 +1352,7 @@ function Router() {
       {/* /invite/share (sender side) must sit above /invite (recipient side). */}
       <Route path="/invite/share" component={InviteSharePage} />
       <Route path="/invite" component={InvitePage} />
+      <Route path="/flyer" component={FlyerPage} />
       <Route path="/about" component={AboutPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />
