@@ -15,7 +15,6 @@ import { useLocation, useSearch } from "wouter";
 import { isAndroidDevice } from "@/lib/isNativeShell";
 import { useQueryClient } from "@tanstack/react-query";
 import { DeckShell, type Slide } from "./church-deck";
-import { seedGuestRule } from "@/lib/guestSeed";
 import { ensureAnonymousUser } from "@/lib/guestProvision";
 
 const SLIDES: Slide[] = [
@@ -159,7 +158,13 @@ export default function OverviewDeckPage() {
   const isIntro = new URLSearchParams(search).get("intro") === "1";
 
   const startPraying = () => {
-    seedGuestRule();
+    /**
+     * NO ROUTINE FROM THE DECK EITHER (owner, 2026-09-29). It used to seed
+     * the default rule here, so the twelve slides ended by handing over a day
+     * somebody else had planned. The home now offers five ways to pray and a
+     * "Start a routine" card, which is where a rhythm begins — see
+     * lib/routineStart and pages/welcome-public for the same removal.
+     */
     void ensureAnonymousUser().then((created) => {
       if (created) {
         /**

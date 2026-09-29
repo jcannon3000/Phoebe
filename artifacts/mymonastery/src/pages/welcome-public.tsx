@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { isFirstOpen, hasSeenLanding, leaveForLanding } from "@/lib/firstOpen";
-import { seedGuestRule } from "@/lib/guestSeed";
 import { ensureAnonymousUser } from "@/lib/guestProvision";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -95,12 +94,28 @@ export default function WelcomePublicPage() {
        *
        * A brand-new web visitor used to meet /overview-deck?intro=1 — twelve
        * slides about the app — before anything of the app itself. Both
-       * platforms now do the same thing on a first open: seed the rule and
-       * land on the home, already going. The deck is still there for anyone
-       * who wants it, from About and from Admin Tools; it is simply no longer
-       * in front of the door.
+       * platforms now do the same thing on a first open: land on the home,
+       * already going. The deck is still there for anyone who wants it, from
+       * About and from Admin Tools; it is simply no longer in front of the
+       * door.
        */
-      seedGuestRule();
+      /**
+       * AND IT NO LONGER HANDS THEM A ROUTINE (owner, 2026-09-29, from a
+       * private window on withphoebe.app: "I still got this when i visited
+       * for the first time" — the seeded rhythm, where the five cards should
+       * have been).
+       *
+       * This line was the reason. The home's own gate was right — no routine
+       * means the five ways to pray (components/BeginHere) — but THIS is the
+       * door a first visit comes through, and it wrote the default rule
+       * before the home was ever reached, so the gate never saw a device
+       * without one. The same seed still runs the moment they ask for it, on
+       * "Start a routine" (lib/routineStart).
+       *
+       * The anonymous device user below is a different thing and stays: it is
+       * what makes push, reminders and prefs work without an account, and it
+       * carries no rhythm.
+       */
       // Silently provision the anonymous DEVICE user (no credentials, normal
       // session cookie) so push tokens + reminders + prefs sync work — the UX
       // stays login-free. Fire-and-forget; on success /me refetches.

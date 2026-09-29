@@ -62,6 +62,18 @@ export function GuestWelcomeCard() {
    */
   const [days] = useState<number>(() => noteDayUsed());
   if (days >= WELCOME_RETIRES_AFTER_DAYS) return null;
+  /**
+   * NOT OVER THE FIVE CARDS (owner, 2026-09-29: "there shouldnt be the begin
+   * here card if they are seeing just the categories").
+   *
+   * Before a routine exists the home IS the invitation — five ways to pray
+   * and "Start a routine" under them (components/BeginHere), with its own
+   * eyebrow over the top. A banner there says "begin here" above a screen
+   * that is nothing but places to begin, and pushes the cards down the page
+   * to do it. The welcome belongs to the home it was written for: a day
+   * already laid out, where the newcomer needs telling what the cards are.
+   */
+  if (beforeRoutine) return null;
   // The just-started pointer says the same thing better, for that one visit.
   if (routineJustStarted()) return null;
   if (dismissed) return null;
@@ -90,18 +102,13 @@ export function GuestWelcomeCard() {
         {hasPrayed ? "Develop a daily habit of prayer 🌿" : "Begin here 🌿"}
       </p>
       <p className="text-[13.5px] mt-1.5" style={{ color: "rgba(200,212,192,0.78)", fontFamily: FONT, lineHeight: 1.55 }}>
-        {/* THE PROMISE HAD TO CHANGE WITH THE HOME (owner, 2026-09-28: "The
-            bgin here needs to change too"). It used to say the rhythm was
-            "laid out below" and that Phoebe would walk you through it — true
-            when every device was handed a routine on its first open, and a
-            plain untruth now that the day below is five ways in and an
-            invitation. So before a routine exists it describes what is
-            actually there; afterwards it says what it always said. */}
+        {/* It can say "laid out below" again, because by the time this card
+            renders there IS a rhythm below it — the five-card home returns
+            above (owner, 2026-09-28: "The bgin here needs to change too", and
+            2026-09-29: not over the categories at all). */}
         {hasPrayed
           ? "You've begun. Return each day and let the rhythm hold you — one practice at a time."
-          : beforeRoutine
-            ? "A few ways to pray, whenever you have a moment. When you're ready, start a routine and Phoebe will carry a day with you."
-            : "Phoebe carries a simple daily rhythm of prayer, laid out below. Each day it will walk you through it, one practice at a time."}
+          : "Phoebe carries a simple daily rhythm of prayer, laid out below. Each day it will walk you through it, one practice at a time."}
       </p>
       {/* The customize hint rides the SECOND card — the returning "Develop a
           daily habit" state — not "Begin here". On day one the ask is simply
