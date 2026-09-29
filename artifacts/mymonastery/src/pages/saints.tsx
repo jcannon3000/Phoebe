@@ -52,6 +52,16 @@ const MONTHS = [
 
 type Beat = "pick" | "prompt" | "picture" | "prayer" | "recent";
 
+/**
+ * Is this the life the CALENDAR is keeping today?
+ *
+ * allCommemorations is one entry per date, so the date is the whole test.
+ */
+function isTodays(c: Commemoration): boolean {
+  const now = new Date();
+  return c.month === now.getMonth() + 1 && c.day === now.getDate();
+}
+
 /** Today's commemoration, or the next one coming — never nothing to open. */
 function suggested(all: Commemoration[]): { c: Commemoration; today: boolean } | null {
   if (!all.length) return null;
@@ -116,11 +126,22 @@ export default function SaintsPage() {
   const readIt = () => {
     if (!chosen) return;
     markSaintRead({ id: `${chosen.month}-${chosen.day}`, name: chosen.name, when: chosen.when });
-    // …and the day's reading, the way the home's card records it. markSaintRead
-    // is this page's own history and never left the device, so a life read
-    // from Practices counted as nothing at all — for the person's own record
-    // and for the analytics (owner, 2026-09-23).
-    markHagiographyRead();
+    /**
+     * …AND THE DAY'S PRACTICE, BUT ONLY FOR THE DAY'S LIFE (owner, 2026-09-29:
+     * "If I have feast day bio as a daily practice, and then i read a
+     * different one, it marks todays as complete … it shouldnt do that").
+     *
+     * markHagiographyRead is what ticks the home's card, its dot and the
+     * metrics, and every other caller passes the calendar's own feast
+     * (hagiographyUrl). This page is the one place you can read ANY of the
+     * 277 lives — browse to Julian in May, read her in September, and the
+     * card for today's commemoration went green over a life nobody read.
+     *
+     * Reading ahead is a good thing to do and still belongs in the page's own
+     * history above, which is what the closing slide gathers. It is simply
+     * not the day's practice.
+     */
+    if (isTodays(chosen)) markHagiographyRead();
     void openExternal(chosen.url, { reader: true });
     // A face for the life, where there is one (owner: "if you find a picture
     // for that person, put it on a slide after the heigriohpy"). Only 216 of

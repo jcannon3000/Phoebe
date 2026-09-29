@@ -871,6 +871,17 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         'html.phoebe-saint .pray-container hr{border:0!important;border-top:1px solid rgba(200,212,192,0.18)!important;margin:18px 0!important;}',
         'html.phoebe-saint .pray-container em.copyright{display:block!important;font-style:normal!important;font-size:14px!important;',
         'line-height:1.6!important;color:rgba(200,212,192,0.72)!important;}',
+        /* WHOSE LIFE THIS IS, over their copyright line (owner, 2026-09-29:
+           "make sure on the feast day bio there is that eybrow above the
+           copyright status that says from Foward Movent"). The app's own
+           eyebrow type - uppercase, letterspaced, sage - the same label the
+           Taize date wears, so it reads as furniture rather than as a
+           sentence of theirs. See saintCredit(). Scoped under the container,
+           which outranks the shared .phoebe-reader-note rules it also carries
+           (that class is what Standard view switches off). */
+        'html.phoebe-saint .pray-container .phoebe-saint-credit{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;',
+        'font-size:12px!important;letter-spacing:.16em!important;text-transform:uppercase!important;font-weight:600!important;',
+        'color:#A8C5A0!important;margin:0 0 7px!important;padding:0!important;line-height:1.5!important;}',
         /* SCOPED to the block. `[class*="newsletter"]` is an unanchored
            substring match on any class attribute — the same hazard as the
            `.inline` collision that once un-hid every VCS picture — and it was
@@ -1196,6 +1207,31 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
           'scripture and the community\\u2019s short sung phrases, repeated until they are ' +
           'prayed rather than read.';
         post.appendChild(about);
+      }
+
+      /**
+       * FROM FORWARD MOVEMENT - the feast day's life (owner, 2026-09-29).
+       *
+       * The calendar page ends with Forward Movement's own em.copyright, and
+       * nothing above it said whose page this is: sourceNote() covers the
+       * hosts that have an ISOLATE_TARGET, and FDD's is null (fddTrim does
+       * its trimming instead), so this page - and Day by Day with it - carried
+       * no attribution at all in the reader view.
+       *
+       * An EYEBROW, not a paragraph: the line under it is already their
+       * copyright statement, and a second sentence of ours would read as part
+       * of it. It carries .phoebe-reader-note as well, so Standard view takes
+       * it off with the rest of our furniture.
+       */
+      function saintCredit() {
+        if (!isSaint) return;
+        if (document.querySelector('.phoebe-saint-credit')) return;
+        var cp = document.querySelector('.pray-container em.copyright');
+        if (!cp || !cp.parentNode) return;
+        var eyebrow = document.createElement('p');
+        eyebrow.className = 'phoebe-reader-note phoebe-saint-credit';
+        eyebrow.textContent = 'From Forward Movement';
+        cp.parentNode.insertBefore(eyebrow, cp);
       }
 
       /**
@@ -1597,7 +1633,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         }
         if (sheet) sheet.media = '';
         if (isOremus) { tidy(); credit(); }
-        else { isolate(); if (isFdd) fddTrim(); if (isSubstack) substackHead(); if (isTlc) tlcHead(); sourceNote(); }
+        else { isolate(); if (isFdd) fddTrim(); if (isSubstack) substackHead(); if (isTlc) tlcHead(); sourceNote(); saintCredit(); }
         masthead();
         /* Tells the native side the reader has taken the page — the loading
            veil waits for this on reader hosts (hideVeilWhenReaderReady). */
