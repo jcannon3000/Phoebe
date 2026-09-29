@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
-import { isFirstOpen } from "@/lib/firstOpen";
+import { isFirstOpen, hasSeenLanding, leaveForLanding } from "@/lib/firstOpen";
 import { seedGuestRule } from "@/lib/guestSeed";
 import { ensureAnonymousUser } from "@/lib/guestProvision";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -72,6 +72,19 @@ export default function WelcomePublicPage() {
     // immediately. Anon provisioning + the real /me refetch run in the
     // background. (A real signed-in user can't exist on a first open.)
     const firstOpenGuest = PHOEBE_GUEST_ENABLED && isFirstOpen();
+    /**
+     * THE LANDING PAGE, for a first visit on the web (owner, 2026-09-28:
+     * "make this the home page" — for new web visitors only). public/
+     * landing.html is the product page; its "Start praying" links back to "/",
+     * which then seeds the starter routine and opens the home exactly as
+     * before — still as a first open, since leaveForLanding un-stamps it.
+     * Shown once; returning visitors, anyone signed in, and the native app
+     * never see it.
+     */
+    if (firstOpenGuest && !isNativeShell() && !hasSeenLanding()) {
+      leaveForLanding();
+      return;
+    }
     if (isLoading && !firstOpenGuest) return;
     if (isRealUser) { setLocation("/dashboard"); return; }
     if (PHOEBE_GUEST_ENABLED) {

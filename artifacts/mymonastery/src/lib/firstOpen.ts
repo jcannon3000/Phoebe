@@ -30,3 +30,25 @@ export function isFirstOpen(): boolean {
   }
   return cached;
 }
+
+/**
+ * The web landing page (public/landing.html) is shown ONCE, on a first visit,
+ * before the app. Going there must not spend the first open: `isFirstOpen()`
+ * is what gives a brand-new visitor the instant seeded home (four guest-path
+ * gates), and that should happen when they come back through "Start praying",
+ * not on the visit that only showed them the landing. So leaving for it
+ * un-stamps the first-open flag and remembers the landing on its own key.
+ */
+const LANDING_FLAG = "phoebe:landing-seen";
+
+export function hasSeenLanding(): boolean {
+  try { return !!window.localStorage.getItem(LANDING_FLAG); } catch { return true; }
+}
+
+export function leaveForLanding(): void {
+  try {
+    window.localStorage.setItem(LANDING_FLAG, "1");
+    window.localStorage.removeItem(FLAG);
+  } catch { /* private mode: they simply get the app */ }
+  window.location.replace("/landing.html");
+}

@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Cultivate a daily rhythm of prayer, inspired by monastic wisdom.">
+<meta name="theme-color" content="#091A10">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png">
+<meta property="og:title" content="Phoebe">
+<meta property="og:description" content="Cultivate a daily rhythm of prayer, inspired by monastic wisdom.">
+<meta property="og:image" content="/opengraph.jpg">
+<title>Phoebe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+  /* Phoebe's own system, one committed look: the app's deep green, warm
+     cream, sage, Space Grotesk throughout, Georgia italic only for prayer. */
+  :root {
+    color-scheme: dark;
+    --ground: #091A10; --ground-2: #0C2417; --deep: #06120B;
+    --warm: #F0EDE6; --sage: #8FAF96; --sage-faint: rgba(143,175,150,0.6);
+    --leaf: #A8C5A0; --new: #6FAF85;
+    --paper: #EFEBE2; --ink: #10231A; --ink-soft: #4B5F52;
+    --font: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --serif: Georgia, "Times New Roman", serif;
+    --gutter: clamp(16px, 5vw, 48px);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--ground); color: var(--warm); font-family: var(--font); font-size: 17px; line-height: 1.5; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--leaf); outline-offset: 3px; border-radius: 6px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding-inline: var(--gutter); }
+  .kicker { font-size: 14px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--new); }
+  .big-h { font-size: clamp(40px, 7vw, 80px); font-weight: 700; letter-spacing: -0.04em; line-height: 1.02; margin: 12px auto 0; max-width: 16ch; text-wrap: balance; }
+  .sub { font-size: clamp(18px, 1.9vw, 22px); color: rgba(240,237,230,0.74); max-width: 42ch; margin: 20px auto 0; text-wrap: pretty; }
+  .center { text-align: center; }
+
+  /* ── Local nav ── */
+  .lnav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50; background: rgba(9,26,16,0.74); backdrop-filter: saturate(160%) blur(18px); -webkit-backdrop-filter: saturate(160%) blur(18px); border-bottom: 1px solid rgba(200,212,192,0.1); }
+  .lnav .wrap { display: flex; align-items: center; justify-content: space-between; height: 52px; gap: 16px; }
+  .lnav-name { font-weight: 700; font-size: 19px; letter-spacing: -0.01em; text-decoration: none; }
+  .lnav-links { display: flex; align-items: center; gap: clamp(12px, 2.2vw, 24px); font-size: 13px; }
+  .lnav-links a { text-decoration: none; color: rgba(240,237,230,0.72); }
+  .lnav-links a:hover { color: var(--warm); }
+  .pill { display: inline-flex; align-items: center; gap: 7px; text-decoration: none; background: rgba(46,107,64,0.85); border: 1px solid rgba(168,197,160,0.45); color: var(--warm) !important; font-weight: 600; font-size: 12.5px; padding: 6px 14px; border-radius: 999px; white-space: nowrap; }
+  .pill svg { width: 13px; height: 13px; fill: currentColor; }
+  .pill.ghost { background: transparent; }
+  .textlink { color: var(--leaf); text-decoration: none; font-size: 17px; }
+  .textlink:hover { text-decoration: underline; }
+  @media (max-width: 700px) { .lnav-links a.sec { display: none; } }
+
+  /* ── Hero ── */
+  .hero { text-align: center; padding-block: clamp(56px, 10vw, 104px) 0; position: relative; overflow: hidden; }
+  .hero::before { content: ""; position: absolute; inset: -20% -10% auto; height: 90%; background: radial-gradient(ellipse at 50% 40%, rgba(46,107,64,0.35), transparent 62%); pointer-events: none; }
+  .hero > * { position: relative; }
+  .hero-icon { width: 76px; height: 76px; border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(200,212,192,0.14); }
+  .hero h1 { font-size: clamp(64px, 14vw, 150px); font-weight: 700; letter-spacing: -0.045em; line-height: 0.95; margin: 22px 0 0; color: var(--warm); }
+  .hero .lede { font-size: clamp(22px, 3vw, 32px); font-weight: 500; letter-spacing: -0.015em; line-height: 1.22; max-width: 26ch; margin: 18px auto 0; text-wrap: balance; }
+  .ctas { display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 28px; flex-wrap: wrap; }
+  .ctas .pill { font-size: 16px; padding: 11px 22px; }
+  .ctas .pill svg { width: 16px; height: 16px; }
+  .hero-stage { margin-top: clamp(40px, 7vw, 70px); display: flex; justify-content: center; align-items: flex-end; gap: clamp(12px, 3vw, 36px); }
+  .hero-stage .phone.side { transform: translateY(40px) scale(0.86); opacity: 0.6; }
+  @media (max-width: 760px) { .hero-stage .phone.side { display: none; } }
+  .hero-fade { height: 130px; margin-top: -130px; position: relative; background: linear-gradient(transparent, var(--ground)); }
+
+  /* ── Phone frame around a real screenshot ── */
+  .phone { --w: 300px; width: var(--w); max-width: 100%; aspect-ratio: 300 / 620; flex: 0 0 auto; border-radius: 48px; padding: 11px; position: relative; background: linear-gradient(145deg, #2B3A30, #111A14 40%, #1F2B23); box-shadow: 0 40px 90px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.6); }
+  .screen { position: relative; width: 100%; height: 100%; border-radius: 38px; overflow: hidden; background: #0A1D12; }
+  .screen::before { content: ""; position: absolute; z-index: 3; top: 11px; left: 50%; transform: translateX(-50%); width: 86px; height: 25px; border-radius: 20px; background: #000; }
+  .status { position: absolute; z-index: 2; top: 14px; left: 26px; right: 24px; display: flex; justify-content: space-between; font: 600 12px -apple-system, BlinkMacSystemFont, var(--font); color: var(--warm); }
+  .status .bars { letter-spacing: 1px; font-size: 10px; opacity: 0.9; }
+  .screen img { position: absolute; top: 44px; left: 0; width: 100%; height: calc(100% - 44px); object-fit: cover; object-position: top; display: block; }
+
+  /* ── Statement ── */
+  .statement { padding-block: clamp(140px, 20vw, 240px); margin-block: clamp(20px, 4vw, 48px); text-align: center; }
+  .statement p { font-size: clamp(30px, 5.2vw, 60px); font-weight: 600; letter-spacing: -0.03em; line-height: 1.12; margin: 0 auto; max-width: 20ch; text-wrap: balance; }
+  /* Word-by-word brightening, driven by scroll. Legible at rest; scrolling
+     brings each word up to full strength. */
+  [data-words] .w { color: rgba(240,237,230,0.34); transition: color .35s ease; }
+  [data-words] .w.lit { color: var(--warm); }
+  [data-words] .w.em.lit { color: var(--leaf); }
+  /* Scroll-linked rise: transform only, never hidden. */
+  [data-rise] { will-change: transform; }
+
+  /* ── Sticky tour ── */
+  .tour { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 5vw, 70px); padding-block: 30px 80px; }
+  .tstep { min-height: 78vh; display: flex; flex-direction: column; justify-content: center; padding-block: 40px; }
+  .tstep .num { font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sage-faint); }
+  .tstep h3 { font-size: clamp(30px, 4vw, 46px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; margin: 10px 0 16px; text-wrap: balance; transition: color .4s; }
+  .tstep p { font-size: clamp(17px, 1.6vw, 20px); color: rgba(240,237,230,0.72); max-width: 34ch; margin: 0; transition: color .4s; }
+  .tstep:not(.active) h3 { color: rgba(240,237,230,0.4); }
+  .tstep:not(.active) p { color: rgba(240,237,230,0.3); }
+  .tstep .inline-phone { display: none; }
+  .tour-stage { position: sticky; top: calc(52px + env(safe-area-inset-top, 0px)); height: calc(100vh - 52px); display: grid; place-items: center; }
+  .tour-stage .phone { --w: min(320px, 100%); }
+  .layer { position: absolute; inset: 0; transition: opacity .55s ease, transform .55s ease; }
+  .layer:not(.on) { opacity: 0; transform: translateY(14px) scale(0.985); pointer-events: none; }
+  .ticks { position: absolute; right: -22px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; }
+  .ticks i { width: 5px; height: 5px; border-radius: 50%; background: rgba(143,175,150,0.3); transition: background .3s, transform .3s; }
+  .ticks i.on { background: var(--leaf); transform: scale(1.3); }
+  @media (max-width: 860px) {
+    .tour { grid-template-columns: 1fr; }
+    .tour-stage { display: none; }
+    .tstep { min-height: 0; padding-block: 36px; align-items: center; text-align: center; }
+    .tstep p { margin-inline: auto; color: rgba(240,237,230,0.72) !important; }
+    .tstep:not(.active) h3 { color: inherit; }
+    .tstep .inline-phone { display: flex; justify-content: center; margin-top: 30px; width: 100%; }
+    .tstep .inline-phone .phone { --w: min(290px, 100%); }
+  }
+
+  /* ── The office: three phones in a row, the prayer book as you pray it ── */
+  .office { padding-block: clamp(90px, 12vw, 150px) clamp(60px, 8vw, 100px); background: radial-gradient(ellipse at 50% 0%, rgba(46,107,64,0.28), transparent 60%), var(--deep); }
+  .trio { display: flex; justify-content: center; align-items: flex-start; gap: clamp(14px, 3vw, 34px); margin-top: 56px; }
+  .trio figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 16px; flex: 0 1 280px; min-width: 0; }
+  .trio .phone { --w: 100%; }
+  .trio .mid { margin-top: -26px; }
+  figcaption { font-size: 14px; color: var(--sage); text-align: center; max-width: 24ch; }
+  figcaption b { display: block; color: var(--warm); font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+  @media (max-width: 760px) { .trio { flex-direction: column; align-items: center; } .trio figure { flex-basis: auto; width: min(280px, 100%); } .trio .mid { margin-top: 0; } }
+  .ways { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 56px auto 0; max-width: 860px; }
+  .ways div { border-radius: 18px; padding: 18px; background: rgba(46,107,64,0.12); border: 1px solid rgba(46,107,64,0.35); }
+  .ways b { display: block; font-size: 16px; margin-top: 6px; }
+  .ways span { font-size: 13.5px; color: var(--sage); }
+  .ways .e { font-size: 22px; }
+  @media (max-width: 760px) { .ways { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* ── Practices gallery: a horizontal shelf, Apple-style ── */
+  .gallery-sec { padding-block: clamp(90px, 12vw, 140px) 40px; }
+  .shelf { display: flex; gap: 26px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 48px var(--gutter) 30px; scrollbar-width: none; scroll-padding-inline: var(--gutter); }
+  .shelf::-webkit-scrollbar { display: none; }
+  .shelf figure { margin: 0; scroll-snap-align: start; flex: 0 0 auto; width: 250px; display: flex; flex-direction: column; gap: 18px; }
+  .shelf .phone { --w: 250px; border-radius: 42px; padding: 10px; }
+  .shelf .screen { border-radius: 33px; }
+  .shelf figcaption { text-align: left; max-width: none; }
+  .shelf-nav { display: flex; justify-content: flex-end; gap: 10px; }
+  .shelf-nav button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(168,197,160,0.35); background: rgba(46,107,64,0.2); color: var(--warm); font: 600 18px var(--font); cursor: pointer; }
+  .shelf-nav button:hover { background: rgba(46,107,64,0.45); }
+
+  /* ── Tiles ── */
+  .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding-block: 60px; }
+  .tile { border-radius: 30px; background: var(--ground-2); border: 1px solid rgba(46,107,64,0.3); overflow: hidden; display: flex; flex-direction: column; align-items: center; text-align: center; padding: clamp(30px, 4vw, 48px) clamp(22px, 3vw, 40px) 0; }
+  .tile.wide { grid-column: 1 / -1; flex-direction: row; text-align: left; align-items: flex-end; gap: clamp(24px, 5vw, 70px); min-height: 0; padding-bottom: 0; }
+  .tile.wide .copy { align-self: center; }
+  .tile h3 { font-size: clamp(30px, 3.6vw, 44px); font-weight: 700; letter-spacing: -0.035em; line-height: 1.04; margin: 10px 0 12px; text-wrap: balance; }
+  .tile p { font-size: 17px; color: rgba(240,237,230,0.72); margin: 0; max-width: 34ch; }
+  /* The tile's phone is shown WHOLE at true iPhone proportions: a fixed-
+     height clip squashed it and cropped the screen (owner, 2026-09-28). */
+  .tile .phone-clip { width: 100%; display: flex; justify-content: center; margin-top: auto; padding-block: 36px clamp(30px, 4vw, 44px); }
+  .tile .phone-clip .phone { --w: 270px; height: auto; }
+  .tile.wide { align-items: center; }
+  .tile.wide .phone-clip { width: auto; flex: 0 0 auto; padding-block: clamp(30px, 4vw, 44px); }
+  .tile .stat { font-size: 56px; font-weight: 700; letter-spacing: -0.04em; color: var(--leaf); line-height: 1; margin-top: 18px; font-variant-numeric: tabular-nums; }
+  .tile .stat small { display: block; font-size: 14px; letter-spacing: 0.02em; color: var(--sage); font-weight: 500; margin-top: 6px; }
+  .tile ul { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 8px; font-size: 15px; color: rgba(240,237,230,0.8); }
+  .tile ul li::before { content: "·"; color: var(--new); margin-right: 8px; font-weight: 700; }
+  @media (max-width: 860px) {
+    .tiles { grid-template-columns: 1fr; }
+    .tile.wide { flex-direction: column; text-align: center; align-items: center; }
+    .tile.wide .copy { padding-bottom: 0; }
+    .tile { min-height: 0; }
+  }
+
+  /* ── And more ── */
+  .more { padding-block: 60px 100px; }
+  .more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: rgba(200,212,192,0.12); border-radius: 26px; overflow: hidden; margin-top: 46px; border: 1px solid rgba(200,212,192,0.12); }
+  .more-grid div { background: var(--ground); padding: 28px 26px; }
+  .more-grid .e { font-size: 24px; }
+  .more-grid b { display: block; font-size: 18px; margin: 10px 0 6px; letter-spacing: -0.01em; }
+  .more-grid span { font-size: 15px; color: rgba(240,237,230,0.66); }
+  @media (max-width: 860px) { .more-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 520px) { .more-grid { grid-template-columns: 1fr; } }
+
+  /* ── Paper band: the argument ── */
+  .paper { background: var(--paper); color: var(--ink); padding-block: clamp(90px, 13vw, 150px); }
+  .paper .kicker { color: #2E6B40; }
+  .paper h2 { font-size: clamp(38px, 6vw, 70px); font-weight: 700; letter-spacing: -0.04em; line-height: 1.02; margin: 12px 0 26px; max-width: 15ch; text-wrap: balance; }
+  .paper .cols { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(28px, 5vw, 70px); align-items: start; }
+  .paper .cols p { font-size: clamp(18px, 1.8vw, 21px); color: var(--ink-soft); margin: 0 0 16px; }
+  .paper blockquote { margin: 0; font-family: var(--serif); font-style: italic; font-size: clamp(22px, 2.4vw, 28px); line-height: 1.4; color: var(--ink); border-left: 2px solid #2E6B40; padding-left: 22px; }
+  .paper cite { display: block; margin-top: 14px; font: 600 13px var(--font); letter-spacing: 0.14em; text-transform: uppercase; color: #2E6B40; font-style: normal; }
+  @media (max-width: 760px) { .paper .cols { grid-template-columns: 1fr; } }
+
+  /* ── Makers ── */
+  .makers { padding-block: 100px; }
+  .makers-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 44px; max-width: 760px; margin-inline: auto; }
+  .maker { border-radius: 26px; padding: 30px 28px; background: var(--ground-2); border: 1px solid rgba(46,107,64,0.3); display: flex; flex-direction: column; gap: 8px; }
+  .maker h3 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+  .maker .role { font-size: 13px; color: var(--new); font-weight: 600; }
+  .maker p { font-size: 15.5px; color: rgba(240,237,230,0.7); margin: 4px 0 0; }
+  .meet { margin: 26px auto 0; text-align: center; font-size: clamp(16px, 1.6vw, 19px); color: rgba(240,237,230,0.7); max-width: 56ch; text-wrap: pretty; }
+  @media (max-width: 860px) { .makers-grid { grid-template-columns: 1fr; } }
+
+  /* ── Close ── */
+  .close { text-align: center; padding-block: clamp(100px, 14vw, 170px); background: radial-gradient(ellipse at 50% 100%, rgba(46,107,64,0.4), transparent 60%), var(--ground); }
+  .close img { width: 64px; height: 64px; border-radius: 16px; box-shadow: 0 0 0 1px rgba(200,212,192,0.14); }
+  .close h2 { font-size: clamp(40px, 7vw, 84px); font-weight: 700; letter-spacing: -0.045em; line-height: 1; margin: 26px auto 0; max-width: 14ch; text-wrap: balance; }
+  .close h2 em { font-style: normal; color: var(--leaf); }
+  .close .cap { margin-top: 20px; font-size: 14px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sage-faint); }
+  footer { border-top: 1px solid rgba(200,212,192,0.1); padding-block: 26px; font-size: 12px; color: rgba(143,175,150,0.6); }
+  footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .layer, [data-words] .w, .tstep h3, .tstep p { transition: none !important; } [data-rise] { transform: none !important; } }
+</style>
+
+
+<style>
+  html.embed .lnav .pill, html.embed .hero .ctas .pill, html.embed .close .ctas { display: none !important; }
+  html.embed.native .lnav a.ios { display: none !important; }
+</style>
+<script>
+(function () {
+  var inApp = /[?&]embed=1\b/.test(location.search) && window.top !== window;
+  if (!inApp) return;
+  var root = document.documentElement; root.classList.add('embed');
+  var top = window.top;
+  try { if (top.Capacitor && top.Capacitor.isNativePlatform && top.Capacitor.isNativePlatform()) root.classList.add('native'); } catch (e) {}
+  document.addEventListener('DOMContentLoaded', function () {
+    var name = document.querySelector('.lnav-name');
+    if (name) {
+      name.textContent = '\u2190 Back';
+      name.setAttribute('href', '#');
+      name.style.fontSize = '16px'; name.style.fontWeight = '600';
+      name.addEventListener('click', function (e) {
+        e.preventDefault();
+        try { if (top.history.length > 1) { top.history.back(); return; } } catch (err) {}
+        top.location.href = '/dashboard';
+      });
+    }
+    // App pages and outside links leave the frame; in-page anchors stay.
+    document.querySelectorAll('a[href]').forEach(function (a) {
+      var h = a.getAttribute('href');
+      if (h && h.charAt(0) !== '#') a.setAttribute('target', '_top');
+    });
+  });
+})();
+</script>
+</head>
+<body>
+<nav class="lnav" aria-label="Phoebe">
+  <div class="wrap">
+    <a class="lnav-name" href="#top">Phoebe</a>
+    <div class="lnav-links">
+      <a class="sec" href="#day">Your day</a>
+      <a class="sec" href="#practices">Practices</a>
+      <a class="sec" href="#learn">Learn</a>
+      <a class="ios" href="https://apps.apple.com/us/app/phoebe-prayer-together/id6763552921">iOS app</a>
+      <a class="pill" href="/">Start praying</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <img class="hero-icon" src="/phoebe-app-icon.png" alt="The Phoebe app icon: an icon of Saint Phoebe holding a scroll">
+    <h1>Phoebe</h1>
+    <p class="lede">Cultivate a daily rhythm of prayer, inspired by monastic wisdom.</p>
+    <div class="ctas">
+      <a class="pill" href="/">Start praying</a>
+      <a class="textlink" href="#day">See how it works ›</a>
+    </div>
+  </div>
+  <div class="hero-stage" aria-hidden="true">
+    <div class="phone side"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide1.jpg" alt="Morning Prayer slide: the opening versicles" decoding="async"></div></div>
+    <div class="phone" id="heroPhone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/home.jpg" alt="Phoebe's home screen: today's date and feast, then Next: Guided Prayer, Forward Day by Day, Visio Divina, the saint of the day" decoding="async"></div></div>
+    <div class="phone side"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/visio2.jpg" alt="Visio Divina: Christ: the Tekton by Kelly Latimore, for Matthew 21:33-46" decoding="async"></div></div>
+  </div>
+  <div class="hero-fade"></div>
+</header>
+
+<section class="statement" aria-label="Why Phoebe">
+  <div class="wrap">
+    <p data-words>There's no shortage of resources on prayer. What's missing is a way to <span class="em">sustain the habit itself.</span></p>
+  </div>
+</section>
+
+<section id="day" aria-label="Your day">
+  <div class="wrap tour">
+    <div class="tour-steps">
+      <article class="tstep active">
+        <div class="num">Home</div>
+        <h3>Today, in order</h3>
+        <p>Open Phoebe and the day is already laid out: the date, the feast the church keeps, and your practices under Next, each one a tap away. What you've prayed moves down to Done.</p>
+        <div class="inline-phone" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/home.jpg" alt="Phoebe's home screen: today's date and feast, then Next: Guided Prayer, Forward Day by Day, Visio Divina, the saint of the day" loading="lazy" decoding="async"></div></div></div>
+      </article>
+      <article class="tstep">
+        <div class="num">Your routine</div>
+        <h3>A routine that fits your life</h3>
+        <p>Start from a preset rhythm or build your own: a daily prayer, a reflection to read, minutes of silence, and any other practices you want. Change it anytime.</p>
+        <div class="inline-phone" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/customize.jpg" alt="Customize: start from a preset rhythm, then daily prayer, newsletter, silence and added practices" loading="lazy" decoding="async"></div></div></div>
+      </article>
+      <article class="tstep">
+        <div class="num">The Daily Office</div>
+        <h3>The prayer book, your way</h3>
+        <p>Choose the time of day, a full office or a short devotion, and how you want to pray it. Phoebe sets the day's psalms and readings for you.</p>
+        <div class="inline-phone" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-setup.jpg" alt="Daily Prayer: choose the time of day, the practice, and how to pray" loading="lazy" decoding="async"></div></div></div>
+      </article>
+    </div>
+    <div class="tour-stage" aria-hidden="true">
+      <div class="phone">
+        <div class="screen">
+          <div class="layer on"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/home.jpg" alt="Phoebe's home screen: today's date and feast, then Next: Guided Prayer, Forward Day by Day, Visio Divina, the saint of the day" loading="lazy" decoding="async"></div>
+          <div class="layer"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/customize.jpg" alt="Customize: start from a preset rhythm, then daily prayer, newsletter, silence and added practices" loading="lazy" decoding="async"></div>
+          <div class="layer"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-setup.jpg" alt="Daily Prayer: choose the time of day, the practice, and how to pray" loading="lazy" decoding="async"></div>
+        </div>
+        <div class="ticks"><i class="on"></i><i></i><i></i></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="office" aria-labelledby="office-h">
+  <div class="wrap center">
+    <div class="kicker">The Daily Office</div>
+    <h2 class="big-h" id="office-h" data-words>The Offices, one slide at a time.</h2>
+    <p class="sub">The Book of Common Prayer, set for a phone. Each part of the office gets its own slide, the psalm appointed for the day is already in place, and you move at your own pace.</p>
+    <div class="trio">
+      <figure data-rise="left"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide1.jpg" alt="Morning Prayer slide: the opening versicles" loading="lazy" decoding="async"></div></div><figcaption><b>The opening</b>O God, make speed to save us.</figcaption></figure>
+      <figure class="mid" data-rise="up"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide2.jpg" alt="Morning Prayer slide: Psalm 89:1-18, appointed for this morning" loading="lazy" decoding="async"></div></div><figcaption><b>The psalm, appointed</b>From the Daily Office Lectionary, with its BCP page.</figcaption></figure>
+      <figure data-rise="right"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide3.jpg" alt="Morning Prayer slide: Psalm 89 set verse by verse" loading="lazy" decoding="async"></div></div><figcaption><b>Set to be prayed</b>Verse by verse, in large, quiet type.</figcaption></figure>
+    </div>
+    <div class="ways" data-rise="up" aria-label="Ways to pray the office">
+      <div><span class="e" aria-hidden="true">📖</span><b>Slideshow</b><span>At your own pace</span></div>
+      <div><span class="e" aria-hidden="true">📕</span><b>Physical BCP</b><span>The page numbers, in your own book</span></div>
+      <div><span class="e" aria-hidden="true">🎧</span><b>Listen</b><span>The office, read aloud</span></div>
+      <div><span class="e" aria-hidden="true">🌙</span><b>Morning to Compline</b><span>Midday, Evening and night prayer too</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="gallery-sec" id="practices" aria-labelledby="prac-h">
+  <div class="wrap">
+    <div class="kicker">Practices</div>
+    <h2 class="big-h" id="prac-h" data-words style="margin-left:0">Many ways to pray, in one place.</h2>
+    <div class="shelf-nav"><button type="button" id="shelfPrev" aria-label="Previous practices">‹</button><button type="button" id="shelfNext" aria-label="More practices">›</button></div>
+  </div>
+  <div class="shelf" id="shelf">
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/guided-prayer.jpg" alt="Simple Guided Prayer: praise, confession, thanksgiving, supplication" loading="lazy" decoding="async"></div></div><figcaption><b>Simple Guided Prayer</b>Praise, confession, thanksgiving, supplication. Four movements, no hurry.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/visio2.jpg" alt="Visio Divina: Christ: the Tekton by Kelly Latimore, for Matthew 21:33-46" loading="lazy" decoding="async"></div></div><figcaption><b>Visio Divina</b>A work of art chosen for this Sunday's readings, to return to all week.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/cobreathe.jpg" alt="Breathing Together: before you begin" loading="lazy" decoding="async"></div></div><figcaption><b>Breathing Together</b>Breathe with all of creation, in gratitude and care for our common home.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/rosary.jpg" alt="The Rosary: the Joyful Mysteries, with Rosary and Anglican beads" loading="lazy" decoding="async"></div></div><figcaption><b>The Rosary</b>The day's mysteries, prayed on a Roman rosary or Anglican beads.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/icon-prayer.jpg" alt="Praying with Icons: choose an icon to sit with" loading="lazy" decoding="async"></div></div><figcaption><b>Praying with Icons</b>Sit with one icon for a while, or begin somewhere new.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/lectio.jpg" alt="Lectio Divina: today's Old Testament, Epistle and Gospel" loading="lazy" decoding="async"></div></div><figcaption><b>Lectio Divina</b>Read today's lessons slowly, three times, or be guided by audio.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/examen.jpg" alt="The Daily Examen" loading="lazy" decoding="async"></div></div><figcaption><b>The Daily Examen</b>St. Ignatius's gentle walk back through your day.</figcaption></figure>
+  </div>
+</section>
+
+<section class="wrap tiles" id="learn" aria-label="More in Phoebe">
+  <div class="tile wide" data-rise="tile">
+    <div class="copy">
+      <div class="kicker">Learn</div>
+      <h3 data-words>Courses in the life of prayer.</h3>
+      <p>Listen and learn from teachers of the church, one episode at a time.</p>
+      <ul>
+        <li>The Way of Love, with Bishop Michael Curry</li>
+        <li>Experiencing Jesus, with Bishop Mariann Budde</li>
+        <li>The Interior Castle of St. Teresa of Ávila, read aloud</li>
+        <li>Centering Prayer with Fr. Thomas Keating</li>
+      </ul>
+    </div>
+    <div class="phone-clip" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/menu-learn.jpg" alt="Learn: Experiencing Jesus, The Way of Love, The Interior Castle, Centering Prayer" loading="lazy" decoding="async"></div></div></div>
+  </div>
+  <div class="tile" data-rise="tile">
+    <div class="kicker">Sacred music</div>
+    <h3 data-words>The Hymnal 1982, sung.</h3>
+    <p>Hymns in hymnal order, played right in the app, with Hildegard, Taizé songs and the Spirituals besides.</p>
+    <div class="stat">71<small>recorded hymns</small></div>
+    <div class="phone-clip" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/hymns.jpg" alt="The Hymnal 1982: recordings in hymnal order" loading="lazy" decoding="async"></div></div></div>
+  </div>
+  <div class="tile" data-rise="tile">
+    <div class="kicker">This Sunday</div>
+    <h3 data-words>Ready for Sunday.</h3>
+    <p>This Sunday's readings, with Lectio Divina and Visio Divina for the same lessons, so the week leads into worship.</p>
+    <div class="phone-clip" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/this-sunday.jpg" alt="This Sunday: readings, Lectio Divina and Visio Divina for Sunday" loading="lazy" decoding="async"></div></div></div>
+  </div>
+  <div class="tile wide" data-rise="tile">
+    <div class="copy">
+      <div class="kicker">The Saints</div>
+      <h3 data-words>Keep company with the saints.</h3>
+      <p>Every commemoration of the church year, with the life and collect for each. Today's saint meets you on the home screen.</p>
+      <div class="stat" style="text-align:left">277<small>lives to read</small></div>
+    </div>
+    <div class="phone-clip" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/saints.jpg" alt="Hagiographies: today's saint, and search all 277" loading="lazy" decoding="async"></div></div></div>
+  </div>
+</section>
+
+<section class="wrap more" aria-labelledby="more-h">
+  <div class="center">
+    <div class="kicker">And more</div>
+    <h2 class="big-h" id="more-h" data-words>Made for a real day.</h2>
+  </div>
+  <div class="more-grid" data-rise="up">
+    <div><span class="e" aria-hidden="true">📴</span><b>Works offline</b><span>Offices, readings and Visio pictures are saved four weeks ahead.</span></div>
+    <div><span class="e" aria-hidden="true">📱</span><b>Home Screen widget</b><span>Your day's practices at a glance, without opening the app.</span></div>
+    <div><span class="e" aria-hidden="true">🔔</span><b>Gentle reminders</b><span>A nudge at the hours you choose to pray.</span></div>
+    <div><span class="e" aria-hidden="true">📰</span><b>Daily reflections</b><span>Forward Day by Day, Pray As You Go, the CAC and SSJE, in a quiet reader.</span></div>
+    <div><span class="e" aria-hidden="true">🕯️</span><b>Silence</b><span>A timer for contemplation, with a goal you set in minutes.</span></div>
+    <div><span class="e" aria-hidden="true">🙏🏽</span><b>Novenas</b><span>Nine days of prayer, one page a day.</span></div>
+  </div>
+</section>
+
+<section class="wrap makers" aria-labelledby="makers-h">
+  <div class="center">
+    <div class="kicker">Who's behind it</div>
+    <h2 class="big-h" id="makers-h" data-words>Made by seminarians.</h2>
+  </div>
+  <div class="makers-grid">
+    <div class="maker" data-rise="up"><h3>Anabelle Helsell</h3><div class="role">Seminarian at Union Theological Seminary</div><p>The 2025 Liddell Award recipient for outstanding young adult ministry in New York.</p></div>
+    <div class="maker" data-rise="up"><h3>Jeremy Cannon</h3><div class="role">Seminarian at Virginia Theological Seminary</div><p>Former member of the Holy Cross Monastery.</p></div>
+  </div>
+  <p class="meet">They met on the feast of Thomas the Apostle, the patron saint of architects, and set out to make monastic wisdom accessible to young adults in the modern world. Phoebe is backed by a grant from the TryTank Research Institute at Virginia Theological Seminary.</p>
+</section>
+
+<section class="close" id="start" aria-labelledby="close-h">
+  <div class="wrap">
+    <img src="/phoebe-app-icon.png" alt="">
+    <h2 id="close-h" data-words>Cultivate a habit of <em>prayer.</em></h2>
+    <div class="cap">Inspired by monastic wisdom</div>
+    <div class="ctas">
+      <a class="pill" href="/">Start praying</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Phoebe · A Daily Rhythm of Prayer</span>
+    <span><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · Screens are from the Phoebe app.</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  document.querySelectorAll('[data-words]').forEach(function (p) {
+    var html = '';
+    p.childNodes.forEach(function (n) {
+      var em = n.nodeType === 1 && (n.classList.contains('em') || n.tagName === 'EM');
+      (n.textContent || '').split(/(\s+)/).forEach(function (w) {
+        html += /^\s+$/.test(w) || !w ? w : '<span class="w' + (em ? ' em' : '') + '">' + w + '</span>';
+      });
+    });
+    p.innerHTML = html;
+  });
+  var blocks = Array.prototype.slice.call(document.querySelectorAll('[data-words]')).map(function (p) {
+    return { el: p, words: Array.prototype.slice.call(p.querySelectorAll('.w')) };
+  });
+  var risers = Array.prototype.slice.call(document.querySelectorAll('[data-rise]'));
+  document.querySelectorAll('[data-rise="shelf"]').forEach(function (f, i) { f.dataset.i = i; });
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.tstep'));
+  var layers = document.querySelectorAll('.tour-stage .layer');
+  var ticks = document.querySelectorAll('.tour-stage .ticks i');
+  var hero = document.getElementById('heroPhone');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var current = 0;
+  function frame() {
+    var vh = window.innerHeight || 800;
+    // Each block of words lights up as it travels up the screen.
+    blocks.forEach(function (b) {
+      var box = b.el.getBoundingClientRect();
+      if (box.bottom < -vh || box.top > vh * 2) return;
+      var big = b.el.closest('.statement');
+      var prog = big ? (vh * 0.85 - box.top) / (box.height + vh * 0.35)
+                     : (vh * 0.92 - box.top) / (box.height + vh * 0.3);
+      var lit = Math.round(Math.max(0, Math.min(1, prog)) * b.words.length);
+      b.words.forEach(function (w, i) { w.classList.toggle('lit', i < lit); });
+    });
+    // Phones, tiles and cards rise and settle as they enter.
+    if (!reduce) risers.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.bottom < -200 || r.top > vh + 200) return;
+      var t = Math.max(0, Math.min(1, (vh - r.top) / (vh * 0.55)));
+      var e = 1 - Math.pow(1 - t, 3), k = 1 - e, kind = el.getAttribute('data-rise');
+      var tf = kind === 'left' ? 'translate(' + (-90 * k) + 'px,' + (50 * k) + 'px) rotate(' + (-5 * k) + 'deg)'
+             : kind === 'right' ? 'translate(' + (90 * k) + 'px,' + (50 * k) + 'px) rotate(' + (5 * k) + 'deg)'
+             : kind === 'tile' ? 'translateY(' + (60 * k) + 'px) scale(' + (0.94 + 0.06 * e) + ')'
+             : kind === 'shelf' ? 'translateY(' + (80 * k * (1 + 0.18 * (el.dataset.i || 0))) + 'px)'
+             : 'translateY(' + (44 * k) + 'px)';
+      el.style.transform = tf;
+    });
+    var best = 0, bestD = Infinity;
+    steps.forEach(function (s, i) {
+      var r = s.getBoundingClientRect();
+      var d = Math.abs(r.top + r.height / 2 - vh / 2);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    if (best !== current) {
+      current = best;
+      steps.forEach(function (s, i) { s.classList.toggle('active', i === best); });
+      layers.forEach(function (l, i) { l.classList.toggle('on', i === best); });
+      ticks.forEach(function (t, i) { t.classList.toggle('on', i === best); });
+    }
+    if (hero && !reduce) {
+      var y = Math.min(window.scrollY, 500);
+      hero.style.transform = 'translateY(' + (-y * 0.08) + 'px) scale(' + (1 + y * 0.00012) + ')';
+    }
+  }
+  var ticking = false;
+  function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(function () { ticking = false; frame(); }); } }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  frame();
+  var shelf = document.getElementById('shelf');
+  function nudge(dir) { shelf.scrollBy({ left: dir * 276 * 2, behavior: reduce ? 'auto' : 'smooth' }); }
+  document.getElementById('shelfPrev').addEventListener('click', function () { nudge(-1); });
+  document.getElementById('shelfNext').addEventListener('click', function () { nudge(1); });
+})();
+</script>
+
+</body>
+</html>
