@@ -195,6 +195,19 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     private var breathSilence: AVAudioPlayer?
     private var breathCleanup: Timer?
 
+    /// The set as handed over, kept so it can be laid down again after iOS
+    /// stops the engine: `firstInHost` is the host time of breath `fromBreath`'s
+    /// in-breath.
+    private struct BreathPlan {
+        let firstInHost: UInt64
+        let inhaleMs: Double
+        let cycleMs: Double
+        let fromBreath: Int
+        let count: Int
+        let closing: Bool
+    }
+    private var breathPlan: BreathPlan?
+
     @objc func scheduleBreath(_ call: CAPPluginCall) {
         let firstInMs = call.getDouble("firstInMs") ?? 0      // from now
         let inhaleMs = call.getDouble("inhaleMs") ?? 6000
@@ -206,66 +219,102 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // Apple Music is the sound while it plays (lib/amenFeedback's rule).
         if PhoebeSessionOwner.musicHolds { call.resolve(["deferred": true]); return }
         if count == 0 || firstInMs < 0 { call.resolve(["scheduled": 0]); return }
+        let plan = BreathPlan(
+            firstInHost: mach_absolute_time() + AVAudioTime.hostTime(forSeconds: firstInMs / 1000.0),
+            inhaleMs: inhaleMs, cycleMs: cycleMs, fromBreath: fromBreath, count: count, closing: closing)
+        breathPlan = plan
+        // Arm the cleanup timer FIRST so ensureSessionActive keeps .playback.
+        let lastMs = firstInMs + Double(count) * cycleMs
+        let cleanup = Timer(timeInterval: lastMs / 1000.0 + 10.0, repeats: false) { [weak self] _ in
+            self?.teardownBreath()
+        }
+        RunLoop.main.add(cleanup, forMode: .common)
+        breathCleanup = cleanup
         do {
-            // Arm the cleanup timer FIRST so ensureSessionActive keeps .playback.
-            let lastMs = firstInMs + Double(count) * cycleMs
-            let cleanup = Timer(timeInterval: lastMs / 1000.0 + 10.0, repeats: false) { [weak self] _ in
-                self?.teardownBreath()
-            }
-            RunLoop.main.add(cleanup, forMode: .common)
-            breathCleanup = cleanup
-            try ensureSessionActive(bell: true)
-
-            if let url = silenceURL() {
-                let silence = try AVAudioPlayer(contentsOf: url)
-                silence.numberOfLoops = -1
-                silence.volume = 0.001
-                silence.prepareToPlay()
-                silence.play()
-                breathSilence = silence
-            }
-
-            guard let fmt = padBuffer(step: 0, exhale: false)?.format else { throw NSError(domain: "PhoebeAudio", code: 1) }
-            let engine = AVAudioEngine()
-            var nodes: [AVAudioPlayerNode] = []
-            // Two in-breath and two out-breath nodes, alternating, so a tone's
-            // tail (7 s) is never cut by the next tone on the same node; one
-            // more for the closing tone.
-            for _ in 0..<5 {
-                let node = AVAudioPlayerNode()
-                engine.attach(node)
-                engine.connect(node, to: engine.mainMixerNode, format: fmt)
-                nodes.append(node)
-            }
-            try engine.start()
-            breathEngine = engine
-            breathNodes = nodes
-            for node in nodes { node.play() }
-
-            let nowHost = mach_absolute_time()
-            func at(_ ms: Double) -> AVAudioTime {
-                AVAudioTime(hostTime: nowHost + AVAudioTime.hostTime(forSeconds: ms / 1000.0))
-            }
-            var scheduled = 0
-            for i in 0..<count {
-                let k = fromBreath + i
-                let inMs = firstInMs + Double(i) * cycleMs
-                if let buf = padBuffer(step: k % 3, exhale: false), inMs >= 0 {
-                    nodes[k % 2].scheduleBuffer(buf, at: at(inMs), options: [], completionHandler: nil)
-                    scheduled += 1
-                }
-                if let buf = padBuffer(step: k % 3, exhale: true) {
-                    nodes[2 + k % 2].scheduleBuffer(buf, at: at(inMs + inhaleMs), options: [], completionHandler: nil)
-                    scheduled += 1
-                }
-            }
-            if closing, let buf = padBuffer(step: 0, exhale: false) {
-                nodes[4].scheduleBuffer(buf, at: at(lastMs), options: [], completionHandler: nil)
-            }
+            let scheduled = try layBreath(plan)
+            observeBreathInterruptions()
             call.resolve(["scheduled": scheduled])
         } catch {
             teardownBreath()
             call.reject("scheduleBreath failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// (Re)build the engine and lay down every tone of `plan` still in the
+    /// future. Safe to call again mid-set: it starts from a clean engine.
+    @discardableResult
+    private func layBreath(_ plan: BreathPlan) throws -> Int {
+        try ensureSessionActive(bell: true)
+        for node in breathNodes { node.stop() }
+        breathEngine?.stop()
+        breathSilence?.stop()
+
+        if let url = silenceURL() {
+            let silence = try AVAudioPlayer(contentsOf: url)
+            silence.numberOfLoops = -1
+            silence.volume = 0.001
+            silence.prepareToPlay()
+            silence.play()
+            breathSilence = silence
+        }
+
+        guard let fmt = padBuffer(step: 0, exhale: false)?.format else { throw NSError(domain: "PhoebeAudio", code: 1) }
+        let engine = AVAudioEngine()
+        var nodes: [AVAudioPlayerNode] = []
+        // Two in-breath and two out-breath nodes, alternating, so a tone's
+        // tail (7 s) is never cut by the next tone on the same node; one more
+        // for the closing tone.
+        for _ in 0..<5 {
+            let node = AVAudioPlayerNode()
+            engine.attach(node)
+            engine.connect(node, to: engine.mainMixerNode, format: fmt)
+            nodes.append(node)
+        }
+        try engine.start()
+        breathEngine = engine
+        breathNodes = nodes
+        for node in nodes { node.play() }
+
+        let now = mach_absolute_time()
+        let soon = now + AVAudioTime.hostTime(forSeconds: 0.05)
+        func host(_ ms: Double) -> UInt64 { plan.firstInHost + AVAudioTime.hostTime(forSeconds: ms / 1000.0) }
+        var scheduled = 0
+        for i in 0..<plan.count {
+            let k = plan.fromBreath + i
+            let inAt = host(Double(i) * plan.cycleMs)
+            let outAt = host(Double(i) * plan.cycleMs + plan.inhaleMs)
+            if inAt > soon, let buf = padBuffer(step: k % 3, exhale: false) {
+                nodes[k % 2].scheduleBuffer(buf, at: AVAudioTime(hostTime: inAt), options: [], completionCallbackType: .dataPlayedBack) { _ in
+                    NSLog("[PhoebeBreath] played in-breath %d (app %@)", k, UIApplication.shared.applicationState == .active ? "active" : "background")
+                }
+                scheduled += 1
+            }
+            if outAt > soon, let buf = padBuffer(step: k % 3, exhale: true) {
+                nodes[2 + k % 2].scheduleBuffer(buf, at: AVAudioTime(hostTime: outAt), options: [], completionCallbackType: .dataPlayedBack) { _ in
+                    NSLog("[PhoebeBreath] played out-breath %d (app %@)", k, UIApplication.shared.applicationState == .active ? "active" : "background")
+                }
+                scheduled += 1
+            }
+        }
+        let closeAt = host(Double(plan.count) * plan.cycleMs)
+        if plan.closing, closeAt > soon, let buf = padBuffer(step: 0, exhale: false) {
+            nodes[4].scheduleBuffer(buf, at: AVAudioTime(hostTime: closeAt), options: [], completionHandler: nil)
+        }
+        NSLog("[PhoebeBreath] laid %d tones from breath %d, category %@", scheduled, plan.fromBreath, AVAudioSession.sharedInstance().category.rawValue)
+        return scheduled
+    }
+
+    /// Is the set still sounding? If iOS stopped the engine or took the session
+    /// (the web view's own audio stands down when the app goes to the
+    /// background, and the session is shared), lay the rest of it down again.
+    private func keepBreathAlive(_ why: String) {
+        guard let plan = breathPlan, breathCleanup?.isValid ?? false else { return }
+        let running = breathEngine?.isRunning ?? false
+        let silent = !(breathSilence?.isPlaying ?? false)
+        let wrongCategory = AVAudioSession.sharedInstance().category != .playback && !PhoebeSessionOwner.musicHolds
+        NSLog("[PhoebeBreath] check (%@): engine %@, keep-alive %@, category %@", why, running ? "running" : "STOPPED", silent ? "STOPPED" : "playing", AVAudioSession.sharedInstance().category.rawValue)
+        if !running || silent || wrongCategory {
+            do { try layBreath(plan) } catch { NSLog("[PhoebeBreath] re-lay failed: %@", error.localizedDescription) }
         }
     }
 
@@ -274,7 +323,39 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve()
     }
 
+    private var breathObservers: [NSObjectProtocol] = []
+    private func observeBreathInterruptions() {
+        guard breathObservers.isEmpty else { return }
+        let nc = NotificationCenter.default
+        breathObservers.append(nc.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] n in
+            let type = (n.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt).flatMap(AVAudioSession.InterruptionType.init(rawValue:))
+            NSLog("[PhoebeBreath] session interruption %@", type == .began ? "BEGAN" : "ENDED")
+            if type == .ended { self?.keepBreathAlive("interruption ended") }
+        })
+        breathObservers.append(nc.addObserver(forName: .AVAudioEngineConfigurationChange, object: nil, queue: .main) { [weak self] _ in
+            self?.keepBreathAlive("engine configuration change")
+        })
+        breathObservers.append(nc.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.keepBreathAlive("media services reset")
+        })
+        // Going dark is the moment the web view stands its audio down; look
+        // right away and again once it has had time to.
+        breathObservers.append(nc.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.keepBreathAlive("entered background")
+            for delay in [0.6, 2.0, 5.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { self?.keepBreathAlive("background +\(delay)s") }
+            }
+        })
+        breathObservers.append(nc.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self?.keepBreathAlive("resigned active") }
+        })
+    }
+
     private func teardownBreath() {
+        if breathEngine != nil { NSLog("[PhoebeBreath] teardown") }
+        breathPlan = nil
+        for o in breathObservers { NotificationCenter.default.removeObserver(o) }
+        breathObservers = []
         breathCleanup?.invalidate()
         breathCleanup = nil
         for node in breathNodes { node.stop() }

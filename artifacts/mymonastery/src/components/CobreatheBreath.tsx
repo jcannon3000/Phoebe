@@ -366,7 +366,12 @@ export function CobreatheBreath({
   // Also reset the inhale-tone counter so EVERY session starts on the lowest
   // octave (0), even if this component instance is reused across sits.
   useEffect(() => {
-    primeAudio();
+    // Not on a phone that rings the breaths natively: starting the web view's
+    // own audio engine there puts WebKit in charge of the app's one audio
+    // session, and WebKit stands it down when the screen locks — taking the
+    // native tones with it (owner, 2026-09-29: no sound on a locked phone).
+    // Its tones go through PhoebeAudio.playPad anyway, never through WebAudio.
+    if (!canScheduleNativeBreath()) primeAudio();
     inhaleToneCountRef.current = 0;
   }, []);
 
