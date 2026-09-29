@@ -68,15 +68,16 @@
   .hero-fade { height: 130px; margin-top: -130px; position: relative; background: linear-gradient(transparent, var(--ground)); }
 
   /* ── Phone frame around a real screenshot ── */
-  .phone { --w: 300px; width: var(--w); max-width: 100%; aspect-ratio: 300 / 620; flex: 0 0 auto; border-radius: 48px; padding: 11px; position: relative; background: linear-gradient(145deg, #2B3A30, #111A14 40%, #1F2B23); box-shadow: 0 40px 90px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.6); }
-  /* Pinned inside the frame rather than height:100% — Safari does not resolve a
-     percentage height against an aspect-ratio box, and the frame ran on past
-     the screen (owner's screenshot, 2026-09-29). */
-  .screen { position: absolute; inset: 11px; border-radius: 38px; overflow: hidden; background: #0A1D12; }
+  /* THE SCREENSHOT SETS THE SHAPE. No aspect-ratio box, no cover-fit image:
+     real Safari sized the screen wrong three different ways (owner's
+     screenshots, 2026-09-29). The image sits at its natural proportions under
+     a status band, and the bezel is just padding around it. */
+  .phone { --w: 300px; width: var(--w); max-width: 100%; flex: 0 0 auto; border-radius: 48px; padding: 11px; position: relative; background: linear-gradient(145deg, #2B3A30, #111A14 40%, #1F2B23); box-shadow: 0 40px 90px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.6); }
+  .screen { position: relative; border-radius: 38px; overflow: hidden; background: #0A1D12; }
   .screen::before { content: ""; position: absolute; z-index: 3; top: 11px; left: 50%; transform: translateX(-50%); width: 86px; height: 25px; border-radius: 20px; background: #000; }
   .status { position: absolute; z-index: 2; top: 14px; left: 26px; right: 24px; display: flex; justify-content: space-between; font: 600 12px -apple-system, BlinkMacSystemFont, var(--font); color: var(--warm); }
   .status .bars { letter-spacing: 1px; font-size: 10px; opacity: 0.9; }
-  .screen img { position: absolute; top: 44px; left: 0; width: 100%; height: calc(100% - 44px); object-fit: cover; object-position: top; display: block; }
+  .screen img { display: block; width: 100%; height: auto; margin-top: 44px; }
 
   /* ── Statement ── */
   .statement { padding-block: clamp(140px, 20vw, 240px); margin-block: clamp(20px, 4vw, 48px); text-align: center; }
@@ -99,8 +100,9 @@
   .tstep:not(.active) p { color: rgba(240,237,230,0.3); }
   .tstep .inline-phone { display: none; }
   .tour-stage { position: sticky; top: calc(52px + env(safe-area-inset-top, 0px)); height: calc(100vh - 52px); display: grid; place-items: center; }
-  .tour-stage .phone { --w: min(320px, 100%, calc((100vh - 52px - 48px) * 300 / 620)); }
+  .tour-stage .phone { --w: min(320px, 100%, calc((100vh - 52px - 48px) * 0.46)); }
   .layer { position: absolute; inset: 0; transition: opacity .55s ease, transform .55s ease; }
+  .layer:first-child { position: relative; }
   .layer:not(.on) { opacity: 0; transform: translateY(14px) scale(0.985); pointer-events: none; }
   .ticks { position: absolute; right: -22px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; }
   .ticks i { width: 5px; height: 5px; border-radius: 50%; background: rgba(143,175,150,0.3); transition: background .3s, transform .3s; }
@@ -148,7 +150,7 @@
   .shelf::-webkit-scrollbar { display: none; }
   .shelf figure { margin: 0; scroll-snap-align: start; flex: 0 0 auto; width: 250px; display: flex; flex-direction: column; gap: 18px; }
   .shelf .phone { --w: 250px; border-radius: 42px; padding: 10px; }
-  .shelf .screen { inset: 10px; border-radius: 33px; }
+  .shelf .screen { border-radius: 33px; }
   .shelf figcaption { text-align: left; max-width: none; }
   .shelf-nav { display: flex; justify-content: flex-end; gap: 10px; }
   .shelf-nav button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(168,197,160,0.35); background: rgba(46,107,64,0.2); color: var(--warm); font: 600 18px var(--font); cursor: pointer; }
@@ -277,9 +279,9 @@
     </div>
   </div>
   <div class="hero-stage" aria-hidden="true">
-    <div class="phone side"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide1.jpg" alt="Morning Prayer slide: the opening versicles" decoding="async"></div></div>
-    <div class="phone" id="heroPhone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/home.jpg" alt="Phoebe's home screen: today's date and feast, then Next: Guided Prayer, Forward Day by Day, Visio Divina, the saint of the day" decoding="async"></div></div>
-    <div class="phone side"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/visio2.jpg" alt="Visio Divina: Christ: the Tekton by Kelly Latimore, for Matthew 21:33-46" decoding="async"></div></div>
+    <div class="phone side"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide1.jpg" width="560" height="1151" alt="Morning Prayer slide: the opening versicles" decoding="async"></div></div>
+    <div class="phone" id="heroPhone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/home.jpg" width="560" height="1151" alt="Phoebe's home screen: today's date and feast, then Next: Guided Prayer, Forward Day by Day, Visio Divina, the saint of the day" decoding="async"></div></div>
+    <div class="phone side"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/visio2.jpg" width="560" height="1151" alt="Visio Divina: Christ: the Tekton by Kelly Latimore, for Matthew 21:33-46" decoding="async"></div></div>
   </div>
   <div class="hero-fade"></div>
 </header>
@@ -297,27 +299,27 @@
         <div class="num">Home</div>
         <h3>Today, in order</h3>
         <p>Open Phoebe and the day is already laid out: the date, the feast the church keeps, and your practices under Next, each one a tap away. What you've prayed moves down to Done.</p>
-        <div class="inline-phone" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/home.jpg" alt="Phoebe's home screen: today's date and feast, then Next: Guided Prayer, Forward Day by Day, Visio Divina, the saint of the day" loading="lazy" decoding="async"></div></div></div>
+        <div class="inline-phone" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/home.jpg" width="560" height="1151" alt="Phoebe's home screen: today's date and feast, then Next: Guided Prayer, Forward Day by Day, Visio Divina, the saint of the day" loading="lazy" decoding="async"></div></div></div>
       </article>
       <article class="tstep">
         <div class="num">Your routine</div>
         <h3>A routine that fits your life</h3>
         <p>Start from a preset rhythm or build your own: a daily prayer, a reflection to read, minutes of silence, and any other practices you want. Change it anytime.</p>
-        <div class="inline-phone" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/customize.jpg" alt="Customize: start from a preset rhythm, then daily prayer, newsletter, silence and added practices" loading="lazy" decoding="async"></div></div></div>
+        <div class="inline-phone" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/customize.jpg" width="560" height="1151" alt="Customize: start from a preset rhythm, then daily prayer, newsletter, silence and added practices" loading="lazy" decoding="async"></div></div></div>
       </article>
       <article class="tstep">
         <div class="num">The Daily Office</div>
         <h3>The prayer book, your way</h3>
         <p>Choose the time of day, a full office or a short devotion, and how you want to pray it. Phoebe sets the day's psalms and readings for you.</p>
-        <div class="inline-phone" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-setup.jpg" alt="Daily Prayer: choose the time of day, the practice, and how to pray" loading="lazy" decoding="async"></div></div></div>
+        <div class="inline-phone" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-setup.jpg" width="560" height="1151" alt="Daily Prayer: choose the time of day, the practice, and how to pray" loading="lazy" decoding="async"></div></div></div>
       </article>
     </div>
     <div class="tour-stage" aria-hidden="true">
       <div class="phone">
         <div class="screen">
-          <div class="layer on"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/home.jpg" alt="Phoebe's home screen: today's date and feast, then Next: Guided Prayer, Forward Day by Day, Visio Divina, the saint of the day" loading="lazy" decoding="async"></div>
-          <div class="layer"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/customize.jpg" alt="Customize: start from a preset rhythm, then daily prayer, newsletter, silence and added practices" loading="lazy" decoding="async"></div>
-          <div class="layer"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-setup.jpg" alt="Daily Prayer: choose the time of day, the practice, and how to pray" loading="lazy" decoding="async"></div>
+          <div class="layer on"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/home.jpg" width="560" height="1151" alt="Phoebe's home screen: today's date and feast, then Next: Guided Prayer, Forward Day by Day, Visio Divina, the saint of the day" loading="lazy" decoding="async"></div>
+          <div class="layer"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/customize.jpg" width="560" height="1151" alt="Customize: start from a preset rhythm, then daily prayer, newsletter, silence and added practices" loading="lazy" decoding="async"></div>
+          <div class="layer"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-setup.jpg" width="560" height="1151" alt="Daily Prayer: choose the time of day, the practice, and how to pray" loading="lazy" decoding="async"></div>
         </div>
         <div class="ticks"><i class="on"></i><i></i><i></i></div>
       </div>
@@ -331,9 +333,9 @@
     <h2 class="big-h" id="office-h" data-words>The Offices, one slide at a time.</h2>
     <p class="sub">The Book of Common Prayer, set for a phone. Each part of the office gets its own slide, the psalm appointed for the day is already in place, and you move at your own pace.</p>
     <div class="trio">
-      <figure data-rise="left"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide1.jpg" alt="Morning Prayer slide: the opening versicles" loading="lazy" decoding="async"></div></div><figcaption><b>The opening</b>O God, make speed to save us.</figcaption></figure>
-      <figure class="mid" data-rise="up"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide2.jpg" alt="Morning Prayer slide: Psalm 89:1-18, appointed for this morning" loading="lazy" decoding="async"></div></div><figcaption><b>The psalm, appointed</b>From the Daily Office Lectionary, with its BCP page.</figcaption></figure>
-      <figure data-rise="right"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide3.jpg" alt="Morning Prayer slide: Psalm 89 set verse by verse" loading="lazy" decoding="async"></div></div><figcaption><b>Set to be prayed</b>Verse by verse, in large, quiet type.</figcaption></figure>
+      <figure data-rise="left"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide1.jpg" width="560" height="1151" alt="Morning Prayer slide: the opening versicles" loading="lazy" decoding="async"></div></div><figcaption><b>The opening</b>O God, make speed to save us.</figcaption></figure>
+      <figure class="mid" data-rise="up"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide2.jpg" width="560" height="1151" alt="Morning Prayer slide: Psalm 89:1-18, appointed for this morning" loading="lazy" decoding="async"></div></div><figcaption><b>The psalm, appointed</b>From the Daily Office Lectionary, with its BCP page.</figcaption></figure>
+      <figure data-rise="right"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/office-slide3.jpg" width="560" height="1151" alt="Morning Prayer slide: Psalm 89 set verse by verse" loading="lazy" decoding="async"></div></div><figcaption><b>Set to be prayed</b>Verse by verse, in large, quiet type.</figcaption></figure>
     </div>
     <div class="swipe-hint">Swipe through the slides ›</div>
     <div class="ways" data-rise="up" aria-label="Ways to pray the office">
@@ -352,13 +354,13 @@
     <div class="shelf-nav"><button type="button" id="shelfPrev" aria-label="Previous practices">‹</button><button type="button" id="shelfNext" aria-label="More practices">›</button></div>
   </div>
   <div class="shelf" id="shelf">
-    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/guided-prayer.jpg" alt="Simple Guided Prayer: praise, confession, thanksgiving, supplication" loading="lazy" decoding="async"></div></div><figcaption><b>Simple Guided Prayer</b>Praise, confession, thanksgiving, supplication. Four movements, no hurry.</figcaption></figure>
-    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/visio2.jpg" alt="Visio Divina: Christ: the Tekton by Kelly Latimore, for Matthew 21:33-46" loading="lazy" decoding="async"></div></div><figcaption><b>Visio Divina</b>A work of art chosen for this Sunday's readings, to return to all week.</figcaption></figure>
-    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/cobreathe.jpg" alt="Breathing Together: before you begin" loading="lazy" decoding="async"></div></div><figcaption><b>Breathing Together</b>Breathe with all of creation, in gratitude and care for our common home.</figcaption></figure>
-    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/rosary.jpg" alt="The Rosary: the Joyful Mysteries, with Rosary and Anglican beads" loading="lazy" decoding="async"></div></div><figcaption><b>The Rosary</b>The day's mysteries, prayed on a Roman rosary or Anglican beads.</figcaption></figure>
-    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/icon-prayer.jpg" alt="Praying with Icons: choose an icon to sit with" loading="lazy" decoding="async"></div></div><figcaption><b>Praying with Icons</b>Sit with one icon for a while, or begin somewhere new.</figcaption></figure>
-    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/lectio.jpg" alt="Lectio Divina: today's Old Testament, Epistle and Gospel" loading="lazy" decoding="async"></div></div><figcaption><b>Lectio Divina</b>Read today's lessons slowly, three times, or be guided by audio.</figcaption></figure>
-    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/examen.jpg" alt="The Daily Examen" loading="lazy" decoding="async"></div></div><figcaption><b>The Daily Examen</b>St. Ignatius's gentle walk back through your day.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/guided-prayer.jpg" width="560" height="1151" alt="Simple Guided Prayer: praise, confession, thanksgiving, supplication" loading="lazy" decoding="async"></div></div><figcaption><b>Simple Guided Prayer</b>Praise, confession, thanksgiving, supplication. Four movements, no hurry.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/visio2.jpg" width="560" height="1151" alt="Visio Divina: Christ: the Tekton by Kelly Latimore, for Matthew 21:33-46" loading="lazy" decoding="async"></div></div><figcaption><b>Visio Divina</b>A work of art chosen for this Sunday's readings, to return to all week.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/cobreathe.jpg" width="560" height="1151" alt="Breathing Together: before you begin" loading="lazy" decoding="async"></div></div><figcaption><b>Breathing Together</b>Breathe with all of creation, in gratitude and care for our common home.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/rosary.jpg" width="560" height="1151" alt="The Rosary: the Joyful Mysteries, with Rosary and Anglican beads" loading="lazy" decoding="async"></div></div><figcaption><b>The Rosary</b>The day's mysteries, prayed on a Roman rosary or Anglican beads.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/icon-prayer.jpg" width="560" height="1151" alt="Praying with Icons: choose an icon to sit with" loading="lazy" decoding="async"></div></div><figcaption><b>Praying with Icons</b>Sit with one icon for a while, or begin somewhere new.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/lectio.jpg" width="560" height="1151" alt="Lectio Divina: today's Old Testament, Epistle and Gospel" loading="lazy" decoding="async"></div></div><figcaption><b>Lectio Divina</b>Read today's lessons slowly, three times, or be guided by audio.</figcaption></figure>
+    <figure data-rise="shelf"><div class="phone" aria-hidden="true"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/examen.jpg" width="560" height="1151" alt="The Daily Examen" loading="lazy" decoding="async"></div></div><figcaption><b>The Daily Examen</b>St. Ignatius's gentle walk back through your day.</figcaption></figure>
   </div>
 </section>
 
@@ -375,20 +377,20 @@
         <li>Centering Prayer with Fr. Thomas Keating</li>
       </ul>
     </div>
-    <div class="phone-clip" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/menu-learn.jpg" alt="Learn: Experiencing Jesus, The Way of Love, The Interior Castle, Centering Prayer" loading="lazy" decoding="async"></div></div></div>
+    <div class="phone-clip" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/menu-learn.jpg" width="560" height="1151" alt="Learn: Experiencing Jesus, The Way of Love, The Interior Castle, Centering Prayer" loading="lazy" decoding="async"></div></div></div>
   </div>
   <div class="tile" data-rise="tile">
     <div class="kicker">Sacred music</div>
     <h3 data-words>The Hymnal 1982, sung.</h3>
     <p>Hymns in hymnal order, played right in the app, with Hildegard, Taizé songs and the Spirituals besides.</p>
     <div class="stat">71<small>recorded hymns</small></div>
-    <div class="phone-clip" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/hymns.jpg" alt="The Hymnal 1982: recordings in hymnal order" loading="lazy" decoding="async"></div></div></div>
+    <div class="phone-clip" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/hymns.jpg" width="560" height="1151" alt="The Hymnal 1982: recordings in hymnal order" loading="lazy" decoding="async"></div></div></div>
   </div>
   <div class="tile" data-rise="tile">
     <div class="kicker">This Sunday</div>
     <h3 data-words>Ready for Sunday.</h3>
     <p>This Sunday's readings, with Lectio Divina and Visio Divina for the same lessons, so the week leads into worship.</p>
-    <div class="phone-clip" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/this-sunday.jpg" alt="This Sunday: readings, Lectio Divina and Visio Divina for Sunday" loading="lazy" decoding="async"></div></div></div>
+    <div class="phone-clip" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/this-sunday.jpg" width="560" height="1151" alt="This Sunday: readings, Lectio Divina and Visio Divina for Sunday" loading="lazy" decoding="async"></div></div></div>
   </div>
   <div class="tile wide" data-rise="tile">
     <div class="copy">
@@ -397,7 +399,7 @@
       <p>Every commemoration of the church year, with the life and collect for each. Today's saint meets you on the home screen.</p>
       <div class="stat" style="text-align:left">277<small>lives to read</small></div>
     </div>
-    <div class="phone-clip" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/saints.jpg" alt="Hagiographies: today's saint, and search all 277" loading="lazy" decoding="async"></div></div></div>
+    <div class="phone-clip" aria-hidden="true"><div class="phone"><div class="screen"><div class="status"><span>9:41</span><span class="bars">●●● ▮</span></div><img src="/landing/saints.jpg" width="560" height="1151" alt="Hagiographies: today's saint, and search all 277" loading="lazy" decoding="async"></div></div></div>
   </div>
 </section>
 
