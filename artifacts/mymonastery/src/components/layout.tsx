@@ -16,6 +16,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
 import { useGuestMode } from "@/hooks/useGuestMode";
+import { routineStarted, inheritedRoutine, startRoutine } from "@/lib/routineStart";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -128,6 +129,12 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   // reach the full app through it). See memory "project_public_no_login".
   const { isGuest } = useGuestMode();
   const { t } = useTranslation();
+  /**
+   * Is the home showing the practice cards rather than a rhythm? Read on every
+   * render, which for a drawer means every time it opens — the one moment it
+   * has to be right (lib/routineStart; `open` changing is what re-renders it).
+   */
+  const noRoutineYet = !routineStarted() && !inheritedRoutine();
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
   // drawer open / Layout mount used to trip NetworkBanner's "flaky"
@@ -386,14 +393,31 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 
             {/* Shape your routine (the rule-of-life / customizer). Daily progress
                 is reached from the header pill again, so it's no longer a menu
-                row. Same visibility: not the offices-only tier or pilot. */}
+                row. Same visibility: not the offices-only tier or pilot.
+
+                …OR "Start a routine", WHEN THERE ISN'T ONE (owner, 2026-09-29:
+                "if someone doesnt have a routine yet, have the menu button say
+                'Start A Routine'"). Someone on the practice cards — a newcomer,
+                or anyone who turned their routine off — was offered a shape for
+                a rhythm they haven't got. The row does the thing it names: it
+                starts the routine and closes the menu, landing them on the day
+                with the one-time "Shape your routine" pointer over it. For
+                anyone who HAS a rhythm, nothing changes. */}
             {!officesOnly && !isPilot && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-                <MenuRow
-                  emoji="📜"
-                  label={t("menu.shape_routine", { defaultValue: "Shape your routine" })}
-                  onClick={() => navigate("/rule-of-life")}
-                />
+                {noRoutineYet ? (
+                  <MenuRow
+                    emoji="🌿"
+                    label={t("menu.start_routine", { defaultValue: "Start a routine" })}
+                    onClick={() => { startRoutine(); onClose(); navigate("/dashboard"); }}
+                  />
+                ) : (
+                  <MenuRow
+                    emoji="📜"
+                    label={t("menu.shape_routine", { defaultValue: "Shape your routine" })}
+                    onClick={() => navigate("/rule-of-life")}
+                  />
+                )}
               </div>
             )}
 

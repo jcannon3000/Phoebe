@@ -58,6 +58,17 @@ export function inheritedRoutine(): boolean {
   // Turned off counts as "no routine" everywhere the home asks — the saved
   // layout is still there, it just isn't drawn.
   if (routineTurnedOff()) return false;
+  return hasSavedRhythm();
+}
+
+/**
+ * IS THERE A RHYTHM ON THIS DEVICE AT ALL — turned off or not?
+ *
+ * The same three keys, read WITHOUT the off flag, which is the difference
+ * that matters when the routine is coming back: `inheritedRoutine()` answers
+ * "is the home drawing a rhythm", this answers "is there one to draw".
+ */
+function hasSavedRhythm(): boolean {
   try {
     if (localStorage.getItem("phoebe:home-layout")) return true;
     if (localStorage.getItem("phoebe:office:level:morning")) return true;
@@ -68,14 +79,35 @@ export function inheritedRoutine(): boolean {
   }
 }
 
-/** The routine begins: seed the default rhythm and remember that they asked. */
+/**
+ * The routine begins — or comes back.
+ *
+ * TWO DIFFERENT MOMENTS, and telling them apart is the whole of it (owner,
+ * 2026-09-29: "if they turn off the routine after having one, and then they
+ * turn it back on, have it revert to their last saved routine").
+ *
+ * FIRST TIME: nothing is saved, so the default rhythm is seeded and the
+ * one-time "this is your day now, here is where you change it" pointer is
+ * armed.
+ *
+ * COMING BACK: their rhythm is still on the device — turning it off never
+ * deleted anything, it only stopped the home drawing it — so this clears the
+ * off flag and leaves every saved thing exactly as it was. No seed (it would
+ * be a no-op anyway: seedGuestRule returns early once a device is stamped,
+ * and again if a side level is set — but saying so here is worth more than
+ * relying on it), and no pointer, because "This is your day now" over a
+ * rhythm they built themselves reads as if Phoebe had just made it for them.
+ */
 export function startRoutine(): void {
+  const returning = hasSavedRhythm();
   try { localStorage.removeItem(OFF_KEY); } catch { /* ignore */ }
   try { localStorage.setItem(STARTED_KEY, "1"); } catch { /* private mode — this session only */ }
-  try { localStorage.setItem(JUST_STARTED_KEY, "1"); } catch { /* ignore */ }
-  // The same seed every device used to get on first open — the default
-  // rhythm, its cards and the offices' own settings.
-  try { seedGuestRule(); } catch { /* a failed seed leaves them on the cards */ }
+  if (!returning) {
+    try { localStorage.setItem(JUST_STARTED_KEY, "1"); } catch { /* ignore */ }
+    // The same seed every device used to get on first open — the default
+    // rhythm, its cards and the offices' own settings.
+    try { seedGuestRule(); } catch { /* a failed seed leaves them on the cards */ }
+  }
   try { window.dispatchEvent(new Event(ROUTINE_START_EVENT)); } catch { /* ignore */ }
 }
 
