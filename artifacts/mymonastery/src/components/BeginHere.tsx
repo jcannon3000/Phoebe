@@ -68,16 +68,23 @@ export function BeginHere({ onStarted }: { onStarted?: () => void }) {
         later={false}
       />
 
-      {/* The same list as Practices with the offices and the daily reading
-          taken out (owner) — what is left is the quiet half. */}
+      {/* STRAIGHT INTO THE PRACTICE, not a list of practices (owner,
+          2026-09-29: "When you click contemplation, it shouldnt go to the menu
+          for all the contemplation practices, but to the contemplation intro
+          screen … with the reflection options too").
+          /contemplation already is both: the timer and its bell at the top,
+          and "More contemplative practices" — Guided Prayer & Reflection,
+          Guided Lectio Divina, Breathing Together — underneath. A menu in
+          front of it was a list standing between someone and the silence they
+          tapped for. */}
       <PracticeCard
         emoji="🕯️"
         title="Practice contemplation"
-        blurb="Silence, breath, lectio, the picture of the day"
+        blurb="Sit in silence — with lectio, guided prayer and breath beside it"
         cta="Open"
         done={false}
         rgb="150,130,175"
-        href="/menu/practices?contemplative=1"
+        href="/contemplation"
         later={false}
       />
 

@@ -1,4 +1,4 @@
-import { useLocation, useSearch } from "wouter";
+import { useLocation } from "wouter";
 import { MenuHub, type MenuHubGroup } from "@/components/MenuHub";
 import { OFFLINE_PRACTICES, useOnline } from "@/lib/offline";
 import { usePracticeDirectory } from "@/lib/practiceDirectory";
@@ -10,18 +10,14 @@ export default function MenuPracticesPage() {
   const [, setLocation] = useLocation();
   const all = usePracticeDirectory();
   /**
-   * THE QUIET HALF (owner, 2026-09-28, of the newcomer's third card:
-   * "practice contemplation, it takes them to a menu like the practices page,
-   * but doesn't have the offices, daily scripture reading").
-   *
-   * The same page and the same list, with those two rows taken out — not a
-   * second directory to keep in step. Anything added to practiceDirectory
-   * appears here too, which is the point: one list, two doors.
+   * ?contemplative=1 IS GONE (owner, 2026-09-29). It made this page a second
+   * thing — the same list with the offices and the daily reading dropped —
+   * for the newcomer's "Practice contemplation" card, which now opens
+   * /contemplation itself. Nothing linked here with it any more, and an
+   * unreachable variant of a page is the kind that quietly goes wrong
+   * (reference_second_renderer_drift). One page, one list.
    */
-  const contemplativeOnly = new URLSearchParams(useSearch()).get("contemplative") === "1";
-  const practices = contemplativeOnly
-    ? all.filter((p) => p.offlineKey !== "office" && p.offlineKey !== "scripture")
-    : all;
+  const practices = all;
   const go = (p: string) => setLocation(p);
   /**
    * OFFLINE, THE LIST SPLITS IN TWO (owner, 2026-09-06: "on the practices page
@@ -64,11 +60,9 @@ export default function MenuPracticesPage() {
   }];
   return (
     <MenuHub
-      title={contemplativeOnly ? "Contemplation" : "Practices"}
+      title="Practices"
       emoji="🕯️"
-      subtitle={contemplativeOnly
-        ? "Ways of praying in silence, with scripture, with a picture."
-        : "Contemplative practices to weave through your day."}
+      subtitle="Contemplative practices to weave through your day."
       backLabel="Menu"
       backHref="/menu"
       groups={online ? hubGroups : splitForOffline(hubGroups)}
