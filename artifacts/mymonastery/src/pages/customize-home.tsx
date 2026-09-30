@@ -1,3 +1,4 @@
+import { UNOFFERED_REFLECTION_SOURCES } from "@/lib/officePrefs";
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
@@ -599,6 +600,9 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
       // reader's add-list — they could switch it on, and nothing would ever
       // appear, because andrewsActive is false for them.
       && (k !== "andrews" || andrewsVisible)
+      // Retired or paused reflections (Forward Day by Day, SSJE, Grist,
+      // Sojourners) can't be added; one already on the home still renders.
+      && !UNOFFERED_REFLECTION_SOURCES.has(k)
       && (hidden.has(k) || !order.includes(k)),
   );
 

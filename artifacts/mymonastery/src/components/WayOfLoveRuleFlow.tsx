@@ -755,8 +755,9 @@ function homeCardOn(
 }
 
 const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
-  { id: "fdd", label: "📖 Forward Day by Day", sub: "Forward Movement" },
-  { id: "ssje", label: "✍🏽 SSJE — Brother, Give Us a Word", sub: "Society of St. John the Evangelist" },
+  // Forward Day by Day and SSJE are retired (owner, 2026-09-30): not offered,
+  // and a routine that held one was moved to Nouwen / Taizé Daily Prayer
+  // (lib/retiredReflections).
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
   // Heard, not read: its card opens the audio player on the day's session
   // (owner, 2026-09-17), and it is kept once most of it has played.
@@ -5526,7 +5527,7 @@ export default function WayOfLoveRuleFlow({
               // device first named the ADMIN's newsletter on a rule that
               // carries someone else's (eleanor-3a, editing VTS as a reader
               // whose own source is the CAC).
-              source: NEWSLETTERS.find((n) => n.id === (anchorReflectionBySide[side] ?? newsletters[0] ?? getSideReflectionExplicit(side) ?? "fdd"))?.sub
+              source: NEWSLETTERS.find((n) => n.id === (anchorReflectionBySide[side] ?? newsletters[0] ?? getSideReflectionExplicit(side) ?? "nouwen"))?.sub
                 ?? t("wol_rule.pray_fdd_source_generic", { defaultValue: "your newsletter" }),
             }),
             () => {

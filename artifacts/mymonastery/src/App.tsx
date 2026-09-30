@@ -49,6 +49,8 @@ import { syncCustomDoneFromServer, syncCustomAnchorsFromServer, type CustomAncho
 import { syncRoutineFromServer, pushRoutineConfig, type RoutineConfig } from "@/lib/routineSync";
 import { flushHomeLayout } from "@/lib/homeLayoutCache";
 import { OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { migrateRetiredReflections } from "@/lib/retiredReflections";
+import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { isChunkLoadError, recoverFromStaleChunk } from "@/lib/staleChunk";
 
 // Scroll the window to (0, 0) on every route change. Without this,
@@ -95,6 +97,28 @@ function PendingRoutineInviteRedirect() {
 // phone but not the web" gap). localStorage stays the instant cache; this pulls
 // the authoritative snapshot down (or migrates existing local rituals up the
 // first time). Runs once per signed-in user.
+/**
+ * FORWARD DAY BY DAY AND SSJE ARE RETIRED (owner, 2026-09-30): a routine that
+ * holds one moves to Henri Nouwen / Taizé Daily Prayer — see
+ * lib/retiredReflections. Runs at boot, after a routine arrives from the
+ * server, and after any routine setting changes (which covers the guest seed
+ * and any picker), so an old copy can never bring one back. Idempotent: once
+ * nothing is retired, every run is a few reads.
+ */
+function RetiredReflectionsMigration() {
+  useEffect(() => {
+    const run = () => { try { migrateRetiredReflections(); } catch { /* non-fatal */ } };
+    run();
+    window.addEventListener(ROUTINE_SYNCED_EVENT, run);
+    window.addEventListener(OFFICE_PREFS_EVENT, run);
+    return () => {
+      window.removeEventListener(ROUTINE_SYNCED_EVENT, run);
+      window.removeEventListener(OFFICE_PREFS_EVENT, run);
+    };
+  }, []);
+  return null;
+}
+
 function CustomAnchorServerSync() {
   const { user, isLoading } = useAuthForGate();
   const qc = useQueryClient();
@@ -1728,6 +1752,7 @@ function App() {
             <ScrollToTopOnNavigate />
             <PendingRoutineInviteRedirect />
             <CustomAnchorServerSync />
+            <RetiredReflectionsMigration />
             <ReflectionReturnRedirect />
             <AfterReaderRedirect />
             <ReflectionPreheater />

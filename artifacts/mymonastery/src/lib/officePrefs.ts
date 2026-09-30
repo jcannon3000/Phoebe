@@ -104,7 +104,11 @@ export const TRACKED_REFLECTION_SOURCES = ["cac", "fdd", "ssje", "nouwen", "sojo
  * (owner: "we want Sojourners hid until they do another verse and voice") —
  * take it out of this set when they resume.
  */
-export const UNOFFERED_REFLECTION_SOURCES: ReadonlySet<string> = new Set(["grist", "sojo"]);
+// Forward Day by Day and SSJE since 2026-09-30 (owner: "hide Forward Day by Day
+// and SSJE from practices and the customizer, turning those off"). Unlike Grist
+// and Sojourners they are also MOVED OFF existing routines — Forward to Nouwen,
+// SSJE to Taizé Daily Prayer — by lib/retiredReflections.
+export const UNOFFERED_REFLECTION_SOURCES: ReadonlySet<string> = new Set(["grist", "sojo", "fdd", "ssje"]);
 export function isTrackedReflectionSource(s: ReflectionSource): boolean {
   return (TRACKED_REFLECTION_SOURCES as readonly string[]).includes(s);
 }
@@ -951,10 +955,19 @@ export function sideOfficeTitle(
    * source the reader actually chose.
    */
   if (lvl === "fdd") {
-    const src = getSideReflectionExplicit(side.toLowerCase() as OfficeSide) ?? "fdd";
+    // EVERY SOURCE NAMED. It knew only CAC, SSJE and VTS, so a Nouwen or
+    // Taizé side — every routine moved off Forward Day by Day and SSJE on
+    // 2026-09-30 — was titled "Forward Day by Day". With no source of its own
+    // a side reads the Nouwen devotion (lib/retiredReflections).
+    const src = getSideReflectionExplicit(side.toLowerCase() as OfficeSide) ?? "nouwen";
     if (src === "cac") return "CAC Daily Meditation";
     if (src === "ssje") return "Brother, Give Us a Word";
     if (src === "vts") return "VTS Dean's Commentary";
+    if (src === "nouwen") return "Daily Devotion"; // as the routine names it (PUBLICATION_NAME)
+    if (src === "taizeprayer") return "Taizé Daily Prayer";
+    if (src === "payg") return "Pray As You Go Daily";
+    if (src === "sojo") return "Sojourners Daily Devotion";
+    if (src === "grist") return "Grist";
     return "Forward Day by Day";
   }
   if (lvl === "custom") {

@@ -50,9 +50,9 @@ const OFFICE_CHOICES = (side: OfficeSide): OfficeChoice[] => {
 };
 
 const REFLECTION_CHOICES: { value: ReflectionSource; label: string; sub: string }[] = [
-  { value: "fdd", label: "Forward Day by Day", sub: "The classic daily meditation" },
   { value: "cac", label: "Richard Rohr — Daily Meditation", sub: "Center for Action and Contemplation" },
-  { value: "ssje", label: "Brother, Give Us a Word", sub: "A daily word from the SSJE monks" },
+  // Forward Day by Day and SSJE are retired (owner, 2026-09-30) — see
+  // lib/retiredReflections.
   // Sojourners is not offered while Verse and Voice is silent (2026-09-12);
   // see UNOFFERED_REFLECTION_SOURCES in lib/officePrefs.
   { value: "nouwen", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society" },
@@ -276,9 +276,9 @@ export default function SimpleRuleEditor({
     // produce an office+read pairing the editor itself can no longer create.
     setSideEntry("morning", "venite");
     setSideEntry("evening", "venite");
-    setReflectionSource("fdd");
-    setSideReflection("morning", "fdd");
-    setSideReflection("evening", "fdd");
+    setReflectionSource("nouwen");
+    setSideReflection("morning", "nouwen");
+    setSideReflection("evening", "nouwen");
     setGuestSilenceGoalMin(5);
   }
 

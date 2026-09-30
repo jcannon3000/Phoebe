@@ -33,7 +33,7 @@ export type FinderAnswers = {
   musicKinds: string[];  // taize | choral | gospel | ambient | hymns
   artists: string;       // free text (their words)
   silenceLevel: string;  // new | sometimes | daily
-  readingVoice: string;  // cac | fdd | ssje | unsure
+  readingVoice: string;  // cac | nouwen | taizeprayer | unsure (fdd/ssje retired 2026-09-30)
   whenSpace: string[];   // morning | midday | evening | night
   season: string;        // beginning | returning | steady | rooted
   growToward: string[];  // silence | examen | music | walking
@@ -95,8 +95,10 @@ export const FINDER_QUESTIONS: FinderQuestion[] = [
     showIf: (a) => has(a.meet, "scripture"),
     options: [
       { id: "cac", emoji: "🌅", label: "Contemplative & justice", sub: "Center for Action & Contemplation" },
-      { id: "fdd", emoji: "📖", label: "Classic Episcopal daily", sub: "Forward Day by Day" },
-      { id: "ssje", emoji: "✍🏽", label: "Monastic & reflective", sub: "Brother, Give Us a Word (SSJE)" },
+      // Forward Day by Day and SSJE are retired (owner, 2026-09-30); their
+      // places go to the reflections that replaced them in routines.
+      { id: "nouwen", emoji: "😊", label: "Gentle & personal", sub: "Henri Nouwen Daily Devotion" },
+      { id: "taizeprayer", emoji: "🕊️", label: "Monastic & reflective", sub: "Taizé Daily Prayer" },
       { id: "unsure", emoji: "🤍", label: "Not sure — choose for me" },
     ],
   },
@@ -139,7 +141,7 @@ export const FINDER_QUESTIONS: FinderQuestion[] = [
 export type RecommendedRhythm = {
   morningPrayer: "office" | "devotion" | "community" | "contemplation";
   contemplationMinutes: number;
-  reflectionSource: "fdd" | "cac" | "ssje" | null;
+  reflectionSource: "cac" | "nouwen" | "taizeprayer" | null;
   listening: boolean;
   examen: boolean;
   cobreatheInterest: boolean;
@@ -191,7 +193,7 @@ export function recommend(a: FinderAnswers): RecommendedRhythm {
   // A daily reflection.
   let reflectionSource: RecommendedRhythm["reflectionSource"] = null;
   if (has(a.meet, "scripture")) {
-    reflectionSource = a.readingVoice === "cac" ? "cac" : a.readingVoice === "ssje" ? "ssje" : "fdd";
+    reflectionSource = a.readingVoice === "cac" ? "cac" : a.readingVoice === "taizeprayer" ? "taizeprayer" : "nouwen";
     reasons.push("A daily reflection to read, in the voice you chose.");
   }
 
@@ -263,7 +265,7 @@ export async function applyRhythm(rec: RecommendedRhythm): Promise<void> {
   // Home layout — the reflection source + the optional practices ON; everything
   // else hidden. Same shape WayOfLoveRuleFlow writes.
   const newsletters = rec.reflectionSource ? [rec.reflectionSource] : [];
-  const otherReflections = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
+  const otherReflections = (["cac", "nouwen", "taizeprayer"] as const).filter((n) => !newsletters.includes(n));
   const onMap: Record<(typeof ALL_EXTRAS)[number], boolean> = {
     listening: rec.listening, examen: rec.examen,
   };

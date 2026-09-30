@@ -17,7 +17,10 @@ import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
-import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
+import { DailyProgressBody, rhythmGradientRgb, PracticeCard, PUBLICATION_NAME, REFLECTION_EMOJI } from "@/components/DailyProgressBody";
+import { openDailyReflection } from "@/lib/dailyReflections";
+import { getSideReflectionExplicit } from "@/lib/officePrefs";
+import { hasReadReflectionToday, type TrackedReflection } from "@/lib/cacReadState";
 import { HomeLearnSection } from "@/components/HomeLearnSection";
 import { HomeExploreSection } from "@/components/HomeExploreSection";
 import { routineStarted, inheritedRoutine } from "@/lib/routineStart";
@@ -3945,7 +3948,30 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   // else keeps their office). Morning only. Placed AFTER every hook above so the
   // early return can never make a hook conditional.
   if (getSideLevel(isMorning ? "morning" : "evening") === "fdd") {
-    return <FddHomeCard />;
+    /**
+     * "fdd" is the sentinel for "a reflection is this side's prayer" — WHICH
+     * one is the side's own reflection pref. This showed the Forward Day by
+     * Day card for every source, so a morning reading the CAC, Nouwen or Taizé
+     * was titled "Forward Day by Day" and opened it (found 2026-09-30, when
+     * routines moved off Forward Day by Day and SSJE — lib/retiredReflections).
+     */
+    const side = isMorning ? "morning" : "evening";
+    const src = getSideReflectionExplicit(side) ?? "fdd";
+    if (src === "fdd" || src === "none") return <FddHomeCard />;
+    const tracked = src as TrackedReflection;
+    return (
+      <PracticeCard
+        emoji={REFLECTION_EMOJI[tracked] ?? "📖"}
+        title={PUBLICATION_NAME[src]}
+        blurb={hasReadReflectionToday(src) ? "Read today" : "The day's word"}
+        cta="Read"
+        done={hasReadReflectionToday(src)}
+        rgb="96,141,209"
+        hero={!compact && !!forceSide}
+        later={false}
+        onClick={() => openDailyReflection(tracked, setLocation)}
+      />
+    );
   }
   // Per-user: Daily Scripture Readings IS this side's prayer → same swap-in
   // as FDD above, just the simpler (no audio mode) readings card.

@@ -906,8 +906,9 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             ...(newsletter === "payg" ? [{ value: "payg", label: "Pray As You Go Daily" }] : []),
             { value: "taizeprayer", label: "Taizé Daily Prayer" },
             { value: "nouwen", label: "Nouwen Daily Devotion" },
-            { value: "fdd", label: "Forward Day by Day" },
-            { value: "ssje", label: "SSJE — Brother, Give Us a Word" },
+            // Forward Day by Day and SSJE are retired (owner, 2026-09-30); a
+            // routine that had one was moved to Nouwen / Taizé Daily Prayer
+            // (lib/retiredReflections), so nobody's current pick is lost here.
             // VTS is always the LAST newsletter listed (owner, 2026-09-10).
             ...(entitlements.vts || newsletter === "vts"
               ? [{ value: "vts", label: "VTS Dean's Commentary" }]

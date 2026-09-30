@@ -1007,8 +1007,7 @@ function OfficeCloseExtrasSettings() {
   const effectiveSource = useEffectiveReflectionSource();
   const options: Array<{ value: ReflectionSource; label: string; sub: string; emoji: string }> = [
     { value: "cac", label: "CAC Daily Reflection", sub: "From the Center for Action & Contemplation.", emoji: "🌅" },
-    { value: "fdd", label: "Forward Day by Day", sub: "From Forward Movement.", emoji: "📖" },
-    { value: "ssje", label: "SSJE Reflections", sub: "From the Society of Saint John the Evangelist.", emoji: "✍🏽" },
+    // Forward Day by Day and SSJE retired 2026-09-30 (lib/retiredReflections).
     { value: "sojo", label: "Sojourners Daily Devotion", sub: "Verse, voice and prayer of the day.", emoji: "🕊️" },
     { value: "nouwen", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society.", emoji: "😊" },
     { value: "payg", label: "Pray As You Go Daily", sub: "Guided prayer and reflection on scripture.", emoji: "🙇🏽" },

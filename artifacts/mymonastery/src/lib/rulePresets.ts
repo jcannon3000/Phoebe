@@ -124,17 +124,19 @@ export const RULE_PRESETS: RulePreset[] = [
   // middle row falls to the newsletter (middleIsNewsletter), so FDD is
   // literally what sits between Morning and Evening on the weekly card.
   { id: "morning-anchor", emoji: "🌅", sides: { morning: true, evening: true },
-    pray: "guidedPrayer", evening: "examen", silence: false, goalMin: 0, reflections: ["fdd"],
+    // The day's word is the Nouwen devotion since Forward Day by Day was
+    // retired (owner, 2026-09-30; lib/retiredReflections).
+    pray: "guidedPrayer", evening: "examen", silence: false, goalMin: 0, reflections: ["nouwen"],
     title: "A Gentle Start", blurb: "The everyday rhythm: three minutes to open the day, the day's word to carry, and the Examen to close it.",
     rows: [
       { emoji: "🙌🏽", label: "Simple Guided Prayer in the morning" },
-      { emoji: "📖", label: "Forward Day by Day" },
+      { emoji: "\u{1F60A}", label: "The Daily Devotion" },
       { emoji: "🌙", label: "The Examen in the evening" },
     ] },
   // THE DAILY OFFICE — full Morning & Evening Prayer from the Book of Common Prayer.
-  { id: "offices",        emoji: "📖", sides: { morning: true, evening: true },  pray: "offices",  silence: false, goalMin: 0, reflections: ["fdd"],
+  { id: "offices",        emoji: "📖", sides: { morning: true, evening: true },  pray: "offices",  silence: false, goalMin: 0, reflections: ["nouwen"],
     title: "The Daily Office", blurb: "Morning and Evening Prayer in full, from the Book of Common Prayer.",
-    rows: [{ emoji: "🌅", label: "Morning Prayer" }, { emoji: "🌆", label: "Evening Prayer" }, { emoji: "📖", label: "Forward Day by Day" }] },
+    rows: [{ emoji: "🌅", label: "Morning Prayer" }, { emoji: "🌆", label: "Evening Prayer" }, { emoji: "\u{1F60A}", label: "The Daily Devotion" }] },
   // CENTERING PRAYER — two daily sits of silence in the school of Thomas Keating,
   // with the Center for Action & Contemplation's daily meditation. Contemplation
   // IS the prayer (pray "none" + silence), so it's the sit alone — no office.

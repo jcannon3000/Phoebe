@@ -26,8 +26,8 @@ const toggle = (arr: string[], x: string) => arr.includes(x) ? arr.filter((v) =>
 const PRAYER_LABEL: Record<RecommendedRhythm["morningPrayer"], string> = {
   office: "the Daily Office", devotion: "a Daily Devotion", community: "Community Prayer", contemplation: "silent Contemplation",
 };
-const SOURCE_LABEL: Record<"fdd" | "cac" | "ssje", string> = {
-  fdd: "Forward Day by Day", cac: "CAC Daily Meditation", ssje: "Brother, Give Us a Word",
+const SOURCE_LABEL: Record<"cac" | "nouwen" | "taizeprayer", string> = {
+  cac: "CAC Daily Meditation", nouwen: "Nouwen Daily Devotion", taizeprayer: "Taizé Daily Prayer",
 };
 
 export default function FindYourRhythmPage() {
