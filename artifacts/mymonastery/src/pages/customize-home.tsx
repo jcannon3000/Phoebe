@@ -304,8 +304,18 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
   const MODULE_META = useModuleMeta();
   const { order, hidden, removeCard, reorder } = useHomeLayout(user);
 
-  // Visible modules (excluding the two fixed anchors: Prayer requests + Pray).
-  const visibleMovable = order.filter((k) => k !== PINNED && k !== PRAY_ANCHOR && !hidden.has(k));
+  /**
+   * Visible modules (excluding the two fixed anchors: Prayer requests + Pray).
+   *
+   * …and never Visio Divina, which is retired from the routine (owner,
+   * 2026-09-30: "we'll just have that under sunday"). useRhythmState holds
+   * visioActive false, so a row here would be a switch for a card that can no
+   * longer draw — and a saved layout may still carry the key, since nothing
+   * deletes it. It stays in HOME_MODULES so the order/hidden round-trip with
+   * the server's allowlist doesn't drift, exactly as the admin-only keys do
+   * in `available` below.
+   */
+  const visibleMovable = order.filter((k) => k !== PINNED && k !== PRAY_ANCHOR && k !== "visio" && !hidden.has(k));
   const hiddenCount = order.filter((k) => k !== PINNED && k !== PRAY_ANCHOR && hidden.has(k)).length
     + HOME_MODULES.filter((k) => k !== PINNED && k !== PRAY_ANCHOR && k !== "podcasts" && !order.includes(k)).length;
 
@@ -589,6 +599,8 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
   // card they can't get rid of.
   const available = HOME_MODULES.filter(
     (k) => k !== PINNED && k !== PRAY_ANCHOR && k !== "podcasts"
+      // Retired from the routine — see visibleMovable above.
+      && k !== "visio"
       && (k !== "vts" || entitlements.vts)
       // Spirituals is admin-only — see lib/spiritualsFlag.ts. Keeping it out of
       // a non-admin's add-list means it can't be switched on by someone who
