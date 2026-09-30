@@ -14,6 +14,7 @@
  * the Daily progress "Customize" pill and returns there when done.
  */
 
+import { turnOffRoutine } from "@/lib/routineStart";
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef, useCallback, type ReactNode, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -1042,7 +1043,7 @@ export default function WayOfLoveRuleFlow({
   // admin opening this; manual is the opt-out.
   // "Ask me" is the default only for those who have it — everyone else came
   // here to edit, so the manual path leads.
-  const [entryChoice, setEntryChoice] = useState<"ask" | "manual" | "preset" | "revert">("ask");
+  const [entryChoice, setEntryChoice] = useState<"ask" | "manual" | "preset" | "revert" | "off">("ask");
   // (Removed: the weekly-cards step's own on/off state. That step is gone and
   // the card defaults ON — its toggle lives in Settings → Home display, which
   // owns the same phoebe:hide-turn-learn-pray key.)
@@ -4064,7 +4065,7 @@ export default function WayOfLoveRuleFlow({
   // query: seeding the state from it would race, and a super admin who loaded
   // slowly would silently lose their default.
   const canRevert = hasRoutineHistory && !prescribe;
-  const effectiveEntryChoice: "ask" | "manual" | "preset" | "revert" =
+  const effectiveEntryChoice: "ask" | "manual" | "preset" | "revert" | "off" =
     entryChoice === "ask" && (!isSuperAdmin || ROUTINE_INTERVIEW_ENTRY_HIDDEN) ? "manual"
       : entryChoice === "revert" && !canRevert ? "manual"
         : entryChoice;
@@ -4916,6 +4917,17 @@ export default function WayOfLoveRuleFlow({
             t("wol_rule.entry_revert_sub", { defaultValue: "Restore a rhythm you kept before." }),
             () => setEntryChoice("revert"),
           )}
+          {/* TURN OFF (owner, 2026-09-29: "a fourth option, at the bottom of
+              the screen, that could revert to just the practices view on the
+              home screen"). Nothing is deleted — lib/routineStart keeps the
+              rhythm, and "Start a routine" on the home brings it back. Not
+              offered while writing a routine for someone else. */}
+          {!prescribe && choiceRow(
+            effectiveEntryChoice === "off",
+            `🍃 ${t("wol_rule.entry_off", { defaultValue: "Turn off routine" })}`,
+            t("wol_rule.entry_off_sub", { defaultValue: "Go back to just the practices on your home. Your routine is kept for when you want it again." }),
+            () => setEntryChoice("off"),
+          )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => {
           if (effectiveEntryChoice === "ask") {
@@ -4927,6 +4939,7 @@ export default function WayOfLoveRuleFlow({
             return;
           }
           if (effectiveEntryChoice === "revert") { setLocation("/routine-history"); return; }
+          if (effectiveEntryChoice === "off") { turnOffRoutine(); setLocation("/dashboard"); return; }
           // The preset list is a mode of the same flow, not another page: mark
           // the entry answered and switch modes, so Back from the list returns
           // here rather than leaving the customizer altogether.

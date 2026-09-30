@@ -31,6 +31,7 @@ import {
   type OfficeAudioSource,
 } from "@/lib/officePrefs";
 import { resetRoutineToDefault } from "@/lib/resetRoutine";
+import { routineTurnedOff, turnOffRoutine, startRoutine } from "@/lib/routineStart";
 import { CtaArrow } from "@/components/CtaArrow";
 import {
   appleMusicEnabled, appleMusicOfferable, enableAppleMusic, disableAppleMusic,
@@ -605,6 +606,59 @@ function DefaultPrayerLevelSettings() {
         Shape your rule of life
         <span aria-hidden>→</span>
       </Link>
+    </>
+  );
+}
+
+// ── Turn off routine ───────────────────────────────────────────────────────
+// Owner, 2026-09-29: "put that as an option in settings too" — the same switch
+// as Shape your routine's "Turn off routine". Off shows the home's practice
+// cards instead of the day's rhythm; the rhythm itself is kept (lib/routineStart),
+// so turning it back on returns their own routine, not the default.
+function RoutineOnOffSettings() {
+  const [, setLocation] = useLocation();
+  const [off, setOff] = useState(() => routineTurnedOff());
+  const [confirming, setConfirming] = useState(false);
+  const text = { color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 } as const;
+  return (
+    <>
+      <SectionHeader label="Your routine" />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        {off
+          ? "Your routine is off, so the home shows the practices instead. It\u2019s saved, just as you left it."
+          : "Turn off your routine to see just the practices on your home. Your routine is kept, and you can turn it back on anytime."}
+      </p>
+      <SettingsCard>
+        {off ? (
+          <button type="button" className="w-full text-left py-2.5" style={{ background: "transparent", cursor: "pointer" }}
+            onClick={() => { startRoutine(); setOff(false); setLocation("/dashboard"); }}>
+            <p className="text-[14px]" style={text}>Turn my routine back on</p>
+          </button>
+        ) : !confirming ? (
+          <button type="button" className="w-full text-left py-2.5" style={{ background: "transparent", cursor: "pointer" }}
+            onClick={() => setConfirming(true)}>
+            <p className="text-[14px]" style={text}>Turn off routine</p>
+          </button>
+        ) : (
+          <div className="py-1.5">
+            <p className="text-[13px]" style={{ ...text, margin: "2px 0 10px" }}>
+              Your home will show the practices instead of your routine. Turn it off?
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { turnOffRoutine(); setOff(true); setConfirming(false); setLocation("/dashboard"); }}
+                className="flex-1 py-2.5 rounded-xl text-[14px] font-semibold"
+                style={{ background: "rgba(46,107,64,0.85)", border: "1px solid rgba(46,107,64,0.6)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}>
+                Turn off
+              </button>
+              <button type="button" onClick={() => setConfirming(false)}
+                className="flex-1 py-2.5 rounded-xl text-[14px]"
+                style={{ background: "transparent", border: "1px solid rgba(200,212,192,0.2)", color: "rgba(143,175,150,0.9)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </SettingsCard>
     </>
   );
 }
@@ -1867,6 +1921,11 @@ export default function SettingsPage() {
             <WeeklyPracticesSettings />
           </div>
         )}
+
+        {/* ── Your routine: on or off ── */}
+        <div className="mb-8">
+          <RoutineOnOffSettings />
+        </div>
 
         {/* ── Reset routine to default ── */}
         <div className="mb-8">

@@ -24,6 +24,7 @@ import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 import { enqueueWrite, dropWrite } from "@/lib/writeOutbox";
 import { CtaArrow } from "@/components/CtaArrow";
+import { turnOffRoutine } from "@/lib/routineStart";
 
 // ── /customize — the BASIC customizer for logged-out / device-local sessions ─
 //
@@ -981,6 +982,18 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
         >
           Customize more fully<CtaArrow />
         </Link>
+
+        {/* TURN OFF (owner, 2026-09-29): back to just the practices on the
+            home. Nothing is deleted (lib/routineStart); "Start a routine" on
+            the home brings this same routine back. */}
+        <button
+          type="button"
+          onClick={() => { turnOffRoutine(); setLocation("/dashboard"); }}
+          className="mt-4 text-sm"
+          style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
+        >
+          Turn off routine
+        </button>
       </div>
     </div>
   );

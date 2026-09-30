@@ -22,8 +22,29 @@ const STARTED_KEY = "phoebe:guest-routine-started";
  *  where to edit it, so the pointer appears exactly once. */
 const JUST_STARTED_KEY = "phoebe:guest-routine-just-started";
 export const ROUTINE_START_EVENT = "phoebe:routine-started";
+/**
+ * TURNED OFF (owner, 2026-09-29: "a fourth option … that could revert to just
+ * the practices view on the home screen, something about turn off routine",
+ * and "put that as an option in settings too"). While set, the home shows the
+ * practice cards as if no routine had been started. NOTHING IS DELETED: the
+ * rhythm stays saved, and "Start a routine" brings THEIR routine back, since
+ * the seed leaves an already-seeded rhythm alone.
+ */
+const OFF_KEY = "phoebe:guest-routine-off";
+
+export function routineTurnedOff(): boolean {
+  try { return localStorage.getItem(OFF_KEY) === "1"; } catch { return false; }
+}
+
+/** Back to the practices view. The routine is kept for when they want it. */
+export function turnOffRoutine(): void {
+  try { localStorage.setItem(OFF_KEY, "1"); } catch { /* private mode */ }
+  try { localStorage.removeItem(JUST_STARTED_KEY); } catch { /* ignore */ }
+  try { window.dispatchEvent(new Event(ROUTINE_START_EVENT)); } catch { /* ignore */ }
+}
 
 export function routineStarted(): boolean {
+  if (routineTurnedOff()) return false;
   try { return localStorage.getItem(STARTED_KEY) === "1"; } catch { return true; }
 }
 
@@ -34,6 +55,9 @@ export function routineStarted(): boolean {
  * or a chosen office side counts as started.
  */
 export function inheritedRoutine(): boolean {
+  // Turned off counts as "no routine" everywhere the home asks — the saved
+  // layout is still there, it just isn't drawn.
+  if (routineTurnedOff()) return false;
   try {
     if (localStorage.getItem("phoebe:home-layout")) return true;
     if (localStorage.getItem("phoebe:office:level:morning")) return true;
@@ -46,6 +70,7 @@ export function inheritedRoutine(): boolean {
 
 /** The routine begins: seed the default rhythm and remember that they asked. */
 export function startRoutine(): void {
+  try { localStorage.removeItem(OFF_KEY); } catch { /* ignore */ }
   try { localStorage.setItem(STARTED_KEY, "1"); } catch { /* private mode — this session only */ }
   try { localStorage.setItem(JUST_STARTED_KEY, "1"); } catch { /* ignore */ }
   // The same seed every device used to get on first open — the default
