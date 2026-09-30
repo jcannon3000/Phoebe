@@ -42,8 +42,6 @@ const ACCENT = "rgba(206,158,143,0.5)";
 const EYEBROW = "rgba(206,158,143,0.75)";
 const DOT_ON = "#C99384";
 const DOT_OFF = "rgba(168,108,96,0.32)";
-/** The first slide's Visio Divina switch, remembered on this device. */
-const VISIO_PREF_KEY = "phoebe:guided-prayer-visio";
 // The Kearns/office frosted-pill recipe (CobreatheHowToIntro.tsx:242).
 const PILL: CSSProperties = {
   background: "rgba(9,26,16,0.42)",
@@ -196,18 +194,24 @@ export default function GuidedPrayerPage() {
     [],
   );
   /**
-   * VISIO DIVINA, ON OR OFF — the switch on the first slide (owner: "a toggle
-   * that says 'Visio Divina' in an eyebrow above, and then on or off … that
-   * would have the pictures in or out"). On by default, remembered on this
-   * device. Off means no picture slides AND nothing fetched for them.
+   * NO PICTURES IN THIS PRAYER ANY MORE (owner, 2026-09-30: "take the pictures
+   * slides out of simple guided prayer" and "take the opening togle out").
+   *
+   * They arrived on 2026-09-14 — an artwork after each movement's words, with
+   * a Visio Divina switch on the first slide to turn them off. Both go: the
+   * prayer is praise · ask · confess · thanks, in words.
+   *
+   * FALSE RATHER THAN RIPPED OUT: this one flag already governed every part of
+   * it — `skipped()` steps over the picture slides in both directions, and the
+   * fetch effect below returns before loading anything — so the deck is
+   * words-only and nothing is requested. The step model keeps its shape, which
+   * is what the movement/back/forward arithmetic is written against.
+   *
+   * lib/guidedPrayerArt and the picture slide itself stay in the file,
+   * unreached. Visio Divina as a practice is unaffected: it lives on This
+   * Sunday now (lib/practiceDirectory).
    */
-  const [visioOn, setVisioOn] = useState<boolean>(() => {
-    try { return localStorage.getItem(VISIO_PREF_KEY) !== "off"; } catch { return true; }
-  });
-  const chooseVisio = (on: boolean) => {
-    setVisioOn(on);
-    try { localStorage.setItem(VISIO_PREF_KEY, on ? "on" : "off"); } catch { /* private mode — this sitting only */ }
-  };
+  const visioOn = false;
   const [pictureState, setPictureState] = useState<Array<"loading" | "ready" | "failed">>(
     () => movementArt.map((a) => (a?.img ? "loading" : "failed")),
   );
@@ -532,38 +536,10 @@ export default function GuidedPrayerPage() {
               <div style={{ marginTop: 22 }}>
                 <PracticeSwitcher side={side} current={isExamen ? "examen" : "guided-prayer"} />
               </div>
-              {/* Visio Divina — pictures in or out of this prayer. */}
-              <div className="flex flex-col items-center" style={{ marginTop: 26 }}>
-                <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 11, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", margin: "0 0 10px" }}>
-                  {t("guided_prayer.visio_eyebrow", { defaultValue: "Visio Divina" })}
-                </p>
-                <div
-                  role="radiogroup"
-                  aria-label={t("guided_prayer.visio_eyebrow", { defaultValue: "Visio Divina" })}
-                  className="inline-flex rounded-full"
-                  style={{ padding: 3, background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: `1px solid ${ACCENT}` }}
-                >
-                  {[true, false].map((on) => (
-                    <button
-                      key={on ? "on" : "off"}
-                      type="button"
-                      role="radio"
-                      aria-checked={visioOn === on}
-                      onClick={() => chooseVisio(on)}
-                      className="rounded-full"
-                      style={{
-                        padding: "7px 20px", minWidth: 64, border: "none", cursor: "pointer",
-                        fontFamily: FONT, fontSize: 14, fontWeight: 600,
-                        background: visioOn === on ? "rgba(201,147,132,0.30)" : "transparent",
-                        color: visioOn === on ? WARM : "rgba(240,237,230,0.6)",
-                        transition: "background 200ms ease-out, color 200ms ease-out",
-                      }}
-                    >
-                      {on ? t("guided_prayer.visio_on", { defaultValue: "On" }) : t("guided_prayer.visio_off", { defaultValue: "Off" })}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/* THE VISIO DIVINA SWITCH IS GONE (owner, 2026-09-30: "take
+                  the opening togle out"), with the pictures it governed. The
+                  first slide is the prayer's own opening again — what this is,
+                  and the way into it. */}
             </motion.div>
           )}
 

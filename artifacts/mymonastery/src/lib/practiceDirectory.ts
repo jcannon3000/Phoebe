@@ -60,6 +60,10 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // Novenas hidden for all users — see lib/novenaFlag.ts. The row that
     // stood here on 2026-09-23 came out again the same day ("take out
     // novenas"); it opened /novena-library.
+    // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no
+    // ?side=), so it logs as a standalone practice rather than closing
+    // out a morning/evening anchor.
+    { offlineKey: "guided-prayer", emoji: "🙏🏽", label: "Simple Guided Prayer", sub: "Praise, ask, confess, give thanks", href: "/guided-prayer" },
     { offlineKey: "examen", emoji: "🌗", label: "The Examen", sub: "Review the day with God", href: "/examen" },
     /**
      * PRAY AS YOU GO DAILY (owner, 2026-09-18: "Have pray as you ago availible
@@ -73,10 +77,6 @@ export function usePracticeDirectory(): PracticeEntry[] {
      * everyone, as the route itself is — their feed is public.
      */
     { emoji: "🙇🏽", label: "Pray As You Go Daily", sub: "Guided prayer and reflection on scripture", href: "/reflect/payg" },
-    // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no
-    // ?side=), so it logs as a standalone practice rather than closing
-    // out a morning/evening anchor.
-    { offlineKey: "guided-prayer", emoji: "🙏🏽", label: "Simple Guided Prayer", sub: "Praise, ask, confess, give thanks", href: "/guided-prayer" },
     // Guided courses now live in their own "Learn" menu tab.
     { offlineKey: "cobreathe", emoji: "🌍", label: "Breathing Together", sub: "Breathing together with God's creation", href: "/cobreathe" },
     // Prayers for the Climate sits at the bottom (behind CREATION_PRAYER_ENABLED).
@@ -84,17 +84,16 @@ export function usePracticeDirectory(): PracticeEntry[] {
     ...(CREATION_PRAYER_ENABLED && !isGuest ? [
       { emoji: "🌍", label: "Prayers for the Climate", sub: "Collects, prayers & words on creation", href: "/creation-prayers" },
     ] : []),
-    // Visio Divina — the looking sibling of Audio Divina, beside it.
-    //
-    // NO GUEST GATE (owner: "Visio Divina should be available to users
-    // without an account and everyone"). Nothing in the practice needs
-    // one: the artwork and its licence are public, the lectionary fetch
-    // falls back to praying without it, and completion is a local flag
-    // whose server write already treats a 401 as "signed-out guest, no
-    // sync to do". The gate was also far wider than it read — isGuest is
-    // true for any signed-in non-beta account, so this row was hidden
-    // from nearly everyone, not just visitors without an account.
-    { offlineKey: "visio", emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image, slowly", href: "/visio" },
+    /**
+     * VISIO DIVINA LIVES UNDER THIS SUNDAY NOW (owner, 2026-09-30: "Lets also
+     * take out visio divina out of practice in both the menu and customizer,
+     * we'll just have that under sunday").
+     *
+     * It was always a WEEKLY picture (project_visio_act_catalogue) sitting in
+     * a list of daily practices. The This Sunday page already carries it —
+     * "Meditate on an image for this Sunday", pages/this-sunday — and /visio
+     * is unchanged for anyone who opens it directly.
+     */
     /**
      * NO GATE AT ALL (owner, 2026-09-28: "we want audio divina to be open to
      * all users even if they are not logged in, just don't have the log").
@@ -148,31 +147,26 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // and in the customizer"). The practice itself and /spirituals still
     // exist — see lib/spiritualsFlag.ts — but nothing links to it here.
     /**
-     * Meditating on the lives of the saints (owner, 2026-09-18). A prompt, the
-     * life read on Forward Movement's own page in the in-app reader, a moment
-     * to pray with what it stirred, and the company you've been keeping.
+     * HAGIOGRAPHIES IS NOT A PRACTICE ANY MORE (owner, 2026-09-30: "Take out
+     * Haigriphies out of practices, both in the menu and the customizer" …
+     * "just have it show in the eybrow under the date").
+     *
+     * The day's life is still one tap away, from the feast line under the
+     * date on the home (components/LiturgicalDateHeader), which opens it in
+     * the reader and marks it read exactly as the card did — so it still
+     * lands in Done and still counts. /saints keeps working for anyone who
+     * goes looking. See [[reference_hagiography_today_only]].
      */
-    // Named Hagiographies (owner, 2026-09-18: "Call the life of a saint practice
-    // Haegriphoies") — spelled as the word, and as the home section heading
-    // above the saints row already is.
-    // AT THE BOTTOM (owner, 2026-09-18: "Move hagiographies to the bottom").
-    { emoji: "🕯️", label: "Hagiographies", sub: "Read a life slowly, and let it ask something of yours", href: "/saints" },
     /**
-     * LAST, under the lives (owner, 2026-09-19: "At the bottom of practices
-     * could we have Taize prayers which would love there daily stream").
+     * TAIZÉ SATURDAY PRAYER IS NO LONGER LISTED (owner, 2026-09-30: "Take out
+     * Taize Saturday out of practices"). It was the last row here from
+     * 2026-09-19 — the community's own sung evening prayer, streamed live.
      *
-     * It is the community PRAYING ALOUD, streamed from their church — not the
-     * weekly Taizé meditation to read, not Brother Matthew's written daily
-     * prayer, and not the Taizé Songs in Audio Divina. The owner named it
-     * "Taizé Saturday Prayer", which says which of the four it is AND when
-     * they pray — their channel streams Saturday evenings, not daily.
-     *
-     * No offlineKey: it is their live stream, so with no connection it belongs
-     * under "Not available" rather than being offered and failing.
-     *
-     * 🪔 a lamp, not 🕯️ — the candle is Contemplation's and Hagiographies',
-     * and three candles in one list name nothing.
+     * The page at /taize-prayer stays and still works; it simply is not
+     * offered from this list any more. Of Taizé's four things, what Phoebe
+     * still names is Brother Matthew's written daily prayer (a reflection
+     * source, and the Pray card's fourth row) and the Taizé Songs in Audio
+     * Divina — see memory "project_taize_four_things".
      */
-    { emoji: "\u{1FA94}", label: "Taiz\u00e9 Saturday Prayer", sub: "Their sung evening prayer, streamed from the community", href: "/taize-prayer" },
   ];
 }

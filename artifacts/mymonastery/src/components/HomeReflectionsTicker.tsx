@@ -50,7 +50,16 @@ export function HomeReflectionsTicker() {
       .filter((d) => d.source !== "vts" && d.source !== "payg")
       .map((d) => ({ key: d.source, emoji: d.emoji, label: d.title, onSelect: () => openDailyReflection(d.source, setLocation) }));
     type Pill = { key: string; emoji: string; label: string; onSelect: () => void };
-    const extra: Pill[] = commentaries.map((c) => ({ key: c.key as string, emoji: c.emoji, label: c.title, onSelect: c.open }));
+    /**
+     * NOT THE YALE COMMENTARY (owner, 2026-09-30: "take out yale comentary
+     * from reflections"). The Reflections hub already leaves it out
+     * (pages/menu-newsletters); this row was the other place it still
+     * appeared. The Living Church's Sunday column stays, and both are still
+     * on This Sunday, which is where a Sunday commentary belongs.
+     */
+    const extra: Pill[] = commentaries
+      .filter((c) => c.key !== "commentary")
+      .map((c) => ({ key: c.key as string, emoji: c.emoji, label: c.title, onSelect: c.open }));
     /**
      * NO SERMON PILLS (owner, 2026-09-19: "Take the sermons out of the
      * tickers"). They were a pill per church carrying its newest sermon; the

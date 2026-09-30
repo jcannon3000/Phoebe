@@ -126,8 +126,11 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     /// The pad, rendered once per (octave, in/out) and reused. `exhale` is the
-    /// out-breath variant: a perfect fourth lower and 0.8× as loud, matching
-    /// lib/amenFeedback.ts playBreathTone({ exhale: true }).
+    /// out-breath variant: a perfect fourth HIGHER (owner, 2026-09-30: "I want
+    /// the out sound on breathing together to be a fourth higher not lower" —
+    /// it was 0.75, a fourth below) and 0.8× as loud, matching
+    /// lib/amenFeedback.ts playBreathTone({ exhale: true }). Keep the two in
+    /// step: this is what plays on the phone, the web pad is the fallback.
     private var padCache: [String: AVAudioPCMBuffer] = [:]
     private func padBuffer(step: Int, exhale: Bool) -> AVAudioPCMBuffer? {
         let key = "\(step)-\(exhale)"
@@ -141,7 +144,7 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
               let out = buf.floatChannelData?[0] else { return nil }
         buf.frameLength = frames
         let octMult = pow(2.0, Double(step))
-        let root = 110.0 * octMult * (exhale ? 0.75 : 1.0)
+        let root = 110.0 * octMult * (exhale ? 4.0 / 3.0 : 1.0)
         let masterPeak = (step >= 2 ? 0.18 : step >= 1 ? 0.20 : 0.22) * (exhale ? 0.8 : 1.0)
         let voices: [(freq: Double, gain: Double, triangle: Bool)] = [
             (root, 0.55, false), (root * 1.5, 0.28, true), (root * 2.0, 0.22, false)

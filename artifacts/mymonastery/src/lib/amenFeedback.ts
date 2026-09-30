@@ -418,9 +418,15 @@ function nativePad(): NativePad | null {
  */
 export function playBreathTone(octaveStep: number = 0, opts: { exhale?: boolean } = {}) {
   // `exhale` (owner, 2026-09-29: "we want a sound on the out too now"): the
-  // same pad a perfect fourth lower and a little softer, so a breath rises on
-  // the in-breath and settles on the out-breath. A-E-A in, E-B-E out: they
-  // share the E, and the overlap reads as an open suspension, never a clash.
+  // same pad a perfect fourth AWAY and a little softer, so the out-breath
+  // answers the in-breath rather than repeating it.
+  //
+  // UP, NOT DOWN (owner, 2026-09-30: "I want the out sound on breathing
+  // together to be a fourth higher not lower"). It was ×0.75, a fourth below:
+  // A-E-A in, E-B-E out. Now ×4/3: A-E-A in, D-A-D out — they share the A, so
+  // the overlap is still an open suspension rather than a clash, and the
+  // breath lifts on the way out instead of sinking. Still 0.8× as loud, so
+  // the higher note doesn't become the louder one.
   const exhale = !!opts.exhale;
   // NOT OVER MUSIC (owner, 2026-09-19). Even the native pad stops Apple Music
   // playing in-app — the chime at a slide turn was cutting off the office's
@@ -472,7 +478,7 @@ export function playBreathTone(octaveStep: number = 0, opts: { exhale?: boolean 
     // chord into ultrasound and lose the entire sound to the lowpass.
     const safeStep = Math.max(0, Math.min(4, Math.floor(octaveStep) || 0));
     const octMult = Math.pow(2, safeStep);
-    const rootFreq = 110 * octMult * (exhale ? 0.75 : 1);
+    const rootFreq = 110 * octMult * (exhale ? 4 / 3 : 1);
 
     // Master volume taper — pull higher steps back a touch so the +2
     // step doesn't read as much louder than the base, and so the

@@ -855,9 +855,24 @@ export function useRhythmState(): RhythmState {
   // "Not today" drops it out for the rest of the day, same as a skipped custom
   // anchor; homeCardActive folds that skip in for every practice card.
   const walkActive = homeCardActive(hl, "walk");
-  // Visio Divina — praying with an artwork. Same shape as the other standing
-  // practices: on when its home card is, kept by finishing the deck.
-  const visioActive = homeCardActive(hl, "visio");
+  /**
+   * VISIO DIVINA IS NOT A DAILY CARD ANY MORE (owner, 2026-09-30: "Lets also
+   * take out visio divina out of practice in both the menu and customizer,
+   * we'll just have that under sunday").
+   *
+   * It was always a WEEKLY picture (memory "project_visio_act_catalogue")
+   * standing in a row of daily practices, and This Sunday already carries it.
+   * FALSE HERE, not in each renderer: this is the one value the card, the
+   * progress dot, the day's total and the widget all read
+   * (reference_completion_signal_invariant), so they cannot disagree about
+   * whether today has one.
+   *
+   * A saved layout may still carry "visio" — nothing deletes it, it simply
+   * draws nothing — and a per-SIDE Visio contemplation (a morning whose
+   * contemplative form IS the picture) is a different thing and untouched:
+   * that reads sideHasKind("visio"), not this.
+   */
+  const visioActive = false;
   // Praying with Icons — one icon chosen for the week, sat with daily. The
   // WEEK is the icon's; the sitting is the day's, so completion is
   // day-scoped like every other practice card.
@@ -886,8 +901,20 @@ export function useRhythmState(): RhythmState {
       return d.commemoration ?? (d.rank === "principal_feast" || d.rank === "holy_day" ? d.name : null);
     } catch { return null; }
   })();
-  const hagiographyActive = homeCardActive(hl, "hagiography");
-  const hagiographyShown = hagiographyActive && !!hagiographyUrl;
+  /**
+   * …AND IT IS NO LONGER A CARD (owner, 2026-09-30: "Take out Haigriphies out
+   * of practices, both in the menu and the customizer" … "just have it show
+   * in the eybrow under the date").
+   *
+   * The life is still read, still marked, still counted — from the feast line
+   * under the date (components/LiturgicalDateHeader), which has opened it in
+   * the reader and called markHagiographyRead since 2026-09-12. What goes is
+   * the rhythm card, its dot and its widget row, all of which read this one
+   * value. And because DailyProgressBody's Done entry for the life is gated
+   * on `!hagiographyShown`, a life read from the eyebrow now lands in Done by
+   * that path instead — which is exactly what it was written for.
+   */
+  const hagiographyShown = false;
   const hagiographyDone = hasReadHagiographyToday();
   const lectioActive = homeCardActive(hl, "lectio");
   // Spirituals is admin-only, not public — see lib/spiritualsFlag.ts. Every

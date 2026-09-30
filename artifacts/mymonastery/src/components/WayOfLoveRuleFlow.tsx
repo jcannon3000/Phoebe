@@ -330,10 +330,12 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   { title: () => "Contemplative Practice", emoji: "🕯️", sub: "Silence, or another contemplative practice like a walk.", excludes: "reflect-sit", maps: { kind: "contemplation" } , group: "contemplative" },
   { title: () => "Audio Divina", emoji: "🎵", sub: "Connecting with God through music.", excludes: "__none__", maps: { kind: "practice", key: "audio" } , group: "contemplative" },
   { title: () => "Contemplative Walk", emoji: "🚶🏽", sub: "A walk as prayer.", excludes: "__none__", maps: { kind: "practice", key: "walk" } , group: "contemplative" },
-  // Visio was the one contemplative practice you could take as a side's ANCHOR
-  // and as a STANDING practice but never as a side's SECOND one, while all
-  // three of its siblings could. anchoredAsForm already de-duplicates it.
-  { title: () => "Visio Divina", emoji: "🖼️", sub: "Pray with an image — the day's artwork.", excludes: "__none__", maps: { kind: "practice", key: "visio" } , group: "contemplative" },
+  /* Visio Divina is not offered as a standing practice any more (owner,
+     2026-09-30: "take out visio divina out of practice in both the menu and
+     customizer, we'll just have that under sunday"). It is a WEEKLY picture,
+     and This Sunday carries it. A rule that already names it as a SIDE's
+     contemplative form still works — that path is CONTEMPLATIVE_FORMS, not
+     this list. */
   // Owner: "Icon is not available in the customizer." It wasn't — the
   // practice had no home-layout key at all, so there was nothing for this
   // list to switch on. One icon for the Monday-to-Sunday week, sat with
@@ -1254,7 +1256,6 @@ export default function WayOfLoveRuleFlow({
    * no anchor, no per-side read — so it is its own home card, the same one
    * Reflections → Manage subscriptions switches, seeded from the layout.
    */
-  const [hagiographyOn, setHagiographyOn] = useState<boolean>(() => homeCardOn(seedLayout(user), "hagiography"));
   // When to nudge them to pray, per side. Finishing turns the matching reminder
   // pref ON (pref != "none") so the server's daily push actually fires.
   // NULL means "not known yet" — not the default. Owner: "i had notifications
@@ -1451,7 +1452,6 @@ export default function WayOfLoveRuleFlow({
     // cac+fdd+ssje selection would otherwise collapse to one on re-open.
     const fromLayout = TRACKED_REFLECTION_SOURCES.filter((s) => homeCardOn(seedLayout(user), s));
     if (fromLayout.length > 0) setNewsletters([...fromLayout]);
-    setHagiographyOn(homeCardOn(seedLayout(user), "hagiography"));
     // Contemplative Prayer + the Examen are add-ons now (not office anchors), so
     // seed them from the saved office LEVEL (reflect-sit / examen) — plus the
     // examen home card — rather than from prayBySide.
@@ -2356,7 +2356,6 @@ export default function WayOfLoveRuleFlow({
       ...(wantExamenCard ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
-      ...(contemplative.visio ? ["visio"] : []),
       ...(contemplative.icons ? ["icons"] : []),
       /**
        * THE THREE INBOXES. None of them was here — not even Taizé, which has
@@ -2383,7 +2382,6 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.payg ? ["payg"] : []),
       ...(contemplative.reading ? ["reading"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
-      ...(hagiographyOn ? ["hagiography"] : []),
     ];
     const offKeys = [
       ...(extras.prayerList ? [] : ["prayer-list"]),
@@ -2393,7 +2391,13 @@ export default function WayOfLoveRuleFlow({
       ...(wantExamenCard ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
-      ...(contemplative.visio ? [] : ["visio"]),
+      /* RETIRED, so every save takes them off the home (owner, 2026-09-30:
+         Visio "under sunday", Hagiographies "in the eybrow under the date").
+         Unconditionally hidden rather than dropped from both lists, because a
+         key in NEITHER order nor hidden reads as ON
+         (reference_home_layout_hidden_governs). */
+      "visio",
+      "hagiography",
       ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
       ...(contemplative.andrews ? [] : ["andrews"]),
@@ -2403,7 +2407,6 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.payg ? [] : ["payg"]),
       ...(contemplative.reading ? [] : ["reading"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
-      ...(hagiographyOn ? [] : ["hagiography"]),
     ];
     // No hardcoded "podcasts" here — extras.podcasts already routes it through
     // onKeys/offKeys, and the template copy meant every saved layout carried
@@ -2736,7 +2739,6 @@ export default function WayOfLoveRuleFlow({
       ...(wantExamenCard ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
-      ...(contemplative.visio ? ["visio"] : []),
       /**
        * THE THREE NEWEST PRACTICES, in the copy that actually runs on Save.
        *
@@ -2769,7 +2771,6 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.payg ? ["payg"] : []),
       ...(contemplative.reading ? ["reading"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
-      ...(hagiographyOn ? ["hagiography"] : []),
     ];
     const offKeys = [
       ...(extras.prayerList ? [] : ["prayer-list"]),
@@ -2779,7 +2780,13 @@ export default function WayOfLoveRuleFlow({
       ...(wantExamenCard ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
-      ...(contemplative.visio ? [] : ["visio"]),
+      /* RETIRED, so every save takes them off the home (owner, 2026-09-30:
+         Visio "under sunday", Hagiographies "in the eybrow under the date").
+         Unconditionally hidden rather than dropped from both lists, because a
+         key in NEITHER order nor hidden reads as ON
+         (reference_home_layout_hidden_governs). */
+      "visio",
+      "hagiography",
       // See onKeys above — both halves, or an unticked one is never hidden.
       ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
@@ -2790,7 +2797,6 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.payg ? [] : ["payg"]),
       ...(contemplative.reading ? [] : ["reading"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
-      ...(hagiographyOn ? [] : ["hagiography"]),
     ];
     // No hardcoded "podcasts" here — extras.podcasts already routes it through
     // onKeys/offKeys, and the template copy meant every saved layout carried
@@ -3096,10 +3102,6 @@ export default function WayOfLoveRuleFlow({
       evening: presetSitsSilent && preset.goalMin >= 5 && preset.goalMin <= 30 ? preset.goalMin : 15,
     });
     setNewsletters(preset.reflections);
-    // Editing the default rhythm (/admin/presets): its own cards decide the
-    // hagiographies, not the editor's home. An ordinary rule has no opinion on
-    // them, so the person's own setting stands.
-    if (preset.id === "__default__") setHagiographyOn((getStoredDefaultSeed() ?? SEED_DEFAULT_FALLBACK).cards.includes("hagiography"));
     // A side whose ANCHOR reads a different newsletter from the rule's own —
     // held in state so commit() can honour it (see anchorReflectionBySide).
     // Cleared first, like the practices above, so nothing carries over.
@@ -4163,9 +4165,9 @@ export default function WayOfLoveRuleFlow({
       // visit even though its home card was hidden.
       try { localStorage.removeItem(`phoebe:slot:${key}`); } catch { /* private mode */ }
     } else if (id === "card:hagiography") {
-      // Read on the Learn step beside the newsletters, but not one of them —
-      // it has its own switch there.
-      setHagiographyOn(false);
+      // Retired (owner, 2026-09-30) — it is hidden on every save now, so the
+      // ✕ has nothing left to turn off. The branch stays so an old summary row
+      // can't fall through to the newsletter arm below and strip a newsletter.
     } else if (id.startsWith("card:")) {
       setNewsletters((prev) => prev.filter((n) => n !== id.slice("card:".length)));
     } else if (id.startsWith("custom:")) {
@@ -4549,7 +4551,8 @@ export default function WayOfLoveRuleFlow({
           practiceItem("cobreathe", "🌍", "Breathing Together"),
           practiceItem("walk", "🚶🏽", "Contemplative Walk"),
           practiceItem("listening", "🎵", "Audio Divina"),
-          practiceItem("visio", "🖼️", "Visio Divina"),
+          /* No Visio row — retired from the routine (owner, 2026-09-30:
+             "we'll just have that under sunday"). */
           practiceItem("examen", "🌗", "The Examen"),
         ],
       },
@@ -5079,7 +5082,11 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(contemplative.lectio, `📜 ${t("wol_rule.cp_lectio", { defaultValue: "Lectio Divina" })}`, t("wol_rule.cp_lectio_sub", { defaultValue: "Read a passage slowly, three times — listen, reflect, pray." }), () => toggleContemplative("lectio"))}
           {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Breathing Together" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
           {!anchoredAsForm("walk") && choiceRow(contemplative.walk, `🚶🏽 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
-          {!anchoredAsForm("visio") && choiceRow(contemplative.visio, `🖼️ ${t("wol_rule.cp_visio", { defaultValue: "Visio Divina" })}`, t("wol_rule.cp_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }), () => toggleContemplative("visio"))}
+          {/* VISIO DIVINA IS NOT OFFERED HERE ANY MORE (owner, 2026-09-30:
+              "we'll just have that under sunday"). It is a WEEKLY picture, and
+              This Sunday carries it. Choosing it as a SIDE's contemplative
+              form is a different thing and still works for rules that have
+              it — see CONTEMPLATIVE_FORMS. */}
           {/* THIS LIST IS HARDCODED, not driven by the `group: "contemplative"`
               options array above — which is exactly how four practices ended up
               unreachable here. Icons, Taizé and Spirituals all carry
@@ -6484,15 +6491,12 @@ export default function WayOfLoveRuleFlow({
                 : n.sub;
               return choiceRow(newsletters.includes(n.id), n.label, sub, () => toggleNewsletter(n.id));
             })}
-          {/* FEAST DAY HAGIOGRAPHIES — a card on days the calendar keeps a
-              saint, from Forward Movement. The same switch as Reflections →
-              Manage subscriptions. */}
-          {choiceRow(
-            hagiographyOn,
-            `📜 ${t("wol_rule.learn_hagiography", { defaultValue: "Feast Day Hagiographies" })}`,
-            t("wol_rule.learn_hagiography_sub", { defaultValue: "The life of the saint, on days the calendar keeps one — from Forward Movement." }),
-            () => { touchedRef.current = true; setHagiographyOn((v) => !v); },
-          )}
+          {/* FEAST DAY HAGIOGRAPHIES IS NOT OFFERED HERE ANY MORE (owner,
+              2026-09-30: "Take out Haigriphies out of practices, both in the
+              menu and the customizer" … "just have it show in the eybrow
+              under the date"). The day's life is read from the feast line
+              under the date on the home, which marks it exactly as this card
+              did. */}
           {/* TAIZÉ SITS HERE TOO (owner: "not seeing taize in the reflections
               option of the full customizer").
               It is NOT a NEWSLETTERS entry, and deliberately so: that list is
