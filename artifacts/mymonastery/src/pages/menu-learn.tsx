@@ -127,14 +127,10 @@ export default function MenuLearnPage() {
                 onClick: () => go(`/cac-course/${c.id}`),
               };
             }),
-            ...(isAdmin || cacLibraryGranted
-              ? shows.map((show) => ({
-                  emoji: "🌵",
-                  label: show.showTitle,
-                  sub: [show.author, show.seasonCount > 1 ? `${show.seasonCount} seasons` : "1 season"].filter(Boolean).join(" · "),
-                  muted: !online, onClick: () => go(`/cac-show/${show.showSlug}`),
-                }))
-              : []),
+            // NO CAC PODCASTS (owner, 2026-09-30: "Get rid of the CAC Podcasts
+            // in learn even for admins"). The per-show rows are gone for
+            // everyone; the Curry seasons above ride the same feed machinery
+            // and stay.
           ],
         },
         /**

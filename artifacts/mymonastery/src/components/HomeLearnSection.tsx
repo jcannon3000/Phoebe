@@ -227,7 +227,9 @@ export function HomeLearnSection() {
    */
   const { isAdmin } = useBetaStatus();
   const { enabled: cacLibraryGranted } = useCacLibrary();
-  const maySeeCac = isAdmin || cacLibraryGranted;
+  // NO CAC PODCASTS in Learn, not even for admins (owner, 2026-09-30) — so no
+  // Continue card for a CAC course either, and the feed isn't fetched.
+  const maySeeCac = false && (isAdmin || cacLibraryGranted);
   const { data: cacData } = useCacCourses({ enabled: maySeeCac });
   // No gate: the Way of Love show is the Episcopal Church's, not CAC's, and
   // every course in the app is offered to everyone (see /menu/learn).
@@ -330,7 +332,7 @@ export function HomeLearnSection() {
     });
   }
 
-  for (const c of cacData?.courses ?? []) {
+  for (const c of maySeeCac ? (cacData?.courses ?? []) : []) {
     const { completedCount, total, nextTitle, isStarted, updatedAt } = courseCompletion(c);
     if (!isStarted) continue;
     cards.push({
