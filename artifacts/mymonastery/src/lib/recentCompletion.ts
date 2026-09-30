@@ -12,6 +12,8 @@
 // "evening", "contemplation-morning", "examen", "reflect-fdd", "custom-<id>",
 // and so on — so the home can match a stamp to exactly one card.
 
+import { noteKeptPractice } from "@/lib/appReview";
+
 const KEY = "phoebe:recent-completion";
 
 export type RecentCompletion = { key: string; at: number };
@@ -22,6 +24,12 @@ export function markRecentCompletion(cardKey: string): void {
   try {
     localStorage.setItem(KEY, JSON.stringify({ key: cardKey, at: Date.now() }));
   } catch { /* private mode / quota — non-fatal */ }
+  // The same moment, counted for the once-ever App Store review ask (lib/
+  // appReview). Here rather than in each of the six callers because this is
+  // already the one funnel they all pass through — a second list of "what
+  // counts as kept" would drift from this one by the next practice we add.
+  // It only ever writes localStorage; it never prompts from here.
+  noteKeptPractice();
 }
 
 /** The card completed within the last `windowMs`, or null. The window has to

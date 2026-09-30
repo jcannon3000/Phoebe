@@ -1086,7 +1086,7 @@ function wireLocalNotifications() {
   // Make sure permission is at least asked for once when scheduling.
   window.addEventListener("phoebe:schedule-bell", async e => {
     const detail = (e as CustomEvent).detail as
-      | { hourMin: string; bellId: string; title?: string; body?: string }
+      | { hourMin: string; bellId: string; title?: string; body?: string; route?: string }
       | undefined;
     if (!detail) return;
     const m = /^(\d{1,2}):(\d{2})$/.exec(detail.hourMin);
@@ -1118,6 +1118,8 @@ function wireLocalNotifications() {
             smallIcon: "phoebe_bell",
             iconColor: "#2E6B40",
             sound: undefined,
+            // Where a tap should land (see the action listener below).
+            ...(detail.route ? { extra: { route: detail.route } } : {}),
           },
         ],
       });
@@ -1125,6 +1127,22 @@ function wireLocalNotifications() {
     } catch (err) {
       window.dispatchEvent(new CustomEvent("phoebe:bell-error", { detail: err }));
     }
+  });
+
+  /**
+   * A TAPPED REMINDER OPENS ITS ROUTE (owner, 2026-09-30: the no-routine
+   * reminders "would just take them to the home page"). A bell scheduled with
+   * `route` carries it in `extra`; tapping it routes the web app there the same
+   * way a universal link does (wireDeepLinks). Bells without one keep the old
+   * behaviour: the app simply opens where it was.
+   */
+  void LocalNotifications.addListener("localNotificationActionPerformed", ({ notification }) => {
+    const route = (notification?.extra as { route?: unknown } | undefined)?.route;
+    if (typeof route !== "string" || !route.startsWith("/")) return;
+    try {
+      window.history.pushState({}, "", route);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    } catch { /* ignore */ }
   });
 
   window.addEventListener("phoebe:cancel-bell", async e => {
@@ -1451,6 +1469,14 @@ declare global {
       // and dismissals. No-op on web. Backed by PhoebeBadgePlugin
       // (ios/App/App/PhoebeBadgePlugin.swift).
       setBadge?: (count: number) => Promise<void>;
+      /**
+       * Ask iOS to show its own "rate this app" sheet. Resolves TRUE when the
+       * request reached iOS — never that a sheet appeared: iOS shows it at most
+       * three times a year per person and never in TestFlight, and tells us
+       * nothing either way. Nothing may treat true as "they were asked".
+       * false on web and Android. Backed by PhoebeReviewPlugin.swift.
+       */
+      requestAppReview?: () => Promise<boolean>;
       // Read-only — never prompts. Lets the web layer decide whether to show
       // its own "turn notifications on" reminder without side effects; the
       // actual request still goes through requestPushPermission() above.
@@ -1677,6 +1703,26 @@ function exposePublicApi() {
         await cap?.Plugins?.BibleBrowser?.preload?.({ url });
       } catch {
         /* preload is best-effort */
+      }
+    },
+    async requestAppReview(): Promise<boolean> {
+      // Nothing to ask on the web, and no plugin on Android — the guard below
+      // would handle it, but returning early keeps the intent obvious.
+      if (!Capacitor.isNativePlatform()) return false;
+      try {
+        const cap = (window as {
+          Capacitor?: {
+            Plugins?: Record<string, { requestReview?: () => Promise<{ shown?: boolean }> }>;
+          };
+        }).Capacitor;
+        const plugin = cap?.Plugins?.PhoebeReview;
+        if (!plugin?.requestReview) return false;
+        const res = await plugin.requestReview();
+        return res?.shown === true;
+      } catch (err) {
+        // Best-effort: a review prompt is the least important thing in the app.
+        console.warn("[PhoebeNative] requestAppReview failed:", err);
+        return false;
       }
     },
     async setBadge(count: number) {

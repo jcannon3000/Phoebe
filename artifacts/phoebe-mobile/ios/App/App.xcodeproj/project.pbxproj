@@ -23,9 +23,10 @@
 		B1B1E0010000000000000002 /* BibleWebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000001 /* BibleWebViewController.swift */; };
 		B1B1E0010000000000000004 /* BibleBrowserPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000003 /* BibleBrowserPlugin.swift */; };
 		B1B1E0010000000000000006 /* PhoebeBadgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */; };
-		B1B1E0010000000000000022 /* PhoebeMusicPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000021 /* PhoebeMusicPlugin.swift */; };
 		B1B1E0010000000000000008 /* PhoebeAudioPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000007 /* PhoebeAudioPlugin.swift */; };
 		B1B1E001000000000000000C /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E001000000000000000B /* MainViewController.swift */; };
+		B1B1E0010000000000000022 /* PhoebeMusicPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000021 /* PhoebeMusicPlugin.swift */; };
+		B1B1E0010000000000000024 /* PhoebeReviewPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000023 /* PhoebeReviewPlugin.swift */; };
 		B2B2E0020000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2B2E0020000000000000010 /* Assets.xcassets */; };
 		DDDE5045232BE6609109A4F0 /* PhoebeWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 72701FD9A9DF4B3EB7605138 /* PhoebeWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		FA11FEEDCA55E003DEADBEEF /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA11FEEDCA55E001DEADBEEF /* SpaceGrotesk-Regular.ttf */; };
@@ -80,9 +81,10 @@
 		B1B1E0010000000000000001 /* BibleWebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BibleWebViewController.swift; sourceTree = "<group>"; };
 		B1B1E0010000000000000003 /* BibleBrowserPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BibleBrowserPlugin.swift; sourceTree = "<group>"; };
 		B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeBadgePlugin.swift; sourceTree = "<group>"; };
-		B1B1E0010000000000000021 /* PhoebeMusicPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeMusicPlugin.swift; sourceTree = "<group>"; };
 		B1B1E0010000000000000007 /* PhoebeAudioPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeAudioPlugin.swift; sourceTree = "<group>"; };
 		B1B1E001000000000000000B /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		B1B1E0010000000000000021 /* PhoebeMusicPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeMusicPlugin.swift; sourceTree = "<group>"; };
+		B1B1E0010000000000000023 /* PhoebeReviewPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeReviewPlugin.swift; sourceTree = "<group>"; };
 		B2B2E0020000000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B7221AA64D384C2295B89E3F /* SceneDelegate.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		CD6994986DD0CAC2938F8675 /* PhoebeWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = PhoebeWidget.entitlements; sourceTree = "<group>"; };
@@ -154,6 +156,7 @@
 				B1B1E0010000000000000001 /* BibleWebViewController.swift */,
 				B1B1E0010000000000000003 /* BibleBrowserPlugin.swift */,
 				B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */,
+				B1B1E0010000000000000023 /* PhoebeReviewPlugin.swift */,
 				B1B1E0010000000000000021 /* PhoebeMusicPlugin.swift */,
 				B1B1E0010000000000000007 /* PhoebeAudioPlugin.swift */,
 				B1B1E001000000000000000B /* MainViewController.swift */,
@@ -356,6 +359,7 @@
 				B1B1E0010000000000000002 /* BibleWebViewController.swift in Sources */,
 				B1B1E0010000000000000004 /* BibleBrowserPlugin.swift in Sources */,
 				B1B1E0010000000000000006 /* PhoebeBadgePlugin.swift in Sources */,
+				B1B1E0010000000000000024 /* PhoebeReviewPlugin.swift in Sources */,
 				B1B1E0010000000000000022 /* PhoebeMusicPlugin.swift in Sources */,
 				B1B1E0010000000000000008 /* PhoebeAudioPlugin.swift in Sources */,
 				B1B1E001000000000000000C /* MainViewController.swift in Sources */,
@@ -523,7 +527,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 10.5;
+				MARKETING_VERSION = 11.3;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = app.withphoebe.mobile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -546,7 +550,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 10.5;
+				MARKETING_VERSION = 11.3;
 				PRODUCT_BUNDLE_IDENTIFIER = app.withphoebe.mobile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";

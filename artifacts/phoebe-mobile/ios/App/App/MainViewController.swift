@@ -52,6 +52,13 @@ class MainViewController: CAPBridgeViewController {
         // and just kept whatever number the last one sent. Registering it makes
         // the client the badge's actual author, as intended.
         bridge?.registerPluginInstance(PhoebeBadgePlugin())
+        // PhoebeReview — the StoreKit "rate this app" sheet (owner,
+        // 2026-09-30). Registered explicitly like every plugin above: nothing
+        // in Swift references the class, so the linker would dead-strip it and
+        // native-shell's requestAppReview, which guards on the plugin
+        // existing, would silently do nothing forever — the exact failure the
+        // badge and the haptics each shipped with once.
+        bridge?.registerPluginInstance(PhoebeReviewPlugin())
         // BibleBrowser was written, wired on the JS side, and never registered
         // here — so Capacitor.Plugins.BibleBrowser did not exist, the guard in
         // native-shell's openInAppBrowser always failed, and EVERY in-app link

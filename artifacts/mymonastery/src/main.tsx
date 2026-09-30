@@ -6,6 +6,7 @@ import { recoverFromStaleChunk } from "./lib/staleChunk";
 import { installGlobalErrorReporting } from "./lib/reportClientError";
 import { preloadSplashPhoto } from "./lib/earthPhotos";
 import { isNativeShell } from "./lib/isNativeShell";
+import { initAppReview } from "./lib/appReview";
 // Boot i18next before mounting the tree so the very first render
 // reads from the resource tables. Fallback to English if Spanish
 // hasn't been activated. Runs as a side-effect import — there's no
@@ -36,6 +37,12 @@ preloadSplashPhoto();
 // never paints at the plain strength and then corrects itself (lib/
 // backgroundStrength).
 applyBackgroundStrength();
+
+// The once-ever "rate this app" ask, armed for this session (lib/appReview).
+// It listens for the splash's own done event and asks nothing until someone has
+// kept a practice on three separate days — so it can't fire on a first open,
+// and never fires mid-practice. No-op off the native shell.
+initAppReview();
 
 createRoot(document.getElementById("root")!).render(<App />);
 
