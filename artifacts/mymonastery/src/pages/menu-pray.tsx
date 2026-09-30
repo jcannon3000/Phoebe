@@ -74,6 +74,14 @@ export default function MenuPrayPage() {
             sub: "The day's prayer from Brother Matthew at Taizé",
             onClick: () => openDailyReflection("taizeprayer", setLocation),
           },
+          // BREATHING TOGETHER (owner, 2026-09-30: "have breathing together be
+          // one of the practices that if someone doesn't have a routine and
+          // they click prayer"). The breath with everyone praying it now.
+          {
+            emoji: "🌍", label: "Breathing Together",
+            sub: "Breathe with all of creation, in step with everyone praying it now",
+            onClick: () => go("/cobreathe"),
+          },
         ],
       }]}
     />

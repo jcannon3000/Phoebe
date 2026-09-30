@@ -25,6 +25,7 @@ import { ServerDownScreen } from "@/components/ServerDownScreen";
 import { GlobalButtonHaptics } from "@/components/GlobalButtonHaptics";
 import { LocaleSync } from "@/components/LocaleSync";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
+import { NoRoutineReminders } from "@/components/NoRoutineReminders";
 import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
 import { AndroidPwaInstallPrompt } from "@/components/AndroidPwaInstallPrompt";
@@ -1736,6 +1737,7 @@ function App() {
           <RoutinePresetRefresh />
           <OfficeOfflinePrefetch />
           <PushPermissionPrompt />
+          <NoRoutineReminders />
           <WebPushPermissionPrompt />
           <ForegroundPushToast />
           <NetworkBanner />

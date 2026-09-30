@@ -269,7 +269,16 @@ export default function MenuNewslettersPage() {
    * toggle ONLY for someone who already follows it, so the card they have can
    * still be switched off from where it was switched on.
    */
-  const shown = entries.filter((e) => e.key !== "payg" || (managing && e.followed));
+  /**
+   * NOR THE DEAN'S COMMENTARY (owner, 2026-09-30: "Don't have Dean's
+   * commentary on the reflections menu page, but allow it to be something that
+   * you can put in your routine … not on reflections for the non-routine view
+   * either"). It stays in the customizers and in Manage, which is itself a way
+   * of putting a reflection into the routine; only the reading list drops it.
+   */
+  const shown = entries.filter((e) =>
+    (e.key !== "payg" || (managing && e.followed))
+    && (e.key !== "vts" || managing));
   const inGroup = group ? shown.filter((e) => e.cadence === group) : shown;
   /**
    * NO ROUTINE, NO SUBSCRIPTIONS (owner, 2026-09-30: "when someone does not
