@@ -1,3 +1,4 @@
+import { routineStarted, inheritedRoutine } from "@/lib/routineStart";
 import { useEffect, useMemo, useState } from "react";
 import { warmedHtml, warmPages } from "@/lib/warmedPages";
 import { forwardMovementFeastUrl } from "@/lib/liturgical/forwardMovementCalendar";
@@ -261,7 +262,25 @@ export default function MenuNewslettersPage() {
       };
     }),
   ];
-  const inGroup = group ? entries.filter((e) => e.cadence === group) : entries;
+  /**
+   * PRAY AS YOU GO IS NOT A REFLECTION HERE (owner, 2026-09-30: "Lets take
+   * Pray as You Go off reflections"). It is a session you listen to, and it
+   * lives under Practices and as a contemplative practice. Manage keeps its
+   * toggle ONLY for someone who already follows it, so the card they have can
+   * still be switched off from where it was switched on.
+   */
+  const shown = entries.filter((e) => e.key !== "payg" || (managing && e.followed));
+  const inGroup = group ? shown.filter((e) => e.cadence === group) : shown;
+  /**
+   * NO ROUTINE, NO SUBSCRIPTIONS (owner, 2026-09-30: "when someone does not
+   * have a routine, when they click on reflections, take out the subscribed
+   * and all categories"). Before a routine there is nothing to be subscribed
+   * TO — following a reflection means a card on the home's rhythm — so it is
+   * one plain list of every reflection, and Manage subscriptions stands down:
+   * following one writes a home layout, which is exactly what reads as "has a
+   * routine" (lib/routineStart), and would swap their five cards for a rhythm.
+   */
+  const noRoutine = !routineStarted() && !inheritedRoutine();
   const subscribed = inGroup.filter((e) => e.followed);
   const others = inGroup.filter((e) => !e.followed);
 
@@ -439,13 +458,13 @@ export default function MenuNewslettersPage() {
             <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em" }}>
               {groupLabel} {group === "daily" ? "☀️" : group === "weekly" ? "🗓️" : "🌅"}
             </h1>
-            <button
+            {!noRoutine && <button
               type="button"
               onClick={manage}
               style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, lineHeight: "20px", cursor: "pointer", padding: 0, whiteSpace: "nowrap", textDecoration: "underline", textUnderlineOffset: 3 }}
             >
               {t("newsletters.manage", { defaultValue: "Manage subscriptions" })}
-            </button>
+            </button>}
           </div>
           <p style={{ fontSize: 14, color: SAGE, margin: "0 0 20px", lineHeight: 1.5 }}>
             {group === "daily"
@@ -458,6 +477,9 @@ export default function MenuNewslettersPage() {
           {/* Each list is one compositing layer, as on home (DailyProgressBody):
               every card's frost is its own layer, and a shared origin lands
               them on the pixel grid together. */}
+          {noRoutine ? (
+            <div className="flex flex-col gap-2" style={{ willChange: "transform" }}>{inGroup.map((e, i) => card(e, i, inGroup.length))}</div>
+          ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
             <div>
               {sectionHeader(t("newsletters.subscriptions", { defaultValue: "Subscriptions" }))}
@@ -476,6 +498,7 @@ export default function MenuNewslettersPage() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </Layout>

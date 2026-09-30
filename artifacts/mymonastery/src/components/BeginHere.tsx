@@ -12,13 +12,14 @@
 // "Next": a person who has not chosen a rhythm has nothing to fall behind on,
 // and the day should not arrive pre-planned for them.
 //
-// The cards are the app's own PracticeCard, so this reads as the same place
+// The cards are the menu's own rows (MenuHub's MenuRow), so this reads as the same place
 // they will land in once the rhythm begins — the furniture does not change
 // underneath them, only what is on it.
 
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { PracticeCard } from "@/components/DailyProgressBody";
+import { MenuRow } from "@/components/MenuHub";
+import { CtaArrow } from "@/components/CtaArrow";
 import { startRoutine, routineJustStarted, clearRoutineJustStarted, ROUTINE_START_EVENT } from "@/lib/routineStart";
 
 const FONT = "'Space Grotesk', sans-serif";
@@ -34,94 +35,44 @@ export function BeginHere({ onStarted }: { onStarted?: () => void }) {
     onStarted?.();
   };
 
+  const go = (path: string) => () => setLocation(path);
+
   return (
-    /* THE HOME'S TWO CARD RULES, which this list was missing (owner,
-       2026-09-29: the borders of the cards when the home is just practices).
-       ONE compositing layer for the whole list, so every card shares its
-       origin instead of each landing on the device grid its own way; and
-       WHOLE-PIXEL lines above the cards, so none of them starts on a half
-       pixel — the label's default line height made it 16.5px, and a 1.5px
-       ring on a half-pixel row paints as two faint rows. See
-       reference_card_spacing_exact: DailyProgressBody's Next/Done lists. */
-    <div className="flex flex-col gap-2" style={{ willChange: "transform" }}>
-      <p
-        className="text-[11px] leading-[16px] font-semibold uppercase tracking-widest mb-1"
-        style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}
-      >
+    /* THE MENU'S OWN CARDS (owner, 2026-09-30: "have the categories show like
+       practices do on the menu, the taller rectangular cards" · "have start a
+       routine be like a wide pill under them"). The rows are MenuHub's
+       MenuRow — the same component, not a copy — with the menu's own spacing:
+       16px label line, 10px gaps, one compositing layer for the list
+       (reference_card_spacing_exact). */
+    <div>
+      <p style={{ fontSize: 11, lineHeight: "16px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(143,175,150,0.55)", margin: "0 0 10px", fontFamily: FONT }}>
         Ways to pray today
       </p>
-
-      {/* PRAY — one steady word, at the owner's word ("Just 'Pray', always"):
-          it is never wrong at any hour, and the Practices page is where every
-          way in already lives. */}
-      <PracticeCard
-        emoji="🙏🏽"
-        title="Pray"
-        blurb="Guided prayer, the office for this hour, Pray As You Go, Taizé"
-        cta="Open"
-        done={false}
-        rgb="62,124,122"
-        href="/menu/pray"
-        later={false}
-      />
-
-      <PracticeCard
-        emoji="📰"
-        title="Read a reflection"
-        blurb="A few minutes with the day's word, from a handful of publishers"
-        cta="Read"
-        done={false}
-        rgb="96,141,209"
-        href="/menu/newsletters"
-        later={false}
-      />
-
-      {/* STRAIGHT INTO THE PRACTICE, not a list of practices (owner,
-          2026-09-29: "When you click contemplation, it shouldnt go to the menu
-          for all the contemplation practices, but to the contemplation intro
-          screen … with the reflection options too").
-          /contemplation already is both: the timer and its bell at the top,
-          and "More contemplative practices" — Guided Prayer & Reflection,
-          Guided Lectio Divina, Breathing Together — underneath. A menu in
-          front of it was a list standing between someone and the silence they
-          tapped for. */}
-      <PracticeCard
-        emoji="🕯️"
-        title="Practice contemplation"
-        blurb="Sit in silence — with lectio, guided prayer and breath beside it"
-        cta="Open"
-        done={false}
-        rgb="150,130,175"
-        href="/contemplation"
-        later={false}
-      />
-
-      <PracticeCard
-        emoji="🎓"
-        title="Learn"
-        blurb="Courses in prayer — Centering Prayer, the Way of Love, and more"
-        cta="Open"
-        done={false}
-        rgb="180,150,90"
-        href="/menu/learn"
-        later={false}
-      />
-
-      {/* …and the one that changes the shape of the home. It applies the
-          default rhythm — the same seed every device used to be handed on its
-          first open — and the next render is the ordinary day. */}
-      <div className="mt-3">
-        <PracticeCard
-          emoji="🌿"
-          title="Start a routine"
-          blurb="A simple daily rhythm to return to — you can change any of it afterwards"
-          cta={starting ? "Starting…" : "Start"}
-          done={false}
-          rgb="46,107,64"
-          onClick={begin}
-          later={false}
-        />
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, willChange: "transform" }}>
+        {/* PRAY — one steady word, at the owner's word ("Just 'Pray', always"). */}
+        <MenuRow emoji="🙏🏽" label="Pray" sub="Guided prayer, the office for this hour, Pray As You Go, Taizé" onClick={go("/menu/pray")} />
+        <MenuRow emoji="📰" label="Read a reflection" sub="A few minutes with the day's word, from a handful of publishers" onClick={go("/menu/newsletters")} />
+        {/* STRAIGHT INTO THE PRACTICE (owner, 2026-09-29): /contemplation is
+            the timer with the other contemplative ways beneath it. */}
+        <MenuRow emoji="🕯️" label="Practice contemplation" sub="Sit in silence, with lectio, guided prayer and breath beside it" onClick={go("/contemplation")} />
+        <MenuRow emoji="🎓" label="Learn" sub="Courses in prayer: Centering Prayer, the Way of Love, and more" onClick={go("/menu/learn")} />
       </div>
+
+      {/* …and the one that changes the shape of the home: a wide pill under
+          the rows. It applies the default rhythm (or brings back a routine
+          that was turned off) and the next render is the ordinary day. */}
+      <button
+        type="button"
+        onClick={begin}
+        disabled={starting}
+        className="w-full mt-5 active:scale-[0.99] transition-opacity hover:opacity-90"
+        style={{ borderRadius: 999, padding: "14px 20px", fontSize: 15.5, lineHeight: "22px", fontWeight: 700, fontFamily: FONT, color: "#F0EDE6", background: "rgba(46,107,64,0.85)", border: "1px solid rgba(168,197,160,0.45)", cursor: starting ? "default" : "pointer", opacity: starting ? 0.7 : 1 }}
+      >
+        {starting ? "Starting…" : <>🌿 Start a routine<CtaArrow /></>}
+      </button>
+      <p style={{ fontSize: 13, lineHeight: "18px", color: "rgba(143,175,150,0.7)", textAlign: "center", margin: "10px 0 0", fontFamily: FONT }}>
+        A simple daily rhythm to return to. You can change any of it afterwards.
+      </p>
     </div>
   );
 }

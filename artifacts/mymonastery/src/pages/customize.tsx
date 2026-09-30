@@ -64,7 +64,10 @@ type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spiritu
 // key like the rest, which is why it can sit in this list at all — and the
 // newsletter row no longer hides it, or choosing a newsletter would turn the
 // practice off.
-const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "visio", "spirituals", "taize", "icons", "lectio", "rosary", "payg"];
+/* No "visio": a seeded layout still carries the key (nothing deletes it), and
+   leaving it here made the retired practice the row's selected value, against
+   an option that is no longer offered. */
+const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "spirituals", "taize", "icons", "lectio", "rosary", "payg"];
 function homeCardOn(hl: HomeLayout | null, key: string): boolean {
   return !!hl && hl.order.includes(key) && !hl.hidden.includes(key);
 }
@@ -929,7 +932,12 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             { value: "listening", label: "Audio Divina" },
             { value: "examen", label: "The Examen" },
             { value: "walk", label: "Contemplative Walk" },
-            { value: "visio", label: "Visio Divina" },
+            /* VISIO DIVINA LIVES UNDER THIS SUNDAY NOW (owner, 2026-09-30:
+               "we'll just have that under sunday"). Its card gate is held
+               false in useRhythmState, so offering it here would hand someone
+               a practice that cannot appear — the same reason the weekly
+               Taizé meditation came out below. /visio and the This Sunday
+               card are untouched. */
             /* The weekly Taizé meditation is retired (owner, 2026-09-23:
                "Get ride of the weekly Taize reflection") — its gate is held
                false in useRhythmState, so offering it here would hand someone
@@ -985,12 +993,16 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
 
         {/* TURN OFF (owner, 2026-09-29): back to just the practices on the
             home. Nothing is deleted (lib/routineStart); "Start a routine" on
-            the home brings this same routine back. */}
+            the home brings this same routine back.
+
+            A FULL PILL, not a link (owner, 2026-09-30) — Save's own width,
+            radius and padding, outlined rather than filled so the two read as
+            the page's two endings without this one competing for the tap. */}
         <button
           type="button"
           onClick={() => { turnOffRoutine(); setLocation("/dashboard"); }}
-          className="mt-4 text-sm"
-          style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
+          className="mt-4 w-full"
+          style={{ maxWidth: 420, borderRadius: 14, padding: "14px 20px", background: "transparent", color: SAGE, fontFamily: FONT, fontWeight: 600, fontSize: 15.5, border: "1px solid rgba(143,175,150,0.45)", cursor: "pointer" }}
         >
           Turn off routine
         </button>

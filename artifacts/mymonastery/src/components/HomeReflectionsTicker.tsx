@@ -45,7 +45,9 @@ export function HomeReflectionsTicker() {
   const commentaries = useSundayCommentaries();
   const pills = useMemo(() => {
     const daily = DAILY_REFLECTIONS
-      .filter((d) => d.source !== "vts")
+      // Not Pray As You Go (owner, 2026-09-30: "take Pray as You Go off
+      // reflections") — it is a practice you listen to, under Practices.
+      .filter((d) => d.source !== "vts" && d.source !== "payg")
       .map((d) => ({ key: d.source, emoji: d.emoji, label: d.title, onSelect: () => openDailyReflection(d.source, setLocation) }));
     type Pill = { key: string; emoji: string; label: string; onSelect: () => void };
     const extra: Pill[] = commentaries.map((c) => ({ key: c.key as string, emoji: c.emoji, label: c.title, onSelect: c.open }));

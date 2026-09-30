@@ -223,7 +223,9 @@
 
 
 <style>
-  html.embed .lnav .pill, html.embed .hero .ctas .pill, html.embed .close .ctas { display: none !important; }
+  /* In the app's About the APP draws the bar (pages/about.tsx), so the page's own goes. */
+  html.embed .lnav, html.embed .hero .ctas .pill, html.embed .close .ctas { display: none !important; }
+  html.embed .tour-stage { top: 0 !important; height: 100vh !important; }
   html.embed.native .lnav a.ios { display: none !important; }
 </style>
 <script>
@@ -427,7 +429,7 @@
     <div class="maker" data-rise="up"><h3>Anabelle Helsell</h3><div class="role">Seminarian at Union Theological Seminary</div><p>The 2025 Liddell Award recipient for outstanding young adult ministry in New York.</p></div>
     <div class="maker" data-rise="up"><h3>Jeremy Cannon</h3><div class="role">Seminarian at Virginia Theological Seminary</div><p>Former member of the Holy Cross Monastery.</p></div>
   </div>
-  <p class="meet">They met on the feast of Thomas the Apostle, the patron saint of architects, and set out to make monastic wisdom accessible to young adults in the modern world. Phoebe is backed by a grant from the TryTank Research Institute at Virginia Theological Seminary.</p>
+  <p class="meet">They met on the feast of Thomas the Apostle, the patron saint of architects, and set out to build Phoebe to make monastic wisdom accessible to young adults in the modern world. Phoebe is backed by a grant from the TryTank Research Institute at Virginia Theological Seminary.</p>
 </section>
 
 <section class="close" id="start" aria-labelledby="close-h">

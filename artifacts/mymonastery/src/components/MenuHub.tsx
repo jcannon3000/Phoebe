@@ -73,6 +73,49 @@ export interface MenuHubGroup {
   items: MenuHubItem[];
 }
 
+/**
+ * ONE MENU ROW — the tall rectangular card of every /menu/* page. Exported so
+ * the practice-cards home (components/BeginHere) uses the very same card
+ * rather than a copy (owner, 2026-09-30: "have the categories show like
+ * practices do on the menu, the taller rectangular cards").
+ */
+export function MenuRow({ emoji, label, sub, badge, dot, muted, onClick }: {
+  emoji: ReactNode;
+  label: ReactNode;
+  sub?: ReactNode;
+  badge?: string;
+  dot?: boolean;
+  muted?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => { playOpeningSwell(2); onClick(); }}
+      className="w-full transition-opacity hover:opacity-90"
+      style={{ ...frostBox(CARD_BG), display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", borderRadius: 16, padding: "16px 18px", opacity: muted ? 0.62 : 1 }}
+    >
+      <FrostLayers border={CARD_BORDER} />
+      <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, width: 28, textAlign: "center" }} aria-hidden>{emoji}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16, lineHeight: "24px", fontWeight: 700, color: WARM }}>{label}</span>
+          {badge && (
+            <span style={{ fontSize: 9.5, fontWeight: 600, color: FAINT, border: `1px solid ${CARD_BORDER}`, borderRadius: 999, padding: "1px 7px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              {badge}
+            </span>
+          )}
+        </span>
+        {sub && <span style={{ display: "block", fontSize: 13, color: SAGE, marginTop: 3, lineHeight: "18px" }}>{sub}</span>}
+      </span>
+      {dot && (
+        <span aria-label="new" style={{ width: 9, height: 9, borderRadius: 999, background: "#6FAF85", boxShadow: "0 0 0 3px rgba(111,175,133,0.22)", flexShrink: 0 }} />
+      )}
+      <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 22, lineHeight: 1, flexShrink: 0 }}>›</span>
+    </button>
+  );
+}
+
 export function MenuHub({
   title,
   emoji,
@@ -138,30 +181,7 @@ export function MenuHub({
               <div style={{ display: "flex", flexDirection: "column", gap: 10, willChange: "transform" }}>
                 {g.items.map((it, ii) => (
                   <div key={ii}>
-                  <button
-                    type="button"
-                    onClick={() => { playOpeningSwell(2); it.onClick(); }}
-                    className="w-full transition-opacity hover:opacity-90"
-                    style={{ ...frostBox(CARD_BG), display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", borderRadius: 16, padding: "16px 18px", opacity: it.muted ? 0.62 : 1 }}
-                  >
-                    <FrostLayers border={CARD_BORDER} />
-                    <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, width: 28, textAlign: "center" }} aria-hidden>{it.emoji}</span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 16, lineHeight: "24px", fontWeight: 700, color: WARM }}>{it.label}</span>
-                        {it.badge && (
-                          <span style={{ fontSize: 9.5, fontWeight: 600, color: FAINT, border: `1px solid ${CARD_BORDER}`, borderRadius: 999, padding: "1px 7px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                            {it.badge}
-                          </span>
-                        )}
-                      </span>
-                      {it.sub && <span style={{ display: "block", fontSize: 13, color: SAGE, marginTop: 3, lineHeight: "18px" }}>{it.sub}</span>}
-                    </span>
-                    {it.dot && (
-                      <span aria-label="new" style={{ width: 9, height: 9, borderRadius: 999, background: "#6FAF85", boxShadow: "0 0 0 3px rgba(111,175,133,0.22)", flexShrink: 0 }} />
-                    )}
-                    <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 22, lineHeight: 1, flexShrink: 0 }}>›</span>
-                  </button>
+                  <MenuRow emoji={it.emoji} label={it.label} sub={it.sub} badge={it.badge} dot={it.dot} muted={it.muted} onClick={it.onClick} />
                   {/* Alternate formats of the SAME item (listen / watch),
                       outside the card button so we never nest buttons. */}
                   {it.actions && it.actions.length > 0 && (
