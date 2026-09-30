@@ -35,9 +35,17 @@ export function BeginHere({ onStarted }: { onStarted?: () => void }) {
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    /* THE HOME'S TWO CARD RULES, which this list was missing (owner,
+       2026-09-29: the borders of the cards when the home is just practices).
+       ONE compositing layer for the whole list, so every card shares its
+       origin instead of each landing on the device grid its own way; and
+       WHOLE-PIXEL lines above the cards, so none of them starts on a half
+       pixel — the label's default line height made it 16.5px, and a 1.5px
+       ring on a half-pixel row paints as two faint rows. See
+       reference_card_spacing_exact: DailyProgressBody's Next/Done lists. */
+    <div className="flex flex-col gap-2" style={{ willChange: "transform" }}>
       <p
-        className="text-[11px] font-semibold uppercase tracking-widest mb-1"
+        className="text-[11px] leading-[16px] font-semibold uppercase tracking-widest mb-1"
         style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}
       >
         Ways to pray today
