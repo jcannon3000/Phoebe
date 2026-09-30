@@ -520,11 +520,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 
             {/* ── Account + info footer ── */}
             <div className="px-5 py-3 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-              {/* Invite — everyone sees it, guests included; sharing Phoebe
-                  doesn't need an account. */}
+              {/* Share Phoebe — everyone sees it, guests included; sharing
+                  Phoebe doesn't need an account. Named for what the row DOES
+                  (owner, 2026-09-30: 'Rename Invite in the menu to "Share
+                  Phoebe"'), which is also what the button on the page it opens
+                  has always said. */}
               <MenuRow
                 emoji="💌"
-                label={t("menu.invite", { defaultValue: "Invite" })}
+                label={t("menu.invite", { defaultValue: "Share Phoebe" })}
                 onClick={() => navigate("/invite/share")}
               />
               <MenuRow emoji="⚙️" label={t("menu.settings")} onClick={() => navigate("/settings")} />

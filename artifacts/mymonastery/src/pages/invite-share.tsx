@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react";
 import { shareInvite } from "@/lib/shareInvite";
+import { InviteQrSheet } from "@/components/InviteQrSheet";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // ── /invite/share ─────────────────────────────────────────────────────────
@@ -25,6 +26,8 @@ export default function InviteSharePage() {
   const { t } = useTranslation();
   const [, navigate] = useLocation();
   const [justCopied, setJustCopied] = useState(false);
+  /** The QR sheet — closed until somebody wants to show the code. */
+  const [qrOpen, setQrOpen] = useState(false);
   const bgPhoto = useState(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null))[0];
 
   // Clear the "Link copied ✓" timer on unmount — tapping Back within the 2.2s
@@ -115,8 +118,28 @@ export default function InviteSharePage() {
                 : t("invite_share.share_note", { defaultValue: "Sends a link to Phoebe. On an iPhone it opens straight to the App Store." })}
             </p>
           </div>
+
+          {/* AND FOR SOMEONE STANDING NEXT TO YOU (owner, 2026-09-30: "put a
+              button on the bottom that says qr code that would bring up the QR
+              code"). At the foot, quieter than the share button: a link is
+              still the usual way, and this is the one for a room. The same
+              sheet /invite shows — components/InviteQrSheet, so the two pages
+              cannot come to point at different addresses. */}
+          <button
+            type="button"
+            onClick={() => setQrOpen(true)}
+            className="mt-7 w-full rounded-full px-8 py-3.5 text-[15px] font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{
+              background: "rgba(240,237,230,0.08)", color: WARM,
+              border: "1px solid rgba(240,237,230,0.22)", cursor: "pointer", fontFamily: FONT,
+            }}
+          >
+            {t("invite_share.qr_cta", { defaultValue: "QR code" })}
+          </button>
         </motion.div>
       </div>
+
+      <InviteQrSheet open={qrOpen} onClose={() => setQrOpen(false)} />
     </div>
   );
 }

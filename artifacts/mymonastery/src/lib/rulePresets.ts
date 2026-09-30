@@ -255,7 +255,9 @@ export const RULE_PRESETS: RulePreset[] = [
     title: "Canterbury Downtown", blurb: "Simple Guided Prayer to open the day, Henri Nouwen and Taiz\u00e9 to carry through it, and Breathing Together to close it.",
     rows: [
       { emoji: "\u{1F64C}\u{1F3FD}", label: "Simple Guided Prayer in the morning" },
-      { emoji: "\u{1F60A}", label: "The Nouwen Daily Devotion" },
+      // Named as the ROUTINE names it (owner) — this row is a preview of the
+      // cards the rule turns on, so it has to read like them.
+      { emoji: "\u{1F60A}", label: "The Daily Devotion" },
       { emoji: "\u{1F304}", label: "Taiz\u00e9 Daily Prayer" },
       { emoji: "\u{1F30D}", label: "Breathing Together in the evening" },
     ] }

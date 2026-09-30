@@ -68,7 +68,11 @@ export const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string>
   ssje: "Brother, Give Us a Word",
   cac: "CAC Daily Meditation",
   vts: "VTS Dean's Commentary",
-  nouwen: "Nouwen Daily Devotion",
+  // "Daily Devotion" in the ROUTINE (owner, 2026-09-30: "Lets call the Henri
+  // Nouwen Devotion when it shows up in the routine 'Daily Devotion'"). The
+  // pickers where you CHOOSE a newsletter still say "Nouwen Daily Devotion", so
+  // you can tell whose it is before you take it.
+  nouwen: "Daily Devotion",
   sojo: "Sojourners Daily Devotion",
   grist: "Grist Climate News",
   payg: "Pray As You Go Daily",

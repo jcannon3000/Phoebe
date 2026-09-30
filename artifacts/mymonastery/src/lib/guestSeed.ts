@@ -74,7 +74,12 @@ export function predatesSeedStamp(): boolean {
 // v11 (owner, 2026-09-14): "Morning: Simple · Evening: Examen · Visio · Feast
 // Day Hagiographies · Forward Day by Day". Adds the hagiography card, and takes
 // Lectio back off the devices the old admin override put it on (migrateStaleSeed).
-const SEED_VERSION = "11";
+// v12 (owner, 2026-09-30): "Simple Guided · Breathing Together · Henri Nouwen
+// · Examen". Forward Day by Day gives the day's word to the Nouwen devotion,
+// and Breathing Together joins. Visio Divina and the feast-day hagiographies
+// are no longer SEEDED — see the migration, which stops adding them but takes
+// neither away from a device that already has one.
+const SEED_VERSION = "12";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never
 // remove: the whole point is recognizing rules we ourselves wrote.
@@ -131,6 +136,19 @@ export function clearGuestSeed(): void {
  * the home LAYOUT decides the practice is on, and phoebe:slot:visio only says
  * when it rides. A slot with no layout entry is a practice nothing renders.
  */
+/** The newsletter keys this seed has ever made the default's word. Widened
+ *  from "cac" | "fdd" for v12's Nouwen (owner, 2026-09-30). */
+type NewsletterKey = "cac" | "fdd" | "nouwen";
+
+/** BREATHING TOGETHER, as part of the default (owner, v12: "Simple Guided ·
+ *  Breathing Together · Henri Nouwen · Examen"). A layout entry like Visio's;
+ *  the practice's own default slot is the morning, which is where the owner's
+ *  list puts it, so nothing pins it here. */
+function seedCobreathe(opts?: { respectRemoval?: boolean }): void {
+  const { layout, changed } = addHomeCard(readCachedHomeLayout(), "cobreathe", opts);
+  if (changed) cacheHomeLayoutLocalOnly(layout);
+}
+
 function seedVisio(opts?: { respectRemoval?: boolean }): void {
   setPracticeSlot("visio", "anytime");
   const { layout, changed } = addHomeCard(readCachedHomeLayout(), "visio", opts);
@@ -165,7 +183,7 @@ function seedHagiography(opts?: { respectRemoval?: boolean }): void {
  * Owner: "CAC Newsletter (Its not showing up)" — this is why.
  */
 /** Put one newsletter card IN THE LAYOUT (see the note above). */
-function seedCard(key: "cac" | "fdd"): void {
+function seedCard(key: NewsletterKey): void {
   const { layout, changed } = addHomeCard(readCachedHomeLayout(), key);
   if (changed) cacheHomeLayoutLocalOnly(layout);
 }
@@ -178,7 +196,7 @@ function seedCard(key: "cac" | "fdd"): void {
  * them. It also matters because a guest layout is routinely `hidden: []`, so
  * anything left in `order` is ON.
  */
-function unseedCard(key: "cac" | "fdd"): void {
+function unseedCard(key: NewsletterKey): void {
   const current = readCachedHomeLayout();
   if (!current) return;
   const { layout, changed } = removeHomeCard(current, key);
@@ -436,28 +454,47 @@ function migrateStaleSeed(): void {
        * the tree via their `git add -A`.) Only a device with NO choice, or one
        * whose choice is one of the two defaults, gets its cards touched.
        */
-      if (chose && chose !== "cac" && chose !== "fdd") {
-        // Their own word; nothing here is ours to change.
-      } else {
-        const keep: "cac" | "fdd" = chose === "cac" ? "cac" : "fdd";
-        if (!chose) {
-          setReflectionSource(keep);
-          setSideReflection("morning", keep);
+      /**
+       * v12 MOVES THE DEFAULT'S WORD TO THE NOUWEN DEVOTION (owner,
+       * 2026-09-30). A device that CHOSE its own newsletter — any of them,
+       * including choosing Forward Day by Day on purpose — keeps it and keeps
+       * its card. Only a device with no choice of its own follows the default,
+       * and then the previous defaults' cards come back off so it is left with
+       * one newsletter, which is the whole point of this block.
+       */
+      if (chose) {
+        // Their own word; nothing here is ours to change. Both of the old
+        // defaults are still tidied below when neither is what they chose.
+        for (const old of ["cac", "fdd"] as const) {
+          if (old !== chose) unseedCard(old);
         }
-        seedCard(keep);
-        unseedCard(keep === "fdd" ? "cac" : "fdd");
+      } else {
+        setReflectionSource("nouwen");
+        setSideReflection("morning", "nouwen");
+        seedCard("nouwen");
+        unseedCard("fdd");
+        unseedCard("cac");
       }
-      // VISIO DIVINA, as the EVENING practice (owner, v7). Slotted to evening
-      // rather than the practice's own "anytime" default, because the ask was
-      // specifically "Visio Divina as the evening practice."
-      // respectRemoval: a card someone deliberately took off stays off — the
-      // same promise applyDefaultSeed's migrate already keeps.
-      seedVisio({ respectRemoval: true });
-      // Any time of day now that the Examen has the evening (v8).
-      setPracticeSlot("visio", "anytime");
-      // FEAST DAY HAGIOGRAPHIES join the default (v11), never forced back onto
-      // a home that hid the card.
-      seedHagiography({ respectRemoval: true });
+      /**
+       * BREATHING TOGETHER JOINS (v12). respectRemoval: a card someone
+       * deliberately took off stays off — the same promise applyDefaultSeed's
+       * migrate keeps.
+       */
+      seedCobreathe({ respectRemoval: true });
+      /**
+       * VISIO DIVINA AND THE HAGIOGRAPHIES ARE NO LONGER SEEDED — AND NOT
+       * TAKEN AWAY EITHER (v12). They were v7's and v11's, and this block used
+       * to add them to any untouched device. It no longer does, so a device
+       * migrating now doesn't gain a practice the default has dropped.
+       *
+       * Deliberately NOT removed from the devices that have them. `untouched`
+       * is decided by the two side LEVELS alone, so a device that added Visio
+       * itself from Practices reads as untouched here — the same trap the v11
+       * Lectio removal had to guard with appliedDefaultVersion, and there is no
+       * per-card record of who put a card there. Adding is recoverable in one
+       * tap; deleting somebody's practice is not. If the owner wants them gone
+       * from existing rhythms too, that is a deliberate second change.
+       */
       /**
        * LECTIO COMES BACK OFF — but only where WE put it (v11). The code seed has
        * never carried Lectio; it reached untouched devices solely through the
@@ -479,12 +516,17 @@ function migrateStaleSeed(): void {
       // OLD goal (or none); someone's own chosen goal is never overwritten.
       const currentGoal = localStorage.getItem(GUEST_GOAL_KEY);
       if (currentGoal == null || currentGoal === "5") setGuestSilenceGoalMin(0);
-      // Express Gratitude joins the default for devices still on an older
-      // untouched seed too — added, never removed, so a device that turned it
-      // off in the customizer does not get it back on the next boot.
-      if (!activeRelationalPractices().includes("gratitude")) {
-        setRelationalPractices([...activeRelationalPractices(), "gratitude"]);
-      }
+      /**
+       * EXPRESS GRATITUDE IS NO LONGER ADDED (v12) — AND NOT TAKEN AWAY.
+       *
+       * This block used to put it on any untouched device. It no longer does,
+       * so nobody migrating now gains a practice the default has dropped. It
+       * does not REMOVE it either, and that is deliberate: a relational
+       * practice is somebody's promise to another person, every adopt path in
+       * the app spares them on purpose (the 2026-09-02 audit fix), and
+       * `untouched` here is judged on the two side levels alone — a device that
+       * added gratitude itself reads exactly like one we seeded it to.
+       */
             try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
       // Same reasoning as the seed below: a precoded default must never migrate
       // up to an account on sign-in, so zero the clock the setters just bumped.
@@ -584,19 +626,21 @@ export function seedGuestRule(): void {
       if (!getExplicitSideEntry(side)) setSideEntry(side, "read");
     }
     setSideLevel("morning", "guided-prayer");
-    // THE DEFAULT, v11 (owner, 2026-09-14): "Morning: Simple · Evening: Examen
-    // · Visio · Feast Day Hagiographies · Forward Day by Day". The Examen holds
-    // the evening anchor; Forward Day by Day is the day's word.
+    // THE DEFAULT, v12 (owner, 2026-09-30): "Simple Guided · Breathing Together
+    // · Henri Nouwen · Examen". The Examen holds the evening anchor and the
+    // Nouwen devotion is the day's word — shown in the routine as "Daily
+    // Devotion" (the PUBLICATION_NAME tables).
     setSideLevel("evening", "examen");
-    setReflectionSource("fdd");
-    setSideReflection("morning", "fdd");
-    setRelationalPractices(["gratitude"]);
-    seedCard("fdd");
-    // Visio Divina rides any time of day now that the Examen has the evening.
-    seedVisio();
-    setPracticeSlot("visio", "anytime");
-    // Feast Day Hagiographies — a card on feast days only (v11).
-    seedHagiography();
+    setReflectionSource("nouwen");
+    setSideReflection("morning", "nouwen");
+    // NO EXPRESS GRATITUDE (owner, 2026-09-30, asked and answered: "Take out
+    // gratitude"). It had been in every default since v4, which is why it was
+    // worth asking about rather than assuming; the v12 default is the owner's
+    // four and nothing else.
+    setRelationalPractices([]);
+    seedCard("nouwen");
+    seedCobreathe();
+    // NOT seedVisio / seedHagiography any more: neither is in the v12 default.
     localStorage.setItem(SEED_KEY, todayYmd());
     // Freshly seeded devices are already current — stamp so migrateStaleSeed
     // never has anything to do for them.

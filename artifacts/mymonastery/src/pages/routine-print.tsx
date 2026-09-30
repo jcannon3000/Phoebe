@@ -29,7 +29,11 @@ const REFLECTION_NAME: Record<TrackedReflection, string> = {
   fdd: "Forward Day by Day",
   ssje: "Brother, Give Us a Word",
   vts: "VTS Dean's Commentary",
-  nouwen: "Nouwen Daily Devotion",
+  // "Daily Devotion" in the ROUTINE (owner, 2026-09-30: "Lets call the Henri
+  // Nouwen Devotion when it shows up in the routine 'Daily Devotion'"). The
+  // pickers where you CHOOSE a newsletter still say "Nouwen Daily Devotion", so
+  // you can tell whose it is before you take it.
+  nouwen: "Daily Devotion",
   payg: "Pray As You Go Daily",
   sojo: "Sojourners Daily Devotion",
   grist: "Grist Climate News",
