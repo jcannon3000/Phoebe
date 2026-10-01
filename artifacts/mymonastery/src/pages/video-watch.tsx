@@ -177,7 +177,10 @@ export default function VideoWatchPage() {
             "bleed" so no border or corner fights it. */}
         {id && !failed ? (
           <div className="video-bleed">
-            <YouTubePlayer videoId={id} autoplay frame="bleed" onEnded={() => {}} onError={() => setFailed(true)} />
+            {/* fitContent: most of these are recordings, not films — an audio
+                upload with a square sleeve, which the player would otherwise
+                show small between two black bars (owner, 2026-10-01). */}
+            <YouTubePlayer videoId={id} autoplay frame="bleed" fitContent onEnded={() => {}} onError={() => setFailed(true)} />
           </div>
         ) : (
           /* A recording that has gone: the catalogues are a hand-made list of

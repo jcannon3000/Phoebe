@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize2 } from "lucide-react";
 import { clearVideoPosition, readVideoPosition, saveVideoPosition } from "@/lib/videoPositions";
+import { measureVideoAspect } from "@/lib/videoBars";
 
 const BORDER = "rgba(46,107,64,0.38)";
 const TEXT = "#F0EDE6";
@@ -57,6 +58,7 @@ export function YouTubePlayer({
   onPlayedSeconds,
   onError,
   frame = "card",
+  fitContent = false,
 }: {
   videoId: string;
   autoplay: boolean;
@@ -68,6 +70,26 @@ export function YouTubePlayer({
    * frame fighting it. The cathedral pages keep "card".
    */
   frame?: "card" | "bleed";
+  /**
+   * TAKE THE BLACK BARS OFF A VIDEO THAT ISN'T 16:9 (owner, 2026-10-01, of a
+   * hymn recorded as an audio upload with a square sleeve: "could reframe the
+   * youtube player to not have the black bars and that would make the square
+   * bigger?").
+   *
+   * The player is always 16:9, so a square picture sits in the middle of it
+   * with black down both sides. With this on, the frame takes the PICTURE's
+   * shape (measured from the thumbnail — lib/videoBars) and the player is laid
+   * out wider than the frame and centred, so the bars fall outside it and the
+   * picture fills the column. A genuine 16:9 video measures 16:9 and nothing
+   * happens.
+   *
+   * THE COST, which is why this is opt-in: the ends of YouTube's own control
+   * bar are cropped with the bars, so play/pause there goes out of reach.
+   * Tapping the picture still plays and pauses, and our fullscreen button is
+   * unaffected — fine for a page whose job is listening, wrong for a lesson
+   * someone needs to scrub.
+   */
+  fitContent?: boolean;
   /** Fired once per video when it plays to the end. */
   onEnded: () => void;
   /** Every transition into PLAYING — a course marks itself started, a
@@ -295,14 +317,36 @@ export function YouTubePlayer({
     target?.requestFullscreen?.();
   }, []);
 
+  /**
+   * The picture's own shape, once it is known — null until then, and null for
+   * ever on a plain 16:9 video. Measuring is one cached thumbnail read; the
+   * player renders at 16:9 in the meantime and settles when the answer lands,
+   * which is why the frame is never left waiting on it.
+   */
+  const [contentAspect, setContentAspect] = useState<number | null>(null);
+  useEffect(() => {
+    if (!fitContent) { setContentAspect(null); return; }
+    let cancelled = false;
+    measureVideoAspect(videoId).then((a) => { if (!cancelled) setContentAspect(a); });
+    return () => { cancelled = true; };
+  }, [fitContent, videoId]);
+
+  /* The player, laid out wider than the frame so the bars fall outside it.
+     At 16:9 the player is the frame and this is simply `inset-0`. */
+  const stage: React.CSSProperties = contentAspect
+    ? { position: "absolute", top: 0, bottom: 0, left: "50%", width: `${((16 / 9) / contentAspect) * 100}%`, transform: "translateX(-50%)" }
+    : { position: "absolute", inset: 0 };
+
   return (
     <div
       ref={wrapRef}
       className={`relative w-full overflow-hidden bg-black${frame === "bleed" ? "" : " rounded-2xl"}`}
-      style={{ aspectRatio: "16 / 9", ...(frame === "bleed" ? {} : { border: `1px solid ${BORDER}` }) }}
+      style={{ aspectRatio: contentAspect ? `${contentAspect}` : "16 / 9", ...(frame === "bleed" ? {} : { border: `1px solid ${BORDER}` }) }}
     >
-      {/* YT.Player replaces this node with its iframe. */}
-      <div ref={hostRef} className="absolute inset-0 h-full w-full" />
+      {/* YT.Player replaces this node with its iframe, keeping its class. */}
+      <div style={stage}>
+        <div ref={hostRef} className="absolute inset-0 h-full w-full" />
+      </div>
       <button
         onClick={toggleFullscreen}
         aria-label={isFs ? "Exit fullscreen" : "Fullscreen"}
