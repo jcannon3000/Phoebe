@@ -15,6 +15,7 @@
  */
 
 import { turnOffRoutine, NO_ROUTINE_MODE } from "@/lib/routineStart";
+import { finderSkipped } from "@/lib/finderEntry";
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef, useCallback, type ReactNode, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -1069,6 +1070,20 @@ export default function WayOfLoveRuleFlow({
     const hasRule = !!getExplicitSideLevel("morning") || !!getExplicitSideLevel("evening");
     return hasRule ? "morning-way" : "starter";
   });
+  /**
+   * SHAPE YOUR RHYTHM OPENS ON THREE QUESTIONS (owner, 2026-10-01: "Lets have it
+   * start with three questions"). Someone with no rhythm yet used to land on the
+   * preset picker; they are sent to the finder first, which asks three questions
+   * and two follow-ups and writes the rhythm those add up to. Its "Edit my
+   * routine" comes back here with the recommendation already saved, so this
+   * opens on THEIR rhythm (hasRule above) and never redirects; the note in
+   * lib/finderEntry is belt and braces for a save that left no side set. Only the
+   * opening: a person who already has a rhythm, and guests and pilots, never see it.
+   */
+  useEffect(() => {
+    if (step === "starter" && !finderSkipped()) setLocation("/find-your-rhythm");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the opening only
+  }, []);
   // Show the "technology of holding" prelude ONCE, before the very first author
   // reaches the preset picker — it names why a daily practice matters and where
   // it leads, so the customizer isn't a stick shift you must already know how to

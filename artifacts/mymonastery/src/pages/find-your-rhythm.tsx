@@ -1,14 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
-  FINDER_QUESTIONS, EMPTY_ANSWERS, recommend, applyRhythm,
+  questionsFor, EMPTY_ANSWERS, recommend, applyRhythm,
   type FinderAnswers, type RecommendedRhythm,
 } from "@/lib/rhythmFinder";
+import { useAuth } from "@/hooks/useAuth";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { markFinderSkip, clearFinderSkip } from "@/lib/finderEntry";
 
-// Find Your Rhythm — a short reflective questionnaire (how do you meet God?
-// music? silence? when do you have space?) that recommends a rule of life and,
-// on a tap, writes it into the same settings the Customize flow uses. Beta.
+// Find Your Rhythm — three questions, then two follow-ups chosen from the
+// answers, that recommend a rule of life and, on a tap, write it into the same
+// settings the customizers use. It is the OPENING of Shape your rhythm (owner,
+// 2026-10-01: "Lets have it start with three questions" · "Then ask two follow
+// ups based on that"); lib/finderEntry is how the flow sends people here.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -23,8 +28,15 @@ const CARD_ON_B = "rgba(110,180,130,0.55)";
 
 const toggle = (arr: string[], x: string) => arr.includes(x) ? arr.filter((v) => v !== x) : [...arr, x];
 
-const PRAYER_LABEL: Record<RecommendedRhythm["morningPrayer"], string> = {
-  office: "the Daily Office", devotion: "a Daily Devotion", community: "Community Prayer", contemplation: "silent Contemplation",
+const PRAYER_LABEL: Record<RecommendedRhythm["prayer"], string> = {
+  "guided-prayer": "Simple Guided Prayer", office: "the Daily Office", readings: "the day's Scripture readings", contemplation: "silent Contemplation",
+};
+const EXTRA_LINE: Record<RecommendedRhythm["extras"][number], string> = {
+  examen: "The Examen, to notice God in your day.",
+  listening: "Audio Divina — music as a way of prayer.",
+  cobreathe: "Breathing Together, a few breaths with all creation.",
+  lectio: "Lectio Divina, to pray slowly with a reading.",
+  walk: "A contemplative walk.",
 };
 const SOURCE_LABEL: Record<"cac" | "nouwen" | "taizeprayer", string> = {
   cac: "CAC Daily Meditation", nouwen: "Nouwen Daily Devotion", taizeprayer: "Taizé Daily Prayer",
@@ -32,15 +44,20 @@ const SOURCE_LABEL: Record<"cac" | "nouwen" | "taizeprayer", string> = {
 
 export default function FindYourRhythmPage() {
   const [, navigate] = useLocation();
+  const { user, isLoading: authLoading } = useAuth();
+  const guest = !authLoading && isDeviceLocalGuest(user);
+  // Opening the questions retires any earlier "I'll adjust it myself" — it was
+  // for that one trip into the customizer, not for good.
+  useEffect(() => { clearFinderSkip(); }, []);
   const [answers, setAnswers] = useState<FinderAnswers>(EMPTY_ANSWERS);
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<"questions" | "result">("questions");
   const [applying, setApplying] = useState(false);
 
-  // Branching: the visible set depends on current answers (music adds the music
-  // questions, etc.). Recompute each render; indices only ever point at a
-  // question whose predecessors are settled, so the index stays valid.
-  const visible = useMemo(() => FINDER_QUESTIONS.filter((q) => !q.showIf || q.showIf(answers)), [answers]);
+  // Three openers, then — once they are answered — the two follow-ups they lead
+  // to. Recomputed each render; an index only ever points at a question whose
+  // predecessors are settled, so it stays valid as the list grows from 3 to 5.
+  const visible = useMemo(() => questionsFor(answers), [answers]);
   const q = visible[Math.min(idx, visible.length - 1)];
   const total = visible.length;
 
@@ -48,9 +65,7 @@ export default function FindYourRhythmPage() {
 
   const answered = (() => {
     if (!q) return false;
-    if (q.optional) return true;
     const v = answers[q.id];
-    if (q.kind === "text") return true; // text is always skippable
     return Array.isArray(v) ? v.length > 0 : !!v;
   })();
 
@@ -70,18 +85,37 @@ export default function FindYourRhythmPage() {
 
   async function apply() {
     setApplying(true);
-    await applyRhythm(rec).catch(() => { /* best-effort */ });
+    await applyRhythm(rec, { guest }).catch(() => { /* best-effort */ });
     navigate("/");
+  }
+
+  /**
+   * EDIT IT, STARTING FROM THIS (owner, 2026-10-01: "let them edit the routine
+   * on the last slide, which they would go through the manual flow with the
+   * recommendations as the starting place").
+   *
+   * The recommendation is WRITTEN FIRST, then the manual flow opens on it. The
+   * flow seeds itself from what is saved — a person with a prayer on either
+   * side opens it at the way-to-pray step with their choices already in place —
+   * so there is nothing to hand across but the saved rhythm itself. The skip
+   * note is belt and braces: it keeps the flow from sending them back here if
+   * the save somehow left no side set.
+   */
+  async function editFromHere() {
+    setApplying(true);
+    await applyRhythm(rec, { guest }).catch(() => { /* best-effort */ });
+    markFinderSkip();
+    navigate("/rule-of-life");
   }
 
   // ——— Result ———
   if (phase === "result") {
     const lines: string[] = [];
-    lines.push(`Pray each day with ${PRAYER_LABEL[rec.morningPrayer]}.`);
-    if (rec.contemplationMinutes > 0) lines.push(`${rec.contemplationMinutes} minutes of silence a day.`);
+    lines.push(`Pray each ${rec.sides.evening ? "morning and evening" : "morning"} with ${PRAYER_LABEL[rec.prayer]}.`);
+    if (rec.silenceMinutes > 0) lines.push(`${rec.silenceMinutes} minutes of silence a day.`);
     if (rec.reflectionSource) lines.push(`A daily reflection — ${SOURCE_LABEL[rec.reflectionSource]}.`);
-    if (rec.listening) lines.push("Audio Divina — music as a way of prayer.");
-    if (rec.examen) lines.push("The Examen at day's end.");
+    if (rec.eveningLevel === "examen") lines.push("The Examen to close your day.");
+    for (const x of rec.extras) lines.push(EXTRA_LINE[x]);
 
     return (
       <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ background: GROUND, paddingTop: "calc(env(safe-area-inset-top) + 28px)", paddingBottom: "calc(env(safe-area-inset-bottom) + 28px)" }}>
@@ -119,20 +153,15 @@ export default function FindYourRhythmPage() {
           >
             {applying ? "Setting it up…" : "Set this up for me"}
           </button>
-          <button onClick={() => navigate("/rule-of-life")} className="w-full mt-3 py-3 text-[14px]" style={{ color: SAGE, fontFamily: FONT }}>
-            I'll adjust it myself
+          {/* A full button, not a link — editing is the other way to finish. */}
+          <button
+            onClick={editFromHere}
+            disabled={applying}
+            className="w-full mt-3 py-4 rounded-2xl text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-60"
+            style={{ background: "transparent", color: WARM, border: `1px solid ${CARD_ON_B}`, fontFamily: FONT }}
+          >
+            Edit my routine
           </button>
-
-          {/* A gentle bridge into the Way of Love — the 8-week daily journey
-              through the practices (a separate feature; this just links to it). */}
-          <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-            <p className="text-[12.5px] leading-relaxed mb-2.5" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
-              When you're ready to go deeper, walk the Way of Love — an eight-week daily journey through the practices.
-            </p>
-            <button onClick={() => navigate("/way-of-love")} className="text-[14px] font-medium inline-flex items-center gap-1.5" style={{ color: WARM, fontFamily: FONT }}>
-              Walk the Way of Love <span aria-hidden style={{ color: SAGE }}>→</span>
-            </button>
-          </div>
 
           <button onClick={() => { setPhase("questions"); setIdx(0); }} className="w-full mt-5 py-2 text-[12.5px]" style={{ color: SAGE_DIM, fontFamily: FONT }}>
             Start over
@@ -165,17 +194,8 @@ export default function FindYourRhythmPage() {
             {q.sub && <p className="text-[13.5px] mt-2 leading-snug" style={{ color: SAGE, fontFamily: FONT }}>{q.sub}</p>}
 
             <div className="mt-6 flex flex-col gap-2.5">
-              {q.kind === "text" ? (
-                <textarea
-                  value={(selected as string) || ""}
-                  onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
-                  placeholder={q.placeholder}
-                  rows={4}
-                  className="w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none resize-none"
-                  style={{ background: CARD, border: `1px solid ${CARD_B}`, color: WARM, fontFamily: SERIF }}
-                />
-              ) : (
-                q.options!.map((opt) => {
+              {
+                q.options.map((opt) => {
                   const on = q.kind === "multi" ? (selected as string[]).includes(opt.id) : selected === opt.id;
                   return (
                     <button
@@ -193,7 +213,7 @@ export default function FindYourRhythmPage() {
                     </button>
                   );
                 })
-              )}
+              }
             </div>
           </motion.div>
         </AnimatePresence>
@@ -206,7 +226,7 @@ export default function FindYourRhythmPage() {
           className="w-full py-4 rounded-2xl text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-40"
           style={{ background: "rgba(46,107,64,0.92)", color: WARM, fontFamily: FONT }}
         >
-          {idx === total - 1 ? "See my rhythm" : (q.optional && (q.kind === "text" ? !(selected as string) : !(Array.isArray(selected) ? selected.length : selected)) ? "Skip" : "Continue")}
+          {idx === total - 1 ? "See my rhythm" : "Continue"}
         </button>
       </div>
     </div>
