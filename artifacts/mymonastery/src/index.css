@@ -17,7 +17,24 @@
 @font-face {
   font-family: "Space Grotesk";
   font-style: normal;
-  font-display: swap;
+  /* `optional`, NOT `swap` (owner, 2026-10-01: "On web there is a flash of the
+     opacity of the date and headers, they go darker and come back lighter").
+     That is a FOUT, and it is web-only because the iOS app ships the font in
+     its bundle: the first paint used the system sans — heavier, so it reads
+     darker — and the woff2 arrived a moment later and swapped to Space
+     Grotesk, which is lighter. `swap` is what asks for exactly that.
+
+     With `optional` the browser gives the font a moment and then commits for
+     the page: either it is ready and the page is Space Grotesk from the first
+     frame, or it isn't and the page stays in the fallback — but it never
+     changes under the reader. The font is cached after a first visit, so in
+     practice the only load that can miss it is the very first one.
+
+     The faces @fontsource-variable declares (for the family name "Space
+     Grotesk Variable") keep their own `swap` and are untouched: nothing in the
+     app renders in that name — it is why this alias exists at all — so their
+     swap has no text to flash. */
+  font-display: optional;
   font-weight: 300 700;
   src: url("@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2")
     format("woff2-variations");
@@ -28,7 +45,24 @@
 @font-face {
   font-family: "Space Grotesk";
   font-style: normal;
-  font-display: swap;
+  /* `optional`, NOT `swap` (owner, 2026-10-01: "On web there is a flash of the
+     opacity of the date and headers, they go darker and come back lighter").
+     That is a FOUT, and it is web-only because the iOS app ships the font in
+     its bundle: the first paint used the system sans — heavier, so it reads
+     darker — and the woff2 arrived a moment later and swapped to Space
+     Grotesk, which is lighter. `swap` is what asks for exactly that.
+
+     With `optional` the browser gives the font a moment and then commits for
+     the page: either it is ready and the page is Space Grotesk from the first
+     frame, or it isn't and the page stays in the fallback — but it never
+     changes under the reader. The font is cached after a first visit, so in
+     practice the only load that can miss it is the very first one.
+
+     The faces @fontsource-variable declares (for the family name "Space
+     Grotesk Variable") keep their own `swap` and are untouched: nothing in the
+     app renders in that name — it is why this alias exists at all — so their
+     swap has no text to flash. */
+  font-display: optional;
   font-weight: 300 700;
   src: url("@fontsource-variable/space-grotesk/files/space-grotesk-latin-ext-wght-normal.woff2")
     format("woff2-variations");

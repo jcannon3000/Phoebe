@@ -59,6 +59,14 @@
          lives in public/ so the URL is stable (no Vite hash to keep in
          sync). -->
     <link rel="preload" as="image" href="/phoebe-app-icon.png" />
+    <!-- THE FONT, fetched by the preload scanner alongside the JS (same trick
+         as the two images above). Space Grotesk is declared `font-display:
+         optional` in index.css so the page never re-letters itself under the
+         reader; `optional` gives the font only a moment, so this preload is
+         what makes it usually WIN that moment on a first visit. Every later
+         visit has it cached. -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+      href="/node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
 
