@@ -5,6 +5,16 @@
  * redundancies and it's confusing, simplify it and make it clearer what each
  * is. And make sure things count properly."
  *
+ * OPENING A PRACTICE IS KEEPING IT (owner, 2026-10-01: "Any time they open
+ * anything it should count as a practice" · "I think it's just not counting
+ * practices properly" · "why would more than 50% of people open it and not
+ * use a feature"). Finishing is no longer the bar here: an office opened, a
+ * reading deck started, a Cathedral stream tapped all count. The app's OWN
+ * surfaces still require completion where they should — the home card, the
+ * weekly dots, office history and the streak are unchanged, and
+ * project_office_completed_invariant still holds for them. This is the
+ * ADMIN's question ("is anyone using it"), and it is a different question.
+ *
  * ONE UNIT FOR EVERYTHING PRAYED: a practice KEPT — one per person, per
  * practice, per day. The old page mixed three units without saying so:
  * "Times prayed" was 15-minute-deduped sessions plus one-per-practice rows,
@@ -19,11 +29,14 @@
  * side credit it earned) collapses to one.
  *
  * Practice keys:
- *   office:<morning|evening|compline|noonday>  — FINISHED offices only, on the
- *       app's own terms (users.ts office-history-week): the slideshow
- *       completed, the book or Venite attested, the office podcast heard,
- *       the Cathedral watched ≥3 min. An office abandoned after three slides
- *       is not a kept practice.
+ *   office:<morning|evening|compline|noonday>  — the office OPENED. It was
+ *       finished-only until 2026-10-01 (the slideshow completed, the book or
+ *       Venite attested, the podcast heard, the Cathedral watched ≥3 min),
+ *       which is what users.ts still requires for office history and the
+ *       streak. Here, opening it is the practice. A row only exists at all
+ *       once the viewer commits one, and routes/prayer-sessions already drops
+ *       a session under five seconds for every surface that isn't an office
+ *       open, so a navigation touch still cannot become a practice.
  *   contemplation:<morning|evening|any>        — a silent sit or Breathing
  *       Together (source "cobreathe"), by the side it was attributed to.
  *   examen                                      — session or completion.
@@ -121,14 +134,20 @@ kept_raw AS (
       ELSE surface
     END AS practice
   FROM sess
+  -- OPENED, not finished (owner, 2026-10-01). "completed" is still written
+  -- and still governs office history, the dots and the streak — it just no
+  -- longer decides whether the office counted as a practice here. The two
+  -- exclusions that remain are not completion gates: a 'credit:%' row is
+  -- another practice wearing an office's surface (it is counted under its own
+  -- key below), and a 99-slide untagged devotion row is a legacy credit with
+  -- its own branch.
   WHERE (
       surface IN ('morning-prayer', 'evening-prayer', 'compline', 'noonday', 'morning-devotion', 'early-evening-devotion')
-      AND completed = TRUE
       AND source NOT LIKE 'credit:%'
       AND NOT (surface IN ('morning-devotion', 'early-evening-devotion') AND slides_completed = 99 AND source NOT LIKE 'attest:%')
     )
-    OR (surface IN ('morning-office-podcast', 'evening-office-podcast', 'compline-office-podcast') AND completed = TRUE)
-    OR (surface = 'national-cathedral' AND duration_seconds >= 180)
+    OR surface IN ('morning-office-podcast', 'evening-office-podcast', 'compline-office-podcast')
+    OR surface = 'national-cathedral'
 
   UNION ALL
   -- ── Contemplation: a sit or Breathing Together, by side ────────────────
@@ -162,10 +181,11 @@ kept_raw AS (
   FROM cac_reads cr JOIN people p ON p.user_id = cr.user_id
   WHERE cr.ymd >= $6
   UNION ALL
-  -- The Daily Scripture Reading and This Sunday decks, finished (or read
-  -- past their third slide — the deck's own bar for a real reading).
+  -- The Daily Scripture Reading and This Sunday decks, OPENED (owner,
+  -- 2026-10-01). It wanted the deck finished or read past its third slide;
+  -- the five-second floor in routes/prayer-sessions is the only bar now.
   SELECT person, day, 'reading', 'read:scripture'
-  FROM sess WHERE surface = 'scripture' AND (completed = TRUE OR slides_completed >= 3)
+  FROM sess WHERE surface = 'scripture'
   UNION ALL
   -- A reading kept as the side's prayer: the same key as the reading.
   SELECT person, day, 'reading', 'read:' || substr(source, 8)
@@ -222,6 +242,28 @@ kept_raw AS (
   UNION ALL
   -- The daily prayer slideshow — its own surface, never counted.
   SELECT person, day, 'other', 'slideshow' FROM sess WHERE surface = 'slideshow'
+
+  UNION ALL
+  /**
+   * JOURNALING. 'journal' is one of the twenty-two surfaces the session route
+   * accepts, and it was the ONE this query never read: a person who wrote in
+   * their journal and did nothing else kept no practice at all.
+   */
+  SELECT person, day, 'other', 'journal' FROM sess WHERE surface = 'journal'
+
+  UNION ALL
+  /**
+   * BREATHING TOGETHER / PRAY THE BREATH. breath_sessions is its own table —
+   * one row per person per LOCAL day (its own "day" text column, the same
+   * convention as practice_completion) — and nothing here read it. A breath
+   * from the Cobreathe overlay also posts a 'contemplation' session, so that
+   * path was counted; a breath kept from /cobreathe or /pray-breath itself
+   * wrote only this row and counted as nothing. Its own practice key, so a
+   * person who also sat in silence kept two practices, not one.
+   */
+  SELECT p.person, b.day, 'contemplation', 'breath'
+  FROM breath_sessions b JOIN people p ON p.user_id = b.user_id
+  WHERE b.day >= $6
 
   UNION ALL
   -- ── Everything else ───────────────────────────────────────────────────
