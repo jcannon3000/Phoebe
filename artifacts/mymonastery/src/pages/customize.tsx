@@ -67,7 +67,10 @@ type AddPractice = "none" | "listening" | "examen" | "walk" | "visio" | "spiritu
 /* No "visio": a seeded layout still carries the key (nothing deletes it), and
    leaving it here made the retired practice the row's selected value, against
    an option that is no longer offered. */
-const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "spirituals", "taize", "icons", "lectio", "rosary", "payg"];
+/* No "icons" either (owner, 2026-10-01: "Take praying with icons out of the
+   Customizer") — same shape as the visio note above: a layout that already
+   carries the key keeps it, and this row no longer offers or strips it. */
+const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk", "spirituals", "taize", "lectio", "rosary", "payg"];
 function homeCardOn(hl: HomeLayout | null, key: string): boolean {
   return !!hl && hl.order.includes(key) && !hl.hidden.includes(key);
 }
@@ -944,7 +947,10 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
                false in useRhythmState, so offering it here would hand someone
                a practice that cannot appear. Taizé's daily prayer, songs and
                Saturday stream are untouched. */
-            { value: "icons", label: "Praying with Icons" },
+            /* PRAYING WITH ICONS IS OUT OF THE CUSTOMIZER (owner,
+               2026-10-01: "Take praying with icons out of the Customizer").
+               /icon-prayer and a rhythm that already carries it are
+               untouched; nothing here offers or removes it. */
             { value: "lectio", label: "Lectio Divina" },
             { value: "payg", label: "Pray As You Go Daily" },
             /**

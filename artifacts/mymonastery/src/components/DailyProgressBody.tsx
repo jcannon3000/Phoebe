@@ -1234,12 +1234,16 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // Guests never carry community intercessions into the office (that handoff
   // is stripped in guest mode), so their card must not promise them — the
   // subtitle stays on the BCP line instead of alternating.
-  const officeCycle = guest
-    ? [t("rhythm.from_bcp", { defaultValue: "From the Book of Common Prayer" })]
-    : [
-        t("rhythm.from_bcp", { defaultValue: "From the Book of Common Prayer" }),
-        t("rhythm.with_community", { defaultValue: "with community prayers" }),
-      ];
+  // EVENING NEVER SAYS IT EITHER (owner, 2026-10-01: "For evening prayer it
+  // should not say with community prayers"). The alternation is the morning's
+  // alone now, so it is a per-side list rather than one shared array.
+  const officeCycleFor = (side: "morning" | "evening") =>
+    guest || side === "evening"
+      ? [t("rhythm.from_bcp", { defaultValue: "From the Book of Common Prayer" })]
+      : [
+          t("rhythm.from_bcp", { defaultValue: "From the Book of Common Prayer" }),
+          t("rhythm.with_community", { defaultValue: "with community prayers" }),
+        ];
   // Per-side Contemplative Prayer blurb — a silent sit is binary (kept this side
   // or not), so the card reads "kept" when done, else the sit length. The daily
   // minutes goal + ladder still set the timer length; they no longer gate the
@@ -1899,7 +1903,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // Guided Prayer" — while today's practice is still undone (owner). Done,
       // the card says what done cards say.
       blurb: morningDone ? prayed : (daySwapNote("morning") ?? morningBlurb),
-      blurbCycle: (morningDone || !cycleFor("morning")) ? undefined : [morningBlurb, ...officeCycle],
+      blurbCycle: (morningDone || !cycleFor("morning")) ? undefined : [morningBlurb, ...officeCycleFor("morning")],
       cta: getSideLevel("morning") === "custom" && !anchorPracticeFor(getSideCustomName("morning"))?.href ? t("rhythm.log", { defaultValue: "Log" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
     /**
@@ -1962,7 +1966,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurb: eveningDone
         ? prayed
         : (daySwapNote("evening") ?? eveningBlurb),
-      blurbCycle: (eveningDone || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycle],
+      blurbCycle: (eveningDone || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycleFor("evening")],
       cta: getSideLevel("evening") === "custom" && !anchorPracticeFor(getSideCustomName("evening"))?.href ? t("rhythm.log", { defaultValue: "Log" }) : t("rhythm.begin", { defaultValue: "Begin" }),
       /**
        * "Later" until the evening opens (owner, 2026-09-05: "let's bring

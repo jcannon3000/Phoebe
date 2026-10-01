@@ -98,7 +98,6 @@ import {
 } from "@/lib/officePrefs";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { useBetaStatus } from "@/hooks/useDemo";
-import { useAndrewsVisible } from "@/lib/appSettings";
 import { FrostLayers, frostBox } from "@/components/FrostRing";
 import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
 import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
@@ -193,7 +192,10 @@ function weekendOptions(side: OfficeSide): Array<{ value: PrayChoice; label: str
   const cap = side === "morning" ? "Morning" : "Evening";
   return [
     { value: "offices", label: `${cap} Prayer` },
-    { value: "guidedPrayer", label: "Simple Guided Prayer" },
+    // Morning only, like the side picker's own row (owner, 2026-10-01).
+    ...(side === "morning"
+      ? ([{ value: "guidedPrayer", label: "Simple Guided Prayer" }] as Array<{ value: PrayChoice; label: string }>)
+      : []),
     { value: "psalms", label: "Praying the Psalms" },
     { value: "readings", label: "Daily Scripture Readings" },
     { value: "contemplation", label: "Contemplative Prayer" },
@@ -337,11 +339,12 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
      and This Sunday carries it. A rule that already names it as a SIDE's
      contemplative form still works — that path is CONTEMPLATIVE_FORMS, not
      this list. */
-  // Owner: "Icon is not available in the customizer." It wasn't — the
-  // practice had no home-layout key at all, so there was nothing for this
-  // list to switch on. One icon for the Monday-to-Sunday week, sat with
-  // daily; the sibling of Visio Divina, which is why it sits beside it.
-  { title: () => "Praying with Icons", emoji: "🪟", sub: "One icon for the week — return to it daily.", excludes: "__none__", maps: { kind: "practice", key: "icons" } , group: "contemplative" },
+  /* PRAYING WITH ICONS IS OUT OF THE CUSTOMIZER (owner, 2026-10-01: "Take
+     praying with icons out of the Customizer"). It had a row here once
+     ("Icon is not available in the customizer"); nothing offers it now.
+     /icon-prayer is untouched, and a rhythm that already carries the key
+     keeps it — the key, the state and both onKeys copies stay so a saved
+     rhythm still loads. */
   // The Rosary sits beside Visio and Icons
   // because it is their kind of thing: a long, unhurried practice you are
   // walked through, with a picture at each mystery from the same ACT library.
@@ -883,7 +886,6 @@ export default function WayOfLoveRuleFlow({
   // so a step list computed from it would flicker, and an initial `step`
   // computed from it would skip the slide entirely for the admin it's for.
   const { rawIsAdmin: isSuperAdmin } = useBetaStatus();
-  const andrewsVisible = useAndrewsVisible();
   // The pasted-in Substack weeklies (lib/weeklies.ts). Not layout keys, so
   // they aren't in onKeys/offKeys: a tap writes the subscription at once,
   // the way the Relational step writes, and the Newsletters page's Manage
@@ -1655,6 +1657,10 @@ export default function WayOfLoveRuleFlow({
   // "payg" (owner, 2026-09-18: "Have pray as you ago be in the contemplative
   // practice options for morning and eveing, its not right now") — a listened
   // meditation kept as this side's contemplative practice.
+  // "icons" is still a FORM — a side already stored as Praying with Icons must
+  // re-open as itself, and the seed/commit mappings below all speak this type.
+  // It is only no longer OFFERED: formsForSide drops it (owner, 2026-10-01:
+  // "Take praying with icons out of the Customizer").
   const CONTEMPLATIVE_FORMS = ["prayer", "creation", "walk", "audio", "payg", "visio", "lectio", "rosary", "icons"] as const;
   // Which way Lectio Divina is kept — the slideshow or the guided audio.
   const [lectioMode, setLectioModeState] = useState<LectioMode>(() => getLectioMode());
@@ -1677,7 +1683,14 @@ export default function WayOfLoveRuleFlow({
   const formsForSide = (s: OfficeSide): readonly ContemplativeForm[] => {
     const other: OfficeSide = s === "morning" ? "evening" : "morning";
     const heldByOther = contemplativeForm[other] === "payg" && contemplativeForm[s] !== "payg";
-    return heldByOther ? CONTEMPLATIVE_FORMS.filter((f) => f !== "payg") : CONTEMPLATIVE_FORMS;
+    // Icons is never offered (owner, 2026-10-01) — but a side that ALREADY
+    // keeps it still sees its own row, so it can be seen and changed rather
+    // than the slide silently showing some other practice as the choice.
+    return CONTEMPLATIVE_FORMS.filter((f) => {
+      if (f === "payg" && heldByOther) return false;
+      if (f === "icons" && contemplativeForm[s] !== "icons") return false;
+      return true;
+    });
   };
   const [contemplativeForm, setContemplativeForm] = useState<Record<OfficeSide, ContemplativeForm | null>>(() => {
     // Only the two per-side forms survive a reload — walk/audio/examen/compline
@@ -5155,7 +5168,9 @@ export default function WayOfLoveRuleFlow({
               not be in contemplation"). Its one row is on the reflections step;
               it toggles the same `contemplative.taize` state, and both onKeys
               copies still read it. */}
-          {!anchoredAsForm("icons") && choiceRow(contemplative.icons, `🪟 ${t("wol_rule.cp_icons", { defaultValue: "Praying with Icons" })}`, t("wol_rule.cp_icons_sub", { defaultValue: "Sit with an icon — return to it daily." }), () => toggleContemplative("icons"))}
+          {/* NO ICONS ROW (owner, 2026-10-01: "Take praying with icons out of
+              the Customizer"). The long note above says to add a row here for
+              anything in the options array — Icons is no longer in it. */}
           {/* THE ROSARY — the note above, proved again the same day it was
               written about Icons: the Rosary was in the options array, in
               toggleContemplative's keys, in both onKeys copies, and on the
@@ -5358,15 +5373,19 @@ export default function WayOfLoveRuleFlow({
               always read "The Examen" (explicitLevelTitle); this is the side
               that was wrong. */}
           {/**
-            * SIMPLE GUIDED PRAYER — both sides now (owner: "I want Simple
-            * Guided to be an evening option too, not Examen, the PACT").
+            * SIMPLE GUIDED PRAYER — MORNING ONLY AGAIN (owner, 2026-10-01:
+            * "Take simple guided prayer out of the evening side options").
             *
-            * The evening used to REPLACE this row with the Examen — one row
-            * wearing two names, so choosing PACT in the evening was impossible
-            * and the Examen had no row of its own. They're two practices, so
-            * they're two rows, and the evening gets both.
+            * It was offered on both sides for a while ("I want Simple Guided
+            * to be an evening option too, not Examen, the PACT"), after an
+            * earlier arrangement where the evening REPLACED this row with the
+            * Examen — one row wearing two names. The Examen keeps its own row
+            * below, so the evening still has it; only this row is gone.
+            * A rhythm already storing guided-prayer in the evening still
+            * loads and still shows its card — the level mapping is untouched;
+            * this is only what the picker offers.
             */}
-          {(() => {
+          {side === "morning" && (() => {
             const on = prayBySide[side] === "guidedPrayer";
             return choiceRow(
               on,
@@ -6547,12 +6566,11 @@ export default function WayOfLoveRuleFlow({
               Taizé above it, same reason it isn't a NEWSLETTERS entry, and
               the same practice key either way. isSuperAdmin gates the row;
               useRhythmState gates the card, so neither can show it alone. */}
-          {andrewsVisible && choiceRow(
-            contemplative.andrews,
-            `📰 ${t("wol_rule.learn_andrews", { defaultValue: "Andrew's Version" })}`,
-            t("wol_rule.learn_andrews_sub", { defaultValue: "A lectionary commentary from Yale Divinity School — it waits until you read it." }),
-            () => toggleContemplative("andrews"),
-          )}
+          {/* ANDREW'S VERSION IS OUT OF THE CUSTOMIZER (owner, 2026-10-01:
+              "Take Andrew's version out of the Customizer"). It was an
+              admin-only row (useAndrewsVisible); nothing offers it now. Its
+              key, state and both onKeys copies stay, so a rhythm that already
+              carries it still loads and useRhythmState still gates the card. */}
           {!prescribe && weeklySources.map((w) => choiceRow(
             w.subscribed,
             `${w.emoji || "📰"} ${w.title}`,
