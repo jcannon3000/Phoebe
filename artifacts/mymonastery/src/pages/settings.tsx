@@ -31,7 +31,7 @@ import {
   type OfficeAudioSource,
 } from "@/lib/officePrefs";
 import { resetRoutineToDefault } from "@/lib/resetRoutine";
-import { routineTurnedOff, turnOffRoutine, startRoutine } from "@/lib/routineStart";
+import { routineTurnedOff, turnOffRoutine, startRoutine, NO_ROUTINE_MODE } from "@/lib/routineStart";
 import { CtaArrow } from "@/components/CtaArrow";
 import {
   appleMusicEnabled, appleMusicOfferable, enableAppleMusic, disableAppleMusic,
@@ -1007,11 +1007,13 @@ function OfficeCloseExtrasSettings() {
   const effectiveSource = useEffectiveReflectionSource();
   const options: Array<{ value: ReflectionSource; label: string; sub: string; emoji: string }> = [
     { value: "cac", label: "CAC Daily Reflection", sub: "From the Center for Action & Contemplation.", emoji: "🌅" },
-    // Forward Day by Day and SSJE retired 2026-09-30 (lib/retiredReflections).
     { value: "sojo", label: "Sojourners Daily Devotion", sub: "Verse, voice and prayer of the day.", emoji: "🕊️" },
     { value: "nouwen", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society.", emoji: "😊" },
     { value: "payg", label: "Pray As You Go Daily", sub: "Guided prayer and reflection on scripture.", emoji: "🙇🏽" },
     { value: "taizeprayer", label: "Taizé Daily Prayer", sub: "A short prayer from Brother Matthew of Taizé.", emoji: "🌄" },
+    // Back, at the bottom (owner, 2026-10-01).
+    { value: "fdd", label: "Forward Day by Day", sub: "From Forward Movement.", emoji: "📖" },
+    { value: "ssje", label: "SSJE Reflections", sub: "From the Society of Saint John the Evangelist.", emoji: "✍🏽" },
     { value: "none", label: "No reflection", sub: "No pill at the close.", emoji: "—" },
   ];
   return (
@@ -1922,9 +1924,10 @@ export default function SettingsPage() {
         )}
 
         {/* ── Your routine: on or off ── */}
-        <div className="mb-8">
+        {/* Gone with the no-routine mode (owner, 2026-10-01). */}
+        {NO_ROUTINE_MODE && <div className="mb-8">
           <RoutineOnOffSettings />
-        </div>
+        </div>}
 
         {/* ── Reset routine to default ── */}
         <div className="mb-8">

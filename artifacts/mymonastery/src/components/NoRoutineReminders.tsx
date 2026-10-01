@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { routineStarted, inheritedRoutine, ROUTINE_START_EVENT } from "@/lib/routineStart";
+import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
+import { OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 
 // ── Two daily reminders for someone without a routine yet ──────────────────
 //
@@ -55,9 +57,24 @@ export function NoRoutineReminders() {
     // A beat after launch, so the question arrives once the home is on screen
     // rather than over the splash.
     const t = window.setTimeout(() => { if (noRoutine()) schedule(); else cancel(); }, 2500);
+    /**
+     * RE-CHECK WHEN A ROUTINE ARRIVES, not only when one is started here
+     * (audit, 2026-09-30). A fresh install signing in to an account with a
+     * routine reads "no routine" at launch, before the server's copy lands;
+     * that copy arrives as ROUTINE_SYNCED_EVENT / OFFICE_PREFS_EVENT, and
+     * without these the two reminders stayed until the next launch.
+     */
     const onRoutine = () => { if (noRoutine()) schedule(); else cancel(); };
+    const onMaybeRoutine = () => { if (!noRoutine()) cancel(); };
     window.addEventListener(ROUTINE_START_EVENT, onRoutine);
-    return () => { window.clearTimeout(t); window.removeEventListener(ROUTINE_START_EVENT, onRoutine); };
+    window.addEventListener(ROUTINE_SYNCED_EVENT, onMaybeRoutine);
+    window.addEventListener(OFFICE_PREFS_EVENT, onMaybeRoutine);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener(ROUTINE_START_EVENT, onRoutine);
+      window.removeEventListener(ROUTINE_SYNCED_EVENT, onMaybeRoutine);
+      window.removeEventListener(OFFICE_PREFS_EVENT, onMaybeRoutine);
+    };
   }, []);
   return null;
 }

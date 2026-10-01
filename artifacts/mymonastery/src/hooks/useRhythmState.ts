@@ -1816,7 +1816,10 @@ export function useRhythmState(): RhythmState {
       // never on the level. Matching the level alone would hide the Forward
       // Day by Day card for someone whose anchor actually reads the CAC.
       .filter((sd) => getSideLevel(sd) === "fdd")
-      .map((sd) => getSideReflectionExplicit(sd) ?? "fdd"),
+      // With no source of its own a reflection side reads the Nouwen devotion
+      // (lib/retiredReflections, 2026-09-30) — the same default sideOfficeTitle
+      // uses, so the first render before the migration agrees with it.
+      .map((sd) => getSideReflectionExplicit(sd) ?? "nouwen"),
   );
   const selectedReflections = (vtsCountsToday
     ? chosenReflections

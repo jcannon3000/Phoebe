@@ -43,7 +43,19 @@ export function turnOffRoutine(): void {
   try { window.dispatchEvent(new Event(ROUTINE_START_EVENT)); } catch { /* ignore */ }
 }
 
+/**
+ * THE NO-ROUTINE MODE IS OFF (owner, 2026-10-01: "I dont want the no routine
+ * mode anymore" · "so all users should go straight to the default routine
+ * again"). With this false, everyone counts as having a routine: the home seeds
+ * and shows the default rhythm on first open (dashboard's seed gate), the five
+ * practice cards (BeginHere) never draw, nobody can turn their routine off, and
+ * the no-routine reminders cancel themselves. Everything that mode built is
+ * still here; set this true to bring it back.
+ */
+export const NO_ROUTINE_MODE = false;
+
 export function routineStarted(): boolean {
+  if (!NO_ROUTINE_MODE) return true;
   if (routineTurnedOff()) return false;
   try { return localStorage.getItem(STARTED_KEY) === "1"; } catch { return true; }
 }
@@ -55,6 +67,7 @@ export function routineStarted(): boolean {
  * or a chosen office side counts as started.
  */
 export function inheritedRoutine(): boolean {
+  if (!NO_ROUTINE_MODE) return true;
   // Turned off counts as "no routine" everywhere the home asks — the saved
   // layout is still there, it just isn't drawn.
   if (routineTurnedOff()) return false;

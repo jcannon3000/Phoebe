@@ -29,10 +29,13 @@ import {
 import { readCachedHomeLayout, saveHomeLayout } from "@/lib/homeLayoutCache";
 import { clearRoutineSyncClock } from "@/lib/routineSync";
 
-export const RETIRED_REFLECTIONS: Readonly<Record<string, ReflectionSource>> = {
-  fdd: "nouwen",
-  ssje: "taizeprayer",
-};
+/**
+ * EMPTY SINCE 2026-10-01 (owner: "lets bring back forward and SSJE"). Forward
+ * Day by Day and SSJE are offered again, so nothing is moved off a routine any
+ * more. Routines already moved to Nouwen / Taizé on 2026-09-30 keep that until
+ * the person picks again. Put a pair back here to retire a source again.
+ */
+export const RETIRED_REFLECTIONS: Readonly<Record<string, ReflectionSource>> = {};
 
 export function isRetiredReflection(s: string | null | undefined): boolean {
   return !!s && s in RETIRED_REFLECTIONS;

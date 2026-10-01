@@ -20,6 +20,7 @@ type ScheduleBreath = (o: {
   fromBreath: number;
   count: number;
   closingTone: boolean;
+  closingAfter?: number;
 }) => Promise<{ scheduled?: number; deferred?: boolean }>;
 
 type PhoebeAudioBreath = {
@@ -52,6 +53,8 @@ export async function scheduleNativeBreath(o: {
   cycleMs: number;
   fromBreath: number;
   count: number;
+  /** Breaths after `fromBreath` at which the set ends (the closing tone). */
+  closingAfter?: number;
 }): Promise<boolean> {
   const fn = plugin()?.scheduleBreath;
   if (!fn) return false;

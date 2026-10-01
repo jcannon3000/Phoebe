@@ -51,13 +51,14 @@ const OFFICE_CHOICES = (side: OfficeSide): OfficeChoice[] => {
 
 const REFLECTION_CHOICES: { value: ReflectionSource; label: string; sub: string }[] = [
   { value: "cac", label: "Richard Rohr — Daily Meditation", sub: "Center for Action and Contemplation" },
-  // Forward Day by Day and SSJE are retired (owner, 2026-09-30) — see
-  // lib/retiredReflections.
   // Sojourners is not offered while Verse and Voice is silent (2026-09-12);
   // see UNOFFERED_REFLECTION_SOURCES in lib/officePrefs.
   { value: "nouwen", label: "Nouwen Daily Devotion", sub: "From the Henri Nouwen Society" },
   { value: "payg", label: "Pray As You Go Daily", sub: "Guided prayer and reflection on scripture" },
   { value: "taizeprayer", label: "Taizé Daily Prayer", sub: "A short prayer from Brother Matthew of Taizé" },
+  // Back, at the bottom (owner, 2026-10-01).
+  { value: "fdd", label: "Forward Day by Day", sub: "The classic daily meditation" },
+  { value: "ssje", label: "Brother, Give Us a Word", sub: "A daily word from the SSJE monks" },
   // VTS BELONGS HERE TOO. Without it this editor did something worse than
   // omit an option: the label lookup below falls back to "Forward Day by Day",
   // so a reader whose reflection IS the Dean's Commentary was shown a screen

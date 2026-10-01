@@ -406,6 +406,8 @@ export function CobreatheBreath({
    */
   const nativeActiveRef = useRef(false);
   const nativeFromRef = useRef(0);
+  /** First breath the phone is NOT ringing (the end of what was handed over). */
+  const nativeToRef = useRef(0);
   const nativeAnchorRef = useRef<number | null>(null);
   // Phase at the previous frame — used to fire a soft haptic + tone at the
   // start of each of the four box-breathing phases. null until the first frame
@@ -464,7 +466,7 @@ export function CobreatheBreath({
           // stretch with the screen off can't knock it out of step.
           const k = Math.floor((now - countStartRef.current) / CYCLE_MS);
           const octave = ((k % 3) + 3) % 3;
-          const nativeHas = nativeActiveRef.current && k >= nativeFromRef.current && k < totalBreaths;
+          const nativeHas = nativeActiveRef.current && k >= nativeFromRef.current && k < nativeToRef.current;
           if (!nativeHas) {
             try { playBreathTone(octave, { exhale: phase === "out" }); } catch { /* audio locked — non-fatal */ }
           }
@@ -680,15 +682,26 @@ export function CobreatheBreath({
           && nativeAnchorRef.current !== countStartRef.current && (!frozenRef.current || !nativeActiveRef.current)) {
         const cs = countStartRef.current;
         const k0 = Math.max(0, Math.ceil((now + 400 - cs) / CYCLE_MS));
-        const count = totalBreaths - k0;
-        if (count > 0 && (cs - now > 400 || frozenRef.current)) {
+        const setLeft = totalBreaths - k0;
+        /**
+         * THE SET, AND THEN ON (owner, 2026-10-01: "it does not keep making
+         * sounds when the screen is locked after 12 or however many they
+         * set"). The rhythm runs on past the set until the person finishes,
+         * so the phone rings on too — an hour more (owner: "make it 60") — and the closing
+         * tone still marks where the set ends. Finishing or leaving cancels
+         * the rest (cancelNativeBreath).
+         */
+        const RUN_ON_BREATHS = Math.round((60 * 60_000) / CYCLE_MS);
+        const count = setLeft + RUN_ON_BREATHS;
+        if (setLeft > 0 && (cs - now > 400 || frozenRef.current)) {
           nativeAnchorRef.current = cs;
           const firstInMs = cs + k0 * CYCLE_MS - now;
-          void scheduleNativeBreath({ firstInMs, inhaleMs: INHALE_MS, cycleMs: CYCLE_MS, fromBreath: k0, count })
+          void scheduleNativeBreath({ firstInMs, inhaleMs: INHALE_MS, cycleMs: CYCLE_MS, fromBreath: k0, count, closingAfter: setLeft })
             .then((ok) => {
               if (nativeAnchorRef.current !== cs) return; // superseded
               nativeActiveRef.current = ok;
               nativeFromRef.current = k0;
+              nativeToRef.current = k0 + count;
             });
         }
       }

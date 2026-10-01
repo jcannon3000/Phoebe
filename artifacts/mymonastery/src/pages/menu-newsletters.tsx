@@ -1,4 +1,3 @@
-import { routineStarted, inheritedRoutine } from "@/lib/routineStart";
 import { useEffect, useMemo, useState } from "react";
 import { warmedHtml, warmPages } from "@/lib/warmedPages";
 import { forwardMovementFeastUrl } from "@/lib/liturgical/forwardMovementCalendar";
@@ -289,7 +288,12 @@ export default function MenuNewslettersPage() {
    * following one writes a home layout, which is exactly what reads as "has a
    * routine" (lib/routineStart), and would swap their five cards for a rhythm.
    */
-  const noRoutine = !routineStarted() && !inheritedRoutine();
+  // …AND NOW FOR EVERYONE (owner, 2026-10-01: "get rid of the Subscriptions/
+  // all sections and manage subscription ui on the reflection page"). One
+  // plain list of what there is to read; following a reflection onto the home
+  // is the customizers' job. /menu/newsletters/manage still resolves for an old
+  // link, but nothing on this page leads there.
+  const noRoutine = true;
   const subscribed = inGroup.filter((e) => e.followed);
   const others = inGroup.filter((e) => !e.followed);
 

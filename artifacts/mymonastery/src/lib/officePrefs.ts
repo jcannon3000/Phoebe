@@ -108,7 +108,10 @@ export const TRACKED_REFLECTION_SOURCES = ["cac", "fdd", "ssje", "nouwen", "sojo
 // and SSJE from practices and the customizer, turning those off"). Unlike Grist
 // and Sojourners they are also MOVED OFF existing routines — Forward to Nouwen,
 // SSJE to Taizé Daily Prayer — by lib/retiredReflections.
-export const UNOFFERED_REFLECTION_SOURCES: ReadonlySet<string> = new Set(["grist", "sojo", "fdd", "ssje"]);
+// …and BACK on 2026-10-01 (owner: "lets bring back forward and SSJE" · "put
+// SSJE and Forward back in"): offered again, at the bottom of the lists, and no
+// longer moved off routines (lib/retiredReflections' map is empty).
+export const UNOFFERED_REFLECTION_SOURCES: ReadonlySet<string> = new Set(["grist", "sojo"]);
 export function isTrackedReflectionSource(s: ReflectionSource): boolean {
   return (TRACKED_REFLECTION_SOURCES as readonly string[]).includes(s);
 }

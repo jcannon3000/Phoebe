@@ -208,6 +208,9 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         let fromBreath: Int
         let count: Int
         let closing: Bool
+        /// Breaths after `fromBreath` at which the set ENDS and the closing
+        /// tone sounds. The tones keep going past it (see scheduleBreath).
+        let closingAfter: Int
     }
     private var breathPlan: BreathPlan?
 
@@ -216,15 +219,20 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         let inhaleMs = call.getDouble("inhaleMs") ?? 6000
         let cycleMs = call.getDouble("cycleMs") ?? 12000
         let fromBreath = max(0, Int(call.getDouble("fromBreath") ?? 0))
-        let count = max(0, min(200, Int(call.getDouble("count") ?? 0)))
+        // The set, PLUS the breaths after it: the rhythm runs on until the
+        // person finishes, so the tones must too, screen on or off (owner,
+        // 2026-10-01: "it does not keep making sounds when the screen is locked
+        // after 12"). The page asks for a long run; ending tears it down.
+        let count = max(0, min(600, Int(call.getDouble("count") ?? 0))) // a long set + an hour at 12 s a breath
         let closing = call.getBool("closingTone") ?? true
+        let closingAfter = max(0, min(count, Int(call.getDouble("closingAfter") ?? Double(count))))
         teardownBreath()
         // Apple Music is the sound while it plays (lib/amenFeedback's rule).
         if PhoebeSessionOwner.musicHolds { call.resolve(["deferred": true]); return }
         if count == 0 || firstInMs < 0 { call.resolve(["scheduled": 0]); return }
         let plan = BreathPlan(
             firstInHost: mach_absolute_time() + AVAudioTime.hostTime(forSeconds: firstInMs / 1000.0),
-            inhaleMs: inhaleMs, cycleMs: cycleMs, fromBreath: fromBreath, count: count, closing: closing)
+            inhaleMs: inhaleMs, cycleMs: cycleMs, fromBreath: fromBreath, count: count, closing: closing, closingAfter: closingAfter)
         breathPlan = plan
         // Arm the cleanup timer FIRST so ensureSessionActive keeps .playback.
         let lastMs = firstInMs + Double(count) * cycleMs
@@ -299,7 +307,8 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
                 scheduled += 1
             }
         }
-        let closeAt = host(Double(plan.count) * plan.cycleMs)
+        // The closing tone marks the END OF THE SET, not the end of the run.
+        let closeAt = host(Double(plan.closingAfter) * plan.cycleMs)
         if plan.closing, closeAt > soon, let buf = padBuffer(step: 0, exhale: false) {
             nodes[4].scheduleBuffer(buf, at: AVAudioTime(hostTime: closeAt), options: [], completionHandler: nil)
         }

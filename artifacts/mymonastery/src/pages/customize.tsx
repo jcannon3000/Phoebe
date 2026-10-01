@@ -24,7 +24,7 @@ import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 import { enqueueWrite, dropWrite } from "@/lib/writeOutbox";
 import { CtaArrow } from "@/components/CtaArrow";
-import { turnOffRoutine } from "@/lib/routineStart";
+import { turnOffRoutine, NO_ROUTINE_MODE } from "@/lib/routineStart";
 
 // ── /customize — the BASIC customizer for logged-out / device-local sessions ─
 //
@@ -906,9 +906,9 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             ...(newsletter === "payg" ? [{ value: "payg", label: "Pray As You Go Daily" }] : []),
             { value: "taizeprayer", label: "Taizé Daily Prayer" },
             { value: "nouwen", label: "Nouwen Daily Devotion" },
-            // Forward Day by Day and SSJE are retired (owner, 2026-09-30); a
-            // routine that had one was moved to Nouwen / Taizé Daily Prayer
-            // (lib/retiredReflections), so nobody's current pick is lost here.
+            // Forward Day by Day and SSJE, back at the bottom (owner, 2026-10-01).
+            { value: "fdd", label: "Forward Day by Day" },
+            { value: "ssje", label: "SSJE — Brother, Give Us a Word" },
             // VTS is always the LAST newsletter listed (owner, 2026-09-10).
             ...(entitlements.vts || newsletter === "vts"
               ? [{ value: "vts", label: "VTS Dean's Commentary" }]
@@ -999,14 +999,16 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
             A FULL PILL, not a link (owner, 2026-09-30) — Save's own width,
             radius and padding, outlined rather than filled so the two read as
             the page's two endings without this one competing for the tap. */}
-        <button
+        {/* Gone with the no-routine mode (owner, 2026-10-01: "get rid of all the
+            buttons to turn the routine off"). */}
+        {NO_ROUTINE_MODE && <button
           type="button"
           onClick={() => { turnOffRoutine(); setLocation("/dashboard"); }}
           className="mt-4 w-full"
           style={{ maxWidth: 420, borderRadius: 14, padding: "14px 20px", background: "transparent", color: SAGE, fontFamily: FONT, fontWeight: 600, fontSize: 15.5, border: "1px solid rgba(143,175,150,0.45)", cursor: "pointer" }}
         >
           Turn off routine
-        </button>
+        </button>}
       </div>
     </div>
   );

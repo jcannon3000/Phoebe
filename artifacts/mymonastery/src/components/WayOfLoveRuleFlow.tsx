@@ -14,7 +14,7 @@
  * the Daily progress "Customize" pill and returns there when done.
  */
 
-import { turnOffRoutine } from "@/lib/routineStart";
+import { turnOffRoutine, NO_ROUTINE_MODE } from "@/lib/routineStart";
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef, useCallback, type ReactNode, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -757,9 +757,6 @@ function homeCardOn(
 }
 
 const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
-  // Forward Day by Day and SSJE are retired (owner, 2026-09-30): not offered,
-  // and a routine that held one was moved to Nouwen / Taizé Daily Prayer
-  // (lib/retiredReflections).
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
   // Heard, not read: its card opens the audio player on the day's session
   // (owner, 2026-09-17), and it is kept once most of it has played.
@@ -785,6 +782,10 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   // Sojourners 2026-09-12 (Verse and Voice silent since August — back when
   // they post again; see UNOFFERED_REFLECTION_SOURCES). A device that still
   // has one keeps its card until it changes source.
+  // Forward Day by Day and SSJE, back at the bottom (owner, 2026-10-01), just
+  // above VTS, which sits last.
+  { id: "fdd", label: "📖 Forward Day by Day", sub: "Forward Movement" },
+  { id: "ssje", label: "✍🏽 SSJE — Brother, Give Us a Word", sub: "Society of St. John the Evangelist" },
   // VTS sits last (owner: "just make sure it is at the bottom").
   { id: "vts", label: "🦩 VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
 ];
@@ -4926,7 +4927,7 @@ export default function WayOfLoveRuleFlow({
               home screen"). Nothing is deleted — lib/routineStart keeps the
               rhythm, and "Start a routine" on the home brings it back. Not
               offered while writing a routine for someone else. */}
-          {!prescribe && choiceRow(
+          {!prescribe && NO_ROUTINE_MODE && choiceRow(
             effectiveEntryChoice === "off",
             `🍃 ${t("wol_rule.entry_off", { defaultValue: "Turn off routine" })}`,
             t("wol_rule.entry_off_sub", { defaultValue: "Go back to just the practices on your home. Your routine is kept for when you want it again." }),
