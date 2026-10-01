@@ -9,7 +9,7 @@ import { snapshotRoutine, restoreRoutine } from "@/lib/routineDesignGuard";
 import { setRoutineSyncSuspended } from "@/lib/routineSync";
 import {
   fetchRoutinePresetOverlay, refreshRoutinePresets, resolveAdoptPreset,
-  specToPresetBody, specToDefaultSeed, SEED_DEFAULT_FALLBACK, type DefaultSeed,
+  specToPresetBody,
 } from "@/lib/rulePresetsStore";
 import { TRACKED_REFLECTION_SOURCES, type ReflectionSource } from "@/lib/officePrefs";
 import { RELATIONAL_PRACTICES, CUSTOM_SLOTS, type CustomSlot, type RelationalPracticeId } from "@/lib/customAnchors";
@@ -113,10 +113,8 @@ function Select({ value, onChange, options }: {
 export default function AdminPresetsPage() {
   const [, setLocation] = useLocation();
   const [rows, setRows] = useState<Row[]>([]);
-  const [storedDefault, setStoredDefault] = useState<DefaultSeed | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);   // preset id/slug
-  const [editingDefault, setEditingDefault] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   /**
    * EDIT OPENS THE REAL CUSTOMIZER.
@@ -162,7 +160,6 @@ export default function AdminPresetsPage() {
     try {
       const data = await fetchRoutinePresetOverlay();
       setRows((data.presets ?? []) as Row[]);
-      setStoredDefault((data.default ?? null) as DefaultSeed | null);
       setError(null);
     } catch {
       setError("Couldn't read the presets. The built-in ones are still what people see.");
@@ -190,7 +187,7 @@ export default function AdminPresetsPage() {
     setStatus(null); setError(null);
     try {
       await apiRequest("PUT", `/api/routine-presets/${encodeURIComponent(slug)}`, { body, hidden });
-      setStatus(slug === "__default__" ? "Default rhythm saved." : `Saved "${slug}".`);
+      setStatus(`Saved "${slug}".`);
       await load();
       await refreshRoutinePresets(true); // this device sees it immediately too
     } catch (e) {
@@ -214,10 +211,7 @@ export default function AdminPresetsPage() {
   const saveFromFlow = (spec: RoutineSpec) => {
     const slug = designing;
     if (!slug) return;
-    if (slug === "__default__") {
-      const base = storedDefault ?? SEED_DEFAULT_FALLBACK;
-      void save(slug, specToDefaultSeed(spec, base));
-    } else {
+    {
       const current = effective.find((e) => e.id === slug);
       const base = (current?.body ?? resolveAdoptPreset(slug)) as RulePreset | null;
       if (!base) { setError("That rule disappeared while it was being edited — nothing was saved."); endDesign(); return; }
@@ -226,103 +220,9 @@ export default function AdminPresetsPage() {
     endDesign();
   };
 
-  // ── The default rhythm ─────────────────────────────────────────────────────
-  /**
-   * WHAT ACTUALLY SHIPS — one copy, from rulePresetsStore.
-   *
-   * This used to be a second, hand-maintained object, and it had gone stale
-   * at v7 while the app shipped v8. So the card said "the default rhythm ·
-   * as it ships", the admin opened Quick fields, changed nothing, saved —
-   * and published v7 as the default: evening Examen gone, Forward Day by Day
-   * swapped back to CAC, Visio moved to the evening. The Edit button (the
-   * full customizer) read the right one the whole time, so the same page held
-   * two different ideas of what ships.
-   */
-  const DEFAULT_FALLBACK: DefaultSeed = SEED_DEFAULT_FALLBACK;
-  const [draftDefault, setDraftDefault] = useState<DefaultSeed>(DEFAULT_FALLBACK);
-  useEffect(() => { setDraftDefault(storedDefault ?? DEFAULT_FALLBACK); /* eslint-disable-next-line */ }, [storedDefault]);
-
-  const defaultEditor = (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <p style={label}>Morning</p>
-          <Select value={draftDefault.morning} options={LEVELS}
-            onChange={(v) => setDraftDefault((d) => ({ ...d, morning: v }))} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <p style={label}>Evening</p>
-          <Select value={draftDefault.evening} options={LEVELS}
-            onChange={(v) => setDraftDefault((d) => ({ ...d, evening: v }))} />
-        </div>
-      </div>
-      <div>
-        <p style={label}>Newsletter</p>
-        <Select value={draftDefault.reflection ?? "none"} options={["none", ...TRACKED_REFLECTION_SOURCES]}
-          onChange={(v) => setDraftDefault((d) => ({ ...d, reflection: v === "none" ? undefined : v as ReflectionSource }))} />
-      </div>
-      <div>
-        <p style={label}>Cards turned on</p>
-        <Chips options={CARD_KEYS} selected={draftDefault.cards ?? []}
-          onToggle={(v) => setDraftDefault((d) => ({
-            ...d, cards: (d.cards ?? []).includes(v) ? d.cards.filter((c) => c !== v) : [...(d.cards ?? []), v],
-          }))} />
-        <p style={{ ...label, textTransform: "none", letterSpacing: 0, margin: "8px 0 0", fontSize: 11.5 }}>
-          A newsletter or practice needs its card here, or the person's rhythm sets the preference and shows nothing.
-        </p>
-      </div>
-      <div>
-        <p style={label}>Relational practices</p>
-        <Chips options={RELATIONAL_PRACTICES.map((r) => r.id)} selected={draftDefault.relational ?? []}
-          onToggle={(v) => setDraftDefault((d) => ({
-            ...d, relational: (d.relational ?? []).includes(v as RelationalPracticeId)
-              ? d.relational.filter((x) => x !== v) : [...(d.relational ?? []), v as RelationalPracticeId],
-          }))} />
-      </div>
-      <div style={{ display: "flex", gap: 12 }}>
-        <div style={{ width: 140 }}>
-          <p style={label}>Silence (min)</p>
-          <input type="number" min={0} max={180} value={draftDefault.silenceMin ?? 0} style={field}
-            onChange={(e) => setDraftDefault((d) => ({ ...d, silenceMin: Math.max(0, Math.min(180, parseInt(e.target.value || "0", 10) || 0)) }))} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <p style={label}>Practice times</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {SLOTTED.filter((k) => (draftDefault.cards ?? []).some((c) => c === k || (k === "listening" && c === "listening")))
-              .map((k) => (
-                <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: DIM, fontFamily: FONT, fontSize: 12.5 }}>{k}</span>
-                  <select
-                    value={(draftDefault.slots ?? {})[k] ?? "anytime"}
-                    onChange={(e) => setDraftDefault((d) => ({ ...d, slots: { ...(d.slots ?? {}), [k]: e.target.value as CustomSlot } }))}
-                    style={{ ...field, width: "auto", padding: "6px 8px", fontSize: 12.5, cursor: "pointer" }}
-                  >
-                    {CUSTOM_SLOTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </span>
-              ))}
-          </div>
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <button type="button" style={btn(true)}
-          onClick={() => void save("__default__", { ...draftDefault, version: (draftDefault.version ?? 1) + 1 })}>
-          Save the default rhythm
-        </button>
-        {storedDefault && (
-          <button type="button" style={btn()} onClick={() => void revert("__default__")}>
-            Back to the built-in default
-          </button>
-        )}
-        <button type="button" style={btn()} onClick={() => setEditingDefault(false)}>Close</button>
-      </div>
-      <p style={{ color: DIM, fontFamily: FONT, fontSize: 12, lineHeight: 1.55, margin: 0 }}>
-        Saving bumps the version, which is what carries the change onto devices already
-        sitting on an untouched default. A person who has customized their own rhythm is
-        never touched by this.
-      </p>
-    </div>
-  );
+  /* The default-rhythm editor (Quick fields + its Save / Back-to-built-in
+     buttons) lived here and is gone with the override it wrote — see the note
+     where its card used to render, below. */
 
   // ── One starter rule ───────────────────────────────────────────────────────
   const [draft, setDraft] = useState<RulePreset | null>(null);
@@ -540,26 +440,20 @@ export default function AdminPresetsPage() {
         {error && <p style={{ color: "#E5A3A3", fontFamily: FONT, fontSize: 13.5, margin: 0 }}>{error}</p>}
         {loading && <p style={{ color: DIM, fontFamily: FONT, fontSize: 13.5 }}>Reading…</p>}
 
-        {/* THE DEFAULT */}
-        <div style={{ background: CARD, border: BORDER, borderRadius: 14, padding: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <div>
-              <p style={{ color: WARM, fontFamily: FONT, fontSize: 16, fontWeight: 700, margin: 0 }}>
-                🌱 The default rhythm {storedDefault ? "· edited" : "· as it ships"}
-              </p>
-              <p style={{ color: DIM, fontFamily: FONT, fontSize: 12.5, margin: "4px 0 0" }}>
-                What a new device seeds, and where “reset routine to default” lands.
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-              <button type="button" style={btn(true)} onClick={() => beginDesign("__default__")}>Edit</button>
-              {!editingDefault && (
-                <button type="button" style={btn()} onClick={() => setEditingDefault(true)}>Quick fields</button>
-              )}
-            </div>
-          </div>
-          {editingDefault && <div style={{ marginTop: 16 }}>{defaultEditor}</div>}
-        </div>
+        {/* THE DEFAULT RHYTHM IS NOT EDITABLE FROM HERE ANY MORE (owner,
+            2026-10-01: "get rid of the overide entirely" · "dont have that in
+            admin featueres").
+
+            It was a card with Edit / Quick fields that saved a `__default__`
+            row, and that row then stood in front of every default the app
+            shipped — silently, and for months: a v2 override was live in
+            production seeding new devices onto an old rhythm with a retired
+            newsletter while the current default reached nobody. The default
+            rhythm is now SEED_DEFAULT_FALLBACK and nothing else, changed by
+            shipping a build like any other piece of the app.
+
+            The starter rules below are unaffected — those are rhythms people
+            CHOOSE, not the one everybody is given. */}
 
         {/* THE STARTER RULES */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

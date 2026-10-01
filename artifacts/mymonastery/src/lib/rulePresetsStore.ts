@@ -92,17 +92,31 @@ export function getEffectiveRulePresets(): RulePreset[] {
   return [...out, ...added];
 }
 
-/** The admin's default rhythm, or null — in which case guestSeed uses the
- *  default that ships in the app. */
+/**
+ * THERE IS NO ADMIN DEFAULT RHYTHM ANY MORE (owner, 2026-10-01: "get rid of
+ * the overide entirely" · "dont have that in admin featueres").
+ *
+ * The default routine is the one that ships in the app — SEED_DEFAULT_FALLBACK,
+ * v12 — and nothing in the database can stand in front of it.
+ *
+ * WHY IT HAD TO GO. A stored `__default__` row at version 2 was live in
+ * production and winning over every code default we shipped: its version being
+ * ≥ 1 made `adminMoved` fire for untouched devices too, so new installs were
+ * seeded onto an old rhythm (office · contemplation · Forward Day by Day ·
+ * feeds, with a Visio slot and gratitude) while the owner's v12 reached
+ * nobody. The failure was silent — the seed was working perfectly, the overlay
+ * was simply in front of it — and it is the kind that can only be found by
+ * reading production.
+ *
+ * RETURNING NULL IS THE WHOLE FIX, and it carries the devices that applied the
+ * old override rather than stranding them: `defaultSeedWithdrawn()` below is
+ * "a cache was fetched and it has no default", which is now true the moment a
+ * device fetches, so migrateStaleSeed's `adminReverted` branch runs and moves
+ * them onto the shipped default — the same path "Back to the built-in default"
+ * used. The stored row can stay in the database; nothing reads it.
+ */
 export function getStoredDefaultSeed(): DefaultSeed | null {
-  const overlay = readCache();
-  const d = overlay?.default;
-  if (!d || typeof d !== "object") return null;
-  // A default with no morning AND no evening AND no cards would seed a blank
-  // home; treat that as "nothing to say" rather than applying it.
-  const hasAnything = (d.morning && d.morning !== "ask") || (d.evening && d.evening !== "ask")
-    || (Array.isArray(d.cards) && d.cards.length > 0);
-  return hasAnything ? d : null;
+  return null;
 }
 
 /** True when a FETCHED presets cache says there is no admin default — the
