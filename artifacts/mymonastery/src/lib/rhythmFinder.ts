@@ -194,7 +194,18 @@ export type RecommendedRhythm = {
    * customizer writes), the office repeats itself, and a silent sit sits twice.
    */
   eveningLevel: "ask" | "examen" | "office" | "contemplation";
-  /** Daily silence in minutes; for the silent-sit prayer it is the day's TOTAL. */
+  /**
+   * HOW LONG A SIT IS — not a daily quota (owner, 2026-10-01: "Contemplation
+   * (Have it not be qouta but just one session…)", said of the default and
+   * taken here as what contemplation IS in Phoebe).
+   *
+   * It used to be a daily GOAL, and a goal is not just a different number: it
+   * draws a different CARD — the silence goal card with its progress bar — and
+   * feeds the day's total differently. So a person who answered the questions
+   * and a person who took the default ended up with structurally different
+   * homes for the same practice. Now both keep a session, and the answers
+   * decide how long it is rather than how much is owed.
+   */
   silenceMinutes: number;
   reflectionSource: "cac" | "nouwen" | "taizeprayer" | null;
   extras: RecommendedExtra[];
@@ -245,8 +256,12 @@ export function recommend(a: FinderAnswers): RecommendedRhythm {
     const base = a.silenceLevel === "daily" ? 15 : a.silenceLevel === "sometimes" ? 10 : 5;
     // The silent-sit prayer counts the day's TOTAL and splits it across the
     // sides, in ten-minute steps so each gets a clean half.
-    silenceMinutes = prayer === "contemplation" ? base * 2 : base; // 10 / 20 / 30 — clean halves
-    reasons.push(`A daily silence of ${silenceMinutes} minutes, set to where you are with it.`);
+    // The length of ONE sit. A rhythm whose prayer IS the sit gets a longer
+    // one; a rhythm where silence rides alongside another prayer gets the
+    // plain length. No doubling for two sides: each side's sit is a sit, not
+    // half of a daily allowance.
+    silenceMinutes = prayer === "contemplation" ? base * 2 : base;
+    reasons.push(`A sit of ${silenceMinutes} minutes, set to where you are with it.`);
   }
 
   // A daily reflection — only for someone who reads.
@@ -325,13 +340,30 @@ export async function applyRhythm(rec: RecommendedRhythm, opts: { guest: boolean
       setSideContemplation("evening", evening);
       setSideContemplationKind("morning", "silent");
       setSideContemplationKind("evening", "silent");
-      const each = Math.round(rec.silenceMinutes / (evening ? 2 : 1));
-      setSideMinutes("morning", each);
-      if (evening) setSideMinutes("evening", each);
+      // Each side's sit is the full length. It was halved when this was a
+      // daily total to divide; a session is not divided.
+      setSideMinutes("morning", rec.silenceMinutes);
+      if (evening) setSideMinutes("evening", rec.silenceMinutes);
     } else {
-      setSideContemplation("morning", false);
+      /**
+       * SILENCE ALONGSIDE ANOTHER PRAYER IS A SESSION TOO.
+       *
+       * Someone who says silence is where they meet God, but whose prayer is
+       * Simple Guided or the readings, used to get ONLY a minutes goal — a
+       * progress bar and no sit to keep. They now get the same morning
+       * contemplation card the default writes, sized by their answer.
+       */
+      const wantsSit = rec.silenceMinutes > 0;
+      setSideContemplation("morning", wantsSit && morning);
       setSideContemplation("evening", false);
-      setSideLevel("morning", rec.prayer as OfficeLevel);
+      if (wantsSit && morning) {
+        setSideContemplationKind("morning", "silent");
+        setSideMinutes("morning", rec.silenceMinutes);
+      }
+      // A side the recommendation leaves out gets no practice — "ask" is OFF,
+      // and under the derived-sides model (WayOfLoveRuleFlow) having a
+      // practice is the whole of what "on" means.
+      setSideLevel("morning", morning ? (rec.prayer as OfficeLevel) : "ask");
       // Simple Guided Prayer and the readings are morning shapes that the
       // Examen closes; the office repeats. ("ask" is a side's OFF state.)
       setSideLevel("evening", rec.eveningLevel === "contemplation" ? "ask" : (rec.eveningLevel as OfficeLevel));
@@ -345,12 +377,19 @@ export async function applyRhythm(rec: RecommendedRhythm, opts: { guest: boolean
 
   // The silence goal — local for a device with no account, the server pref
   // otherwise — and the reminders.
+  /**
+   * NO DAILY GOAL, EVER, FROM HERE. The sit above is the practice; a goal on
+   * top of it would put the quota card beside the session card and count the
+   * same silence twice. Written as 0 rather than left alone, so a rhythm built
+   * here replaces an older one's goal instead of inheriting it.
+   */
   if (guest) {
-    try { setGuestSilenceGoalMin(rec.silenceMinutes); } catch { /* ignore */ }
+    try { setGuestSilenceGoalMin(0); } catch { /* ignore */ }
   } else {
     await apiRequest("PUT", "/api/me/office-prefs", {
       defaultPrayerLevel: rec.prayer === "contemplation" ? "ask" : rec.prayer,
-      contemplationGoalMinutes: rec.silenceMinutes,
+      contemplationGoalMinutes: 0,
+      // Tied to KEEPING a sit, not to owing minutes — the goal is always 0 now.
       contemplationReminderEnabled: rec.silenceMinutes > 0,
       morning: rec.morningReminder ? (rec.prayer === "office" ? "office" : "devotion") : "none",
       evening: rec.eveningReminder ? "devotion" : "none",

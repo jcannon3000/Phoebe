@@ -112,7 +112,10 @@ export default function FindYourRhythmPage() {
   if (phase === "result") {
     const lines: string[] = [];
     lines.push(`Pray each ${rec.sides.evening ? "morning and evening" : "morning"} with ${PRAYER_LABEL[rec.prayer]}.`);
-    if (rec.silenceMinutes > 0) lines.push(`${rec.silenceMinutes} minutes of silence a day.`);
+    // A SIT, not an allowance (lib/rhythmFinder's silenceMinutes is the length
+    // of one session now, never a daily quota). "20 minutes of silence a day"
+    // promised a total the rhythm no longer keeps.
+    if (rec.silenceMinutes > 0) lines.push(`A sit of ${rec.silenceMinutes} minutes.`);
     if (rec.reflectionSource) lines.push(`A daily reflection — ${SOURCE_LABEL[rec.reflectionSource]}.`);
     if (rec.eveningLevel === "examen") lines.push("The Examen to close your day.");
     for (const x of rec.extras) lines.push(EXTRA_LINE[x]);
