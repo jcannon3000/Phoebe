@@ -147,16 +147,24 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // and in the customizer"). The practice itself and /spirituals still
     // exist — see lib/spiritualsFlag.ts — but nothing links to it here.
     /**
-     * HAGIOGRAPHIES IS NOT A PRACTICE ANY MORE (owner, 2026-09-30: "Take out
-     * Haigriphies out of practices, both in the menu and the customizer" …
-     * "just have it show in the eybrow under the date").
+     * HAGIOGRAPHIES IS A PRACTICE AGAIN (owner, 2026-10-01: "Lets make
+     * haigriohpies a reflection practice again, and in customizer" · "only on
+     * days when there was one"), reversing his own 2026-09-30 call to take it
+     * out. It reads as a reflection — a life read slowly — which is why it
+     * sits here rather than among the sits.
      *
-     * The day's life is still one tap away, from the feast line under the
-     * date on the home (components/LiturgicalDateHeader), which opens it in
-     * the reader and marks it read exactly as the card did — so it still
-     * lands in Done and still counts. /saints keeps working for anyone who
-     * goes looking. See [[reference_hagiography_today_only]].
+     * "Only on days when there was one" is not a condition this list carries:
+     * the row is always offered, and it is useRhythmState's hagiographyShown
+     * (the card, the dot, the day's total and the widget, all off one gate)
+     * that draws nothing on the ~88 days the calendar keeps no commemoration.
+     * The feast line under the date still opens the same life and marks it
+     * read, as it has since 2026-09-12. See [[reference_hagiography_today_only]].
      */
+    // Named Hagiographies (owner, 2026-09-18: "Call the life of a saint practice
+    // Haegriphoies") — spelled as the word, and as the home section heading
+    // above the saints row already is.
+    // AT THE BOTTOM (owner, 2026-09-18: "Move hagiographies to the bottom").
+    { emoji: "🕯️", label: "Hagiographies", sub: "Read a life slowly, and let it ask something of yours", href: "/saints" },
     /**
      * TAIZÉ SATURDAY PRAYER IS NO LONGER LISTED (owner, 2026-09-30: "Take out
      * Taize Saturday out of practices"). It was the last row here from

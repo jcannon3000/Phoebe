@@ -86,7 +86,12 @@ export function predatesSeedStamp(): boolean {
 // GOAL card, which is the minutes quota with a progress bar. One session a day,
 // kept by sitting, is a per-side contemplation card with no goal behind it:
 // `seedContemplation` below, and silenceMin stays 0.
-const SEED_VERSION = "13";
+//
+// v14 (owner, 2026-10-01): the feast-day hagiographies come back, "only on
+// days when there was one" — which is useRhythmState's gate, not a condition
+// the seed can carry. The card is seeded all year and draws on the ~277 days
+// the calendar keeps a commemoration.
+const SEED_VERSION = "14";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never
 // remove: the whole point is recognizing rules we ourselves wrote.
@@ -524,6 +529,13 @@ function migrateStaleSeed(): void {
        */
       seedContemplation({ respectExisting: true });
       /**
+       * THE HAGIOGRAPHIES COME BACK (v14), never forced onto a home that hid
+       * the card — respectRemoval is the same promise the rest of this block
+       * keeps. A device that had it before 776611ff still has the key in its
+       * layout and is unaffected; one seeded in between gains it.
+       */
+      seedHagiography({ respectRemoval: true });
+      /**
        * VISIO DIVINA AND THE HAGIOGRAPHIES ARE NO LONGER SEEDED — AND NOT
        * TAKEN AWAY EITHER (v12). They were v7's and v11's, and this block used
        * to add them to any untouched device. It no longer does, so a device
@@ -683,7 +695,9 @@ export function seedGuestRule(): void {
     seedCard("nouwen");
     // v13: contemplation takes the breath's place. One session, no quota.
     seedContemplation();
-    // NOT seedCobreathe / seedVisio / seedHagiography: none is in the default.
+    // v14: the day's life, on the days there is one.
+    seedHagiography();
+    // NOT seedCobreathe / seedVisio: neither is in the default.
     localStorage.setItem(SEED_KEY, todayYmd());
     // Freshly seeded devices are already current — stamp so migrateStaleSeed
     // never has anything to do for them.
