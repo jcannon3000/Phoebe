@@ -1110,8 +1110,50 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             hideForReader(ps[i]);
           }
         }
+        /**
+         * A HIDDEN <br> MUST LEAVE A SPACE BEHIND IT (owner, 2026-10-01, of
+         * the daily scripture reading: "there is some miss formatitng here
+         * like not a space after the .").
+         *
+         * oremus sets poetry one line per <br>, and the words either side of
+         * it carry no space of their own - the break WAS the separator. Hiding
+         * it ran them together: "the trumpet in Ramah.Sound the alarm",
+         * "on the day of punishment;among the tribes".
+         *
+         * It only showed on SOME lines, which is why it survived: a line that
+         * oremus INDENTS starts with a run of nbsp, and the rewrite below
+         * turns those into a space, so indented lines read correctly and only
+         * the ones at the left margin jam. Hosea 5:8 has both, two words
+         * apart.
+         *
+         * The space is a span of our own rather than a text node, so Standard
+         * can take it away again with the rest of our furniture (see the
+         * reader toggle's `mine`) - the whole point of the note above is that
+         * none of this is one-way.
+         */
         var brs = bt.querySelectorAll('br');
-        for (var j = 0; j < brs.length; j++) hideForReader(brs[j]);
+        for (var j = 0; j < brs.length; j++) {
+          var br = brs[j];
+          var before = br.previousSibling;
+          var after = br.nextSibling;
+          // `c.trim() === ''` rather than a regex: trim() counts nbsp as
+          // whitespace, and a character class here would need escapes, which
+          // this file doubles (every backslash in readerJS is a Swift one too).
+          var spaced = function (v, last) {
+            if (!v) return false;
+            var c = last ? v.slice(-1) : v.charAt(0);
+            return c !== '' && c.trim() === '';
+          };
+          var endsSpaced = !!before && before.nodeType === 3 && spaced(before.nodeValue, true);
+          var startsSpaced = !!after && after.nodeType === 3 && spaced(after.nodeValue, false);
+          if (!endsSpaced && !startsSpaced && br.parentNode) {
+            var sp = document.createElement('span');
+            sp.className = 'phoebe-brsp';
+            sp.textContent = ' ';
+            br.parentNode.insertBefore(sp, br);
+          }
+          hideForReader(br);
+        }
         // The poetry indents, now that the breaks they followed are gone.
         var walker = document.createTreeWalker(bt, NodeFilter.SHOW_TEXT, null);
         var n;
@@ -1356,7 +1398,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
          * credit note are ours, not the publisher's, and Standard means the
          * page as they render it — not their page with our furniture on it.
          */
-        var mine = document.querySelectorAll('.phoebe-reader-masthead, .phoebe-reader-note');
+        var mine = document.querySelectorAll('.phoebe-reader-masthead, .phoebe-reader-note, .phoebe-brsp');
         for (var i = 0; i < mine.length; i++) mine[i].style.display = on ? '' : 'none';
       };
 
