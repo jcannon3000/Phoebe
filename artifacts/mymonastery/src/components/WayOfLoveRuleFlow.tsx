@@ -414,7 +414,6 @@ type Step =
   // (owner: "it starts asking if you would like morning or evening, and you
   // can turn them off or on"). A side has always been derivable from its way
   // slide (nothing chosen = off); this asks it outright, first.
-  | "sides"
   // A side's anchor is picked, then NAMED, then configured — three slides, the
   // shape "Create your own" always had and the one the owner asked the other
   // two kinds to match: pick the kind, choose WHICH one, then its details.
@@ -1068,7 +1067,7 @@ export default function WayOfLoveRuleFlow({
     // first-open seed), so the preset picker would re-adopt over it.
     if (pilot || guest) return "intro";
     const hasRule = !!getExplicitSideLevel("morning") || !!getExplicitSideLevel("evening");
-    return hasRule ? "sides" : "starter";
+    return hasRule ? "morning-way" : "starter";
   });
   // Show the "technology of holding" prelude ONCE, before the very first author
   // reaches the preset picker — it names why a daily practice matters and where
@@ -1086,12 +1085,24 @@ export default function WayOfLoveRuleFlow({
   // When they want to pray — morning, evening, or both. Seeded from whichever
   // sides already have a per-side level; defaults to both on first run. At least
   // one side stays selected.
-  const [sides, setSides] = useState<{ morning: boolean; evening: boolean }>(() => {
-    const m = getExplicitSideLevel("morning");
-    const e = getExplicitSideLevel("evening");
-    if (m || e) return { morning: !!m, evening: !!e };
-    return { morning: true, evening: true };
-  });
+  /**
+   * IS THIS SIDE ON? DERIVED, NEVER STORED (owner, 2026-10-01: "Why dont we
+   * get ride of that first slide where you toggle on and off Morning and
+   * Evning, and just have an option on the first Morning and Evening page that
+   * says None at the bottom").
+   *
+   * It used to be its own state with its own slide at the head of the flow —
+   * and a side saved as off is written as the level "ask", which that seed read
+   * back as off. So a morning that slipped off could only come back by noticing
+   * a toggle on a slide that was mostly about something else, and every save
+   * re-confirmed it. The owner: "For some reason it keeps turning off my
+   * morning practice" · "when I edit my routine, it is turned off on the first
+   * slide".
+   *
+   * A side is now ON when it HAS a practice, and that is the only question
+   * asked. Nothing can disagree with the picker, because it IS the picker.
+   * (Declared below, with contemplativeOnSide, which it reads.)
+   */
   // Preload from the user's current settings so Customize reflects what they
   // already chose, not the first-run defaults. localStorage per-side levels +
   // reflection + minutes are instant; the server office-prefs (the global
@@ -1749,6 +1760,12 @@ export default function WayOfLoveRuleFlow({
 
   /** Is this side set to a contemplative practice at all? */
   const contemplativeOnSide = (s: OfficeSide) => contemplativeForm[s] !== null;
+  /** A side is on when it keeps something: a prayer, or a contemplative
+   *  practice. "None" on its own slide turns it off by clearing both. */
+  const sides: { morning: boolean; evening: boolean } = {
+    morning: prayBySide.morning !== "none" || contemplativeOnSide("morning"),
+    evening: prayBySide.evening !== "none" || contemplativeOnSide("evening"),
+  };
   // Contemplative-Prayer silence sizing: a FIXED daily amount (the dropdown), or
   // the guided "grow my silence" ladder — start at 5 min, +5 every kept week up
   // to 30. Seeded from the saved ladder state (re-seeded in the hydration effect
@@ -2197,17 +2214,11 @@ export default function WayOfLoveRuleFlow({
      * device, where rule-config hasn't landed yet).
      */
     {
-      const mLvl = getExplicitSideLevel("morning");
-      const eLvl = getExplicitSideLevel("evening");
-      if (mLvl !== null || eLvl !== null) {
-        const mOn = mLvl !== null && mLvl !== "ask";
-        const eOn = eLvl !== null && eLvl !== "ask";
-        setSides(mOn || eOn ? { morning: mOn, evening: eOn } : { morning: true, evening: false });
-      } else {
-        const mOn = prefs.morning !== "none";
-        const eOn = prefs.evening !== "none";
-        setSides(mOn || eOn ? { morning: mOn, evening: eOn } : { morning: true, evening: false });
-      }
+      /* Nothing to hydrate: a side is on when it has a practice, and the
+         practice is already seeded from the stored level (prayBySide) and the
+         per-side contemplative form. This block used to set its own `sides`
+         state from the level, which is how a side could end up off while its
+         picker still showed a practice. */
     }
     if (prefs.notificationStyle === "nudge") setNotificationStyle("nudge");
   }, [prefs]);
@@ -2959,7 +2970,7 @@ export default function WayOfLoveRuleFlow({
         if (prescribe) {
           setEntryChoiceMade(true);
           setManualMode("scratch");
-          setStep("sides");
+          setStep("morning-way");
         }
       }
     } catch { /* ignore */ }
@@ -2983,8 +2994,14 @@ export default function WayOfLoveRuleFlow({
   const adoptRule = (preset: RulePreset, opts?: { seedOnly?: boolean }) => {
     touchedRef.current = true;
     lastAdoptedPresetRef.current = preset.id;
-    setSides(preset.sides);
-    setPrayBySide({ morning: preset.pray, evening: preset.evening ?? preset.pray });
+    /* A side the rule leaves out gets NO practice, which is now the whole of
+       what "off" means. Without this the evening fell back to `preset.pray`
+       and a rule with no evening would have read as one praying the morning's
+       practice twice. */
+    setPrayBySide({
+      morning: preset.sides.morning ? preset.pray : "none",
+      evening: preset.sides.evening ? (preset.evening ?? preset.pray) : "none",
+    });
     setCommunityWithOffice({ morning: false, evening: false });
     // chooseContemplationStyle, NOT the raw setter: the style's localStorage
     // write ("phoebe:contemplation-style") lives in the chooser, and the home
@@ -3501,7 +3518,9 @@ export default function WayOfLoveRuleFlow({
         "custom",
       ]
     : [
-    "sides",
+    // NO "sides" STEP (owner, 2026-10-01). The flow opens on the morning's own
+    // picker; "None" at the foot of each side's slide turns a side off, and
+    // having a practice is what turns it on.
     "morning-way",
     ...(sidesArg.morning ? ([...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), ...(bcpOnSide("morning") ? ["morning-bcp"] : []), ...(contemplativeOnSide("morning") ? ["morning-contemplative"] : []), "morning-config", ...(extraWantedBySide.morning ? ["morning-extra"] : []), ...(extraGroupNeedsPick("morning") ? ["morning-extra-pick"] : []), ...(extraNeedsConfig("morning") ? ["morning-extra-config"] : [])] as Step[]) : []),
     "evening-way",
@@ -3576,7 +3595,6 @@ export default function WayOfLoveRuleFlow({
     const nextSides = { ...sides, [side]: !turningOff };
     // Nothing changed for this side — the ordinary path.
     if (nextSides[side] === sides[side]) { goNext(); return; }
-    setSides(nextSides);
     // Turning a side back ON defaults its daily reminder ON (carried over from
     // the removed "when" step's toggleSide) — re-enabling a side shouldn't
     // inherit the "off" a previous save left behind.
@@ -3791,7 +3809,7 @@ export default function WayOfLoveRuleFlow({
     // It used to drop into the flat list (manualMode "edit"), which is no
     // longer the editor — the walk is. Landing there from Back was the one
     // way left to reach it.
-    if (canEditParts && manualMode === "scratch" && (step === "sides" || step === "morning-way")) {
+    if (canEditParts && manualMode === "scratch" && step === "morning-way") {
       setEntryChoiceMade(false);
       return;
     }
@@ -4973,7 +4991,7 @@ export default function WayOfLoveRuleFlow({
            * unchanged — edit, preset, revert (owner).
            */
           setManualMode("scratch");
-          setStep("sides");
+          setStep("morning-way");
           setEntryChoiceMade(true);
         })}
       </>,
@@ -5240,67 +5258,10 @@ export default function WayOfLoveRuleFlow({
   // only thing on the slide, so it gets headline-ish type (clamped, so it does
   // not run to 30px on a phone and 30px on a tablet alike) instead of the 14.5
   // it had while squeezed into a card.
-  if (step === "sides") {
-    /**
-     * THE OPENING QUESTION: which ends of the day are part of this rule.
-     *
-     * Restored per owner. A side could already be turned off implicitly, by
-     * choosing nothing on its way slide, but nothing ever ASKED — so the flow
-     * opened straight into "how would you like to pray in the morning?" for a
-     * person who may not want a morning at all. Turning one off here skips its
-     * slides entirely (buildSteps is computed from `sides`).
-     */
-    const row = (side: OfficeSide, label: string, sub: string) => {
-      const on = sides[side];
-      return (
-        <button
-          type="button"
-          onClick={() => {
-            touchedRef.current = true;
-            setSides((prev) => {
-              const next = { ...prev, [side]: !prev[side] };
-              // Never leave the rule with no day at all — the flow has nothing
-              // left to ask, and the home would have no anchor to lead with.
-              return next.morning || next.evening ? next : prev;
-            });
-            // Turning a side back on re-arms its reminder, matching wayContinue.
-            if (!on) setReminderOnBySide((r) => ({ ...r, [side]: true }));
-          }}
-          style={{
-            width: "100%", textAlign: "left", cursor: "pointer",
-            background: on ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
-            border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
-            borderRadius: 16, padding: 16, display: "flex", alignItems: "center",
-            justifyContent: "space-between", gap: 12, transition: "border-color 0.2s", // border only — see choiceRow
-          }}
-        >
-          <span style={{ minWidth: 0 }}>
-            <span style={{ display: "block", fontSize: 16, fontWeight: 700, color: CREAM, fontFamily: FONT }}>{label}</span>
-            <span style={{ display: "block", fontSize: 13, color: SAGE, fontFamily: FONT, marginTop: 3 }}>{sub}</span>
-          </span>
-          <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: on ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
-            <span style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
-          </span>
-        </button>
-      );
-    };
-    return shell(
-      <>
-        {stepHeader(
-          t("wol_rule.sides_eyebrow", { defaultValue: "Your day" }),
-          t("wol_rule.sides_title", { defaultValue: "When will you pray?" }),
-        )}
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
-          {t("wol_rule.sides_body", { defaultValue: "Keep a morning, an evening, or both. You can change this whenever you like." })}
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {row("morning", t("wol_rule.sides_morning", { defaultValue: "Morning" }), t("wol_rule.sides_morning_sub", { defaultValue: "A practice to open the day" }))}
-          {row("evening", t("wol_rule.sides_evening", { defaultValue: "Evening" }), t("wol_rule.sides_evening_sub", { defaultValue: "A practice to close it" }))}
-        </div>
-        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
-      </>,
-    );
-  }
+  /* The "sides" slide — Morning and Evening as on/off toggles — is GONE
+     (owner, 2026-10-01). A side is on when it keeps a practice, and the
+     "None" row at the foot of each side's own picker is how it is turned
+     off. One place to say it, so nothing can disagree with the picker. */
 
   if (step === "intro") {
     return shell(
@@ -5348,11 +5309,11 @@ export default function WayOfLoveRuleFlow({
               evening? Select one — select your method, or leave blank if you
               would like to not have a practice in the evening." The second
               sentence is doing real work now that the None row is gone: with
-              nothing selected meaning "this side is off", that has to be said
-              out loud or it's a hidden rule. */}
+              the None row at the foot says the same thing as a CHOICE rather
+              than as an absence, which is the point of it (2026-10-01). */}
           {t("wol_rule.side_way_body", {
             side: cap.toLowerCase(),
-            defaultValue: `How would you like to pray in the ${cap.toLowerCase()}? Select one — or leave it blank if you'd rather not have a practice in the ${cap.toLowerCase()}.`,
+            defaultValue: `How would you like to pray in the ${cap.toLowerCase()}? Select one — or None, if you'd rather not have a practice in the ${cap.toLowerCase()}.`,
           })}
         </p>
         {/* SIMPLIFIED daily-prayer choice (owner): exactly two ways, single-select
@@ -5587,6 +5548,29 @@ export default function WayOfLoveRuleFlow({
               if (side === "evening" && prayBySide[side] === "examen") setContemplative((c) => ({ ...c, examen: false }));
               if (contemplationBySide[side]) toggleContemplationSide(side);
               choosePrayBySide(side, "ownPractice");
+            },
+          )}
+          {/* NONE, at the bottom (owner, 2026-10-01: "just have an option on
+              the first Morning and Evening page that says None at the
+              bottom"). The only way to turn a side off, and it says so out
+              loud — the old way was an on/off slide at the head of the flow
+              that a person could pass without reading, and a side it turned
+              off could not be turned back on from here.
+              It clears BOTH halves of "has a practice": the prayer and any
+              contemplative practice riding this side. Clearing one would leave
+              the row looking chosen while the side stayed on. */}
+          {choiceRow(
+            !sides[side],
+            `\u{1F311} ${t("wol_rule.cp_none", { defaultValue: "None" })}`,
+            t("wol_rule.cp_none_sub", {
+              defaultValue: `No practice in the ${side === "morning" ? "morning" : "evening"}.`,
+            }),
+            () => {
+              touchedRef.current = true;
+              if (contemplationBySide[side]) toggleContemplationSide(side);
+              setContemplativeForm((prev) => ({ ...prev, [side]: null }));
+              if (side === "evening" && prayBySide[side] === "examen") setContemplative((c) => ({ ...c, examen: false }));
+              choosePrayBySide(side, "none");
             },
           )}
         </div>
@@ -7493,7 +7477,7 @@ export default function WayOfLoveRuleFlow({
           <button onClick={() => setLocation("/find-your-rhythm")} style={{ background: "none", border: "none", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
             {t("wol_rule.starter_help_choose", { defaultValue: "Not sure? Help me choose →" })}
           </button>
-          <button onClick={() => { touchedRef.current = true; setStep(pilot || guest ? "intro" : "sides"); }} style={{ background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer" }}>
+          <button onClick={() => { touchedRef.current = true; setStep(pilot || guest ? "intro" : "morning-way"); }} style={{ background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer" }}>
             {t("wol_rule.starter_build_own", { defaultValue: "Or build my own →" })}
           </button>
         </div>
@@ -7534,7 +7518,7 @@ export default function WayOfLoveRuleFlow({
         <button onClick={onDone} style={{ marginTop: 22, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "16px 20px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
           {t("wol_rule.tend_done", { defaultValue: "That’s all for now" })}
         </button>
-        <button onClick={() => { touchedRef.current = true; setStep(pilot || guest ? "intro" : "sides"); }} style={{ marginTop: 12, background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 13, fontFamily: FONT, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
+        <button onClick={() => { touchedRef.current = true; setStep(pilot || guest ? "intro" : "morning-way"); }} style={{ marginTop: 12, background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 13, fontFamily: FONT, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
           {t("wol_rule.tend_reshape", { defaultValue: "Reshape from scratch" })}
         </button>
       </>,
