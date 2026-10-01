@@ -6,7 +6,7 @@ import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { checkPushPermission, enablePushNotifications, type PermState } from "@/lib/pushPermission";
 import { HIDE_COMMUNITY_KEY } from "@/lib/displayPrefs";
-import { backgroundStronger, setBackgroundStronger } from "@/lib/backgroundStrength";
+import { backgroundLighter, setBackgroundLighter } from "@/lib/backgroundStrength";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { useGuestMode } from "@/hooks/useGuestMode";
@@ -1349,13 +1349,13 @@ function HomeDisplaySettings() {
     try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
   };
   // The background's strength — both layers of it (lib/backgroundStrength).
-  const [bgStronger, setBgStronger] = useState<boolean>(() => backgroundStronger());
+  const [bgLighter, setBgLighter] = useState<boolean>(() => backgroundLighter());
   const toggleBgStrength = () => {
-    const next = !bgStronger;
-    setBgStronger(next);
+    const next = !bgLighter;
+    setBgLighter(next);
     // Writes the variables on the root as well as the preference, so the page
     // behind this one is already at the new strength when Settings closes.
-    setBackgroundStronger(next);
+    setBackgroundLighter(next);
   };
   const hapticsOn = !hapticsOff;
   const toggleHaptics = () => {
@@ -1426,11 +1426,12 @@ function HomeDisplaySettings() {
 
         <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
 
-        {/* STRONGER BACKGROUND (owner, 2026-09-25: "in settings … a way to
-            increase the backround color by 20%" · "for the whole app"), and,
-            asked which of the two layers he meant, BOTH: the leaf photograph
-            and the green wash over it, each by a fifth. It is one switch
-            rather than a set of steps, at his word.
+        {/* LIGHTER BACKGROUND (owner, 2026-09-25: "in settings … a way to
+            increase the backround color by 20%" · "for the whole app"; reversed
+            2026-10-01: "The stronger background should be lighter background" ·
+            "the make the backround lighter togger"). Both layers still move —
+            the leaf photograph up, the green wash over it down — and it is one
+            switch rather than a set of steps, at his word.
 
             It writes two CSS variables on the document root, so every backdrop
             in the app follows it without a re-render (lib/backgroundStrength);
@@ -1443,17 +1444,17 @@ function HomeDisplaySettings() {
         >
           <div className="text-left">
             <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
-              Stronger background
+              Lighter background
             </p>
             <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-              Deepens the photograph and its wash across the whole app, by a fifth.
+              Shows more of the photograph and less of the dark wash over it, across the whole app.
             </p>
           </div>
           <div
-            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${bgStronger ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${bgLighter ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
           >
             <div
-              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${bgStronger ? "left-[21px]" : "left-[3px]"}`}
+              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${bgLighter ? "left-[21px]" : "left-[3px]"}`}
               style={{ background: "#F0EDE6" }}
             />
           </div>
