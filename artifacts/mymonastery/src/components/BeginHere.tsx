@@ -45,9 +45,12 @@ export function BeginHere({ onStarted }: { onStarted?: () => void }) {
        16px label line, 10px gaps, one compositing layer for the list
        (reference_card_spacing_exact). */
     <div>
-      <p style={{ fontSize: 11, lineHeight: "16px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(143,175,150,0.55)", margin: "0 0 10px", fontFamily: FONT }}>
-        Ways to pray today
-      </p>
+      {/* NO EYEBROW (owner, 2026-09-30: "Take out the Ways to Pray today
+          eyebrow for non routine accounts"). A label over four cards that are
+          plainly ways to pray was telling somebody what they can already see,
+          and this home's whole argument is that nothing here is being
+          announced at them. The rows now start at the top of the body, so the
+          first thing on the page is a way in. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, willChange: "transform" }}>
         {/* PRAY — one steady word, at the owner's word ("Just 'Pray', always"). */}
         <MenuRow emoji="🙏🏽" label="Pray" sub="Guided prayer, the office for this hour, Pray As You Go, Taizé" onClick={go("/menu/pray")} />

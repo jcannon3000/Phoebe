@@ -46,7 +46,16 @@ export default function AboutPage() {
           borderBottom: "1px solid rgba(200,212,192,0.1)",
         }}
       >
-        <div style={{ height: BAR_H, display: "flex", alignItems: "center", padding: "0 16px" }}>
+        {/* ON A WIDE WINDOW THE BAR IS NOT A PHONE'S (owner, 2026-09-30:
+            "on web the top bar doesnt look right"). At 16px from the left edge
+            of a desktop window, "← Back" sat alone in the far corner of a black
+            band two thousand pixels wide, with the framed page's own content
+            centred far away from it. The bar now holds the SAME column the
+            page inside it uses — max-width 1080 with landing.html's own gutter
+            (its .wrap, and .lnav .wrap's 52px, which is where BAR_H comes
+            from) — so Back lines up with the content it goes back from. On a
+            phone the column is the full width and nothing moves. */}
+        <div style={{ height: BAR_H, display: "flex", alignItems: "center", maxWidth: 1080, margin: "0 auto", paddingInline: "clamp(16px, 5vw, 48px)" }}>
           <button
             type="button"
             onClick={back}
