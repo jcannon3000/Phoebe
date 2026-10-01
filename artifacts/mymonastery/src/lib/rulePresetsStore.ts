@@ -185,7 +185,13 @@ export const SEED_DEFAULT_FALLBACK: DefaultSeed = {
   // Visio Divina, the feast-day hagiographies and Express Gratitude are out
   // (the last of those on the owner's own answer: "Take out gratitude").
   morning: "guided-prayer", evening: "examen", reflection: "nouwen",
-  cards: ["nouwen", "cobreathe"], relational: [], silenceMin: 0,
+  // v13 (owner, 2026-10-01): contemplation takes Breathing Together's place —
+  // ONE SESSION, not the minutes quota, so silenceMin stays 0 and the per-side
+  // card is what carries it. NOTE that DefaultSeed has no field for a per-side
+  // contemplation, so this shape cannot express it: the code seed writes it
+  // directly (guestSeed's seedContemplation). Worth knowing before anyone reads
+  // this as the whole of the default.
+  cards: ["nouwen"], relational: [], silenceMin: 0,
   slots: {}, version: 0,
 };
 

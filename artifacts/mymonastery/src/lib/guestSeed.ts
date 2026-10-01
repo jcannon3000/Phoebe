@@ -19,7 +19,7 @@
 // day.) See memory "project_public_no_login".
 
 import { ROUTINE_KEYS } from "@/lib/routineSync";
-import { setSideLevel, setSideEntry, setReflectionSource, setSideReflection, getExplicitSideLevel, getExplicitReflectionSource, getExplicitSideEntry, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { setSideLevel, setSideEntry, setReflectionSource, setSideReflection, getExplicitSideLevel, getExplicitReflectionSource, getExplicitSideEntry, setSideContemplation, setSideContemplationKind, getSideContemplationExplicit, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, cacheHomeLayoutLocalOnly, addHomeCard, removeHomeCard } from "@/lib/homeLayoutCache";
 import { setPracticeSlot, setRelationalPractices, activeRelationalPractices } from "@/lib/customAnchors";
 import { clearRoutineSyncClock } from "@/lib/routineSync";
@@ -79,7 +79,14 @@ export function predatesSeedStamp(): boolean {
 // and Breathing Together joins. Visio Divina and the feast-day hagiographies
 // are no longer SEEDED — see the migration, which stops adding them but takes
 // neither away from a device that already has one.
-const SEED_VERSION = "12";
+//
+// v13 (owner, 2026-10-01): "Morning: Simple Guided Prayer · Newsletter: Nouwen
+// · Contemplation (…not quota but just one session…) · Evening: Examen". The
+// breath gives its place to CONTEMPLATION — and specifically not to the silence
+// GOAL card, which is the minutes quota with a progress bar. One session a day,
+// kept by sitting, is a per-side contemplation card with no goal behind it:
+// `seedContemplation` below, and silenceMin stays 0.
+const SEED_VERSION = "13";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never
 // remove: the whole point is recognizing rules we ourselves wrote.
@@ -139,6 +146,37 @@ export function clearGuestSeed(): void {
 /** The newsletter keys this seed has ever made the default's word. Widened
  *  from "cac" | "fdd" for v12's Nouwen (owner, 2026-09-30). */
 type NewsletterKey = "cac" | "fdd" | "nouwen";
+
+/**
+ * CONTEMPLATION AS ONE SESSION, NOT A QUOTA (owner, 2026-10-01: "Contemplation
+ * (Have it not be qouta but just one session, any of the practices on the
+ * contemplation intro such as pray as you go)").
+ *
+ * TWO DIFFERENT CARDS WEAR THIS NAME, and the whole of the ask is which one.
+ * The SILENCE GOAL card is a daily minutes total with a progress bar — that is
+ * the quota, and it appears when `contemplationGoalMin > 0` with no per-side
+ * card (useRhythmState's soloSilenceActive). A PER-SIDE contemplation card is a
+ * session: it is kept when the sit is kept, and nothing counts up. So this
+ * writes the per-side card and leaves the goal at zero.
+ *
+ * The morning, because the owner's four read in the order of a day and this one
+ * sits in its first half. It rides ALONGSIDE the morning anchor rather than
+ * replacing it — contemplation has always been an add-on to a side, which is
+ * why Simple Guided Prayer is still the morning's own prayer.
+ *
+ * `respectExisting` is for the migration: getSideContemplation reads the raw
+ * per-side key whether contemplation is currently on or off, so a device where
+ * somebody deliberately turned the morning sit off must not have it written
+ * back under them.
+ */
+function seedContemplation(opts?: { respectExisting?: boolean }): void {
+  if (opts?.respectExisting && getSideContemplationExplicit("morning") !== null) return;
+  setSideContemplation("morning", true);
+  // "silent" is the sit itself. The kind decides what keeps the card
+  // (useRhythmState's kindKept), and the sit is the one every practice on the
+  // contemplation page can end in.
+  setSideContemplationKind("morning", "silent");
+}
 
 /** BREATHING TOGETHER, as part of the default (owner, v12: "Simple Guided ·
  *  Breathing Together · Henri Nouwen · Examen"). A layout entry like Visio's;
@@ -476,11 +514,15 @@ function migrateStaleSeed(): void {
         unseedCard("cac");
       }
       /**
-       * BREATHING TOGETHER JOINS (v12). respectRemoval: a card someone
-       * deliberately took off stays off — the same promise applyDefaultSeed's
-       * migrate keeps.
+       * CONTEMPLATION JOINS (v13), one session and no quota — and ONLY on a
+       * device that has no contemplation opinion of its own. getSideContemplation
+       * reads the raw per-side key whether or not contemplation is on, so
+       * writing it unconditionally would overrule somebody who had deliberately
+       * turned a side's sit OFF. Breathing Together is no longer seeded (v12's
+       * line is gone) and, like Visio and the hagiographies below, it is not
+       * removed from a device that has it.
        */
-      seedCobreathe({ respectRemoval: true });
+      seedContemplation({ respectExisting: true });
       /**
        * VISIO DIVINA AND THE HAGIOGRAPHIES ARE NO LONGER SEEDED — AND NOT
        * TAKEN AWAY EITHER (v12). They were v7's and v11's, and this block used
@@ -639,8 +681,9 @@ export function seedGuestRule(): void {
     // four and nothing else.
     setRelationalPractices([]);
     seedCard("nouwen");
-    seedCobreathe();
-    // NOT seedVisio / seedHagiography any more: neither is in the v12 default.
+    // v13: contemplation takes the breath's place. One session, no quota.
+    seedContemplation();
+    // NOT seedCobreathe / seedVisio / seedHagiography: none is in the default.
     localStorage.setItem(SEED_KEY, todayYmd());
     // Freshly seeded devices are already current — stamp so migrateStaleSeed
     // never has anything to do for them.

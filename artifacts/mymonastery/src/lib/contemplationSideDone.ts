@@ -60,7 +60,12 @@ export function hasContemplationSideDoneToday(
   const flag = readSideFlag(side);
   if (!flag || flag.date !== todayLocalISO()) return false;
   if (!expectedKind || flag.kind === null) return true;
-  return flag.kind === expectedKind;
+  if (flag.kind === expectedKind) return true;
+  // The same one-way rule as kindMatchesRhythm: a breath keeps a CONTEMPLATION
+  // card, a silent sit never keeps a Breathing Together one. Both halves have
+  // to agree or the sit would be attributed to the side and then read back as
+  // not keeping it.
+  return expectedKind === "silent" && flag.kind === "cobreathe";
 }
 
 // Stamp a side's contemplation done for today + notify listeners. Kept separate
@@ -155,8 +160,23 @@ function configuredKindFor(side: ContemplationSide): ContemplationKind | null {
  * An EXPLICIT ?side= still wins — that's a deliberate launch from that side's
  * own card, and the card only offers the practice it actually is.
  */
+/**
+ * ONE-WAY, AND THE DIRECTION IS THE WHOLE OF IT.
+ *
+ * A CONTEMPLATION card (kind "silent") is the day's one contemplative session,
+ * and Breathing Together is one of the ways to take it — owner, 2026-10-01:
+ * "if they did breathing together from the contemplation page that should count
+ * to from the contemplation card". So a breath keeps a silent side.
+ *
+ * NOT the reverse. A BREATHING TOGETHER card names one practice, and a silent
+ * sit must leave it open — that was the owner's own earlier report ("I did a
+ * contemplation sit, not Breathing Together, and it counted it as Breathing
+ * Together"), and widening both directions at once would undo it.
+ */
 function kindMatchesRhythm(kind: ContemplationKind, side: ContemplationSide): boolean {
-  return kind === configuredKindFor(side);
+  const configured = configuredKindFor(side);
+  if (kind === configured) return true;
+  return configured === "silent" && kind === "cobreathe";
 }
 
 /** Is there ANY side this sit could belong to? Used before the order-based
