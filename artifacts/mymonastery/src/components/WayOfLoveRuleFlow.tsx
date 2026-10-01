@@ -1257,6 +1257,7 @@ export default function WayOfLoveRuleFlow({
    * no anchor, no per-side read — so it is its own home card, the same one
    * Reflections → Manage subscriptions switches, seeded from the layout.
    */
+  const [hagiographyOn, setHagiographyOn] = useState<boolean>(() => homeCardOn(seedLayout(user), "hagiography"));
   // When to nudge them to pray, per side. Finishing turns the matching reminder
   // pref ON (pref != "none") so the server's daily push actually fires.
   // NULL means "not known yet" — not the default. Owner: "i had notifications
@@ -1453,6 +1454,9 @@ export default function WayOfLoveRuleFlow({
     // cac+fdd+ssje selection would otherwise collapse to one on re-open.
     const fromLayout = TRACKED_REFLECTION_SOURCES.filter((s) => homeCardOn(seedLayout(user), s));
     if (fromLayout.length > 0) setNewsletters([...fromLayout]);
+    // Same reason as the newsletters above: `user` was likely null at the
+    // initializer, so a card that IS on would otherwise read as off on re-open.
+    setHagiographyOn(homeCardOn(seedLayout(user), "hagiography"));
     // Contemplative Prayer + the Examen are add-ons now (not office anchors), so
     // seed them from the saved office LEVEL (reflect-sit / examen) — plus the
     // examen home card — rather than from prayBySide.
@@ -2369,6 +2373,8 @@ export default function WayOfLoveRuleFlow({
        */
       ...(contemplative.taize ? ["taize"] : []),
       ...(contemplative.andrews ? ["andrews"] : []),
+      // The day's life, on the days the calendar keeps one (owner, 2026-10-01).
+      ...(hagiographyOn ? ["hagiography"] : []),
       ...(contemplative.spirituals ? ["spirituals"] : []),
       ...(contemplative.lectio ? ["lectio"] : []),
       /**
@@ -2396,9 +2402,12 @@ export default function WayOfLoveRuleFlow({
          Visio "under sunday", Hagiographies "in the eybrow under the date").
          Unconditionally hidden rather than dropped from both lists, because a
          key in NEITHER order nor hidden reads as ON
-         (reference_home_layout_hidden_governs). */
+         (reference_home_layout_hidden_governs). VISIO ONLY: the hagiographies
+         came back on 2026-10-01 and follow their toggle again — left here as a
+         literal, every save would have hidden the card from a line nowhere
+         near the switch that had just turned it on. */
       "visio",
-      "hagiography",
+      ...(hagiographyOn ? [] : ["hagiography"]),
       ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
       ...(contemplative.andrews ? [] : ["andrews"]),
@@ -2758,6 +2767,8 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.icons ? ["icons"] : []),
       ...(contemplative.taize ? ["taize"] : []),
       ...(contemplative.andrews ? ["andrews"] : []),
+      // The day's life, on the days the calendar keeps one (owner, 2026-10-01).
+      ...(hagiographyOn ? ["hagiography"] : []),
       ...(contemplative.spirituals ? ["spirituals"] : []),
       ...(contemplative.lectio ? ["lectio"] : []),
       /**
@@ -2785,9 +2796,12 @@ export default function WayOfLoveRuleFlow({
          Visio "under sunday", Hagiographies "in the eybrow under the date").
          Unconditionally hidden rather than dropped from both lists, because a
          key in NEITHER order nor hidden reads as ON
-         (reference_home_layout_hidden_governs). */
+         (reference_home_layout_hidden_governs). VISIO ONLY: the hagiographies
+         came back on 2026-10-01 and follow their toggle again — left here as a
+         literal, every save would have hidden the card from a line nowhere
+         near the switch that had just turned it on. */
       "visio",
-      "hagiography",
+      ...(hagiographyOn ? [] : ["hagiography"]),
       // See onKeys above — both halves, or an unticked one is never hidden.
       ...(contemplative.icons ? [] : ["icons"]),
       ...(contemplative.taize ? [] : ["taize"]),
@@ -4166,9 +4180,9 @@ export default function WayOfLoveRuleFlow({
       // visit even though its home card was hidden.
       try { localStorage.removeItem(`phoebe:slot:${key}`); } catch { /* private mode */ }
     } else if (id === "card:hagiography") {
-      // Retired (owner, 2026-09-30) — it is hidden on every save now, so the
-      // ✕ has nothing left to turn off. The branch stays so an old summary row
-      // can't fall through to the newsletter arm below and strip a newsletter.
+      // Its own card, not a newsletter — so it needs its own arm, or the ✕
+      // would fall through below and strip a newsletter instead.
+      setHagiographyOn(false);
     } else if (id.startsWith("card:")) {
       setNewsletters((prev) => prev.filter((n) => n !== id.slice("card:".length)));
     } else if (id.startsWith("custom:")) {
@@ -6492,12 +6506,20 @@ export default function WayOfLoveRuleFlow({
                 : n.sub;
               return choiceRow(newsletters.includes(n.id), n.label, sub, () => toggleNewsletter(n.id));
             })}
-          {/* FEAST DAY HAGIOGRAPHIES IS NOT OFFERED HERE ANY MORE (owner,
-              2026-09-30: "Take out Haigriphies out of practices, both in the
-              menu and the customizer" … "just have it show in the eybrow
-              under the date"). The day's life is read from the feast line
-              under the date on the home, which marks it exactly as this card
-              did. */}
+          {/* FEAST DAY HAGIOGRAPHIES, back beside the newsletters (owner,
+              2026-10-01: "Lets make haigriohpies a reflection practice again,
+              and in customizer"), reversing his own 2026-09-30 call. Here
+              rather than among the contemplative practices because that is
+              what he called it — a reflection: a life read slowly. It is NOT a
+              ReflectionSource for the same reason Taizé below isn't; it is its
+              own home card, and only draws on the days the calendar keeps a
+              commemoration (useRhythmState's hagiographyShown). */}
+          {choiceRow(
+            hagiographyOn,
+            `📜 ${t("wol_rule.learn_hagiography", { defaultValue: "Feast Day Hagiographies" })}`,
+            t("wol_rule.learn_hagiography_sub", { defaultValue: "The life of the saint, on days the calendar keeps one — from Forward Movement." }),
+            () => setHagiographyOn((v) => !v),
+          )}
           {/* TAIZÉ SITS HERE TOO (owner: "not seeing taize in the reflections
               option of the full customizer").
               It is NOT a NEWSLETTERS entry, and deliberately so: that list is

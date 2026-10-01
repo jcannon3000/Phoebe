@@ -902,19 +902,27 @@ export function useRhythmState(): RhythmState {
     } catch { return null; }
   })();
   /**
-   * …AND IT IS NO LONGER A CARD (owner, 2026-09-30: "Take out Haigriphies out
-   * of practices, both in the menu and the customizer" … "just have it show
-   * in the eybrow under the date").
+   * …AND IT IS A CARD AGAIN (owner, 2026-10-01: "Lets make haigriohpies a
+   * reflection practice again, and in customizer" · "THen put it back in the
+   * default routine" · "only on days when there was one"), reversing his own
+   * 2026-09-30 call to take it out.
    *
-   * The life is still read, still marked, still counted — from the feast line
-   * under the date (components/LiturgicalDateHeader), which has opened it in
-   * the reader and called markHagiographyRead since 2026-09-12. What goes is
-   * the rhythm card, its dot and its widget row, all of which read this one
-   * value. And because DailyProgressBody's Done entry for the life is gated
-   * on `!hagiographyShown`, a life read from the eyebrow now lands in Done by
-   * that path instead — which is exactly what it was written for.
+   * "ONLY ON DAYS WHEN THERE WAS ONE" is this line and nothing else: the URL
+   * is the day's commemoration, so on the ~88 days the calendar keeps none
+   * there is nothing to read and the card, the dot, the day's total and the
+   * widget all stay away together — one gate, as
+   * reference_completion_signal_invariant requires. The card is in the rhythm
+   * all year; it simply draws on about 277 days of it.
+   *
+   * The feast line under the date still opens the same life and still calls
+   * markHagiographyRead (since 2026-09-12), so a day read from there is kept
+   * either way. DailyProgressBody's Done entry for the life stays gated on
+   * `!hagiographyShown`: with the card back, a commemoration day is covered by
+   * the card and the eyebrow path carries the rest. That is the shape it had
+   * before 776611ff.
    */
-  const hagiographyShown = false;
+  const hagiographyActive = homeCardActive(hl, "hagiography");
+  const hagiographyShown = hagiographyActive && !!hagiographyUrl;
   const hagiographyDone = hasReadHagiographyToday();
   const lectioActive = homeCardActive(hl, "lectio");
   // Spirituals is admin-only, not public — see lib/spiritualsFlag.ts. Every
