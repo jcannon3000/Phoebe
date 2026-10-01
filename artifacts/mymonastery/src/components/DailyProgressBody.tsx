@@ -1255,8 +1255,23 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (raw >= 5 && raw <= 30) return Math.min(raw, SESSION_SIT_CAP);
     return 15;
   };
+  /**
+   * THE KEPT LINE CANNOT NAME SILENCE ANY MORE (2026-10-01).
+   *
+   * A Breathing Together keep now satisfies a side whose contemplation is
+   * "silent" (owner: "if they did breathing together from the contemplation
+   * page that should count to from the contemplation card" —
+   * lib/contemplationSideDone's kindMatchesRhythm). So this card can be kept
+   * by a breath, and "You rested in silence today" then told the person they
+   * had done something they hadn't.
+   *
+   * The invitation above it still names silence, because that is what the
+   * card is ASKING for and what its timer runs. Only the past tense had to
+   * widen: "rested with God" is true of a sit and of a breath, and does not
+   * need to know which one happened — which this function has no way to tell.
+   */
   const contemplationBlurbFor = (done: boolean, mins: number) => done
-    ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
+    ? t("rhythm.contemplation_kept", { defaultValue: "You rested with God today" })
     : t("rhythm.contemplation_side_len", { mins, defaultValue: `${mins} minutes of loving God in silence` });
 
   // Extracted to lib/officePrefs.ts (sideOfficeTitle) so /turn-learn-pray's
