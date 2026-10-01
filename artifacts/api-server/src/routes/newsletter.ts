@@ -38,9 +38,29 @@ async function isBetaAdmin(userId: number): Promise<boolean> {
   }
 }
 
+/**
+ * WHO "EVERYONE" IS — AND WHO IT MUST NEVER BE.
+ *
+ * The public no-login version gives every phone an ANONYMOUS DEVICE USER
+ * (routes/auth.ts POST /auth/anonymous) whose email is synthetic and
+ * undeliverable: anon-<hex>@device.withphoebe.app. There are far more of
+ * those rows than there are accounts, and "all" used to be a bare SELECT
+ * over users — so sending to Everyone would have thrown the whole list at
+ * Gmail and hard-bounced every one of them. A bounce rate like that is how
+ * a sending address loses its reputation, which would take the password
+ * resets down with the newsletter.
+ *
+ * So "everyone" means: a real account, with a real address. The same
+ * predicate backs the picker's count, so what it promises is what sends.
+ * The per-recipient unsubscribe gate (lib/email resolveBulkRecipient) is
+ * still the thing that honours email_enabled; this is only about who is a
+ * person we can write to at all.
+ */
+const REAL_ACCOUNT_SQL = sql`COALESCE(${usersTable.isAnonymous}, false) = false AND ${usersTable.email} NOT LIKE '%@device.withphoebe.app'`;
+
 // Resolve the distinct recipient list (deduped by lowercased email) for
-// a given scope. "all" = every Phoebe user; "groups" = joined members
-// of the selected groups, excluding hidden admins.
+// a given scope. "all" = every Phoebe ACCOUNT (see above); "groups" =
+// joined members of the selected groups, excluding hidden admins.
 async function resolveRecipients(
   scope: "all" | "groups",
   groupIds: number[],
@@ -49,7 +69,8 @@ async function resolveRecipients(
   if (scope === "all") {
     rows = await db
       .select({ email: usersTable.email, name: usersTable.name })
-      .from(usersTable);
+      .from(usersTable)
+      .where(REAL_ACCOUNT_SQL);
   } else {
     if (groupIds.length === 0) return [];
     // Read directly off group_members — no inner join to users. An
@@ -123,7 +144,7 @@ router.get("/admin/newsletter/groups", async (req, res): Promise<void> => {
           role: groupMembersTable.role,
         })
         .from(groupMembersTable),
-      db.select({ count: sql<number>`COUNT(*)::int` }).from(usersTable),
+      db.select({ count: sql<number>`COUNT(*)::int` }).from(usersTable).where(REAL_ACCOUNT_SQL),
     ]);
 
     // Per-group sets of lowercased emails so the count matches the
