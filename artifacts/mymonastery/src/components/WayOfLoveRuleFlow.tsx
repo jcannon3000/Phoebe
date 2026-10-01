@@ -4579,7 +4579,10 @@ export default function WayOfLoveRuleFlow({
           ...sideItems("devotion", "Morning Devotion", "Evening Devotion", "🕊️"),
           ...sideItems("psalms", "Morning Psalms", "Evening Psalms", "📜"),
           ...sideItems("readings", "Morning Scripture Readings", "Evening Scripture Readings", "📖"),
-          practiceItem("noonday", "☀️", "Midday Prayer"),
+          /* No Midday Prayer row (owner, 2026-10-01: "Take out Midday Prayer
+             from the full customizer"). The practice itself is untouched -
+             /bcp/daily-office?mode=noonday, its home card for anyone who has
+             one, and the Practices menu all stand. */
           practiceItem("compline", "🌙", "Compline"),
         ],
       },
@@ -5112,10 +5115,13 @@ export default function WayOfLoveRuleFlow({
               }
             },
           )}
-          {/* Midday Prayer — the prayer book's short office for noon, an
-              add-on card like Compline (it is no side's prayer, so there is
-              nothing for it to duplicate). */}
-          {choiceRow(contemplative.noonday, `☀️ ${t("wol_rule.cp_noonday", { defaultValue: "Midday Prayer" })}`, t("wol_rule.cp_noonday_sub", { defaultValue: "A short office for noon, from the prayer book." }), () => toggleContemplative("noonday"))}
+          {/* MIDDAY PRAYER IS NOT OFFERED HERE ANY MORE (owner, 2026-10-01:
+              "Take out Midday Prayer from the full customizer"). It is OFFERED
+              nowhere in this flow, but a person who already has it keeps it:
+              `contemplative.noonday` is still hydrated and still written on
+              save, and the summary row below carries its own remove, so
+              nothing is switched off and nobody is stranded with a card they
+              can no longer take away. */}
           {!complineAlreadyPrimary && choiceRow(contemplative.compline, `🌙 ${t("wol_rule.cp_compline", { defaultValue: "Compline" })}`, t("wol_rule.cp_compline_sub", { defaultValue: "The night office — available from 7pm." }), () => toggleContemplative("compline"))}
           {!anchoredAsForm("audio") && choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Connecting with God through music." }), () => toggleContemplative("audio"))}
           {/* Pray As You Go Daily, among the contemplative practices (owner,

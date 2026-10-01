@@ -123,12 +123,14 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // learned to split offline, so the Practices page filed it under "Not
     // available" while /offline listed it as kept.
     { offlineKey: "rosary", emoji: "📿", label: "The Rosary", sub: "Pray the mysteries, a decade at a time", href: "/rosary" },
-    // Praying with Icons — beside Visio because they share the same
-    // catalogue, with the choice inverted: there the day picks the
-    // image, here the person searches it out by name and sits with it
-    // on a timer. Same guest posture as Visio for the same reasons —
-    // the artworks and licences are public and completion is device-local.
-    { emoji: "🪟", label: "Praying with Icons", sub: "Choose an icon and sit with it", href: "/icon-prayer" },
+    /**
+     * PRAYING WITH ICONS IS NOT LISTED HERE (owner, 2026-10-01: "I told you to
+     * take out Praying with Icons and Haigriphies from the practices menu").
+     * The practice itself is untouched: /icon-prayer works, and the customizer
+     * still offers it as an addable practice, so a person who chose it keeps
+     * it. Only the menu row goes - it is not a rhythm card by default and the
+     * list was the wrong front door for it.
+     */
     /**
      * Sacred Image Doom Scroll — owner, 2026-09-18: "also have Sacred Image
      * Doom Scroll be a listed practice". It already had a ticker pill, whose
@@ -147,24 +149,19 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // and in the customizer"). The practice itself and /spirituals still
     // exist — see lib/spiritualsFlag.ts — but nothing links to it here.
     /**
-     * HAGIOGRAPHIES IS A PRACTICE AGAIN (owner, 2026-10-01: "Lets make
-     * haigriohpies a reflection practice again, and in customizer" · "only on
-     * days when there was one"), reversing his own 2026-09-30 call to take it
-     * out. It reads as a reflection — a life read slowly — which is why it
-     * sits here rather than among the sits.
+     * HAGIOGRAPHIES IS NOT IN THIS MENU - BUT IS IN THE CUSTOMIZER (owner,
+     * 2026-10-01: "I told you to take out ... Haigriphies from the practices
+     * menu, though haigriophies could be selected in the customizer").
      *
-     * "Only on days when there was one" is not a condition this list carries:
-     * the row is always offered, and it is useRhythmState's hagiographyShown
-     * (the card, the dot, the day's total and the widget, all off one gate)
-     * that draws nothing on the ~88 days the calendar keeps no commemoration.
-     * The feast line under the date still opens the same life and marks it
-     * read, as it has since 2026-09-12. See [[reference_hagiography_today_only]].
+     * His two asks that evening were one split decision and the first reversal
+     * over-restored it: "make haigriohpies a reflection practice again, and in
+     * customizer" put the practice back where it is CHOSEN, and the menu row
+     * came back with it by mistake. So: the customizer's Learn-step switch,
+     * the default seed, and useRhythmState's hagiographyShown gate (only on
+     * days the calendar keeps a commemoration) all stay; this list does not
+     * carry it. The feast line under the date and /saints still open a life.
+     * See [[reference_hagiography_today_only]].
      */
-    // Named Hagiographies (owner, 2026-09-18: "Call the life of a saint practice
-    // Haegriphoies") — spelled as the word, and as the home section heading
-    // above the saints row already is.
-    // AT THE BOTTOM (owner, 2026-09-18: "Move hagiographies to the bottom").
-    { emoji: "🕯️", label: "Hagiographies", sub: "Read a life slowly, and let it ask something of yours", href: "/saints" },
     /**
      * TAIZÉ SATURDAY PRAYER IS NO LONGER LISTED (owner, 2026-09-30: "Take out
      * Taize Saturday out of practices"). It was the last row here from
