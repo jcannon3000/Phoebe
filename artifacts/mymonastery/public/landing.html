@@ -129,7 +129,8 @@
      itself moves — instead of three full-screen phones stacked (owner: "it may
      need different ui for mobile and web"). */
   @media (max-width: 760px) {
-    .trio { justify-content: flex-start; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+    /* Same reason as .shelf below — one axis named, both axes decided. */
+    .trio { justify-content: flex-start; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none;
             margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter) 24px; scroll-padding-inline: var(--gutter); gap: 18px; }
     .trio::-webkit-scrollbar { display: none; }
     .trio figure { flex: 0 0 230px; scroll-snap-align: start; }
@@ -146,7 +147,15 @@
 
   /* ── Practices gallery: a horizontal shelf, Apple-style ── */
   .gallery-sec { padding-block: clamp(90px, 12vw, 140px) 40px; }
-  .shelf { display: flex; gap: 26px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 48px var(--gutter) 30px; scrollbar-width: none; scroll-padding-inline: var(--gutter); }
+  /* overflow-y: hidden is LOAD-BEARING, not tidiness (owner, 2026-10-01:
+     "Dont have the scroll up on these mocks cause it stops the page scroll").
+     CSS computes `visible` to `auto` on the other axis the moment one axis is
+     not visible — so `overflow-x: auto` alone quietly made this row a VERTICAL
+     scroller too. Its phone mocks are taller than the row, so a two-finger
+     scroll with the pointer over them scrolled the row by a few pixels and
+     then stopped, instead of scrolling the page. Naming the axis takes the
+     wheel back. */
+  .shelf { display: flex; gap: 26px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; padding: 48px var(--gutter) 30px; scrollbar-width: none; scroll-padding-inline: var(--gutter); }
   .shelf::-webkit-scrollbar { display: none; }
   .shelf figure { margin: 0; scroll-snap-align: start; flex: 0 0 auto; width: 250px; display: flex; flex-direction: column; gap: 18px; }
   .shelf .phone { --w: 250px; border-radius: 42px; padding: 10px; }
