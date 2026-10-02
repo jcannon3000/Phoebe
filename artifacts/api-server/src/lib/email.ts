@@ -394,7 +394,7 @@ function newsletterHtml(subject: string, bodyHtml: string, unsubUrl: string | nu
             <td>
               <table cellpadding="0" cellspacing="0" style="margin-bottom:30px;"><tr>
                 <td style="padding-right:12px;"><img src="https://withphoebe.app/phoebe-app-icon.png" width="36" height="36" alt="" style="display:block;border-radius:9px;border:0;"></td>
-                <td style="font-family:${EMAIL_FONT};font-size:12px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#8FAF96;">Phoebe &middot; Daily Prayer</td>
+                <td style="font-family:${EMAIL_FONT};font-size:20px;font-weight:600;letter-spacing:-0.01em;color:#F0EDE6;">Phoebe Daily Prayer</td>
               </tr></table>
               <h1 style="margin:0 0 24px;font-family:${EMAIL_FONT};font-size:26px;font-weight:600;color:#F0EDE6;line-height:1.25;letter-spacing:-0.01em;">${escapeHtml(subject)}</h1>
               ${bodyHtml}
