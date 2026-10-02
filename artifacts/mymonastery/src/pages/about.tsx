@@ -18,6 +18,8 @@
 
 import type React from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 const BG = "#091A10";
 
@@ -60,9 +62,43 @@ const SHARE_TEXT = "Phoebe: find stability in our turbulent world through monast
 
 export default function AboutPage() {
   const [, setLocation] = useLocation();
+  /**
+   * ON THE WEB, SOMEONE WHO IS NOT SIGNED IN GETS THE LANDING PAGE'S OWN TOP BAR
+   * (owner, 2026-10-02: "maybe it should have the top bar of the landing page,
+   * especially if they are not signed in"). They arrived from a link or a typed
+   * address, with nothing of the app behind them — a Back pill has nowhere to go
+   * and says "Back" to no one, where the page's own bar names Phoebe, links the
+   * sections and offers Start praying. Signed in, and anywhere inside the iPhone
+   * or Android app, the app's pills stay: that person came FROM the app.
+   */
+  const { user, isLoading } = useAuth();
+  const ownBar = !isLoading && !isNativeShell() && (!user || !!user.isAnonymous);
+  /**
+   * BACK, WHEN THERE IS NOWHERE TO GO BACK TO (owner, 2026-10-02: "On the about
+   * page, if you go to that on web, from the url, the back button isnt doing
+   * anything").
+   *
+   * `history.length > 1` was the whole test for "is there a page behind this
+   * one", and on the web it is a poor one: a tab opened on this address by typing
+   * it still has the tab's earlier entries, or the page itself sits twice, so
+   * history.back() succeeds at going — to a new-tab page, to the same address, or
+   * to nothing the browser will show — and the person is left looking at the same
+   * About page with a button that seems dead.
+   *
+   * So go back, and if the address has not changed a moment later, go to the
+   * home instead. A back that DOES land somewhere unloads this component, so the
+   * check only ever fires for the case that needed it.
+   */
   const back = () => {
-    if (window.history.length > 1) window.history.back();
-    else setLocation("/dashboard");
+    const here = window.location.pathname + window.location.search;
+    if (window.history.length > 1) {
+      window.history.back();
+      window.setTimeout(() => {
+        if (window.location.pathname + window.location.search === here) setLocation("/dashboard");
+      }, 350);
+    } else {
+      setLocation("/dashboard");
+    }
   };
   /**
    * The system share sheet where there is one (the iPhone app, mobile browsers,
@@ -84,13 +120,14 @@ export default function AboutPage() {
     <div style={{ position: "fixed", inset: 0, background: BG, zIndex: 40 }}>
       {/* The page itself, edge to edge now that nothing sits above it. */}
       <iframe
-        src="/landing.html?embed=1"
+        src={ownBar ? "/landing.html?embed=bar" : "/landing.html?embed=1"}
         title="About Phoebe"
         style={{
           position: "absolute", inset: 0, width: "100%", height: "100%",
           display: "block", border: 0, background: BG,
         }}
       />
+      {!ownBar && (
       <div
         style={{
           position: "absolute", zIndex: 1, left: 0, right: 0, margin: "0 auto",
@@ -108,6 +145,7 @@ export default function AboutPage() {
           Share
         </button>
       </div>
+      )}
     </div>
   );
 }

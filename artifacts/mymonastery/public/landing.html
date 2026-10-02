@@ -235,18 +235,26 @@
   /* In the app's About the APP draws the bar (pages/about.tsx), so the page's own goes. */
   html.embed .lnav, html.embed .hero .ctas .pill, html.embed .close .ctas { display: none !important; }
   html.embed .tour-stage { top: 0 !important; height: 100vh !important; }
-  html.embed.native .lnav a.ios { display: none !important; }
+  html.embed.native .lnav a.ios, html.embed-bar.native .lnav a.ios { display: none !important; }
+  /* embed=bar: the app's About for someone who is not signed in. The page keeps
+     its OWN top bar — the wordmark, the sections, Start praying — and the app
+     draws nothing over it (owner, 2026-10-02: "maybe it should have the top bar
+     of the landing page, especially if they are not signed in"). */
 </style>
 <script>
 (function () {
-  var inApp = /[?&]embed=1\b/.test(location.search) && window.top !== window;
+  var mode = (location.search.match(/[?&]embed=(1|bar)\b/) || [])[1];
+  var inApp = !!mode && window.top !== window;
   if (!inApp) return;
-  var root = document.documentElement; root.classList.add('embed');
+  var bar = mode === 'bar';
+  var root = document.documentElement; root.classList.add(bar ? 'embed-bar' : 'embed');
   var top = window.top;
   try { if (top.Capacitor && top.Capacitor.isNativePlatform && top.Capacitor.isNativePlatform()) root.classList.add('native'); } catch (e) {}
   document.addEventListener('DOMContentLoaded', function () {
     var name = document.querySelector('.lnav-name');
-    if (name) {
+    // The back-arrow rewrite is for the app's own bar (embed=1). With the page's
+    // bar kept, the wordmark stays a wordmark.
+    if (name && !bar) {
       name.textContent = '\u2190 Back';
       name.setAttribute('href', '#');
       name.style.fontSize = '16px'; name.style.fontWeight = '600';
