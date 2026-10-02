@@ -38,6 +38,7 @@ import {
   sendWeeklyDigestPush,
   sendBreathTogetherPush,
   sendPrayedTogetherPush,
+  sendFeastDayPush,
 } from "./pushSender";
 import { getGardenUserIds } from "./garden";
 import { runRetentionCleanupSender } from "./retention";
@@ -48,6 +49,7 @@ import { sendWeeklyDigestEmail } from "./email";
 import { withSchedulerLog } from "./schedulerHeartbeat";
 import { getCurrentTimeInTz, todayDateInTz, todayInZone } from "./tz";
 import { isAtOrJustAfterMinute, addHoursToHHMM } from "./reminderTiming";
+import { SAINTS_BY_DAY } from "./saintsByDay.generated";
 import { sideHasPractice } from "./reminderEligibility";
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getLectionaryReadings } from "./lectionary";
@@ -1676,6 +1678,108 @@ export async function runPrayedTogetherSender(opts: { forceNow?: boolean } = {})
   }
 }
 
+/**
+ * ─── "Happy Feast of ___" ───────────────────────────────────────────────────
+ *
+ * 2pm local, to EVERYONE — not only people with a routine (owner,
+ * 2026-10-01: "a notification for the Feast Day ... for everyone", "lets do
+ * it at 2pm"). It names the day's commemoration and opens /saints, which is
+ * the Hagiographies practice.
+ *
+ * WHERE THE NAMES COME FROM. The calendar of lives lives in the CLIENT (33
+ * BCP Holy Days + 243 Lesser Feasts); the server's own liturgicalCalendar.ts
+ * knows only the 21 observed holy days, which is a twelfth of the year and
+ * misses nearly every life the practice actually reads. So the names come
+ * from saintsByDay.generated.ts, built from the client's own tables by
+ * src/build-saints-by-day.mjs — REGENERATE IT when those tables change, the
+ * same standing rule the icon schedule has.
+ *
+ * 276 of 365 days carry something. On the other 89 nothing is sent: a push
+ * that says "Happy Feast of" with nothing after it is worse than silence.
+ */
+const FEAST_DAY_TIME = "14:00";
+
+/** "2026-10-18" → "10-18", the key the generated table uses (no padding). */
+export function feastKeyFor(ymd: string): string {
+  const [, m, d] = ymd.split("-");
+  return `${parseInt(m ?? "0", 10)}-${parseInt(d ?? "0", 10)}`;
+}
+
+export type FeastDayRow = { userId: number; timezone: string | null; sentDate: string | null };
+
+/**
+ * WHO gets it, and which day they are told about — pure, so the rules can be
+ * tested without a database. A person's own local date decides their feast:
+ * on the day's edges two people in different zones are legitimately on
+ * different feasts, and each should hear their own.
+ */
+export function feastDayRecipients(
+  rows: FeastDayRow[],
+  helpers: { todayFor: (tz: string) => string; inWindow: (tz: string) => boolean },
+): Array<{ userId: number; today: string; title: string; life: string; kind: "person" | "feast" }> {
+  const out: Array<{ userId: number; today: string; title: string; life: string; kind: "person" | "feast" }> = [];
+  for (const r of rows) {
+    const tz = r.timezone || "America/New_York";
+    const today = helpers.todayFor(tz);
+    if (r.sentDate === today) continue;
+    if (!helpers.inWindow(tz)) continue;
+    const feast = SAINTS_BY_DAY[feastKeyFor(today)];
+    if (!feast) continue;
+    out.push({ userId: r.userId, today, title: feast.title, life: feast.life, kind: feast.kind });
+  }
+  return out;
+}
+
+/**
+ * ONLY PHONES THAT CAN ACTUALLY BE REACHED. "Everyone" is every account AND
+ * every device user, which is thousands of rows, nearly all of them without a
+ * live push token — the no-login version gives a phone a user row whether or
+ * not it ever granted notifications. Sending to a tokenless user is a DB
+ * round-trip that ends in nothing, so the fan-out is filtered to users with a
+ * live device token or web subscription. The master Settings switch
+ * (users.push_enabled) is honoured inside sendPushToUser, but it is checked
+ * here too so a silenced user is not even a row in this loop.
+ */
+const FEAST_DAY_CANDIDATES_SQL = `
+SELECT u.id AS "userId", u.timezone AS timezone, u.feast_day_sent_date AS "sentDate"
+FROM users u
+WHERE u.push_enabled IS DISTINCT FROM false
+  AND (
+    EXISTS (SELECT 1 FROM device_tokens dt WHERE dt.user_id = u.id AND dt.invalidated_at IS NULL)
+    OR EXISTS (SELECT 1 FROM web_push_subscriptions ws WHERE ws.user_id = u.id AND ws.invalidated_at IS NULL)
+  )
+`;
+
+export async function runFeastDaySender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  try {
+    const result = await db.execute(sql.raw(FEAST_DAY_CANDIDATES_SQL));
+    const rows = ((result as unknown as { rows?: FeastDayRow[] }).rows ?? (result as unknown as FeastDayRow[])) as FeastDayRow[];
+
+    const recipients = feastDayRecipients(rows, {
+      todayFor: (tz) => todayInZone(tz),
+      inWindow: (tz) => !!opts.forceNow || isWithinTickWindow(tz, FEAST_DAY_TIME),
+    });
+
+    for (const r of recipients) {
+      try {
+        await sendFeastDayPush(r.userId, { title: r.title, life: r.life, kind: r.kind });
+        await db
+          .update(usersTable)
+          .set({ feastDaySentDate: r.today })
+          .where(eq(usersTable.id, r.userId));
+      } catch (err) {
+        // No stamp on failure → a later tick inside the window retries.
+        logger.warn({ err, userId: r.userId }, "[feast-day] push failed");
+      }
+    }
+    if (recipients.length > 0) {
+      logger.info({ recipients: recipients.length, feast: recipients[0]?.title }, "[feast-day] sent");
+    }
+  } catch (err) {
+    logger.error({ err }, "[feast-day] sender failed");
+  }
+}
+
 // ─── Weekly Way of Love review — Sunday-evening examen nudge ─────────────────
 // Once a week (Sunday ~20:00 in the user's tz) invite beta users who've opted in
 // to look back on the week and set the one ahead. Skipped if they already did
@@ -2157,6 +2261,9 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // "N people prayed with you today" — 20:30, to everyone who kept any
   // practice today (owner, 2026-10-01). Skips anyone who got the breath note.
   { name: "prayed-together",       run: runPrayedTogetherSender },
+  // "Happy Feast of ___" — 14:00, to everyone reachable, on the 276 days of
+  // the year that carry a commemoration (owner, 2026-10-01).
+  { name: "feast-day",              run: runFeastDaySender },
   // VTS Dean's Commentary — weekday ~8am nudge for readers who follow it.
   { name: "vts-commentary",        run: runVtsCommentarySender },
   // Weekly review — re-enabled (owner: "I didn't get the week review

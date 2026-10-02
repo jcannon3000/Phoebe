@@ -1351,6 +1351,38 @@ export function sendBreathTogetherPush(userId: number, opts: { others: number })
 }
 
 /**
+ * "Happy Feast of Saint Luke" — the day's commemoration, at 2pm local, to
+ * everyone (owner, 2026-10-01: "What if you also did a notification for the
+ * Feast Day" · "Happy Feast of X / Open Phoebe to learn more about the life
+ * of x" · "And then it would open the haigriphophy" · "lets do it at 2pm").
+ *
+ * TWO BODIES, because not every day is a person (owner: "if it is not a
+ * person have it say learn more about the feast of x"). The feasts of our Lord
+ * and the other event days — Christmas, the Epiphany, Holy Cross Day — are
+ * marked kind "feast" in the generated table, and nothing ever offers to tell
+ * you about "the life of Christmas Day".
+ *
+ * Opens /saints, which IS the Hagiographies practice (the old saint browser
+ * was retired; /saints?d=M-D is the same day's life). So tapping the push
+ * lands on today's life and credits the read the usual way.
+ */
+export function sendFeastDayPush(
+  userId: number,
+  opts: { title: string; life: string; kind: "person" | "feast" },
+) {
+  return sendPushToUser(userId, {
+    title: `Happy Feast of ${opts.title}`,
+    body: opts.kind === "person"
+      ? `Open Phoebe to learn more about the life of ${opts.life}`
+      : `Open Phoebe to learn more about the feast of ${opts.life}`,
+    path: "/saints",
+    threadId: "feast-day",
+    collapseId: `feast-day-${userId}`,
+    sound: PHOEBE_SOUND_LOW,
+  });
+}
+
+/**
  * "N people prayed with you today" — the evening note to everyone who kept a
  * practice that day (owner, 2026-10-01: "What if we did a notification that
  * was You and x Others Prayed Today with Phoebe" → "X people prayed with you
