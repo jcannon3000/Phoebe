@@ -31,6 +31,7 @@ import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
 import { AndroidPwaInstallPrompt } from "@/components/AndroidPwaInstallPrompt";
 import { BottomPromptStack } from "@/components/BottomPromptStack";
+import { CreateAccountNudge } from "@/components/CreateAccountNudge";
 import { isInReaderWatch } from "@/lib/videoEmbed";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { ReflectionReturnRedirect } from "@/components/ReflectionReturnRedirect";
@@ -1778,6 +1779,7 @@ function App() {
             {!isInReaderWatch() && (
               <>
                 <BottomPromptStack />
+                <CreateAccountNudge />
                 {/* Desktop install banner — inside the router so it can react
                     to navigation (e.g. stay hidden during the customize
                     flow). */}
