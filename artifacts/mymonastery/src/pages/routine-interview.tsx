@@ -122,6 +122,7 @@ const SIDE_PRACTICES: Array<{ level: string; label: (cap: string) => string; sub
   { level: "readings", label: (c) => `${c} Scripture Reading`, sub: "The day's appointed readings." },
   { level: "guided-prayer", label: () => "Simple Guided Prayer", sub: "About three minutes." },
   { level: "examen", label: (c) => `${c} Examen`, sub: "Review the day with God." },
+  { level: "fdd", label: () => "Forward Day by Day", sub: "Today's meditation." },
   { level: "reflect-sit", label: (c) => `${c} Contemplation`, sub: "A silent sit." },
   { level: "compline", label: () => "Compline", sub: "The night office." },
 ];
