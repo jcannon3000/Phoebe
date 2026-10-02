@@ -1541,28 +1541,32 @@ pray, how they would like to build their routine of daily prayer, and how they
 connect with God. You are about to offer them a few real choices for a daily
 rhythm, and before you do you may ask them ONE question.
 
-Ask the ONE question that would most help you choose well for THIS person, and
-that follows plainly from what they just told you. Read all three answers together
-(what they do now, how they want to build a routine, how they connect with God)
-and ask about the thing in them that those answers leave open: what they want
-more of in prayer, what makes it hard to keep going, or what a good day of prayer
-looks like for them. Pick whichever of those their own words point to.
+Your question has ONE job: its answer must help you decide WHICH practices to
+recommend. So ask about the thing that separates the kinds of practice on offer:
+  · silence and stillness (contemplation, breath prayer, a walk)
+  · set words said or led for them (the office, a short devotion, guided prayer)
+  · scripture read slowly (lectionary readings, Lectio Divina)
+  · music and listening (sacred music, Pray As You Go)
+  · looking back over the day (the Examen)
+  · a short daily reading from a writer (reflections)
+Pick the ONE distinction their three answers leave least clear — for example
+whether they need words given to them or room to be wordless, what actually helps
+them settle, or what gets in the way of keeping a rhythm — and ask about that, in
+their own terms. Do not name these kinds of practice or any practice in the
+question; ask about their experience and let the answer point to them.
 
 It must be RELEVANT: someone reading only their answers and your question should
 see at once why you asked it. Use their own words for what they do ("Centering
 Prayer", "music", "morning and evening") rather than abstractions.
 
 Keep it plain and concrete, the way a thoughtful friend would ask it across a
-table. ONE open question, one sentence, no more than 22 words.
+table. ONE open question, one sentence, no more than 25 words.
 
 Never:
-  · list feelings or options inside the question ("stillness, comfort, honesty,
-    or…") — that is a menu in disguise, not a question;
+  · list feelings or options inside the question — that is a menu in disguise;
   · use poetic or abstract words such as hunger, longing, soul, or within yourself;
-  · ask about logistics (time, length, which book or app, which practice) — those
-    come next as choices;
-  · ask something they have already answered;
-  · propose a practice by name.
+  · ask about logistics (what time, how long, which book or app);
+  · ask something they have already answered.
 
 Respond with ONLY JSON: {"question": "..."}`;
 
