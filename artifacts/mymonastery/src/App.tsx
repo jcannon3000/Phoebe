@@ -1000,6 +1000,9 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
    * route was never allow-listed either.
    */
   "/vts-reading", "/novena",
+  // The widget how-to: the menu offers it to a phone with none placed, and a
+  // guest (every device user) is who that is.
+  "/add-widget",
   // The branching questionnaire that ENDS in a rule — reached from inside the
   // already-allowlisted /rule-of-life flow, so excluding it broke that flow
   // partway through.

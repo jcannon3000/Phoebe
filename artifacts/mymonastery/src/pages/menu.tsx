@@ -1,5 +1,5 @@
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useGroupFeatures } from "@/hooks/useGroupFeatures";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 import { MenuHub, type MenuHubGroup } from "@/components/MenuHub";
 import { sundayLectionaryQuery } from "@/lib/sundayLectionary";
+import { shouldOfferWidget } from "@/lib/widgetPresence";
 import { useTranslation } from "react-i18next";
 
 // ── /menu — the top-level navigation page (replaces the drawer) ─────────────
@@ -42,6 +43,9 @@ export default function MenuPage() {
   // down when the answer arrives.
   const queryClient = useQueryClient();
   useEffect(() => { void queryClient.prefetchQuery(sundayLectionaryQuery); }, [queryClient]);
+  // "Widget": only on an iPhone that has none placed yet (lib/widgetPresence).
+  const [offerWidget, setOfferWidget] = useState(false);
+  useEffect(() => { let on = true; void shouldOfferWidget().then((v) => { if (on) setOfferWidget(v); }); return () => { on = false; }; }, []);
 
   const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
     queryKey: ["/api/groups"],
@@ -171,6 +175,7 @@ export default function MenuPage() {
     header: t("menu.hdr_account"),
     items: [{ emoji: "⚙️", label: t("menu.settings"), onClick: () => go("/settings") }],
   };
+  if (offerWidget) account.items.push({ emoji: "🏠", label: t("menu.widget", { defaultValue: "Widget" }), sub: t("menu.widget_sub", { defaultValue: "Your rhythm on your Home Screen" }), onClick: () => go("/add-widget") });
   if (showAdminTools) account.items.push({ emoji: "🔧", label: t("menu.admin_tools"), onClick: () => go("/admin/tools") });
   // About opens the deck first; finishing the deck (exitTo) lands on /about.
   account.items.push({ emoji: "ℹ️", label: t("menu.about"), onClick: () => go("/about-deck") });
