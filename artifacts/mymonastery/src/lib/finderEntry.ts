@@ -12,6 +12,18 @@
  */
 const KEY = "phoebe:finder-skip";
 
+/**
+ * THE QUESTIONS ARE FOR ADMINS, THROUGH ONE DOOR (owner, 2026-10-01: "not all
+ * users" · "admins only" · "only on the admin tool").
+ *
+ * They were wired in front of every new device's first open and in front of the
+ * full customizer. That is switched off here and nowhere else: with this false
+ * nothing sends anyone to /find-your-rhythm, and the only way in is the Find
+ * your rhythm row in the admin tools. Everything those two entries needed is
+ * still in place — set this true and a brand-new device is asked first again.
+ */
+export const FINDER_FOR_EVERYONE = false;
+
 /** "I'll adjust it myself": the next time the flow opens, don't redirect. */
 export function markFinderSkip(): void {
   try { sessionStorage.setItem(KEY, "1"); } catch { /* private mode — they just see the questions again */ }
@@ -58,6 +70,7 @@ const SKIP_KEY = "phoebe:guest-first-run-skip";
  * check is not trapped in a screen they cannot leave.
  */
 export function firstRunPending(): boolean {
+  if (!FINDER_FOR_EVERYONE) return false;
   try {
     if (localStorage.getItem(SKIP_KEY) === "1") return false;
     if (localStorage.getItem("phoebe:guest-seeded-ymd")) return false;

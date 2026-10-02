@@ -15,7 +15,7 @@
  */
 
 import { turnOffRoutine, NO_ROUTINE_MODE } from "@/lib/routineStart";
-import { finderSkipped } from "@/lib/finderEntry";
+import { finderSkipped, FINDER_FOR_EVERYONE } from "@/lib/finderEntry";
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef, useCallback, type ReactNode, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -1083,7 +1083,7 @@ export default function WayOfLoveRuleFlow({
    * opening: a person who already has a rhythm, and guests and pilots, never see it.
    */
   useEffect(() => {
-    if (step === "starter" && !finderSkipped()) setLocation("/find-your-rhythm");
+    if (FINDER_FOR_EVERYONE && step === "starter" && !finderSkipped()) setLocation("/find-your-rhythm");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the opening only
   }, []);
   // Show the "technology of holding" prelude ONCE, before the very first author
@@ -7513,9 +7513,11 @@ export default function WayOfLoveRuleFlow({
         </button>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16, alignItems: "center" }}>
-          <button onClick={() => setLocation("/find-your-rhythm")} style={{ background: "none", border: "none", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+          {isSuperAdmin && (
+            <button onClick={() => setLocation("/find-your-rhythm")} style={{ background: "none", border: "none", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
             {t("wol_rule.starter_help_choose", { defaultValue: "Not sure? Help me choose →" })}
           </button>
+          )}
           <button onClick={() => { touchedRef.current = true; setStep(pilot || guest ? "intro" : "morning-way"); }} style={{ background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer" }}>
             {t("wol_rule.starter_build_own", { defaultValue: "Or build my own →" })}
           </button>

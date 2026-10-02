@@ -189,6 +189,15 @@ export default function AdminToolsPage() {
             />
             {isAdmin && (
               <>
+                {/* FIND YOUR RHYTHM — the three-question questionnaire (owner,
+                    2026-10-01: "only on the admin tool"). The only way to it:
+                    nothing else in the app sends anyone there. */}
+                <LinkRow
+                  emoji="🌿"
+                  label="Find your rhythm"
+                  description="Three questions and two follow-ups that recommend a routine"
+                  onClick={() => setLocation("/find-your-rhythm")}
+                />
                 <LinkRow
                   emoji="🧭"
                   label="Preset rhythm link"

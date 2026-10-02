@@ -46,6 +46,13 @@ export default function FindYourRhythmPage() {
   const [, navigate] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const guest = !authLoading && isDeviceLocalGuest(user);
+  // ADMINS ONLY (owner, 2026-10-01: "only on the admin tool"). The admin tools'
+  // Find your rhythm row is the one door; anyone else who reaches this address
+  // — an old link, a bookmark — is sent home. Waits for the user to arrive
+  // first, or a signed-in admin would be bounced on the first render.
+  useEffect(() => {
+    if (!authLoading && !user?.isSuperAdmin && !firstRunPending()) navigate("/dashboard");
+  }, [authLoading, user, navigate]);
   // A device with no rhythm yet reached this from the home, before anything has
   // been set up. Read ONCE: applying the answers is what makes it false.
   const [firstRun] = useState(() => firstRunPending());
