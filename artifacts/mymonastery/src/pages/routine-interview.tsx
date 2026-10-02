@@ -333,6 +333,8 @@ export default function RoutineInterviewPage() {
   const [pickEvening, setPickEvening] = useState<string | null>(null);
   const [pickReflections, setPickReflections] = useState<string[]>([]);
   const [pickPractices, setPickPractices] = useState<string[]>([]);
+  // The practices slide opened from the review's "Add another practice" pill (not from the interview's own run).
+  const [addingFromReview, setAddingFromReview] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
   // Owner: "have the follow up questions on two separate slides." One
@@ -923,16 +925,18 @@ export default function RoutineInterviewPage() {
   }
   if (phase === "pick-practices" && recs) {
     return renderPick({
-      eyebrowText: "Practices",
-      title: "Anything else you would like to practise?",
-      sub: "Any of these can sit beside your day. Choose as many as you like — or none.",
+      eyebrowText: addingFromReview ? "Add a practice" : "Practices",
+      title: addingFromReview ? "Which would you like to add?" : "Anything else you would like to practise?",
+      sub: addingFromReview
+        ? "Choose any to add to your rhythm. Your other choices stay as they are."
+        : "Any of these can sit beside your day. Choose as many as you like — or none.",
       options: recs.practices,
       selected: pickPractices,
       multi: true,
       onToggle: (k) => setPickPractices((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k])),
-      nextLabel: "Shape my rhythm",
-      onNext: buildChosen,
-      onBack: () => setPhase("pick-reflections"),
+      nextLabel: addingFromReview ? "Add to my rhythm" : "Shape my rhythm",
+      onNext: () => { setAddingFromReview(false); buildChosen(); },
+      onBack: () => { if (addingFromReview) { setAddingFromReview(false); setPhase("review"); } else setPhase("pick-reflections"); },
     });
   }
 
@@ -2075,10 +2079,10 @@ export default function RoutineInterviewPage() {
               const slotEditable = r.id.startsWith("slot:") || r.id.startsWith("custom:");
               const configurable = slotEditable || r.id === "contemplation" || r.id.startsWith("side:");
               const circle: React.CSSProperties = {
-                width: 30, height: 30, flexShrink: 0, borderRadius: 999,
+                width: 40, height: 40, flexShrink: 0, borderRadius: 999,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 background: "rgba(255,255,255,0.06)", border: `1px solid ${CARD_B}`,
-                color: SAGE, fontSize: 14, cursor: "pointer", padding: 0,
+                color: SAGE, fontSize: 22, lineHeight: 1, cursor: "pointer", padding: 0,
               };
               return (
                 <div key={r.id || `${r.label}-${i}`} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -2165,6 +2169,19 @@ export default function RoutineInterviewPage() {
               );
             })}
           </div>
+        )}
+
+        {guided && recs && !prescribe && (
+          <button
+            type="button"
+            onClick={() => { setError(null); setEditingRow(null); setAddingFromReview(true); setPhase("pick-practices"); }}
+            style={{
+              alignSelf: "flex-start", background: "rgba(46,107,64,0.32)", border: "1px solid rgba(143,175,150,0.45)",
+              color: WARM, fontFamily: FONT, fontSize: 14, fontWeight: 600, borderRadius: 999, padding: "11px 20px", cursor: "pointer",
+            }}
+          >
+            + Add another practice
+          </button>
         )}
 
         {/* Reminders, read from the pending spec rather than from `settings`.
