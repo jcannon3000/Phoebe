@@ -1462,7 +1462,29 @@ export function breathTogetherRecipients(
   return out;
 }
 
+/**
+ * OFF (owner, 2026-10-01: "lets take out the the breathing together
+ * notification").
+ *
+ * It is also unhooked from SCHEDULER_SENDERS below — both, deliberately. The
+ * last time a push was half-removed, the sender was commented off the
+ * schedule while its switch stayed on elsewhere, and "never runs" and "no way
+ * to turn it off" became the same bug from two directions (see
+ * WEEKLY_REVIEW_NUDGE_ENABLED). So: one switch, here, where the sending
+ * happens, and nothing calling it.
+ *
+ * The evening note everyone now gets is "N people prayed with you today"
+ * (runPrayedTogetherSender below), which counts a breath among the practices
+ * — so a breather is not left without an evening note, they get the one that
+ * speaks for every practice instead. Nothing user-facing offered this push,
+ * so no setting is left promising it. The sender, its pure rules and
+ * users.breath_together_sent_date all stay: a rhythm's history still reads,
+ * and forceNow still works for a manual test.
+ */
+const BREATH_TOGETHER_PUSH_ENABLED = false;
+
 export async function runBreathTogetherSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  if (!BREATH_TOGETHER_PUSH_ENABLED) return;
   try {
     // Two days of rows covers every timezone's "today" at once; the count per
     // day string is taken from this same set, so it counts EVERY breather that
@@ -1510,10 +1532,11 @@ export async function runBreathTogetherSender(opts: { forceNow?: boolean } = {})
  * practice, so it is the one most people will ever see.
  *
  * 20:30 local (owner: "Have it send at 8:30pm") — half an hour after the
- * breath note and the evening bell. The bell at 20:00 goes to people who have
- * NOT prayed, so those two audiences cannot overlap; a breather would
- * otherwise get two near-identical notes in one evening, which is why this
- * skips anyone already sent the breath note today.
+ * evening bell, which goes to people who have NOT prayed, so those two
+ * audiences cannot overlap. It used to dodge the Breathing Together note at
+ * 20:00 as well; that note is gone (BREATH_TOGETHER_PUSH_ENABLED), so this is
+ * the one evening note, and a breath counts as one of the practices it speaks
+ * for.
  *
  * isWithinTickWindow's tolerance is ±15 minutes against a 15-minute tick, so
  * a 20:30 target is reached by the tick either side of it. The per-day
@@ -1526,7 +1549,6 @@ export type PrayedTogetherRow = {
   day: string;
   timezone: string | null;
   sentDate: string | null;
-  breathSentDate: string | null;
 };
 
 /**
@@ -1541,8 +1563,11 @@ export type PrayedTogetherRow = {
  * - Nobody is told nobody prayed with them: at zero there is nothing to say,
  *   and no stamp is written, so a later tick in the window still catches the
  *   day once somebody else prays.
- * - One note per person per local day (`sentDate`), and never on a day they
- *   already had the breath note (`breathSentDate`).
+ * - One note per person per local day (`sentDate`). There was a second
+ *   condition here — never on a day they already had the Breathing Together
+ *   note — which went with that note (owner, 2026-10-01). Leaving it would
+ *   have silently cost tonight's note to anyone whose breath stamp was
+ *   already today when this deployed.
  */
 export function prayedTogetherRecipients(
   rows: PrayedTogetherRow[],
@@ -1560,7 +1585,7 @@ export function prayedTogetherRecipients(
     const tz = r.timezone || "America/New_York";
     const today = helpers.todayFor(tz);
     if (r.day !== today) continue;
-    if (r.sentDate === today || r.breathSentDate === today) { seen.add(r.userId); continue; }
+    if (r.sentDate === today) { seen.add(r.userId); continue; }
     if (!helpers.inWindow(tz)) continue;
     const others = Math.max(0, (prayersByDay.get(today)?.size ?? 1) - 1);
     if (others < 1) continue;
@@ -1607,7 +1632,7 @@ kept AS (
     AND NOT EXISTS (SELECT 1 FROM simulator_marks sm WHERE sm.user_id = p.user_id AND sm.day = p.day)
 )
 SELECT k.user_id AS "userId", k.day AS day, u.timezone AS timezone,
-       u.prayed_together_sent_date AS "sentDate", u.breath_together_sent_date AS "breathSentDate"
+       u.prayed_together_sent_date AS "sentDate"
 FROM kept k JOIN users u ON u.id = k.user_id
 `;
 
@@ -2124,9 +2149,11 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // thirty AM," which needs a tick fine enough to land on the user's chosen
   // minute, not this list's 15-minute cadence.
   { name: "contemplation-goal",    run: runContemplationGoalSender },
-  // Breathing Together's evening note — "You Breathed with N others", to
-  // everyone who kept the breath today.
-  { name: "breath-together",       run: runBreathTogetherSender },
+  // Breathing Together's evening note — "You Breathed with N others" — is OUT
+  // (owner, 2026-10-01: "lets take out the the breathing together
+  // notification"). Unhooked here AND switched off at the sender; see the note
+  // on BREATH_TOGETHER_PUSH_ENABLED for why it is both.
+  // { name: "breath-together",       run: runBreathTogetherSender },
   // "N people prayed with you today" — 20:30, to everyone who kept any
   // practice today (owner, 2026-10-01). Skips anyone who got the breath note.
   { name: "prayed-together",       run: runPrayedTogetherSender },

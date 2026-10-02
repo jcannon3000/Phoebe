@@ -223,6 +223,12 @@ export interface PushPayload {
   // the Dean's Commentary flamingo — and those opt out. Never set this on a
   // title that interpolates anything a user typed.
   emojiSafeTitle?: boolean;
+  // Keep emoji in the BODY. Same bargain as emojiSafeTitle, and the same
+  // warning: never set it on a body that interpolates anything a user typed.
+  // Without it a mark written into authored body copy disappears silently —
+  // clean() runs over the body on every push, which is easy to miss when the
+  // only escape hatch in sight is the title's.
+  emojiSafeBody?: boolean;
 }
 
 interface SendResult {
@@ -272,7 +278,7 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
   payload = {
     ...payload,
     title: truncateTitle(payload.emojiSafeTitle ? (payload.title ?? "").trim() : clean(payload.title)),
-    body: clean(payload.body),
+    body: payload.emojiSafeBody ? (payload.body ?? "").trim() : clean(payload.body),
   };
   const [tokens, webSubs] = await Promise.all([
     db.select({
@@ -1378,7 +1384,10 @@ export function sendPrayedTogetherPush(userId: number, opts: { others: number })
      * own second draft, which fixes both: ~74 characters, ~1.8 lines, nothing
      * cropped.
      */
-    body: "Return tomorrow as we make space for the love of God in the world together",
+    body: "Return tomorrow as we make space for the love of God in the world together 🙏🏽🌏❤️",
+    // The three marks are the owner's, and they only survive because of this
+    // flag: clean() strips emoji from every body by default.
+    emojiSafeBody: true,
     path: "/",
     threadId: "prayed-together",
     collapseId: `prayed-together-${userId}`,
