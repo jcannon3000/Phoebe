@@ -55,7 +55,9 @@ export const WAY_OF_LOVE: WolCourse = {
   // Jesus with Bishop Mariann" (owner, 2026-09-19). The id stays "way-of-love"
   // because it is the key every device's progress is stored under; renaming it
   // would silently empty everyone's course.
-  title: "Experiencing Jesus",
+  // Named "The Way of Love with Bishop Budde" again (owner, 2026-10-02). The feed's own
+  // name is still Experiencing Jesus (credited on the page); id and slug are unchanged.
+  title: "The Way of Love with Bishop Budde",
   author: "Bishop Mariann Budde",
   tagline:
     "A rule of life for following Jesus — Bishop Mariann walks the seven practices, one talk at a time.",

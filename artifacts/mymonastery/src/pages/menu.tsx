@@ -140,7 +140,7 @@ export default function MenuPage() {
   // now (lib/videoEmbed), so the web-only gate that stood here is gone.
   learn.items.push({ emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", onClick: () => go("/centering-prayer") });
   learn.items.push({ emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") });
-  learn.items.push({ emoji: "❤️", label: "Experiencing Jesus", sub: "Bishop Budde on the Way of Love", onClick: () => go("/way-of-love-course") });
+  learn.items.push({ emoji: "❤️", label: "The Way of Love with Bishop Budde", sub: "Bishop Mariann Budde", onClick: () => go("/way-of-love-course") });
   // The Presiding Bishop's own series, as five season-courses (owner,
   // 2026-09-19). No season count here: the show page counts them from the
   // feed, and a number written down would quietly go stale.

@@ -415,7 +415,8 @@ export const SHOWS: Record<string, Show> = {
     // calls itself "Experiencing Jesus with Bishop Mariann"; the Way of Love
     // is what the episodes WALK, not what the series is called. The slug stays
     // `experiencing-jesus`, so nobody's progress moves.
-    title: "Experiencing Jesus",
+    // Shown as "The Way of Love with Bishop Budde" again (owner, 2026-10-02); the slug is unchanged.
+    title: "The Way of Love with Bishop Budde",
     artist: "Diocese of Washington",
     publisher: "way-of-love",
     feedUrl: "https://feeds.simplecast.com/1CBZhkXf",

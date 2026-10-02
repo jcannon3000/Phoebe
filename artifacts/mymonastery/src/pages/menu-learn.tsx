@@ -99,7 +99,7 @@ export default function MenuLearnPage() {
           items: [
             // Way of Love first (owner, 2026-09-05), then every CAC show as
             // its own row — "bring them out of the folder of just CAC Courses".
-            { emoji: "❤️", label: "Experiencing Jesus", sub: "Bishop Budde on the Way of Love", muted: !online, onClick: () => go("/way-of-love-course") },
+            { emoji: "❤️", label: "The Way of Love with Bishop Budde", sub: "Bishop Mariann Budde", muted: !online, onClick: () => go("/way-of-love-course") },
             /**
              * ONE ROW PER SEASON of the Presiding Bishop's Way of Love (owner,
              * 2026-09-19: "And have its own card on the courses page"). It was
