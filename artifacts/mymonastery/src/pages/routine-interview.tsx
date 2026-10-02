@@ -303,6 +303,15 @@ export default function RoutineInterviewPage() {
    */
   const [touchedSections, setTouchedSections] = useState<SpecSection[]>([]);
   const [description, setDescription] = useState("");
+  /**
+   * THE THREE QUESTIONS A "START FROM SCRATCH" OPENS ON (owner, 2026-10-02: "when
+   * you hit start from scratch, it should have three questions, not one, before it
+   * generates the first round of follow-up questions"). Their answers are joined
+   * into the one description the follow-ups and the build already work from, so
+   * nothing past this slide changes shape.
+   */
+  const [openIdx, setOpenIdx] = useState(0);
+  const [openAnswers, setOpenAnswers] = useState<string[]>(["", "", ""]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
   // Owner: "have the follow up questions on two separate slides." One
@@ -499,12 +508,12 @@ export default function RoutineInterviewPage() {
     }
   };
 
-  const submitDescription = async () => {
+  const submitDescription = async (text: string = description, opening = false) => {
     setError(null);
     setPhase("thinking-followups");
     try {
       const res = (await apiRequest("POST", "/api/routine-interview/followups", {
-        description, mode: effectiveMode,
+        description: text, mode: effectiveMode, ...(opening ? { opening: true } : {}),
       })) as { questions?: Array<Question | string> } | null;
       const qs: Question[] = (res?.questions ?? [])
         // Tolerate the bare-string shape as well as {q, choices} — the server
@@ -850,6 +859,84 @@ export default function RoutineInterviewPage() {
     // empty current-routine fetch must not leave them answering "what would
     // you like to change?" about a routine that doesn't exist.
     const adjusting = effectiveMode === "adjust";
+
+    // ── Start from scratch: THREE QUESTIONS, one to a slide ──────────────────
+    // An adjustment is one change and a prescribed routine is for somebody else,
+    // so both keep the single open box below; only a person describing their own
+    // whole practice from nothing is asked the three.
+    if (!adjusting && !prescribe) {
+      const OPENING: Array<{ q: string; eyebrow: string }> = [
+        // The owner's three, in his order and his words (2026-10-02, said to this
+        // page after the first three I had written were taken for another surface:
+        // "how do you typically pray? How would you like to build your routine of
+        // daily prayer? And ... how do you connect with God?").
+        { q: "How do you typically pray?", eyebrow: "Your prayer" },
+        { q: "How would you like to build your routine of daily prayer?", eyebrow: "Your routine" },
+        { q: "How do you connect with God?", eyebrow: "Connecting with God" },
+      ];
+      const at = Math.min(openIdx, OPENING.length - 1);
+      const last = at === OPENING.length - 1;
+      const current = openAnswers[at] ?? "";
+      const ready = current.trim().length >= 2;
+      // The three, as the question each answered — the model reads a question and
+      // its answer, not three loose paragraphs.
+      const composed = OPENING.map((o, i) => `${o.q}\n${(openAnswers[i] ?? "").trim()}`).join("\n\n");
+      return (
+        <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
+          <div style={wrap}>
+            {progressBars}
+            <div>
+              <p style={eyebrow}>{OPENING[at]!.eyebrow} · {at + 1} of {OPENING.length}</p>
+              <h1 style={h1}>{OPENING[at]!.q}</h1>
+            </div>
+
+            {/* No example in the box, for the reason the single question had none:
+                a sample anchors people to its shape. */}
+            <textarea
+              key={at}
+              value={current}
+              onChange={(e) => setOpenAnswers((a) => a.map((v, i) => (i === at ? e.target.value : v)))}
+              rows={6}
+              maxLength={1400}
+              autoFocus
+              style={{
+                ...card, width: "100%", boxSizing: "border-box", color: WARM,
+                fontFamily: FONT, fontSize: 15, lineHeight: 1.6, outline: "none", resize: "vertical",
+              }}
+            />
+
+            {error && <p style={{ color: "#E5A3A3", fontSize: 13.5, fontFamily: FONT, margin: 0 }}>{error}</p>}
+
+            <button
+              type="button"
+              disabled={!ready}
+              onClick={() => {
+                setError(null);
+                if (!last) { setOpenIdx(at + 1); return; }
+                setDescription(composed);
+                void submitDescription(composed, true);
+              }}
+              style={{ ...primaryBtn, opacity: ready ? 1 : 0.5 }}
+            >
+              Continue
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                if (at > 0) { setOpenIdx(at - 1); return; }
+                if (currentSettings.length > 0) setPhase("mode");
+                else setLocation("/rule-of-life");
+              }}
+              style={quietBtn}
+            >
+              {at > 0 ? "Back" : currentSettings.length > 0 ? "Back" : "I'd rather set it up myself"}
+            </button>
+          </div>
+        </Layout>
+      );
+    }
+
     return (
       <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
         <div style={wrap}>
@@ -898,7 +985,7 @@ export default function RoutineInterviewPage() {
 
           <button
             type="button"
-            onClick={submitDescription}
+            onClick={() => void submitDescription()}
             disabled={description.trim().length < 10}
             style={{ ...primaryBtn, opacity: description.trim().length < 10 ? 0.5 : 1 }}
           >

@@ -1419,6 +1419,11 @@ router.post("/routine-interview/followups", perUserRateLimit("routine_interview_
 
   const description = cleanText(req.body?.description, 4000);
   if (description.length < 10) { res.status(400).json({ error: "too_short" }); return; }
+  // "Start from scratch" opens on three questions rather than one open box
+  // (owner, 2026-10-02). The text is then the person's ANSWERS, each under the
+  // question it answered, and the model should know it is reading that and not a
+  // description of a routine.
+  const opening = req.body?.opening === true;
 
   /**
    * The follow-up prompt is NOT the build prompt.
@@ -1444,7 +1449,16 @@ ${PRACTICE_MENU_PLAIN}
 ${FOLLOWUP_EXAMPLE}
 
 Right now you are ONLY asking follow-up questions — do not produce a routine yet.
-
+${opening ? `
+HOW THIS PERSON ANSWERED: not with a description of a routine, but to three open
+questions, each written above its answer — how they typically pray, how they would
+like to build their routine of daily prayer, and how they connect with God. Read
+the three together. The first tells you what they already keep; the second what
+they want the routine to be; the third what draws them. Some answers will be short,
+or will not mention a whole area at all — that is exactly where the two questions
+belong. Ask what you still cannot tell, in their own terms, and do not repeat a
+question they have already answered.
+` : ""}
 Work through the four in order — morning, evening, contemplation, newsletters —
 and find which are still UNCLEAR or UNANSWERED. Ask about the two biggest gaps.
 An area they never mentioned at all is a bigger gap than one they described
