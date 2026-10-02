@@ -122,7 +122,6 @@ const SIDE_PRACTICES: Array<{ level: string; label: (cap: string) => string; sub
   { level: "readings", label: (c) => `${c} Scripture Reading`, sub: "The day's appointed readings." },
   { level: "guided-prayer", label: () => "Simple Guided Prayer", sub: "About three minutes." },
   { level: "examen", label: (c) => `${c} Examen`, sub: "Review the day with God." },
-  { level: "fdd", label: () => "Forward Day by Day", sub: "Today's meditation." },
   { level: "reflect-sit", label: (c) => `${c} Contemplation`, sub: "A silent sit." },
   { level: "compline", label: () => "Compline", sub: "The night office." },
 ];
@@ -336,7 +335,7 @@ export default function RoutineInterviewPage() {
   // nice framing but is not evidence of what it programmed.
   const [settings, setSettings] = useState<SpecRow[]>([]);
   const [notes, setNotes] = useState<string[]>([]);
-  // Practices Phoebe has no preset for (a rosary, a gratitude list). They ride
+  // Practices Phoebe has no preset for (a gratitude list, a journal). They ride
   // beside the spec rather than inside it — custom anchors sync through their
   // own channel, not through ruleConfig — so they're written locally on apply.
   const [customPractices, setCustomPractices] = useState<CustomPractice[]>([]);
@@ -1628,7 +1627,7 @@ export default function RoutineInterviewPage() {
               value={ownPractice}
               onChange={(e) => setOwnPractice(e.target.value.slice(0, 40))}
               maxLength={40}
-              placeholder="e.g. The Rosary"
+              placeholder="e.g. Morning Pages"
               aria-label="A practice of your own"
               style={{
                 ...card, width: "100%", boxSizing: "border-box", color: WARM,

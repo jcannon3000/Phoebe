@@ -150,16 +150,14 @@ const CATALOGUE: Record<string, CatalogueEntry> = {
   "guided-prayer": { kind: "prayer", label: "Simple Guided Prayer — a ~3 minute guided form", hint: "morning-shaped", side: "morning" },
   examen:          { kind: "prayer", label: "the Examen — reviewing the day with God", hint: "evening-shaped", side: "evening" },
   compline:        { kind: "prayer", label: "Compline, the night office", hint: "always evening", side: "evening" },
-  fdd:             { kind: "prayer", label: "Forward Day by Day AS their prayer for that part of the day", hint: "only when the meditation IS what they pray; otherwise it is the newsletter \"fdd\"" },
   "reflect-sit":   { kind: "prayer", label: "a silent sit AS their prayer for that part of the day", hint: "centering prayer, Christian meditation, the Jesus Prayer kept silently — when the sit IS the morning or the evening" },
-  custom:          { kind: "custom", label: "a practice of their own naming", hint: "\"Chapel\", \"The Rosary\", \"Morning Pages\" — give \"title\"; NEVER a placeholder like \"Morning practice\"" },
+  custom:          { kind: "custom", label: "a practice of their own naming", hint: "\"Chapel\", \"Morning Pages\", \"a gratitude list\" — give \"title\"; NEVER a placeholder like \"Morning practice\"" },
   silence:         { kind: "silence", label: "time in silence across the day", hint: "minutes ALL TOLD, one sit or several, timer or logged by hand; NOT for a sit that is itself the morning/evening prayer (use reflect-sit)" },
   creation:        { kind: "practice", label: "Breathing Together — a guided breath", hint: "\"Co-Breathe\", \"the breath\"" },
   walk:            { kind: "practice", label: "a Contemplative Walk", hint: "\"prayer walk\"" },
   listening:       { kind: "practice", label: "Audio Divina — praying with music", hint: "\"sacred listening\"" },
-  visio:           { kind: "practice", label: "Visio Divina — praying with an image", hint: "" },
   icons:           { kind: "practice", label: "Praying with Icons — one icon for the week", hint: "" },
-  taize:           { kind: "practice", label: "the Taizé meditation (weekly)", hint: "" },
+  rosary:          { kind: "practice", label: "The Rosary — Roman mysteries or Anglican prayer beads", hint: "\"the rosary\", \"prayer beads\", \"the Anglican rosary\"; a real practice with its own card, NOT a custom one" },
   andrews:         { kind: "practice", label: "Andrew's Version — a weekly comment on the lectionary", hint: "abmcg.substack.com; admin-only for now" },
   noonday:         { kind: "practice", label: "Midday Prayer — the prayer book's short office for noon (BCP p. 103)", hint: "\"noonday prayer\", \"the midday office\"; its own card, not a morning or evening prayer form" },
   hagiography:     { kind: "practice", label: "Feast Day Hagiographies — the life of the day's saint, from Forward Movement", hint: "\"lives of the saints\"; appears only on days the calendar keeps a commemoration" },
@@ -168,17 +166,22 @@ const CATALOGUE: Record<string, CatalogueEntry> = {
   reading:         { kind: "practice", label: "Reading — a book they are working through", hint: "honours \"when\"" },
   podcasts:        { kind: "practice", label: "Podcasts", hint: "" },
   cac:             { kind: "newsletter", label: "the CAC Daily Meditation (Center for Action and Contemplation, Richard Rohr)", hint: "\"the daily meditation\"" },
-  ssje:            { kind: "newsletter", label: "SSJE — Brother, Give Us a Word", hint: "" },
   vts:             { kind: "newsletter", label: "the VTS Dean's Commentary", hint: "\"the Dean's\", \"VTS\" — never fdd" },
   sojo:            { kind: "newsletter", label: "the Sojourners daily devotion", hint: "" },
-  nouwen:          { kind: "newsletter", label: "the Henri Nouwen daily devotion", hint: "" },
+  nouwen:          { kind: "newsletter", label: "the Henri Nouwen daily devotion", hint: "Phoebe calls it \"Daily Devotion\" in a routine; \"my daily devotion\" may mean this card OR \"devotion\" (a short devotional prayer) — a book or writer named means this one" },
   grist:           { kind: "newsletter", label: "Grist climate news", hint: "" },
-  payg:            { kind: "newsletter", label: "Pray As You Go Daily — the Jesuit daily prayer session, listened to", hint: "\"pray as you go\"" },
-  taizeprayer:     { kind: "newsletter", label: "Taizé Daily Prayer — Brother Matthew's short prayer for the day", hint: "\"the Taizé prayer\", \"Brother Matthew\" — the weekly Taizé meditation is taize" },
+  payg:            { kind: "practice", label: "Pray As You Go Daily — the Jesuit daily prayer session, listened to", hint: "\"pray as you go\"; a practice with its own card, not a reading" },
+  taizeprayer:     { kind: "newsletter", label: "Taizé Daily Prayer — Brother Matthew's short prayer for the day", hint: "\"the Taizé prayer\", \"Brother Matthew\"" },
 };
-// "fdd" is a newsletter too — the same key, read as a card when it is not a
-// side's prayer. The adapter decides by `when`: no side → newsletter.
-const NEWSLETTER_KEYS = new Set(["cac", "fdd", "ssje", "vts", "sojo", "nouwen", "grist", "payg", "taizeprayer"]);
+// Forward Day by Day, SSJE, Visio Divina and the weekly Taizé meditation are
+// OUT of this list on purpose (owner, 2026-09-23 and 2026-09-30): they are no
+// longer part of Phoebe. A model that still returns one of those keys is not an
+// error — the adapter below says "we couldn't match it" and leaves it off —
+// and FLAT_VOCAB tells the model not to, and to say so in its notes.
+//
+// Pray As You Go is a PRACTICE (customizer, 2026-09-20), not a newsletter: kept
+// as a newsletter it would have become the routine's reflection source.
+const NEWSLETTER_KEYS = new Set(["cac", "vts", "sojo", "nouwen", "grist", "taizeprayer"]);
 const WHEN = new Set(["morning", "midday", "afternoon", "evening", "anytime"]);
 
 const FLAT_VOCAB = `
@@ -212,6 +215,14 @@ NEVER record one practice twice (the lectionary as "readings" AND as
 "reading"; a silent sit as "reflect-sit" AND as "silence"). A sit that IS
 their morning or evening prayer is "reflect-sit" with that "when"; silence
 kept beside another prayer is "silence".
+
+NO LONGER IN PHOEBE — never record these, even when the person keeps them:
+Forward Day by Day, SSJE (Brother, Give Us a Word), Visio Divina (now only a
+weekly image on the This Sunday page), and the weekly Taizé meditation. If they
+describe one, leave it out and say in "notes" that Phoebe no longer carries it
+(e.g. "Forward Day by Day isn't in Phoebe any more, so it wasn't added"). Do
+NOT substitute a nearby practice for it, and do not make it a custom practice
+unless they ask for something of their own.
 
 VIRGINIA THEOLOGICAL SEMINARY — the single exception to "add nothing they
 didn't describe": if they are at / attend / teach at / graduated from VTS, or
@@ -410,12 +421,12 @@ right. If a practice they named belongs to a different side than the one you're
 asking about, that is itself the thing to sort out, not a choice to offer.
 
 ANYTHING ELSE THEY KEEP → A CUSTOM PRACTICE. Owner: "if they talk about a
-practice that is not a preset option, make it a custom practice." A rosary, a
-gratitude list, Ignatian reading, a gym walk they pray through, a novena, an
+practice that is not a preset option, make it a custom practice." A
+gratitude list, journaling, Ignatian reading, a gym walk they pray through, a novena, an
 hour with the church fathers — if it doesn't map onto an option above, DO NOT
 force it onto the nearest preset and DO NOT drop it. Return it in
 "customPractices" (top level of your JSON, alongside "spec"):
-  [{ "title": "The Rosary", "emoji": "📿", "slot": "evening" }]
+  [{ "title": "Morning Pages", "emoji": "📓", "slot": "evening" }]
 title ≤40 chars in their own words, one emoji, slot one of
 morning | midday | afternoon | evening | anytime. At most four, and only for
 things they actually described. Leave the array out when everything they said
@@ -434,7 +445,7 @@ Reminders (officePrefs) — ON BY DEFAULT:
 homeLayout.order — the cards on their home, in order. Use only these keys, and
 include every practice you turned on:
   office, feeds, contemplation, listening, reading, walk, cobreathe, compline,
-  examen, cac, fdd, ssje, vts, ncmp, podcasts, requests
+  examen, cac, vts, ncmp, podcasts, requests
 homeLayout.hidden — same keys, for cards to hide.
 `.trim();
 
@@ -452,10 +463,10 @@ WHAT YOU ARE DEFINING — the practices they keep, as ONE list:
     something they name.
   · SILENCE — whether they sit at all, roughly how many minutes all told, and
     whether that is one sit or several.
-  · Practices kept through the day — a walk, a breath, sacred listening,
-    Visio Divina, an icon, a spiritual, Lectio, a book, podcasts.
-  · NEWSLETTERS — the daily reflections they read: the CAC meditation, Forward
-    Day by Day, SSJE, the VTS Dean's Commentary, Sojourners, Nouwen, Grist.
+  · Practices kept through the day — a walk, a breath, sacred listening, an
+    icon, the Rosary, Lectio, Pray As You Go, a spiritual, a book, podcasts.
+  · NEWSLETTERS — the daily reflections they read: the CAC meditation, the VTS
+    Dean's Commentary, Sojourners, Nouwen, Taizé Daily Prayer, Grist.
 
 Every one of these is a card of equal standing on their home. There is no
 "main" practice and no anchor to pick — do not ask which of two practices
@@ -777,12 +788,12 @@ WHAT PHOEBE CAN RECORD — so you know what counts as an answer. One list:
   Silence: whether they sit, how many minutes ALL TOLD across the day, and
   whether that's one sit or several.
 
-  Daily reflections, any number: the CAC meditation, Forward Day by Day, SSJE,
-  the VTS Dean's Commentary, Sojourners, Nouwen, Grist.
+  Daily reflections, any number: the CAC meditation, the VTS Dean's
+  Commentary, Sojourners, Nouwen, Taizé Daily Prayer, Grist.
 
   Practices kept through the day: a contemplative walk, sacred listening,
-  Breathing Together (a guided breath), Visio Divina, Praying with Icons, the
-  Taizé meditation, Spirituals, Lectio Divina, reading a book, podcasts.
+  Breathing Together (a guided breath), Praying with Icons, the Rosary, Pray As
+  You Go, Spirituals, Lectio Divina, reading a book, podcasts.
 
   Anything else they keep is recorded under its own name, so an unusual
   practice is never a problem — you don't need to force it onto this list.
@@ -1639,7 +1650,7 @@ function specFromPractices(items: FlatPractice[]): { spec: Record<string, any>; 
 
   // Prayer forms first, so the sides are settled before day practices ask
   // whether a side is free.
-  const prayers = items.filter((p) => CATALOGUE[p.key]?.kind === "prayer" || (p.key === "fdd" && (p.when === "morning" || p.when === "evening")) || CATALOGUE[p.key]?.kind === "custom");
+  const prayers = items.filter((p) => CATALOGUE[p.key]?.kind === "prayer" || CATALOGUE[p.key]?.kind === "custom");
   for (const p of prayers) {
     const entry = CATALOGUE[p.key]!;
     const side = sideOf(p, entry);
@@ -1753,7 +1764,7 @@ Now record their rhythm. Respond with ONLY JSON in exactly this shape:
     { "key": "silence", "minutes": 20, "sits": "one", "log": "timer" },
     { "key": "cac" },
     { "key": "walk", "when": "afternoon" },
-    { "key": "custom", "title": "The Rosary", "emoji": "📿", "when": "evening" }
+    { "key": "custom", "title": "Morning Pages", "emoji": "📓", "when": "morning" }
   ]
 }
 
