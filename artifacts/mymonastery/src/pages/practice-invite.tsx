@@ -24,7 +24,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { readCachedHomeLayout, saveHomeLayout, type HomeLayout } from "@/lib/homeLayoutCache";
 import { setPracticeSlot, type SlottedPractice } from "@/lib/customAnchors";
-import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { PHOEBE_GUEST_ENABLED, isDeviceLocalGuest } from "@/lib/guestFlag";
+import { seedGuestRule } from "@/lib/guestSeed";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { CtaArrow } from "@/components/CtaArrow";
 
@@ -84,6 +85,11 @@ export default function PracticeInvitePage() {
     // the CURRENT layout (server copy first, local cache as fallback) — and
     // for a practice, open its slot. saveHomeLayout is the durable writer
     // (this repo's standing rule for layout writes).
+    // A FRESH GUEST HAS NOT BEEN SEEDED YET when the link opens, and the seed runs
+    // the next time the home mounts - overwriting whatever layout this wrote, so
+    // the practice vanished (found on production, 2026-10-02: a signed-out visitor
+    // tapped Add and the home came up without it). Seed first, then add to THAT.
+    if (isDeviceLocalGuest(user)) { try { seedGuestRule(); } catch { /* a layout of our own is still written below */ } }
     const hl = (user?.homeLayout as HomeLayout | undefined) ?? readCachedHomeLayout() ?? { order: [], hidden: [] };
     const order = [...hl.order];
     if (!order.includes(practice.cardKey)) order.push(practice.cardKey);
