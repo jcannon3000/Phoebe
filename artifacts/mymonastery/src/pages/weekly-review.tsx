@@ -21,7 +21,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { SECTIONS, commitmentLines, type SectionKey, type WolSelections, type CompletionRow } from "./home-beta";
 
 const BG = "#091A10";
@@ -249,7 +249,7 @@ export default function WeeklyReviewPage() {
 
   return (
     <Layout>
-      <div style={{ flex: 1, minHeight: 0, background: BG, position: "relative", display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: 1, minHeight: 0, background: lightenable(BG), position: "relative", display: "flex", flexDirection: "column" }}>
         {/* No fadeTop inside <Layout> — the sticky header frames the top. */}
         <AnimatedBackground base={BG} variant="subtle" />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "16px 20px 40px", maxWidth: 480, margin: "0 auto", width: "100%" }}>

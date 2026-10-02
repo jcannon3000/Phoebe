@@ -5,7 +5,7 @@ import DeckNavPill from "@/components/DeckNavPill";
 import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { DeckAnnouncer } from "@/components/DeckAnnouncer";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
@@ -545,7 +545,7 @@ export default function RosaryPage() {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "fixed", inset: 0, background: lightenable(BG), isolation: "isolate", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <DeckAnnouncer
         label={
           isIntro ? `${formName}. ${isAnglican ? angDef.blurb : def.blurb}`

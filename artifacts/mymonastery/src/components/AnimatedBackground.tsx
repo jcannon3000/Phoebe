@@ -33,6 +33,15 @@ const PRONOUNCED: Blob[] = [
   { rgb: "94,160,114", alpha: 0.62, size: "64vmax", top: "58%", left: "-12%", n: 3, dur: "27s" },
 ];
 
+/**
+ * The "lighter background" setting (lib/backgroundStrength) for a solid dark
+ * ground: a green tint laid over it whose strength is (1 - --bg-wash) x 0.8, so
+ * it is invisible at the default and a clear lift when the setting is on. Every
+ * full-screen deck ground goes through this, so the setting reaches slideshows.
+ */
+export const LIGHTEN_LAYER = "linear-gradient(rgba(70,130,90,calc((1 - var(--bg-wash, 1)) * 0.8)), rgba(70,130,90,calc((1 - var(--bg-wash, 1)) * 0.8)))";
+export const lightenable = (base: string) => `${LIGHTEN_LAYER}, ${base}`;
+
 const KEYFRAMES = `
 @keyframes phoebe-bg-subtle-1 { 0% { transform: translate(-4%, -3%) scale(1); } 50% { transform: translate(4%, 4%) scale(1.08); } 100% { transform: translate(-4%, -3%) scale(1); } }
 @keyframes phoebe-bg-subtle-2 { 0% { transform: translate(3%, 2%) scale(1.05); } 50% { transform: translate(-5%, -4%) scale(0.95); } 100% { transform: translate(3%, 2%) scale(1.05); } }
@@ -75,7 +84,7 @@ export function AnimatedBackground({ base, variant = "subtle", fadeTop = false }
         zIndex: -1,
         overflow: "hidden",
         pointerEvents: "none",
-        background: base,
+        background: lightenable(base),
         ...(fadeTop ? { maskImage: topMask, WebkitMaskImage: topMask } : {}),
       }}
     >
@@ -93,7 +102,7 @@ export function AnimatedBackground({ base, variant = "subtle", fadeTop = false }
             borderRadius: "50%",
             filter: "blur(64px)",
             willChange: "transform, opacity",
-            background: `radial-gradient(circle at center, rgba(${b.rgb},${b.alpha}) 0%, rgba(${b.rgb},0) 70%)`,
+            background: `radial-gradient(circle at center, rgb(${b.rgb} / calc(${b.alpha} * var(--bg-photo, 1))) 0%, rgba(${b.rgb},0) 70%)`,
             // Ease the blobs in (no flash/pop on mount), then drift forever.
             animation: `phoebe-bg-fadein 0.9s ease-out both, phoebe-bg-${variant}-${b.n} ${b.dur} ease-in-out infinite`,
           }}

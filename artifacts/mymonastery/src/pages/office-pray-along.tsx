@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { useTranslation } from "react-i18next";
 
 // ── Office "pray along" (beta) ────────────────────────────────────────────
@@ -209,7 +209,7 @@ export default function OfficePrayAlongPage() {
   const glowKey = complete ? "__done" : active ? `${activeIdx}` : "__title";
 
   return (
-    <div style={{ position: "relative", minHeight: "var(--app-dvh)", background: BG, color: WARM, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "relative", minHeight: "var(--app-dvh)", background: lightenable(BG), color: WARM, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
       <AnimatedBackground base={BG} variant="pronounced" fadeTop />
 
       {/* Header */}

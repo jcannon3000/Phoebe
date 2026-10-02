@@ -22,7 +22,7 @@ import { nextSundayYmdNY } from "@/lib/sundayDate";
 import { FDD_TODAY_URL, markFddRead, recordReadingsOpened, hasPrayedReadingsToday } from "@/lib/cacReadState";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 import { PracticeSwitcher } from "@/components/PracticeSwitcher";
@@ -2056,7 +2056,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   }, [display.backdrop]);
   const veilStyle: CSSProperties = {
     ...officeThemeStyle(display.backdrop, display.font),
-    position: "fixed", inset: 0, background: BG, isolation: "isolate",
+    position: "fixed", inset: 0, background: lightenable(BG), isolation: "isolate",
     display: "flex", flexDirection: "column", alignItems: "center",
     justifyContent: "center", padding: "0 40px", overflow: "hidden",
   };
@@ -2175,7 +2175,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   if (loading) {
     if (alreadyOpenedToday) {
       return (
-        <div style={{ ...officeThemeStyle(display.backdrop, display.font), minHeight: "var(--app-dvh)", background: BG, position: "relative", isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ ...officeThemeStyle(display.backdrop, display.font), minHeight: "var(--app-dvh)", background: lightenable(BG), position: "relative", isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <img
             src={veilPhoto}
             alt=""

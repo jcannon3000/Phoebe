@@ -26,6 +26,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { lightenable } from "@/components/AnimatedBackground";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -512,7 +513,7 @@ export default function OfficeSettingsPage() {
   const isLast = step === TOTAL - 1;
 
   return (
-    <div className="fixed inset-0 z-30 flex flex-col" style={{ background: BG }}>
+    <div className="fixed inset-0 z-30 flex flex-col" style={{ background: lightenable(BG) }}>
       {/* Top bar — close, progress dots, counter */}
       <div
         className="flex items-center justify-between px-4 pb-3"

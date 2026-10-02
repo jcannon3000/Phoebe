@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { lightenable } from "@/components/AnimatedBackground";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -786,7 +787,7 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
   );
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "fixed", inset: 0, background: lightenable(BG), overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
       {leaf && (
         <>
           <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.8, zIndex: -2 }} />

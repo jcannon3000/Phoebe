@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { canEmbedVideoHere, openVideoInReader, videoPath } from "@/lib/videoEmbed";
 import { setAfterReader } from "@/lib/afterReader";
@@ -138,7 +138,7 @@ export function YouTubeCataloguePage({ cat }: { cat: YouTubeCatalogue }) {
   );
 
   return (
-    <div style={{ position: "relative", minHeight: "var(--app-dvh)", background: BG, isolation: "isolate" }}>
+    <div style={{ position: "relative", minHeight: "var(--app-dvh)", background: lightenable(BG), isolation: "isolate" }}>
       <AnimatedBackground base={BG} variant="subtle" />
       <div
         style={{

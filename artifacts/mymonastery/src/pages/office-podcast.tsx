@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useOfficePrefs, type OfficeAudioSource } from "@/lib/officePrefs";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useTranslation } from "react-i18next";
 
@@ -191,7 +191,7 @@ export default function OfficePodcastPage() {
   // before the user has time to notice it.
   return (
     <div style={{
-      position: "fixed", inset: 0, background: PALETTE.bg,
+      position: "fixed", inset: 0, background: lightenable(PALETTE.bg),
       display: "flex", flexDirection: "column", alignItems: "center",
       justifyContent: "center", gap: 16, fontFamily: FONT,
     }}>

@@ -12,7 +12,7 @@ import { getSavedPage } from "@/lib/pageCache";
 import { toast } from "@/hooks/use-toast";
 import { isOnline } from "@/lib/offline";
 import { X } from "lucide-react";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { getLectioMode } from "@/lib/officePrefs";
 import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 import { DeckAnnouncer } from "@/components/DeckAnnouncer";
@@ -506,7 +506,7 @@ export default function LectioPage() {
   const stepLabel = atStart ? null : `${step} of ${LAST} · ${sectionLabel}`;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: DECK_BG, overflow: "hidden" }}>
+    <div style={{ position: "fixed", inset: 0, background: lightenable(DECK_BG), overflow: "hidden" }}>
       {/* Backdrop — the same either/or every other deck makes (listening:523,
           examen:172, visio:986): a photo with a darkening gradient when one
           is available, the app's drifting AnimatedBackground when not. The

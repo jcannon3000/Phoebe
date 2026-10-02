@@ -15,7 +15,7 @@ import { resolveContemplationSideForSit, attributeContemplationSit } from "@/lib
 import { getSideContemplation } from "@/lib/officePrefs";
 import { enqueueSession } from "@/lib/sessionOutbox";
 import { recordPendingSit } from "@/lib/contemplationPending";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { WhatsNextCard } from "@/components/WhatsNextCard";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
@@ -989,7 +989,7 @@ export function ContemplationTimer({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
         className="fixed inset-0 z-[60] flex flex-col items-center"
-        style={{ background: BG, isolation: "isolate" }}
+        style={{ background: lightenable(BG), isolation: "isolate" }}
       >
         {/* Drifting green backdrop — sits at z-index:-1 behind the timer,
             isolation:isolate keeps it contained so the content paints

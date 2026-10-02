@@ -49,7 +49,7 @@ import { motion } from "framer-motion";
 import { SPIRITUALS, SPIRITUALS_SOURCE, type Spiritual } from "@/lib/spiritualsCatalogue";
 import { spiritualForDate } from "@/lib/spiritualsLectionary";
 import { recordSpiritualSat } from "@/lib/spiritualsHistory";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { FROST } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { spiritualsVisible } from "@/lib/spiritualsFlag";
@@ -255,7 +255,7 @@ export default function SpiritualsPage() {
   };
 
   const shell = (children: ReactNode, footer?: ReactNode) => (
-    <div style={{ position: "relative", minHeight: "var(--app-dvh)", background: BG, isolation: "isolate" }}>
+    <div style={{ position: "relative", minHeight: "var(--app-dvh)", background: lightenable(BG), isolation: "isolate" }}>
       <AnimatedBackground base={BG} variant="subtle" />
       <div
         {...(stage === "choose" || stage === "close" ? {} : deckNav)}

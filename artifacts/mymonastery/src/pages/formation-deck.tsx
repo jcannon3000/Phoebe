@@ -15,6 +15,7 @@
  * with attribution, credited on its slide).
  */
 import { useEffect, useMemo, useState } from "react";
+import { lightenable } from "@/components/AnimatedBackground";
 import { useLocation } from "wouter";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -173,7 +174,7 @@ export default function FormationDeck() {
   const Slide = SLIDES[i]!;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "fixed", inset: 0, background: lightenable(BG), overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
       {leaf && (
         <div style={{ position: "absolute", inset: 0, zIndex: -1 }}>
           <img src={leaf} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.2 }} />

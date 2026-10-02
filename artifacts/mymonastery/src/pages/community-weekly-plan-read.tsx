@@ -11,6 +11,7 @@
  * main bundle).
  */
 import { useEffect, useRef, useState } from "react";
+import { lightenable } from "@/components/AnimatedBackground";
 import { useParams, useLocation } from "wouter";
 import { ChevronLeft } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -126,7 +127,7 @@ export default function CommunityWeeklyPlanReadPage() {
   if (!WEEKLY_PLAN_ENABLED) return null;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#0C1F12", display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "fixed", inset: 0, background: lightenable("#0C1F12"), display: "flex", flexDirection: "column" }}>
       {/* Sticky top bar. */}
       <div className="flex items-center gap-2 px-4 shrink-0" style={{ paddingTop: "max(0.9rem, env(safe-area-inset-top))", paddingBottom: 10, borderBottom: "1px solid rgba(46,107,64,0.25)" }}>
         <button type="button" onClick={() => setLocation(backTo)} aria-label="Back" className="inline-flex items-center gap-1 text-[14px]" style={{ color: SAGE, fontFamily: FONT, background: "none", border: "none", cursor: "pointer", padding: "4px 2px" }}>

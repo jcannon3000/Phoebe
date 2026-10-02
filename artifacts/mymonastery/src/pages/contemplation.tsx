@@ -1141,8 +1141,8 @@ export default function ContemplationPage() {
           <AnimatedBackground base="#0C1F12" variant="pronounced" />
           {contemplationLeaf && (
             <>
-              <img src={contemplationLeaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: 0 }} />
-              <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(8,22,15,0.5) 0%, rgba(8,22,15,0.66) 45%, rgba(8,22,15,0.82) 100%)" }} />
+              <img src={contemplationLeaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: "calc(0.4 * var(--bg-photo, 1))" as unknown as number, zIndex: 0 }} />
+              <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(8,22,15,calc(0.5 * var(--bg-wash, 1))) 0%, rgba(8,22,15,calc(0.66 * var(--bg-wash, 1))) 45%, rgba(8,22,15,calc(0.82 * var(--bg-wash, 1))) 100%)" }} />
             </>
           )}
           <Link

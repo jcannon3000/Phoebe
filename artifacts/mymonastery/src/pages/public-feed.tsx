@@ -9,7 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { triggerAmenFeedback, playOpeningSwell } from "@/lib/amenFeedback";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 
 // ── Public, no-login prayer-feed landing ─────────────────────────────────────
 //
@@ -287,7 +287,7 @@ function PrayingScreen({
   return (
     <div
       className="min-h-screen flex flex-col relative"
-      style={{ background: BG, fontFamily: SPACE_GROTESK, isolation: "isolate" }}
+      style={{ background: lightenable(BG), fontFamily: SPACE_GROTESK, isolation: "isolate" }}
     >
       <AnimatedBackground base={BG} variant="subtle" fadeTop />
       <button

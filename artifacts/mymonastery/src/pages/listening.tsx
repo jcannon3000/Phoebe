@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Trash2 } from "lucide-react";
 import { RiseSheet } from "@/components/RiseSheet";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
@@ -1098,7 +1098,7 @@ export default function ListeningPage() {
        * ✕ chrome, same footer — so the two decks are recognisably the same
        * kind of thing.
        */
-      <div style={{ position: "fixed", inset: 0, background: DECK_BG, isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}
+      <div style={{ position: "fixed", inset: 0, background: lightenable(DECK_BG), isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}
            onClick={onTapNavigate} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {deckBackdrop ? (
           <>

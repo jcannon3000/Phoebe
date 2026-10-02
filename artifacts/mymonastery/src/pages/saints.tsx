@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { openExternal } from "@/lib/openExternal";
 import { allCommemorations, searchCommemorations, type Commemoration } from "@/lib/commemorations";
 import { getSaintsRead, markSaintRead } from "@/lib/saintsRead";
@@ -158,7 +158,7 @@ export default function SaintsPage() {
   };
 
   const shell = (children: React.ReactNode, onBack?: () => void, eyebrow?: string) => (
-    <div style={{ position: "relative", minHeight: "var(--app-dvh)", background: BG, isolation: "isolate" }}>
+    <div style={{ position: "relative", minHeight: "var(--app-dvh)", background: lightenable(BG), isolation: "isolate" }}>
       <AnimatedBackground base={BG} variant="subtle" />
       <div
         style={{

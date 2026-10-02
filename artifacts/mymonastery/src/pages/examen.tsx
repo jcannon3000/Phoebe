@@ -9,7 +9,7 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { PracticeSwitcher } from "@/components/PracticeSwitcher";
 import { getSideLevel } from "@/lib/officePrefs";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
@@ -147,7 +147,7 @@ export default function ExamenPage() {
   return (
     <div
       className="relative"
-      style={{ minHeight: "var(--app-dvh)", background: BG, color: WARM, fontFamily: FONT, isolation: "isolate", overflow: "hidden" }}
+      style={{ minHeight: "var(--app-dvh)", background: lightenable(BG), color: WARM, fontFamily: FONT, isolation: "isolate", overflow: "hidden" }}
     >
       {/* Backdrop — the Kearns / office treatment: one still landscape held at
           0.22 (CobreatheHowToIntro.tsx:127) under the shared multi-stop dark

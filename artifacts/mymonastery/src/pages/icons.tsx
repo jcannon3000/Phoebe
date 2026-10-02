@@ -44,7 +44,7 @@ import { isActHidden, actIconOn, actIconOff, ACT_OVERRIDES_EVENT } from "@/lib/a
 import { weekIconId, setWeekIcon, suggestedForWeek, suggestionReason } from "@/lib/iconWeek";
 import { getIconHistory, recordIconPrayed, getPhysicalIconLogs, recordPhysicalIcon, lastIconPrayed, mostFrequentIcon, pullIconStateFromAccount } from "@/lib/iconHistory";
 import { FROST_BLUR } from "@/lib/frost";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
@@ -447,7 +447,7 @@ function GalleryFeed({ works, relatedFrom, tailIsRelated, held, onDwell, onPray,
   }, [shown]);
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "#050D08" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 60, background: lightenable("#050D08") }}>
       {/* THE SEARCH, as a popup (owner: "a search pill which would allow them
           to do a new search through a pop up"). The same layer and dismissal
           as the credit popup below: the scrim closes it, the panel keeps its
@@ -1529,7 +1529,7 @@ export default function IconsPage() {
 
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ position: "fixed", inset: 0, background: lightenable(BG), isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* The shared backdrop treatment — identical to visio/guided-prayer/
           examen: one still landscape at 0.22 under the dark wash, absolute
           (never position:fixed — the iOS flash rule). */}

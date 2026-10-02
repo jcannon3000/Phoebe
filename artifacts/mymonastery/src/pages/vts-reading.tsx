@@ -21,7 +21,7 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { markVtsRead, markReflectionPrayed, recordReflectionDwell } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
@@ -152,7 +152,7 @@ export default function VtsReadingPage() {
   // leaf photo under a dark wash, plus a quiet spinner.
   if (isLoading) {
     return (
-      <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ position: "fixed", inset: 0, background: lightenable(BG), isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <img
           src={veilPhoto}
           alt=""

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
@@ -153,7 +153,7 @@ export default function NovenaPage() {
 
   if (!novena) {
     return (
-      <div style={{ minHeight: "var(--app-dvh)", background: BG, color: WARM, fontFamily: FONT }} className="flex flex-col items-center justify-center gap-4 px-6 text-center">
+      <div style={{ minHeight: "var(--app-dvh)", background: lightenable(BG), color: WARM, fontFamily: FONT }} className="flex flex-col items-center justify-center gap-4 px-6 text-center">
         <p style={{ color: EYEBROW }}>No novena in progress.</p>
         <button
           onClick={() => setLocation("/novena-library")}
@@ -167,7 +167,7 @@ export default function NovenaPage() {
   }
 
   return (
-    <div className="relative" style={{ minHeight: "var(--app-dvh)", background: BG, color: WARM, fontFamily: FONT, isolation: "isolate" }}>
+    <div className="relative" style={{ minHeight: "var(--app-dvh)", background: lightenable(BG), color: WARM, fontFamily: FONT, isolation: "isolate" }}>
       {backdropPhoto ? (
         <>
           <motion.img

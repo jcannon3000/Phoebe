@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { markQuietHandoff } from "@/lib/handoffQuiet";
 
@@ -97,7 +97,7 @@ export default function ReflectLectioPage() {
   // reached — never a blank screen (reference_blank_screen_bug_class).
   return (
     <div style={{
-      position: "fixed", inset: 0, background: PALETTE.bg,
+      position: "fixed", inset: 0, background: lightenable(PALETTE.bg),
       display: "flex", flexDirection: "column", alignItems: "center",
       justifyContent: "center", gap: 16, fontFamily: FONT,
     }}>

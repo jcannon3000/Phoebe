@@ -3,7 +3,7 @@ import { useLocation, useRoute } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest, getQueryClient } from "@/lib/queryClient";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
@@ -86,7 +86,7 @@ export default function GroupReflectionPage() {
   const heading = isLoading ? "Loading…" : (r?.title ?? "Nothing waiting");
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ position: "fixed", inset: 0, background: lightenable(BG), isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {backdrop ? (
         <>
           <motion.img

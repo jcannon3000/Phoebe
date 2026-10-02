@@ -10,7 +10,7 @@ import { markGuidedPrayerPrayed } from "@/lib/cacReadState";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { getSideLevel } from "@/lib/officePrefs";
 import { PracticeSwitcher } from "@/components/PracticeSwitcher";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { artworkById } from "@/lib/visioSelect";
@@ -416,7 +416,7 @@ export default function GuidedPrayerPage() {
   return (
     <div
       className="relative"
-      style={{ minHeight: "var(--app-dvh)", background: BG, color: WARM, fontFamily: FONT, isolation: "isolate", overflow: "hidden" }}
+      style={{ minHeight: "var(--app-dvh)", background: lightenable(BG), color: WARM, fontFamily: FONT, isolation: "isolate", overflow: "hidden" }}
     >
       {/* Backdrop — the Kearns / office treatment: one still landscape held at
           0.22 (CobreatheHowToIntro.tsx:127) under the shared multi-stop dark
