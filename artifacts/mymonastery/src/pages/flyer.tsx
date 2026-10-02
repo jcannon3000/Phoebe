@@ -147,23 +147,30 @@ async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null
 
   // ── Masthead: the app icon and the name, then a hairline.
   const mastY = 190;
+  // THE ICON STANDS AS TALL AS BOTH LINES (owner, 2026-10-02: "adjust the icon to
+  // be bigger so it comes down to the second line as well"). Its top sits at the
+  // name's cap height and its foot on the second line's baseline, so the name and
+  // the line under it read as one block beside it instead of the icon riding above
+  // them. The text starts after it, whatever its size.
+  const iconSz = 112;
+  const iconTop = mastY - 54;
   if (icon) {
-    const sz = 96;
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(M, mastY - 76, sz, sz, 22);
+    ctx.roundRect(M, iconTop, iconSz, iconSz, 26);
     ctx.clip();
-    ctx.drawImage(icon, M, mastY - 76, sz, sz);
+    ctx.drawImage(icon, M, iconTop, iconSz, iconSz);
     ctx.restore();
   }
-  // THE TOP OF THE FLYER NAMES THE APP AS NEW (owner, 2026-10-02: "Have the top
-  // of the Flyer say The New Phoebe Daily Prayer App"). Longer than the one word
-  // it replaces, so it takes the largest size that still sits on one line beside
-  // the icon, rather than a size picked for "Phoebe" that would run off the page.
-  const mastText = "The New Phoebe Daily Prayer App";
-  const mastX = M + (icon ? 124 : 0);
+  // THE TITLE (owner, 2026-10-02: "Have the top of the Flyer say The New Phoebe
+  // Daily Prayer App", then "have the title just be Phoebe Daily Prayer"). It takes
+  // the largest size that still sits on one line beside the icon, so a longer name
+  // can never run off the page; at 76px its capitals stand level with the icon's
+  // top, which is where the icon was sized to put them.
+  const mastText = "Phoebe Daily Prayer";
+  const mastX = M + (icon ? iconSz + 28 : 0);
   ctx.fillStyle = INK;
-  let mastSize = 64;
+  let mastSize = 76;
   for (; mastSize > 40; mastSize -= 2) {
     ctx.font = `700 ${mastSize}px ${FONT}`;
     if (ctx.measureText(mastText).width <= M + col - mastX) break;
