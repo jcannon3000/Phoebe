@@ -91,7 +91,15 @@ export function predatesSeedStamp(): boolean {
 // days when there was one" — which is useRhythmState's gate, not a condition
 // the seed can carry. The card is seeded all year and draws on the ~277 days
 // the calendar keeps a commemoration.
-const SEED_VERSION = "14";
+//
+// v15 (owner, 2026-10-02): "Replace Contemplation with Breathing Together in
+// the default". The breath comes back to the place v13 gave to Contemplation —
+// a layout card on its own morning slot, as in v12 — and Contemplation goes
+// back to being something a person adds. A device whose rhythm is still the
+// untouched seed is moved: it gains the breath, and loses the morning sit ONLY
+// if that sit arrived with v13 or v14 (see migrateStaleSeed). A device older
+// than v13 never had it to lose.
+const SEED_VERSION = "15";
 // Every (morning, evening) pair this seed has written historically. A device
 // sitting on one of these has an untouched seed. Add to this list, never
 // remove: the whole point is recognizing rules we ourselves wrote.
@@ -174,6 +182,10 @@ type NewsletterKey = "cac" | "fdd" | "nouwen";
  * somebody deliberately turned the morning sit off must not have it written
  * back under them.
  */
+// NOT CALLED since v15 (owner, 2026-10-02: Breathing Together replaces it in the
+// default) — kept because the next time the default moves it is one line to
+// bring back, and its note above is the explanation of what "one session, no
+// quota" means.
 function seedContemplation(opts?: { respectExisting?: boolean }): void {
   if (opts?.respectExisting && getSideContemplationExplicit("morning") !== null) return;
   setSideContemplation("morning", true);
@@ -523,11 +535,30 @@ function migrateStaleSeed(): void {
        * device that has no contemplation opinion of its own. getSideContemplation
        * reads the raw per-side key whether or not contemplation is on, so
        * writing it unconditionally would overrule somebody who had deliberately
-       * turned a side's sit OFF. Breathing Together is no longer seeded (v12's
-       * line is gone) and, like Visio and the hagiographies below, it is not
-       * removed from a device that has it.
+       * turned a side's sit OFF. (This is v13's note; v15 reverses its premise —
+       * Breathing Together is seeded again, just above.)
        */
-      seedContemplation({ respectExisting: true });
+      // v15: CONTEMPLATION GIVES THE PLACE BACK TO BREATHING TOGETHER (owner,
+      // 2026-10-02). The breath is added unless the person took it off
+      // (respectRemoval — the same promise the lines below keep).
+      seedCobreathe({ respectRemoval: true });
+      /**
+       * …AND THE MORNING SIT GOES, but only where WE put it. v13 and v14 wrote
+       * it onto every untouched device, so a device stamped 13 or 14 whose
+       * rhythm is still the untouched seed is carrying a sit nobody chose, and
+       * it is taken off. A device stamped lower never received it, so there is
+       * nothing to undo; and one stamped 15 is not in this function at all.
+       * `stamp` is read here, BEFORE the stamp is advanced at the bottom.
+       *
+       * What this cannot tell is a v13/v14 device where the person ALSO turned
+       * the sit on themselves — the seed's own write and theirs look the same.
+       * The window is a day wide (v13 shipped 2026-10-01) and the sit is one tap
+       * to turn back on, which is why this errs toward the owner's change.
+       */
+      const stamp = localStorage.getItem(SEED_VERSION_KEY);
+      if ((stamp === "13" || stamp === "14") && getSideContemplationExplicit("morning") === true) {
+        setSideContemplation("morning", false);
+      }
       /**
        * THE HAGIOGRAPHIES COME BACK (v14), never forced onto a home that hid
        * the card — respectRemoval is the same promise the rest of this block
@@ -693,11 +724,13 @@ export function seedGuestRule(): void {
     // four and nothing else.
     setRelationalPractices([]);
     seedCard("nouwen");
-    // v13: contemplation takes the breath's place. One session, no quota.
-    seedContemplation();
+    // v15: Breathing Together is back in the default, in the place v13 gave to
+    // Contemplation (owner, 2026-10-02: "Replace Contemplation with Breathing
+    // Together in the default"). Its own default slot is the morning.
+    seedCobreathe();
     // v14: the day's life, on the days there is one.
     seedHagiography();
-    // NOT seedCobreathe / seedVisio: neither is in the default.
+    // NOT seedContemplation / seedVisio: neither is in the default.
     localStorage.setItem(SEED_KEY, todayYmd());
     // Freshly seeded devices are already current — stamp so migrateStaleSeed
     // never has anything to do for them.
