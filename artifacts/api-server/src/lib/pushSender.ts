@@ -1400,11 +1400,16 @@ export function sendFeastDayPush(
  * every phone; "with Phoebe" is also redundant beside the app name iOS prints
  * in the header row.
  */
-export function sendPrayedTogetherPush(userId: number, opts: { others: number }) {
+export function sendPrayedTogetherPush(userId: number, opts: { others: number; weekly?: boolean }) {
+  // On a Sunday the number is the week's (see prayedTogetherRecipients), and
+  // only the last word changes - "this week" for "today". Three characters
+  // longer, ~256pt at two digits against a ~290pt title column on a standard
+  // iPhone; a weekly total reaches three digits only well past a hundred people.
+  const when = opts.weekly ? "this week" : "today";
   return sendPushToUser(userId, {
     title: opts.others === 1
-      ? "1 person prayed with you today"
-      : `${opts.others} people prayed with you today`,
+      ? `1 person prayed with you ${when}`
+      : `${opts.others} people prayed with you ${when}`,
     /**
      * BODY LENGTH IS TWO LINES. A collapsed notification gives the body about
      * two lines, ~300pt each. The owner's full sentence — "Return tomorrow to

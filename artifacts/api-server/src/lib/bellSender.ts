@@ -1553,34 +1553,57 @@ export type PrayedTogetherRow = {
   sentDate: string | null;
 };
 
+/** 0 = Sunday, from a local YYYY-MM-DD (read as a plain calendar date, so no zone can shift it). */
+function weekdayOf(ymd: string): number {
+  const [y, m, d] = ymd.split("-").map((n) => parseInt(n, 10));
+  return new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay();
+}
+
+/** The seven local days ending on `ymd`, oldest first. */
+function lastSevenDays(ymd: string): string[] {
+  const [y, m, d] = ymd.split("-").map((n) => parseInt(n, 10));
+  return Array.from({ length: 7 }, (_, i) =>
+    new Date(Date.UTC(y!, m! - 1, d! - (6 - i))).toISOString().slice(0, 10));
+}
+
 /**
- * WHO gets the note, and the number each one is told — a pure decision over
+ * WHO gets the note, and the number each one is told - a pure decision over
  * the rows, so the rules can be tested without a database. Same shape as
  * breathTogetherRecipients, and the same four rules:
  *
  * - Only someone whose record is their OWN local today.
- * - `others` is every OTHER person who kept something on that same day
- *   string, counted once however many practices they kept. "N people prayed
- *   WITH YOU" already counts the reader, so the reader is not in N.
+ * - `others` is every OTHER person who kept something, counted once however
+ *   many practices they kept. "N people prayed WITH YOU" already counts the
+ *   reader, so the reader is not in N.
  * - Nobody is told nobody prayed with them: at zero there is nothing to say,
  *   and no stamp is written, so a later tick in the window still catches the
  *   day once somebody else prays.
  * - One note per person per local day (`sentDate`). There was a second
- *   condition here — never on a day they already had the Breathing Together
- *   note — which went with that note (owner, 2026-10-01). Leaving it would
+ *   condition here - never on a day they already had the Breathing Together
+ *   note - which went with that note (owner, 2026-10-01). Leaving it would
  *   have silently cost tonight's note to anyone whose breath stamp was
  *   already today when this deployed.
+ *
+ * SUNDAY IS THE WEEK'S TOTAL (owner, 2026-10-01: "Lets keep the every day, but
+ * how about on sunday it says the weekly total"). Every other evening the
+ * number is the people who prayed TODAY; on a Sunday - by the recipient's own
+ * calendar - it is the people who prayed at any point in the seven local days
+ * ending that Sunday, and the note says "this week". It is the SAME note, to
+ * the SAME people (those who kept something today), at the same 20:30: only the
+ * number and the word change, so there is still one evening note and never two.
+ * Someone who prayed all week but not on the Sunday gets nothing that night,
+ * exactly as on any other day.
  */
 export function prayedTogetherRecipients(
   rows: PrayedTogetherRow[],
   helpers: { todayFor: (tz: string) => string; inWindow: (tz: string) => boolean },
-): Array<{ userId: number; others: number; today: string }> {
+): Array<{ userId: number; others: number; today: string; weekly: boolean }> {
   const prayersByDay = new Map<string, Set<number>>();
   for (const r of rows) {
     if (!prayersByDay.has(r.day)) prayersByDay.set(r.day, new Set());
     prayersByDay.get(r.day)!.add(r.userId);
   }
-  const out: Array<{ userId: number; others: number; today: string }> = [];
+  const out: Array<{ userId: number; others: number; today: string; weekly: boolean }> = [];
   const seen = new Set<number>();
   for (const r of rows) {
     if (seen.has(r.userId)) continue;
@@ -1589,10 +1612,19 @@ export function prayedTogetherRecipients(
     if (r.day !== today) continue;
     if (r.sentDate === today) { seen.add(r.userId); continue; }
     if (!helpers.inWindow(tz)) continue;
-    const others = Math.max(0, (prayersByDay.get(today)?.size ?? 1) - 1);
+    const weekly = weekdayOf(today) === 0;
+    let people: number;
+    if (weekly) {
+      const week = new Set<number>();
+      for (const day of lastSevenDays(today)) for (const id of prayersByDay.get(day) ?? []) week.add(id);
+      people = week.size;
+    } else {
+      people = prayersByDay.get(today)?.size ?? 1;
+    }
+    const others = Math.max(0, people - 1);
     if (others < 1) continue;
     seen.add(r.userId);
-    out.push({ userId: r.userId, others, today });
+    out.push({ userId: r.userId, others, today, weekly });
   }
   return out;
 }
@@ -1640,10 +1672,11 @@ FROM kept k JOIN users u ON u.id = k.user_id
 
 export async function runPrayedTogetherSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   try {
-    // Two days covers every timezone's "today" at once, and the count per day
-    // string is taken from this same set — so it counts EVERYONE who kept
-    // something that day, not only the people being notified.
-    const cutoffTs = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    // Eight days: the seven a Sunday's weekly total reaches back over, in
+    // every timezone at once, plus the day's slack. The count per day string
+    // is taken from this same set - so it counts EVERYONE who kept something,
+    // not only the people being notified.
+    const cutoffTs = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
     const cutoffDay = cutoffTs.toISOString().slice(0, 10);
     // Both values are server-generated (an ISO timestamp and a YYYY-MM-DD
     // slice of one), never input — and every $1/$2 has to go, not just the
@@ -1662,7 +1695,7 @@ export async function runPrayedTogetherSender(opts: { forceNow?: boolean } = {})
 
     for (const r of recipients) {
       try {
-        await sendPrayedTogetherPush(r.userId, { others: r.others });
+        await sendPrayedTogetherPush(r.userId, { others: r.others, weekly: r.weekly });
         await db
           .update(usersTable)
           .set({ prayedTogetherSentDate: r.today })
@@ -1672,7 +1705,7 @@ export async function runPrayedTogetherSender(opts: { forceNow?: boolean } = {})
         logger.warn({ err, userId: r.userId }, "[prayed-together] push failed");
       }
     }
-    logger.info({ recipients: recipients.length }, "[prayed-together] evening note");
+    logger.info({ recipients: recipients.length, weekly: recipients.filter((r) => r.weekly).length }, "[prayed-together] evening note");
   } catch (err) {
     logger.error({ err }, "[prayed-together] sender failed");
   }
