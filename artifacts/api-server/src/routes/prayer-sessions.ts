@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, appEngagedTable, usersTable, breathSessionsTable } from "@workspace/db";
-import { and, desc, eq, gte, gt, lt, inArray, sql } from "drizzle-orm";
+import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, appEngagedTable, notificationSendsTable, usersTable, breathSessionsTable } from "@workspace/db";
+import { and, desc, eq, gte, gt, lt, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { getGardenUserIds } from "../lib/garden";
 import { todayDateInTz, isValidTimeZone } from "../lib/tz";
@@ -59,6 +59,27 @@ router.post("/app-engaged", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("[/app-engaged] failed:", err);
     // Non-fatal, like the open ping: the client retries tomorrow's, and today's on the next visit.
+    res.json({ ok: false });
+  }
+});
+
+// POST /api/notification-open { nid } - the app was opened from a push. Every
+// alert carries a short `nid` (lib/pushSender); the client reads it off the deep
+// link and reports it here once, and the send's row gets opened_at. Only the
+// FIRST open counts, and only for the user the push went to.
+router.post("/notification-open", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const nid = typeof req.body?.nid === "string" ? req.body.nid : "";
+  if (!/^[A-Za-z0-9_-]{6,32}$/.test(nid)) { res.status(400).json({ error: "bad nid" }); return; }
+  try {
+    await db
+      .update(notificationSendsTable)
+      .set({ openedAt: new Date() })
+      .where(and(eq(notificationSendsTable.nid, nid), eq(notificationSendsTable.userId, sessionUserId), isNull(notificationSendsTable.openedAt)));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/notification-open] failed:", err);
     res.json({ ok: false });
   }
 });

@@ -133,6 +133,49 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
   }
 });
 
+// GET /api/admin/notification-stats?days=30 — which notifications get people to
+// open the app. Per kind (the push's thread id): how many reached a device, how
+// many were opened FROM the notification, the rate, and the median time to open.
+// Counts come from notification_sends, written by sendPushToUser; only sends from
+// the day tracking began are in it, and a push opened without the tap carrying its
+// id (an old build, or opened from the app icon instead) is not counted as opened.
+router.get("/admin/notification-stats", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isBetaAdmin(session.id))) { res.status(403).json({ error: "Forbidden" }); return; }
+  const dRaw = typeof req.query.days === "string" ? parseInt(req.query.days, 10) : NaN;
+  const days = Number.isFinite(dRaw) ? Math.min(Math.max(dRaw, 1), 365) : 30;
+  try {
+    const q = await pool.query(
+      `SELECT kind,
+              COUNT(*)::int AS sent,
+              COUNT(opened_at)::int AS opened,
+              COUNT(DISTINCT user_id)::int AS people,
+              COUNT(DISTINCT user_id) FILTER (WHERE opened_at IS NOT NULL)::int AS people_opened,
+              ROUND((PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (opened_at - sent_at)) / 60.0)
+                FILTER (WHERE opened_at IS NOT NULL))::numeric, 1)::float AS median_minutes
+         FROM notification_sends
+        WHERE sent_at >= now() - ($1 || ' days')::interval
+        GROUP BY kind
+        ORDER BY COUNT(*) DESC`,
+      [String(days)],
+    );
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      days,
+      kinds: q.rows.map((r: any) => ({
+        kind: String(r.kind), sent: r.sent, opened: r.opened,
+        rate: r.sent > 0 ? r.opened / r.sent : 0,
+        people: r.people, peopleOpened: r.people_opened,
+        medianMinutes: r.median_minutes ?? null,
+      })),
+    });
+  } catch (err) {
+    console.error("[admin/notification-stats] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // GET /api/admin/feed-audit — for every prayer feed, report:
 //   • duplicate slugs / titles (the "Manage shows 2 feeds but there's
 //     really 1" symptom)

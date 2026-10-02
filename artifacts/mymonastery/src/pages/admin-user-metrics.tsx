@@ -467,6 +467,8 @@ export default function AdminAppMetricsPage() {
             )}
           </div>
         )}
+
+        <NotificationOpens enabled={!!user && rawIsAdmin} />
       </div>
     </Layout>
   );
@@ -543,6 +545,107 @@ function Tile({ label, value, sub }: TileSpec) {
         {sub ?? ""}
       </p>
     </div>
+  );
+}
+
+const NOTIFICATION_LABELS: Record<string, string> = {
+  "parish-office-morning": "Morning reminder",
+  "parish-office-evening": "Evening reminder",
+  "feast-day": "Feast day",
+  "prayed-together": "End of day: how many prayed with you",
+  "contemplation-goal": "Silence goal reminder",
+  "bell": "Daily bell",
+  "breath-together": "Breathing together",
+  "vts-commentary": "Dean's commentary",
+  "weekly-digest": "Weekly digest",
+  "weekly-review": "Weekly review",
+  "routine-audit": "Routine check-in",
+  "prayer-request": "Prayer request",
+  "prayer-invite": "Prayer invitation",
+  "group-moment": "Group moment",
+  "moment": "Moment",
+  "gathering": "Gathering",
+  "feed-event": "Feed event",
+  "feed-intercession": "Feed intercession",
+  "join-requests": "Join request",
+  "community": "Community",
+};
+// The reminders people ask about first, in the order they are asked about.
+const NOTIFICATION_ORDER = ["parish-office-morning", "parish-office-evening", "feast-day", "prayed-together"];
+
+type NotificationStats = {
+  days: number;
+  kinds: Array<{ kind: string; sent: number; opened: number; rate: number; people: number; peopleOpened: number; medianMinutes: number | null }>;
+};
+
+/**
+ * WHICH NOTIFICATIONS GET PEOPLE TO OPEN THE APP (owner, 2026-10-02). One row per
+ * kind of push: how many reached a device, how many were opened FROM the
+ * notification, and how long that took. The count is of opens that came through
+ * the notification's own tap (it carries a `nid`); a push someone saw and then
+ * opened the app by its icon is not counted, so the rate is a floor.
+ */
+function NotificationOpens({ enabled }: { enabled: boolean }) {
+  const [days, setDays] = useState(30);
+  const { data, isLoading } = useQuery<NotificationStats>({
+    queryKey: ["/api/admin/notification-stats", days],
+    queryFn: () => apiRequest("GET", `/api/admin/notification-stats?days=${days}`),
+    enabled,
+    staleTime: 60_000,
+  });
+  const kinds = [...(data?.kinds ?? [])].sort((a, b) => {
+    const ia = NOTIFICATION_ORDER.indexOf(a.kind), ib = NOTIFICATION_ORDER.indexOf(b.kind);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || b.sent - a.sent;
+  });
+  const COLS = "minmax(0,1fr) 3rem 3rem 3.25rem";
+  return (
+    <section className="mt-10">
+      <p className="text-[11px] tracking-widest uppercase mb-1" style={{ color: FAINT, fontFamily: SPACE_GROTESK }}>Notifications</p>
+      <h2 style={{ color: WARM, fontSize: 18, fontWeight: 600, fontFamily: SPACE_GROTESK }}>Which ones bring people in</h2>
+      <p className="text-sm mt-1 mb-3" style={{ color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.5 }}>
+        Opened is the app being opened from the notification itself, so it is a floor. Counting began when this shipped.
+      </p>
+      <div className="flex gap-2 mb-3">
+        {[7, 30, 90].map((d) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => setDays(d)}
+            style={{
+              fontFamily: SPACE_GROTESK, fontSize: 12.5, padding: "6px 12px", borderRadius: 999, cursor: "pointer",
+              color: days === d ? WARM : SAGE, background: days === d ? "rgba(46,107,64,0.42)" : "transparent",
+              border: "1px solid rgba(143,175,150,0.35)",
+            }}
+          >
+            {d} days
+          </button>
+        ))}
+      </div>
+      <div className="rounded-xl px-4 py-2" style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.18)" }}>
+        <div className="grid items-baseline gap-x-2 py-2" style={{ gridTemplateColumns: COLS }}>
+          <span />
+          {["Sent", "Opened", "Rate"].map((h) => (
+            <span key={h} className="text-[10px] uppercase tracking-[0.12em] font-semibold text-right" style={{ color: FAINT, fontFamily: SPACE_GROTESK }}>{h}</span>
+          ))}
+        </div>
+        {isLoading && <p className="py-3 text-sm" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Loading…</p>}
+        {!isLoading && kinds.length === 0 && (
+          <p className="py-3 text-sm" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>No notifications logged yet.</p>
+        )}
+        {kinds.map((k) => (
+          <div key={k.kind} className="grid items-baseline gap-x-2 py-3" style={{ gridTemplateColumns: COLS, borderTop: "1px solid rgba(200,212,192,0.08)" }}>
+            <p className="text-[14px] font-semibold min-w-0" style={{ color: WARM, fontFamily: SPACE_GROTESK, lineHeight: "20px" }}>{NOTIFICATION_LABELS[k.kind] ?? k.kind}</p>
+            <span className="text-[16px] font-semibold tabular-nums text-right" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{k.sent.toLocaleString()}</span>
+            <span className="text-[16px] font-semibold tabular-nums text-right" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{k.opened.toLocaleString()}</span>
+            <span className="text-[16px] font-semibold tabular-nums text-right" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{Math.round(k.rate * 100)}%</span>
+            <p className="text-[12px] mt-1" style={{ gridColumn: "1 / -1", color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.5 }}>
+              {k.people.toLocaleString()} {k.people === 1 ? "person" : "people"} reached, {k.peopleOpened.toLocaleString()} opened
+              {k.medianMinutes != null ? ` · typically within ${k.medianMinutes < 1 ? "a minute" : `${Math.round(k.medianMinutes)} min`}` : ""}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

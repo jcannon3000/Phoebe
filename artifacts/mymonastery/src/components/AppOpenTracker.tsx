@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -39,6 +40,22 @@ const todayLocal = (): string => {
 export function AppOpenTracker() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
+  const search = useSearch();
+
+  // OPENED FROM A NOTIFICATION. Every push's deep link carries `?nid=` (see
+  // lib/pushSender); reading it here and reporting it once is what lets the admin
+  // metrics say which notifications bring people in. Keyed on the search string
+  // because a tap while the app is open changes only the query, and on the user
+  // because a phone's first launch may not have a session yet. Reported ids are
+  // remembered for the session so a re-render never counts twice.
+  useEffect(() => {
+    if (userId == null) return;
+    const nid = new URLSearchParams(search).get("nid");
+    if (!nid || !/^[A-Za-z0-9_-]{6,32}$/.test(nid)) return;
+    const key = `phoebe:nid-sent:${nid}`;
+    try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); } catch { /* storage blocked: the server keeps the first open only */ }
+    void apiRequest("POST", "/api/notification-open", { nid }).catch(() => {});
+  }, [userId, search]);
 
   useEffect(() => {
     if (userId == null) return;

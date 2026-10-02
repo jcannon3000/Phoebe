@@ -2429,6 +2429,20 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_app_engaged_user_day ON app_engaged (user_id, local_date)`);
 
+    // ── notification_sends: which push got the person to open the app ───────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS notification_sends (
+        id SERIAL PRIMARY KEY,
+        nid TEXT NOT NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        opened_at TIMESTAMPTZ
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_notification_sends_nid ON notification_sends (nid)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_notification_sends_kind_sent ON notification_sends (kind, sent_at)`);
+
     // ── Standard daily bell time → 09:30 ────────────────────────────────────
     // Default went from 07:00 → 09:30 by user direction (a more
     // pastoral hour). Idempotent: re-running this on a DB that's

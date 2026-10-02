@@ -18,10 +18,11 @@
 // skips it.
 
 import http2 from "node:http2";
+import { randomBytes } from "node:crypto";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { SignJWT, importPKCS8, type KeyLike } from "jose";
 import webpush from "web-push";
-import { db, deviceTokensTable, webPushSubscriptionsTable, prayerFeedSubscriptionsTable, usersTable } from "@workspace/db";
+import { db, deviceTokensTable, webPushSubscriptionsTable, prayerFeedSubscriptionsTable, usersTable, notificationSendsTable } from "@workspace/db";
 import { logger } from "./logger";
 
 // VAPID config for browser Web Push (Android Chrome / Firefox / Edge,
@@ -253,6 +254,22 @@ interface SendResult {
 }
 
 /**
+ * The TYPE of a notification for open tracking: its thread id with any record
+ * id taken off, so every prayer-request push is one "prayer-request" row group
+ * rather than one per request. Morning and evening reminders stay apart
+ * (parish-office-morning / parish-office-evening), and so do feast-day and the
+ * end-of-day "N prayed with you" (prayed-together).
+ */
+export function notificationKind(threadId: string): string {
+  const FAMILIES = [
+    "prayer-request", "prayer-invite", "feed-event", "feed-intercession", "gathering",
+    "group-moment", "join-requests", "community", "moment",
+  ];
+  for (const f of FAMILIES) if (threadId === f || threadId.startsWith(`${f}-`)) return f;
+  return threadId;
+}
+
+/**
  * Send a push to every active iOS/Android device token belonging to the
  * given user. Invalid tokens are automatically marked with
  * `invalidated_at = now()` so the next cron pass skips them.
@@ -280,6 +297,19 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
     title: truncateTitle(payload.emojiSafeTitle ? (payload.title ?? "").trim() : clean(payload.title)),
     body: payload.emojiSafeBody ? (payload.body ?? "").trim() : clean(payload.body),
   };
+  // OPEN TRACKING. Every alert carries a short id in its data and on its deep
+  // link; when the app is opened from it the client reports the id back
+  // (POST /api/notification-open) and the row logged below gets its opened_at.
+  // A silent push has no tap, so it is not tracked.
+  const nid = payload.silent ? null : randomBytes(9).toString("base64url");
+  const trackKind = notificationKind(payload.threadId ?? (payload.path ? payload.path.split(/[/?#]/).filter(Boolean)[0] : undefined) ?? "generic");
+  if (nid) {
+    payload = {
+      ...payload,
+      ...(payload.path ? { path: `${payload.path}${payload.path.includes("?") ? "&" : "?"}nid=${nid}` } : {}),
+      data: { ...(payload.data ?? {}), nid },
+    };
+  }
   const [tokens, webSubs] = await Promise.all([
     db.select({
       id: deviceTokensTable.id,
@@ -432,6 +462,15 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
    * and there was nothing on the server to check it against. One line here
    * covers every sender rather than the one that happened to be noticed.
    */
+  if (nid && result.succeeded > 0) {
+    try {
+      await db.insert(notificationSendsTable).values({ nid, userId, kind: trackKind }).onConflictDoNothing();
+    } catch (err) {
+      // Tracking must never fail a send that already went out.
+      logger.warn({ err, userId, kind: trackKind }, "[push] could not log the send for open tracking");
+    }
+  }
+
   if (result.deviceAttempted > 0 && result.deviceSucceeded === 0) {
     logger.warn({
       userId,
