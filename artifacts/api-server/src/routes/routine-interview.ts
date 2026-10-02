@@ -1409,6 +1409,256 @@ function changedSections(before: SpecRow[], after: SpecRow[]): SpecSection[] {
 // "book, screen, or listen?" is a settings picker wearing a sentence — making
 // someone type "Screen" into a textarea to set an enum is work we invented.
 // Free text stays for anything genuinely open.
+// ── The GUIDED interview: one question, then options with a description ─────
+//
+// Owner, 2026-10-02: after the three opening questions, "redo the follow-up
+// questions as well, because oftentimes they're off. They are not helpful. So
+// have it ask one clarifying qualitative question. And then for morning and
+// evening ... give them three options to choose from. And have a description of
+// what each practice is. Breathing together should just talk about a guided
+// breath prayer ... a fourth slide ... five other options between contemplative
+// and reflections ... as many as they want ... and do it in a Henri Nouwen voice."
+//
+// THIS IS A DIFFERENT JOB FROM THE SCRIBE'S. The flow above records a rhythm
+// someone already keeps and is forbidden to suggest one. The guided flow is asked
+// to do the opposite — someone who has said how they pray, how they want to build
+// their routine and how they connect with God is being OFFERED a few real choices.
+// So it has its own prompts, and the two never share a voice.
+//
+// WHAT THE MODEL DECIDES AND WHAT IT DOES NOT. It picks WHICH practices to put in
+// front of the person and writes a line saying why in their own terms. It does NOT
+// write what a practice IS: titles and descriptions come from GUIDE_PRACTICES
+// below, so "Breathing Together" always says what it is — a guided breath prayer —
+// and a model cannot describe a practice Phoebe doesn't have.
+
+const NOUWEN_VOICE = `
+VOICE — Henri Nouwen's, as a friend writing to someone he cares about.
+
+Speak directly and personally, in the second person, in short plain sentences.
+Be gentle and unhurried, a little vulnerable, never clever. Nouwen wrote as one
+who is himself restless, easily distracted and hungry for God — he never stood
+above the reader. Let that show: you are a fellow traveller, not an expert.
+
+His own vocabulary is the heart, home, solitude, stillness, being beloved, the
+ordinary, the interruptions that turn out to be the day's real work. Use it
+sparingly and only where it is true; one such word in a sentence is plenty.
+
+Take from him: tenderness, honesty about how hard it is to be still, and the
+settled belief that the person is already loved before they do anything at all.
+
+NEVER:
+  · Quote or imitate any particular sentence of his, or name him. This is a tone,
+    not a quotation.
+  · Preach, explain what prayer IS, or tell them what they should feel.
+  · Praise or grade what they wrote. A question does not evaluate.
+  · Use exclamation marks, emoji, church jargon, or the names of apps or settings.
+  · Write more than the length asked for. Warmth that costs them reading time is
+    not warmth.
+`.trim();
+
+type GuideSide = "morning" | "evening";
+type GuideOption = { key: string; title: string; emoji: string; description: string };
+
+/**
+ * Every practice the guided flow can offer, with the words that describe it. The
+ * model chooses among these keys; it never writes these lines. Where a practice
+ * reads differently by half of the day (the office, a devotion) the entry says
+ * which.
+ */
+const GUIDE_PRACTICES: Record<string, { emoji: string; title: string | ((side: GuideSide | null) => string); description: string }> = {
+  "guided-prayer": { emoji: "🙌🏽", title: "Simple Guided Prayer", description: "About three minutes, led for you: praise, asking, confessing and giving thanks." },
+  office:          { emoji: "📖", title: (side) => side === "morning" ? "Morning Prayer" : side === "evening" ? "Evening Prayer" : "The Daily Office", description: "The church's own prayer from the Book of Common Prayer — psalms, readings and prayers, said in order." },
+  devotion:        { emoji: "🕊️", title: "A Short Devotion", description: "A few minutes with a short reading and a prayer — much lighter than the full office." },
+  readings:        { emoji: "📰", title: "Daily Scripture Reading", description: "The day's appointed readings from the lectionary, read slowly, one after another." },
+  "reflect-sit":   { emoji: "🕯️", title: "Contemplation", description: "Sitting in silence with God, a few minutes at a time, with nothing to accomplish." },
+  creation:        { emoji: "🌍", title: "Breathing Together", description: "A guided breath prayer." },
+  lectio:          { emoji: "📜", title: "Lectio Divina", description: "Reading a short passage slowly, three times, and listening for the word that speaks to you." },
+  payg:            { emoji: "🙇🏽", title: "Pray As You Go", description: "The Jesuits' daily prayer, listened to: a piece of music, a reading and a few questions to sit with." },
+  examen:          { emoji: "🌗", title: "The Examen", description: "A few quiet minutes to look back over the day and notice where God was." },
+  compline:        { emoji: "🌙", title: "Compline", description: "The church's night prayer — a short, quiet office to close the day." },
+  listening:       { emoji: "🎧", title: "Audio Divina", description: "Listening to sacred music as a way of prayer." },
+  icons:           { emoji: "🪟", title: "Praying with Icons", description: "One icon each week, to look at slowly and sit with." },
+  rosary:          { emoji: "📿", title: "The Rosary", description: "Praying the mysteries a decade at a time, with Roman or Anglican prayer beads." },
+  walk:            { emoji: "🚶🏽", title: "A Contemplative Walk", description: "Walking slowly as prayer, paying attention to what is around you." },
+  nouwen:          { emoji: "😊", title: "Henri Nouwen's Daily Devotion", description: "A short daily reading from Henri Nouwen's writing." },
+  cac:             { emoji: "🌵", title: "Daily Meditation", description: "Richard Rohr's daily meditation, from the Center for Action and Contemplation." },
+  taizeprayer:     { emoji: "🌄", title: "Taizé Daily Prayer", description: "Brother Matthew's short prayer for the day, from the Taizé community." },
+  fdd:             { emoji: "📔", title: "Forward Day by Day", description: "A few minutes with the day's word, from Forward Movement." },
+  ssje:            { emoji: "✍🏽", title: "Brother, Give Us a Word", description: "A short daily word from the Society of St. John the Evangelist." },
+};
+
+// What may be offered where, in the order to fall back on when the model gives
+// too few or something outside the list.
+const GUIDE_MORNING = ["guided-prayer", "office", "devotion", "readings", "reflect-sit", "creation", "lectio", "payg"];
+const GUIDE_EVENING = ["examen", "office", "compline", "devotion", "reflect-sit", "creation", "listening"];
+// The fourth slide: contemplative practices and reflections, mixed.
+const GUIDE_MORE = ["creation", "lectio", "listening", "nouwen", "icons", "taizeprayer", "walk", "cac", "rosary", "payg", "fdd", "ssje"];
+
+function guideOption(key: string, side: GuideSide | null): GuideOption | null {
+  const e = GUIDE_PRACTICES[key];
+  if (!e) return null;
+  return { key, emoji: e.emoji, title: typeof e.title === "function" ? e.title(side) : e.title, description: e.description };
+}
+
+/** The first `n` distinct keys from `wanted` that are allowed and not `taken`, topped up from `fallback`. */
+function pickKeys(wanted: unknown, allowed: string[], taken: Set<string>, n: number, fallback: string[]): string[] {
+  const out: string[] = [];
+  const consider = (k: unknown) => {
+    const key = cleanText(k, 24).toLowerCase();
+    if (key && allowed.includes(key) && !taken.has(key) && !out.includes(key) && out.length < n) out.push(key);
+  };
+  if (Array.isArray(wanted)) for (const w of wanted) consider(typeof w === "object" && w ? (w as { key?: unknown }).key : w);
+  for (const k of fallback) consider(k);
+  return out;
+}
+
+const GUIDE_WHY = (raw: unknown, key: string): string => {
+  if (!Array.isArray(raw)) return "";
+  for (const w of raw) {
+    if (w && typeof w === "object" && cleanText((w as { key?: unknown }).key, 24).toLowerCase() === key) {
+      return cleanText((w as { why?: unknown }).why, 180);
+    }
+  }
+  return "";
+};
+
+// ── POST /routine-interview/guide/question — ONE qualitative question ────────
+router.post("/routine-interview/guide/question", perUserRateLimit("routine_interview_followups", {
+  max: 15, windowMs: 60 * 60 * 1000,
+  message: "You've started the interview a lot in the last hour — give it a moment.",
+}), async (req, res): Promise<void> => {
+  const userId = getUserId(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (await refuseUnlessAdmin(req, res)) return;
+
+  const description = cleanText(req.body?.description, 4000);
+  if (description.length < 10) { res.status(400).json({ error: "too_short" }); return; }
+
+  const system = `${NOUWEN_VOICE}
+
+Someone has answered three open questions about their prayer: how they typically
+pray, how they would like to build their routine of daily prayer, and how they
+connect with God. You are about to offer them a few real choices for a daily
+rhythm, and before you do you may ask them ONE question.
+
+Make it a question about their INNER LIFE OF PRAYER — what they long for when they
+pray, what gets in the way, what a good day of prayer feels like in them, what
+they are tired of or hungry for. It must be something only they can tell you, and
+something that will change what you would offer them.
+
+Never ask about logistics: not what time, not how long, not which book or app, not
+whether they use a prayer book, not which practice they would like. Those come
+next, as choices. Never ask something they have already answered. Never propose a
+practice by name.
+
+Tie it to something specific they said — use a few of their own words where it
+comes naturally — so it is plainly a question for THIS person and could not be
+asked of anyone. Plain words, one or two sentences, no more than 35 words, no
+choices to tap: it is an open question and they will answer in their own words.
+
+Respond with ONLY JSON: {"question": "..."}`;
+
+  const out = await askOpenAi(system, `THEIR ANSWERS:\n${description}`, 400, FOLLOWUP_MODEL);
+  if (!out.ok) { res.status(out.status).json({ error: out.error }); return; }
+  const q = cleanText(out.data?.question ?? (Array.isArray(out.data?.questions) ? (out.data.questions[0]?.q ?? out.data.questions[0]) : ""), 300);
+  if (!q) { res.status(502).json({ error: "ai_bad_json" }); return; }
+  res.json({ question: q });
+});
+
+// ── POST /routine-interview/guide/options — three and three and five ────────
+router.post("/routine-interview/guide/options", perUserRateLimit("routine_interview_followups", {
+  max: 15, windowMs: 60 * 60 * 1000,
+  message: "You've started the interview a lot in the last hour — give it a moment.",
+}), async (req, res): Promise<void> => {
+  const userId = getUserId(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (await refuseUnlessAdmin(req, res)) return;
+
+  const description = cleanText(req.body?.description, 4000);
+  if (description.length < 10) { res.status(400).json({ error: "too_short" }); return; }
+  const cq = cleanText(req.body?.clarification?.q, 300);
+  const ca = cleanText(req.body?.clarification?.a, 1200);
+
+  const menu = (keys: string[], side: GuideSide | null) =>
+    keys.map((k) => `  ${k.padEnd(13)} — ${guideOption(k, side)!.title}: ${guideOption(k, side)!.description}`).join("\n");
+
+  const system = `${NOUWEN_VOICE}
+
+Someone has told you how they pray, how they would like to build a routine of daily
+prayer, and how they connect with God, and has answered one more question. Now you
+offer them real choices — and you choose them with care, because three good
+options are worth more than a list.
+
+Choose, from the menus below and ONLY from them:
+
+  · "morning": exactly THREE ways to begin the day.
+  · "evening": exactly THREE ways to close it.
+  · "more": exactly FIVE other practices — a mix of contemplative practices and
+    daily reflections — they might want to add alongside.
+
+How to choose. Offer three that are genuinely different from each other, so the
+choice means something: not three versions of the same thing. Fit them to what this
+person said and to the pace they asked for — someone short on time, or new to
+prayer, should be offered something small. Include at least one gentle, easy option
+in each of the morning and the evening. The five "more" must not repeat any of the
+six you chose for morning and evening, and should include at least two reflections
+and at least two contemplative practices.
+
+For each one write "why": ONE short sentence (under 22 words) in your voice, saying
+why it might suit THEM, in their own terms — not what the practice is; that is
+shown separately. Do not praise them. Do not use the practice's name in the line.
+
+MORNING MENU (keys you may use for "morning"):
+${menu(GUIDE_MORNING, "morning")}
+
+EVENING MENU (keys you may use for "evening"):
+${menu(GUIDE_EVENING, "evening")}
+
+MORE MENU (keys you may use for "more" — contemplative practices and reflections):
+${menu(GUIDE_MORE, null)}
+
+Respond with ONLY JSON:
+{
+  "morning": [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}],
+  "evening": [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}],
+  "more":    [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}]
+}`;
+
+  const user = `THEIR ANSWERS:\n${description}${cq ? `\n\nONE MORE QUESTION\nQ: ${cq}\nA: ${ca || "(no answer)"}` : ""}`;
+  const out = await askOpenAi(system, user, 1800, FOLLOWUP_MODEL);
+  if (!out.ok) { res.status(out.status).json({ error: out.error }); return; }
+
+  // Validate against the menus, whatever the model said: a key that is not on the
+  // menu is dropped, a duplicate is dropped, and a short list is topped up from the
+  // fallback order — so the person always sees three, three and five, and never
+  // something Phoebe cannot do.
+  const taken = new Set<string>();
+  const morningKeys = pickKeys(out.data?.morning, GUIDE_MORNING, taken, 3, GUIDE_MORNING);
+  const eveningKeys = pickKeys(out.data?.evening, GUIDE_EVENING, taken, 3, GUIDE_EVENING);
+  const offered = new Set<string>([...morningKeys, ...eveningKeys]);
+  const moreKeys = pickKeys(out.data?.more, GUIDE_MORE, offered, 5, GUIDE_MORE);
+  const shape = (keys: string[], raw: unknown, side: GuideSide | null) =>
+    keys.map((k) => ({ ...guideOption(k, side)!, why: GUIDE_WHY(raw, k) }));
+  res.json({
+    morning: shape(morningKeys, out.data?.morning, "morning"),
+    evening: shape(eveningKeys, out.data?.evening, "evening"),
+    more: shape(moreKeys, out.data?.more, null),
+  });
+});
+
+/** A plain summary of a chosen rhythm, from the descriptions — no model needed to say what was picked. */
+function guideSummary(chosen: FlatPractice[]): string {
+  const title = (c: FlatPractice, side: GuideSide | null) => guideOption(c.key, side)?.title ?? c.key;
+  const m = chosen.find((c) => c.when === "morning");
+  const e = chosen.find((c) => c.when === "evening");
+  const rest = chosen.filter((c) => c !== m && c !== e).map((c) => title(c, null));
+  const parts: string[] = [];
+  if (m) parts.push(`${title(m, "morning")} to begin your day`);
+  if (e) parts.push(`${title(e, "evening")} to close it`);
+  if (rest.length) parts.push(`${rest.slice(0, -1).join(", ")}${rest.length > 1 ? " and " : ""}${rest[rest.length - 1]} alongside`);
+  return parts.length ? `Here is a gentle rhythm, made from what you told me: ${parts.join(", ")}.` : "";
+}
+
 router.post("/routine-interview/followups", perUserRateLimit("routine_interview_followups", {
   max: 15, windowMs: 60 * 60 * 1000,
   message: "You've started the interview a lot in the last hour — give it a moment.",
@@ -1419,12 +1669,6 @@ router.post("/routine-interview/followups", perUserRateLimit("routine_interview_
 
   const description = cleanText(req.body?.description, 4000);
   if (description.length < 10) { res.status(400).json({ error: "too_short" }); return; }
-  // "Start from scratch" opens on three questions rather than one open box
-  // (owner, 2026-10-02). The text is then the person's ANSWERS, each under the
-  // question it answered, and the model should know it is reading that and not a
-  // description of a routine.
-  const opening = req.body?.opening === true;
-
   /**
    * The follow-up prompt is NOT the build prompt.
    *
@@ -1449,16 +1693,7 @@ ${PRACTICE_MENU_PLAIN}
 ${FOLLOWUP_EXAMPLE}
 
 Right now you are ONLY asking follow-up questions — do not produce a routine yet.
-${opening ? `
-HOW THIS PERSON ANSWERED: not with a description of a routine, but to three open
-questions, each written above its answer — how they typically pray, how they would
-like to build their routine of daily prayer, and how they connect with God. Read
-the three together. The first tells you what they already keep; the second what
-they want the routine to be; the third what draws them. Some answers will be short,
-or will not mention a whole area at all — that is exactly where the two questions
-belong. Ask what you still cannot tell, in their own terms, and do not repeat a
-question they have already answered.
-` : ""}
+
 Work through the four in order — morning, evening, contemplation, newsletters —
 and find which are still UNCLEAR or UNANSWERED. Ask about the two biggest gaps.
 An area they never mentioned at all is a bigger gap than one they described
@@ -1829,7 +2064,17 @@ needed judgement.`;
   // as the answer. A spec that gets truncated mid-JSON surfaces as "the
   // assistant's answer came back garbled", which reads like a fluke rather
   // than a budget we quietly outgrew.
-  const out = await askOpenAi(system, userMsg, 3200, BUILD_MODEL);
+  // THE GUIDED FLOW SENDS WHAT THE PERSON CHOSE (owner, 2026-10-02) — a morning
+  // pick, an evening pick and any number of extras — and there is nothing left for
+  // a model to interpret, so it is not asked: the choices go straight through the
+  // same adapter and the same checks a model's list would, and the summary is
+  // written from the descriptions. Only keys on the catalogue survive.
+  const chosenRaw = Array.isArray(req.body?.chosen)
+    ? parseFlatPractices(req.body.chosen).filter((p) => !!CATALOGUE[p.key])
+    : [];
+  const out = chosenRaw.length > 0
+    ? ({ ok: true, data: { summary: guideSummary(chosenRaw), notes: [], practices: chosenRaw } } as unknown as Awaited<ReturnType<typeof askOpenAi>>)
+    : await askOpenAi(system, userMsg, 3200, BUILD_MODEL);
   if (!out.ok) { res.status(out.status).json({ error: out.error }); return; }
 
   // sanitizeSpec returns null when homeLayout.order is empty — a reasonable

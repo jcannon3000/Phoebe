@@ -50,7 +50,12 @@ type Phase =
   // itself for why a first-timer never sees it.
   | "mode"
   | "describe" | "thinking-followups" | "followups" | "thinking-build"
+  // The guided interview's three choice slides (see `guided`): a morning, an
+  // evening, and any others — and the wait for them to be written.
+  | "thinking-guide" | "pick-morning" | "pick-evening" | "pick-more"
   | "confirm" | "extras" | "review";
+type GuideOption = { key: string; title: string; emoji: string; description: string; why?: string };
+type GuideRecs = { morning: GuideOption[]; evening: GuideOption[]; more: GuideOption[] };
 type InterviewMode = "scratch" | "adjust";
 
 // ONE read-back slide, not four.
@@ -312,6 +317,18 @@ export default function RoutineInterviewPage() {
    */
   const [openIdx, setOpenIdx] = useState(0);
   const [openAnswers, setOpenAnswers] = useState<string[]>(["", "", ""]);
+  /**
+   * THE GUIDED INTERVIEW (owner, 2026-10-02): after the three questions, ONE
+   * clarifying question, then three options for the morning, three for the
+   * evening, and five more to add — each described — and then the build. It is what
+   * "Start from scratch" does; an adjustment and a prescribed routine keep the older
+   * scribe flow, which records a practice and never suggests one.
+   */
+  const [guided, setGuided] = useState(false);
+  const [recs, setRecs] = useState<GuideRecs | null>(null);
+  const [pickMorning, setPickMorning] = useState<string | null>(null);
+  const [pickEvening, setPickEvening] = useState<string | null>(null);
+  const [pickMore, setPickMore] = useState<string[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
   // Owner: "have the follow up questions on two separate slides." One
@@ -552,7 +569,7 @@ export default function RoutineInterviewPage() {
    * they correct the third, is the worse trade. Anything that did change is
    * still shown on the final review before anything is saved.
    */
-  const submitFollowups = async (nextCorrections?: string[], resumeAt = 0) => {
+  const submitFollowups = async (nextCorrections?: string[], resumeAt = 0, chosen?: Array<{ key: string; when?: string }>) => {
     setError(null);
     const cameFromConfirm = phase === "confirm";
     setPhase("thinking-build");
@@ -561,6 +578,9 @@ export default function RoutineInterviewPage() {
         description, mode: effectiveMode,
         followups: questions.map((item, i) => ({ q: item.q, a: answers[i] ?? "" })),
         corrections: nextCorrections ?? corrections,
+        // The guided flow sends what the person picked; the server builds from
+        // that directly and asks no model to interpret it.
+        ...(chosen && chosen.length > 0 ? { chosen } : {}),
       })) as {
         spec?: Spec; summary?: string; settings?: SpecRow[]; notes?: string[];
         customPractices?: CustomPractice[]; changedSections?: SpecSection[];
@@ -589,14 +609,66 @@ export default function RoutineInterviewPage() {
       const nothingToConfirm = effectiveMode === "adjust"
         && touched.length === 0
         && (res.settings ?? []).length > 0;
+      // THE GUIDED FLOW HAS ALREADY ASKED, AND THEY HAVE ALREADY CHOSEN — there is
+      // nothing to read back and no extras left to offer (the fourth slide was
+      // them), so it lands on the review, where every row can be edited.
+      if (chosen && chosen.length > 0) { setPhase("review"); return; }
       setPhase(nothingToConfirm ? (skipExtras ? "review" : "extras") : "confirm");
     } catch (e: any) {
       setError(errorText(e?.body?.error ?? e?.message ?? ""));
       // Return them where they were. A failed rebuild during the read-back used
       // to dump them back on the follow-up questions, losing the round entirely
       // for what is usually a transient model error.
-      setPhase(cameFromConfirm ? "confirm" : "followups");
+      setPhase(chosen && chosen.length > 0 ? "pick-more" : cameFromConfirm ? "confirm" : "followups");
     }
+  };
+
+  // ── The guided interview's calls ───────────────────────────────────────────
+  /** The three answers in, ONE qualitative question out. */
+  const startGuided = async (text: string) => {
+    setError(null);
+    setGuided(true);
+    setPhase("thinking-followups");
+    try {
+      const res = (await apiRequest("POST", "/api/routine-interview/guide/question", { description: text })) as { question?: string } | null;
+      const q = (res?.question ?? "").trim();
+      if (!q) throw new Error("ai_bad_json");
+      setQuestions([{ q }]);
+      setAnswers([""]);
+      setQIndex(0);
+      setPhase("followups");
+    } catch (e: any) {
+      setError(errorText(e?.body?.error ?? e?.message ?? ""));
+      setPhase("describe");
+    }
+  };
+
+  /** Their answer in, three morning options, three evening options and five more out. */
+  const getGuideOptions = async () => {
+    setError(null);
+    setPhase("thinking-guide");
+    try {
+      const res = (await apiRequest("POST", "/api/routine-interview/guide/options", {
+        description,
+        clarification: { q: questions[0]?.q ?? "", a: answers[0] ?? "" },
+      })) as GuideRecs | null;
+      if (!res || !Array.isArray(res.morning) || !Array.isArray(res.evening) || !Array.isArray(res.more)) throw new Error("ai_bad_json");
+      setRecs(res);
+      setPickMorning(null); setPickEvening(null); setPickMore([]);
+      setPhase("pick-morning");
+    } catch (e: any) {
+      setError(errorText(e?.body?.error ?? e?.message ?? ""));
+      setPhase("followups");
+    }
+  };
+
+  /** What they picked, as the list the server's adapter takes. */
+  const buildChosen = () => {
+    const chosen: Array<{ key: string; when?: string }> = [];
+    if (pickMorning) chosen.push({ key: pickMorning, when: "morning" });
+    if (pickEvening) chosen.push({ key: pickEvening, when: "evening" });
+    for (const k of pickMore) if (k !== pickMorning && k !== pickEvening) chosen.push({ key: k });
+    void submitFollowups(undefined, 0, chosen);
   };
 
   /**
@@ -756,10 +828,118 @@ export default function RoutineInterviewPage() {
   // ── Processing screen ──────────────────────────────────────────────────────
   // Owner: "it shows a processing screen." Two model calls, two waits — the
   // label says which one so a long pause doesn't read as a hang.
-  if (phase === "thinking-followups" || phase === "thinking-build") {
+  // ── The guided interview: choose how to begin the day, close it, and what else ─
+  // One slide each. An option is its name, WHAT IT IS (a description Phoebe wrote,
+  // never the model — "Breathing Together" is a guided breath prayer, said so), and
+  // one line in the guide's voice about why it might suit THEM.
+  const renderPick = (opts: {
+    eyebrowText: string; title: string; sub: string; options: GuideOption[];
+    selected: string[]; multi: boolean; onToggle: (key: string) => void;
+    nextLabel: string; onNext: () => void; skipLabel?: string; onBack: () => void;
+  }) => (
+    <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
+      <div style={wrap}>
+        {progressBars}
+        <div>
+          <p style={eyebrow}>{opts.eyebrowText}</p>
+          <h1 style={h1}>{opts.title}</h1>
+          <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>{opts.sub}</p>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {opts.options.map((o) => {
+            const on = opts.selected.includes(o.key);
+            return (
+              <button
+                key={o.key}
+                type="button"
+                onClick={() => opts.onToggle(o.key)}
+                aria-pressed={on}
+                style={{
+                  ...card, width: "100%", boxSizing: "border-box", textAlign: "left", cursor: "pointer",
+                  padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12,
+                  border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
+                  background: on ? "rgba(45,94,63,0.55)" : CARD,
+                }}
+              >
+                <span aria-hidden style={{ fontSize: 22, lineHeight: "26px", flexShrink: 0 }}>{o.emoji}</span>
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <span style={{ display: "block", color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 16, fontWeight: 700 }}>{o.title}</span>
+                  <span style={{ display: "block", color: WARM, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.5, marginTop: 3, opacity: 0.88 }}>{o.description}</span>
+                  {o.why && (
+                    <span style={{ display: "block", color: SAGE, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, marginTop: 7, fontStyle: "italic" }}>{o.why}</span>
+                  )}
+                </span>
+                <span aria-hidden style={{ fontSize: 15, opacity: on ? 1 : 0.45, flexShrink: 0, marginTop: 3 }}>
+                  {opts.multi ? (on ? "✓" : "○") : (on ? "●" : "○")}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {error && <p style={{ color: "#E5A3A3", fontSize: 13.5, fontFamily: FONT, margin: 0 }}>{error}</p>}
+
+        <button type="button" onClick={opts.onNext} style={primaryBtn}>{opts.nextLabel}</button>
+        {opts.skipLabel && (
+          <button type="button" onClick={() => { opts.onToggle("__none__"); opts.onNext(); }} style={quietBtn}>{opts.skipLabel}</button>
+        )}
+        <button type="button" onClick={opts.onBack} style={quietBtn}>Back</button>
+      </div>
+    </Layout>
+  );
+
+  if (phase === "pick-morning" && recs) {
+    return renderPick({
+      eyebrowText: "To begin the day",
+      title: "How might you begin the day?",
+      sub: "Three ways in. Choose the one that feels like yours.",
+      options: recs.morning,
+      selected: pickMorning ? [pickMorning] : [],
+      multi: false,
+      onToggle: (k) => setPickMorning((cur) => (k === "__none__" ? null : cur === k ? null : k)),
+      nextLabel: "Continue",
+      skipLabel: "Not in the morning",
+      onNext: () => setPhase("pick-evening"),
+      onBack: () => setPhase("followups"),
+    });
+  }
+  if (phase === "pick-evening" && recs) {
+    return renderPick({
+      eyebrowText: "To close the day",
+      title: "And how might you close it?",
+      sub: "Three ways to come to rest. Choose one, or none.",
+      options: recs.evening,
+      selected: pickEvening ? [pickEvening] : [],
+      multi: false,
+      onToggle: (k) => setPickEvening((cur) => (k === "__none__" ? null : cur === k ? null : k)),
+      nextLabel: "Continue",
+      skipLabel: "Not in the evening",
+      onNext: () => setPhase("pick-more"),
+      onBack: () => setPhase("pick-morning"),
+    });
+  }
+  if (phase === "pick-more" && recs) {
+    return renderPick({
+      eyebrowText: "Alongside",
+      title: "Anything else you would like beside these?",
+      sub: "Some practices of stillness and some daily words. Choose as many as you like — or none.",
+      options: recs.more,
+      selected: pickMore,
+      multi: true,
+      onToggle: (k) => setPickMore((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k])),
+      nextLabel: "Shape my rhythm",
+      onNext: buildChosen,
+      onBack: () => setPhase("pick-evening"),
+    });
+  }
+
+  if (phase === "thinking-followups" || phase === "thinking-build" || phase === "thinking-guide") {
     const line = phase === "thinking-followups"
       ? "Reading what you wrote…"
-      : "Shaping your rhythm in Phoebe…";
+      : phase === "thinking-guide"
+        ? "Thinking about what might suit you…"
+        : "Shaping your rhythm in Phoebe…";
     return (
       <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
         <div style={{ ...wrap, minHeight: "60dvh", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
@@ -914,7 +1094,7 @@ export default function RoutineInterviewPage() {
                 setError(null);
                 if (!last) { setOpenIdx(at + 1); return; }
                 setDescription(composed);
-                void submitDescription(composed, true);
+                void startGuided(composed);
               }}
               style={{ ...primaryBtn, opacity: ready ? 1 : 0.5 }}
             >
@@ -1031,7 +1211,7 @@ export default function RoutineInterviewPage() {
             <p style={eyebrow}>
               {questions.length > 1 ? `Question ${qIndex + 1} of ${questions.length}` : "One question"} 🌿
             </p>
-            <h1 style={h1}>Just to be sure</h1>
+            <h1 style={h1}>{guided ? "One question for you" : "Just to be sure"}</h1>
             {/* Owner: '"I don\'t" doesn\'t make sense here. Take it out.' It was
                 written for "do you sit in silence?" and reads as a non-sequitur
                 against a question like "one sit or several?" — which is not a
@@ -1118,14 +1298,14 @@ export default function RoutineInterviewPage() {
 
           <button
             type="button"
-            onClick={() => { if (isLast) { submitFollowups(); } else { setError(null); setQIndex((i) => i + 1); } }}
+            onClick={() => { if (isLast) { if (guided) void getGuideOptions(); else submitFollowups(); } else { setError(null); setQIndex((i) => i + 1); } }}
             style={primaryBtn}
           >
-            {isLast ? "Build my rhythm" : "Continue"}
+            {isLast ? (guided ? "Continue" : "Build my rhythm") : "Continue"}
           </button>
           <button
             type="button"
-            onClick={() => { setError(null); if (qIndex > 0) setQIndex((i) => i - 1); else setPhase("describe"); }}
+            onClick={() => { setError(null); if (qIndex > 0) setQIndex((i) => i - 1); else { setGuided(false); setPhase("describe"); } }}
             style={quietBtn}
           >
             Back
@@ -2011,7 +2191,8 @@ export default function RoutineInterviewPage() {
           type="button"
           onClick={() => {
             setError(null);
-            if (skipExtras) { setConfirmIndex(Math.max(0, confirmSections.length - 1)); setPhase("confirm"); }
+            if (guided && recs) setPhase("pick-more");
+            else if (skipExtras) { setConfirmIndex(Math.max(0, confirmSections.length - 1)); setPhase("confirm"); }
             else setPhase("extras");
           }}
           style={quietBtn}
