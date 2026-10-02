@@ -1047,7 +1047,7 @@ export default function RoutineInterviewPage() {
       // The three, as the question each answered — the model reads a question and
       // its answer, not three loose paragraphs.
       const composed = OPENING.map((o, i) => {
-        const time = i === 1 && openMinutes ? `\nTime they have for prayer each day: about ${openMinutes >= 60 ? "an hour or more" : `${openMinutes} minutes`}.` : "";
+        const time = i === 1 && openMinutes ? `\nTime they have for prayer each day: about ${openMinutes} minutes.` : "";
         return `${o.q}\n${(openAnswers[i] ?? "").trim()}${time}`;
       }).join("\n\n");
       return (
@@ -1076,28 +1076,25 @@ export default function RoutineInterviewPage() {
 
             {at === 1 && (
               <div>
-                <p style={{ ...eyebrow, marginBottom: 10 }}>About how much time each day?</p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {[5, 10, 15, 20, 30, 60].map((m) => {
-                    const on = openMinutes === m;
-                    return (
-                      <button
-                        key={m}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() => setOpenMinutes(on ? null : m)}
-                        style={{
-                          ...quietBtn, width: "auto", padding: "10px 16px", fontSize: 14,
-                          background: on ? "rgba(46,107,64,0.42)" : "transparent",
-                          borderColor: on ? "rgba(143,175,150,0.6)" : undefined,
-                          color: on ? WARM : undefined,
-                        }}
-                      >
-                        {m === 60 ? "An hour+" : `${m} min`}
-                      </button>
-                    );
-                  })}
-                </div>
+                <label htmlFor="ri-minutes" style={{ ...eyebrow, display: "block", marginBottom: 10 }}>About how many minutes each day?</label>
+                {/* 16px so iOS Safari doesn't zoom the page on focus. */}
+                <input
+                  id="ri-minutes"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={600}
+                  placeholder="Minutes"
+                  value={openMinutes ?? ""}
+                  onChange={(e) => {
+                    const n = parseInt(e.target.value, 10);
+                    setOpenMinutes(Number.isFinite(n) && n > 0 ? Math.min(n, 600) : null);
+                  }}
+                  style={{
+                    ...card, width: 160, boxSizing: "border-box", color: WARM,
+                    fontFamily: FONT, fontSize: 16, padding: "12px 16px", outline: "none",
+                  }}
+                />
               </div>
             )}
 
