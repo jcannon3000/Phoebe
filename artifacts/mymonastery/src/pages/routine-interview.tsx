@@ -618,7 +618,18 @@ export default function RoutineInterviewPage() {
       // THE GUIDED FLOW HAS ALREADY ASKED, AND THEY HAVE ALREADY CHOSEN — there is
       // nothing to read back and no extras left to offer (the fourth slide was
       // them), so it lands on the review, where every row can be edited.
-      if (chosen && chosen.length > 0) { setPhase("review"); return; }
+      // ... except where a pick has a second slide in the full customizer: the
+      // office and the short devotion have a FORMAT and a reminder, a silent sit
+      // has its length and how it is kept. Those are the read-back (detail) slide,
+      // so they get it before the review (owner, 2026-10-02: "if they chose
+      // something that would typically have a second slide in the full
+      // customizer, then it should show a second slide ... like the detail slide").
+      if (chosen && chosen.length > 0) {
+        const needsDetail = chosen.some((c) => (c.when === "morning" || c.when === "evening") && ["office", "devotion", "reflect-sit"].includes(c.key));
+        if (needsDetail && !addingFromReview) { setConfirmIndex(0); setPhase("confirm"); return; }
+        setPhase("review");
+        return;
+      }
       setPhase(nothingToConfirm ? (skipExtras ? "review" : "extras") : "confirm");
     } catch (e: any) {
       setError(errorText(e?.body?.error ?? e?.message ?? ""));
@@ -1396,7 +1407,8 @@ export default function RoutineInterviewPage() {
     const advance = () => {
       setError(null); setShowFix(false); setFixText("");
       if (returnToReview) { setReturnToReview(false); setPhase("review"); return; }
-      setPhase(skipExtras ? "review" : "extras");
+      // The guided flow has already asked about extras: its last two slides were them.
+      setPhase(skipExtras || guided ? "review" : "extras");
     };
 
     const saveFix = () => {
@@ -1715,7 +1727,7 @@ export default function RoutineInterviewPage() {
           )}
           {/* Anything the controls above can't express ("I alternate", "only
               on Fridays") goes back through the model as a correction. */}
-          {!pickingSide && (
+          {!pickingSide && !guided && (
             <button type="button" onClick={() => setShowFix((v) => !v)} style={quietBtn}>
               {showFix ? "Never mind" : "Not quite — tell us what's different"}
             </button>
