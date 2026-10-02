@@ -1,4 +1,5 @@
 import { COMMUNITY_FEATURES_ENABLED, COMMUNITY_ROUTE_PREFIXES } from "@/lib/communityFlag";
+import { firstRunPending } from "@/lib/finderEntry";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { RouteFallback } from "@/components/RouteFallback";
 import { hasPrayerSurface } from "@/lib/prayerSurface";
@@ -1182,6 +1183,10 @@ function GuestGate({ children }: { children: ReactNode }) {
     if (!user && hasEverAuthenticated()) return;
     if (!authSettled) return;
     if (!isDeviceLocalGuest(user)) return;
+    // The FIRST-OPEN questions are the one customizer route a device with no
+    // rhythm may open: the standard routine they would otherwise be handed is
+    // device-local too, so nothing about this is less durable than that.
+    if (location === "/find-your-rhythm" && firstRunPending()) return;
     if (WEB_CUSTOMIZER_ROUTES.has(location)) {
       setLocation("/customize", { replace: true });
     }

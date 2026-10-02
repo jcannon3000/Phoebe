@@ -34,3 +34,43 @@ export function finderSkipped(): boolean {
 export function clearFinderSkip(): void {
   try { sessionStorage.removeItem(KEY); } catch { /* nothing to clear */ }
 }
+
+// ── THE FIRST OPEN ─────────────────────────────────────────────────────────
+//
+// Owner, 2026-10-01: "There was supposed to be now three questions before it
+// loads recommendations the first time." A brand-new device used to be handed
+// the default routine the instant the home opened — the "recommendations"
+// loaded without a word asked. Now the home sends a device with no rhythm to the
+// questions first, and what they answer is what gets set up.
+//
+// DEVICE-LOCAL, under the "phoebe:guest-" prefix so the logout wipe takes it
+// with the rest of that family: a phone handed to somebody else is a new
+// beginning, and is asked again.
+const SKIP_KEY = "phoebe:guest-first-run-skip";
+
+/**
+ * Is this a device that has never been given a rhythm — and not been told to
+ * skip the questions? True ONLY when every sign of an existing rhythm is
+ * absent: the seed's stamp, a saved home layout, a chosen side. An existing
+ * device, an account's synced rhythm and a restored session all carry at least
+ * one of those, so none of them is ever sent to the questions. And if storage
+ * cannot be read at all the answer is "no", never "yes": a person we cannot
+ * check is not trapped in a screen they cannot leave.
+ */
+export function firstRunPending(): boolean {
+  try {
+    if (localStorage.getItem(SKIP_KEY) === "1") return false;
+    if (localStorage.getItem("phoebe:guest-seeded-ymd")) return false;
+    if (localStorage.getItem("phoebe:home-layout")) return false;
+    if (localStorage.getItem("phoebe:office:level:morning")) return false;
+    if (localStorage.getItem("phoebe:office:level:evening")) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** "Skip": the questions are not for me — give me the standard routine. */
+export function skipFirstRun(): void {
+  try { localStorage.setItem(SKIP_KEY, "1"); } catch { /* the seed is the fallback either way */ }
+}

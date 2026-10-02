@@ -7,7 +7,7 @@ import {
 } from "@/lib/rhythmFinder";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
-import { markFinderSkip, clearFinderSkip } from "@/lib/finderEntry";
+import { markFinderSkip, clearFinderSkip, firstRunPending, skipFirstRun } from "@/lib/finderEntry";
 
 // Find Your Rhythm — three questions, then two follow-ups chosen from the
 // answers, that recommend a rule of life and, on a tap, write it into the same
@@ -46,6 +46,9 @@ export default function FindYourRhythmPage() {
   const [, navigate] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const guest = !authLoading && isDeviceLocalGuest(user);
+  // A device with no rhythm yet reached this from the home, before anything has
+  // been set up. Read ONCE: applying the answers is what makes it false.
+  const [firstRun] = useState(() => firstRunPending());
   // Opening the questions retires any earlier "I'll adjust it myself" — it was
   // for that one trip into the customizer, not for good.
   useEffect(() => { clearFinderSkip(); }, []);
@@ -69,7 +72,14 @@ export default function FindYourRhythmPage() {
     return Array.isArray(v) ? v.length > 0 : !!v;
   })();
 
-  const back = () => { if (idx > 0) setIdx(idx - 1); else navigate("/"); };
+  // On the first open there is no page behind this one to go back to — the home
+  // would just send them here again — so the first question's way out is Skip,
+  // which hands them the standard routine instead.
+  const back = () => {
+    if (idx > 0) setIdx(idx - 1);
+    else if (firstRun) { skipFirstRun(); navigate("/dashboard"); }
+    else navigate("/");
+  };
   const next = () => {
     if (idx < total - 1) setIdx(idx + 1);
     else setPhase("result");
@@ -105,7 +115,9 @@ export default function FindYourRhythmPage() {
     setApplying(true);
     await applyRhythm(rec, { guest }).catch(() => { /* best-effort */ });
     markFinderSkip();
-    navigate("/rule-of-life");
+    // A device with no account edits in the light customizer — the full flow
+    // needs one — and it opens on the rhythm that was just saved.
+    navigate(guest ? "/customize" : "/rule-of-life");
   }
 
   // ——— Result ———
@@ -185,7 +197,7 @@ export default function FindYourRhythmPage() {
           <div style={{ width: `${((idx + 1) / total) * 100}%`, height: "100%", background: SAGE, transition: "width 0.3s ease" }} />
         </div>
         <button onClick={back} className="mt-3 text-[14px] inline-flex items-center gap-1.5" style={{ color: SAGE_DIM, fontFamily: FONT }}>
-          ← <span>{idx === 0 ? "Close" : "Back"}</span>
+          ← <span>{idx === 0 ? (firstRun ? "Skip — use the standard routine" : "Close") : "Back"}</span>
         </button>
       </div>
 

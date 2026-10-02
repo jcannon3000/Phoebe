@@ -24,6 +24,7 @@ import { hasReadReflectionToday, type TrackedReflection } from "@/lib/cacReadSta
 import { HomeLearnSection } from "@/components/HomeLearnSection";
 import { HomeExploreSection } from "@/components/HomeExploreSection";
 import { routineStarted, inheritedRoutine } from "@/lib/routineStart";
+import { firstRunPending } from "@/lib/finderEntry";
 import { RoutineStartedCard } from "@/components/BeginHere";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { apiRequest } from "@/lib/queryClient";
@@ -7283,7 +7284,17 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
      * a layout or a chosen side, so inheritedRoutine() keeps it seeding for
      * them exactly as before.
      */
-    if (!authLoading && PHOEBE_GUEST_ENABLED && (!user || user.isAnonymous)
+    /**
+     * …AND NOT BEFORE THREE QUESTIONS (owner, 2026-10-01: "There was supposed
+     * to be now three questions before it loads recommendations the first
+     * time"). A device with no rhythm at all goes to the questions first; what
+     * they answer is what gets set up, and the seed finds a rhythm already there
+     * and leaves it alone. "Skip" on that page (lib/finderEntry) is what hands
+     * them the standard routine instead.
+     */
+    const askFirst = !authLoading && PHOEBE_GUEST_ENABLED && (!user || user.isAnonymous) && firstRunPending();
+    if (askFirst) setLocation("/find-your-rhythm");
+    else if (!authLoading && PHOEBE_GUEST_ENABLED && (!user || user.isAnonymous)
       && (routineStarted() || inheritedRoutine())) seedGuestRule();
     // New users land on a coherent GIVEN rhythm (Morning Devotion · Forward Day
     // by Day · Evening Devotion) — not a config screen. Onboarding is just the
