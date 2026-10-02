@@ -1483,6 +1483,8 @@ const GUIDE_PRACTICES: Record<string, { emoji: string; title: string | ((side: G
   cac:             { emoji: "🌵", title: "Daily Meditation", description: "Richard Rohr's daily meditation, from the Center for Action and Contemplation." },
   taizeprayer:     { emoji: "🌄", title: "Taizé Daily Prayer", description: "Brother Matthew's short prayer for the day, from the Taizé community." },
   fdd:             { emoji: "📔", title: "Forward Day by Day", description: "A few minutes with the day's word, from Forward Movement." },
+  spirituals:      { emoji: "🎶", title: "Meditating on Spirituals", description: "A spiritual sung as prayer, one at a time." },
+  hagiography:     { emoji: "🪽", title: "Feast Day Hagiographies", description: "The life of the day's saint, from Forward Movement — on the days the calendar keeps one." },
   ssje:            { emoji: "✍🏽", title: "Brother, Give Us a Word", description: "A short daily word from the Society of St. John the Evangelist." },
 };
 
@@ -1491,7 +1493,12 @@ const GUIDE_PRACTICES: Record<string, { emoji: string; title: string | ((side: G
 const GUIDE_MORNING = ["guided-prayer", "office", "devotion", "readings", "reflect-sit", "creation", "lectio", "payg"];
 const GUIDE_EVENING = ["examen", "office", "compline", "devotion", "reflect-sit", "creation", "listening"];
 // The fourth slide: contemplative practices and reflections, mixed.
-const GUIDE_MORE = ["creation", "lectio", "listening", "nouwen", "taizeprayer", "walk", "cac", "rosary", "payg", "fdd", "ssje"];
+// The last two slides, each a FULL list the person chooses from (as the
+// customizer does); the model only SUGGESTS a few of each. Reflections are the
+// daily readings; practices are the cards kept alongside the day.
+const GUIDE_REFLECTIONS = ["nouwen", "taizeprayer", "cac", "ssje", "fdd"];
+const GUIDE_PRACTICES_ALL = ["creation", "walk", "listening", "rosary", "lectio", "payg", "spirituals", "hagiography"];
+const GUIDE_MORE = [...GUIDE_REFLECTIONS, ...GUIDE_PRACTICES_ALL];
 
 function guideOption(key: string, side: GuideSide | null): GuideOption | null {
   const e = GUIDE_PRACTICES[key];
@@ -1702,15 +1709,18 @@ of daily prayer, and how they connect with God. Read all of it. Then choose, fro
 
   · "morning": exactly THREE ways to begin the day.
   · "evening": exactly THREE ways to close it.
-  · "more": exactly FIVE other practices — contemplative practices and daily
-    reflections — they might add alongside.
+  · "reflections": exactly TWO daily reflections to SUGGEST (the person will see
+    the whole list of reflections and choose any they like).
+  · "practices": exactly THREE other practices to SUGGEST (the person will see
+    the whole list of practices and choose any they like).
 
 HOW TO CHOOSE, in this order:
   1. THEIR OWN PRACTICE FIRST. Whatever they say they already do or love — Centering
      Prayer or contemplation, the rosary, Lectio Divina, music, the office, walking —
      translate it into the matching practice on the menu and put it in. Where it is
      on the morning or evening menu, offer it there (both, if they pray twice a day);
-     otherwise in "more". Never leave out what they told you.
+     otherwise in "reflections" or "practices", whichever it is. Never leave out what
+     they told you.
   2. THEN THE SHAPE OF THEIR PRAYER. If they pray in silence, favour stillness and
      breath; if they need words, favour led prayer and the office; if scripture,
      readings and Lectio; if music, listening. Add a different kind beside it so the
@@ -1719,8 +1729,7 @@ HOW TO CHOOSE, in this order:
      under ten minutes means short practices only. Someone short on time, new to prayer, or easily distracted
      gets the lighter, gentler options. Include at least one easy option in each of
      morning and evening.
-  4. The five "more" must not repeat the six above, and include at least two
-     reflections and two contemplative practices.
+  4. The suggested "practices" must not repeat the six above.
 Do not offer something because it is generic. Every option should be there for a
 reason you could give from THEIR words.
 
@@ -1734,14 +1743,18 @@ ${menu(GUIDE_MORNING, "morning")}
 EVENING MENU:
 ${menu(GUIDE_EVENING, "evening")}
 
-MORE MENU:
-${menu(GUIDE_MORE, null)}
+REFLECTIONS MENU (keys you may use for "reflections"):
+${menu(GUIDE_REFLECTIONS, null)}
+
+PRACTICES MENU (keys you may use for "practices"):
+${menu(GUIDE_PRACTICES_ALL, null)}
 
 Respond with ONLY JSON:
 {
   "morning": [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}],
   "evening": [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}],
-  "more":    [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}]
+  "reflections": [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}],
+  "practices":   [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}]
 }`;
 
   const user = `THEIR ANSWERS:\n${description}${cq ? `\n\nONE MORE QUESTION\nQ: ${cq}\nA: ${ca || "(no answer)"}` : ""}`;
@@ -1759,16 +1772,22 @@ Respond with ONLY JSON:
   const morningKeys = pickKeys(withNamed(data?.morning, GUIDE_MORNING), GUIDE_MORNING, taken, 3, fillFor(GUIDE_MORNING));
   const eveningKeys = pickKeys(withNamed(data?.evening, GUIDE_EVENING), GUIDE_EVENING, taken, 3, fillFor(GUIDE_EVENING));
   const offered = new Set<string>([...morningKeys, ...eveningKeys]);
-  const moreKeys = pickKeys(
-    [...named.filter((k) => GUIDE_MORE.includes(k) && !offered.has(k)), ...(Array.isArray(data?.more) ? data.more : [])],
-    GUIDE_MORE, offered, 5, fillFor(GUIDE_MORE),
+  const suggestRef = pickKeys(withNamed(data?.reflections, GUIDE_REFLECTIONS), GUIDE_REFLECTIONS, new Set(), 2, fillFor(GUIDE_REFLECTIONS));
+  const suggestPrac = pickKeys(
+    [...named.filter((k) => GUIDE_PRACTICES_ALL.includes(k) && !offered.has(k)), ...(Array.isArray(data?.practices) ? data.practices : [])],
+    GUIDE_PRACTICES_ALL, offered, 3, fillFor(GUIDE_PRACTICES_ALL),
   );
   const shape = (keys: string[], raw: unknown, side: GuideSide | null) =>
     keys.map((k) => { const o = guideOption(k, side)!; return { ...o, title: nameTheyUse(k, text, o.title), why: GUIDE_WHY(raw, k) }; });
+  // The WHOLE list, suggestions first (they carry the why), the rest in menu order.
+  const wholeList = (all: string[], suggested: string[], raw: unknown) =>
+    [...shape(suggested, raw, null).map((o) => ({ ...o, suggested: true })),
+     ...shape(all.filter((k) => !suggested.includes(k)), raw, null).map((o) => ({ ...o, why: "", suggested: false }))];
   res.json({
     morning: shape(morningKeys, data?.morning, "morning"),
     evening: shape(eveningKeys, data?.evening, "evening"),
-    more: shape(moreKeys, data?.more, null),
+    reflections: wholeList(GUIDE_REFLECTIONS, suggestRef, data?.reflections),
+    practices: wholeList(GUIDE_PRACTICES_ALL, suggestPrac, data?.practices),
   });
 });
 

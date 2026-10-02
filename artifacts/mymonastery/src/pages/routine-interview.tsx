@@ -52,10 +52,11 @@ type Phase =
   | "describe" | "thinking-followups" | "followups" | "thinking-build"
   // The guided interview's three choice slides (see `guided`): a morning, an
   // evening, and any others — and the wait for them to be written.
-  | "thinking-guide" | "pick-morning" | "pick-evening" | "pick-more"
+  | "thinking-guide" | "pick-morning" | "pick-evening" | "pick-reflections" | "pick-practices"
   | "confirm" | "extras" | "review";
-type GuideOption = { key: string; title: string; emoji: string; description: string; why?: string };
-type GuideRecs = { morning: GuideOption[]; evening: GuideOption[]; more: GuideOption[] };
+type GuideOption = { key: string; title: string; emoji: string; description: string; why?: string; suggested?: boolean };
+// reflections and practices are the WHOLE lists (any may be chosen); the ones the server suggests come first.
+type GuideRecs = { morning: GuideOption[]; evening: GuideOption[]; reflections: GuideOption[]; practices: GuideOption[] };
 type InterviewMode = "scratch" | "adjust";
 
 // ONE read-back slide, not four.
@@ -330,7 +331,8 @@ export default function RoutineInterviewPage() {
   const [recs, setRecs] = useState<GuideRecs | null>(null);
   const [pickMorning, setPickMorning] = useState<string | null>(null);
   const [pickEvening, setPickEvening] = useState<string | null>(null);
-  const [pickMore, setPickMore] = useState<string[]>([]);
+  const [pickReflections, setPickReflections] = useState<string[]>([]);
+  const [pickPractices, setPickPractices] = useState<string[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
   // Owner: "have the follow up questions on two separate slides." One
@@ -621,7 +623,7 @@ export default function RoutineInterviewPage() {
       // Return them where they were. A failed rebuild during the read-back used
       // to dump them back on the follow-up questions, losing the round entirely
       // for what is usually a transient model error.
-      setPhase(chosen && chosen.length > 0 ? "pick-more" : cameFromConfirm ? "confirm" : "followups");
+      setPhase(chosen && chosen.length > 0 ? "pick-practices" : cameFromConfirm ? "confirm" : "followups");
     }
   };
 
@@ -638,9 +640,9 @@ export default function RoutineInterviewPage() {
     setPhase("thinking-guide");
     try {
       const res = (await apiRequest("POST", "/api/routine-interview/guide/options", { description: text })) as GuideRecs | null;
-      if (!res || !Array.isArray(res.morning) || !Array.isArray(res.evening) || !Array.isArray(res.more)) throw new Error("ai_bad_json");
+      if (!res || !Array.isArray(res.morning) || !Array.isArray(res.evening) || !Array.isArray(res.reflections) || !Array.isArray(res.practices)) throw new Error("ai_bad_json");
       setRecs(res);
-      setPickMorning(null); setPickEvening(null); setPickMore([]);
+      setPickMorning(null); setPickEvening(null); setPickReflections([]); setPickPractices([]);
       setPhase("pick-morning");
     } catch (e: any) {
       setError(errorText(e?.body?.error ?? e?.message ?? ""));
@@ -653,7 +655,7 @@ export default function RoutineInterviewPage() {
     const chosen: Array<{ key: string; when?: string }> = [];
     if (pickMorning) chosen.push({ key: pickMorning, when: "morning" });
     if (pickEvening) chosen.push({ key: pickEvening, when: "evening" });
-    for (const k of pickMore) if (k !== pickMorning && k !== pickEvening) chosen.push({ key: k });
+    for (const k of [...pickReflections, ...pickPractices]) if (k !== pickMorning && k !== pickEvening && !chosen.some((c) => c.key === k)) chosen.push({ key: k });
     void submitFollowups(undefined, 0, chosen);
   };
 
@@ -901,22 +903,36 @@ export default function RoutineInterviewPage() {
       onToggle: (k) => setPickEvening((cur) => (k === "__none__" ? null : cur === k ? null : k)),
       nextLabel: "Continue",
       skipLabel: "Not in the evening",
-      onNext: () => setPhase("pick-more"),
+      onNext: () => setPhase("pick-reflections"),
       onBack: () => setPhase("pick-morning"),
     });
   }
-  if (phase === "pick-more" && recs) {
+  if (phase === "pick-reflections" && recs) {
     return renderPick({
-      eyebrowText: "Alongside",
-      title: "Anything else you would like beside these?",
-      sub: "Some practices of stillness and some daily words. Choose as many as you like — or none.",
-      options: recs.more,
-      selected: pickMore,
+      eyebrowText: "Daily reflections",
+      title: "Would you like a daily reflection?",
+      sub: "A short reading to begin or end the day. Choose as many as you like — or none.",
+      options: recs.reflections,
+      selected: pickReflections,
       multi: true,
-      onToggle: (k) => setPickMore((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k])),
+      onToggle: (k) => setPickReflections((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k])),
+      nextLabel: "Continue",
+      onNext: () => setPhase("pick-practices"),
+      onBack: () => setPhase("pick-evening"),
+    });
+  }
+  if (phase === "pick-practices" && recs) {
+    return renderPick({
+      eyebrowText: "Practices",
+      title: "Anything else you would like to practise?",
+      sub: "Any of these can sit beside your day. Choose as many as you like — or none.",
+      options: recs.practices,
+      selected: pickPractices,
+      multi: true,
+      onToggle: (k) => setPickPractices((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k])),
       nextLabel: "Shape my rhythm",
       onNext: buildChosen,
-      onBack: () => setPhase("pick-evening"),
+      onBack: () => setPhase("pick-reflections"),
     });
   }
 
@@ -2204,7 +2220,7 @@ export default function RoutineInterviewPage() {
           type="button"
           onClick={() => {
             setError(null);
-            if (guided && recs) setPhase("pick-more");
+            if (guided && recs) setPhase("pick-practices");
             else if (skipExtras) { setConfirmIndex(Math.max(0, confirmSections.length - 1)); setPhase("confirm"); }
             else setPhase("extras");
           }}
