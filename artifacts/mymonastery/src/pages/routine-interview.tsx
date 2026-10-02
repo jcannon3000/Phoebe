@@ -56,7 +56,7 @@ type Phase =
   | "confirm" | "extras" | "review";
 type GuideOption = { key: string; title: string; emoji: string; description: string; why?: string; suggested?: boolean };
 // reflections and practices are the WHOLE lists (any may be chosen); the ones the server suggests come first.
-type GuideRecs = { morning: GuideOption[]; evening: GuideOption[]; reflections: GuideOption[]; practices: GuideOption[] };
+type GuideRecs = { morning: GuideOption[]; evening: GuideOption[]; morningOthers?: GuideOption[]; eveningOthers?: GuideOption[]; reflections: GuideOption[]; practices: GuideOption[] };
 type InterviewMode = "scratch" | "adjust";
 
 // ONE read-back slide, not four.
@@ -655,7 +655,10 @@ export default function RoutineInterviewPage() {
       const res = (await apiRequest("POST", "/api/routine-interview/guide/options", { description: text })) as GuideRecs | null;
       if (!res || !Array.isArray(res.morning) || !Array.isArray(res.evening) || !Array.isArray(res.reflections) || !Array.isArray(res.practices)) throw new Error("ai_bad_json");
       setRecs(res);
-      setPickMorning(null); setPickEvening(null); setPickReflections([]); setPickPractices([]);
+      setPickMorning(null); setPickEvening(null);
+      // The server's suggestions for the last two slides arrive already chosen (and on top).
+      setPickReflections(res.reflections.filter((o) => o.suggested).map((o) => o.key));
+      setPickPractices(res.practices.filter((o) => o.suggested).map((o) => o.key));
       setPhase("pick-morning");
     } catch (e: any) {
       setError(errorText(e?.body?.error ?? e?.message ?? ""));
@@ -837,6 +840,8 @@ export default function RoutineInterviewPage() {
     eyebrowText: string; title: string; sub: string; options: GuideOption[];
     selected: string[]; multi: boolean; onToggle: (key: string) => void;
     nextLabel: string; onNext: () => void; skipLabel?: string; onBack: () => void;
+    /** Everything else that could be chosen: a dropdown under the cards, and a chosen one joins them as a card. */
+    others?: GuideOption[];
   }) => (
     <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
       <div style={wrap}>
@@ -848,7 +853,7 @@ export default function RoutineInterviewPage() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {opts.options.map((o) => {
+          {[...opts.options, ...(opts.others ?? []).filter((o) => opts.selected.includes(o.key))].map((o) => {
             const on = opts.selected.includes(o.key);
             return (
               <button
@@ -879,6 +884,19 @@ export default function RoutineInterviewPage() {
           })}
         </div>
 
+        {opts.others && opts.others.filter((o) => !opts.selected.includes(o.key)).length > 0 && (
+          <SelectPill
+            value=""
+            ariaLabel="Choose another option"
+            onChange={(v) => { if (v) opts.onToggle(v); }}
+          >
+            <option value="">Or choose something else…</option>
+            {opts.others.filter((o) => !opts.selected.includes(o.key)).map((o) => (
+              <option key={o.key} value={o.key}>{o.title}</option>
+            ))}
+          </SelectPill>
+        )}
+
         {error && <p style={{ color: "#E5A3A3", fontSize: 13.5, fontFamily: FONT, margin: 0 }}>{error}</p>}
 
         <button type="button" onClick={opts.onNext} style={primaryBtn}>{opts.nextLabel}</button>
@@ -897,6 +915,7 @@ export default function RoutineInterviewPage() {
       sub: "Three ways in. Choose the one that feels like yours.",
       options: recs.morning,
       selected: pickMorning ? [pickMorning] : [],
+      others: recs.morningOthers,
       multi: false,
       onToggle: (k) => setPickMorning((cur) => (k === "__none__" ? null : cur === k ? null : k)),
       nextLabel: "Continue",
@@ -912,6 +931,7 @@ export default function RoutineInterviewPage() {
       sub: "Three ways to come to rest. Choose one, or none.",
       options: recs.evening,
       selected: pickEvening ? [pickEvening] : [],
+      others: recs.eveningOthers,
       multi: false,
       onToggle: (k) => setPickEvening((cur) => (k === "__none__" ? null : cur === k ? null : k)),
       nextLabel: "Continue",
@@ -924,7 +944,7 @@ export default function RoutineInterviewPage() {
     return renderPick({
       eyebrowText: "Daily reflections",
       title: "Would you like a daily reflection?",
-      sub: "A short reading to begin or end the day. Choose as many as you like — or none.",
+      sub: "A short reading to begin or end the day. We have chosen the ones that seem to suit you — change any of it.",
       options: recs.reflections,
       selected: pickReflections,
       multi: true,
@@ -940,7 +960,7 @@ export default function RoutineInterviewPage() {
       title: addingFromReview ? "Which would you like to add?" : "Anything else you would like to practise?",
       sub: addingFromReview
         ? "Choose any to add to your rhythm. Your other choices stay as they are."
-        : "Any of these can sit beside your day. Choose as many as you like — or none.",
+        : "Any of these can sit beside your day. We have chosen the ones that seem to suit you — change any of it.",
       options: recs.practices,
       selected: pickPractices,
       multi: true,
@@ -1382,7 +1402,7 @@ export default function RoutineInterviewPage() {
     const levelFor = (sd: "morning" | "evening") => rcNow[`phoebe:office:level:${sd}`];
     // Only the office and the short devotion have a medium to choose.
     const mediumAppliesFor = (sd: "morning" | "evening") => levelFor(sd) === "office" || levelFor(sd) === "devotion";
-    const mediumFor = (sd: "morning" | "evening") => rcNow[`phoebe:office:entry:${sd}`] || "venite";
+    const mediumFor = (sd: "morning" | "evening") => rcNow[`phoebe:office:entry:${sd}`] || "read";
 
     /** Patch the pending spec in place. Nothing is written to the account until
      *  the final review, so these edits are free to be direct. */

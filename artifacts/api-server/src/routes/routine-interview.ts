@@ -208,7 +208,7 @@ For each entry:
            says which half of the day it is prayed in; leave it out if they
            didn't say and the practice has no natural time.
   medium   for office / devotion only: book | read | listen | venite.
-           DEFAULT "venite" unless they clearly described another way. Never
+           DEFAULT "read" (the digital slideshow) unless they clearly described another way. Never
            ask — a later screen offers it as a dropdown.
   time     "HH:MM" 24-hour, only when they named one.
   minutes  for "silence": total minutes across the day (1-180).
@@ -295,9 +295,9 @@ How they take the office, ruleConfig "phoebe:office:entry:<side>":
   read (on screen) | book (their physical BCP) | listen (read-aloud audio)
   | watch (a livestream, morning only) | venite (opens venite.app in a browser;
   works for the full office AND the short devotion)
-DEFAULT THIS TO "venite" for every side that has an office or a devotion, unless
-they clearly described taking it another way ("from my prayer book", "I listen
-to it on my commute"). Venite is Phoebe's default reader. Never ASK which one —
+DEFAULT THIS TO "read" (the digital slideshow, Phoebe's own) for every side that has an
+office or a devotion, unless they clearly described taking it another way ("from my
+prayer book", "I listen to it on my commute"). Never ASK which one —
 they pick it from a dropdown on a later screen.
 
 Newsletters (daily reflections). MULTIPLE ARE SUPPORTED — owner: "you can
@@ -1078,7 +1078,8 @@ function defaultEntryToVenite(spec: { ruleConfig: Record<string, string> }): voi
     // Venite serves the full office and the short devotion, and nothing else —
     // psalms, the Examen and Compline have no deep link that renders.
     if (level !== "office" && level !== "devotion") continue;
-    if (!rc[`phoebe:office:entry:${side}`]) rc[`phoebe:office:entry:${side}`] = "venite";
+    // The DIGITAL SLIDESHOW is the default, not Venite (owner, 2026-10-02).
+    if (!rc[`phoebe:office:entry:${side}`]) rc[`phoebe:office:entry:${side}`] = "read";
   }
 }
 
@@ -1496,8 +1497,22 @@ const GUIDE_EVENING = ["examen", "office", "compline", "devotion", "reflect-sit"
 // The last two slides, each a FULL list the person chooses from (as the
 // customizer does); the model only SUGGESTS a few of each. Reflections are the
 // daily readings; practices are the cards kept alongside the day.
-const GUIDE_REFLECTIONS = ["nouwen", "taizeprayer", "cac", "ssje", "fdd"];
-const GUIDE_PRACTICES_ALL = ["creation", "walk", "listening", "rosary", "lectio", "payg", "spirituals", "hagiography"];
+// Everything else a person could choose for a half of the day, listed in the
+// dropdown under the three suggestions. Compline is always evening and the
+// Examen is evening-shaped; the guided form is morning-shaped.
+const GUIDE_MORNING_ALL = [...GUIDE_MORNING, "listening", "rosary", "walk", "spirituals"];
+const GUIDE_EVENING_ALL = [...GUIDE_EVENING, "lectio", "payg", "rosary", "walk", "spirituals"];
+// BOTH LISTS MIRROR THE FULL CUSTOMIZER (WayOfLoveRuleFlow) and nothing else
+// (owner, 2026-10-02: "this page needs to be updating only to what is currently
+// in the full customizer"). Reflections are its Learn step: the newsletters it
+// still offers, with Feast Day Hagiographies beside them. Practices are its
+// contemplative forms: the breath, a walk, Audio Divina, Lectio, Pray As You Go,
+// the Rosary, Spirituals. NOT offered there, so not here: Praying with Icons,
+// Visio Divina, the Taizé meditation, Midday Prayer, the VTS commentary. When the
+// customizer gains or loses a practice, change this list in the same commit.
+const GUIDE_REFLECTIONS = ["nouwen", "taizeprayer", "cac", "ssje", "fdd", "hagiography"];
+// In the order the customizer lists its contemplative forms.
+const GUIDE_PRACTICES_ALL = ["creation", "walk", "listening", "payg", "lectio", "rosary", "spirituals"];
 const GUIDE_MORE = [...GUIDE_REFLECTIONS, ...GUIDE_PRACTICES_ALL];
 
 function guideOption(key: string, side: GuideSide | null): GuideOption | null {
@@ -1779,13 +1794,23 @@ Respond with ONLY JSON:
   );
   const shape = (keys: string[], raw: unknown, side: GuideSide | null) =>
     keys.map((k) => { const o = guideOption(k, side)!; return { ...o, title: nameTheyUse(k, text, o.title), why: GUIDE_WHY(raw, k) }; });
-  // The WHOLE list, suggestions first (they carry the why), the rest in menu order.
-  const wholeList = (all: string[], suggested: string[], raw: unknown) =>
-    [...shape(suggested, raw, null).map((o) => ({ ...o, suggested: true })),
-     ...shape(all.filter((k) => !suggested.includes(k)), raw, null).map((o) => ({ ...o, why: "", suggested: false }))];
+  // The WHOLE list: the suggestions first, then the rest, each group in the order
+  // the customizer's own menu has them (Nouwen before Taizé before CAC...). The
+  // suggestions carry the why and come back `suggested`, which the page pre-selects.
+  const wholeList = (all: string[], suggested: string[], raw: unknown) => {
+    const inMenuOrder = (keys: string[]) => all.filter((k) => keys.includes(k));
+    return [
+      ...shape(inMenuOrder(suggested), raw, null).map((o) => ({ ...o, suggested: true })),
+      ...shape(all.filter((k) => !suggested.includes(k)), raw, null).map((o) => ({ ...o, why: "", suggested: false })),
+    ];
+  };
+  const others = (all: string[], shown: string[], side: GuideSide) =>
+    shape(all.filter((k) => !shown.includes(k) && !(side === "morning" && (k === "compline" || k === "examen"))), null, side);
   res.json({
     morning: shape(morningKeys, data?.morning, "morning"),
     evening: shape(eveningKeys, data?.evening, "evening"),
+    morningOthers: others(GUIDE_MORNING_ALL, morningKeys, "morning"),
+    eveningOthers: others(GUIDE_EVENING_ALL.filter((k) => k !== "guided-prayer"), eveningKeys, "evening"),
     reflections: wholeList(GUIDE_REFLECTIONS, suggestRef, data?.reflections),
     practices: wholeList(GUIDE_PRACTICES_ALL, suggestPrac, data?.practices),
   });
