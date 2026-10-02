@@ -10,8 +10,8 @@ import { isNativeShell } from "@/lib/isNativeShell";
 // pdf with the QR code that is a page that explains phoebe and invites people
 // to cultivate a daily habit of prayer".
 //
-// One letter-size page: the parish's name (optional), the invitation, a short
-// word on what Phoebe is, a note of their own (optional), and a large QR code
+// One letter-size page: the invitation, a short word on what Phoebe is, and a
+// large QR code
 // to withphoebe.app. It is DRAWN on a canvas at print resolution and wrapped in
 // a one-page PDF written here (a single JPEG on a 612×792 pt page), so there
 // is no PDF library to ship and what is previewed is exactly what prints.
@@ -87,7 +87,7 @@ function drawPhone(ctx: CanvasRenderingContext2D, shot: HTMLImageElement | null,
  *
  *  WHITE PAPER, GREEN INK (a home printer can't print to the edge): the only
  *  dark areas are the two framed phones, inside the margins. */
-async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null, note: string) {
+async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null) {
   /**
    * SPACE GROTESK, PROVEN RATHER THAN ASSUMED (owner: "space grotesk").
    *
@@ -288,26 +288,15 @@ async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null
   ctx.font = `600 46px ${FONT}`;
   ctx.fillText("withphoebe.app", tx, cardY + 200);
 
+  // NO NOTE FROM THE PARISH (owner, 2026-10-02: "Take out the parish message
+  // cutomizers"). The flyer says one thing, the same on every page, so what is
+  // previewed is what every parish prints. It had a text box whose words were set
+  // in italic beside the QR code; the card now always carries the line below.
   let ny = cardY + 280;
-  if (note.trim()) {
-    // The parish's own words, set off in italic, shrunk until they fit the card.
-    const room = cardY + cardH - 40 - ny;
-    let nsize = 40, lines: string[] = [];
-    for (; nsize >= 28; nsize -= 2) {
-      ctx.font = `italic 400 ${nsize}px Georgia, 'Times New Roman', serif`;
-      lines = wrap(ctx, note.trim(), tw - 36);
-      if (lines.length * (nsize + 14) <= room) break;
-    }
-    ctx.fillStyle = GREEN;
-    ctx.fillRect(tx, ny - nsize + 6, 6, lines.length * (nsize + 14) - 6);
-    ctx.fillStyle = INK;
-    for (const line of lines) { ctx.fillText(line, tx + 30, ny); ny += nsize + 14; }
-  } else {
-    ctx.fillStyle = "rgba(16,35,26,0.78)";
-    ctx.font = `400 38px ${FONT}`;
-    for (const line of wrap(ctx, "Start with a few minutes and shape a rhythm around your own day, on your phone or on the web.", tw)) {
-      ctx.fillText(line, tx, ny); ny += 54;
-    }
+  ctx.fillStyle = "rgba(16,35,26,0.78)";
+  ctx.font = `400 38px ${FONT}`;
+  for (const line of wrap(ctx, "Start with a few minutes and shape a rhythm around your own day, on your phone or on the web.", tw)) {
+    ctx.fillText(line, tx, ny); ny += 54;
   }
 }
 
@@ -342,7 +331,6 @@ function jpegToPdf(jpeg: Uint8Array, w: number, h: number): Blob {
 }
 
 export default function FlyerPage() {
-  const [note, setNote] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -361,18 +349,18 @@ export default function FlyerPage() {
     return () => fonts.removeEventListener("loadingdone", bump);
   }, []);
 
-  // Redraw the preview as they type (lightly debounced).
+  // Draw the preview (and again once the fonts have loaded).
   useEffect(() => {
     let cancelled = false;
     const id = window.setTimeout(async () => {
       const canvas = canvasRef.current ?? document.createElement("canvas");
       canvasRef.current = canvas;
       const qr = qrWrap.current?.querySelector("canvas") ?? null;
-      await drawFlyer(canvas, qr, note);
+      await drawFlyer(canvas, qr);
       if (!cancelled) setPreview(canvas.toDataURL("image/jpeg", 0.8));
     }, 200);
     return () => { cancelled = true; window.clearTimeout(id); };
-  }, [note, fontTick]);
+  }, [fontTick]);
 
   async function makePdf() {
     const canvas = canvasRef.current;
@@ -381,7 +369,7 @@ export default function FlyerPage() {
     setStatus(null);
     try {
       const qr = qrWrap.current?.querySelector("canvas") ?? null;
-      await drawFlyer(canvas, qr, note);
+      await drawFlyer(canvas, qr);
       const jpegBlob: Blob | null = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.92));
       if (!jpegBlob) throw new Error("render");
       const pdf = jpegToPdf(new Uint8Array(await jpegBlob.arrayBuffer()), W, H);
@@ -411,11 +399,6 @@ export default function FlyerPage() {
     }
   }
 
-  const field = {
-    width: "100%", borderRadius: 14, padding: "12px 14px", fontSize: 16, fontFamily: FONT,
-    color: WARM, background: "rgba(9,26,16,0.55)", border: "1px solid rgba(46,107,64,0.45)", outline: "none",
-  } as const;
-
   return (
     <Layout>
       <div className="w-full max-w-2xl mx-auto pb-24" style={{ fontFamily: FONT }}>
@@ -427,14 +410,8 @@ export default function FlyerPage() {
           A printable page that explains Phoebe and invites people to a daily habit of prayer, with a QR code that opens it.
         </p>
 
-        <div className="flex flex-col gap-3">
-          <label htmlFor="flyer-note" style={{ fontSize: 13, color: SAGE }}>A note from you (optional)</label>
-          <textarea id="flyer-note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={220}
-            placeholder="Join us in praying Morning Prayer together this Advent." style={{ ...field, resize: "vertical" }} />
-        </div>
-
         <button type="button" onClick={makePdf} disabled={busy || !preview}
-          className="w-full rounded-full mt-5 active:scale-[0.99]"
+          className="w-full rounded-full active:scale-[0.99]"
           style={{ padding: "14px 18px", fontSize: 16, fontWeight: 700, fontFamily: FONT, color: WARM, background: "rgba(46,107,64,0.85)", border: "1px solid rgba(168,197,160,0.45)", cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
           {busy ? "Making the PDF…" : isNativeShell() ? "Share or print the PDF" : "Download the PDF"}
         </button>
