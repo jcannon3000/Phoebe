@@ -2087,7 +2087,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         onLoad={() => setVeilPhotoReady(true)}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: veilPhotoReady ? 1 : 0, transition: "opacity 700ms ease-out" }}
       />
-      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),calc(0.62 * var(--bg-wash, 1))) 0%, rgba(var(--ot-wash2, 8,18,12),calc(0.5 * var(--bg-wash, 1))) 45%, rgba(var(--ot-wash2, 8,18,12),calc(0.78 * var(--bg-wash, 1))) 100%)" }} />
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "radial-gradient(120% 95% at 50% 34%, rgba(var(--ot-green, 46,107,64),0.20) 0%, rgba(var(--ot-green, 46,107,64),0.12) 28%, rgba(var(--ot-green, 46,107,64),0.05) 54%, rgba(var(--ot-green, 46,107,64),0) 82%)" }} />
       <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
         <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 24, lineHeight: 1.55, color: "var(--oh-ink2, #E8E4D8)", textAlign: "center", maxWidth: 460, margin: 0 }}>
@@ -2184,7 +2184,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             onLoad={() => setVeilPhotoReady(true)}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: veilPhotoReady ? 1 : 0, transition: "opacity 700ms ease-out" }}
           />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),calc(0.62 * var(--bg-wash, 1))) 0%, rgba(var(--ot-wash2, 8,18,12),calc(0.5 * var(--bg-wash, 1))) 45%, rgba(var(--ot-wash2, 8,18,12),calc(0.78 * var(--bg-wash, 1))) 100%)" }} />
           <div aria-hidden className="animate-spin" style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(var(--ot-sage, 143,175,150),0.25)", borderTopColor: "rgba(var(--ot-sage, 143,175,150),0.8)" }} />
         </div>
       );
@@ -3395,7 +3395,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             />
           </AnimatePresence>
           {/* Dark wash matching the Laurel Kearns intro / prayer slideshow. */}
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash, 8,22,15),0.62) 0%, rgba(var(--ot-wash, 8,22,15),0.80) 52%, rgba(var(--ot-wash, 8,22,15),0.90) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash, 8,22,15),calc(0.62 * var(--bg-wash, 1))) 0%, rgba(var(--ot-wash, 8,22,15),calc(0.80 * var(--bg-wash, 1))) 52%, rgba(var(--ot-wash, 8,22,15),calc(0.90 * var(--bg-wash, 1))) 100%)" }} />
         </>
       ) : (display.backdrop === "plain" || display.backdrop === "paper") ? (
         // Plain / Paper — one still solid ground (the swept background var
@@ -6042,8 +6042,8 @@ function PhysicalBookGuide(props: {
     >
       {leafBg ? (
         <>
-          <img src={leafBg} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.6, zIndex: -1 }} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash, 8,22,15),0.55) 0%, rgba(var(--ot-wash, 8,22,15),0.7) 45%, rgba(var(--ot-wash, 8,22,15),0.84) 100%)" }} />
+          <img src={leafBg} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: "calc(0.6 * var(--bg-photo, 1))", zIndex: -1 }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash, 8,22,15),calc(0.55 * var(--bg-wash, 1))) 0%, rgba(var(--ot-wash, 8,22,15),calc(0.7 * var(--bg-wash, 1))) 45%, rgba(var(--ot-wash, 8,22,15),calc(0.84 * var(--bg-wash, 1))) 100%)" }} />
         </>
       ) : (
         <AnimatedBackground base={BG} variant="subtle" fadeTop />

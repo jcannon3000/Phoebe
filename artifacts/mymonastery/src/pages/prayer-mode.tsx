@@ -4255,7 +4255,7 @@ export default function PrayerModePage() {
           <OfficeBackdropPhoto key={officePhoto} src={officePhoto} slideVisible={slideVisible} />
           <div
             aria-hidden
-            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash, 8,22,15),0.62) 0%, rgba(var(--ot-wash, 8,22,15),0.80) 52%, rgba(var(--ot-wash, 8,22,15),0.90) 100%)" }}
+            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash, 8,22,15),calc(0.62 * var(--bg-wash, 1))) 0%, rgba(var(--ot-wash, 8,22,15),calc(0.80 * var(--bg-wash, 1))) 52%, rgba(var(--ot-wash, 8,22,15),calc(0.90 * var(--bg-wash, 1))) 100%)" }}
           />
         </>
       ) : (display.backdrop === "plain" || display.backdrop === "paper") ? (

@@ -1118,7 +1118,7 @@ export default function ListeningPage() {
               position: "absolute", inset: 0, zIndex: -1,
               background: playerShowing
                 ? "linear-gradient(180deg, rgba(5,13,8,0.74) 0%, rgba(5,13,8,0.66) 45%, rgba(5,13,8,0.8) 100%)"
-                : "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)",
+                : "linear-gradient(180deg, rgba(8,22,15,calc(0.62 * var(--bg-wash, 1))) 0%, rgba(8,22,15,calc(0.80 * var(--bg-wash, 1))) 52%, rgba(8,22,15,calc(0.90 * var(--bg-wash, 1))) 100%)",
             }} />
           </>
         ) : (

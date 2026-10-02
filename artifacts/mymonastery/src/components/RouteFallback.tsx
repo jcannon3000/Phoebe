@@ -25,7 +25,7 @@ export function RouteFallback() {
         decoding="async"
         style={{
           position: "absolute", inset: 0, width: "100%", height: "100%",
-          objectFit: "cover", zIndex: -1, opacity: 0.55,
+          objectFit: "cover", zIndex: -1, opacity: "calc(0.55 * var(--bg-photo, 1))",
         }}
       />
       <div

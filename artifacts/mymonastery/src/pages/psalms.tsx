@@ -412,8 +412,8 @@ export default function PsalmsPage() {
           under a heavier gradient (bcp-daily-office: officeBgOpacity + the
           dark wash beneath the slides) — copied exactly, so a reader moving
           between the two sees one room. */}
-      <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.3, zIndex: -2 }} />
-      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash, 8,22,15),0.62) 0%, rgba(var(--ot-wash, 8,22,15),0.80) 52%, rgba(var(--ot-wash, 8,22,15),0.90) 100%)" }} />
+      <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: "calc(0.3 * var(--bg-photo, 1))", zIndex: -2 }} />
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash, 8,22,15),calc(0.62 * var(--bg-wash, 1))) 0%, rgba(var(--ot-wash, 8,22,15),calc(0.80 * var(--bg-wash, 1))) 52%, rgba(var(--ot-wash, 8,22,15),calc(0.90 * var(--bg-wash, 1))) 100%)" }} />
     </>
   ) : null;
   const header = (onBack: () => void) => (

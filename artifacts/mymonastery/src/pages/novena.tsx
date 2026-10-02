@@ -179,7 +179,7 @@ export default function NovenaPage() {
             transition={{ duration: 0.6, ease: "easeOut" }}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
           />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,calc(0.62 * var(--bg-wash, 1))) 0%, rgba(8,22,15,calc(0.80 * var(--bg-wash, 1))) 52%, rgba(8,22,15,calc(0.90 * var(--bg-wash, 1))) 100%)" }} />
         </>
       ) : (
         <AnimatedBackground base={BG} variant="subtle" />

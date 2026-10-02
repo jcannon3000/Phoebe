@@ -61,11 +61,11 @@ export default function InviteSharePage() {
             src={bgPhoto}
             alt=""
             aria-hidden
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.34, zIndex: -1 }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: "calc(0.34 * var(--bg-photo, 1))", zIndex: -1 }}
           />
           <div
             aria-hidden
-            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.5) 0%, rgba(8,22,15,0.62) 55%, rgba(8,22,15,0.78) 100%)" }}
+            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,calc(0.5 * var(--bg-wash, 1))) 0%, rgba(8,22,15,calc(0.62 * var(--bg-wash, 1))) 55%, rgba(8,22,15,calc(0.78 * var(--bg-wash, 1))) 100%)" }}
           />
         </>
       )}

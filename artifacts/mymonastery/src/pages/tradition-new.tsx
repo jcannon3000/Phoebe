@@ -300,7 +300,7 @@ export default function TraditionNew() {
       {bgPhoto && (
         <>
           <img src={bgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: 0 }} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(8,22,15,calc(0.45 * var(--bg-wash, 1))) 0%, rgba(8,22,15,calc(0.62 * var(--bg-wash, 1))) 38%, rgba(8,22,15,calc(0.80 * var(--bg-wash, 1))) 100%)" }} />
         </>
       )}
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, minHeight: "100%" }}>

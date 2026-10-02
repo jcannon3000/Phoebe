@@ -790,7 +790,7 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
     <div style={{ position: "fixed", inset: 0, background: lightenable(BG), overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
       {leaf && (
         <>
-          <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.8, zIndex: -2 }} />
+          <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: "calc(0.8 * var(--bg-photo, 1))", zIndex: -2 }} />
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(12,31,18,0.75) 0%, rgba(12,31,18,0.58) 45%, rgba(12,31,18,0.8) 100%)" }} />
         </>
       )}

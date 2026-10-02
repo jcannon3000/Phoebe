@@ -356,7 +356,7 @@ export default function PrayerRequestNew() {
             src={bgPhoto}
             alt=""
             aria-hidden
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: -1 }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: "calc(0.4 * var(--bg-photo, 1))", zIndex: -1 }}
           />
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,calc(0.45 * var(--bg-wash, 1))) 0%, rgba(8,22,15,calc(0.62 * var(--bg-wash, 1))) 38%, rgba(8,22,15,calc(0.80 * var(--bg-wash, 1))) 100%)" }} />
         </>

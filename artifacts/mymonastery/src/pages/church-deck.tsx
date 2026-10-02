@@ -2200,7 +2200,7 @@ export function DeckShell({
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
             />
           </AnimatePresence>
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.5) 0%, rgba(8,18,12,0.64) 45%, rgba(8,18,12,0.82) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,calc(0.5 * var(--bg-wash, 1))) 0%, rgba(8,18,12,calc(0.64 * var(--bg-wash, 1))) 45%, rgba(8,18,12,calc(0.82 * var(--bg-wash, 1))) 100%)" }} />
         </>
       )}
       {/* Top bar */}

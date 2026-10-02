@@ -161,7 +161,7 @@ export default function VtsReadingPage() {
           onLoad={() => setVeilPhotoReady(true)}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: veilPhotoReady ? 1 : 0, transition: "opacity 700ms ease-out" }}
         />
-        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),calc(0.62 * var(--bg-wash, 1))) 0%, rgba(var(--ot-wash2, 8,18,12),calc(0.5 * var(--bg-wash, 1))) 45%, rgba(var(--ot-wash2, 8,18,12),calc(0.78 * var(--bg-wash, 1))) 100%)" }} />
         {/* A bigger ring with the flamingo at rest in the middle (owner) —
             VTS's own mark, so the wait is branded rather than generic. Only
             the RING spins: the emoji sits in a separate, un-animated layer,
@@ -194,7 +194,7 @@ export default function VtsReadingPage() {
             transition={{ duration: 0.6, ease: "easeOut" }}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
           />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.44) 0%, rgba(8,22,15,0.58) 52%, rgba(8,22,15,0.74) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,calc(0.44 * var(--bg-wash, 1))) 0%, rgba(8,22,15,calc(0.58 * var(--bg-wash, 1))) 52%, rgba(8,22,15,calc(0.74 * var(--bg-wash, 1))) 100%)" }} />
         </>
       ) : (
         <AnimatedBackground base={BG} variant="subtle" fadeTop />

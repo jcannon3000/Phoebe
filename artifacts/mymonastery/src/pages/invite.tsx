@@ -82,8 +82,8 @@ export default function InvitePage() {
     <div className="relative min-h-[100dvh] flex flex-col" style={{ background: BG, color: WARM, fontFamily: FONT, isolation: "isolate" }}>
       {bgPhoto && (
         <>
-          <img src={bgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.28, zIndex: -1 }} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.55) 0%, rgba(8,18,12,0.75) 60%, rgba(8,18,12,0.9) 100%)" }} />
+          <img src={bgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: "calc(0.28 * var(--bg-photo, 1))", zIndex: -1 }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,calc(0.55 * var(--bg-wash, 1))) 0%, rgba(8,18,12,calc(0.75 * var(--bg-wash, 1))) 60%, rgba(8,18,12,calc(0.9 * var(--bg-wash, 1))) 100%)" }} />
         </>
       )}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">

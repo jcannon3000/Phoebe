@@ -439,7 +439,7 @@ export default function CommunityJoinPage() {
             className="absolute inset-0"
             style={{
               zIndex: -1,
-              background: "linear-gradient(180deg, rgba(8,18,12,0.72) 0%, rgba(8,18,12,0.62) 45%, rgba(8,18,12,0.86) 100%)",
+              background: "linear-gradient(180deg, rgba(8,18,12,calc(0.72 * var(--bg-wash, 1))) 0%, rgba(8,18,12,calc(0.62 * var(--bg-wash, 1))) 45%, rgba(8,18,12,calc(0.86 * var(--bg-wash, 1))) 100%)",
               backdropFilter: "blur(2px)",
               WebkitBackdropFilter: "blur(2px)",
             }}
