@@ -1561,7 +1561,9 @@ const GUIDE_NAMED: Array<[RegExp, string]> = [
   [/contemplative walk|prayer walk|walking prayer/i, "walk"],
   [/breath prayer|breathing/i, "creation"],
   [/daily office|morning prayer|evening prayer|book of common prayer|\bBCP\b/i, "office"],
-  [/nouwen/i, "nouwen"],
+  // "a devotional" / "my daily devotion" is a daily READING (Henri Nouwen is Phoebe's
+  // "Daily Devotion"), not the short devotional PRAYER form (owner, 2026-10-02).
+  [/nouwen|devotional|daily devotion|my devotion/i, "nouwen"],
   [/taiz/i, "taizeprayer"],
   [/forward day by day/i, "fdd"],
 ];
@@ -1594,7 +1596,7 @@ const GUIDE_AFFINITY: Record<string, string[]> = {
   lectio:        ["scripture", "silence"],
   readings:      ["scripture", "reading"],
   office:        ["liturgy", "scripture"],
-  devotion:      ["short", "reading", "liturgy"],
+  devotion:      ["short", "liturgy"],
   "guided-prayer": ["guided", "short"],
   payg:          ["music", "guided", "scripture"],
   examen:        ["day", "guided"],
@@ -1730,6 +1732,9 @@ of daily prayer, and how they connect with God. Read all of it. Then choose, fro
     the whole list of practices and choose any they like).
 
 HOW TO CHOOSE, in this order:
+  0. "A devotional" or "my daily devotion" means a daily READING, so offer Henri
+     Nouwen's Daily Devotion under "reflections" — NOT the short-devotion prayer
+     for the morning or evening (that is a different thing, a few minutes of prayer).
   1. THEIR OWN PRACTICE FIRST. Whatever they say they already do or love — Centering
      Prayer or contemplation, the rosary, Lectio Divina, music, the office, walking —
      translate it into the matching practice on the menu and put it in. Where it is
