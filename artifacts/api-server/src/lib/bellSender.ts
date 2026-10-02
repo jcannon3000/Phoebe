@@ -1571,7 +1571,8 @@ function lastSevenDays(ymd: string): string[] {
  * the rows, so the rules can be tested without a database. Same shape as
  * breathTogetherRecipients, and the same four rules:
  *
- * - Only someone whose record is their OWN local today.
+ * - On an ordinary day, only someone whose record is their OWN local today
+ *   (a Sunday widens this - see the end of this comment).
  * - `others` is every OTHER person who kept something, counted once however
  *   many practices they kept. "N people prayed WITH YOU" already counts the
  *   reader, so the reader is not in N.
@@ -1584,47 +1585,52 @@ function lastSevenDays(ymd: string): string[] {
  *   have silently cost tonight's note to anyone whose breath stamp was
  *   already today when this deployed.
  *
- * SUNDAY IS THE WEEK'S TOTAL (owner, 2026-10-01: "Lets keep the every day, but
- * how about on sunday it says the weekly total"). Every other evening the
- * number is the people who prayed TODAY; on a Sunday - by the recipient's own
- * calendar - it is the people who prayed at any point in the seven local days
- * ending that Sunday, and the note says "this week". It is the SAME note, to
- * the SAME people (those who kept something today), at the same 20:30: only the
- * number and the word change, so there is still one evening note and never two.
- * Someone who prayed all week but not on the Sunday gets nothing that night,
- * exactly as on any other day.
+ * SUNDAY IS THE WEEK'S TOTAL, TO ANYONE WHO PRAYED IT (owner, 2026-10-01:
+ * "Lets keep the every day, but how about on sunday it says the weekly toltal",
+ * then "on sunday send it even if they hadnt prayed that day"). Every other
+ * evening the number is the people who prayed TODAY and goes only to them; on a
+ * Sunday - by the recipient's own calendar - it is the people who prayed at any
+ * point in the seven local days ending that Sunday, and it goes to ANYONE who
+ * prayed in those seven days, whether or not they prayed on the Sunday itself.
+ * It is the same note at the same 20:30, so there is still one evening note and
+ * never two; only the number, the word ("this week") and the audience widen.
+ * Someone who prayed nothing all week is told nothing, as ever.
  */
 export function prayedTogetherRecipients(
   rows: PrayedTogetherRow[],
   helpers: { todayFor: (tz: string) => string; inWindow: (tz: string) => boolean },
 ): Array<{ userId: number; others: number; today: string; weekly: boolean }> {
   const prayersByDay = new Map<string, Set<number>>();
+  // Each person's own kept days, and what is needed to decide their evening.
+  const daysByUser = new Map<number, { days: Set<string>; timezone: string | null; sentDate: string | null }>();
   for (const r of rows) {
     if (!prayersByDay.has(r.day)) prayersByDay.set(r.day, new Set());
     prayersByDay.get(r.day)!.add(r.userId);
+    const mine = daysByUser.get(r.userId) ?? { days: new Set<string>(), timezone: r.timezone, sentDate: r.sentDate };
+    mine.days.add(r.day);
+    daysByUser.set(r.userId, mine);
   }
   const out: Array<{ userId: number; others: number; today: string; weekly: boolean }> = [];
-  const seen = new Set<number>();
-  for (const r of rows) {
-    if (seen.has(r.userId)) continue;
-    const tz = r.timezone || "America/New_York";
+  for (const [userId, me] of daysByUser) {
+    const tz = me.timezone || "America/New_York";
     const today = helpers.todayFor(tz);
-    if (r.day !== today) continue;
-    if (r.sentDate === today) { seen.add(r.userId); continue; }
+    if (me.sentDate === today) continue;
     if (!helpers.inWindow(tz)) continue;
     const weekly = weekdayOf(today) === 0;
+    const week = lastSevenDays(today);
+    // Today for the daily note; any day of the week for Sunday's.
+    if (!(weekly ? week.some((d) => me.days.has(d)) : me.days.has(today))) continue;
     let people: number;
     if (weekly) {
-      const week = new Set<number>();
-      for (const day of lastSevenDays(today)) for (const id of prayersByDay.get(day) ?? []) week.add(id);
-      people = week.size;
+      const everyone = new Set<number>();
+      for (const day of week) for (const id of prayersByDay.get(day) ?? []) everyone.add(id);
+      people = everyone.size;
     } else {
       people = prayersByDay.get(today)?.size ?? 1;
     }
     const others = Math.max(0, people - 1);
     if (others < 1) continue;
-    seen.add(r.userId);
-    out.push({ userId: r.userId, others, today, weekly });
+    out.push({ userId, others, today, weekly });
   }
   return out;
 }
