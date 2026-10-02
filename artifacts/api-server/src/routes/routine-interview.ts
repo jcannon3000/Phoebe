@@ -1477,7 +1477,6 @@ const GUIDE_PRACTICES: Record<string, { emoji: string; title: string | ((side: G
   examen:          { emoji: "🌗", title: "The Examen", description: "A few quiet minutes to look back over the day and notice where God was." },
   compline:        { emoji: "🌙", title: "Compline", description: "The church's night prayer — a short, quiet office to close the day." },
   listening:       { emoji: "🎧", title: "Audio Divina", description: "Listening to sacred music as a way of prayer." },
-  icons:           { emoji: "🪟", title: "Praying with Icons", description: "One icon each week, to look at slowly and sit with." },
   rosary:          { emoji: "📿", title: "The Rosary", description: "Praying the mysteries a decade at a time, with Roman or Anglican prayer beads." },
   walk:            { emoji: "🚶🏽", title: "A Contemplative Walk", description: "Walking slowly as prayer, paying attention to what is around you." },
   nouwen:          { emoji: "😊", title: "Henri Nouwen's Daily Devotion", description: "A short daily reading from Henri Nouwen's writing." },
@@ -1492,7 +1491,7 @@ const GUIDE_PRACTICES: Record<string, { emoji: string; title: string | ((side: G
 const GUIDE_MORNING = ["guided-prayer", "office", "devotion", "readings", "reflect-sit", "creation", "lectio", "payg"];
 const GUIDE_EVENING = ["examen", "office", "compline", "devotion", "reflect-sit", "creation", "listening"];
 // The fourth slide: contemplative practices and reflections, mixed.
-const GUIDE_MORE = ["creation", "lectio", "listening", "nouwen", "icons", "taizeprayer", "walk", "cac", "rosary", "payg", "fdd", "ssje"];
+const GUIDE_MORE = ["creation", "lectio", "listening", "nouwen", "taizeprayer", "walk", "cac", "rosary", "payg", "fdd", "ssje"];
 
 function guideOption(key: string, side: GuideSide | null): GuideOption | null {
   const e = GUIDE_PRACTICES[key];
@@ -1522,6 +1521,86 @@ const GUIDE_WHY = (raw: unknown, key: string): string => {
   return "";
 };
 
+/**
+ * Practices a person NAMES are never left out. Reported 2026-10-02: someone wrote
+ * about Centering Prayer and Contemplation was not among the options at all — the
+ * model had it on the menu and simply skipped it. What they say they do (or want)
+ * is the one thing the offer must include, so it is forced in here, whatever the
+ * model chose, and the model's picks fill the rest.
+ */
+const GUIDE_NAMED: Array<[RegExp, string]> = [
+  [/centering|contemplat|silen|stillness|sit(ting)? (in|with)|meditat/i, "reflect-sit"],
+  [/rosary|prayer beads/i, "rosary"],
+  [/lectio/i, "lectio"],
+  [/exam[ei]n/i, "examen"],
+  [/compline|night prayer/i, "compline"],
+  [/pray as you go/i, "payg"],
+  [/\bicons?\b/i, "icons"],
+  [/contemplative walk|prayer walk|walking prayer/i, "walk"],
+  [/breath prayer|breathing/i, "creation"],
+  [/daily office|morning prayer|evening prayer|book of common prayer|\bBCP\b/i, "office"],
+  [/nouwen/i, "nouwen"],
+  [/taiz/i, "taizeprayer"],
+  [/forward day by day/i, "fdd"],
+];
+function namedGuideKeys(text: string): string[] {
+  const out: string[] = [];
+  for (const [re, key] of GUIDE_NAMED) if (re.test(text) && !out.includes(key)) out.push(key);
+  return out;
+}
+
+/**
+ * What each practice answers to. A person's words are scored against these;
+ * the highest-scoring practices on a menu are offered, with ties falling back to
+ * the menu's own order (gentlest first). Anything they NAME is offered first.
+ */
+const GUIDE_SIGNALS: Array<[string, RegExp]> = [
+  ["silence",   /centering|contemplat|silen|stillness|still\b|quiet|meditat|wordless|empty/i],
+  ["music",     /music|song|sing|hymn|listen|chant|taiz/i],
+  ["scripture", /scripture|bible|lectio|psalm|gospel|passage|verse|the word/i],
+  ["liturgy",   /office|prayer book|liturg|set prayer|written prayer|common prayer|morning prayer|evening prayer|structure|words (to|for)/i],
+  ["short",     /short|brief|busy|few minutes|little time|quick|simple|small|new to/i],
+  ["reading",   /devotion|reflection|daily reading|read(ing)? something|book|writer|nouwen|rohr/i],
+  ["outdoors",  /walk|outside|outdoor|nature|creation|garden|moving|body/i],
+  ["breath",    /breath|anxious|anxiety|restless|distract|busy mind/i],
+  ["day",       /examen|review|look back|gratitude|thankful|end of the day|reflect on (my|the) day/i],
+  ["guided",    /guid|led|someone to|told what|don'?t know (how|what)|beginner|new to|structure/i],
+];
+const GUIDE_AFFINITY: Record<string, string[]> = {
+  "reflect-sit": ["silence", "breath"],
+  creation:      ["breath", "silence", "outdoors", "short"],
+  lectio:        ["scripture", "silence"],
+  readings:      ["scripture", "reading"],
+  office:        ["liturgy", "scripture"],
+  devotion:      ["short", "reading", "liturgy"],
+  "guided-prayer": ["guided", "short"],
+  payg:          ["music", "guided", "scripture"],
+  examen:        ["day", "guided"],
+  compline:      ["liturgy", "silence"],
+  listening:     ["music"],
+  walk:          ["outdoors", "silence", "breath"],
+  nouwen:        ["reading", "short"],
+  cac:           ["reading", "silence"],
+  taizeprayer:   ["music", "liturgy", "silence"],
+  fdd:           ["reading", "short", "liturgy"],
+  ssje:          ["reading", "short"],
+  rosary:        ["liturgy", "breath", "silence"],
+};
+/** `n` keys from `menu`: named practices first, then by score, then by the menu's order. */
+function rankGuideKeys(text: string, menu: string[], named: string[], taken: Set<string>, n: number): string[] {
+  const hit = new Set(GUIDE_SIGNALS.filter(([, re]) => re.test(text)).map(([sig]) => sig));
+  const score = (k: string) => (GUIDE_AFFINITY[k] ?? []).reduce((t, sig) => t + (hit.has(sig) ? 1 : 0), 0);
+  const ordered = menu
+    .map((k, i) => ({ k, i, forced: named.includes(k) ? 1 : 0, sc: score(k) }))
+    .sort((a, b) => b.forced - a.forced || b.sc - a.sc || a.i - b.i);
+  const out: string[] = [];
+  for (const { k } of ordered) {
+    if (out.length >= n) break;
+    if (!taken.has(k)) { out.push(k); taken.add(k); }
+  }
+  return out;
+}
+
 // ── POST /routine-interview/guide/question — ONE qualitative question ────────
 router.post("/routine-interview/guide/question", perUserRateLimit("routine_interview_followups", {
   max: 15, windowMs: 60 * 60 * 1000,
@@ -1536,45 +1615,39 @@ router.post("/routine-interview/guide/question", perUserRateLimit("routine_inter
 
   const system = `${NOUWEN_VOICE}
 
-Someone has answered three open questions about their prayer: how they typically
-pray, how they would like to build their routine of daily prayer, and how they
-connect with God. You are about to offer them a few real choices for a daily
-rhythm, and before you do you may ask them ONE question.
+THE GOAL OF THIS WHOLE INTERVIEW: understand how this person typically prays, and
+turn that into a daily routine they will actually keep — built from what they
+already do, not imposed on them.
 
-Your question has ONE job: its answer must help you decide WHICH practices to
-recommend. So ask about the thing that separates the kinds of practice on offer:
-  · silence and stillness (contemplation, breath prayer, a walk)
-  · set words said or led for them (the office, a short devotion, guided prayer)
-  · scripture read slowly (lectionary readings, Lectio Divina)
-  · music and listening (sacred music, Pray As You Go)
-  · looking back over the day (the Examen)
-  · a short daily reading from a writer (reflections)
-Pick the ONE distinction their three answers leave least clear, and ask it as a
-plain, concrete question with a clear CONTRAST between two ways of praying, so
-that their answer points straight at one kind of practice or the other. It may
-mention the two ways in everyday words; it must not name a practice or an app
-feature. Good questions look like these (do not copy them — fit the person):
-  · "When you sit down to pray, do you do better with words and a text in front
-    of you, or with open silence and nothing to say?"
-  · "Does your prayer settle more easily when something is read or sung to you,
-    or when you are the one doing the praying?"
-  · "Would you rather a few minutes of prayer that is led for you, or time that is
-    entirely your own?"
-  · "Do you keep going longer when prayer is tied to something you read, or when it
-    is simply quiet?"
-Weave in what they said where it fits (their own words for what they do), but a
-clear contrast matters more than echoing them. Skip any contrast their answers
-already settle, and pick a different one.
+They have answered three open questions: how they typically pray, how they would
+like to build their routine of daily prayer, and how they connect with God. You
+may now ask them ONE more question. Use it for the single thing you still need to
+know to build the routine well. Work out what is missing from these four, and ask
+about that one:
 
-Plain words, ONE sentence, no more than 28 words.
+  1. WHAT THEY ALREADY DO that is working — the practice or habit to build around.
+     (Missing if they were vague or listed several things.)
+  2. THE SHAPE OF THEIR PRAYER — whether it is silence, words said or led for them,
+     scripture, music, or moving and looking. (Missing if their answers only say
+     "I pray" or only describe one of these.)
+  3. WHAT MAKES IT HARD TO KEEP — time of day, restlessness, forgetting, feeling
+     nothing. (Missing if they said nothing about difficulty or consistency.)
+  4. WHAT A GOOD DAY OF PRAYER LOOKS LIKE TO THEM — the part of the day it belongs
+     in and what they want to leave it with.
+
+Ask it as a plain, concrete question about their real life, in their own words
+where you can ("when you sit for Centering Prayer…"). One sentence, no more than
+28 words. If the choice is between two things, name just those two in everyday words
+("with words in front of you, or in open silence?") so the answer is easy to give.
 
 Never:
-  · ask a vague open question ("what happens when…", "how does it feel…") — the
-    answer must be usable for choosing practices;
-  · list feelings or more than two ways;
-  · use poetic or abstract words such as hunger, longing, soul, or within yourself;
-  · ask about logistics (what time, how long, which book or app);
-  · ask something they have already answered.
+  · ask something their answers already tell you;
+  · ask a vague question ("what happens when…", "how does that feel…") — the
+    answer must change what you would recommend;
+  · use poetic or abstract words (hunger, longing, soul, "within yourself");
+  · list feelings, or more than two options;
+  · ask about logistics such as what time or how many minutes;
+  · name a practice or app feature Phoebe offers.
 
 Respond with ONLY JSON: {"question": "..."}`;
 
@@ -1599,42 +1672,55 @@ router.post("/routine-interview/guide/options", perUserRateLimit("routine_interv
   const cq = cleanText(req.body?.clarification?.q, 300);
   const ca = cleanText(req.body?.clarification?.a, 1200);
 
+  const text = `${description}\n${cq}\n${ca}`;
+  const named = namedGuideKeys(text);
   const menu = (keys: string[], side: GuideSide | null) =>
     keys.map((k) => `  ${k.padEnd(13)} — ${guideOption(k, side)!.title}: ${guideOption(k, side)!.description}`).join("\n");
 
   const system = `${NOUWEN_VOICE}
 
-Someone has told you how they pray, how they would like to build a routine of daily
-prayer, and how they connect with God, and has answered one more question. Now you
-offer them real choices — and you choose them with care, because three good
-options are worth more than a list.
+THE GOAL: you now understand how this person typically prays. Turn that into the
+start of a daily routine they will actually keep, built from what they already
+do and the way their own prayer runs — never imposed on them.
 
-Choose, from the menus below and ONLY from them:
+They have told you how they typically pray, how they would like to build a routine
+of daily prayer, how they connect with God, and answered one more question. Read
+all of it. Then choose, from the menus below and ONLY from them:
 
   · "morning": exactly THREE ways to begin the day.
   · "evening": exactly THREE ways to close it.
-  · "more": exactly FIVE other practices — a mix of contemplative practices and
-    daily reflections — they might want to add alongside.
+  · "more": exactly FIVE other practices — contemplative practices and daily
+    reflections — they might add alongside.
 
-How to choose. Offer three that are genuinely different from each other, so the
-choice means something: not three versions of the same thing. Fit them to what this
-person said and to the pace they asked for — someone short on time, or new to
-prayer, should be offered something small. Include at least one gentle, easy option
-in each of the morning and the evening. The five "more" must not repeat any of the
-six you chose for morning and evening, and should include at least two reflections
-and at least two contemplative practices.
+HOW TO CHOOSE, in this order:
+  1. THEIR OWN PRACTICE FIRST. Whatever they say they already do or love — Centering
+     Prayer or contemplation, the rosary, Lectio Divina, music, the office, walking —
+     translate it into the matching practice on the menu and put it in. Where it is
+     on the morning or evening menu, offer it there (both, if they pray twice a day);
+     otherwise in "more". Never leave out what they told you.
+  2. THEN THE SHAPE OF THEIR PRAYER. If they pray in silence, favour stillness and
+     breath; if they need words, favour led prayer and the office; if scripture,
+     readings and Lectio; if music, listening. Add a different kind beside it so the
+     choice means something — not three versions of one thing.
+  3. THEN THEIR LIFE. Someone short on time, new to prayer, or easily distracted
+     gets the lighter, gentler options. Include at least one easy option in each of
+     morning and evening.
+  4. The five "more" must not repeat the six above, and include at least two
+     reflections and two contemplative practices.
+Do not offer something because it is generic. Every option should be there for a
+reason you could give from THEIR words.
 
-For each one write "why": ONE short sentence (under 22 words) in your voice, saying
-why it might suit THEM, in their own terms — not what the practice is; that is
-shown separately. Do not praise them. Do not use the practice's name in the line.
+For each, "why": ONE short sentence (under 22 words) in your voice, grounded in
+something they actually said — never in a trait they did not mention ("music-loving",
+"finds silence hard"). Do not praise them. Do not use the practice's name.
 
-MORNING MENU (keys you may use for "morning"):
+MORNING MENU:
 ${menu(GUIDE_MORNING, "morning")}
 
-EVENING MENU (keys you may use for "evening"):
+EVENING MENU:
 ${menu(GUIDE_EVENING, "evening")}
 
-MORE MENU (keys you may use for "more" — contemplative practices and reflections):
+MORE MENU:
 ${menu(GUIDE_MORE, null)}
 
 Respond with ONLY JSON:
@@ -1646,23 +1732,29 @@ Respond with ONLY JSON:
 
   const user = `THEIR ANSWERS:\n${description}${cq ? `\n\nONE MORE QUESTION\nQ: ${cq}\nA: ${ca || "(no answer)"}` : ""}`;
   const out = await askOpenAi(system, user, 1800, FOLLOWUP_MODEL);
-  if (!out.ok) { res.status(out.status).json({ error: out.error }); return; }
+  const data = out.ok ? out.data : null;
 
-  // Validate against the menus, whatever the model said: a key that is not on the
-  // menu is dropped, a duplicate is dropped, and a short list is topped up from the
-  // fallback order — so the person always sees three, three and five, and never
-  // something Phoebe cannot do.
+  // The model proposes; the server guards. What they named is ALWAYS in (the model
+  // once left Contemplation out for someone who wrote "Centering Prayer"); anything
+  // not on a menu is dropped; a short or failed answer is topped up by what their
+  // words score against each practice, so the step never fails and is never generic.
+  const fillFor = (menuKeys: string[]) => rankGuideKeys(text, menuKeys, named, new Set(), menuKeys.length);
+  const withNamed = (raw: unknown, allowed: string[]) =>
+    [...named.filter((k) => allowed.includes(k)), ...(Array.isArray(raw) ? raw : [])];
   const taken = new Set<string>();
-  const morningKeys = pickKeys(out.data?.morning, GUIDE_MORNING, taken, 3, GUIDE_MORNING);
-  const eveningKeys = pickKeys(out.data?.evening, GUIDE_EVENING, taken, 3, GUIDE_EVENING);
+  const morningKeys = pickKeys(withNamed(data?.morning, GUIDE_MORNING), GUIDE_MORNING, taken, 3, fillFor(GUIDE_MORNING));
+  const eveningKeys = pickKeys(withNamed(data?.evening, GUIDE_EVENING), GUIDE_EVENING, taken, 3, fillFor(GUIDE_EVENING));
   const offered = new Set<string>([...morningKeys, ...eveningKeys]);
-  const moreKeys = pickKeys(out.data?.more, GUIDE_MORE, offered, 5, GUIDE_MORE);
+  const moreKeys = pickKeys(
+    [...named.filter((k) => GUIDE_MORE.includes(k) && !offered.has(k)), ...(Array.isArray(data?.more) ? data.more : [])],
+    GUIDE_MORE, offered, 5, fillFor(GUIDE_MORE),
+  );
   const shape = (keys: string[], raw: unknown, side: GuideSide | null) =>
     keys.map((k) => ({ ...guideOption(k, side)!, why: GUIDE_WHY(raw, k) }));
   res.json({
-    morning: shape(morningKeys, out.data?.morning, "morning"),
-    evening: shape(eveningKeys, out.data?.evening, "evening"),
-    more: shape(moreKeys, out.data?.more, null),
+    morning: shape(morningKeys, data?.morning, "morning"),
+    evening: shape(eveningKeys, data?.evening, "evening"),
+    more: shape(moreKeys, data?.more, null),
   });
 });
 
