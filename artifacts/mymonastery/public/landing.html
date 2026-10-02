@@ -39,7 +39,8 @@
   .center { text-align: center; }
 
   /* ── Local nav ── */
-  .lnav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50; background: rgba(9,26,16,0.74); backdrop-filter: saturate(160%) blur(18px); -webkit-backdrop-filter: saturate(160%) blur(18px); border-bottom: 1px solid rgba(200,212,192,0.1); }
+  /* top:0 + padding-top, NOT top:safe-area: stuck below the notch, the strip above it showed the page scrolling through the status bar (iPhone, 2026-10-02). */
+  .lnav { position: sticky; top: 0; padding-top: env(safe-area-inset-top, 0px); z-index: 50; background: rgba(9,26,16,0.92); backdrop-filter: saturate(160%) blur(18px); -webkit-backdrop-filter: saturate(160%) blur(18px); border-bottom: 1px solid rgba(200,212,192,0.1); }
   .lnav .wrap { display: flex; align-items: center; justify-content: space-between; height: 52px; gap: 16px; }
   .lnav-name { font-weight: 700; font-size: 19px; letter-spacing: -0.01em; text-decoration: none; }
   .lnav-links { display: flex; align-items: center; gap: clamp(12px, 2.2vw, 24px); font-size: 13px; }
@@ -99,7 +100,7 @@
   .tstep:not(.active) h3 { color: rgba(240,237,230,0.4); }
   .tstep:not(.active) p { color: rgba(240,237,230,0.3); }
   .tstep .inline-phone { display: none; }
-  .tour-stage { position: sticky; top: calc(52px + env(safe-area-inset-top, 0px)); height: calc(100vh - 52px); display: grid; place-items: center; }
+  .tour-stage { position: sticky; top: calc(52px + env(safe-area-inset-top, 0px)); height: calc(100vh - 52px - env(safe-area-inset-top, 0px)); display: grid; place-items: center; }
   .tour-stage .phone { --w: min(320px, 100%, calc((100vh - 52px - 48px) * 0.46)); }
   .layer { position: absolute; inset: 0; transition: opacity .55s ease, transform .55s ease; }
   .layer:first-child { position: relative; }
