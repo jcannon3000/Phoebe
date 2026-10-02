@@ -16,6 +16,7 @@
 
 import { turnOffRoutine, NO_ROUTINE_MODE } from "@/lib/routineStart";
 import { finderSkipped, FINDER_FOR_EVERYONE } from "@/lib/finderEntry";
+import { PhoebeHelpCard } from "@/components/PhoebeHelpCard";
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef, useCallback, type ReactNode, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -7522,6 +7523,9 @@ export default function WayOfLoveRuleFlow({
             {t("wol_rule.starter_build_own", { defaultValue: "Or build my own →" })}
           </button>
         </div>
+
+        {/* Phoebe offers to do it with them (the routine interview is admin-only for now). */}
+        {isSuperAdmin && <PhoebeHelpCard />}
       </>,
     );
   }
