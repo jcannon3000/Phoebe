@@ -2285,6 +2285,8 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_goal_sent_date TEXT`);
     // Per-day dedup for the evening "You Breathed with N others" push.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS breath_together_sent_date TEXT`);
+    // ...and for the evening "N people prayed with you today" push.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayed_together_sent_date TEXT`);
     // Daily steps goal (Apple Health) + one-per-day "reached" push dedupe.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_step_goal INTEGER NOT NULL DEFAULT 0`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_step_reached_date TEXT`);

@@ -1344,6 +1344,48 @@ export function sendBreathTogetherPush(userId: number, opts: { others: number })
   });
 }
 
+/**
+ * "N people prayed with you today" — the evening note to everyone who kept a
+ * practice that day (owner, 2026-10-01: "What if we did a notification that
+ * was You and x Others Prayed Today with Phoebe" → "X people prayed with you
+ * Today", and "we just want it to those who prayed today").
+ *
+ * N IS THE OTHERS, NOT THE TOTAL — "with you" already counts the reader, the
+ * same way the breath note above reads. The sender never sends at zero: "0
+ * people prayed with you" is a worse thing to say than nothing.
+ *
+ * TITLE LENGTH. 31 characters, ~233pt in the notification title face (SF
+ * Semibold 15), against a title column of roughly 290pt on a standard iPhone
+ * and less on an SE — measured, because the owner asked whether it would
+ * crop. It does not, even at four digits (~254pt). The first draft, "You and
+ * 23 Others Prayed Today with Phoebe", was ~324pt and would have cropped on
+ * every phone; "with Phoebe" is also redundant beside the app name iOS prints
+ * in the header row.
+ */
+export function sendPrayedTogetherPush(userId: number, opts: { others: number }) {
+  return sendPushToUser(userId, {
+    title: opts.others === 1
+      ? "1 person prayed with you today"
+      : `${opts.others} people prayed with you today`,
+    /**
+     * BODY LENGTH IS TWO LINES. A collapsed notification gives the body about
+     * two lines, ~300pt each. The owner's full sentence — "Return tomorrow to
+     * make space for the love of God in the world by joining together to make
+     * space for God in our lives" — measures ~802pt, so it runs to a third
+     * line and truncates on the lock screen (it reads in full only when the
+     * notification is expanded). It also said "make space for" twice, once as
+     * the end and once as the means, which reads circular. This is the owner's
+     * own second draft, which fixes both: ~74 characters, ~1.8 lines, nothing
+     * cropped.
+     */
+    body: "Return tomorrow as we make space for the love of God in the world together",
+    path: "/",
+    threadId: "prayed-together",
+    collapseId: `prayed-together-${userId}`,
+    sound: PHOEBE_SOUND_LOW,
+  });
+}
+
 // Weekly Way of Love review — the Sunday-evening examen nudge. Invites the user
 // to look back on the week and set the one ahead. Deep-links into the review;
 // deduped to once per Sunday by the sender.

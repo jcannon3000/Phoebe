@@ -194,6 +194,12 @@ export const usersTable = pgTable("users", {
   // evening note to everyone who kept Breathing Together that day (owner,
   // 2026-09-17). One per local day; NULL = never sent.
   breathTogetherSentDate: text("breath_together_sent_date"),
+  // YYYY-MM-DD (user TZ) of the last "N people prayed with you today" push —
+  // the evening note to everyone who kept ANY practice that day (owner,
+  // 2026-10-01). One per local day; NULL = never sent. Sibling of the breath
+  // stamp above, and the sender reads that one too so a breather doesn't get
+  // two near-identical notes in one evening.
+  prayedTogetherSentDate: text("prayed_together_sent_date"),
   // Daily steps goal (Apple Health). When > 0, the home card shows progress and
   // the server pushes "you hit your step goal" the first time today's synced
   // steps cross it. 0 = off.

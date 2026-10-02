@@ -37,6 +37,7 @@ import {
   sendNewFeedIntercessionPush,
   sendWeeklyDigestPush,
   sendBreathTogetherPush,
+  sendPrayedTogetherPush,
 } from "./pushSender";
 import { getGardenUserIds } from "./garden";
 import { runRetentionCleanupSender } from "./retention";
@@ -1500,6 +1501,156 @@ export async function runBreathTogetherSender(opts: { forceNow?: boolean } = {})
   }
 }
 
+/**
+ * ─── "N people prayed with you today" ───────────────────────────────────────
+ *
+ * The evening note to everyone who KEPT A PRACTICE that day (owner,
+ * 2026-10-01: "we just want it to those who prayed today"). Its sibling above
+ * is the same idea for Breathing Together alone; this one counts every
+ * practice, so it is the one most people will ever see.
+ *
+ * 20:30 local (owner: "Have it send at 8:30pm") — half an hour after the
+ * breath note and the evening bell. The bell at 20:00 goes to people who have
+ * NOT prayed, so those two audiences cannot overlap; a breather would
+ * otherwise get two near-identical notes in one evening, which is why this
+ * skips anyone already sent the breath note today.
+ *
+ * isWithinTickWindow's tolerance is ±15 minutes against a 15-minute tick, so
+ * a 20:30 target is reached by the tick either side of it. The per-day
+ * `sentDate` stamp is what makes it once, not the window.
+ */
+const PRAYED_TOGETHER_TIME = "20:30";
+
+export type PrayedTogetherRow = {
+  userId: number;
+  day: string;
+  timezone: string | null;
+  sentDate: string | null;
+  breathSentDate: string | null;
+};
+
+/**
+ * WHO gets the note, and the number each one is told — a pure decision over
+ * the rows, so the rules can be tested without a database. Same shape as
+ * breathTogetherRecipients, and the same four rules:
+ *
+ * - Only someone whose record is their OWN local today.
+ * - `others` is every OTHER person who kept something on that same day
+ *   string, counted once however many practices they kept. "N people prayed
+ *   WITH YOU" already counts the reader, so the reader is not in N.
+ * - Nobody is told nobody prayed with them: at zero there is nothing to say,
+ *   and no stamp is written, so a later tick in the window still catches the
+ *   day once somebody else prays.
+ * - One note per person per local day (`sentDate`), and never on a day they
+ *   already had the breath note (`breathSentDate`).
+ */
+export function prayedTogetherRecipients(
+  rows: PrayedTogetherRow[],
+  helpers: { todayFor: (tz: string) => string; inWindow: (tz: string) => boolean },
+): Array<{ userId: number; others: number; today: string }> {
+  const prayersByDay = new Map<string, Set<number>>();
+  for (const r of rows) {
+    if (!prayersByDay.has(r.day)) prayersByDay.set(r.day, new Set());
+    prayersByDay.get(r.day)!.add(r.userId);
+  }
+  const out: Array<{ userId: number; others: number; today: string }> = [];
+  const seen = new Set<number>();
+  for (const r of rows) {
+    if (seen.has(r.userId)) continue;
+    const tz = r.timezone || "America/New_York";
+    const today = helpers.todayFor(tz);
+    if (r.day !== today) continue;
+    if (r.sentDate === today || r.breathSentDate === today) { seen.add(r.userId); continue; }
+    if (!helpers.inWindow(tz)) continue;
+    const others = Math.max(0, (prayersByDay.get(today)?.size ?? 1) - 1);
+    if (others < 1) continue;
+    seen.add(r.userId);
+    out.push({ userId: r.userId, others, today });
+  }
+  return out;
+}
+
+/**
+ * EVERY WAY A DAY GETS KEPT, in one union — the same sources App Metrics
+ * counts (lib/appMetricsSql), because the number in this push and the number
+ * on that page should not be able to disagree. A timestamped record is dated
+ * in the person's own zone; the local-day tables are compared as written.
+ *
+ * Test runs are left out by (user, day) the way the metrics do it — not by
+ * user, so the owner testing on the Simulator still gets his own evening note
+ * on a day he also prayed for real.
+ */
+const PRAYED_TODAY_SQL = `
+WITH prayed AS (
+  SELECT ps.user_id, to_char((ps.ended_at AT TIME ZONE COALESCE(u.timezone, 'America/New_York'))::date, 'YYYY-MM-DD') AS day
+  FROM prayer_sessions ps JOIN users u ON u.id = ps.user_id
+  WHERE ps.ended_at >= $1
+  UNION ALL
+  SELECT a.user_id, to_char((a.prayed_at AT TIME ZONE COALESCE(u.timezone, 'America/New_York'))::date, 'YYYY-MM-DD')
+  FROM prayer_request_amens a JOIN users u ON u.id = a.user_id
+  WHERE a.prayed_at IS NOT NULL AND a.prayed_at >= $1
+  UNION ALL
+  SELECT pc.user_id, pc.local_date FROM practice_completion pc WHERE pc.local_date >= $2
+  UNION ALL
+  SELECT rr.user_id, rr.ymd FROM reflection_reads rr WHERE rr.ymd >= $2
+  UNION ALL
+  SELECT cr.user_id, cr.ymd FROM cac_reads cr WHERE cr.ymd >= $2
+  UNION ALL
+  SELECT b.user_id, b.day FROM breath_sessions b WHERE b.day >= $2
+  UNION ALL
+  SELECT np.user_id, np.last_completed_local_date
+  FROM novena_progress np WHERE np.last_completed_local_date >= $2
+),
+kept AS (
+  SELECT DISTINCT p.user_id, p.day FROM prayed p
+  WHERE p.day >= $2
+    AND NOT EXISTS (SELECT 1 FROM simulator_marks sm WHERE sm.user_id = p.user_id AND sm.day = p.day)
+)
+SELECT k.user_id AS "userId", k.day AS day, u.timezone AS timezone,
+       u.prayed_together_sent_date AS "sentDate", u.breath_together_sent_date AS "breathSentDate"
+FROM kept k JOIN users u ON u.id = k.user_id
+`;
+
+export async function runPrayedTogetherSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  try {
+    // Two days covers every timezone's "today" at once, and the count per day
+    // string is taken from this same set — so it counts EVERYONE who kept
+    // something that day, not only the people being notified.
+    const cutoffTs = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    const cutoffDay = cutoffTs.toISOString().slice(0, 10);
+    // Both values are server-generated (an ISO timestamp and a YYYY-MM-DD
+    // slice of one), never input — and every $1/$2 has to go, not just the
+    // first: $1 appears twice in the union, and `String.replace` with a
+    // string pattern only replaces one.
+    const query = PRAYED_TODAY_SQL
+      .split("$1").join(`'${cutoffTs.toISOString()}'`)
+      .split("$2").join(`'${cutoffDay}'`);
+    const result = await db.execute(sql.raw(query));
+    const rows = ((result as unknown as { rows?: PrayedTogetherRow[] }).rows ?? (result as unknown as PrayedTogetherRow[])) as PrayedTogetherRow[];
+
+    const recipients = prayedTogetherRecipients(rows, {
+      todayFor: (tz) => todayInZone(tz),
+      inWindow: (tz) => !!opts.forceNow || isWithinTickWindow(tz, PRAYED_TOGETHER_TIME),
+    });
+
+    for (const r of recipients) {
+      try {
+        await sendPrayedTogetherPush(r.userId, { others: r.others });
+        await db
+          .update(usersTable)
+          .set({ prayedTogetherSentDate: r.today })
+          .where(eq(usersTable.id, r.userId));
+      } catch (err) {
+        // No stamp on failure → a later tick inside the window retries.
+        logger.warn({ err, userId: r.userId }, "[prayed-together] push failed");
+      }
+    }
+    logger.info({ recipients: recipients.length }, "[prayed-together] evening note");
+  } catch (err) {
+    logger.error({ err }, "[prayed-together] sender failed");
+  }
+}
+
 // ─── Weekly Way of Love review — Sunday-evening examen nudge ─────────────────
 // Once a week (Sunday ~20:00 in the user's tz) invite beta users who've opted in
 // to look back on the week and set the one ahead. Skipped if they already did
@@ -1976,6 +2127,9 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // Breathing Together's evening note — "You Breathed with N others", to
   // everyone who kept the breath today.
   { name: "breath-together",       run: runBreathTogetherSender },
+  // "N people prayed with you today" — 20:30, to everyone who kept any
+  // practice today (owner, 2026-10-01). Skips anyone who got the breath note.
+  { name: "prayed-together",       run: runPrayedTogetherSender },
   // VTS Dean's Commentary — weekday ~8am nudge for readers who follow it.
   { name: "vts-commentary",        run: runVtsCommentarySender },
   // Weekly review — re-enabled (owner: "I didn't get the week review
