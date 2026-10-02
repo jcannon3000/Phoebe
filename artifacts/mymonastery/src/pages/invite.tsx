@@ -152,14 +152,8 @@ export default function InvitePage() {
           >
             {t("invite.show_qr", { defaultValue: "Show a QR code to scan" })}
           </button>
-          {/* For a parish: the same code on a printable page (pages/flyer). */}
-          <Link
-            href="/flyer"
-            className="mt-3 block text-[13px] underline underline-offset-2 transition-opacity hover:opacity-80"
-            style={{ color: "rgba(143,175,150,0.75)" }}
-          >
-            {t("invite.flyer", { defaultValue: "Make a printable flyer for your parish" })}
-          </Link>
+          {/* The parish flyer moved to Share Phoebe (pages/invite-share) — this
+              is the page a shared link lands on, not where a flyer is made. */}
         </div>
       </div>
 

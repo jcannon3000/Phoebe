@@ -136,6 +136,25 @@ export default function InviteSharePage() {
           >
             {t("invite_share.qr_cta", { defaultValue: "QR code" })}
           </button>
+
+          {/* FOR A PARISH (owner, 2026-10-02: "can you put the flyer in share
+              phoebe"). The same code on a printable page, with a line about what
+              Phoebe is — for a leader who wants a sheet to put on a table, not a
+              link to send. It lived as a quiet text link on /invite, which is the
+              page the RECIPIENT of a shared link lands on, where a parish leader
+              making a flyer is not who is looking; it belongs here with the other
+              things a sender does. */}
+          <button
+            type="button"
+            onClick={() => navigate("/flyer")}
+            className="mt-3 w-full rounded-full px-8 py-3.5 text-[15px] font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{
+              background: "rgba(240,237,230,0.08)", color: WARM,
+              border: "1px solid rgba(240,237,230,0.22)", cursor: "pointer", fontFamily: FONT,
+            }}
+          >
+            {t("invite_share.flyer_cta", { defaultValue: "A flyer for your parish" })}
+          </button>
         </motion.div>
       </div>
 

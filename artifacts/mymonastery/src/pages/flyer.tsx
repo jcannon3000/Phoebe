@@ -400,7 +400,7 @@ export default function FlyerPage() {
   return (
     <Layout>
       <div className="w-full max-w-2xl mx-auto pb-24" style={{ fontFamily: FONT }}>
-        <Link href="/invite" className="text-[14px]" style={{ color: SAGE, textDecoration: "none" }}>← Invite</Link>
+        <Link href="/invite/share" className="text-[14px]" style={{ color: SAGE, textDecoration: "none" }}>← Share Phoebe</Link>
         <h1 className="mt-3" style={{ fontSize: 28, fontWeight: 700, color: WARM, letterSpacing: "-0.01em", margin: "12px 0 6px" }}>
           A flyer for your parish
         </h1>
