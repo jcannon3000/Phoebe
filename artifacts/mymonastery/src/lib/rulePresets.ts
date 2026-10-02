@@ -220,45 +220,43 @@ export const RULE_PRESETS: RulePreset[] = [
       { emoji: "\u{1F5BC}\u{FE0F}", label: "Visio Divina" },
       { emoji: "\u{1F3A7}", label: "Audio Divina in the evening" },
     ] },
-  // CANTERBURY DOWNTOWN (owner) — v3, 2026-09-25: "Morning: Simple Guided /
-  // Newsletter: Henri Nowen / Newsletter: Taize / Evening: Breathing
-  // Together."
+  // CANTERBURY DOWNTOWN (owner) — v4, 2026-10-02: "Make Canterbury Downtown —
+  // Morning: Breathing Together · Taize Daily · Audio Divina."
   //
-  // TWO NEWSLETTERS, which is new for a named rule — every other one carries a
-  // single reflection. `reflections` is already a list and the customizer sets
-  // them all, so this needs nothing special; it is worth saying only because
-  // one of them will be the side's reflection card and BOTH show as their own
-  // newsletter cards.
+  // (v3, 2026-09-25, was "Morning: Simple Guided / Newsletter: Henri Nowen /
+  // Newsletter: Taize / Evening: Breathing Together". Simple Guided Prayer,
+  // the Nouwen devotion and the evening are gone with it — a rule is what the
+  // owner says it is, and re-adopting sweeps the old shape away like any rule
+  // swap.)
+  //
+  // ALL THREE ARE CARDS, SO THERE IS NO PRAYER ANCHOR. Breathing Together and
+  // Audio Divina are standing practices with their own cards and Taizé Daily is
+  // a newsletter, so both sides take `pray: "none"` and the rule is the three
+  // cards alone — the same shape Centering Prayer uses for a sit with no office.
+  // The evening side is off: the owner named nothing for it, and giving it an
+  // anchor he did not ask for would put a fourth card on a rule of three.
   //
   // "Taize" here is `taizeprayer`, Brother Matthew's DAILY prayer — not the
-  // weekly Taizé meditation, which is a practice rather than a newsletter and
-  // is not what a line reading "Newsletter: Taize" asks for.
+  // weekly Taizé meditation, which is retired (owner, 2026-09-23).
   //
-  // THE EVENING IS A PRACTICE, NOT AN OFFICE. Breathing Together has its own
-  // card, so the evening side takes no anchor (`evening: "none"`) and the
-  // practice is turned on and slotted to the evening — the same shape
-  // Contemplative Art uses for a morning that is Visio Divina. Said this way
-  // rather than as `silence: true, contemplationStyle: "cobreathe"`: that
-  // vocabulary makes the breath a SIDE'S SIT, which would leave the evening
-  // holding both an anchor and a sit for one line of the owner's four.
+  // "MORNING" CANNOT BE PINNED. getPracticeSlot (lib/customAnchors) hard-returns
+  // "anytime" for cobreathe and listening — their time-of-day pickers are gone —
+  // so the slots below are what the rule SAYS, written for the day a picker
+  // returns, and the cards will show as available all day until then. The
+  // NEWSLETTER is the one thing here with a morning of its own.
   //
-  // Gone with v2: Forward Day by Day, Visio Divina, gratitude and the Examen.
-  // A rule is what the owner says it is, and re-adopting sweeps the old shape
-  // away as any rule swap does — except the relational gratitude, which adopt
-  // never removes from anyone who already keeps it.
-  { id: "canterbury-downtown", emoji: "\u{1F3D9}\u{FE0F}", sides: { morning: true, evening: true },
-    pray: "guidedPrayer", evening: "none",
+  // NOTE THE TWO VOCABULARIES for Audio Divina: `practices` calls it "audio",
+  // `practiceSlots` and the home layout call it "listening".
+  { id: "canterbury-downtown", emoji: "\u{1F3D9}\u{FE0F}", sides: { morning: true, evening: false },
+    pray: "none",
     silence: false, goalMin: 0,
-    reflections: ["nouwen", "taizeprayer"],
-    practices: { cobreathe: true },
-    practiceSlots: { cobreathe: "evening" },
-    title: "Canterbury Downtown", blurb: "Simple Guided Prayer to open the day, Henri Nouwen and Taiz\u00e9 to carry through it, and Breathing Together to close it.",
+    reflections: ["taizeprayer"],
+    practices: { cobreathe: true, audio: true },
+    practiceSlots: { cobreathe: "morning", listening: "morning" },
+    title: "Canterbury Downtown", blurb: "Breathing Together, the daily prayer from Taiz\u00e9, and music as prayer — three things for the morning.",
     rows: [
-      { emoji: "\u{1F64C}\u{1F3FD}", label: "Simple Guided Prayer in the morning" },
-      // Named as the ROUTINE names it (owner) — this row is a preview of the
-      // cards the rule turns on, so it has to read like them.
-      { emoji: "\u{1F60A}", label: "The Daily Devotion" },
+      { emoji: "\u{1F30D}", label: "Breathing Together" },
       { emoji: "\u{1F304}", label: "Taiz\u00e9 Daily Prayer" },
-      { emoji: "\u{1F30D}", label: "Breathing Together in the evening" },
+      { emoji: "\u{1F3A7}", label: "Audio Divina" },
     ] }
 ];
