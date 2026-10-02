@@ -501,13 +501,18 @@ export default function CobreathePage() {
     },
     mutationFn: async (seconds: number) => {
       /**
-       * A signed-out guest has no account to record against. /breath/today 401s,
+       * A SIGNED-OUT guest (no session at all) has nothing to record against. /breath/today 401s,
        * and `record.isError` then paints a full-screen "Your breath didn't save"
        * — with a Try again that can never succeed — in place of the summary.
        * The breath IS kept: logSit's own guest branch a hundred lines below was
        * taught about guests and this one, in the same file, was not.
        */
-      if (isDeviceLocalGuest(user)) return { ok: true, count: 1 } as unknown as BreathState & { ok: boolean };
+      // Only with NO session at all. The anonymous DEVICE user has a real session
+      // and counts in the communal breath like anyone else (owner, 2026-10-02:
+      // "make sure breathing together is counting people who dont have accounts
+      // too"); this used to skip them, so a phone without an account never
+      // reached the day's count or the all-time breaths.
+      if (!user) return { ok: true, count: 1 } as unknown as BreathState & { ok: boolean };
       return apiRequest<BreathState & { ok: boolean }>("POST", "/api/breath/today", {
         day,
         seconds,
@@ -793,7 +798,9 @@ export default function CobreathePage() {
      * against; the local summary still shows what they breathed.
      */
     const at = placeRef.current;
-    if (at && breaths >= 1 && !isDeviceLocalGuest(userRef.current)) {
+    // A place's tally counts the anonymous device user too; only a phone with no
+    // session at all has nothing to tally against.
+    if (at && breaths >= 1 && !!userRef.current) {
       const target = at.id > 0 ? String(at.id) : encodeURIComponent(at.slug ?? "");
       if (target) {
         const tallyUrl = `/api/breath/places/${target}/breaths`;
