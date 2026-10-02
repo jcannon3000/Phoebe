@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { claimNudgeSlot } from "@/lib/nudgeSlot";
 
 // Once a week, for people who use Phoebe without an account (a signed-out visitor,
 // or the anonymous device user every phone gets): an invitation to make one
@@ -41,7 +42,7 @@ export function CreateAccountNudge() {
     const last = read(SHOWN_KEY) ?? first;
     if (now - last < WEEK_MS) return;
     // A beat after the home settles, so it never lands on top of the splash.
-    const t = window.setTimeout(() => { write(SHOWN_KEY, Date.now()); setOpen(true); }, 2500);
+    const t = window.setTimeout(() => { if (!claimNudgeSlot()) return; write(SHOWN_KEY, Date.now()); setOpen(true); }, 2500);
     return () => window.clearTimeout(t);
   }, [guest, onHome]);
 
