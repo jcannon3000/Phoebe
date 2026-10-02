@@ -137,8 +137,10 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
 // open the app. Per kind (the push's thread id): how many reached a device, how
 // many were opened FROM the notification, the rate, and the median time to open.
 // Counts come from notification_sends, written by sendPushToUser; only sends from
-// the day tracking began are in it, and a push opened without the tap carrying its
-// id (an old build, or opened from the app icon instead) is not counted as opened.
+// the day tracking began are in it. "opened" = the app was opened within an hour of
+// the send (an app-open ping, or the notification's own tap), which works on EVERY
+// build; "tapped" = reported from the notification itself, which only a build that
+// carries the reporter can do (the phone's frozen bundle until it is rebuilt).
 router.get("/admin/notification-stats", async (req, res): Promise<void> => {
   const session = getUser(req);
   if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -149,7 +151,12 @@ router.get("/admin/notification-stats", async (req, res): Promise<void> => {
     const q = await pool.query(
       `SELECT kind,
               COUNT(*)::int AS sent,
-              COUNT(opened_at)::int AS opened,
+              COUNT(opened_at)::int AS tapped,
+              COUNT(*) FILTER (WHERE opened_at IS NOT NULL OR EXISTS (
+                SELECT 1 FROM app_opens a
+                 WHERE a.user_id = notification_sends.user_id
+                   AND a.opened_at >= notification_sends.sent_at
+                   AND a.opened_at <= notification_sends.sent_at + interval '60 minutes'))::int AS opened,
               COUNT(DISTINCT user_id)::int AS people,
               COUNT(DISTINCT user_id) FILTER (WHERE opened_at IS NOT NULL)::int AS people_opened,
               ROUND((PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (opened_at - sent_at)) / 60.0)
@@ -164,7 +171,7 @@ router.get("/admin/notification-stats", async (req, res): Promise<void> => {
     res.json({
       days,
       kinds: q.rows.map((r: any) => ({
-        kind: String(r.kind), sent: r.sent, opened: r.opened,
+        kind: String(r.kind), sent: r.sent, opened: r.opened, tapped: r.tapped,
         rate: r.sent > 0 ? r.opened / r.sent : 0,
         people: r.people, peopleOpened: r.people_opened,
         medianMinutes: r.median_minutes ?? null,

@@ -575,7 +575,7 @@ const NOTIFICATION_ORDER = ["parish-office-morning", "parish-office-evening", "f
 
 type NotificationStats = {
   days: number;
-  kinds: Array<{ kind: string; sent: number; opened: number; rate: number; people: number; peopleOpened: number; medianMinutes: number | null }>;
+  kinds: Array<{ kind: string; sent: number; opened: number; tapped: number; rate: number; people: number; peopleOpened: number; medianMinutes: number | null }>;
 };
 
 /**
@@ -603,7 +603,7 @@ function NotificationOpens({ enabled }: { enabled: boolean }) {
       <p className="text-[11px] tracking-widest uppercase mb-1" style={{ color: FAINT, fontFamily: SPACE_GROTESK }}>Notifications</p>
       <h2 style={{ color: WARM, fontSize: 18, fontWeight: 600, fontFamily: SPACE_GROTESK }}>Which ones bring people in</h2>
       <p className="text-sm mt-1 mb-3" style={{ color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.5 }}>
-        Opened is the app being opened from the notification itself, so it is a floor. Counting began when this shipped.
+        Opened means the app was opened within an hour of the notification. Tapped is the app opened from the notification itself, which only phones on a newer build can report. Counting began when this shipped.
       </p>
       <div className="flex gap-2 mb-3">
         {[7, 30, 90].map((d) => (
@@ -639,7 +639,7 @@ function NotificationOpens({ enabled }: { enabled: boolean }) {
             <span className="text-[16px] font-semibold tabular-nums text-right" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{k.opened.toLocaleString()}</span>
             <span className="text-[16px] font-semibold tabular-nums text-right" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{Math.round(k.rate * 100)}%</span>
             <p className="text-[12px] mt-1" style={{ gridColumn: "1 / -1", color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.5 }}>
-              {k.people.toLocaleString()} {k.people === 1 ? "person" : "people"} reached, {k.peopleOpened.toLocaleString()} opened
+              {k.people.toLocaleString()} {k.people === 1 ? "person" : "people"} reached · {k.tapped.toLocaleString()} tapped it
               {k.medianMinutes != null ? ` · typically within ${k.medianMinutes < 1 ? "a minute" : `${Math.round(k.medianMinutes)} min`}` : ""}
             </p>
           </div>
