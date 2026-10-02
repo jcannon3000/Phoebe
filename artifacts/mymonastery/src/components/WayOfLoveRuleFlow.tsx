@@ -5026,6 +5026,9 @@ export default function WayOfLoveRuleFlow({
           setStep("morning-way");
           setEntryChoiceMade(true);
         })}
+
+        {/* Phoebe offers to do it with them (the routine interview is admin-only for now). */}
+        {isSuperAdmin && !prescribe && <PhoebeHelpCard />}
       </>,
     );
   }
@@ -7523,9 +7526,6 @@ export default function WayOfLoveRuleFlow({
             {t("wol_rule.starter_build_own", { defaultValue: "Or build my own →" })}
           </button>
         </div>
-
-        {/* Phoebe offers to do it with them (the routine interview is admin-only for now). */}
-        {isSuperAdmin && <PhoebeHelpCard />}
       </>,
     );
   }
