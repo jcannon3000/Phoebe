@@ -1549,21 +1549,29 @@ recommend. So ask about the thing that separates the kinds of practice on offer:
   · music and listening (sacred music, Pray As You Go)
   · looking back over the day (the Examen)
   · a short daily reading from a writer (reflections)
-Pick the ONE distinction their three answers leave least clear — for example
-whether they need words given to them or room to be wordless, what actually helps
-them settle, or what gets in the way of keeping a rhythm — and ask about that, in
-their own terms. Do not name these kinds of practice or any practice in the
-question; ask about their experience and let the answer point to them.
+Pick the ONE distinction their three answers leave least clear, and ask it as a
+plain, concrete question with a clear CONTRAST between two ways of praying, so
+that their answer points straight at one kind of practice or the other. It may
+mention the two ways in everyday words; it must not name a practice or an app
+feature. Good questions look like these (do not copy them — fit the person):
+  · "When you sit down to pray, do you do better with words and a text in front
+    of you, or with open silence and nothing to say?"
+  · "Does your prayer settle more easily when something is read or sung to you,
+    or when you are the one doing the praying?"
+  · "Would you rather a few minutes of prayer that is led for you, or time that is
+    entirely your own?"
+  · "Do you keep going longer when prayer is tied to something you read, or when it
+    is simply quiet?"
+Weave in what they said where it fits (their own words for what they do), but a
+clear contrast matters more than echoing them. Skip any contrast their answers
+already settle, and pick a different one.
 
-It must be RELEVANT: someone reading only their answers and your question should
-see at once why you asked it. Use their own words for what they do ("Centering
-Prayer", "music", "morning and evening") rather than abstractions.
-
-Keep it plain and concrete, the way a thoughtful friend would ask it across a
-table. ONE open question, one sentence, no more than 25 words.
+Plain words, ONE sentence, no more than 28 words.
 
 Never:
-  · list feelings or options inside the question — that is a menu in disguise;
+  · ask a vague open question ("what happens when…", "how does it feel…") — the
+    answer must be usable for choosing practices;
+  · list feelings or more than two ways;
   · use poetic or abstract words such as hunger, longing, soul, or within yourself;
   · ask about logistics (what time, how long, which book or app);
   · ask something they have already answered.
