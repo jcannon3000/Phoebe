@@ -133,8 +133,8 @@ async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null
 
   const [icon, shotA, shotB] = await Promise.all([
     loadImage("/phoebe-app-icon.png"),
+    loadImage("/landing/home.jpg"),
     loadImage("/landing/office-slide1.jpg"),
-    loadImage("/landing/reflections.jpg"),
   ]);
 
   /**
@@ -238,8 +238,11 @@ async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null
 
   // ── The app itself: two phones, STRAIGHT and level (owner: "make the mocks
   // straight and aligned"), the same size, side by side, their tops on the
-  // list's heading. The Office on the left (a way to pray), the reflections
-  // on the right.
+  // list's heading. The HOME on the left (owner, 2026-10-02: "The home screen
+  // should be one of the mocks on the flyer") — the day laid out, which is the
+  // first thing the page promises — and the Office on the right, a way to pray.
+  // The reflections list that stood here is the third phone the page no longer
+  // has room for; its words are still in the bullets beside.
   const phoneW = 286;
   const phoneGap = 32;
   const phonesX = M + col - (phoneW * 2 + phoneGap);
