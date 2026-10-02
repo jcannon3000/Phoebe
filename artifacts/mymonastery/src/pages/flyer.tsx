@@ -148,12 +148,14 @@ async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null
   // ── Masthead: the app icon and the name, then a hairline.
   const mastY = 190;
   // THE ICON STANDS AS TALL AS BOTH LINES (owner, 2026-10-02: "adjust the icon to
-  // be bigger so it comes down to the second line as well"). Its top sits at the
-  // name's cap height and its foot on the second line's baseline, so the name and
+  // be bigger so it comes down to the second line as well", then "slightly bigger
+  // to reach the top of the title"). Its top sits level with the TALLEST letters of
+  // the name — the ascenders of b, l and y stand above the capitals — and its foot
+  // on the second line's baseline, so the name and
   // the line under it read as one block beside it instead of the icon riding above
   // them. The text starts after it, whatever its size.
-  const iconSz = 112;
-  const iconTop = mastY - 54;
+  const iconSz = 120;
+  const iconTop = mastY - 62;
   if (icon) {
     ctx.save();
     ctx.beginPath();
