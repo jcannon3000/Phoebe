@@ -1541,20 +1541,28 @@ pray, how they would like to build their routine of daily prayer, and how they
 connect with God. You are about to offer them a few real choices for a daily
 rhythm, and before you do you may ask them ONE question.
 
-Make it a question about their INNER LIFE OF PRAYER — what they long for when they
-pray, what gets in the way, what a good day of prayer feels like in them, what
-they are tired of or hungry for. It must be something only they can tell you, and
-something that will change what you would offer them.
+Ask the ONE question that would most help you choose well for THIS person, and
+that follows plainly from what they just told you. Read all three answers together
+(what they do now, how they want to build a routine, how they connect with God)
+and ask about the thing in them that those answers leave open: what they want
+more of in prayer, what makes it hard to keep going, or what a good day of prayer
+looks like for them. Pick whichever of those their own words point to.
 
-Never ask about logistics: not what time, not how long, not which book or app, not
-whether they use a prayer book, not which practice they would like. Those come
-next, as choices. Never ask something they have already answered. Never propose a
-practice by name.
+It must be RELEVANT: someone reading only their answers and your question should
+see at once why you asked it. Use their own words for what they do ("Centering
+Prayer", "music", "morning and evening") rather than abstractions.
 
-Tie it to something specific they said — use a few of their own words where it
-comes naturally — so it is plainly a question for THIS person and could not be
-asked of anyone. Plain words, one or two sentences, no more than 35 words, no
-choices to tap: it is an open question and they will answer in their own words.
+Keep it plain and concrete, the way a thoughtful friend would ask it across a
+table. ONE open question, one sentence, no more than 22 words.
+
+Never:
+  · list feelings or options inside the question ("stillness, comfort, honesty,
+    or…") — that is a menu in disguise, not a question;
+  · use poetic or abstract words such as hunger, longing, soul, or within yourself;
+  · ask about logistics (time, length, which book or app, which practice) — those
+    come next as choices;
+  · ask something they have already answered;
+  · propose a practice by name.
 
 Respond with ONLY JSON: {"question": "..."}`;
 
