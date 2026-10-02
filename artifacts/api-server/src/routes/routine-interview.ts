@@ -1601,6 +1601,20 @@ function rankGuideKeys(text: string, menu: string[], named: string[], taken: Set
   return out;
 }
 
+/**
+ * A practice goes by the name the person uses. Someone who writes "Centering
+ * Prayer" is offered Centering Prayer, not "Contemplation" (owner, 2026-10-02) —
+ * same practice, their word. Only names that mean exactly the same sit are here.
+ */
+function nameTheyUse(key: string, text: string, fallback: string): string {
+  if (key === "reflect-sit") {
+    if (/centering prayer/i.test(text)) return "Centering Prayer";
+    if (/contemplative prayer/i.test(text)) return "Contemplative Prayer";
+    if (/silent prayer/i.test(text)) return "Silent Prayer";
+  }
+  return fallback;
+}
+
 // ── POST /routine-interview/guide/question — ONE qualitative question ────────
 router.post("/routine-interview/guide/question", perUserRateLimit("routine_interview_followups", {
   max: 15, windowMs: 60 * 60 * 1000,
@@ -1750,7 +1764,7 @@ Respond with ONLY JSON:
     GUIDE_MORE, offered, 5, fillFor(GUIDE_MORE),
   );
   const shape = (keys: string[], raw: unknown, side: GuideSide | null) =>
-    keys.map((k) => ({ ...guideOption(k, side)!, why: GUIDE_WHY(raw, k) }));
+    keys.map((k) => { const o = guideOption(k, side)!; return { ...o, title: nameTheyUse(k, text, o.title), why: GUIDE_WHY(raw, k) }; });
   res.json({
     morning: shape(morningKeys, data?.morning, "morning"),
     evening: shape(eveningKeys, data?.evening, "evening"),
