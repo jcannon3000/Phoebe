@@ -156,11 +156,27 @@ async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null
     ctx.drawImage(icon, M, mastY - 76, sz, sz);
     ctx.restore();
   }
+  // THE TOP OF THE FLYER NAMES THE APP AS NEW (owner, 2026-10-02: "Have the top
+  // of the Flyer say The New Phoebe Daily Prayer App"). Longer than the one word
+  // it replaces, so it takes the largest size that still sits on one line beside
+  // the icon, rather than a size picked for "Phoebe" that would run off the page.
+  const mastText = "The New Phoebe Daily Prayer App";
+  const mastX = M + (icon ? 124 : 0);
   ctx.fillStyle = INK;
-  ctx.font = `700 64px ${FONT}`;
-  ctx.fillText("Phoebe", M + (icon ? 124 : 0), mastY);
+  let mastSize = 64;
+  for (; mastSize > 40; mastSize -= 2) {
+    ctx.font = `700 ${mastSize}px ${FONT}`;
+    if (ctx.measureText(mastText).width <= M + col - mastX) break;
+  }
+  ctx.fillText(mastText, mastX, mastY);
+  // THE LINE UNDER IT (owner, 2026-10-02: "have a line under that says Built and
+  // tested by Episcopal Seminarians"). Who made it, said plainly and small, in the
+  // green of the page's other quiet lines. The hairline drops to make room.
+  ctx.fillStyle = GREEN;
+  ctx.font = `500 36px ${FONT}`;
+  ctx.fillText("Built and tested by Episcopal Seminarians", mastX, mastY + 54);
   ctx.fillStyle = "rgba(16,35,26,0.14)";
-  ctx.fillRect(M, mastY + 70, col, 3);
+  ctx.fillRect(M, mastY + 78, col, 3);
 
   // ── The title, on the paper itself: a short green bar, the headline, and who
   // it is for. (No photograph behind it - the owner: "we dont need the backround
