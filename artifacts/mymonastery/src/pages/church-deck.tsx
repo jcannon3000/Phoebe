@@ -2197,7 +2197,7 @@ export function DeckShell({
               animate={{ opacity: 0.42 }}
               exit={{ opacity: 0 }}
               transition={{ duration: SLIDE_TRANSITION_MS / 1000, ease: "linear" }}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", filter: "brightness(var(--bg-photo, 1))", objectFit: "cover", zIndex: -1 }}
             />
           </AnimatePresence>
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,calc(0.5 * var(--bg-wash, 1))) 0%, rgba(8,18,12,calc(0.64 * var(--bg-wash, 1))) 45%, rgba(8,18,12,calc(0.82 * var(--bg-wash, 1))) 100%)" }} />

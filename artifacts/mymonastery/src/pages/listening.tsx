@@ -1112,7 +1112,7 @@ export default function ListeningPage() {
               // gallery") — the cover sits on them the way a work does there.
               animate={{ opacity: playerShowing ? 0.38 : 0.22 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", filter: "brightness(var(--bg-photo, 1))", objectFit: "cover", zIndex: -1 }}
             />
             <div aria-hidden style={{
               position: "absolute", inset: 0, zIndex: -1,

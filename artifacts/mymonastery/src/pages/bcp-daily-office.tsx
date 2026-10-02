@@ -3391,7 +3391,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               animate={{ opacity: officeBgOpacity }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.8, ease: "easeInOut" }}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", filter: "brightness(var(--bg-photo, 1))", objectFit: "cover", zIndex: -1 }}
             />
           </AnimatePresence>
           {/* Dark wash matching the Laurel Kearns intro / prayer slideshow. */}

@@ -192,7 +192,7 @@ export default function VtsReadingPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.44 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", filter: "brightness(var(--bg-photo, 1))", objectFit: "cover", zIndex: -1 }}
           />
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,calc(0.44 * var(--bg-wash, 1))) 0%, rgba(8,22,15,calc(0.58 * var(--bg-wash, 1))) 52%, rgba(8,22,15,calc(0.74 * var(--bg-wash, 1))) 100%)" }} />
         </>
