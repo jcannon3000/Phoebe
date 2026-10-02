@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, usersTable, breathSessionsTable } from "@workspace/db";
+import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, appEngagedTable, usersTable, breathSessionsTable } from "@workspace/db";
 import { and, desc, eq, gte, gt, lt, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { getGardenUserIds } from "../lib/garden";
@@ -25,6 +25,40 @@ router.post("/app-open", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("[/app-open] failed:", err);
     // Non-fatal — a dropped open ping shouldn't surface an error.
+    res.json({ ok: false });
+  }
+});
+
+// POST /api/app-engaged { day } - records that this user stayed on the app for
+// a minute or more on that local day. The client times its own visible seconds
+// and pings once a day when they reach sixty; App Metrics counts the row as one
+// kept item (lib/appMetricsSql), so someone who looked around for a minute is
+// not filed under "opened the app and did nothing". Idempotent per (user, day).
+// Device users (no account) have a session and are recorded like anyone else.
+//
+// `day` is the client's local YYYY-MM-DD, as practice_completion takes it. It is
+// bounded to two days either side of the server's, so a wrong clock cannot write
+// a row into last month or next year.
+router.post("/app-engaged", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const day = typeof req.body?.day === "string" ? req.body.day : "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) { res.status(400).json({ error: "day must be YYYY-MM-DD" }); return; }
+  const DAY = 24 * 60 * 60 * 1000;
+  const claimed = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const now = new Date();
+  const serverDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  // Two days either side: enough for any timezone, too tight for a wrong clock.
+  if (!Number.isFinite(claimed) || Math.abs(claimed - serverDay) > 2 * DAY) {
+    res.status(400).json({ error: "day out of range" }); return;
+  }
+  try {
+    await db.insert(appEngagedTable).values({ userId: sessionUserId, localDate: day }).onConflictDoNothing();
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/app-engaged] failed:", err);
+    // Non-fatal, like the open ping: the client retries tomorrow's, and today's on the next visit.
     res.json({ ok: false });
   }
 });

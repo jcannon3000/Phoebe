@@ -283,6 +283,18 @@ kept_raw AS (
   UNION ALL
   SELECT person, day, 'other', section
   FROM completions WHERE section NOT IN ('examen', 'prayer-list')
+  UNION ALL
+  -- ── Stayed on the app a minute (owner, 2026-10-01) ──────────────────────
+  -- Anyone who spent a minute or more on the app counts as having used it,
+  -- even if they never opened a practice: the client times its own visible
+  -- seconds and pings once a day at sixty (components/AppOpenTracker ->
+  -- POST /api/app-engaged). One kept item per person per day, family other,
+  -- under its own key so the page can show how much of "used a practice" is
+  -- this. Without it, nearly all of the gap between "opened the app" and "used
+  -- a practice" was people without an account who looked around and left.
+  SELECT p.person, ae.local_date AS day, 'other', 'engaged'
+  FROM app_engaged ae JOIN people p ON p.user_id = ae.user_id
+  WHERE ae.local_date >= $6
 ),
 kept AS (
   SELECT DISTINCT person, day, family, practice FROM kept_raw k

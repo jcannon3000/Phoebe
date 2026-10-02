@@ -2417,6 +2417,18 @@ export async function migrate() {
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_app_opens_user_bucket ON app_opens (user_id, bucket)`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_app_opens_opened_at ON app_opens (opened_at)`);
 
+    // "Stayed on the app a minute" (owner, 2026-10-01). One row per user per
+    // local day; the unique index makes POST /api/app-engaged idempotent.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS app_engaged (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        local_date TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_app_engaged_user_day ON app_engaged (user_id, local_date)`);
+
     // ── Standard daily bell time → 09:30 ────────────────────────────────────
     // Default went from 07:00 → 09:30 by user direction (a more
     // pastoral hour). Idempotent: re-running this on a DB that's

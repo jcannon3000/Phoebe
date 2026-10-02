@@ -4036,7 +4036,7 @@ export const en = {
     row_opened: "Opened the app",
     caption_opened: "People who opened or came back to Phoebe. Under each number: how many of them use it without an account.",
     row_prayed: "Used a practice",
-    caption_prayed: "People who opened or kept at least one practice — an office, a sit, the Examen, a reading, the breath, a journal entry, anything on their routine. Opening it counts.",
+    caption_prayed: "People who opened or kept at least one practice — an office, a sit, the Examen, a reading, the breath, a journal entry, anything on their routine. Opening it counts, and so does staying on the app for a minute or more in a day.",
     row_accounts: "Accounts",
     caption_accounts: "New sign-ups, and the total. Under each: phones using Phoebe without an account. A phone gets its own private device user after three signed-out days, and becomes one person with the account it later signs into.",
     row_opens: "Times opened",
