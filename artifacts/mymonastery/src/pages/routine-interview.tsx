@@ -316,6 +316,8 @@ export default function RoutineInterviewPage() {
    * nothing past this slide changes shape.
    */
   const [openIdx, setOpenIdx] = useState(0);
+  // The second opening slide also asks how much time a day they have: minutes, or null until chosen.
+  const [openMinutes, setOpenMinutes] = useState<number | null>(null);
   const [openAnswers, setOpenAnswers] = useState<string[]>(["", "", ""]);
   /**
    * THE GUIDED INTERVIEW (owner, 2026-10-02): after the three questions, ONE
@@ -624,41 +626,25 @@ export default function RoutineInterviewPage() {
   };
 
   // ── The guided interview's calls ───────────────────────────────────────────
-  /** The three answers in, ONE qualitative question out. */
+  /**
+   * The three answers in, the options out — no follow-up question in between
+   * (owner, 2026-10-02: "Just get rid of the follow up question stage, go from
+   * the first three to the multiple options"). Three morning, three evening and
+   * five more come back, chosen from what they said.
+   */
   const startGuided = async (text: string) => {
     setError(null);
     setGuided(true);
-    setPhase("thinking-followups");
-    try {
-      const res = (await apiRequest("POST", "/api/routine-interview/guide/question", { description: text })) as { question?: string } | null;
-      const q = (res?.question ?? "").trim();
-      if (!q) throw new Error("ai_bad_json");
-      setQuestions([{ q }]);
-      setAnswers([""]);
-      setQIndex(0);
-      setPhase("followups");
-    } catch (e: any) {
-      setError(errorText(e?.body?.error ?? e?.message ?? ""));
-      setPhase("describe");
-    }
-  };
-
-  /** Their answer in, three morning options, three evening options and five more out. */
-  const getGuideOptions = async () => {
-    setError(null);
     setPhase("thinking-guide");
     try {
-      const res = (await apiRequest("POST", "/api/routine-interview/guide/options", {
-        description,
-        clarification: { q: questions[0]?.q ?? "", a: answers[0] ?? "" },
-      })) as GuideRecs | null;
+      const res = (await apiRequest("POST", "/api/routine-interview/guide/options", { description: text })) as GuideRecs | null;
       if (!res || !Array.isArray(res.morning) || !Array.isArray(res.evening) || !Array.isArray(res.more)) throw new Error("ai_bad_json");
       setRecs(res);
       setPickMorning(null); setPickEvening(null); setPickMore([]);
       setPhase("pick-morning");
     } catch (e: any) {
       setError(errorText(e?.body?.error ?? e?.message ?? ""));
-      setPhase("followups");
+      setPhase("describe");
     }
   };
 
@@ -901,7 +887,7 @@ export default function RoutineInterviewPage() {
       nextLabel: "Continue",
       skipLabel: "Not in the morning",
       onNext: () => setPhase("pick-evening"),
-      onBack: () => setPhase("followups"),
+      onBack: () => { setOpenIdx(2); setPhase("describe"); },
     });
   }
   if (phase === "pick-evening" && recs) {
@@ -1060,7 +1046,10 @@ export default function RoutineInterviewPage() {
       const ready = current.trim().length >= 2;
       // The three, as the question each answered — the model reads a question and
       // its answer, not three loose paragraphs.
-      const composed = OPENING.map((o, i) => `${o.q}\n${(openAnswers[i] ?? "").trim()}`).join("\n\n");
+      const composed = OPENING.map((o, i) => {
+        const time = i === 1 && openMinutes ? `\nTime they have for prayer each day: about ${openMinutes >= 60 ? "an hour or more" : `${openMinutes} minutes`}.` : "";
+        return `${o.q}\n${(openAnswers[i] ?? "").trim()}${time}`;
+      }).join("\n\n");
       return (
         <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/dashboard")}>
           <div style={wrap}>
@@ -1084,6 +1073,33 @@ export default function RoutineInterviewPage() {
                 fontFamily: FONT, fontSize: 15, lineHeight: 1.6, outline: "none", resize: "vertical",
               }}
             />
+
+            {at === 1 && (
+              <div>
+                <p style={{ ...eyebrow, marginBottom: 10 }}>About how much time each day?</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {[5, 10, 15, 20, 30, 60].map((m) => {
+                    const on = openMinutes === m;
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => setOpenMinutes(on ? null : m)}
+                        style={{
+                          ...quietBtn, width: "auto", padding: "10px 16px", fontSize: 14,
+                          background: on ? "rgba(46,107,64,0.42)" : "transparent",
+                          borderColor: on ? "rgba(143,175,150,0.6)" : undefined,
+                          color: on ? WARM : undefined,
+                        }}
+                      >
+                        {m === 60 ? "An hour+" : `${m} min`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {error && <p style={{ color: "#E5A3A3", fontSize: 13.5, fontFamily: FONT, margin: 0 }}>{error}</p>}
 
@@ -1298,7 +1314,7 @@ export default function RoutineInterviewPage() {
 
           <button
             type="button"
-            onClick={() => { if (isLast) { if (guided) void getGuideOptions(); else submitFollowups(); } else { setError(null); setQIndex((i) => i + 1); } }}
+            onClick={() => { if (isLast) { submitFollowups(); } else { setError(null); setQIndex((i) => i + 1); } }}
             style={primaryBtn}
           >
             {isLast ? (guided ? "Continue" : "Build my rhythm") : "Continue"}

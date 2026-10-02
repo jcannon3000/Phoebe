@@ -1684,8 +1684,7 @@ start of a daily routine they will actually keep, built from what they already
 do and the way their own prayer runs — never imposed on them.
 
 They have told you how they typically pray, how they would like to build a routine
-of daily prayer, how they connect with God, and answered one more question. Read
-all of it. Then choose, from the menus below and ONLY from them:
+of daily prayer, and how they connect with God. Read all of it. Then choose, from the menus below and ONLY from them:
 
   · "morning": exactly THREE ways to begin the day.
   · "evening": exactly THREE ways to close it.
@@ -1702,7 +1701,8 @@ HOW TO CHOOSE, in this order:
      breath; if they need words, favour led prayer and the office; if scripture,
      readings and Lectio; if music, listening. Add a different kind beside it so the
      choice means something — not three versions of one thing.
-  3. THEN THEIR LIFE. Someone short on time, new to prayer, or easily distracted
+  3. THEN THEIR LIFE. If they gave the time they have each day, fit the offer to it —
+     under ten minutes means short practices only. Someone short on time, new to prayer, or easily distracted
      gets the lighter, gentler options. Include at least one easy option in each of
      morning and evening.
   4. The five "more" must not repeat the six above, and include at least two
