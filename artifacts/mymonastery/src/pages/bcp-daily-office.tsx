@@ -24,6 +24,7 @@ import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground, lightenable } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
+import { officeVeilOpening } from "@/lib/officeVeil";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 import { PracticeSwitcher } from "@/components/PracticeSwitcher";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
@@ -2034,14 +2035,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // black. Both uses share `veilInner`, and it carries no office-enter animation,
   // so the early-return → overlay handoff (when the deck finishes loading) is
   // seamless rather than a re-fade.
-  const veilOpening =
-    (resolvedMode === "evening" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening")
-      ? { text: "Let my prayer rise before you as incense, the lifting up of my hands as the evening sacrifice.", cite: "Psalm 141:2" }
-      : resolvedMode === "compline"
-        ? { text: "The Lord grant us a quiet night and a peaceful end.", cite: "Compline" }
-        : resolvedMode === "noonday"
-          ? { text: "O God, make speed to save us. O Lord, make haste to help us.", cite: "Psalm 70:1" }
-        : { text: "O Lord, open my lips, and my mouth shall proclaim your praise.", cite: "Psalm 51:15" };
+  // One copy of the lines, shared with the loading screen that comes before this
+  // one (lib/officeVeil) so the two cannot say different things.
+  const veilOpening = officeVeilOpening(resolvedMode);
   // The held-breath veil. Default is the fixed splash leaf (owner) so opening
   // an office reads as a continuation of the launch screen. But a user who
   // DELIBERATELY chose the Water or Planet office backdrop keeps it here too —
@@ -6509,20 +6505,60 @@ const OFFICE_FETCH_TIMEOUT_MS = 6000;
 /** The brief second try while a recent failure has the app saying "offline". */
 const OFFICE_RETRY_TIMEOUT_MS = 2500;
 
+/**
+ * The deck this address opens, for the first render — the straightforward cases only.
+ *
+ * Mirrors the mode effect in BcpDailyOfficePage, minus everything that needs the
+ * network or a decision that can leave the page: Compline stays null (it is
+ * beta-gated and the beta flag has not arrived yet), and so does a morning or
+ * evening whose saved way to pray is "listen" or "watch" (those leave for another
+ * page, and starting a deck first would fetch an office that is about to be thrown
+ * away). Anything null here is picked up by the effect, exactly as before.
+ */
+function initialOfficeMode(): LiturgyMode | null {
+  if (typeof window === "undefined") return null;
+  const search = new URLSearchParams(window.location.search);
+  const mode = search.get("mode");
+  if (mode === "noonday" || mode === "scripture" || mode === "sunday"
+    || mode === "morning-devotion" || mode === "early-evening-devotion") return mode;
+  if (mode === "morning" || mode === "evening") {
+    const seamlessReturn = search.has("seamlessReturn") || search.has("slide");
+    if (!seamlessReturn) {
+      const pref = getSideEntry(mode);
+      if (pref === "listen") return null;
+      const weekday = (() => { const d = new Date().getDay(); return d >= 1 && d <= 5; })();
+      if (pref === "watch" && mode === "morning" && weekday) return null;
+    }
+    return mode;
+  }
+  return null;
+}
+
 export default function BcpDailyOfficePage() {
   const { user, isLoading } = useAuth();
   const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const [, setLocation] = useLocation();
   // All five liturgies live behind this one picker now (the Daily
   // Devotions menu entry was folded in). null = show the chooser.
-  const [showMode, setShowMode] = useState<LiturgyMode | null>(null);
+  //
+  // KNOWN ON THE FIRST RENDER, NOT AFTER IT (owner, 2026-10-02, from a screen
+  // recording: tapping Begin prayer showed the Daily Prayer chooser for one frame
+  // before the office's versicle). The mode used to be read from the address in an
+  // effect, which runs AFTER the first paint — so the first paint was always the
+  // chooser, and the deck replaced it a frame later. Reading it while initialising
+  // state means the first paint is already the deck's own veil. The effect below
+  // still runs for everything that is not a plain "open this deck" — Compline's
+  // beta gate, a "listen" or "watch" default that leaves for another page.
+  const [showMode, setShowMode] = useState<LiturgyMode | null>(() => initialOfficeMode());
   // True when the user picked an "In your book" row — the viewer opens
   // on the physical-book page guide instead of the slide deck.
   const [showBook, setShowBook] = useState(false);
   // True when arriving from the way-to-pray chooser (?picked=1) — the viewer
   // then drops its own "way to pray" dropdowns instead of asking again (the
   // user already chose). Mirrors the daily-devotions page.
-  const [cameFromPicker, setCameFromPicker] = useState(false);
+  const [cameFromPicker, setCameFromPicker] = useState(() => (
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("picked") === "1"
+  ));
   // When the picker's Begin launches a slide-deck office, skip the office's own
   // welcome slide (the picker already served that role) by starting at slide 1.
   const [startSlide, setStartSlide] = useState(0);
