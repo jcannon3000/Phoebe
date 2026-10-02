@@ -2,7 +2,7 @@ import { google } from "googleapis";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { db, usersTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
-import { INVITES_FROM_HEADER, getInvitesRefreshToken } from "./invitesAccount";
+import { INVITES_EMAIL_ADDRESS, INVITES_FROM_HEADER, getInvitesRefreshToken } from "./invitesAccount";
 import type { FeedDigest } from "./feedDigest";
 
 // ── Unsubscribe (non-essential email opt-out) ────────────────────────────────
@@ -235,8 +235,10 @@ export function encodeMimeMessage(options: {
   html: string;
   text: string;
   headers?: Record<string, string>;
+  /** Display name for the From line (the address stays the invites mailbox). */
+  fromName?: string;
 }): string {
-  const { to, subject, html, text, headers } = options;
+  const { to, subject, html, text, headers, fromName } = options;
   const boundary = "PhoebeBoundary";
   // Extra top-level headers (e.g. List-Unsubscribe). Newlines stripped so a
   // header value can't inject additional headers / break the MIME structure.
@@ -248,7 +250,7 @@ export function encodeMimeMessage(options: {
   // headers — "Title\r\nBcc: x@y" would otherwise add a silent Bcc.
   const message = [
     `To: ${String(to).replace(/[\r\n]+/g, " ")}`,
-    `From: ${INVITES_FROM_HEADER}`,
+    `From: ${fromName ? `${fromName.replace(/[\r\n"<>]+/g, " ")} <${INVITES_EMAIL_ADDRESS}>` : INVITES_FROM_HEADER}`,
     `Subject: ${String(subject).replace(/[\r\n]+/g, " ")}`,
     ...extraHeaders,
     `MIME-Version: 1.0`,
@@ -290,7 +292,7 @@ function renderInlineMarkdown(text: string): string {
   // Links: [label](url) — url is constrained to http(s) to avoid
   // javascript: URIs sneaking past the escape.
   s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
-    (_m, label, url) => `<a href="${url}" style="color:#4a7c59;text-decoration:underline;">${label}</a>`);
+    (_m, label, url) => `<a href="${url}" style="color:#8FAF96;text-decoration:underline;">${label}</a>`);
   // Bold first (consumes **…**), then italic on the remaining single *.
   s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   s = s.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
@@ -312,8 +314,8 @@ export function renderMarkdownToEmailHtml(md: string): string {
       const url = cta[2]!;
       blocks.push(
         `<table cellpadding="0" cellspacing="0" style="margin:6px 0 24px;"><tr>` +
-        `<td style="border-radius:10px;background:#4a7c59;">` +
-        `<a href="${url}" style="display:inline-block;padding:14px 28px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:-0.2px;">${label} &rarr;</a>` +
+        `<td style="border-radius:10px;background:#2E6B40;border:1px solid #5E9A70;">` +
+        `<a href="${url}" style="display:inline-block;padding:14px 28px;color:#F0EDE6;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:-0.2px;">${label} &rarr;</a>` +
         `</td></tr></table>`,
       );
       i++;
@@ -324,7 +326,7 @@ export function renderMarkdownToEmailHtml(md: string): string {
     if (heading) {
       const level = heading[1]!.length;
       const size = level === 1 ? 20 : level === 2 ? 17 : 15;
-      blocks.push(`<h${level} style="margin:24px 0 10px;font-size:${size}px;font-weight:600;color:#2d2a26;line-height:1.3;">${renderInlineMarkdown(heading[2]!)}</h${level}>`);
+      blocks.push(`<h${level} style="margin:24px 0 10px;font-size:${size}px;font-weight:600;color:#F0EDE6;line-height:1.3;">${renderInlineMarkdown(heading[2]!)}</h${level}>`);
       i++;
       continue;
     }
@@ -335,7 +337,7 @@ export function renderMarkdownToEmailHtml(md: string): string {
         items.push(`<li style="margin:0 0 6px;">${renderInlineMarkdown((lines[i] ?? "").replace(/^[-*]\s+/, ""))}</li>`);
         i++;
       }
-      blocks.push(`<ul style="margin:0 0 18px;padding-left:22px;font-size:15px;color:#3a3632;line-height:1.7;">${items.join("")}</ul>`);
+      blocks.push(`<ul style="margin:0 0 18px;padding-left:22px;font-size:15px;color:#D9D5CB;line-height:1.7;">${items.join("")}</ul>`);
       continue;
     }
 
@@ -345,7 +347,7 @@ export function renderMarkdownToEmailHtml(md: string): string {
         items.push(`<li style="margin:0 0 6px;">${renderInlineMarkdown((lines[i] ?? "").replace(/^\d+\.\s+/, ""))}</li>`);
         i++;
       }
-      blocks.push(`<ol style="margin:0 0 18px;padding-left:22px;font-size:15px;color:#3a3632;line-height:1.7;">${items.join("")}</ol>`);
+      blocks.push(`<ol style="margin:0 0 18px;padding-left:22px;font-size:15px;color:#D9D5CB;line-height:1.7;">${items.join("")}</ol>`);
       continue;
     }
 
@@ -362,9 +364,50 @@ export function renderMarkdownToEmailHtml(md: string): string {
       paraLines.push(lines[i] ?? "");
       i++;
     }
-    blocks.push(`<p style="margin:0 0 18px;font-size:15px;color:#3a3632;line-height:1.7;">${paraLines.map(renderInlineMarkdown).join("<br>")}</p>`);
+    blocks.push(`<p style="margin:0 0 18px;font-size:15px;color:#D9D5CB;line-height:1.7;">${paraLines.map(renderInlineMarkdown).join("<br>")}</p>`);
   }
   return blocks.join("\n");
+}
+
+
+// The newsletter card in the app's current look: deep-green ground, the app
+// icon, Space Grotesk where the client has it, cream type, a sage rule.
+const NEWSLETTER_FROM_NAME = "Phoebe Daily Prayer";
+const EMAIL_FONT = "'Space Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
+function newsletterHtml(subject: string, bodyHtml: string, unsubUrl: string | null): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:#091A10;font-family:${EMAIL_FONT};">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#091A10;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#0C1F12;border-radius:20px;border:1px solid #1F4A2E;padding:40px 36px;">
+          <tr>
+            <td>
+              <table cellpadding="0" cellspacing="0" style="margin-bottom:30px;"><tr>
+                <td style="padding-right:12px;"><img src="https://withphoebe.app/phoebe-app-icon.png" width="36" height="36" alt="" style="display:block;border-radius:9px;border:0;"></td>
+                <td style="font-family:${EMAIL_FONT};font-size:12px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#8FAF96;">Phoebe &middot; Daily Prayer</td>
+              </tr></table>
+              <h1 style="margin:0 0 24px;font-family:${EMAIL_FONT};font-size:26px;font-weight:600;color:#F0EDE6;line-height:1.25;letter-spacing:-0.01em;">${escapeHtml(subject)}</h1>
+              ${bodyHtml}
+              <p style="margin:28px 0 0;font-size:12px;color:#8FAF96;line-height:1.6;border-top:1px solid #1F4A2E;padding-top:20px;">You're receiving this because you're a member of Phoebe.${unsubUrl ? ` <a href="${unsubUrl}" style="color:#8FAF96;text-decoration:underline;">Unsubscribe</a> from these emails.` : ""}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
 }
 
 // Newsletter-style email — an admin-composed message rendered from
@@ -387,35 +430,7 @@ export async function sendNewsletterEmail(opts: {
 
   const bodyHtml = renderMarkdownToEmailHtml(opts.bodyMarkdown);
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin:0;padding:0;background:#f9f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7f4;padding:40px 16px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e8e2d9;padding:40px 36px;">
-          <tr>
-            <td>
-              <div style="margin-bottom:28px;">
-                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
-              </div>
-              <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${escapeHtml(opts.subject)}</h1>
-              ${bodyHtml}
-              ${bulkFooterHtml(unsubUrl)}
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
+  const html = newsletterHtml(opts.subject, bodyHtml, unsubUrl);
 
   const text = [
     opts.subject,
@@ -427,7 +442,7 @@ export async function sendNewsletterEmail(opts: {
   ].join("\n");
 
   try {
-    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text, headers: listUnsubHeaders(unsubUrl) });
+    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text, headers: listUnsubHeaders(unsubUrl), fromName: NEWSLETTER_FROM_NAME });
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {
@@ -462,35 +477,7 @@ export async function sendNewsletterEmailDiagnostic(opts: {
   const unsubUrl = gate ? unsubscribeUrl(gate.userId) : null;
 
   const bodyHtml = renderMarkdownToEmailHtml(opts.bodyMarkdown);
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin:0;padding:0;background:#f9f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7f4;padding:40px 16px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e8e2d9;padding:40px 36px;">
-          <tr>
-            <td>
-              <div style="margin-bottom:28px;">
-                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
-              </div>
-              <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${escapeHtml(opts.subject)}</h1>
-              ${bodyHtml}
-              ${bulkFooterHtml(unsubUrl)}
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
+  const html = newsletterHtml(opts.subject, bodyHtml, unsubUrl);
   const text = [
     opts.subject,
     "",
@@ -501,7 +488,7 @@ export async function sendNewsletterEmailDiagnostic(opts: {
   ].join("\n");
 
   try {
-    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text, headers: listUnsubHeaders(unsubUrl) });
+    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text, headers: listUnsubHeaders(unsubUrl), fromName: NEWSLETTER_FROM_NAME });
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return { ok: true };
   } catch (err) {
@@ -543,7 +530,7 @@ export async function sendAnnouncementEmail(opts: {
           <tr>
             <td>
               <div style="margin-bottom:28px;">
-                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
+                <img src="https://withphoebe.app/phoebe-app-icon.png" width="32" height="32" alt="" style="vertical-align:middle;border-radius:8px;border:0;margin-right:10px;"><span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;vertical-align:middle;">Phoebe</span>
               </div>
               <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${escapeHtml(opts.subject)}</h1>
               <p style="margin:0 0 28px;font-size:15px;color:#3a3632;line-height:1.7;">${safeBody}</p>
@@ -607,7 +594,7 @@ export async function sendPasswordResetEmail(opts: {
           <tr>
             <td>
               <div style="margin-bottom:28px;">
-                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
+                <img src="https://withphoebe.app/phoebe-app-icon.png" width="32" height="32" alt="" style="vertical-align:middle;border-radius:8px;border:0;margin-right:10px;"><span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;vertical-align:middle;">Phoebe</span>
               </div>
               <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">
                 Reset your password
@@ -688,7 +675,7 @@ export async function sendAccountExistsNotice(opts: {
           <tr>
             <td>
               <div style="margin-bottom:28px;">
-                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
+                <img src="https://withphoebe.app/phoebe-app-icon.png" width="32" height="32" alt="" style="vertical-align:middle;border-radius:8px;border:0;margin-right:10px;"><span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;vertical-align:middle;">Phoebe</span>
               </div>
               <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">
                 You already have an account
@@ -862,7 +849,7 @@ export async function sendPrayerInviteEmail(opts: {
           <tr>
             <td>
               <div style="margin-bottom:28px;">
-                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
+                <img src="https://withphoebe.app/phoebe-app-icon.png" width="32" height="32" alt="" style="vertical-align:middle;border-radius:8px;border:0;margin-right:10px;"><span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;vertical-align:middle;">Phoebe</span>
               </div>
               <p style="margin:0 0 6px;font-size:15px;color:#6b6460;line-height:1.6;">
                 Hey ${eFirstName},
@@ -1006,7 +993,7 @@ export async function sendWeeklyDigestEmail(opts: {
           <tr>
             <td>
               <div style="margin-bottom:28px;">
-                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
+                <img src="https://withphoebe.app/phoebe-app-icon.png" width="32" height="32" alt="" style="vertical-align:middle;border-radius:8px;border:0;margin-right:10px;"><span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;vertical-align:middle;">Phoebe</span>
               </div>
               <p style="margin:0 0 6px;font-size:15px;color:#6b6460;line-height:1.6;">
                 Hey ${eFirstName},
