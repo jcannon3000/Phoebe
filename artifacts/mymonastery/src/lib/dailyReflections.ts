@@ -37,10 +37,33 @@ export const REFLECTION_PUBLISHER: Record<TrackedReflection, string> = {
 
 export type DailyReflection = { source: TrackedReflection; emoji: string; title: string; publisher: string };
 
-/** Every daily reflection that is offered, in the rhythm's order. */
+/**
+ * THE ORDER THEY ARE SHOWN IN (owner, 2026-10-01: "Put Daily Devotion first" ·
+ * "Then 'Daily Prayer from Taize'" · "The Daily Meditation from the CAC" ·
+ * "Then SSJE" · "Then Forward" · "Then Haigriophay"). Henri Nouwen's devotion,
+ * Brother Matthew's prayer from Taizé, the CAC's meditation, SSJE, Forward Day by
+ * Day - and then the saint of the day, which the Reflections page adds itself
+ * after this list, so it is last without being named here. Anything not named
+ * follows in the rhythm's own order.
+ *
+ * Sorted HERE and not in TRACKED_REFLECTION_SOURCES, because that array is the
+ * rhythm's order and the pickers, the migrations and the card pipeline all read
+ * it - this list is only what is SHOWN, to the Reflections page and the home's
+ * Reflections row, which is why the two cannot disagree.
+ */
+const SHOWN_FIRST: readonly TrackedReflection[] = ["nouwen", "taizeprayer", "cac", "ssje", "fdd"];
+const shownRank = (s: TrackedReflection): number => {
+  const i = SHOWN_FIRST.indexOf(s);
+  return i === -1 ? SHOWN_FIRST.length : i;
+};
+
+/** Every daily reflection that is offered, led by the five the owner named. */
 export const DAILY_REFLECTIONS: readonly DailyReflection[] = TRACKED_REFLECTION_SOURCES
   .filter((s) => !UNOFFERED_REFLECTION_SOURCES.has(s))
-  .map((source) => ({ source, emoji: REFLECTION_EMOJI[source], title: PUBLICATION_NAME[source], publisher: REFLECTION_PUBLISHER[source] }));
+  .map((source, i) => ({ source, i }))
+  // Array.sort is stable, but the index makes "the rest keep their order" explicit.
+  .sort((a, b) => shownRank(a.source) - shownRank(b.source) || a.i - b.i)
+  .map(({ source }) => ({ source, emoji: REFLECTION_EMOJI[source], title: PUBLICATION_NAME[source], publisher: REFLECTION_PUBLISHER[source] }));
 
 export const MARK_REFLECTION_READ: Record<TrackedReflection, (dwellMs?: number) => void> = {
   cac: markCacRead, fdd: markFddRead, ssje: markSsjeRead, vts: markVtsRead,

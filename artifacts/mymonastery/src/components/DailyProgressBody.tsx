@@ -66,7 +66,7 @@ export const REFLECTION_EMOJI: Record<TrackedReflection, string> = {
 export const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
   ssje: "Brother, Give Us a Word",
-  cac: "CAC Daily Meditation",
+  cac: "Daily Meditation from the CAC",
   vts: "VTS Dean's Commentary",
   // "Daily Devotion" in the ROUTINE (owner, 2026-09-30: "Lets call the Henri
   // Nouwen Devotion when it shows up in the routine 'Daily Devotion'"). The
@@ -76,7 +76,7 @@ export const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string>
   sojo: "Sojourners Daily Devotion",
   grist: "Grist Climate News",
   payg: "Pray As You Go Daily",
-  taizeprayer: "Taizé Daily Prayer",
+  taizeprayer: "Daily Prayer from Taizé",
 };
 
 const WARM = "#F0EDE6";

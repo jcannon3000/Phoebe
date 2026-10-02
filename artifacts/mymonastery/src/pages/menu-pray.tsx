@@ -67,7 +67,7 @@ export default function MenuPrayPage() {
             onClick: () => go("/reflect/payg"),
           },
           {
-            emoji: "🪔", label: "Taizé Daily Prayer",
+            emoji: "🪔", label: "Daily Prayer from Taizé",
             // Their own page, in Phoebe's reader, marking itself read on the
             // way out — the same door the Reflections hub uses, so a prayer
             // taken here counts wherever that one does.

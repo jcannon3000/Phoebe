@@ -77,7 +77,7 @@ const REFLECTION_NAME: Record<string, string> = {
   // never name a practice differently from the home card.
   fdd: "Forward Day by Day",
   ssje: "Brother, Give Us a Word",
-  cac: "CAC Daily Meditation",
+  cac: "Daily Meditation from the CAC",
   vts: "VTS Dean's Commentary",
   // "Daily Devotion" in the ROUTINE (owner, 2026-09-30: "Lets call the Henri
   // Nouwen Devotion when it shows up in the routine 'Daily Devotion'"). The
@@ -87,7 +87,7 @@ const REFLECTION_NAME: Record<string, string> = {
   sojo: "Sojourners Daily Devotion",
   grist: "Grist Climate News",
   payg: "Pray As You Go Daily",
-  taizeprayer: "Taizé Daily Prayer",
+  taizeprayer: "Daily Prayer from Taizé",
 };
 
 const HOME_URL = "https://withphoebe.app/";

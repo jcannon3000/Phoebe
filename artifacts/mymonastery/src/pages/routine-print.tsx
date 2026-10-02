@@ -25,7 +25,7 @@ const SLOT_LABEL: Record<CustomSlot, string> = {
 import type { TrackedReflection } from "@/lib/cacReadState";
 
 const REFLECTION_NAME: Record<TrackedReflection, string> = {
-  cac: "CAC Daily Meditation",
+  cac: "Daily Meditation from the CAC",
   fdd: "Forward Day by Day",
   ssje: "Brother, Give Us a Word",
   vts: "VTS Dean's Commentary",
@@ -37,7 +37,7 @@ const REFLECTION_NAME: Record<TrackedReflection, string> = {
   payg: "Pray As You Go Daily",
   sojo: "Sojourners Daily Devotion",
   grist: "Grist Climate News",
-  taizeprayer: "Taizé Daily Prayer",
+  taizeprayer: "Daily Prayer from Taizé",
 };
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
