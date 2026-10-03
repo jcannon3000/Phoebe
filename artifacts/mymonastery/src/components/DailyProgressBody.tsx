@@ -682,6 +682,7 @@ export function PracticeCard({
               alt=""
               aria-hidden
               width={HERO_PHOEBE_W}
+              className="phoebe-hero-rise"
               style={{
                 position: "absolute", right: 14, bottom: 20, width: HERO_PHOEBE_W, height: "auto", pointerEvents: "none", zIndex: 0,
                 WebkitMaskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",

@@ -73,6 +73,7 @@ export function HeroCardShell({
           alt=""
           aria-hidden
           width={96}
+          className="phoebe-hero-rise"
           style={{
             position: "absolute", right: 14, bottom: 20, width: 96, height: "auto", pointerEvents: "none", zIndex: 0,
             WebkitMaskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
