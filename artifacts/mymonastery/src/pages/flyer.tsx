@@ -315,99 +315,6 @@ async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null
 }
 
 /**
- * THREE SCREENS OF THE FULL CUSTOMIZER, drawn (owner, 2026-10-03: "have the bottom be three
- * mocks which demonstrate the customizer, showing different parts of that flow", then "you put
- * the wrong routine customizer"). These follow the manual customizer in components/
- * WayOfLoveRuleFlow - the one that opens on "How would you like to build it?" - and use its
- * own wording: the opening choice, the morning step, and the reflections step. (The first
- * version was drawn from the light /customize page and the interview, which is not it.) Each
- * is a 560 x 1151 phone screen in the app's colours and type.
- */
-function customizerScreen(kind: "build" | "morning" | "learn"): HTMLCanvasElement {
-  const c = document.createElement("canvas");
-  c.width = 560; c.height = 1151;
-  const x = c.getContext("2d")!;
-  const WARM_ = "#F0EDE6", SAGE_ = "#8FAF96", CTA = "#2D5E3F";
-  const g = x.createLinearGradient(0, 0, 0, 1151);
-  g.addColorStop(0, "#143524"); g.addColorStop(0.55, "#0C2417"); g.addColorStop(1, "#081A11");
-  x.fillStyle = g; x.fillRect(0, 0, 560, 1151);
-  x.textBaseline = "alphabetic"; x.textAlign = "left";
-  const M = 34, innerW = 560 - 2 * M;
-  const lines = (t: string, size: number, weight: number, maxW: number, color: string, X: number, Y: number, lead: number): number => {
-    x.fillStyle = color; x.font = `${weight} ${size}px ${FONT}`;
-    for (const ln of wrap(x, t, maxW)) { x.fillText(ln, X, Y); Y += lead; }
-    return Y;
-  };
-  // A choice row as the customizer draws it: a radio at the left, the label, one line under it.
-  const choice = (Y: number, h: number, label: string, sub: string, on: boolean, check = false) => {
-    x.fillStyle = on ? "rgba(45,94,63,0.55)" : "rgba(255,255,255,0.05)";
-    x.beginPath(); x.roundRect(M, Y, innerW, h, 20); x.fill();
-    x.strokeStyle = on ? "rgba(110,180,130,0.62)" : "rgba(255,255,255,0.12)";
-    x.lineWidth = 2; x.beginPath(); x.roundRect(M, Y, innerW, h, 20); x.stroke();
-    const rx = M + 34, ry = Y + 40;
-    x.strokeStyle = on ? "#A8C5A0" : "rgba(143,175,150,0.45)"; x.lineWidth = 3;
-    x.beginPath(); x.arc(rx, ry, 13, 0, Math.PI * 2); x.stroke();
-    if (on) {
-      x.fillStyle = "#A8C5A0"; x.beginPath(); x.arc(rx, ry, 8, 0, Math.PI * 2); x.fill();
-      if (check) { x.strokeStyle = "#0C2417"; x.lineWidth = 3; x.beginPath(); x.moveTo(rx - 4, ry); x.lineTo(rx - 1, ry + 4); x.lineTo(rx + 5, ry - 4); x.stroke(); }
-    }
-    x.fillStyle = on ? WARM_ : "rgba(240,237,230,0.9)"; x.font = `700 25px ${FONT}`; x.fillText(label, M + 66, Y + 46);
-    lines(sub, 19, 400, innerW - 90, SAGE_, M + 66, Y + 78, 26);
-  };
-  const progress = (frac: number) => {
-    x.fillStyle = "rgba(143,175,150,0.22)"; x.beginPath(); x.roundRect(M, 130, innerW, 6, 3); x.fill();
-    x.fillStyle = "#A8C5A0"; x.beginPath(); x.roundRect(M, 130, innerW * frac, 6, 3); x.fill();
-  };
-  const backPill = () => {
-    x.strokeStyle = "rgba(255,255,255,0.18)"; x.lineWidth = 2; x.beginPath(); x.roundRect(M, 78, 110, 40, 20); x.stroke();
-    x.fillStyle = SAGE_; x.font = `600 20px ${FONT}`; x.fillText("<  Back", M + 20, 105);
-  };
-  const button = (label: string, Y: number) => {
-    x.fillStyle = CTA; x.beginPath(); x.roundRect(M, Y, innerW, 72, 36); x.fill();
-    x.fillStyle = WARM_; x.font = `700 26px ${FONT}`; x.textAlign = "center";
-    x.fillText(label, 280, Y + 46); x.textAlign = "left";
-  };
-  x.fillStyle = WARM_; x.font = `600 20px ${FONT}`; x.fillText("9:41", M + 4, 50);
-  backPill();
-
-  if (kind === "build") {
-    progress(0.12);
-    lines("How would you like to build it?", 40, 700, innerW, WARM_, M, 214, 48);
-    lines("Walk through it step by step, begin from one of Phoebe's presets, or bring back a rhythm you kept before.", 21, 400, innerW, SAGE_, M, 316, 30);
-    choice(440, 116, "Edit your routine", "Walk through your routine step by step: when you pray, each practice, your newsletters.", true, true);
-    choice(574, 100, "Choose a preset routine", "Begin from one of Phoebe's preset routines.", false);
-    choice(692, 100, "Go back to a past routine", "Restore a rhythm you kept before.", false);
-    button("Continue", 1030);
-  }
-
-  if (kind === "morning") {
-    progress(0.3);
-    lines("Morning", 40, 700, innerW, WARM_, M, 214, 48);
-    lines("How would you like to pray in the morning? Select one, or None, if you'd rather not have a practice in the morning.", 21, 400, innerW, SAGE_, M, 274, 30);
-    choice(402, 110, "Simple Guided Prayer", "Praise · Confession · Thanksgiving · Supplication", true);
-    choice(528, 110, "With the Book of Common Prayer", "Prayer with the BCP: Psalms, Devotion, or the full Office.", false);
-    choice(654, 110, "Contemplative Practice", "Silence, or another contemplative practice like a walk.", false);
-    choice(780, 110, "Reflection", "Today's meditation from your newsletter, in place of an office.", false);
-    choice(906, 92, "Create your own", "Name a practice of your own.", false);
-    button("Continue", 1030);
-  }
-
-  if (kind === "learn") {
-    progress(0.62);
-    lines("Learn", 40, 700, innerW, WARM_, M, 214, 48);
-    lines("Choose the daily reflections you'd like to read.", 21, 400, innerW, SAGE_, M, 272, 30);
-    lines("Pick as many as you like. Each gets its own card on your home.", 17, 400, innerW, "rgba(143,175,150,0.6)", M, 340, 24);
-    choice(398, 96, "CAC Daily Meditation", "Center for Action & Contemplation", false, true);
-    choice(510, 96, "Taize Daily Prayer", "A short prayer from Brother Matthew of Taize", false, true);
-    choice(622, 96, "Nouwen Daily Devotion", "Henri Nouwen Society", true, true);
-    choice(734, 96, "Forward Day by Day", "Forward Movement", false, true);
-    choice(846, 96, "SSJE: Brother, Give Us a Word", "Society of St. John the Evangelist", false, true);
-    button("Continue", 1030);
-  }
-  return c;
-}
-
-/**
  * THE BACK OF THE FLYER (owner, 2026-10-03). The idea in large type, two passages as wide as
  * the page (so they take little height), and three screens of the customizer along the foot.
  * It adds to the front rather than repeating it: the front says what Phoebe is and where to
@@ -479,14 +386,17 @@ async function drawFlyerBack(canvas: HTMLCanvasElement) {
   const room = (H - 130) - phoneTop - 80;
   const phoneW = Math.min(380, Math.floor((room - 24) / (1151 / 560)) + 24);
   const gap = Math.floor((col - phoneW * 3) / 2);
-  const shots: Array<["build" | "morning" | "learn", string]> = [
-    ["build", "Begin your way"],
-    ["morning", "Choose your practices"],
-    ["learn", "Pick your reflections"],
+  // REAL screenshots of the full customizer (components/WayOfLoveRuleFlow), not redraws -
+  // owner, 2026-10-03: "those mocks are still not faithful to the actual app".
+  const shots: Array<[string, string]> = [
+    ["/landing/customizer-1.jpg", "Begin your way"],
+    ["/landing/customizer-2.jpg", "Choose your practices"],
+    ["/landing/customizer-3.jpg", "Pick your reflections"],
   ];
-  shots.forEach(([kind, caption], i) => {
+  const imgs = await Promise.all(shots.map(([src]) => loadImage(src)));
+  shots.forEach(([, caption], i) => {
     const px = M + i * (phoneW + gap);
-    drawPhone(ctx, customizerScreen(kind), px, phoneTop, phoneW, 0);
+    drawPhone(ctx, imgs[i] ?? null, px, phoneTop, phoneW, 0);
     const phoneH = Math.round((phoneW - 24) * (1151 / 560)) + 24;
     ctx.fillStyle = GREEN;
     ctx.font = `600 36px ${FONT}`;
