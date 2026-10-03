@@ -186,7 +186,7 @@ export default function AdminAppMetricsPage() {
             {t("admin_user_metrics.eyebrow")}
           </p>
           <h1 style={{ color: WARM, fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", fontFamily: SPACE_GROTESK }}>
-            {t("admin_user_metrics.title")} 📊
+            {t("admin_user_metrics.title")}
           </h1>
           <p className="text-sm mt-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
             {t("admin_user_metrics.subtitle")}
@@ -476,7 +476,7 @@ export default function AdminAppMetricsPage() {
 
 type TileSpec = { label: string; value: number; sub?: string };
 
-/** Today / last 7 days / this month, with an optional "without an account" line under each. */
+/** Today / last 7 days / last 30 days, with an optional "without an account" line under each. */
 function windowTiles(
   t: (key: string, opts?: Record<string, unknown>) => string,
   w: Window3,
