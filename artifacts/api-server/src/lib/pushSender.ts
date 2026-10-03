@@ -1460,10 +1460,9 @@ export function sendPrayedTogetherPush(userId: number, opts: { others: number; w
      * own second draft, which fixes both: ~74 characters, ~1.8 lines, nothing
      * cropped.
      */
-    body: "Return tomorrow as we make space for the love of God in the world together 🙏🏽🌏❤️",
-    // The three marks are the owner's, and they only survive because of this
-    // flag: clean() strips emoji from every body by default.
-    emojiSafeBody: true,
+    // No emoji (owner, 2026-10-02: "lets take out the emojis"); the three marks
+    // this once carried are gone and the flag with them.
+    body: "Return tomorrow as we make space for the love of God in the world together",
     path: "/",
     threadId: "prayed-together",
     collapseId: `prayed-together-${userId}`,

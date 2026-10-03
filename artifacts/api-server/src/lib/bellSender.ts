@@ -1553,6 +1553,9 @@ export type PrayedTogetherRow = {
   sentDate: string | null;
 };
 
+/** A super admin, for the evening note: they get it whether or not they prayed. */
+export type PrayedTogetherAdmin = { userId: number; timezone: string | null; sentDate: string | null };
+
 /** 0 = Sunday, from a local YYYY-MM-DD (read as a plain calendar date, so no zone can shift it). */
 function weekdayOf(ymd: string): number {
   const [y, m, d] = ymd.split("-").map((n) => parseInt(n, 10));
@@ -1595,10 +1598,17 @@ function lastSevenDays(ymd: string): string[] {
  * It is the same note at the same 20:30, so there is still one evening note and
  * never two; only the number, the word ("this week") and the audience widen.
  * Someone who prayed nothing all week is told nothing, as ever.
+ *
+ * SUPER ADMINS ALWAYS GET IT (owner, 2026-10-02: "always send this notification
+ * to all super admins regardless if they prayed"). They are the people watching
+ * how the app is doing, so the note reaches them whether or not they kept
+ * anything. When they did not, the number is everyone who did (they are not
+ * one of them); when nobody did there is still nothing to say.
  */
 export function prayedTogetherRecipients(
   rows: PrayedTogetherRow[],
   helpers: { todayFor: (tz: string) => string; inWindow: (tz: string) => boolean },
+  admins: PrayedTogetherAdmin[] = [],
 ): Array<{ userId: number; others: number; today: string; weekly: boolean }> {
   const prayersByDay = new Map<string, Set<number>>();
   // Each person's own kept days, and what is needed to decide their evening.
@@ -1611,6 +1621,10 @@ export function prayedTogetherRecipients(
     daysByUser.set(r.userId, mine);
   }
   const out: Array<{ userId: number; others: number; today: string; weekly: boolean }> = [];
+  const adminIds = new Set(admins.map((a) => a.userId));
+  for (const a of admins) {
+    if (!daysByUser.has(a.userId)) daysByUser.set(a.userId, { days: new Set<string>(), timezone: a.timezone, sentDate: a.sentDate });
+  }
   for (const [userId, me] of daysByUser) {
     const tz = me.timezone || "America/New_York";
     const today = helpers.todayFor(tz);
@@ -1619,16 +1633,21 @@ export function prayedTogetherRecipients(
     const weekly = weekdayOf(today) === 0;
     const week = lastSevenDays(today);
     // Today for the daily note; any day of the week for Sunday's.
-    if (!(weekly ? week.some((d) => me.days.has(d)) : me.days.has(today))) continue;
+    const isAdmin = adminIds.has(userId);
+    if (!isAdmin && !(weekly ? week.some((d) => me.days.has(d)) : me.days.has(today))) continue;
     let people: number;
+    let iAmOne: boolean;
     if (weekly) {
       const everyone = new Set<number>();
       for (const day of week) for (const id of prayersByDay.get(day) ?? []) everyone.add(id);
       people = everyone.size;
+      iAmOne = everyone.has(userId);
     } else {
-      people = prayersByDay.get(today)?.size ?? 1;
+      people = prayersByDay.get(today)?.size ?? 0;
+      iAmOne = prayersByDay.get(today)?.has(userId) ?? false;
     }
-    const others = Math.max(0, people - 1);
+    // The reader is not in N when they prayed; an admin who did not is not one of them.
+    const others = Math.max(0, people - (iAmOne ? 1 : 0));
     if (others < 1) continue;
     out.push({ userId, others, today, weekly });
   }
@@ -1694,10 +1713,18 @@ export async function runPrayedTogetherSender(opts: { forceNow?: boolean } = {})
     const result = await db.execute(sql.raw(query));
     const rows = ((result as unknown as { rows?: PrayedTogetherRow[] }).rows ?? (result as unknown as PrayedTogetherRow[])) as PrayedTogetherRow[];
 
+    // Every super admin (beta_users.is_admin, matched by email) - they are sent
+    // the note whether or not they prayed.
+    const adminRes = await db.execute(sql`
+      SELECT u.id AS "userId", u.timezone AS timezone, u.prayed_together_sent_date AS "sentDate"
+      FROM users u JOIN beta_users b ON lower(b.email) = lower(u.email)
+      WHERE b.is_admin = true`);
+    const admins = ((adminRes as unknown as { rows?: PrayedTogetherAdmin[] }).rows ?? (adminRes as unknown as PrayedTogetherAdmin[])) as PrayedTogetherAdmin[];
+
     const recipients = prayedTogetherRecipients(rows, {
       todayFor: (tz) => todayInZone(tz),
       inWindow: (tz) => !!opts.forceNow || isWithinTickWindow(tz, PRAYED_TOGETHER_TIME),
-    });
+    }, admins);
 
     for (const r of recipients) {
       try {
