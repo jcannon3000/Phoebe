@@ -7407,8 +7407,25 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               season beneath (LiturgicalDateHeader's full mode — restored per
               request). The Events surface keeps its own title instead. */}
           {!eventsOnly && (
-            <div className="mb-2">
-              <LiturgicalDateHeader />
+            <div className="mb-2 relative" style={{ minHeight: 84 }}>
+              {/* Phoebe at the right of the date; the text column is narrowed
+                  so a long feast name wraps to a second line beneath
+                  (owner, 2026-10-03). */}
+              <div style={{ paddingRight: 104 }}>
+                <LiturgicalDateHeader />
+              </div>
+              <img
+                src="/brand/phoebe-character-420.png"
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+                style={{
+                  position: "absolute", right: 0, top: -6, width: 88, height: "auto",
+                  pointerEvents: "none",
+                  WebkitMaskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
+                  maskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
+                }}
+              />
             </div>
           )}
           {/* PUBLIC first-open welcome — a dismissible "begin here" note under
