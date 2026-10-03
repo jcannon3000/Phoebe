@@ -61,7 +61,7 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
 
 /** A phone: a dark bezel round a real screenshot, tilted a little, with a soft
  *  shadow. `w` is the whole phone; the screenshot is 560 × 1151. */
-function drawPhone(ctx: CanvasRenderingContext2D, shot: HTMLImageElement | null, x: number, y: number, w: number, tiltDeg: number) {
+function drawPhone(ctx: CanvasRenderingContext2D, shot: CanvasImageSource | null, x: number, y: number, w: number, tiltDeg: number) {
   if (!shot) return;
   const pad = 12;
   const sw = w - pad * 2;
@@ -315,17 +315,122 @@ async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null
 }
 
 /**
- * THE BACK OF THE FLYER (owner, 2026-10-03: "a back side of the flyer that talks about it ...
- * how monks have been finding stability in turbulent times through structured habits of
- * prayer. And ... the Phoebe app helps you do that by walking you through a routine each day,
- * but it's customizable and flexible to your daily life in a busy world").
- *
- * The same paper and ink as the front, left-aligned: the name, the idea in large type, then
- * what Phoebe does about it in two short passages, the app beside them, and the QR code again
- * so the sheet can be handed over either way up. The words are the owner's, set in order; the
- * only additions are the plainest descriptions of what the app already does.
+ * THREE SCREENS OF THE CUSTOMIZER, drawn (owner, 2026-10-03: "have the bottom be three
+ * mocks which demonstrate the customizer, showing different parts of that flow"). Each is a
+ * 560 x 1151 phone screen in the app's own colours, type and wording - the time you give each
+ * day, the choice for your morning, and the whole rhythm in one list - so the back of the
+ * flyer shows the routine being built without repeating anything the front already shows.
  */
-async function drawFlyerBack(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null) {
+function customizerScreen(kind: "time" | "morning" | "rhythm"): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = 560; c.height = 1151;
+  const x = c.getContext("2d")!;
+  const WARM_ = "#F0EDE6", SAGE_ = "#8FAF96", CTA = "#2D5E3F";
+  const g = x.createLinearGradient(0, 0, 0, 1151);
+  g.addColorStop(0, "#143524"); g.addColorStop(0.55, "#0C2417"); g.addColorStop(1, "#081A11");
+  x.fillStyle = g; x.fillRect(0, 0, 560, 1151);
+  x.textBaseline = "alphabetic"; x.textAlign = "left";
+  const M = 36, innerW = 560 - 2 * M;
+  const spaced = (px: number) => { try { (x as unknown as { letterSpacing: string }).letterSpacing = `${px}px`; } catch { /* older browsers */ } };
+  const lines = (t: string, size: number, weight: number, maxW: number, color: string, X: number, Y: number, lead: number): number => {
+    x.fillStyle = color; x.font = `${weight} ${size}px ${FONT}`;
+    for (const ln of wrap(x, t, maxW)) { x.fillText(ln, X, Y); Y += lead; }
+    return Y;
+  };
+  const card = (X: number, Y: number, w: number, h: number, on = false) => {
+    x.fillStyle = on ? "rgba(45,94,63,0.55)" : "rgba(255,255,255,0.05)";
+    x.beginPath(); x.roundRect(X, Y, w, h, 22); x.fill();
+    x.strokeStyle = on ? "rgba(110,180,130,0.62)" : "rgba(255,255,255,0.12)";
+    x.lineWidth = 2; x.beginPath(); x.roundRect(X, Y, w, h, 22); x.stroke();
+  };
+  const button = (label: string, Y: number) => {
+    x.fillStyle = CTA; x.beginPath(); x.roundRect(M, Y, innerW, 76, 38); x.fill();
+    x.fillStyle = WARM_; x.font = `700 28px ${FONT}`; x.textAlign = "center";
+    x.fillText(label, 280, Y + 48); x.textAlign = "left";
+  };
+  // status bar
+  x.fillStyle = WARM_; x.font = `600 22px ${FONT}`; x.fillText("9:41", M + 6, 56);
+
+  if (kind === "time") {
+    spaced(3); x.fillStyle = "rgba(143,175,150,0.8)"; x.font = `600 17px ${FONT}`; x.fillText("YOUR RULE OF LIFE", M, 168); spaced(0);
+    let y = lines("How much time will you give each day?", 40, 700, innerW, WARM_, M, 224, 50);
+    x.fillStyle = WARM_; x.font = `700 110px ${FONT}`; x.textAlign = "center"; x.fillText("15", 280, 470);
+    x.fillStyle = SAGE_; x.font = `600 28px ${FONT}`; x.fillText("minutes a day", 280, 518); x.textAlign = "left";
+    // the dial
+    x.fillStyle = "rgba(143,175,150,0.25)"; x.beginPath(); x.roundRect(M + 20, 580, innerW - 40, 8, 4); x.fill();
+    x.fillStyle = "#3E9B5C"; x.beginPath(); x.roundRect(M + 20, 580, (innerW - 40) * 0.4, 8, 4); x.fill();
+    x.fillStyle = WARM_; x.beginPath(); x.arc(M + 20 + (innerW - 40) * 0.4, 584, 20, 0, Math.PI * 2); x.fill();
+    x.fillStyle = "rgba(143,175,150,0.6)"; x.font = `500 20px ${FONT}`; x.fillText("5 min", M + 20, 640); x.textAlign = "right"; x.fillText("30 min", 560 - M - 20, 640); x.textAlign = "left";
+    // the rhythm that fits
+    card(M, 690, innerW, 250);
+    spaced(2); x.fillStyle = "rgba(143,175,150,0.7)"; x.font = `600 16px ${FONT}`; x.fillText("YOUR RHYTHM", M + 28, 738); spaced(0);
+    ["The day's Psalms, once a day", "Forward Day by Day", "Five minutes of silence"].forEach((t, i) => {
+      x.fillStyle = "#3E9B5C"; x.beginPath(); x.arc(M + 36, 782 + i * 56, 8, 0, Math.PI * 2); x.fill();
+      x.fillStyle = WARM_; x.font = `500 26px ${FONT}`; x.fillText(t, M + 62, 792 + i * 56);
+    });
+    button("Keep this rhythm", 990);
+    x.fillStyle = SAGE_; x.font = `500 24px ${FONT}`; x.textAlign = "center"; x.fillText("Or build my own", 280, 1100); x.textAlign = "left";
+  }
+
+  if (kind === "morning") {
+    spaced(3); x.fillStyle = "rgba(143,175,150,0.8)"; x.font = `600 17px ${FONT}`; x.fillText("YOUR MORNING", M, 168); spaced(0);
+    lines("How would you like to begin the day?", 40, 700, innerW, WARM_, M, 224, 50);
+    lines("Choose one. You can change it any time.", 24, 400, innerW, SAGE_, M, 360, 32);
+    const opts: Array<[string, string, boolean]> = [
+      ["Simple Guided Prayer", "About three minutes, led for you.", false],
+      ["Daily Offices", "Morning Prayer, from the prayer book.", true],
+      ["Daily Devotions", "A short reading and a prayer.", false],
+      ["Daily Scripture Readings", "The day's readings, read slowly.", false],
+      ["Contemplative Prayer", "Silence, a walk, music or the breath.", false],
+    ];
+    opts.forEach(([t, d, on], i) => {
+      const Y = 420 + i * 124;
+      card(M, Y, innerW, 106, on);
+      x.fillStyle = on ? WARM_ : "rgba(240,237,230,0.88)"; x.font = `700 28px ${FONT}`; x.fillText(t, M + 28, Y + 46);
+      x.fillStyle = SAGE_; x.font = `400 21px ${FONT}`; x.fillText(d, M + 28, Y + 80);
+      x.strokeStyle = on ? "#A8C5A0" : "rgba(143,175,150,0.45)"; x.lineWidth = 3; x.beginPath(); x.arc(560 - M - 32, Y + 53, 12, 0, Math.PI * 2); x.stroke();
+      if (on) { x.fillStyle = "#A8C5A0"; x.beginPath(); x.arc(560 - M - 32, Y + 53, 7, 0, Math.PI * 2); x.fill(); }
+    });
+    button("Continue", 1060);
+  }
+
+  if (kind === "rhythm") {
+    spaced(3); x.fillStyle = "rgba(143,175,150,0.8)"; x.font = `600 17px ${FONT}`; x.fillText("HERE IT IS", M, 168); spaced(0);
+    lines("Your rhythm in Phoebe", 40, 700, innerW, WARM_, M, 224, 50);
+    const rows: Array<[string, string]> = [
+      ["Morning Prayer", "the digital slideshow"],
+      ["Evening Examen", "Each evening"],
+      ["Breathing Together", "any time of day"],
+      ["Contemplative Walk", "any time of day"],
+      ["Pray As You Go Daily", "any time of day"],
+      ["Lectio Divina", "any time of day"],
+    ];
+    rows.forEach(([t, d], i) => {
+      const Y = 290 + i * 118;
+      card(M, Y, innerW, 100);
+      x.fillStyle = WARM_; x.font = `700 27px ${FONT}`; x.fillText(t, M + 26, Y + 44);
+      x.fillStyle = SAGE_; x.font = `400 21px ${FONT}`; x.fillText(d, M + 26, Y + 77);
+      for (const [cx, glyph] of [[560 - M - 112, "gear"], [560 - M - 46, "x"]] as const) {
+        x.fillStyle = "rgba(255,255,255,0.07)"; x.beginPath(); x.arc(cx, Y + 50, 26, 0, Math.PI * 2); x.fill();
+        x.strokeStyle = "rgba(143,175,150,0.9)"; x.lineWidth = 3;
+        if (glyph === "x") { x.beginPath(); x.moveTo(cx - 9, Y + 41); x.lineTo(cx + 9, Y + 59); x.moveTo(cx + 9, Y + 41); x.lineTo(cx - 9, Y + 59); x.stroke(); }
+        else { x.beginPath(); x.arc(cx, Y + 50, 8, 0, Math.PI * 2); x.stroke(); for (let k = 0; k < 8; k++) { const a = (k * Math.PI) / 4; x.beginPath(); x.moveTo(cx + Math.cos(a) * 12, Y + 50 + Math.sin(a) * 12); x.lineTo(cx + Math.cos(a) * 17, Y + 50 + Math.sin(a) * 17); x.stroke(); } }
+      }
+    });
+    button("Save this as my rhythm", 1020);
+  }
+  return c;
+}
+
+/**
+ * THE BACK OF THE FLYER (owner, 2026-10-03). The idea in large type, two passages as wide as
+ * the page (so they take little height), and three screens of the customizer along the foot.
+ * It adds to the front rather than repeating it: the front says what Phoebe is and where to
+ * begin (its headline, its list, the QR code), so the back says WHY a structure helps, how
+ * Phoebe carries it, and shows the routine being built. No second QR code and no second web
+ * address - both are on the front.
+ */
+async function drawFlyerBack(canvas: HTMLCanvasElement) {
   await ensureSpaceGrotesk();
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -336,9 +441,9 @@ async function drawFlyerBack(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | 
   const col = W - 2 * M;
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
-  const [icon, shot] = await Promise.all([loadImage("/phoebe-app-icon.png"), loadImage("/landing/home.jpg")]);
+  const icon = await loadImage("/phoebe-app-icon.png");
 
-  // Masthead, smaller than the front's: the icon and the name, then a hairline.
+  // Masthead: the icon and the name, then a hairline.
   const iconSz = 84;
   if (icon) {
     ctx.save();
@@ -354,65 +459,54 @@ async function drawFlyerBack(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | 
 
   // The idea, large.
   ctx.fillStyle = GREEN;
-  ctx.beginPath(); ctx.roundRect(M, 340, 112, 10, 5); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(M, 330, 112, 10, 5); ctx.fill();
   ctx.fillStyle = INK;
-  let size = 96, head: string[] = [];
-  for (; size >= 68; size -= 4) {
+  let size = 100, head: string[] = [];
+  for (; size >= 72; size -= 4) {
     ctx.font = `700 ${size}px ${FONT}`;
-    head = wrap(ctx, "For centuries, monks have found stability in turbulent times through structured habits of prayer.", col);
-    if (head.length <= 5) break;
+    head = wrap(ctx, "Monks have always prayed on a rhythm.", col);
+    if (head.length <= 2) break;
   }
   const lead = Math.round(size * 1.14);
-  let y = 390 + Math.round(size * 0.95);
+  let y = 380 + Math.round(size * 0.95);
   for (const line of head) { ctx.fillText(line, M, y); y += lead; }
 
-  // What Phoebe does about it, in two passages beside the app.
-  const textW = 780;
-  let py = y + 70;
+  // Two passages, the width of the page.
   const passages: Array<[string, string]> = [
-    ["Phoebe helps you do the same.", "It walks you through a routine each day, one practice at a time, so you are never wondering what comes next."],
-    ["Made for a busy life.", "Your routine is customizable and flexible: shape it around your own day, and change it as your life changes."],
+    ["A structure that holds.", "For centuries, monks have kept steady through hard times with structured habits of prayer: fixed times, a familiar order, simple practices repeated daily. The structure does the remembering, so prayer does not wait on mood or a free afternoon."],
+    ["Phoebe walks you through it.", "Open the app and it shows what comes next in your day and leads you through it, one practice at a time. The routine is yours to shape: choose your practices, set the times, and change them as your days change."],
   ];
-  const bodySize = 38;
+  let py = y + 34;
   for (const [title, body] of passages) {
     ctx.fillStyle = GREEN;
-    ctx.font = `700 52px ${FONT}`;
-    for (const line of wrap(ctx, title, textW)) { ctx.fillText(line, M, py); py += 62; }
+    ctx.font = `700 54px ${FONT}`;
+    ctx.fillText(title, M, py); py += 56;
     ctx.fillStyle = "rgba(16,35,26,0.82)";
-    ctx.font = `400 ${bodySize}px ${FONT}`;
-    py += 6;
-    for (const line of wrap(ctx, body, textW)) { ctx.fillText(line, M, py); py += bodySize + 16; }
-    py += 54;
+    ctx.font = `400 40px ${FONT}`;
+    for (const line of wrap(ctx, body, col)) { ctx.fillText(line, M, py); py += 56; }
+    py += 40;
   }
 
-  // The app, to the right of the passages: the home, straight.
-  const phoneW = 330;
-  const phoneX = M + col - phoneW;
-  drawPhone(ctx, shot, phoneX, y + 40, phoneW, 0);
-
-  // The QR code in a card of its own at the foot, as on the front.
-  const cardY = 1720, cardH = H - 150 - cardY;
-  ctx.fillStyle = "#EEF4EE";
-  ctx.beginPath(); ctx.roundRect(M, cardY, col, cardH, 36); ctx.fill();
-  ctx.strokeStyle = "rgba(46,107,64,0.4)";
-  ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.roundRect(M, cardY, col, cardH, 36); ctx.stroke();
-  const qrSize = QR_PX;
-  const padQ = (cardH - qrSize) / 2;
-  const qrX = M + padQ, qrTop = cardY + padQ;
-  if (qr) ctx.drawImage(qr, qrX, qrTop, qrSize, qrSize);
-  const tx = qrX + qrSize + 52;
-  const tw = M + col - 36 - tx;
-  ctx.fillStyle = INK;
-  ctx.font = `700 56px ${FONT}`;
-  ctx.fillText("Scan to begin", tx, cardY + 118);
-  ctx.fillStyle = GREEN;
-  ctx.font = `600 44px ${FONT}`;
-  ctx.fillText("withphoebe.app", tx, cardY + 182);
-  ctx.fillStyle = "rgba(16,35,26,0.78)";
-  ctx.font = `400 36px ${FONT}`;
-  let ny = cardY + 252;
-  for (const line of wrap(ctx, "Start with a few minutes a day, on your phone or on the web.", tw)) { ctx.fillText(line, tx, ny); ny += 50; }
+  // Three screens of the customizer along the foot.
+  // As wide as will fit between the passages and the bottom margin (with room for a caption),
+  // never wider than 380.
+  const phoneTop = py + 10;
+  const room = (H - 130) - phoneTop - 80;
+  const phoneW = Math.min(380, Math.floor((room - 24) / (1151 / 560)) + 24);
+  const gap = Math.floor((col - phoneW * 3) / 2);
+  const shots: Array<["time" | "morning" | "rhythm", string]> = [
+    ["time", "Choose your time"],
+    ["morning", "Choose your practices"],
+    ["rhythm", "See it all in one place"],
+  ];
+  shots.forEach(([kind, caption], i) => {
+    const px = M + i * (phoneW + gap);
+    drawPhone(ctx, customizerScreen(kind), px, phoneTop, phoneW, 0);
+    const phoneH = Math.round((phoneW - 24) * (1151 / 560)) + 24;
+    ctx.fillStyle = GREEN;
+    ctx.font = `600 36px ${FONT}`;
+    ctx.fillText(caption, px, phoneTop + phoneH + 62);
+  });
 }
 
 /** A PDF of letter-size pages (612 x 792 pt), one JPEG each, front then back. */
@@ -483,7 +577,7 @@ export default function FlyerPage() {
       if (!cancelled) setPreview(canvas.toDataURL("image/jpeg", 0.8));
       const back = backRef.current ?? document.createElement("canvas");
       backRef.current = back;
-      await drawFlyerBack(back, qr);
+      await drawFlyerBack(back);
       if (!cancelled) setPreviewBack(back.toDataURL("image/jpeg", 0.8));
     }, 200);
     return () => { cancelled = true; window.clearTimeout(id); };
@@ -498,7 +592,7 @@ export default function FlyerPage() {
     try {
       const qr = qrWrap.current?.querySelector("canvas") ?? null;
       await drawFlyer(canvas, qr);
-      await drawFlyerBack(back, qr);
+      await drawFlyerBack(back);
       const jpegBlob: Blob | null = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.92));
       const backBlob: Blob | null = await new Promise((r) => back.toBlob(r, "image/jpeg", 0.92));
       if (!jpegBlob || !backBlob) throw new Error("render");
