@@ -399,15 +399,13 @@ export function appMetricsWindows(now: Date = new Date()): {
   const [y, m, d] = today.split("-").map((n) => parseInt(n, 10));
   // "Last 7 days": today and the six before it.
   const weekStart = new Date(Date.UTC(y!, m! - 1, d! - 6)).toISOString().slice(0, 10);
-  // "Last 30 days": today and the twenty-nine before it - ROLLING, not the calendar
-  // month (owner, 2026-10-02: "numbers are off"). The calendar month made the third
-  // column SMALLER than the second for the first week of every month (on Oct 2 the
-  // 'month' held two days and 'last 7 days' held seven). The field is still called
-  // `month` on the wire; only its meaning changed. (Not "all time": app opens are
-  // pruned at 90 days, sessions and readings at a year.)
-  const monthStart = new Date(Date.UTC(y!, m! - 1, d! - 29)).toISOString().slice(0, 10);
+  // "This month": the ET calendar month to date. (Not "all time": app opens
+  // are pruned at 90 days, sessions and readings at a year.) A 30-day rolling
+  // window was tried on 2026-10-02 and put back: it was a guess at what "the
+  // numbers are off" meant, and the owner did not ask for it.
+  const monthStart = `${today.slice(0, 7)}-01`;
   // Every source is read only as far back as the earlier window needs (a
-  // week can reach back before the 30-day window's start), and timestamps one day further so a
+  // week can reach into last month), and timestamps one day further so a
   // late-evening ET session isn't cut off by a UTC day boundary.
   const sinceYmd = weekStart < monthStart ? weekStart : monthStart;
   const [sy, sm, sd] = sinceYmd.split("-").map((n) => parseInt(n, 10));

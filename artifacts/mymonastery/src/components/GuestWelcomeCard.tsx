@@ -83,9 +83,20 @@ export function GuestWelcomeCard() {
   };
   return (
     <div
-      className="relative rounded-2xl px-4 py-4 mt-3"
-      style={{ ...FROST, background: "rgba(9,26,16,0.4)", border: "1px solid rgba(46,107,64,0.38)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
+      className="relative rounded-2xl px-4 py-4 mt-3 overflow-hidden"
+      style={{ ...FROST, minHeight: 156, paddingRight: 118, background: "rgba(9,26,16,0.4)", border: "1px solid rgba(46,107,64,0.38)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
     >
+      {/* PHOEBE STANDS ON THE RIGHT of both welcome cards (owner, 2026-10-02: "put
+          Phoebe on the right side of the begin here cards even if it makes the cards
+          taller"). Cut at the waist in the source art, so she stands on the card's
+          bottom edge; the text keeps clear of her with the card's right padding. */}
+      <img
+        src="/brand/phoebe-character-420.png"
+        alt=""
+        aria-hidden
+        width={104}
+        style={{ position: "absolute", right: 8, bottom: 0, width: 104, height: "auto", pointerEvents: "none" }}
+      />
       <button
         type="button"
         onClick={dismiss}

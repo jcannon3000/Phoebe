@@ -476,7 +476,7 @@ export default function AdminAppMetricsPage() {
 
 type TileSpec = { label: string; value: number; sub?: string };
 
-/** Today / last 7 days / last 30 days, with an optional "without an account" line under each. */
+/** Today / last 7 days / this month, with an optional "without an account" line under each. */
 function windowTiles(
   t: (key: string, opts?: Record<string, unknown>) => string,
   w: Window3,
