@@ -16,6 +16,7 @@
 
 import { turnOffRoutine, NO_ROUTINE_MODE } from "@/lib/routineStart";
 import { finderSkipped, FINDER_FOR_EVERYONE } from "@/lib/finderEntry";
+import { PhoebeHelpCard } from "@/components/PhoebeHelpCard";
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef, useCallback, type ReactNode, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -4974,12 +4975,7 @@ export default function WayOfLoveRuleFlow({
               a fork taken before you've read your routine, not a tweak to it —
               which is the argument for it living on this slide rather than at
               the foot of the list. */}
-          {choiceRow(
-            effectiveEntryChoice === "preset",
-            `📋 ${t("wol_rule.entry3_preset", { defaultValue: "Choose a preset routine" })}`,
-            t("wol_rule.entry3_preset_sub", { defaultValue: "Begin from one of Phoebe's preset routines." }),
-            () => setEntryChoice("preset"),
-          )}
+          <PhoebeHelpCard onBrowse={() => { setPresetPending(null); setManualMode("preset"); setEntryChoiceMade(true); }} />
           {/* Owner: "a third option where it says revert to past routine, and
               we have a backlog that saves routines." Changing a rule of life
               shouldn't be a one-way door — someone who tried a fuller rhythm
