@@ -1512,8 +1512,8 @@ const GUIDE_EVENING = ["examen", "office", "compline", "devotion", "reflect-sit"
 // Everything else a person could choose for a half of the day, listed in the
 // dropdown under the three suggestions. Compline is always evening and the
 // Examen is evening-shaped; the guided form is morning-shaped.
-const GUIDE_MORNING_ALL = [...GUIDE_MORNING, "listening", "rosary", "walk", "spirituals"];
-const GUIDE_EVENING_ALL = [...GUIDE_EVENING, "lectio", "payg", "rosary", "walk", "spirituals"];
+const GUIDE_MORNING_ALL = [...GUIDE_MORNING, "listening", "rosary", "walk"];
+const GUIDE_EVENING_ALL = [...GUIDE_EVENING, "lectio", "payg", "rosary", "walk"];
 // Titles are the customizer's PICKER names (not the shorter names a chosen
 // reflection takes in the routine), so a practice is called the same thing in both.
 // BOTH LISTS MIRROR THE FULL CUSTOMIZER (WayOfLoveRuleFlow) and nothing else
@@ -1521,12 +1521,14 @@ const GUIDE_EVENING_ALL = [...GUIDE_EVENING, "lectio", "payg", "rosary", "walk",
 // in the full customizer"). Reflections are its Learn step: the newsletters it
 // still offers, with Feast Day Hagiographies beside them. Practices are its
 // contemplative forms: the breath, a walk, Audio Divina, Lectio, Pray As You Go,
-// the Rosary, Spirituals. NOT offered there, so not here: Praying with Icons,
+// the Rosary. NOT offered there, so not here: Praying with Icons,
 // Visio Divina, the Taizé meditation, Midday Prayer, the VTS commentary. When the
 // customizer gains or loses a practice, change this list in the same commit.
 const GUIDE_REFLECTIONS = ["nouwen", "taizeprayer", "cac", "ssje", "fdd", "hagiography"];
 // In the order the customizer lists its contemplative forms.
-const GUIDE_PRACTICES_ALL = ["creation", "walk", "listening", "payg", "lectio", "rosary", "spirituals"];
+// Meditating on Spirituals is NOT here (owner, 2026-10-02: "should not be here"): the
+// customizer gates it to admins, so the interview does not offer it to anyone.
+const GUIDE_PRACTICES_ALL = ["creation", "walk", "listening", "payg", "lectio", "rosary"];
 const GUIDE_MORE = [...GUIDE_REFLECTIONS, ...GUIDE_PRACTICES_ALL];
 
 function guideOption(key: string, side: GuideSide | null): GuideOption | null {
