@@ -100,7 +100,7 @@ export function GuestWelcomeCard() {
         {hasPrayed ? "Your rhythm" : "Welcome"}
       </p>
       <p className="text-[16px] font-semibold mt-1" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-        {hasPrayed ? "Develop a daily habit of prayer 🌿" : "Begin here 🌿"}
+        {hasPrayed ? "Develop a daily habit of prayer" : "Begin here"}
       </p>
       <p className="text-[13.5px] mt-1.5" style={{ color: "rgba(200,212,192,0.78)", fontFamily: FONT, lineHeight: 1.55 }}>
         {/* It can say "laid out below" again, because by the time this card
