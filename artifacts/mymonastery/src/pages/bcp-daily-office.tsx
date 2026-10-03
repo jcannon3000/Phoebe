@@ -83,6 +83,7 @@ import { PointedLine } from "@/components/PointedLine";
 import { useDeckBackGuard } from "@/hooks/useDeckBackGuard";
 import { DeckAnnouncer } from "@/components/DeckAnnouncer";
 import { CtaArrow } from "@/components/CtaArrow";
+import { PhoebeRise } from "@/components/PhoebeRise";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
@@ -5260,12 +5261,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               above picks HOW to pray THIS office; this picks a different
               practice altogether, so they are two controls, not one. */}
           {(resolvedMode === "morning" || resolvedMode === "evening" || isDevotion) && slideIdx === 0 && !onComplete && (
-            <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-              <PracticeSwitcher
-                side={/evening/.test(resolvedMode) ? "evening" : "morning"}
-                current="office"
-              />
-            </div>
+            <>
+              <div data-phoebe-above style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                <PracticeSwitcher
+                  side={/evening/.test(resolvedMode) ? "evening" : "morning"}
+                  current="office"
+                />
+              </div>
+              <PhoebeRise />
+            </>
           )}
           {/* Compline's welcome slide used to carry an "Evening Prayer" pill
               (a door back to the Evening Devotion) under a divider. Removed
