@@ -665,7 +665,29 @@ export function PracticeCard({
         >
           {frost}
           <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
-          <div className="flex-1 px-5 py-5">
+          <div className="flex-1 py-5 pl-5 relative" style={{ paddingRight: HERO_PHOEBE_CLEAR }}>
+            {/* PHOEBE ON THE RIGHT OF EVERY HERO (owner, 2026-10-02: "roll out the
+                Phoebe heros"; then "move phoebe up and make the card shorter" and "have
+                begin be wider to come closer to phoebe"). She stands on the card's bottom
+                edge - cut at the waist in the source art - so the card is only as tall as
+                its text and button; the content's right padding keeps title and button
+                clear of her, and the button runs right up to her.
+                "She should not be sitting below the CTA, it shouldn't create padding
+                under, it should come higher on the card": her feet are level with the
+                BOTTOM OF THE BUTTON (bottom: 20 is the card's own padding), not on the
+                card's edge, so there is no extra space under the CTA, and the cut at her
+                waist fades out rather than ending in a hard line. */}
+            <img
+              src="/brand/phoebe-character-420.png"
+              alt=""
+              aria-hidden
+              width={HERO_PHOEBE_W}
+              style={{
+                position: "absolute", right: 14, bottom: 20, width: HERO_PHOEBE_W, height: "auto", pointerEvents: "none", zIndex: 0,
+                WebkitMaskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
+                maskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
+              }}
+            />
             {/* Emoji sits to the RIGHT of the title, never as a leading icon
                 column (owner). */}
             <div className="flex items-start gap-3.5">
@@ -935,6 +957,10 @@ export function PracticeCard({
 const SENTINEL_PRACTICES: Partial<Record<string, { title: (t: (k: string, o?: Record<string, unknown>) => string) => string; emoji: string }>> = {
   walk: { title: (t) => t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶🏽" },
 };
+
+/** Phoebe on a hero card: her width, and the space the content keeps clear of her. */
+const HERO_PHOEBE_W = 96;
+const HERO_PHOEBE_CLEAR = HERO_PHOEBE_W + 26;
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming, onRemainingCount, mountTag = "unlabeled" }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number; onRemainingCount?: (count: number) => void; /** Diagnostic only — see lib/celebrationDebugLog.ts. Identifies which of dashboard.tsx's mutually-exclusive render branches mounted this instance. */ mountTag?: string }) {
   const { t } = useTranslation();

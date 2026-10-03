@@ -1094,3 +1094,8 @@ a:active,
 @media (min-width: 1024px) {
   .video-bleed { width: 100%; margin-left: 0; margin-right: 0; }
 }
+
+
+/* Hero cards carry Phoebe on their right (components/HeroCardShell): the content
+   keeps clear of her so the title and the Begin button stop at her shoulder. */
+[data-phoebe-hero] > .flex-1 { padding-right: 122px !important; }
