@@ -34,7 +34,6 @@
  */
 import { Router, type IRouter } from "express";
 import { sanitizeSpec, applyRoutineSpecToUser, captureRoutineSpec, readCustomAnchorDefs, HOME_MODULE_KEYS } from "../lib/routineSpec";
-import { isSuperAdminUser } from "../lib/superAdmin";
 import { perUserRateLimit } from "../lib/rate-limit";
 import { describeSpec, SLOT_LABEL, type SpecRow, type SpecSection, type CustomAnchorDef } from "../lib/routineDescribe";
 import { saveRoutineSnapshot } from "./routine-snapshots";
@@ -55,12 +54,9 @@ const router: IRouter = Router();
  * Returns true when the request has been answered (401/403) and the handler
  * should stop.
  */
-async function refuseUnlessAdmin(req: any, res: any): Promise<boolean> {
-  const userId = getUserId(req);
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return true; }
-  if (!(await isSuperAdminUser(userId))) { res.status(403).json({ error: "Admin access required" }); return true; }
-  return false;
-}
+// OPEN TO EVERYONE with a session (owner, 2026-10-02: "lets open the let phoebe help to
+// everyone"). These routes were super-admin only; the per-user rate limit on each one is
+// the cost guard now. A request with no session at all is still a 401.
 
 function getUserId(req: any): number | null {
   return req.user ? (req.user as { id: number }).id : null;
@@ -1674,7 +1670,6 @@ router.post("/routine-interview/guide/question", perUserRateLimit("routine_inter
 }), async (req, res): Promise<void> => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  if (await refuseUnlessAdmin(req, res)) return;
 
   const description = cleanText(req.body?.description, 4000);
   if (description.length < 10) { res.status(400).json({ error: "too_short" }); return; }
@@ -1731,7 +1726,6 @@ router.post("/routine-interview/guide/options", perUserRateLimit("routine_interv
 }), async (req, res): Promise<void> => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  if (await refuseUnlessAdmin(req, res)) return;
 
   const description = cleanText(req.body?.description, 4000);
   if (description.length < 10) { res.status(400).json({ error: "too_short" }); return; }
@@ -1868,7 +1862,6 @@ router.post("/routine-interview/followups", perUserRateLimit("routine_interview_
 }), async (req, res): Promise<void> => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  if (await refuseUnlessAdmin(req, res)) return;
 
   const description = cleanText(req.body?.description, 4000);
   if (description.length < 10) { res.status(400).json({ error: "too_short" }); return; }
@@ -2201,7 +2194,6 @@ router.post("/routine-interview/build", perUserRateLimit("routine_interview_buil
 }), async (req, res): Promise<void> => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  if (await refuseUnlessAdmin(req, res)) return;
 
   const description = cleanText(req.body?.description, 4000);
   if (description.length < 10) { res.status(400).json({ error: "too_short" }); return; }
@@ -2376,7 +2368,6 @@ router.post("/routine-interview/apply", perUserRateLimit("routine_interview_appl
 }), async (req, res): Promise<void> => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  if (await refuseUnlessAdmin(req, res)) return;
 
   const spec = sanitizeSpec(req.body?.spec);
   if (!spec) { res.status(400).json({ error: "invalid_spec" }); return; }
