@@ -2516,7 +2516,10 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // { name: "breath-together",       run: runBreathTogetherSender },
   // "N people prayed with you today" — 20:30, to everyone who kept any
   // practice today (owner, 2026-10-01). Skips anyone who got the breath note.
-  { name: "prayed-together",       run: runPrayedTogetherSender },
+  // TURNED OFF (owner, 2026-10-03: "lets turn off the x people prayed with you notification
+  // too"). The sender, its recipient rules and the push stay in the file; to bring it back,
+  // put this line back:
+  // { name: "prayed-together",       run: runPrayedTogetherSender },
   // "Happy Feast of ___" — 14:00, to everyone reachable, on the 276 days of
   // the year that carry a commemoration (owner, 2026-10-01).
   { name: "feast-day",              run: runFeastDaySender },
