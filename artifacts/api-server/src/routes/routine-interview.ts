@@ -1742,8 +1742,8 @@ of daily prayer, and how they connect with God. Read all of it. Then choose, fro
 
   · "morning": exactly THREE ways to begin the day.
   · "evening": exactly THREE ways to close it.
-  · "reflections": exactly TWO daily reflections to SUGGEST (the person will see
-    the whole list of reflections and choose any they like).
+  · "reflections": exactly ONE daily reflection to SUGGEST - the single best fit (the
+    person will see the whole list of reflections and may choose any they like).
   · "practices": exactly THREE other practices to SUGGEST (the person will see
     the whole list of practices and choose any they like).
 
@@ -1789,7 +1789,7 @@ Respond with ONLY JSON:
 {
   "morning": [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}],
   "evening": [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}],
-  "reflections": [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}],
+  "reflections": [{"key": "...", "why": "..."}],
   "practices":   [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}]
 }`;
 
@@ -1808,7 +1808,7 @@ Respond with ONLY JSON:
   const morningKeys = pickKeys(withNamed(data?.morning, GUIDE_MORNING), GUIDE_MORNING, taken, 3, fillFor(GUIDE_MORNING));
   const eveningKeys = pickKeys(withNamed(data?.evening, GUIDE_EVENING), GUIDE_EVENING, taken, 3, fillFor(GUIDE_EVENING));
   const offered = new Set<string>([...morningKeys, ...eveningKeys]);
-  const suggestRef = pickKeys(withNamed(data?.reflections, GUIDE_REFLECTIONS), GUIDE_REFLECTIONS, new Set(), 2, fillFor(GUIDE_REFLECTIONS));
+  const suggestRef = pickKeys(withNamed(data?.reflections, GUIDE_REFLECTIONS), GUIDE_REFLECTIONS, new Set(), 1, fillFor(GUIDE_REFLECTIONS));
   const suggestPrac = pickKeys(
     [...named.filter((k) => GUIDE_PRACTICES_ALL.includes(k) && !offered.has(k)), ...(Array.isArray(data?.practices) ? data.practices : [])],
     GUIDE_PRACTICES_ALL, offered, 3, fillFor(GUIDE_PRACTICES_ALL),
