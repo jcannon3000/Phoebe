@@ -618,18 +618,11 @@ export default function RoutineInterviewPage() {
       // THE GUIDED FLOW HAS ALREADY ASKED, AND THEY HAVE ALREADY CHOSEN — there is
       // nothing to read back and no extras left to offer (the fourth slide was
       // them), so it lands on the review, where every row can be edited.
-      // ... except where a pick has a second slide in the full customizer: the
-      // office and the short devotion have a FORMAT and a reminder, a silent sit
-      // has its length and how it is kept. Those are the read-back (detail) slide,
-      // so they get it before the review (owner, 2026-10-02: "if they chose
-      // something that would typically have a second slide in the full
-      // customizer, then it should show a second slide ... like the detail slide").
-      if (chosen && chosen.length > 0) {
-        const needsDetail = chosen.some((c) => (c.when === "morning" || c.when === "evening") && ["office", "devotion", "reflect-sit"].includes(c.key));
-        if (needsDetail && !addingFromReview) { setConfirmIndex(0); setPhase("confirm"); return; }
-        setPhase("review");
-        return;
-      }
+      // The "Your rhythm" read-back page is NOT part of the guided flow (owner,
+      // 2026-10-02: "take out your rhythm page"): they land straight on the review.
+      // The format, reminder and sit controls it carries are still one tap away - the
+      // gear on an office or sit row on the review opens it (returnToReview).
+      if (chosen && chosen.length > 0) { setPhase("review"); return; }
       setPhase(nothingToConfirm ? (skipExtras ? "review" : "extras") : "confirm");
     } catch (e: any) {
       setError(errorText(e?.body?.error ?? e?.message ?? ""));
