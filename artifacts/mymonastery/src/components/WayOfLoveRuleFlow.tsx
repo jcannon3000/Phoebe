@@ -4998,6 +4998,10 @@ export default function WayOfLoveRuleFlow({
             () => setEntryChoice("off"),
           )}
         </div>
+        {/* Phoebe offers to do it with them (the routine interview is admin-only for now).
+            ABOVE Continue, not below it: Continue is a sticky bar with its own panel, and
+            anything after it slid underneath that panel with its top cut off. */}
+        {isSuperAdmin && !prescribe && <PhoebeHelpCard />}
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => {
           if (effectiveEntryChoice === "ask") {
             // Carry the way back, so the finished routine returns to the page
@@ -5026,9 +5030,6 @@ export default function WayOfLoveRuleFlow({
           setStep("morning-way");
           setEntryChoiceMade(true);
         })}
-
-        {/* Phoebe offers to do it with them (the routine interview is admin-only for now). */}
-        {isSuperAdmin && !prescribe && <PhoebeHelpCard />}
       </>,
     );
   }
