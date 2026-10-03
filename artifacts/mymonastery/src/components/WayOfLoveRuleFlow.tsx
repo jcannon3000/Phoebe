@@ -3899,7 +3899,7 @@ export default function WayOfLoveRuleFlow({
 
   // Header for the current step — the N/M and progress fill come from the step's
   // position in the (dynamic) ordered list.
-  const stepHeader = (eyebrow: string, title: string) => {
+  const stepHeader = (eyebrow: string, title: string, titleSize: number | string = 30) => {
     const n = Math.max(1, orderedSteps.indexOf(step) + 1);
     // Hide the eyebrow when it just restates the title (e.g. "EVENING" over
     // "Evening", "ADD TO YOUR DAY" over "Add to your day") — otherwise the
@@ -3919,7 +3919,7 @@ export default function WayOfLoveRuleFlow({
         {showEyebrow && (
           <p style={{ color: SAGE, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.9px", margin: "16px 0 0", fontFamily: FONT }}>{eyebrow}</p>
         )}
-        <h1 style={{ color: CREAM, fontSize: 30, fontWeight: 700, fontFamily: FONT, margin: showEyebrow ? "6px 0 0" : "16px 0 0" }}>{title}</h1>
+        <h1 style={{ color: CREAM, fontSize: titleSize, fontWeight: 700, fontFamily: FONT, margin: showEyebrow ? "6px 0 0" : "16px 0 0" }}>{title}</h1>
       </>
     );
   };
@@ -4921,6 +4921,8 @@ export default function WayOfLoveRuleFlow({
         {stepHeader(
           t("wol_rule.entry_eyebrow", { defaultValue: "Your daily rhythm of prayer" }),
           t("wol_rule.entry_title", { defaultValue: "How would you like to build it?" }),
+          // One line on a phone (owner, 2026-10-03: "reduce the text size of the headline so it fits").
+          "clamp(21px, 6.4vw, 28px)",
         )}
         {/**
           * THE LINE DESCRIBES THE ROWS THAT ARE ACTUALLY THERE.
