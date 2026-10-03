@@ -4975,7 +4975,6 @@ export default function WayOfLoveRuleFlow({
               a fork taken before you've read your routine, not a tweak to it —
               which is the argument for it living on this slide rather than at
               the foot of the list. */}
-          <PhoebeHelpCard onBrowse={() => { setPresetPending(null); setManualMode("preset"); setEntryChoiceMade(true); }} />
           {/* Owner: "a third option where it says revert to past routine, and
               we have a backlog that saves routines." Changing a rule of life
               shouldn't be a one-way door — someone who tried a fuller rhythm
@@ -4998,6 +4997,11 @@ export default function WayOfLoveRuleFlow({
             t("wol_rule.entry_off_sub", { defaultValue: "Go back to just the practices on your home. Your routine is kept for when you want it again." }),
             () => setEntryChoice("off"),
           )}
+        </div>
+        {/* Below the rows, above Continue - Continue is a sticky bar with its own panel, so
+            anything after it slid underneath (owner, 2026-10-03: "that card at the bottom"). */}
+        <div style={{ marginTop: 28 }}>
+          <PhoebeHelpCard onBrowse={() => { setPresetPending(null); setManualMode("preset"); setEntryChoiceMade(true); }} />
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => {
           if (effectiveEntryChoice === "ask") {
