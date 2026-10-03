@@ -82,13 +82,7 @@ function drawPhone(ctx: CanvasRenderingContext2D, shot: HTMLImageElement | null,
   ctx.restore();
 }
 
-/** Draw the flyer: the title on plain paper, the app itself in two phones
- *  beside what it holds, and the QR code in a card of its own.
- *
- *  WHITE PAPER, GREEN INK (a home printer can't print to the edge): the only
- *  dark areas are the two framed phones, inside the margins. */
-async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null) {
-  /**
+/**
    * SPACE GROTESK, PROVEN RATHER THAN ASSUMED (owner: "space grotesk").
    *
    * Neither `fonts.ready` nor `fonts.load` is a promise that the canvas will use
@@ -103,6 +97,8 @@ async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null
    * what the canvas is using. Poll, asking for each weight as we go, until they
    * differ - at most four seconds, after which it prints in whatever it has.
    */
+async function ensureSpaceGrotesk(): Promise<void> {
+
   const probe = document.createElement("canvas").getContext("2d");
   const sample = "Find stability in our turbulent world";
   const applied = (): boolean => {
@@ -122,6 +118,15 @@ async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null
       await new Promise((r) => window.setTimeout(r, 100));
     }
   } catch { /* fallback font */ }
+}
+
+/** Draw the flyer: the title on plain paper, the app itself in two phones
+ *  beside what it holds, and the QR code in a card of its own.
+ *
+ *  WHITE PAPER, GREEN INK (a home printer can't print to the edge): the only
+ *  dark areas are the two framed phones, inside the margins. */
+async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null) {
+  await ensureSpaceGrotesk();
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   canvas.width = W; canvas.height = H;
@@ -309,8 +314,109 @@ async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null
   }
 }
 
-/** A one-page PDF holding one JPEG, the page letter-size (612 × 792 pt). */
-function jpegToPdf(jpeg: Uint8Array, w: number, h: number): Blob {
+/**
+ * THE BACK OF THE FLYER (owner, 2026-10-03: "a back side of the flyer that talks about it ...
+ * how monks have been finding stability in turbulent times through structured habits of
+ * prayer. And ... the Phoebe app helps you do that by walking you through a routine each day,
+ * but it's customizable and flexible to your daily life in a busy world").
+ *
+ * The same paper and ink as the front, left-aligned: the name, the idea in large type, then
+ * what Phoebe does about it in two short passages, the app beside them, and the QR code again
+ * so the sheet can be handed over either way up. The words are the owner's, set in order; the
+ * only additions are the plainest descriptions of what the app already does.
+ */
+async function drawFlyerBack(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null) {
+  await ensureSpaceGrotesk();
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  canvas.width = W; canvas.height = H;
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, W, H);
+  const M = 150;
+  const col = W - 2 * M;
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left";
+  const [icon, shot] = await Promise.all([loadImage("/phoebe-app-icon.png"), loadImage("/landing/home.jpg")]);
+
+  // Masthead, smaller than the front's: the icon and the name, then a hairline.
+  const iconSz = 84;
+  if (icon) {
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(M, 150, iconSz, iconSz, 20); ctx.clip();
+    ctx.drawImage(icon, M, 150, iconSz, iconSz);
+    ctx.restore();
+  }
+  ctx.fillStyle = INK;
+  ctx.font = `700 54px ${FONT}`;
+  ctx.fillText("Phoebe Daily Prayer", M + iconSz + 24, 207);
+  ctx.fillStyle = "rgba(16,35,26,0.14)";
+  ctx.fillRect(M, 268, col, 3);
+
+  // The idea, large.
+  ctx.fillStyle = GREEN;
+  ctx.beginPath(); ctx.roundRect(M, 340, 112, 10, 5); ctx.fill();
+  ctx.fillStyle = INK;
+  let size = 96, head: string[] = [];
+  for (; size >= 68; size -= 4) {
+    ctx.font = `700 ${size}px ${FONT}`;
+    head = wrap(ctx, "For centuries, monks have found stability in turbulent times through structured habits of prayer.", col);
+    if (head.length <= 5) break;
+  }
+  const lead = Math.round(size * 1.14);
+  let y = 390 + Math.round(size * 0.95);
+  for (const line of head) { ctx.fillText(line, M, y); y += lead; }
+
+  // What Phoebe does about it, in two passages beside the app.
+  const textW = 780;
+  let py = y + 70;
+  const passages: Array<[string, string]> = [
+    ["Phoebe helps you do the same.", "It walks you through a routine each day, one practice at a time, so you are never wondering what comes next."],
+    ["Made for a busy life.", "Your routine is customizable and flexible: shape it around your own day, and change it as your life changes."],
+  ];
+  const bodySize = 38;
+  for (const [title, body] of passages) {
+    ctx.fillStyle = GREEN;
+    ctx.font = `700 52px ${FONT}`;
+    for (const line of wrap(ctx, title, textW)) { ctx.fillText(line, M, py); py += 62; }
+    ctx.fillStyle = "rgba(16,35,26,0.82)";
+    ctx.font = `400 ${bodySize}px ${FONT}`;
+    py += 6;
+    for (const line of wrap(ctx, body, textW)) { ctx.fillText(line, M, py); py += bodySize + 16; }
+    py += 54;
+  }
+
+  // The app, to the right of the passages: the home, straight.
+  const phoneW = 330;
+  const phoneX = M + col - phoneW;
+  drawPhone(ctx, shot, phoneX, y + 40, phoneW, 0);
+
+  // The QR code in a card of its own at the foot, as on the front.
+  const cardY = 1720, cardH = H - 150 - cardY;
+  ctx.fillStyle = "#EEF4EE";
+  ctx.beginPath(); ctx.roundRect(M, cardY, col, cardH, 36); ctx.fill();
+  ctx.strokeStyle = "rgba(46,107,64,0.4)";
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(M, cardY, col, cardH, 36); ctx.stroke();
+  const qrSize = QR_PX;
+  const padQ = (cardH - qrSize) / 2;
+  const qrX = M + padQ, qrTop = cardY + padQ;
+  if (qr) ctx.drawImage(qr, qrX, qrTop, qrSize, qrSize);
+  const tx = qrX + qrSize + 52;
+  const tw = M + col - 36 - tx;
+  ctx.fillStyle = INK;
+  ctx.font = `700 56px ${FONT}`;
+  ctx.fillText("Scan to begin", tx, cardY + 118);
+  ctx.fillStyle = GREEN;
+  ctx.font = `600 44px ${FONT}`;
+  ctx.fillText("withphoebe.app", tx, cardY + 182);
+  ctx.fillStyle = "rgba(16,35,26,0.78)";
+  ctx.font = `400 36px ${FONT}`;
+  let ny = cardY + 252;
+  for (const line of wrap(ctx, "Start with a few minutes a day, on your phone or on the web.", tw)) { ctx.fillText(line, tx, ny); ny += 50; }
+}
+
+/** A PDF of letter-size pages (612 x 792 pt), one JPEG each, front then back. */
+function jpegsToPdf(jpegs: Uint8Array[], w: number, h: number): Blob {
   const enc = new TextEncoder();
   const parts: Uint8Array[] = [];
   const offsets: number[] = [];
@@ -320,31 +426,39 @@ function jpegToPdf(jpeg: Uint8Array, w: number, h: number): Blob {
     parts.push(bytes);
     length += bytes.length;
   };
-  const obj = (n: number, body: string) => { offsets[n] = length; push(`${n} 0 obj\n${body}\nendobj\n`); };
+  const n = jpegs.length;
+  // Objects: 1 catalog, 2 pages, then per page three (page, image, content): 3+3i, 4+3i, 5+3i.
+  const total = 2 + 3 * n;
+  const obj = (num: number, body: string) => { offsets[num] = length; push(`${num} 0 obj\n${body}\nendobj\n`); };
   push("%PDF-1.4\n");
   obj(1, "<< /Type /Catalog /Pages 2 0 R >>");
-  obj(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
-  obj(3, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>");
-  offsets[4] = length;
-  push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
-  push(jpeg);
-  push("\nendstream\nendobj\n");
-  const content = "q 612 0 0 792 0 0 cm /Im0 Do Q";
-  obj(5, `<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+  obj(2, `<< /Type /Pages /Kids [${jpegs.map((_, i) => `${3 + 3 * i} 0 R`).join(" ")}] /Count ${n} >>`);
+  jpegs.forEach((jpeg, i) => {
+    const pageN = 3 + 3 * i, imgN = 4 + 3 * i, contN = 5 + 3 * i;
+    obj(pageN, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /XObject << /Im0 ${imgN} 0 R >> >> /Contents ${contN} 0 R >>`);
+    offsets[imgN] = length;
+    push(`${imgN} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
+    push(jpeg);
+    push("\nendstream\nendobj\n");
+    const content = "q 612 0 0 792 0 0 cm /Im0 Do Q";
+    obj(contN, `<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+  });
   const xref = length;
-  let table = "xref\n0 6\n0000000000 65535 f \n";
-  for (let i = 1; i <= 5; i++) table += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+  let table = `xref\n0 ${total + 1}\n0000000000 65535 f \n`;
+  for (let i = 1; i <= total; i++) table += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
   push(table);
-  push(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  push(`trailer\n<< /Size ${total + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
   return new Blob(parts as BlobPart[], { type: "application/pdf" });
 }
 
 export default function FlyerPage() {
   const [preview, setPreview] = useState<string | null>(null);
+  const [previewBack, setPreviewBack] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const qrWrap = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const backRef = useRef<HTMLCanvasElement | null>(null);
 
   // Bumped when the page's fonts finish loading: a first draw can beat the
   // stylesheet that declares Space Grotesk and come out in the fallback face, and
@@ -367,21 +481,28 @@ export default function FlyerPage() {
       const qr = qrWrap.current?.querySelector("canvas") ?? null;
       await drawFlyer(canvas, qr);
       if (!cancelled) setPreview(canvas.toDataURL("image/jpeg", 0.8));
+      const back = backRef.current ?? document.createElement("canvas");
+      backRef.current = back;
+      await drawFlyerBack(back, qr);
+      if (!cancelled) setPreviewBack(back.toDataURL("image/jpeg", 0.8));
     }, 200);
     return () => { cancelled = true; window.clearTimeout(id); };
   }, [fontTick]);
 
   async function makePdf() {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const back = backRef.current;
+    if (!canvas || !back) return;
     setBusy(true);
     setStatus(null);
     try {
       const qr = qrWrap.current?.querySelector("canvas") ?? null;
       await drawFlyer(canvas, qr);
+      await drawFlyerBack(back, qr);
       const jpegBlob: Blob | null = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.92));
-      if (!jpegBlob) throw new Error("render");
-      const pdf = jpegToPdf(new Uint8Array(await jpegBlob.arrayBuffer()), W, H);
+      const backBlob: Blob | null = await new Promise((r) => back.toBlob(r, "image/jpeg", 0.92));
+      if (!jpegBlob || !backBlob) throw new Error("render");
+      const pdf = jpegsToPdf([new Uint8Array(await jpegBlob.arrayBuffer()), new Uint8Array(await backBlob.arrayBuffer())], W, H);
       const name = "phoebe-flyer.pdf";
       const file = new File([pdf], name, { type: "application/pdf" });
       // On the phone: the share sheet (Print, Save to Files, AirDrop, Mail).
@@ -416,7 +537,7 @@ export default function FlyerPage() {
           A flyer for your parish
         </h1>
         <p style={{ fontSize: 14.5, lineHeight: 1.55, color: SAGE, margin: "0 0 22px" }}>
-          A printable page that explains Phoebe and invites people to a daily habit of prayer, with a QR code that opens it.
+          A printable sheet, front and back, that explains Phoebe and invites people to a daily habit of prayer, with a QR code that opens it.
         </p>
 
         <button type="button" onClick={makePdf} disabled={busy || !preview}
@@ -426,9 +547,14 @@ export default function FlyerPage() {
         </button>
         {status && <p style={{ fontSize: 13.5, color: SAGE, textAlign: "center", marginTop: 10 }}>{status}</p>}
 
-        <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(143,175,150,0.6)", margin: "28px 0 10px" }}>Preview</p>
+        <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(143,175,150,0.6)", margin: "28px 0 10px" }}>Front</p>
         <div style={{ background: "#FFFFFF", borderRadius: 6, boxShadow: "0 18px 50px rgba(0,0,0,0.5)", overflow: "hidden", aspectRatio: "8.5 / 11" }}>
-          {preview && <img src={preview} alt="The flyer as it will print" style={{ width: "100%", height: "100%", display: "block" }} />}
+          {preview && <img src={preview} alt="The front of the flyer as it will print" style={{ width: "100%", height: "100%", display: "block" }} />}
+        </div>
+
+        <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(143,175,150,0.6)", margin: "28px 0 10px" }}>Back</p>
+        <div style={{ background: "#FFFFFF", borderRadius: 6, boxShadow: "0 18px 50px rgba(0,0,0,0.5)", overflow: "hidden", aspectRatio: "8.5 / 11" }}>
+          {previewBack && <img src={previewBack} alt="The back of the flyer as it will print" style={{ width: "100%", height: "100%", display: "block" }} />}
         </div>
 
         {/* The QR code the flyer draws from: rendered off-screen at print size.
