@@ -103,13 +103,13 @@ const MODEL = process.env.ROUTINE_INTERVIEW_MODEL || "gpt-5.6-luna";
  *
  * Both default to ROUTINE_INTERVIEW_MODEL, so setting nothing changes nothing.
  */
-// UPPED (owner, 2026-10-02: "up the model"): the questions and the options are the
-// judgment calls, so they default to the full gpt-5.6 rather than the cheap tier.
-// The name is a best guess at the next tier up; if this account cannot see it,
-// askOpenAi falls back to MODEL (below) instead of failing the interview, and logs
-// which model it could not find. Set ROUTINE_INTERVIEW_FOLLOWUP_MODEL to the exact
-// name to choose one on purpose.
-const FOLLOWUP_MODEL = process.env.ROUTINE_INTERVIEW_FOLLOWUP_MODEL || "gpt-5.6";
+// BACK ON THE CHEAP MODEL (owner, 2026-10-02: "lets go back to luna and see what happens").
+// It was moved up to the full gpt-5.6 (which OpenAI's usage page showed resolving to
+// gpt-5.6-sol, roughly a cent an interview) and put back to see how the prompts and the
+// server-side checks do without it. To try a stronger one again, set
+// ROUTINE_INTERVIEW_FOLLOWUP_MODEL (e.g. gpt-5.6-sol) in Railway; askOpenAi falls back to
+// MODEL if the account cannot see the name.
+const FOLLOWUP_MODEL = process.env.ROUTINE_INTERVIEW_FOLLOWUP_MODEL || MODEL;
 const BUILD_MODEL = process.env.ROUTINE_INTERVIEW_BUILD_MODEL || MODEL;
 
 // ── The FLAT catalogue (the new framework) ───────────────────────────────────
