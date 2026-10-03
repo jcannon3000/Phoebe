@@ -1474,19 +1474,19 @@ const GUIDE_PRACTICES: Record<string, { emoji: string; title: string | ((side: G
   "reflect-sit":   { emoji: "🕯️", title: "Contemplation", description: "Sitting in silence with God, a few minutes at a time, with nothing to accomplish." },
   creation:        { emoji: "🌍", title: "Breathing Together", description: "A guided breath prayer." },
   lectio:          { emoji: "📜", title: "Lectio Divina", description: "Reading a short passage slowly, three times, and listening for the word that speaks to you." },
-  payg:            { emoji: "🙇🏽", title: "Pray As You Go", description: "The Jesuits' daily prayer, listened to: a piece of music, a reading and a few questions to sit with." },
+  payg:            { emoji: "🙇🏽", title: "Pray As You Go Daily", description: "The Jesuits' daily prayer, listened to: a piece of music, a reading and a few questions to sit with." },
   examen:          { emoji: "🌗", title: "The Examen", description: "A few quiet minutes to look back over the day and notice where God was." },
   compline:        { emoji: "🌙", title: "Compline", description: "The church's night prayer — a short, quiet office to close the day." },
   listening:       { emoji: "🎧", title: "Audio Divina", description: "Listening to sacred music as a way of prayer." },
   rosary:          { emoji: "📿", title: "The Rosary", description: "Praying the mysteries a decade at a time, with Roman or Anglican prayer beads." },
-  walk:            { emoji: "🚶🏽", title: "A Contemplative Walk", description: "Walking slowly as prayer, paying attention to what is around you." },
-  nouwen:          { emoji: "😊", title: "Henri Nouwen's Daily Devotion", description: "A short daily reading from Henri Nouwen's writing." },
-  cac:             { emoji: "🌵", title: "Daily Meditation", description: "Richard Rohr's daily meditation, from the Center for Action and Contemplation." },
+  walk:            { emoji: "🚶🏽", title: "Contemplative Walk", description: "Walking slowly as prayer, paying attention to what is around you." },
+  nouwen:          { emoji: "😊", title: "Nouwen Daily Devotion", description: "A short daily reading from Henri Nouwen's writing." },
+  cac:             { emoji: "🌵", title: "CAC Daily Meditation", description: "Richard Rohr's daily meditation, from the Center for Action and Contemplation." },
   taizeprayer:     { emoji: "🌄", title: "Taizé Daily Prayer", description: "Brother Matthew's short prayer for the day, from the Taizé community." },
   fdd:             { emoji: "📔", title: "Forward Day by Day", description: "A few minutes with the day's word, from Forward Movement." },
   spirituals:      { emoji: "🎶", title: "Meditating on Spirituals", description: "A spiritual sung as prayer, one at a time." },
   hagiography:     { emoji: "🪽", title: "Feast Day Hagiographies", description: "The life of the day's saint, from Forward Movement — on the days the calendar keeps one." },
-  ssje:            { emoji: "✍🏽", title: "Brother, Give Us a Word", description: "A short daily word from the Society of St. John the Evangelist." },
+  ssje:            { emoji: "✍🏽", title: "SSJE — Brother, Give Us a Word", description: "A short daily word from the Society of St. John the Evangelist." },
 };
 
 // What may be offered where, in the order to fall back on when the model gives
@@ -1502,6 +1502,8 @@ const GUIDE_EVENING = ["examen", "office", "compline", "devotion", "reflect-sit"
 // Examen is evening-shaped; the guided form is morning-shaped.
 const GUIDE_MORNING_ALL = [...GUIDE_MORNING, "listening", "rosary", "walk", "spirituals"];
 const GUIDE_EVENING_ALL = [...GUIDE_EVENING, "lectio", "payg", "rosary", "walk", "spirituals"];
+// Titles are the customizer's PICKER names (not the shorter names a chosen
+// reflection takes in the routine), so a practice is called the same thing in both.
 // BOTH LISTS MIRROR THE FULL CUSTOMIZER (WayOfLoveRuleFlow) and nothing else
 // (owner, 2026-10-02: "this page needs to be updating only to what is currently
 // in the full customizer"). Reflections are its Learn step: the newsletters it
