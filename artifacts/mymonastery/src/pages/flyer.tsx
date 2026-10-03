@@ -315,13 +315,15 @@ async function drawFlyer(canvas: HTMLCanvasElement, qr: HTMLCanvasElement | null
 }
 
 /**
- * THREE SCREENS OF THE CUSTOMIZER, drawn (owner, 2026-10-03: "have the bottom be three
- * mocks which demonstrate the customizer, showing different parts of that flow"). Each is a
- * 560 x 1151 phone screen in the app's own colours, type and wording - the time you give each
- * day, the choice for your morning, and the whole rhythm in one list - so the back of the
- * flyer shows the routine being built without repeating anything the front already shows.
+ * THREE SCREENS OF THE FULL CUSTOMIZER, drawn (owner, 2026-10-03: "have the bottom be three
+ * mocks which demonstrate the customizer, showing different parts of that flow", then "you put
+ * the wrong routine customizer"). These follow the manual customizer in components/
+ * WayOfLoveRuleFlow - the one that opens on "How would you like to build it?" - and use its
+ * own wording: the opening choice, the morning step, and the reflections step. (The first
+ * version was drawn from the light /customize page and the interview, which is not it.) Each
+ * is a 560 x 1151 phone screen in the app's colours and type.
  */
-function customizerScreen(kind: "time" | "morning" | "rhythm"): HTMLCanvasElement {
+function customizerScreen(kind: "build" | "morning" | "learn"): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = 560; c.height = 1151;
   const x = c.getContext("2d")!;
@@ -330,94 +332,77 @@ function customizerScreen(kind: "time" | "morning" | "rhythm"): HTMLCanvasElemen
   g.addColorStop(0, "#143524"); g.addColorStop(0.55, "#0C2417"); g.addColorStop(1, "#081A11");
   x.fillStyle = g; x.fillRect(0, 0, 560, 1151);
   x.textBaseline = "alphabetic"; x.textAlign = "left";
-  const M = 36, innerW = 560 - 2 * M;
-  const spaced = (px: number) => { try { (x as unknown as { letterSpacing: string }).letterSpacing = `${px}px`; } catch { /* older browsers */ } };
+  const M = 34, innerW = 560 - 2 * M;
   const lines = (t: string, size: number, weight: number, maxW: number, color: string, X: number, Y: number, lead: number): number => {
     x.fillStyle = color; x.font = `${weight} ${size}px ${FONT}`;
     for (const ln of wrap(x, t, maxW)) { x.fillText(ln, X, Y); Y += lead; }
     return Y;
   };
-  const card = (X: number, Y: number, w: number, h: number, on = false) => {
+  // A choice row as the customizer draws it: a radio at the left, the label, one line under it.
+  const choice = (Y: number, h: number, label: string, sub: string, on: boolean, check = false) => {
     x.fillStyle = on ? "rgba(45,94,63,0.55)" : "rgba(255,255,255,0.05)";
-    x.beginPath(); x.roundRect(X, Y, w, h, 22); x.fill();
+    x.beginPath(); x.roundRect(M, Y, innerW, h, 20); x.fill();
     x.strokeStyle = on ? "rgba(110,180,130,0.62)" : "rgba(255,255,255,0.12)";
-    x.lineWidth = 2; x.beginPath(); x.roundRect(X, Y, w, h, 22); x.stroke();
+    x.lineWidth = 2; x.beginPath(); x.roundRect(M, Y, innerW, h, 20); x.stroke();
+    const rx = M + 34, ry = Y + 40;
+    x.strokeStyle = on ? "#A8C5A0" : "rgba(143,175,150,0.45)"; x.lineWidth = 3;
+    x.beginPath(); x.arc(rx, ry, 13, 0, Math.PI * 2); x.stroke();
+    if (on) {
+      x.fillStyle = "#A8C5A0"; x.beginPath(); x.arc(rx, ry, 8, 0, Math.PI * 2); x.fill();
+      if (check) { x.strokeStyle = "#0C2417"; x.lineWidth = 3; x.beginPath(); x.moveTo(rx - 4, ry); x.lineTo(rx - 1, ry + 4); x.lineTo(rx + 5, ry - 4); x.stroke(); }
+    }
+    x.fillStyle = on ? WARM_ : "rgba(240,237,230,0.9)"; x.font = `700 25px ${FONT}`; x.fillText(label, M + 66, Y + 46);
+    lines(sub, 19, 400, innerW - 90, SAGE_, M + 66, Y + 78, 26);
+  };
+  const progress = (frac: number) => {
+    x.fillStyle = "rgba(143,175,150,0.22)"; x.beginPath(); x.roundRect(M, 130, innerW, 6, 3); x.fill();
+    x.fillStyle = "#A8C5A0"; x.beginPath(); x.roundRect(M, 130, innerW * frac, 6, 3); x.fill();
+  };
+  const backPill = () => {
+    x.strokeStyle = "rgba(255,255,255,0.18)"; x.lineWidth = 2; x.beginPath(); x.roundRect(M, 78, 110, 40, 20); x.stroke();
+    x.fillStyle = SAGE_; x.font = `600 20px ${FONT}`; x.fillText("<  Back", M + 20, 105);
   };
   const button = (label: string, Y: number) => {
-    x.fillStyle = CTA; x.beginPath(); x.roundRect(M, Y, innerW, 76, 38); x.fill();
-    x.fillStyle = WARM_; x.font = `700 28px ${FONT}`; x.textAlign = "center";
-    x.fillText(label, 280, Y + 48); x.textAlign = "left";
+    x.fillStyle = CTA; x.beginPath(); x.roundRect(M, Y, innerW, 72, 36); x.fill();
+    x.fillStyle = WARM_; x.font = `700 26px ${FONT}`; x.textAlign = "center";
+    x.fillText(label, 280, Y + 46); x.textAlign = "left";
   };
-  // status bar
-  x.fillStyle = WARM_; x.font = `600 22px ${FONT}`; x.fillText("9:41", M + 6, 56);
+  x.fillStyle = WARM_; x.font = `600 20px ${FONT}`; x.fillText("9:41", M + 4, 50);
+  backPill();
 
-  if (kind === "time") {
-    spaced(3); x.fillStyle = "rgba(143,175,150,0.8)"; x.font = `600 17px ${FONT}`; x.fillText("YOUR RULE OF LIFE", M, 168); spaced(0);
-    let y = lines("How much time will you give each day?", 40, 700, innerW, WARM_, M, 224, 50);
-    x.fillStyle = WARM_; x.font = `700 110px ${FONT}`; x.textAlign = "center"; x.fillText("15", 280, 470);
-    x.fillStyle = SAGE_; x.font = `600 28px ${FONT}`; x.fillText("minutes a day", 280, 518); x.textAlign = "left";
-    // the dial
-    x.fillStyle = "rgba(143,175,150,0.25)"; x.beginPath(); x.roundRect(M + 20, 580, innerW - 40, 8, 4); x.fill();
-    x.fillStyle = "#3E9B5C"; x.beginPath(); x.roundRect(M + 20, 580, (innerW - 40) * 0.4, 8, 4); x.fill();
-    x.fillStyle = WARM_; x.beginPath(); x.arc(M + 20 + (innerW - 40) * 0.4, 584, 20, 0, Math.PI * 2); x.fill();
-    x.fillStyle = "rgba(143,175,150,0.6)"; x.font = `500 20px ${FONT}`; x.fillText("5 min", M + 20, 640); x.textAlign = "right"; x.fillText("30 min", 560 - M - 20, 640); x.textAlign = "left";
-    // the rhythm that fits
-    card(M, 690, innerW, 250);
-    spaced(2); x.fillStyle = "rgba(143,175,150,0.7)"; x.font = `600 16px ${FONT}`; x.fillText("YOUR RHYTHM", M + 28, 738); spaced(0);
-    ["The day's Psalms, once a day", "Forward Day by Day", "Five minutes of silence"].forEach((t, i) => {
-      x.fillStyle = "#3E9B5C"; x.beginPath(); x.arc(M + 36, 782 + i * 56, 8, 0, Math.PI * 2); x.fill();
-      x.fillStyle = WARM_; x.font = `500 26px ${FONT}`; x.fillText(t, M + 62, 792 + i * 56);
-    });
-    button("Keep this rhythm", 990);
-    x.fillStyle = SAGE_; x.font = `500 24px ${FONT}`; x.textAlign = "center"; x.fillText("Or build my own", 280, 1100); x.textAlign = "left";
+  if (kind === "build") {
+    progress(0.12);
+    lines("How would you like to build it?", 40, 700, innerW, WARM_, M, 214, 48);
+    lines("Walk through it step by step, begin from one of Phoebe's presets, or bring back a rhythm you kept before.", 21, 400, innerW, SAGE_, M, 316, 30);
+    choice(440, 116, "Edit your routine", "Walk through your routine step by step: when you pray, each practice, your newsletters.", true, true);
+    choice(574, 100, "Choose a preset routine", "Begin from one of Phoebe's preset routines.", false);
+    choice(692, 100, "Go back to a past routine", "Restore a rhythm you kept before.", false);
+    button("Continue", 1030);
   }
 
   if (kind === "morning") {
-    spaced(3); x.fillStyle = "rgba(143,175,150,0.8)"; x.font = `600 17px ${FONT}`; x.fillText("YOUR MORNING", M, 168); spaced(0);
-    lines("How would you like to begin the day?", 40, 700, innerW, WARM_, M, 224, 50);
-    lines("Choose one. You can change it any time.", 24, 400, innerW, SAGE_, M, 360, 32);
-    const opts: Array<[string, string, boolean]> = [
-      ["Simple Guided Prayer", "About three minutes, led for you.", false],
-      ["Daily Offices", "Morning Prayer, from the prayer book.", true],
-      ["Daily Devotions", "A short reading and a prayer.", false],
-      ["Daily Scripture Readings", "The day's readings, read slowly.", false],
-      ["Contemplative Prayer", "Silence, a walk, music or the breath.", false],
-    ];
-    opts.forEach(([t, d, on], i) => {
-      const Y = 420 + i * 124;
-      card(M, Y, innerW, 106, on);
-      x.fillStyle = on ? WARM_ : "rgba(240,237,230,0.88)"; x.font = `700 28px ${FONT}`; x.fillText(t, M + 28, Y + 46);
-      x.fillStyle = SAGE_; x.font = `400 21px ${FONT}`; x.fillText(d, M + 28, Y + 80);
-      x.strokeStyle = on ? "#A8C5A0" : "rgba(143,175,150,0.45)"; x.lineWidth = 3; x.beginPath(); x.arc(560 - M - 32, Y + 53, 12, 0, Math.PI * 2); x.stroke();
-      if (on) { x.fillStyle = "#A8C5A0"; x.beginPath(); x.arc(560 - M - 32, Y + 53, 7, 0, Math.PI * 2); x.fill(); }
-    });
-    button("Continue", 1060);
+    progress(0.3);
+    lines("Morning", 40, 700, innerW, WARM_, M, 214, 48);
+    lines("How would you like to pray in the morning? Select one, or None, if you'd rather not have a practice in the morning.", 21, 400, innerW, SAGE_, M, 274, 30);
+    choice(402, 110, "Simple Guided Prayer", "Praise · Confession · Thanksgiving · Supplication", true);
+    choice(528, 110, "With the Book of Common Prayer", "Prayer with the BCP: Psalms, Devotion, or the full Office.", false);
+    choice(654, 110, "Contemplative Practice", "Silence, or another contemplative practice like a walk.", false);
+    choice(780, 110, "Reflection", "Today's meditation from your newsletter, in place of an office.", false);
+    choice(906, 92, "Create your own", "Name a practice of your own.", false);
+    button("Continue", 1030);
   }
 
-  if (kind === "rhythm") {
-    spaced(3); x.fillStyle = "rgba(143,175,150,0.8)"; x.font = `600 17px ${FONT}`; x.fillText("HERE IT IS", M, 168); spaced(0);
-    lines("Your rhythm in Phoebe", 40, 700, innerW, WARM_, M, 224, 50);
-    const rows: Array<[string, string]> = [
-      ["Morning Prayer", "the digital slideshow"],
-      ["Evening Examen", "Each evening"],
-      ["Breathing Together", "any time of day"],
-      ["Contemplative Walk", "any time of day"],
-      ["Pray As You Go Daily", "any time of day"],
-      ["Lectio Divina", "any time of day"],
-    ];
-    rows.forEach(([t, d], i) => {
-      const Y = 290 + i * 118;
-      card(M, Y, innerW, 100);
-      x.fillStyle = WARM_; x.font = `700 27px ${FONT}`; x.fillText(t, M + 26, Y + 44);
-      x.fillStyle = SAGE_; x.font = `400 21px ${FONT}`; x.fillText(d, M + 26, Y + 77);
-      for (const [cx, glyph] of [[560 - M - 112, "gear"], [560 - M - 46, "x"]] as const) {
-        x.fillStyle = "rgba(255,255,255,0.07)"; x.beginPath(); x.arc(cx, Y + 50, 26, 0, Math.PI * 2); x.fill();
-        x.strokeStyle = "rgba(143,175,150,0.9)"; x.lineWidth = 3;
-        if (glyph === "x") { x.beginPath(); x.moveTo(cx - 9, Y + 41); x.lineTo(cx + 9, Y + 59); x.moveTo(cx + 9, Y + 41); x.lineTo(cx - 9, Y + 59); x.stroke(); }
-        else { x.beginPath(); x.arc(cx, Y + 50, 8, 0, Math.PI * 2); x.stroke(); for (let k = 0; k < 8; k++) { const a = (k * Math.PI) / 4; x.beginPath(); x.moveTo(cx + Math.cos(a) * 12, Y + 50 + Math.sin(a) * 12); x.lineTo(cx + Math.cos(a) * 17, Y + 50 + Math.sin(a) * 17); x.stroke(); } }
-      }
-    });
-    button("Save this as my rhythm", 1020);
+  if (kind === "learn") {
+    progress(0.62);
+    lines("Learn", 40, 700, innerW, WARM_, M, 214, 48);
+    lines("Choose the daily reflections you'd like to read.", 21, 400, innerW, SAGE_, M, 272, 30);
+    lines("Pick as many as you like. Each gets its own card on your home.", 17, 400, innerW, "rgba(143,175,150,0.6)", M, 340, 24);
+    choice(398, 96, "CAC Daily Meditation", "Center for Action & Contemplation", false, true);
+    choice(510, 96, "Taize Daily Prayer", "A short prayer from Brother Matthew of Taize", false, true);
+    choice(622, 96, "Nouwen Daily Devotion", "Henri Nouwen Society", true, true);
+    choice(734, 96, "Forward Day by Day", "Forward Movement", false, true);
+    choice(846, 96, "SSJE: Brother, Give Us a Word", "Society of St. John the Evangelist", false, true);
+    button("Continue", 1030);
   }
   return c;
 }
@@ -494,10 +479,10 @@ async function drawFlyerBack(canvas: HTMLCanvasElement) {
   const room = (H - 130) - phoneTop - 80;
   const phoneW = Math.min(380, Math.floor((room - 24) / (1151 / 560)) + 24);
   const gap = Math.floor((col - phoneW * 3) / 2);
-  const shots: Array<["time" | "morning" | "rhythm", string]> = [
-    ["time", "Choose your time"],
+  const shots: Array<["build" | "morning" | "learn", string]> = [
+    ["build", "Begin your way"],
     ["morning", "Choose your practices"],
-    ["rhythm", "See it all in one place"],
+    ["learn", "Pick your reflections"],
   ];
   shots.forEach(([kind, caption], i) => {
     const px = M + i * (phoneW + gap);
