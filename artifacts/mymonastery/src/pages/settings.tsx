@@ -303,6 +303,54 @@ function DevicePermissionRow() {
   );
 }
 
+function InvitationsSetting({ masterOn }: { masterOn: boolean }) {
+  const queryClient = useQueryClient();
+  const { data } = useQuery<{ enabled: boolean }>({
+    queryKey: ["/api/me/invitations"],
+    queryFn: () => apiRequest("GET", "/api/me/invitations"),
+    staleTime: 60_000,
+  });
+  const save = useMutation({
+    mutationFn: (enabled: boolean) => apiRequest("PUT", "/api/me/invitations", { enabled }),
+    onMutate: async (enabled: boolean) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/me/invitations"] });
+      queryClient.setQueryData(["/api/me/invitations"], { enabled });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["/api/me/invitations"] }),
+  });
+  const on = data?.enabled ?? true;
+  const rows: Array<{ value: boolean; label: string; sub: string }> = [
+    { value: true, label: "Invitations on", sub: "Now and then, a note inviting you to pause: the feast of the day, a moment to reflect, a moment to breathe." },
+    { value: false, label: "Invitations off", sub: "Only your own reminders and the people you pray with." },
+  ];
+  return (
+    <div style={{ marginTop: 14, opacity: masterOn ? 1 : 0.5 }}>
+      <p className="text-[13px] mb-2" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, letterSpacing: "0.02em" }}>Invitations</p>
+      <SettingsCard>
+        {rows.map((opt, i) => {
+          const sel = on === opt.value;
+          return (
+            <button
+              key={String(opt.value)}
+              type="button"
+              onClick={() => save.mutate(opt.value)}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{ borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)", background: "transparent", cursor: "pointer" }}
+              aria-pressed={sel}
+            >
+              <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${sel ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`, background: sel ? "#A8C5A0" : "transparent", flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>{opt.label}</p>
+                <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>{opt.sub}</p>
+              </div>
+            </button>
+          );
+        })}
+      </SettingsCard>
+    </div>
+  );
+}
+
 function NotificationsSettings() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -406,6 +454,10 @@ function NotificationsSettings() {
           );
         })}
       </SettingsCard>
+
+      {/* INVITATIONS (owner, 2026-10-03): the extra notifications that invite you to
+          practise - the Feast Day note, a moment to reflect, a moment to breathe. */}
+      <InvitationsSetting masterOn={enabled} />
 
       {/* The OS's own permission — above the test button on purpose: when the
           device is refusing push, allowing it is the step that has to happen

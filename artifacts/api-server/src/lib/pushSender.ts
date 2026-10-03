@@ -22,7 +22,7 @@ import { randomBytes } from "node:crypto";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { SignJWT, importPKCS8, type KeyLike } from "jose";
 import webpush from "web-push";
-import { db, deviceTokensTable, webPushSubscriptionsTable, prayerFeedSubscriptionsTable, usersTable, notificationSendsTable } from "@workspace/db";
+import { db, deviceTokensTable, webPushSubscriptionsTable, prayerFeedSubscriptionsTable, usersTable, notificationSendsTable, notificationPrefsTable } from "@workspace/db";
 import { logger } from "./logger";
 
 // VAPID config for browser Web Push (Android Chrome / Firefox / Edge,
@@ -230,6 +230,11 @@ export interface PushPayload {
   // clean() runs over the body on every push, which is easy to miss when the
   // only escape hatch in sight is the title's.
   emojiSafeBody?: boolean;
+  // An INVITATION: an extra note that asks you to pause and practise (the Feast Day note,
+  // "A moment to reflect", "A moment to breathe"), as opposed to a reminder of something you
+  // keep or news about people you pray with. People can turn these off in Settings
+  // (notification_prefs.invitations_enabled; no row means on).
+  invitation?: boolean;
 }
 
 interface SendResult {
@@ -286,6 +291,16 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
     .where(eq(usersTable.id, userId));
   if (pref?.pushEnabled === false) {
     return { attempted: 0, succeeded: 0, invalidated: 0, deviceSucceeded: 0, webSucceeded: 0, deviceAttempted: 0 };
+  }
+
+  if (payload.invitation) {
+    const [prefs] = await db
+      .select({ on: notificationPrefsTable.invitationsEnabled })
+      .from(notificationPrefsTable)
+      .where(eq(notificationPrefsTable.userId, userId));
+    if (prefs && prefs.on === false) {
+      return { attempted: 0, succeeded: 0, invalidated: 0, deviceSucceeded: 0, webSucceeded: 0, deviceAttempted: 0 };
+    }
   }
 
   // Centralized emoji strip + title cap — every push goes through this
@@ -1337,6 +1352,7 @@ export function sendNouwenReflectionPush(userId: number, opts: { question: strin
     title: "A moment to reflect",
     body: `${opts.question}\n\u2014 Henri Nouwen Society`,
     path: "/reflect/nouwen",
+    invitation: true,
     threadId: "nouwen-reflection",
     collapseId: `nouwen-reflection-${userId}`,
     sound: PHOEBE_SOUND_MID,
@@ -1404,6 +1420,7 @@ export function sendBreathMomentPush(userId: number) {
     title: "Want to take a moment to breathe",
     body: "Open to take 12 deep breaths for about three minutes to recenter yourself",
     path: "/cobreathe?start=1",
+    invitation: true,
     threadId: "breath-moment",
     collapseId: `breath-moment-${userId}`,
     sound: PHOEBE_SOUND_LOW,
@@ -1447,6 +1464,7 @@ export function sendFeastDayPush(
       ? `Open Phoebe to learn more about the life of ${opts.life}`
       : `Open Phoebe to learn more about the feast of ${opts.life}`,
     path: "/saints",
+    invitation: true,
     threadId: "feast-day",
     collapseId: `feast-day-${userId}`,
     sound: PHOEBE_SOUND_LOW,

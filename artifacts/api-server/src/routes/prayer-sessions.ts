@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, appEngagedTable, notificationSendsTable, usersTable, breathSessionsTable } from "@workspace/db";
+import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, appEngagedTable, notificationSendsTable, notificationPrefsTable, usersTable, breathSessionsTable } from "@workspace/db";
 import { and, desc, eq, gte, gt, lt, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { getGardenUserIds } from "../lib/garden";
@@ -81,6 +81,38 @@ router.post("/notification-open", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("[/notification-open] failed:", err);
     res.json({ ok: false });
+  }
+});
+
+// GET/PUT /api/me/invitations - the Settings switch for "invitations": the extra notifications
+// that invite you to practise (Feast Day, a moment to reflect, a moment to breathe). No row
+// means ON. sendPushToUser reads the same table for any push marked `invitation`.
+router.get("/me/invitations", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const [row] = await db.select({ on: notificationPrefsTable.invitationsEnabled })
+      .from(notificationPrefsTable).where(eq(notificationPrefsTable.userId, sessionUserId));
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ enabled: row ? row.on : true });
+  } catch (err) {
+    console.error("[/me/invitations GET] failed:", err);
+    res.json({ enabled: true });
+  }
+});
+
+router.put("/me/invitations", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (typeof req.body?.enabled !== "boolean") { res.status(400).json({ error: "enabled must be a boolean" }); return; }
+  try {
+    await db.insert(notificationPrefsTable)
+      .values({ userId: sessionUserId, invitationsEnabled: req.body.enabled })
+      .onConflictDoUpdate({ target: notificationPrefsTable.userId, set: { invitationsEnabled: req.body.enabled, updatedAt: new Date() } });
+    res.json({ enabled: req.body.enabled });
+  } catch (err) {
+    console.error("[/me/invitations PUT] failed:", err);
+    res.status(500).json({ error: "internal_error" });
   }
 });
 

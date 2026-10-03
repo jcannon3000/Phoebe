@@ -2429,6 +2429,15 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_app_engaged_user_day ON app_engaged (user_id, local_date)`);
 
+    // ── notification_prefs: per-person switches (invitations) ──────────────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS notification_prefs (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        invitations_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
     // ── notification_sends: which push got the person to open the app ───────
     await run(client, `
       CREATE TABLE IF NOT EXISTS notification_sends (
