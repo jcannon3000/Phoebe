@@ -21,6 +21,7 @@ import { sundayLectioOptions, sundayLectioOptionsFromDeck, type LectioOption } f
 import { getOfficeCacheEntry } from "@/lib/officeOfflineCache";
 import { nextSundayYmdNY } from "@/lib/sundayDate";
 import { CtaArrow } from "@/components/CtaArrow";
+import { PhoebeRise } from "@/components/PhoebeRise";
 
 // Lectio Divina — sit with one of today's three lessons (Old Testament,
 // New Testament, Gospel). Owner's corrected order: pick a lesson → the
@@ -733,6 +734,7 @@ export default function LectioPage() {
           dimmed control rather than no control: there is nothing to go back
           to from the first screen, and nothing to advance to until a reading
           is picked, so the whole bar has no work to do. */}
+      {!atStart && <PhoebeRise />}
       {!atStart && <nav
         aria-label="Slide navigation"
         style={{

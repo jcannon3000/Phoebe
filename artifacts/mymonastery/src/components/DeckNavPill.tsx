@@ -21,6 +21,7 @@
  * the shape around it changed.
  */
 import type { CSSProperties, ReactNode } from "react";
+import { PhoebeRise } from "@/components/PhoebeRise";
 
 const WARM = "#F0EDE6";
 const FAINT = "rgba(143,175,150,0.55)";
@@ -62,6 +63,7 @@ export default function DeckNavPill({ label, back, primary, hint, bottomOffsetPx
         @keyframes deck-cta-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .deck-cta-rise { animation: deck-cta-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both; }
       `}</style>
+      <PhoebeRise />
       <nav
         aria-label="Slide navigation"
         style={{

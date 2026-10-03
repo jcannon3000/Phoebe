@@ -5261,15 +5261,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               above picks HOW to pray THIS office; this picks a different
               practice altogether, so they are two controls, not one. */}
           {(resolvedMode === "morning" || resolvedMode === "evening" || isDevotion) && slideIdx === 0 && !onComplete && (
-            <>
-              <div data-phoebe-above style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                <PracticeSwitcher
-                  side={/evening/.test(resolvedMode) ? "evening" : "morning"}
-                  current="office"
-                />
-              </div>
-              <PhoebeRise />
-            </>
+            <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+              <PracticeSwitcher
+                side={/evening/.test(resolvedMode) ? "evening" : "morning"}
+                current="office"
+              />
+            </div>
           )}
           {/* Compline's welcome slide used to carry an "Evening Prayer" pill
               (a door back to the Evening Devotion) under a divider. Removed
@@ -5296,6 +5293,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       </main>
 
       {/* Bottom nav pill — Back · section · Next/Done. Mirrors Lectio. */}
+      <PhoebeRise />
       <nav
         aria-label="Slide navigation"
         style={{
