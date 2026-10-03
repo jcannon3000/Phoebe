@@ -1351,7 +1351,10 @@ export function sendNouwenReflectionPush(userId: number, opts: { question: strin
   return sendPushToUser(userId, {
     title: "A moment to reflect",
     body: `${opts.question}\n\u2014 Henri Nouwen Society`,
-    path: "/reflect/nouwen",
+    // The HOME, with a hint: every installed build has /dashboard, so the tap lands somewhere
+    // real on an old build too (a path an old build lacks would not). A newer build reads
+    // ?reflect=nouwen and opens the reading over the home (components/NouwenLinkLauncher).
+    path: "/dashboard?reflect=nouwen",
     invitation: true,
     threadId: "nouwen-reflection",
     collapseId: `nouwen-reflection-${userId}`,

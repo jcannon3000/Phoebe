@@ -40,6 +40,7 @@ import { AfterReaderRedirect } from "@/components/AfterReaderRedirect";
 import { ReflectionPreheater } from "@/components/ReflectionPreheater";
 import { OfficeAudioPreloader } from "@/components/OfficeAudioPreloader";
 import { AppOpenTracker } from "@/components/AppOpenTracker";
+import { NouwenLinkLauncher } from "@/components/NouwenLinkLauncher";
 import { AnonymousDeviceProvisioner } from "@/components/AnonymousDeviceProvisioner";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -396,7 +397,6 @@ const InvitationsPage = lazy(() => import("./pages/invitations"));
 const BcpPage = lazy(() => import("./pages/bcp"));
 const ExamenPage = lazy(() => import("./pages/examen"));
 const VtsReadingPage = lazy(() => import("./pages/vts-reading"));
-const ReflectNouwenPage = lazy(() => import("./pages/reflect-nouwen"));
 const GuidedPrayerPage = lazy(() => import("./pages/guided-prayer"));
 const RosaryPage = lazy(() => import("./pages/rosary"));
 const NovenaPage = lazy(() => import("./pages/novena"));
@@ -1002,8 +1002,6 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
    * route was never allow-listed either.
    */
   "/vts-reading", "/novena",
-  // Where the "A moment to reflect" notification lands (opens the Nouwen reading).
-  "/reflect/nouwen",
   // The widget how-to: the menu offers it to a phone with none placed, and a
   // guest (every device user) is who that is.
   "/add-widget",
@@ -1407,7 +1405,6 @@ function Router() {
       <Route path="/offices">{() => <RedirectTo to="/bcp/daily-office" />}</Route>
       <Route path="/examen" component={ExamenPage} />
       <Route path="/vts-reading" component={VtsReadingPage} />
-      <Route path="/reflect/nouwen" component={ReflectNouwenPage} />
       <Route path="/guided-prayer" component={GuidedPrayerPage} />
       {/* Admin-only for now — the page gates itself as well, so typing the
           route lands on the dashboard rather than the deck. */}
@@ -1743,6 +1740,7 @@ function App() {
           <GlobalButtonHaptics />
           <LocaleSync />
           <AppOpenTracker />
+          <NouwenLinkLauncher />
           <AnonymousDeviceProvisioner />
           <WidgetSync />
           {/* The admin's preset overlay, refreshed in the background — never
