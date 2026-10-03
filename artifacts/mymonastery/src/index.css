@@ -1098,5 +1098,4 @@ a:active,
 
 /* Hero cards carry Phoebe on their right (components/HeroCardShell): the content
    keeps clear of her so the title and the Begin button stop at her shoulder. */
-/* Only the eyebrow/title/subtitle make room for her; the button stays full width. */
-[data-phoebe-hero] > .flex-1 > p { padding-right: 92px; }
+[data-phoebe-hero] > .flex-1 { padding-right: 122px !important; }

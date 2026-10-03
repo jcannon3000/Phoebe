@@ -665,7 +665,7 @@ export function PracticeCard({
         >
           {frost}
           <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
-          <div className="flex-1 py-5 pl-5 pr-5 relative">
+          <div className="flex-1 py-5 pl-5 relative" style={{ paddingRight: HERO_PHOEBE_CLEAR }}>
             {/* PHOEBE ON THE RIGHT OF EVERY HERO (owner, 2026-10-02: "roll out the
                 Phoebe heros"; then "move phoebe up and make the card shorter" and "have
                 begin be wider to come closer to phoebe"). She stands on the card's bottom
@@ -683,15 +683,15 @@ export function PracticeCard({
               aria-hidden
               width={HERO_PHOEBE_W}
               style={{
-                position: "absolute", right: 18, top: 14, width: HERO_PHOEBE_W, height: "auto", pointerEvents: "none", zIndex: 0,
-                WebkitMaskImage: "linear-gradient(to bottom, #000 45%, transparent 100%)",
-                maskImage: "linear-gradient(to bottom, #000 45%, transparent 100%)",
+                position: "absolute", right: 14, bottom: 20, width: HERO_PHOEBE_W, height: "auto", pointerEvents: "none", zIndex: 0,
+                WebkitMaskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
+                maskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
               }}
             />
             {/* Emoji sits to the RIGHT of the title, never as a leading icon
                 column (owner). */}
             <div className="flex items-start gap-3.5">
-              <div className="flex-1 min-w-0 overflow-hidden" style={{ paddingRight: HERO_PHOEBE_W + 14 }}>
+              <div className="flex-1 min-w-0 overflow-hidden">
                 {eyebrow ? (
                   <p
                     className="text-[11px] font-semibold uppercase tracking-widest truncate"
@@ -959,7 +959,8 @@ const SENTINEL_PRACTICES: Partial<Record<string, { title: (t: (k: string, o?: Re
 };
 
 /** Phoebe on a hero card: her width, and the space the content keeps clear of her. */
-const HERO_PHOEBE_W = 78;
+const HERO_PHOEBE_W = 96;
+const HERO_PHOEBE_CLEAR = HERO_PHOEBE_W + 26;
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming, onRemainingCount, mountTag = "unlabeled" }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number; onRemainingCount?: (count: number) => void; /** Diagnostic only — see lib/celebrationDebugLog.ts. Identifies which of dashboard.tsx's mutually-exclusive render branches mounted this instance. */ mountTag?: string }) {
   const { t } = useTranslation();

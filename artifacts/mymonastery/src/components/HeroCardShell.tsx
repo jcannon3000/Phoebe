@@ -72,15 +72,11 @@ export function HeroCardShell({
           src="/brand/phoebe-character-420.png"
           alt=""
           aria-hidden
-          width={78}
+          width={96}
           style={{
-            // SMALLER, ABOVE THE CTA, FADING INTO IT (owner, 2026-10-02: "cta full width
-            // again and phoebe above fading into the cta, phoebe would need to be
-            // smaller"): she sits at the top right beside the title and her lower half
-            // dissolves toward the full-width button below.
-            position: "absolute", right: 18, top: 14, width: 78, height: "auto", pointerEvents: "none", zIndex: 0,
-            WebkitMaskImage: "linear-gradient(to bottom, #000 45%, transparent 100%)",
-            maskImage: "linear-gradient(to bottom, #000 45%, transparent 100%)",
+            position: "absolute", right: 14, bottom: 20, width: 96, height: "auto", pointerEvents: "none", zIndex: 0,
+            WebkitMaskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
+            maskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
           }}
         />
       </div>
