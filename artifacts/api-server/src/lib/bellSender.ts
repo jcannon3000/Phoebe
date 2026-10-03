@@ -31,6 +31,7 @@ import {
   sendContemplationGoalReminderPush,
   sendVtsCommentaryPush,
   sendNouwenReflectionPush,
+  sendBreathMomentPush,
   sendWeeklyReviewPush,
   sendRoutineAuditPush,
   sendGatheringTomorrowPush,
@@ -1426,6 +1427,89 @@ export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {
   }
 }
 
+/**
+ * "WANT TO TAKE A MOMENT TO BREATHE" - mid-afternoon, to people who keep Breathing
+ * Together (owner, 2026-10-03), and never to anyone who has already breathed today.
+ *
+ * Followers are people whose home carries the Breathing Together card, or who made
+ * it a half of the day's contemplative practice; super admins are always eligible so
+ * it can be seen. The recipient's own 15:00, a once-a-day dedupe row written only
+ * after a send that reached a phone, and a skip once a breath is recorded for their
+ * local day (breath_sessions). OFF unless BREATH_MOMENT_PUSH=true.
+ */
+const BREATH_MOMENT_TIME = "15:00";
+
+function followsBreath(ruleConfig: unknown, homeLayout: unknown): boolean {
+  try {
+    const layout = homeLayout as { order?: string[]; hidden?: string[] } | null;
+    if (layout && Array.isArray(layout.order) && layout.order.includes("cobreathe") && !(layout.hidden ?? []).includes("cobreathe")) return true;
+    const values = (ruleConfig as { values?: Record<string, string> } | null)?.values;
+    if (!values) return false;
+    return values["phoebe:office:contemplation-kind:morning"] === "creation"
+      || values["phoebe:office:contemplation-kind:evening"] === "creation";
+  } catch { return false; }
+}
+
+export async function runBreathMomentSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  if (process.env["BREATH_MOMENT_PUSH"] !== "true") return;
+  try {
+    const rows = await db
+      .select({
+        userId: usersTable.id,
+        userTimezone: usersTable.timezone,
+        ruleConfig: usersTable.ruleConfig,
+        homeLayout: usersTable.homeLayout,
+      })
+      .from(usersTable);
+    const adminRes = await db.execute(sql`
+      SELECT u.id AS "userId" FROM users u JOIN beta_users b ON lower(b.email) = lower(u.email)
+      WHERE b.is_admin = true`);
+    const adminRows = ((adminRes as unknown as { rows?: Array<{ userId: number }> }).rows ?? (adminRes as unknown as Array<{ userId: number }>)) as Array<{ userId: number }>;
+    const admins = new Set(adminRows.map((a) => a.userId));
+
+    for (const r of rows) {
+      try {
+        if (!admins.has(r.userId) && !followsBreath(r.ruleConfig, r.homeLayout)) continue;
+        const tz = r.userTimezone || "America/New_York";
+        if (!opts.forceNow && !isWithinTickWindow(tz, BREATH_MOMENT_TIME)) continue;
+        const today = todayInZone(tz);
+        const dedupeKey = `${today}-breath-moment`;
+
+        const [already] = await db
+          .select({ id: bellNotificationsTable.id })
+          .from(bellNotificationsTable)
+          .where(and(eq(bellNotificationsTable.userId, r.userId), eq(bellNotificationsTable.bellDate, dedupeKey)));
+        if (already) continue;
+
+        // Already breathed today (any device): nothing to nudge toward.
+        const [breathed] = await db
+          .select({ id: breathSessionsTable.id })
+          .from(breathSessionsTable)
+          .where(and(eq(breathSessionsTable.userId, r.userId), eq(breathSessionsTable.day, today)));
+        if (breathed) continue;
+
+        let result;
+        try {
+          result = await sendBreathMomentPush(r.userId);
+        } catch (err) {
+          logger.warn({ err, userId: r.userId }, "[breath-moment] dispatch failed - not deduping so we retry");
+          continue;
+        }
+        if (result.deviceAttempted > 0 && result.deviceSucceeded === 0) {
+          logger.warn({ userId: r.userId }, "[breath-moment] device token did not succeed - not deduping so we retry");
+          continue;
+        }
+        await db.insert(bellNotificationsTable).values({ userId: r.userId, bellDate: dedupeKey, sentAt: new Date() });
+        logger.info({ userId: r.userId, day: today }, "[breath-moment] sent");
+      } catch (err) {
+        logger.error({ err, userId: r.userId }, "[breath-moment] user processing failed");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "[breath-moment] sender failed");
+  }
+}
+
 export async function runContemplationGoalSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   // DISABLED — this fired "you haven't hit your contemplation goal" at ~7pm, a
   // DEFICIT reminder (it nudges BECAUSE you fell short), the opposite of a bell
@@ -2438,6 +2522,9 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // "A moment to reflect" - the Nouwen reading's reflection question, ~10am, to its
   // followers who have not read it yet. OFF unless NOUWEN_REFLECT_PUSH=true.
   { name: "nouwen-reflection",     run: runNouwenReflectionSender },
+  // "Want to take a moment to breathe" - ~3pm, to Breathing Together keepers who have not
+  // breathed today. OFF unless BREATH_MOMENT_PUSH=true.
+  { name: "breath-moment",         run: runBreathMomentSender },
   // Weekly review — re-enabled (owner: "I didn't get the week review
   // notification on my phone"). It was commented out here on the reasoning
   // that its settings UI had been removed; that made "never runs" and "no

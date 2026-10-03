@@ -557,6 +557,8 @@ const NOTIFICATION_LABELS: Record<string, string> = {
   "bell": "Daily bell",
   "breath-together": "Breathing together",
   "vts-commentary": "Dean's commentary",
+  "nouwen-reflection": "A moment to reflect (Nouwen)",
+  "breath-moment": "A moment to breathe",
   "weekly-digest": "Weekly digest",
   "weekly-review": "Weekly review",
   "routine-audit": "Routine check-in",

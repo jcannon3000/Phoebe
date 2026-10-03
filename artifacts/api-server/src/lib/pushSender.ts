@@ -1394,6 +1394,22 @@ export function sendContemplationGoalReminderPush(
  * own asynchronous body (routes/breath.ts). The sender never sends it at zero:
  * the summary screen holds the same line back when nobody else breathed.
  */
+/**
+ * "Want to take a moment to breathe" - the afternoon nudge into Breathing Together
+ * (owner, 2026-10-03). Opens the practice itself, not its intro: ?start=1 is the
+ * quick-launch the home card uses.
+ */
+export function sendBreathMomentPush(userId: number) {
+  return sendPushToUser(userId, {
+    title: "Want to take a moment to breathe",
+    body: "Open to take 12 deep breaths for about three minutes to recenter yourself",
+    path: "/cobreathe?start=1",
+    threadId: "breath-moment",
+    collapseId: `breath-moment-${userId}`,
+    sound: PHOEBE_SOUND_LOW,
+  });
+}
+
 export function sendBreathTogetherPush(userId: number, opts: { others: number }) {
   return sendPushToUser(userId, {
     title: opts.others === 1 ? "You Breathed with 1 other" : `You Breathed with ${opts.others} others`,
