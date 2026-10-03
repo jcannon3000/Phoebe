@@ -7411,7 +7411,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               {/* Phoebe at the right of the date; the text column is narrowed
                   so a long feast name wraps to a second line beneath
                   (owner, 2026-10-03). */}
-              <div style={{ paddingRight: 104 }}>
+              <div style={{ paddingRight: 118 }}>
                 <LiturgicalDateHeader />
               </div>
               <img
@@ -7420,7 +7420,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 aria-hidden="true"
                 draggable={false}
                 style={{
-                  position: "absolute", right: 0, top: -6, width: 88, height: "auto",
+                  position: "absolute", right: 14, top: -6, width: 88, height: "auto",
                   pointerEvents: "none",
                   WebkitMaskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
                   maskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
