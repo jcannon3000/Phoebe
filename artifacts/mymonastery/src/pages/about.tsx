@@ -1,3 +1,4 @@
+import { usePageView } from "@/lib/pageView";
 // ── About ───────────────────────────────────────────────────────────────────
 //
 // Owner, 2026-09-28: "Have that be what comes up when you go to about" — the
@@ -37,6 +38,7 @@ const BG = "#091A10";
  * Phoebe, which has the link and the QR code.
  */
 export default function AboutPage() {
+  usePageView("about");
   return (
     <div style={{ position: "fixed", inset: 0, background: BG, zIndex: 40 }}>
       <iframe

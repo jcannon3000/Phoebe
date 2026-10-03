@@ -2429,6 +2429,18 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_app_engaged_user_day ON app_engaged (user_id, local_date)`);
 
+    // ── page_views: views of public pages (About) ───────────────────────────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS page_views (
+        id SERIAL PRIMARY KEY,
+        page TEXT NOT NULL,
+        visitor TEXT NOT NULL,
+        viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_page_views_page_when ON page_views (page, viewed_at)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_page_views_visitor_when ON page_views (visitor, page, viewed_at)`);
+
     // ── notification_prefs: per-person switches (invitations) ──────────────
     await run(client, `
       CREATE TABLE IF NOT EXISTS notification_prefs (

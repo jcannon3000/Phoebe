@@ -1,3 +1,4 @@
+import { usePageView } from "@/lib/pageView";
 // About deck — the About page as a swipeable slideshow. Reuses the church deck's
 // shell, styling, navigation, and the real app-faithful mocks (DeckShell +
 // Slide) so it looks exactly like the app; only the copy is About-specific.
@@ -169,6 +170,7 @@ const SLIDES: Slide[] = [
 ];
 
 export default function AboutDeckPage() {
+  usePageView("about-deck");
   // No quick auto-advance slide (that's a church-deck-only thing), and hold each
   // slide 2s longer than the default.
   return <DeckShell slides={SLIDES} exitTo="/about" autoAdvanceMs={12000} quickIndex={-1} />;

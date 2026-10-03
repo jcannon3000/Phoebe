@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, appEngagedTable, notificationSendsTable, notificationPrefsTable, usersTable, breathSessionsTable } from "@workspace/db";
+import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, appEngagedTable, notificationSendsTable, notificationPrefsTable, pageViewsTable, usersTable, breathSessionsTable } from "@workspace/db";
 import { and, desc, eq, gte, gt, lt, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { getGardenUserIds } from "../lib/garden";
@@ -80,6 +80,27 @@ router.post("/notification-open", async (req, res): Promise<void> => {
     res.json({ ok: true });
   } catch (err) {
     console.error("[/notification-open] failed:", err);
+    res.json({ ok: false });
+  }
+});
+
+// POST /api/page-view { page, visitor } - one view of a public page (About, its deck). No
+// session needed: most people who read these have no account. `visitor` is a random id the
+// browser made up, never an address. A repeat view of the same page by the same visitor within
+// half an hour is ignored, so a refresh is not a view.
+const COUNTED_PAGES = new Set(["about", "about-deck"]);
+router.post("/page-view", async (req, res): Promise<void> => {
+  const page = typeof req.body?.page === "string" ? req.body.page : "";
+  const visitor = typeof req.body?.visitor === "string" ? req.body.visitor : "";
+  if (!COUNTED_PAGES.has(page) || !/^[A-Za-z0-9_-]{8,40}$/.test(visitor)) { res.status(400).json({ error: "bad_request" }); return; }
+  try {
+    const [recent] = await db.select({ id: pageViewsTable.id }).from(pageViewsTable)
+      .where(and(eq(pageViewsTable.visitor, visitor), eq(pageViewsTable.page, page), gte(pageViewsTable.viewedAt, new Date(Date.now() - 30 * 60 * 1000))))
+      .limit(1);
+    if (!recent) await db.insert(pageViewsTable).values({ page, visitor });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/page-view] failed:", err);
     res.json({ ok: false });
   }
 });

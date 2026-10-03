@@ -189,6 +189,47 @@ router.get("/admin/notification-stats", async (req, res): Promise<void> => {
   }
 });
 
+// GET /api/admin/page-views — views of the public pages (About, its deck): today, last 7 days and
+// this month in Eastern time, the same windows as the rest of this page, with how many different
+// visitors made them. Counted by POST /api/page-view.
+router.get("/admin/page-views", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isBetaAdmin(session.id))) { res.status(403).json({ error: "Forbidden" }); return; }
+  try {
+    const w = appMetricsWindows();
+    const q = await pool.query(
+      `WITH v AS (
+         SELECT page, visitor, to_char((viewed_at AT TIME ZONE $1)::date, 'YYYY-MM-DD') AS day
+         FROM page_views WHERE viewed_at >= $2::timestamptz
+       )
+       SELECT page,
+         COUNT(*) FILTER (WHERE day = $3)::int AS views_today,
+         COUNT(*) FILTER (WHERE day >= $4)::int AS views_week,
+         COUNT(*) FILTER (WHERE day >= $5)::int AS views_month,
+         COUNT(DISTINCT visitor) FILTER (WHERE day = $3)::int AS people_today,
+         COUNT(DISTINCT visitor) FILTER (WHERE day >= $4)::int AS people_week,
+         COUNT(DISTINCT visitor) FILTER (WHERE day >= $5)::int AS people_month
+       FROM v GROUP BY page`,
+      [w.tz, w.sinceTs, w.today, w.weekStart, w.monthStart],
+    );
+    const by: Record<string, any> = {};
+    for (const r of q.rows) by[String(r.page)] = r;
+    const shape = (page: string) => {
+      const r = by[page];
+      return {
+        views: { today: r?.views_today ?? 0, week: r?.views_week ?? 0, month: r?.views_month ?? 0 },
+        people: { today: r?.people_today ?? 0, week: r?.people_week ?? 0, month: r?.people_month ?? 0 },
+      };
+    };
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ about: shape("about"), aboutDeck: shape("about-deck") });
+  } catch (err) {
+    console.error("[admin/page-views] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // GET /api/admin/feed-audit — for every prayer feed, report:
 //   • duplicate slugs / titles (the "Manage shows 2 feeds but there's
 //     really 1" symptom)

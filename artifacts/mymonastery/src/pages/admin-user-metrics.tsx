@@ -468,6 +468,7 @@ export default function AdminAppMetricsPage() {
           </div>
         )}
 
+        <PageViews enabled={!!user && rawIsAdmin} />
         <NotificationOpens enabled={!!user && rawIsAdmin} />
       </div>
     </Layout>
@@ -574,6 +575,46 @@ const NOTIFICATION_LABELS: Record<string, string> = {
 };
 // The reminders people ask about first, in the order they are asked about.
 const NOTIFICATION_ORDER = ["parish-office-morning", "parish-office-evening", "feast-day", "prayed-together"];
+
+type PageViewsData = { about: PvRow; aboutDeck: PvRow };
+type PvRow = { views: Window3; people: Window3 };
+
+/**
+ * VIEWS OF THE ABOUT PAGE (owner, 2026-10-03). Two pages: the About page itself and the About
+ * deck the menu opens first. A view is one load by one visitor, with a repeat inside half an
+ * hour ignored; people are different visitors (a random id each browser makes, never an
+ * address). Counting began when this shipped, and a phone only counts once it runs a build
+ * that carries the counter.
+ */
+function PageViews({ enabled }: { enabled: boolean }) {
+  const { data } = useQuery<PageViewsData>({
+    queryKey: ["/api/admin/page-views"],
+    queryFn: () => apiRequest("GET", "/api/admin/page-views"),
+    enabled,
+    staleTime: 60_000,
+  });
+  const rows = [
+    { label: "About page", caption: "Views of the About page. Counting began when this shipped.", values: data?.about.views ?? { today: 0, week: 0, month: 0 }, people: data?.about.people },
+    { label: "About deck", caption: "Views of the slides the menu's About opens first.", values: data?.aboutDeck.views ?? { today: 0, week: 0, month: 0 }, people: data?.aboutDeck.people },
+  ];
+  return (
+    <section className="mt-10">
+      <p className="text-[11px] tracking-widest uppercase mb-1" style={{ color: FAINT, fontFamily: SPACE_GROTESK }}>Pages</p>
+      <h2 style={{ color: WARM, fontSize: 18, fontWeight: 600, fontFamily: SPACE_GROTESK }}>About views</h2>
+      <div className="mt-3">
+        <Breakdown
+          rows={rows.map((r) => ({
+            label: r.label,
+            caption: r.people
+              ? `${r.caption} ${r.people.today} / ${r.people.week} / ${r.people.month} different people.`
+              : r.caption,
+            values: r.values,
+          }))}
+        />
+      </div>
+    </section>
+  );
+}
 
 type NotificationStats = {
   days: number;
