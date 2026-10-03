@@ -1354,7 +1354,7 @@ async function currentRoutineContext(userId: number): Promise<string> {
     ...rows.map((r) => `\u00b7 [${r.section}] ${r.label} \u2014 ${r.sub}`),
     "",
     "They are ADJUSTING this, not replacing it. Produce the WHOLE routine with",
-    "their change applied. Everything they did not ask to change must come back",
+    "EVERY change they asked for applied (there may be several in one request). Everything they did not ask to change must come back",
     "exactly as it is above \u2014 a practice missing from your output is a practice",
     "deleted from their rule of life, and they did not ask for that.",
     "",
@@ -2000,10 +2000,14 @@ THIS IS AN ADJUSTMENT, NOT A NEW ROUTINE.
 
 ${context}
 
-Ask ONLY about what their change leaves unclear. Never ask about a part of the
+THEY MAY ASK FOR SEVERAL CHANGES AT ONCE ("move evening prayer to nine, add a
+walk, and switch to Forward Day by Day"). Treat each as its own change and carry
+out ALL of them; never act on only the first.
+
+Ask ONLY about what their changes leave unclear. Never ask about a part of the
 routine above that their request doesn't touch — you already have it. If the
-change is completely clear on its own, ask about its edges (when, how long, how
-often), never about the rest of their day.`
+changes are completely clear on their own, ask about their edges (when, how long,
+how often), never about the rest of their day.`
     : system;
 
   const out = await askOpenAi(

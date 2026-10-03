@@ -1034,7 +1034,7 @@ export default function RoutineInterviewPage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {([
-              { v: "adjust" as const, emoji: "✏️", label: "Adjust my routine", sub: "Change one thing. Everything else stays as it is." },
+              { v: "adjust" as const, emoji: "✏️", label: "Adjust my routine", sub: "Change one thing or several. Everything else stays as it is." },
               { v: "scratch" as const, emoji: "🌱", label: "Start from scratch", sub: "Describe your whole practice again." },
             ]).map((o) => {
               const on = mode === o.v;
@@ -1208,7 +1208,7 @@ export default function RoutineInterviewPage() {
               {prescribe
                 ? "Describe the practice you're setting up for them, and any newsletters they read."
                 : adjusting
-                  ? "Just the part you want changed. Everything else stays exactly as it is."
+                  ? "Tell us everything you want changed — one thing or several. The rest stays exactly as it is."
                   : "Describe any daily practices you engage in, and any newsletters you may read."}
             </p>
           </div>
