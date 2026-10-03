@@ -16,7 +16,6 @@
 
 import { turnOffRoutine, NO_ROUTINE_MODE } from "@/lib/routineStart";
 import { finderSkipped, FINDER_FOR_EVERYONE } from "@/lib/finderEntry";
-import { PhoebeHelpCard } from "@/components/PhoebeHelpCard";
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef, useCallback, type ReactNode, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -5004,11 +5003,6 @@ export default function WayOfLoveRuleFlow({
             () => setEntryChoice("off"),
           )}
         </div>
-        {/* Phoebe offers to do it with them - OPEN TO EVERYONE with a session (owner,
-            2026-10-02: "lets open the let phoebe help to everyone").
-            ABOVE Continue, not below it: Continue is a sticky bar with its own panel, and
-            anything after it slid underneath that panel with its top cut off. */}
-        {user && !prescribe && <PhoebeHelpCard />}
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => {
           if (effectiveEntryChoice === "ask") {
             // Carry the way back, so the finished routine returns to the page
@@ -7523,9 +7517,6 @@ export default function WayOfLoveRuleFlow({
         <button onClick={() => adoptRule(stepDef.preset)} style={{ marginTop: 16, width: "100%", background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "16px 20px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
           {t("wol_rule.time_cta", { defaultValue: "Keep this rhythm" })}
         </button>
-
-        {/* Phoebe's help on the first page for people without an account, too. */}
-        {user && !prescribe && <PhoebeHelpCard />}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16, alignItems: "center" }}>
           {isSuperAdmin && (
