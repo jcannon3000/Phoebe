@@ -1327,6 +1327,22 @@ export function sendParishOfficeReminderPush(
 //
 // Tapping opens the in-app paragraph reader (vts-reading.tsx), the same
 // destination as the home card, so the read is credited the usual way.
+/**
+ * "A moment to reflect" - the day's reflection question from the Henri Nouwen
+ * Society's daily meditation, with their name on it, opening their page in the
+ * reader (owner, 2026-10-03). The question is their text, sent unchanged.
+ */
+export function sendNouwenReflectionPush(userId: number, opts: { question: string }) {
+  return sendPushToUser(userId, {
+    title: "A moment to reflect",
+    body: `${opts.question}\n\u2014 Henri Nouwen Society`,
+    path: "/reflect/nouwen",
+    threadId: "nouwen-reflection",
+    collapseId: `nouwen-reflection-${userId}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 export function sendVtsCommentaryPush(
   userId: number,
   opts: { articleTitle?: string | null }

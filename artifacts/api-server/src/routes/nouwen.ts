@@ -61,6 +61,60 @@ export async function resolveTodayNouwen(): Promise<Resolved> {
   }
 }
 
+/**
+ * TODAY'S REFLECTION QUESTION, for the "A moment to reflect" notification.
+ *
+ * The question is one labelled line in the post's body in the same public RSS feed
+ * ("Reflection Question: ..."). It is the ONE piece of their text this app copies
+ * out (owner, 2026-10-03: "lets try it"), and it is always sent with their name and a
+ * tap that opens their own page. Returns null when the newest post is not from the
+ * last day and a half, has no such line, or the line is not a sensible length - a
+ * push with nothing, or somebody else's day, in it is worse than silence.
+ */
+let questionCache: { at: number; value: { question: string; url: string } | null } | null = null;
+
+function decodeEntities(t: string): string {
+  return t
+    .replace(/&#(\d+);/g, (_m, n) => String.fromCodePoint(parseInt(n, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_m, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&nbsp;/g, " ").replace(/&rsquo;/g, "\u2019").replace(/&lsquo;/g, "\u2018")
+    .replace(/&ldquo;/g, "\u201C").replace(/&rdquo;/g, "\u201D").replace(/&mdash;/g, "\u2014")
+    .replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+}
+
+export function extractReflectionQuestion(itemXml: string): string | null {
+  let body = /<content:encoded>([\s\S]*?)<\/content:encoded>/i.exec(itemXml)?.[1] ?? "";
+  body = body.replace(/<!\[CDATA\[|\]\]>/g, "");
+  if (!/<strong/i.test(body)) body = decodeEntities(body); // a feed that escapes its markup
+  const m = /<strong[^>]*>\s*Reflection\s+Question\s*<\/strong>\s*:?\s*([\s\S]*?)<\/p>/i.exec(body);
+  if (!m) return null;
+  const q = decodeEntities(m[1]!.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+  return q.length >= 12 && q.length <= 260 ? q : null;
+}
+
+export async function resolveTodayNouwenQuestion(): Promise<{ question: string; url: string } | null> {
+  if (questionCache && Date.now() - questionCache.at < 30 * 60 * 1000) return questionCache.value;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(FEED_URL, { headers: { "User-Agent": UA }, signal: controller.signal });
+    if (!res.ok) throw new Error(`nouwen feed ${res.status}`);
+    const xml = await res.text();
+    const item = /<item>([\s\S]*?)<\/item>/i.exec(xml)?.[1] ?? "";
+    const published = Date.parse(/<pubDate>([\s\S]*?)<\/pubDate>/i.exec(item)?.[1]?.trim() ?? "");
+    const question = extractReflectionQuestion(item);
+    const found = firstItem(xml);
+    const fresh = Number.isFinite(published) && Date.now() - published < 36 * 60 * 60 * 1000;
+    const value = question && found && fresh ? { question, url: found.url } : null;
+    questionCache = { at: Date.now(), value };
+    return value;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // GET /api/nouwen/today → 302 to today's meditation. Public, no auth.
 // 302 (not 301) so no intermediary caches the target permanently.
 router.get("/nouwen/today", async (_req: Request, res: Response): Promise<void> => {
