@@ -1536,7 +1536,8 @@ const GUIDE_REFLECTIONS = ["nouwen", "taizeprayer", "cac", "ssje", "fdd", "hagio
 // In the order the customizer lists its contemplative forms.
 // Meditating on Spirituals is NOT here (owner, 2026-10-02: "should not be here"): the
 // customizer gates it to admins, so the interview does not offer it to anyone.
-const GUIDE_PRACTICES_ALL = ["creation", "walk", "listening", "payg", "lectio", "rosary"];
+// The customizer's extra-practice order (Examen, Compline) then its contemplative forms.
+const GUIDE_PRACTICES_ALL = ["examen", "compline", "creation", "walk", "listening", "payg", "lectio", "rosary"];
 const GUIDE_MORE = [...GUIDE_REFLECTIONS, ...GUIDE_PRACTICES_ALL];
 
 function guideOption(key: string, side: GuideSide | null): GuideOption | null {
@@ -1582,7 +1583,8 @@ const GUIDE_NAMED: Array<[RegExp, string]> = [
   [/compline|night prayer/i, "compline"],
   [/pray as you go/i, "payg"],
   [/\bicons?\b/i, "icons"],
-  [/contemplative walk|prayer walk|walking prayer/i, "walk"],
+  [/contemplative walk|prayer walk|walking prayer|\bwalk(ing|s)?\b/i, "walk"],
+  [/audio divina|sacred music|hymns?\b|music|singing|listening to/i, "listening"],
   [/breath prayer|breathing/i, "creation"],
   [/daily office|morning prayer|evening prayer|book of common prayer|\bBCP\b/i, "office"],
   // "a devotional" / "my daily devotion" is a daily READING (Henri Nouwen is Phoebe's
@@ -1815,10 +1817,12 @@ Respond with ONLY JSON:
   const eveningKeys = pickKeys(withNamed(data?.evening, GUIDE_EVENING), GUIDE_EVENING, taken, 3, fillFor(GUIDE_EVENING));
   const offered = new Set<string>([...morningKeys, ...eveningKeys]);
   const suggestRef = pickKeys(withNamed(data?.reflections, GUIDE_REFLECTIONS), GUIDE_REFLECTIONS, new Set(), 1, fillFor(GUIDE_REFLECTIONS));
-  const suggestPrac = pickKeys(
-    [...named.filter((k) => GUIDE_PRACTICES_ALL.includes(k) && !offered.has(k)), ...(Array.isArray(data?.practices) ? data.practices : [])],
-    GUIDE_PRACTICES_ALL, offered, 1, fillFor(GUIDE_PRACTICES_ALL),
-  );
+  // The practices slide pre-selects ONLY what the person mentioned (owner, 2026-10-02:
+  // "dont have a contemplative practice pre-selection unless they mention something in
+  // their responses"). No guess from the model, no top-up by score: if nothing in their
+  // words names a practice, nothing is ticked and the whole list is simply there to choose.
+  const suggestPrac = named.filter((k) => GUIDE_PRACTICES_ALL.includes(k) && !offered.has(k)).slice(0, 3);
+
   const shape = (keys: string[], raw: unknown, side: GuideSide | null) =>
     keys.map((k) => { const o = guideOption(k, side)!; return { ...o, title: nameTheyUse(k, text, o.title), why: GUIDE_WHY(raw, k) }; });
   // The WHOLE list: the suggestions first, then the rest, each group in the order
