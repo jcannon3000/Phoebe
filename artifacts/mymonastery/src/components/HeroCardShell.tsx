@@ -43,6 +43,7 @@ export function HeroCardShell({
   return (
     <div {...rest} className={`relative ${className}`}>
       <div
+        data-phoebe-hero=""
         className="relative flex rounded-3xl overflow-hidden"
         style={{
           background: HERO_TINT,
@@ -60,6 +61,24 @@ export function HeroCardShell({
           }}
         />
         {children}
+        {/* PHOEBE ON THE RIGHT OF EVERY HERO (owner, 2026-10-02: "roll out the Phoebe
+            heros"). One place, so all six hero cards and the office hero get her.
+            Her feet are level with the bottom of the button - bottom: 20 is the
+            content's own padding - so the card is no taller than its text and button and
+            there is no space under the CTA; cut at the waist in the source art, so the
+            bottom of her fades out. The content keeps clear of her through the
+            [data-phoebe-hero] rule in index.css. */}
+        <img
+          src="/brand/phoebe-character-420.png"
+          alt=""
+          aria-hidden
+          width={96}
+          style={{
+            position: "absolute", right: 14, bottom: 20, width: 96, height: "auto", pointerEvents: "none", zIndex: 0,
+            WebkitMaskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
+            maskImage: "linear-gradient(to bottom, #000 70%, transparent 100%)",
+          }}
+        />
       </div>
       <div
         aria-hidden
