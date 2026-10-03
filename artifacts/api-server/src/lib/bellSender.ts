@@ -1335,10 +1335,9 @@ export async function runVtsCommentarySender(opts: { forceNow?: boolean } = {}):
  * the Dean's commentary". So the shape is the VTS sender's: a follower check, the
  * recipient's own 10:00 window, a once-a-day dedupe row written only after a send that
  * reached a phone, and a skip for anyone whose read is already recorded today.
- * Super admins get it whether or not they follow (so it can be seen), but are skipped
- * once they have read.
+ * Super admins get it whether or not they follow, and whether or not they have read.
  *
- * OFF UNTIL NOUWEN_REFLECT_PUSH=true (owner: "lets try it", then "hold off ... until that is built"). It copies a
+ * ADMINS ONLY UNTIL NOUWEN_REFLECT_PUSH=true (owner: "lets try it", then "hold off ... until that is built"). It copies a
  * line of another publisher's text out to people (see the note on resolveTodayNouwenQuestion
  * in routes/nouwen), so keep that switch in mind.
  */
@@ -1361,7 +1360,9 @@ function followsNouwen(ruleConfig: unknown, homeLayout: unknown): boolean {
 export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   // HELD OFF until the build that opens the reading is out (owner, 2026-10-03: "hold off on
   // sending those notifications until that is built"). Set NOUWEN_REFLECT_PUSH=true to start it.
-  if (process.env["NOUWEN_REFLECT_PUSH"] !== "true") return;
+  // Owner, 2026-10-03: "turn the Nouwen question notification on for admins" - so it runs
+  // always, but without NOUWEN_REFLECT_PUSH=true only super admins receive it.
+  const everyone = process.env["NOUWEN_REFLECT_PUSH"] === "true";
   try {
     const rows = await db
       .select({
@@ -1380,7 +1381,9 @@ export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {
     let question: { question: string; url: string } | null | undefined;
     for (const r of rows) {
       try {
-        if (!admins.has(r.userId) && !followsNouwen(r.ruleConfig, r.homeLayout)) continue;
+        const isAdmin = admins.has(r.userId);
+        if (!everyone && !isAdmin) continue;
+        if (!isAdmin && !followsNouwen(r.ruleConfig, r.homeLayout)) continue;
         const tz = r.userTimezone || "America/New_York";
         if (!opts.forceNow && !isWithinTickWindow(tz, NOUWEN_REFLECT_TIME)) continue;
         const today = todayInZone(tz);
@@ -1392,7 +1395,8 @@ export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {
           .where(and(eq(bellNotificationsTable.userId, r.userId), eq(bellNotificationsTable.bellDate, dedupeKey)));
         if (already) continue;
 
-        // Already read it today (any device): nothing to nudge toward.
+        // Already read it today (any device): nothing to nudge toward - except admins,
+        // who get it regardless (owner: "dont actually not send it if they have already read").
         const [read] = await db
           .select({ id: reflectionReadsTable.id })
           .from(reflectionReadsTable)
@@ -1401,7 +1405,7 @@ export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {
             eq(reflectionReadsTable.source, "nouwen"),
             eq(reflectionReadsTable.ymd, today),
           ));
-        if (read) continue;
+        if (read && !isAdmin) continue;
 
         // One feed fetch for the whole fan-out, and only once someone qualifies.
         if (question === undefined) question = await resolveTodayNouwenQuestion();
