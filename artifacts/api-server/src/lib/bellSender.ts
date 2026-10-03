@@ -1430,7 +1430,7 @@ export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {
 }
 
 /**
- * "WANT TO TAKE A MOMENT TO BREATHE" - mid-afternoon, to people who keep Breathing
+ * "WANT TO TAKE A MOMENT TO BREATHE" - 7pm (it was 3pm; owner: "more around like 7pm"), to people who keep Breathing
  * Together (owner, 2026-10-03), and never to anyone who has already breathed today.
  *
  * Followers are people whose home carries the Breathing Together card, or who made
@@ -1439,7 +1439,7 @@ export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {
  * after a send that reached a phone, and a skip once a breath is recorded for their
  * local day (breath_sessions). ON; BREATH_MOMENT_PUSH=false switches it off.
  */
-const BREATH_MOMENT_TIME = "15:00";
+const BREATH_MOMENT_TIME = "19:00";
 
 function followsBreath(ruleConfig: unknown, homeLayout: unknown): boolean {
   try {
@@ -2529,7 +2529,7 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // "A moment to reflect" - the Nouwen reading's reflection question, ~10am, to its
   // followers who have not read it yet. Off until NOUWEN_REFLECT_PUSH=true.
   { name: "nouwen-reflection",     run: runNouwenReflectionSender },
-  // "Want to take a moment to breathe" - ~3pm, to Breathing Together keepers who have not
+  // "Want to take a moment to breathe" - 7pm, to Breathing Together keepers who have not
   // breathed today. On; BREATH_MOMENT_PUSH=false turns it off.
   { name: "breath-moment",         run: runBreathMomentSender },
   // Weekly review — re-enabled (owner: "I didn't get the week review
