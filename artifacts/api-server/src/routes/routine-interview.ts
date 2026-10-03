@@ -1744,8 +1744,8 @@ of daily prayer, and how they connect with God. Read all of it. Then choose, fro
   · "evening": exactly THREE ways to close it.
   · "reflections": exactly ONE daily reflection to SUGGEST - the single best fit (the
     person will see the whole list of reflections and may choose any they like).
-  · "practices": exactly THREE other practices to SUGGEST (the person will see
-    the whole list of practices and choose any they like).
+  · "practices": exactly ONE other practice to SUGGEST - the single best fit (the
+    person will see the whole list of practices and may choose any they like).
 
 HOW TO CHOOSE, in this order:
   0. "A devotional" or "my daily devotion" means a daily READING, so offer Henri
@@ -1790,7 +1790,7 @@ Respond with ONLY JSON:
   "morning": [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}],
   "evening": [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}],
   "reflections": [{"key": "...", "why": "..."}],
-  "practices":   [{"key": "...", "why": "..."}, {"key": "...", "why": "..."}, {"key": "...", "why": "..."}]
+  "practices":   [{"key": "...", "why": "..."}]
 }`;
 
   const user = `THEIR ANSWERS:\n${description}${cq ? `\n\nONE MORE QUESTION\nQ: ${cq}\nA: ${ca || "(no answer)"}` : ""}`;
@@ -1811,7 +1811,7 @@ Respond with ONLY JSON:
   const suggestRef = pickKeys(withNamed(data?.reflections, GUIDE_REFLECTIONS), GUIDE_REFLECTIONS, new Set(), 1, fillFor(GUIDE_REFLECTIONS));
   const suggestPrac = pickKeys(
     [...named.filter((k) => GUIDE_PRACTICES_ALL.includes(k) && !offered.has(k)), ...(Array.isArray(data?.practices) ? data.practices : [])],
-    GUIDE_PRACTICES_ALL, offered, 3, fillFor(GUIDE_PRACTICES_ALL),
+    GUIDE_PRACTICES_ALL, offered, 1, fillFor(GUIDE_PRACTICES_ALL),
   );
   const shape = (keys: string[], raw: unknown, side: GuideSide | null) =>
     keys.map((k) => { const o = guideOption(k, side)!; return { ...o, title: nameTheyUse(k, text, o.title), why: GUIDE_WHY(raw, k) }; });
