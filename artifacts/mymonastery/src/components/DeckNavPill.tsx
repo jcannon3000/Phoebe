@@ -63,7 +63,7 @@ export default function DeckNavPill({ label, back, primary, hint, bottomOffsetPx
         @keyframes deck-cta-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .deck-cta-rise { animation: deck-cta-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both; }
       `}</style>
-      <PhoebeRise />
+      <PhoebeRise show={/^\s*1\s+of\b/i.test(label)} />
       <nav
         aria-label="Slide navigation"
         style={{

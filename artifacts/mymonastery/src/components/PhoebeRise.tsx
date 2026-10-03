@@ -50,7 +50,7 @@ function contentBottom(navTop: number): number {
   return Math.min(bottom, navTop + 1e4);
 }
 
-export function PhoebeRise() {
+export function PhoebeRise({ show = true }: { show?: boolean }) {
   const [box, setBox] = useState<{ h: number; bottom: number; room: boolean } | null>(null);
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => {
@@ -71,7 +71,10 @@ export function PhoebeRise() {
     window.addEventListener("resize", soon);
     return () => { later.forEach(clearTimeout); window.clearTimeout(timer.current); mo.disconnect(); window.removeEventListener("resize", soon); };
   }, []);
-  if (!box) return null;
+  // Intro slides only (owner, 2026-10-03: "phoebe should only show up on the intro slides not
+  // the slideshow itself"). Unmounting when hidden lets the rise and fade play again the next
+  // time an intro appears.
+  if (!show || !box) return null;
   return (
     <>
       <style>{`

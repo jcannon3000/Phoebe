@@ -4935,19 +4935,8 @@ export default function WayOfLoveRuleFlow({
           * sense without the questionnaire there"). Same for restoring a past
           * routine, which only appears once there is history to restore.
           */}
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
-          {interviewOnOffer
-            ? t("wol_rule.entry_body", {
-                defaultValue: "Shape it yourself, or describe the practice you already keep and let Phoebe set it up to match.",
-              })
-            : canRevert
-              ? t("wol_rule.entry_body_manual_revert", {
-                  defaultValue: "Walk through it step by step, begin from one of Phoebe's presets, or bring back a rhythm you kept before.",
-                })
-              : t("wol_rule.entry_body_manual", {
-                  defaultValue: "Walk through it step by step, or begin from one of Phoebe's presets.",
-                })}
-        </p>
+        {/* No description under the title (owner, 2026-10-03: "the description is not needed"). */}
+        <div style={{ height: 22 }} />
         {/* Owner: "have being asked be the default." So it's PRE-SELECTED and
             listed first, and the slide gained a Continue — without one, a
             "default" would be decoration, since tapping a row was itself the
