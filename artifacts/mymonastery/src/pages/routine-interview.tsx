@@ -1018,20 +1018,10 @@ export default function RoutineInterviewPage() {
             </p>
           </div>
 
-          {/* Show what they have. The choice is meaningless without it — "adjust
-              my routine" only means something once you can see the routine. */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {currentSettings.map((r, i) => (
-              <div key={`${r.label}-${i}`} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 17, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ display: "block", color: WARM, fontFamily: FONT, fontSize: 14.5, fontWeight: 600 }}>{r.label}</span>
-                  <span style={{ display: "block", color: SAGE, fontFamily: FONT, fontSize: 12.5, marginTop: 1 }}>{r.sub}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-
+          {/* The routine is NOT listed here (owner, 2026-10-02: "they already know their
+              routine ... just have the adjust or start from scratch at the top"). They
+              came from "Shape it with me" knowing what they have; the two choices are
+              the page. */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {([
               { v: "adjust" as const, emoji: "✏️", label: "Adjust my routine", sub: "Change one thing or several. Everything else stays as it is." },
