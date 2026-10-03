@@ -1996,6 +1996,12 @@ export default function WayOfLoveRuleFlow({
       setSingleEditRow(rowId);
       setManualMode("scratch");
       setStep(st);
+      // The entry page ("How would you like to build it?") must not come up over a
+      // deep edit: it renders whenever it is on offer and not yet answered, and it
+      // comes on offer a moment later, once the routine has loaded - which put the
+      // person back at the START of the customizer instead of on the practice they
+      // asked for (reported 2026-10-02, from the gear in the routine interview).
+      setEntryChoiceMade(true);
     } catch { /* no search params — nothing to open */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
