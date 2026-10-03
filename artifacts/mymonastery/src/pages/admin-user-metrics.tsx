@@ -586,7 +586,9 @@ type NotificationStats = {
  * opened the app by its icon is not counted, so the rate is a floor.
  */
 function NotificationOpens({ enabled }: { enabled: boolean }) {
-  const [days, setDays] = useState(30);
+  // TODAY FIRST, AND THE DEFAULT (owner, 2026-10-03: "I want this to be today" ·
+  // "a pill that shows today"). 0 means since midnight, Eastern — see the route.
+  const [days, setDays] = useState(0);
   const { data, isLoading } = useQuery<NotificationStats>({
     queryKey: ["/api/admin/notification-stats", days],
     queryFn: () => apiRequest("GET", `/api/admin/notification-stats?days=${days}`),
@@ -606,7 +608,7 @@ function NotificationOpens({ enabled }: { enabled: boolean }) {
         Opened means the app was opened within an hour of the notification. Tapped is the app opened from the notification itself, which only phones on a newer build can report. Counting began when this shipped.
       </p>
       <div className="flex gap-2 mb-3">
-        {[7, 30, 90].map((d) => (
+        {[0, 7, 30, 90].map((d) => (
           <button
             key={d}
             type="button"
@@ -617,7 +619,7 @@ function NotificationOpens({ enabled }: { enabled: boolean }) {
               border: "1px solid rgba(143,175,150,0.35)",
             }}
           >
-            {d} days
+            {d === 0 ? "Today" : `${d} days`}
           </button>
         ))}
       </div>
@@ -630,7 +632,7 @@ function NotificationOpens({ enabled }: { enabled: boolean }) {
         </div>
         {isLoading && <p className="py-3 text-sm" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Loading…</p>}
         {!isLoading && kinds.length === 0 && (
-          <p className="py-3 text-sm" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>No notifications logged yet.</p>
+          <p className="py-3 text-sm" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{days === 0 ? "Nothing sent yet today." : "No notifications logged yet."}</p>
         )}
         {kinds.map((k) => (
           <div key={k.kind} className="grid items-baseline gap-x-2 py-3" style={{ gridTemplateColumns: COLS, borderTop: "1px solid rgba(200,212,192,0.08)" }}>

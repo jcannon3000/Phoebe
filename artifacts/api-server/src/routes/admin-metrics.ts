@@ -146,7 +146,11 @@ router.get("/admin/notification-stats", async (req, res): Promise<void> => {
   if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
   if (!(await isBetaAdmin(session.id))) { res.status(403).json({ error: "Forbidden" }); return; }
   const dRaw = typeof req.query.days === "string" ? parseInt(req.query.days, 10) : NaN;
-  const days = Number.isFinite(dRaw) ? Math.min(Math.max(dRaw, 1), 365) : 30;
+  // days=0 is TODAY: since midnight on the calendar the rest of the metrics use
+  // (Eastern, as lib/appMetricsSql), not the last 24 hours — a rolling day would
+  // still be counting last evening's notifications at 9 in the morning.
+  const today = dRaw === 0;
+  const days = today ? 0 : Number.isFinite(dRaw) ? Math.min(Math.max(dRaw, 1), 365) : 30;
   try {
     const q = await pool.query(
       `SELECT kind,
@@ -162,10 +166,12 @@ router.get("/admin/notification-stats", async (req, res): Promise<void> => {
               ROUND((PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (opened_at - sent_at)) / 60.0)
                 FILTER (WHERE opened_at IS NOT NULL))::numeric, 1)::float AS median_minutes
          FROM notification_sends
-        WHERE sent_at >= now() - ($1 || ' days')::interval
+        WHERE sent_at >= ${today
+          ? "(date_trunc('day', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York')"
+          : "now() - ($1 || ' days')::interval"}
         GROUP BY kind
         ORDER BY COUNT(*) DESC`,
-      [String(days)],
+      today ? [] : [String(days)],
     );
     res.setHeader("Cache-Control", "no-store");
     res.json({
