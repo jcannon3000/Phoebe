@@ -692,7 +692,7 @@ export default function RoutineInterviewPage() {
     setLocation(prescribeBack);
   };
 
-  const applySpec = async () => {
+  const applySpec = async (dest: string = "/dashboard") => {
     if (!spec || applying) return;
     setApplying(true);
     setError(null);
@@ -718,7 +718,7 @@ export default function RoutineInterviewPage() {
       qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
       qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
       qc.invalidateQueries({ queryKey: ["/api/me/silence-ladder"] });
-      setLocation("/dashboard");
+      setLocation(dest);
     } catch {
       setError("Couldn't save that routine just now. Try again.");
       setApplying(false);
@@ -2121,24 +2121,18 @@ export default function RoutineInterviewPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          // The office and the sit already HAVE a full editor —
-                          // their read-back slide, with the format dropdown,
-                          // the reminder switch and the sit controls. Send them
-                          // there rather than growing a second copy here that
-                          // would drift from the first.
-                          const target = r.id === "contemplation"
-                            ? "contemplation"
-                            : r.id.startsWith("side:") ? r.id.slice("side:".length) : null;
-                          if (target && confirmSections.length > 0) {
-                            const idx = 0;
-                            {
-                              setError(null);
-                              setEditingRow(null);
-                              setConfirmIndex(idx);
-                              setReturnToReview(true);
-                              setPhase("confirm");
-                              return;
-                            }
+                          // THE GEAR ON A PRAYER ROW OPENS THE FULL CUSTOMIZER at that
+                          // practice's own slides (owner, 2026-10-02: "it should have gone
+                          // to what we would have seen in the manual full customizer"),
+                          // not a page of our own. That editor works on the SAVED routine,
+                          // so the routine built here is saved first; the customizer then
+                          // returns to the home. (A routine being written for someone else
+                          // is never saved to this account, so it keeps the panel below.)
+                          const opensCustomizer = !prescribe
+                            && (r.id === "contemplation" || r.id.startsWith("side:") || r.id.startsWith("extra:"));
+                          if (opensCustomizer) {
+                            void applySpec(`/rule-of-life?edit=${encodeURIComponent(r.id)}&return=/dashboard`);
+                            return;
                           }
                           setEditingRow(open ? null : r.id);
                         }}
@@ -2249,7 +2243,7 @@ export default function RoutineInterviewPage() {
 
         <button
           type="button"
-          onClick={prescribe ? handOffPrescribed : applySpec}
+          onClick={prescribe ? handOffPrescribed : () => void applySpec()}
           disabled={applying}
           style={{ ...primaryBtn, opacity: applying ? 0.6 : 1 }}
         >
