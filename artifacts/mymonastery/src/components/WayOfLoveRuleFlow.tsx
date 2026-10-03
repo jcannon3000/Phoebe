@@ -17,6 +17,7 @@
 import { turnOffRoutine, NO_ROUTINE_MODE } from "@/lib/routineStart";
 import { finderSkipped, FINDER_FOR_EVERYONE } from "@/lib/finderEntry";
 import { PhoebeHelpCard } from "@/components/PhoebeHelpCard";
+import { resetRoutineToDefault } from "@/lib/resetRoutine";
 import { COMMUNITY_FEATURES_ENABLED } from "@/lib/communityFlag";
 import { useState, useEffect, useRef, useCallback, type ReactNode, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -1050,7 +1051,7 @@ export default function WayOfLoveRuleFlow({
   // admin opening this; manual is the opt-out.
   // "Ask me" is the default only for those who have it — everyone else came
   // here to edit, so the manual path leads.
-  const [entryChoice, setEntryChoice] = useState<"ask" | "manual" | "preset" | "revert" | "off">("ask");
+  const [entryChoice, setEntryChoice] = useState<"ask" | "manual" | "preset" | "revert" | "reset" | "off">("ask");
   // (Removed: the weekly-cards step's own on/off state. That step is gone and
   // the card defaults ON — its toggle lives in Settings → Home display, which
   // owns the same phoebe:hide-turn-learn-pray key.)
@@ -4136,7 +4137,7 @@ export default function WayOfLoveRuleFlow({
   // query: seeding the state from it would race, and a super admin who loaded
   // slowly would silently lose their default.
   const canRevert = hasRoutineHistory && !prescribe;
-  const effectiveEntryChoice: "ask" | "manual" | "preset" | "revert" | "off" =
+  const effectiveEntryChoice: "ask" | "manual" | "preset" | "revert" | "reset" | "off" =
     entryChoice === "ask" && (!isSuperAdmin || ROUTINE_INTERVIEW_ENTRY_HIDDEN) ? "manual"
       : entryChoice === "revert" && !canRevert ? "manual"
         : entryChoice;
@@ -4986,6 +4987,15 @@ export default function WayOfLoveRuleFlow({
             t("wol_rule.entry_revert_sub", { defaultValue: "Restore a rhythm you kept before." }),
             () => setEntryChoice("revert"),
           )}
+          {/* RESET TO DEFAULT (owner, 2026-10-03: "of the top cards, have 'reset to default' be
+              an option"). The same wipe-and-reseed Settings offers; the Continue below asks
+              before it runs. */}
+          {!prescribe && choiceRow(
+            effectiveEntryChoice === "reset",
+            `🔄 ${t("wol_rule.entry_reset", { defaultValue: "Reset to default" })}`,
+            t("wol_rule.entry_reset_sub", { defaultValue: "Start over with Phoebe's standard daily rhythm. What you've already prayed stays." }),
+            () => setEntryChoice("reset"),
+          )}
           {/* TURN OFF (owner, 2026-09-29: "a fourth option, at the bottom of
               the screen, that could revert to just the practices view on the
               home screen"). Nothing is deleted — lib/routineStart keeps the
@@ -5013,6 +5023,14 @@ export default function WayOfLoveRuleFlow({
             return;
           }
           if (effectiveEntryChoice === "revert") { setLocation("/routine-history"); return; }
+          if (effectiveEntryChoice === "reset") {
+            if (!window.confirm(t("wol_rule.entry_reset_confirm", { defaultValue: "Reset your routine to the default? Your custom practices and changes are cleared; what you've already prayed stays." }))) return;
+            void (async () => {
+              try { await resetRoutineToDefault({ realUser: !!user && !user.isAnonymous, applyAuth: (u) => qc.setQueryData(["/api/auth/me"], u) }); } catch { /* still land on the fresh home */ }
+              window.location.href = "/dashboard";
+            })();
+            return;
+          }
           if (effectiveEntryChoice === "off") { turnOffRoutine(); setLocation("/dashboard"); return; }
           // The preset list is a mode of the same flow, not another page: mark
           // the entry answered and switch modes, so Back from the list returns
