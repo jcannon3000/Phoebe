@@ -298,7 +298,12 @@ kept_raw AS (
 ),
 kept AS (
   SELECT DISTINCT person, day, family, practice FROM kept_raw k
-  WHERE NOT EXISTS (SELECT 1 FROM sim_devices sd WHERE sd.person = k.person)
+  -- "Stayed a minute" stands in for a practice only for someone who kept NOTHING else
+  -- that day (owner, 2026-10-03: "only count that once per day per user"): a person
+  -- who prayed three things and also lingered is not four.
+  WHERE NOT (k.practice = 'engaged' AND EXISTS (
+          SELECT 1 FROM kept_raw o WHERE o.person = k.person AND o.day = k.day AND o.practice <> 'engaged'))
+    AND NOT EXISTS (SELECT 1 FROM sim_devices sd WHERE sd.person = k.person)
     AND NOT EXISTS (SELECT 1 FROM sim_days s WHERE s.person = k.person AND s.day = k.day)
 ),
 opens_raw AS (
