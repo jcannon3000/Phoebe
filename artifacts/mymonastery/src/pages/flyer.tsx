@@ -349,42 +349,28 @@ async function drawFlyerBack(canvas: HTMLCanvasElement) {
   ctx.fillStyle = "rgba(16,35,26,0.14)";
   ctx.fillRect(M, 268, col, 3);
 
-  // The idea, large.
-  ctx.fillStyle = GREEN;
-  ctx.beginPath(); ctx.roundRect(M, 330, 112, 10, 5); ctx.fill();
-  ctx.fillStyle = INK;
-  let size = 100, head: string[] = [];
-  for (; size >= 72; size -= 4) {
-    ctx.font = `700 ${size}px ${FONT}`;
-    head = wrap(ctx, "Monks have always prayed on a rhythm.", col);
-    if (head.length <= 2) break;
-  }
-  const lead = Math.round(size * 1.14);
-  let y = 380 + Math.round(size * 0.95);
-  for (const line of head) { ctx.fillText(line, M, y); y += lead; }
-
   // Two passages, the width of the page.
   const passages: Array<[string, string]> = [
     ["A structure that holds.", "For centuries, monks have kept steady through hard times with structured habits of prayer: fixed times, a familiar order, simple practices repeated daily. The structure does the remembering, so prayer does not wait on mood or a free afternoon."],
     ["Phoebe walks you through it.", "Open the app and it shows what comes next in your day and leads you through it, one practice at a time. The routine is yours to shape: choose your practices, set the times, and change them as your days change."],
   ];
-  let py = y + 34;
+  let py = 440;
   for (const [title, body] of passages) {
     ctx.fillStyle = GREEN;
     ctx.font = `700 54px ${FONT}`;
-    ctx.fillText(title, M, py); py += 56;
+    ctx.fillText(title, M, py); py += 78;
     ctx.fillStyle = "rgba(16,35,26,0.82)";
     ctx.font = `400 40px ${FONT}`;
-    for (const line of wrap(ctx, body, col)) { ctx.fillText(line, M, py); py += 56; }
-    py += 40;
+    for (const line of wrap(ctx, body, col)) { ctx.fillText(line, M, py); py += 64; }
+    py += 80;
   }
 
   // Three screens of the customizer along the foot.
   // As wide as will fit between the passages and the bottom margin (with room for a caption),
   // never wider than 380.
-  const phoneTop = py + 10;
-  const room = (H - 130) - phoneTop - 80;
-  const phoneW = Math.min(380, Math.floor((room - 24) / (1151 / 560)) + 24);
+  const phoneTop = py + 30;
+  const room = (H - 150) - phoneTop - 80;
+  const phoneW = Math.min(400, Math.floor((room - 24) / (1151 / 560)) + 24);
   const gap = Math.floor((col - phoneW * 3) / 2);
   // REAL screenshots of the full customizer (components/WayOfLoveRuleFlow), not redraws -
   // owner, 2026-10-03: "those mocks are still not faithful to the actual app".
