@@ -1345,6 +1345,18 @@ async function currentRoutineContext(userId: number): Promise<string> {
     "their change applied. Everything they did not ask to change must come back",
     "exactly as it is above \u2014 a practice missing from your output is a practice",
     "deleted from their rule of life, and they did not ask for that.",
+    "",
+    "TWO RULES FOR READING THEIR REQUEST AGAINST THIS LIST:",
+    "\u00b7 Name ONLY practices that appear above. Never mention, ask about or",
+    "  assume a practice that is not listed (a reported question asked whether a",
+    "  reflection should replace a \"Morning Scripture Reading\" the person did not",
+    "  have).",
+    "\u00b7 A DAILY REFLECTION is Forward Day by Day, Henri Nouwen's Daily Devotion,",
+    "  the CAC meditation, SSJE, Taizé Daily Prayer. \"Change to X\" / \"switch to X\"",
+    "  where X is one of those REPLACES their current daily reflection (the",
+    "  reflection rows above) \u2014 it never replaces a prayer, an office or a",
+    "  reading. Do not ask replace-or-add; ask only if they currently have",
+    "  SEVERAL reflections and it is unclear which one is meant, naming those.",
   ].join("\n");
 }
 
