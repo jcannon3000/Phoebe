@@ -89,6 +89,9 @@ const PRACTICE_LABEL: Record<string, string> = {
   compline: "Compline", noonday: "Midday Prayer", icons: "Praying with Icons", taize: "Taizé meditation",
   andrews: "Andrew's Version",
   spirituals: "Meditating on Spirituals", podcasts: "Podcasts", lectio: "Lectio Divina",
+  // The Rosary and Pray As You Go have cards and, until now, no row (found 2026-10-02 when the
+  // routine interview offered them: chosen, kept, and missing from the review).
+  rosary: "The Rosary", payg: "Pray As You Go Daily",
   // The Prayer List card had no row either (audit 2026-09-04).
   "prayer-list": "Prayer List",
 };
@@ -115,7 +118,7 @@ const PRACTICE_EMOJI: Record<string, string> = {
   // visio is in PRACTICE_LABEL; without it here the row fell back to ✨.
   cobreathe: "🌍", listening: "🎵", walk: "🚶🏽", reading: "📖", examen: "🌗",
   visio: "🖼️",
-  compline: "🌙", noonday: "☀️", icons: "🪟", taize: "🕯️", spirituals: "🎶", podcasts: "🎙️", lectio: "📜", andrews: "📰",
+  compline: "🌙", noonday: "☀️", icons: "🪟", taize: "🕯️", spirituals: "🎶", podcasts: "🎙️", lectio: "📜", andrews: "📰", rosary: "📿", payg: "🙇🏽",
 };
 
 const ALWAYS_ANYTIME = new Set(["cobreathe", "listening", "examen", "walk"]);
@@ -369,6 +372,12 @@ export function describeSpec(spec: {
   for (const key of spec.homeLayout.order) {
     const name = PRACTICE_LABEL[key];
     if (!name || hidden.has(key)) continue;
+    // A practice that IS a side's prayer (the Examen or Compline as the evening
+    // prayer) already reads back as that side's row ("Evening Examen"). Its home
+    // card key sits in the layout too, which listed it a second time as "The
+    // Examen" (reported 2026-10-02: "it did Examen twice").
+    if ((key === "examen" || key === "compline") &&
+        (rc["phoebe:office:level:morning"] === key || rc["phoebe:office:level:evening"] === key)) continue;
     const v = rc[`phoebe:slot:${key}`] ?? "anytime";
     // Owner: "if there's a contemplative walk or something in it as well, don't
     // have that on the third section's 'is this right' page — because we want
