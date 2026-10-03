@@ -1358,11 +1358,10 @@ function followsNouwen(ruleConfig: unknown, homeLayout: unknown): boolean {
 }
 
 export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {}): Promise<void> {
-  // HELD OFF until the build that opens the reading is out (owner, 2026-10-03: "hold off on
-  // sending those notifications until that is built"). Set NOUWEN_REFLECT_PUSH=true to start it.
-  // Owner, 2026-10-03: "turn the Nouwen question notification on for admins" - so it runs
-  // always, but without NOUWEN_REFLECT_PUSH=true only super admins receive it.
-  const everyone = process.env["NOUWEN_REFLECT_PUSH"] === "true";
+  // ON FOR EVERYONE since the build that opens the reading is live on the App Store (owner,
+  // 2026-10-03: "the new version is now live ... start sending the nouwen notification to
+  // everyone"). Set NOUWEN_REFLECT_PUSH=false to hold it back to super admins only.
+  const everyone = process.env["NOUWEN_REFLECT_PUSH"] !== "false";
   try {
     const rows = await db
       .select({
@@ -2531,7 +2530,7 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // VTS Dean's Commentary — weekday ~8am nudge for readers who follow it.
   { name: "vts-commentary",        run: runVtsCommentarySender },
   // "A moment to reflect" - the Nouwen reading's reflection question, ~10am, to its
-  // followers who have not read it yet. Off until NOUWEN_REFLECT_PUSH=true.
+  // followers who have not read it yet. On; NOUWEN_REFLECT_PUSH=false limits it to admins.
   { name: "nouwen-reflection",     run: runNouwenReflectionSender },
   // "Want to take a moment to breathe" - 7pm, to Breathing Together keepers who have not
   // breathed today. On; BREATH_MOMENT_PUSH=false turns it off.
