@@ -1338,9 +1338,9 @@ export async function runVtsCommentarySender(opts: { forceNow?: boolean } = {}):
  * Super admins get it whether or not they follow (so it can be seen), but are skipped
  * once they have read.
  *
- * OFF UNLESS NOUWEN_REFLECT_PUSH=true: it copies a line of another publisher's text out
- * to people, which is worth switching on deliberately (see the note on
- * resolveTodayNouwenQuestion in routes/nouwen).
+ * ON BY DEFAULT (owner: "lets try it"); NOUWEN_REFLECT_PUSH=false switches it off. It copies a
+ * line of another publisher's text out to people (see the note on resolveTodayNouwenQuestion
+ * in routes/nouwen), so keep that switch in mind.
  */
 const NOUWEN_REFLECT_TIME = "10:00";
 
@@ -1359,7 +1359,7 @@ function followsNouwen(ruleConfig: unknown, homeLayout: unknown): boolean {
 }
 
 export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {}): Promise<void> {
-  if (process.env["NOUWEN_REFLECT_PUSH"] !== "true") return;
+  if (process.env["NOUWEN_REFLECT_PUSH"] === "false") return; // on by default; set to "false" to switch off
   try {
     const rows = await db
       .select({
@@ -1435,7 +1435,7 @@ export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {
  * it a half of the day's contemplative practice; super admins are always eligible so
  * it can be seen. The recipient's own 15:00, a once-a-day dedupe row written only
  * after a send that reached a phone, and a skip once a breath is recorded for their
- * local day (breath_sessions). OFF unless BREATH_MOMENT_PUSH=true.
+ * local day (breath_sessions). ON by default; BREATH_MOMENT_PUSH=false switches it off.
  */
 const BREATH_MOMENT_TIME = "15:00";
 
@@ -1451,7 +1451,7 @@ function followsBreath(ruleConfig: unknown, homeLayout: unknown): boolean {
 }
 
 export async function runBreathMomentSender(opts: { forceNow?: boolean } = {}): Promise<void> {
-  if (process.env["BREATH_MOMENT_PUSH"] !== "true") return;
+  if (process.env["BREATH_MOMENT_PUSH"] === "false") return; // on by default; set to "false" to switch off
   try {
     const rows = await db
       .select({
@@ -2520,10 +2520,10 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // VTS Dean's Commentary — weekday ~8am nudge for readers who follow it.
   { name: "vts-commentary",        run: runVtsCommentarySender },
   // "A moment to reflect" - the Nouwen reading's reflection question, ~10am, to its
-  // followers who have not read it yet. OFF unless NOUWEN_REFLECT_PUSH=true.
+  // followers who have not read it yet. On by default; NOUWEN_REFLECT_PUSH=false turns it off.
   { name: "nouwen-reflection",     run: runNouwenReflectionSender },
   // "Want to take a moment to breathe" - ~3pm, to Breathing Together keepers who have not
-  // breathed today. OFF unless BREATH_MOMENT_PUSH=true.
+  // breathed today. On by default; BREATH_MOMENT_PUSH=false turns it off.
   { name: "breath-moment",         run: runBreathMomentSender },
   // Weekly review — re-enabled (owner: "I didn't get the week review
   // notification on my phone"). It was commented out here on the reasoning
