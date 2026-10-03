@@ -652,7 +652,17 @@ export default function RoutineInterviewPage() {
     setGuided(true);
     setPhase("thinking-guide");
     try {
-      const res = (await apiRequest("POST", "/api/routine-interview/guide/options", { description: text })) as GuideRecs | null;
+      // One quiet retry on a gateway failure: a deploy restarting the server mid-request
+      // answers "Application failed to respond" (a 502 with no JSON), and the second
+      // attempt, seconds later, lands on the new instance (seen 2026-10-02).
+      const ask = () => apiRequest("POST", "/api/routine-interview/guide/options", { description: text }) as Promise<GuideRecs | null>;
+      let res: GuideRecs | null;
+      try { res = await ask(); } catch (first: any) {
+        const code = first?.body?.error;
+        if (code || (typeof first?.status === "number" && first.status < 500)) throw first;
+        await new Promise((r) => setTimeout(r, 2500));
+        res = await ask();
+      }
       if (!res || !Array.isArray(res.morning) || !Array.isArray(res.evening) || !Array.isArray(res.reflections) || !Array.isArray(res.practices)) throw new Error("ai_bad_json");
       setRecs(res);
       setPickMorning(null); setPickEvening(null);
