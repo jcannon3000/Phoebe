@@ -1437,7 +1437,7 @@ export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {
  * it a half of the day's contemplative practice; super admins are always eligible so
  * it can be seen. The recipient's own 15:00, a once-a-day dedupe row written only
  * after a send that reached a phone, and a skip once a breath is recorded for their
- * local day (breath_sessions). OFF until BREATH_MOMENT_PUSH=true.
+ * local day (breath_sessions). ON; BREATH_MOMENT_PUSH=false switches it off.
  */
 const BREATH_MOMENT_TIME = "15:00";
 
@@ -1453,8 +1453,9 @@ function followsBreath(ruleConfig: unknown, homeLayout: unknown): boolean {
 }
 
 export async function runBreathMomentSender(opts: { forceNow?: boolean } = {}): Promise<void> {
-  // HELD OFF alongside the Nouwen one (same instruction). Set BREATH_MOMENT_PUSH=true to start it.
-  if (process.env["BREATH_MOMENT_PUSH"] !== "true") return;
+  // ON (owner, 2026-10-03: "i want a moment to breath on"); BREATH_MOMENT_PUSH=false switches it off.
+  // The Nouwen note is still held off until its build is out.
+  if (process.env["BREATH_MOMENT_PUSH"] === "false") return;
   try {
     const rows = await db
       .select({
@@ -2529,7 +2530,7 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // followers who have not read it yet. Off until NOUWEN_REFLECT_PUSH=true.
   { name: "nouwen-reflection",     run: runNouwenReflectionSender },
   // "Want to take a moment to breathe" - ~3pm, to Breathing Together keepers who have not
-  // breathed today. Off until BREATH_MOMENT_PUSH=true.
+  // breathed today. On; BREATH_MOMENT_PUSH=false turns it off.
   { name: "breath-moment",         run: runBreathMomentSender },
   // Weekly review — re-enabled (owner: "I didn't get the week review
   // notification on my phone"). It was commented out here on the reasoning
