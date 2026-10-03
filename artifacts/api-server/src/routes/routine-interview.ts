@@ -107,7 +107,13 @@ const MODEL = process.env.ROUTINE_INTERVIEW_MODEL || "gpt-5.6-luna";
  *
  * Both default to ROUTINE_INTERVIEW_MODEL, so setting nothing changes nothing.
  */
-const FOLLOWUP_MODEL = process.env.ROUTINE_INTERVIEW_FOLLOWUP_MODEL || MODEL;
+// UPPED (owner, 2026-10-02: "up the model"): the questions and the options are the
+// judgment calls, so they default to the full gpt-5.6 rather than the cheap tier.
+// The name is a best guess at the next tier up; if this account cannot see it,
+// askOpenAi falls back to MODEL (below) instead of failing the interview, and logs
+// which model it could not find. Set ROUTINE_INTERVIEW_FOLLOWUP_MODEL to the exact
+// name to choose one on purpose.
+const FOLLOWUP_MODEL = process.env.ROUTINE_INTERVIEW_FOLLOWUP_MODEL || "gpt-5.6";
 const BUILD_MODEL = process.env.ROUTINE_INTERVIEW_BUILD_MODEL || MODEL;
 
 // ── The FLAT catalogue (the new framework) ───────────────────────────────────
@@ -715,6 +721,12 @@ async function askOpenAi(
       return { ok: false, status: 502, error: "ai_bad_key" };
     }
     if (res.status === 404 || /model_not_found|does not exist|do not have access/i.test(body)) {
+      // A model this account cannot see: fall back to the default model once, so a
+      // guessed or retired name costs quality, not the whole interview.
+      if (model !== MODEL) {
+        console.warn(`[routine-interview] model "${model}" unavailable - falling back to "${MODEL}"`);
+        return askOpenAi(system, user, maxTokens, MODEL);
+      }
       return { ok: false, status: 502, error: "ai_bad_model" };
     }
     // OpenAI returns 429 for two unrelated things: too many requests, and an
