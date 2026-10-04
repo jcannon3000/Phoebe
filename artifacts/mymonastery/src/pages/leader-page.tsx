@@ -28,10 +28,10 @@ const NEWSLETTER_LABELS: Record<string, string> = {
 type Profile = { displayName: string; welcome: string | null; newsletters: string[] };
 
 const QUESTIONS: { key: "morning" | "evening" | "connect" | "grow"; title: string; hint: string; placeholder: string }[] = [
-  { key: "morning", title: "How would you like to pray in the morning?",
+  { key: "morning", title: "How do you pray, or how would you like to pray, in the morning?",
     hint: "A few quiet minutes, a short reading, the Daily Office, nothing at all — whatever is true for you.",
     placeholder: "In the morning I'd like to…" },
-  { key: "evening", title: "How would you like to pray in the evening?",
+  { key: "evening", title: "How do you pray, or how would you like to pray, in the evening?",
     hint: "The end of the day can look very different from its beginning.",
     placeholder: "In the evening I'd like to…" },
   { key: "connect", title: "How do you best connect with God?",
@@ -142,7 +142,7 @@ export default function LeaderPage() {
       {step === 0 && (<>
         <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: SAGE, fontFamily: FONT }}>A rhythm for you 🌿</p>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.2 }}>
-          Pray with {profile.displayName}
+          Have {profile.displayName.trim().split(/\s+/)[0]} design a routine for you
         </h1>
         <p style={{ fontSize: 15, color: "rgba(240,237,230,0.9)", fontFamily: FONT, lineHeight: 1.5 }}>
           {profile.welcome?.trim() || "Tell me a little about how you'd like to pray, and I'll put together a daily rhythm for you."}

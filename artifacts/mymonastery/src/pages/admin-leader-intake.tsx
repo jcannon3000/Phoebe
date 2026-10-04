@@ -69,8 +69,8 @@ export default function AdminLeaderIntakePage() {
           </div>
 
           {([
-            ["How would you like to pray in the morning?", i.morning],
-            ["How would you like to pray in the evening?", i.evening],
+            ["How do you pray, or how would you like to pray, in the morning?", i.morning],
+            ["How do you pray, or how would you like to pray, in the evening?", i.evening],
             ["How do you best connect with God?", i.connect],
             ["How would you like to grow in your prayer life?", i.grow],
           ] as const).map(([q, a]) => (

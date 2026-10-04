@@ -701,8 +701,8 @@ export default function RoutineInterviewPage() {
           payg: "Pray As You Go", taizeprayer: "Taize Daily Prayer",
         };
         const lines = [
-          ["How would you like to pray in the morning?", i.morning],
-          ["How would you like to pray in the evening?", i.evening],
+          ["How do you pray, or how would you like to pray, in the morning?", i.morning],
+          ["How do you pray, or how would you like to pray, in the evening?", i.evening],
           ["How do you best connect with God?", i.connect],
           ["How would you like to grow in your prayer life?", i.grow],
         ].filter(([, a]) => String(a ?? "").trim()).map(([q, a]) => `${q}\n${String(a).trim()}`);
