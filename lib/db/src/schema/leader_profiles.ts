@@ -17,11 +17,15 @@ export const leaderProfilesTable = pgTable("leader_profiles", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// One person's answers to the five questions. Name and email are REQUIRED —
-// the leader has to be able to write back.
+// One person's answers to the five questions. They come from a signed-in
+// ACCOUNT, so name and email are always there for the leader to write back.
 export const routineIntakesTable = pgTable("routine_intakes", {
   id: serial("id").primaryKey(),
   leaderProfileId: integer("leader_profile_id").notNull().references(() => leaderProfilesTable.id, { onDelete: "cascade" }),
+  // Whoever answered MUST have an account (owner, 2026-10-04): the routine is
+  // delivered to it as well as emailed. name/email are copied from the account
+  // when they answer, so the leader can write back even if the account changes.
+  userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   email: text("email").notNull(),
   morning: text("morning").notNull().default(""),

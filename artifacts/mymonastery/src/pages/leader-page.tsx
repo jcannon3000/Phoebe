@@ -4,8 +4,9 @@
  * account needed. The answers go to that leader's inbox (/admin/leaders), who
  * designs a routine for them and sends it by link or to their account.
  */
-import { useState } from "react";
-import { useParams } from "wouter";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -54,11 +55,33 @@ export default function LeaderPage() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({ morning: "", evening: "", connect: "", grow: "" });
   const [newsletters, setNewsletters] = useState<string[]>([]);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [website, setWebsite] = useState(""); // honeypot
+  const { user, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const [sending, setSending] = useState(false);
+  const [sentName, setSentName] = useState("");
+  const [sentEmail, setSentEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Their answers wait in this browser while they make an account, so signing up
+  // does not mean starting over. (Wrapped: storage can be blocked.)
+  const draftKey = `phoebe:leader-draft:${slug}`;
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const d = JSON.parse(raw) as { answers?: typeof answers; newsletters?: string[] };
+      if (d.answers) setAnswers((a) => ({ ...a, ...d.answers }));
+      if (Array.isArray(d.newsletters)) setNewsletters(d.newsletters);
+      if (new URLSearchParams(window.location.search).get("resume") === "1") setStep(6);
+    } catch { /* no draft */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function saveDraft() {
+    try { localStorage.setItem(draftKey, JSON.stringify({ answers, newsletters })); } catch { /* blocked */ }
+  }
 
   const leaf = LEAF_PHOTOS[0];
   const wrap: React.CSSProperties = {
@@ -93,18 +116,22 @@ export default function LeaderPage() {
     );
   }
 
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
-  const canSend = name.trim().length > 0 && emailOk && !sending;
+  const hasAccount = !!user && !user.isAnonymous;
+  const back = encodeURIComponent(`/with/${slug}?resume=1`);
 
   async function submit() {
     setSending(true); setError(null);
     try {
-      await apiRequest("POST", `/api/leaders/${encodeURIComponent(slug ?? "")}/intake`, {
-        ...answers, newsletters, name: name.trim(), email: email.trim(), website,
+      const r = await apiRequest<{ name?: string; email?: string }>("POST", `/api/leaders/${encodeURIComponent(slug ?? "")}/intake`, {
+        ...answers, newsletters,
       });
+      setSentName(r?.name ?? user?.name ?? ""); setSentEmail(r?.email ?? user?.email ?? "");
+      try { localStorage.removeItem(draftKey); } catch { /* blocked */ }
       setStep(7);
-    } catch {
-      setError("That didn't go through. Please check your connection and try again.");
+    } catch (e) {
+      setError(String((e as Error)?.message ?? "").includes("account_required")
+        ? "Please sign in first, then send."
+        : "That didn't go through. Please check your connection and try again.");
     } finally { setSending(false); }
   }
 
@@ -165,26 +192,37 @@ export default function LeaderPage() {
       </>)}
 
       {step === 6 && (<>
-        <h1 style={{ fontSize: 23, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.25 }}>Where can {profile.displayName} reach you?</h1>
-        <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT, lineHeight: 1.45 }}>Your name and email are needed so your routine can be sent to you.</p>
-        <input type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" style={field} />
-        <input type="email" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" style={field} />
-        {/* Honeypot — hidden from people, irresistible to scripts. */}
-        <input type="text" tabIndex={-1} autoComplete="off" aria-hidden value={website} onChange={(e) => setWebsite(e.target.value)}
-          style={{ position: "absolute", left: -9999, width: 1, height: 1, opacity: 0 }} />
-        {error && <p style={{ color: "#e87a7a", fontSize: 13.5, fontFamily: FONT }}>{error}</p>}
-        <div style={{ display: "flex", gap: 10 }}>
-          <button type="button" onClick={() => setStep(5)} style={{ ...primary, background: "transparent" }}>Back</button>
-          <button type="button" disabled={!canSend} onClick={submit} style={{ ...primary, flex: 1, opacity: canSend ? 1 : 0.5, cursor: canSend ? "pointer" : "not-allowed" }}>
-            {sending ? "Sending…" : "Send"}
-          </button>
-        </div>
+        <h1 style={{ fontSize: 23, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.25 }}>
+          {hasAccount ? `Send this to ${profile.displayName}` : "Make an account to receive your rhythm"}
+        </h1>
+        {authLoading ? (
+          <p style={{ color: SAGE, fontFamily: FONT }}>One moment…</p>
+        ) : hasAccount ? (<>
+          <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT, lineHeight: 1.45 }}>
+            {profile.displayName} will see your answers and your email, and send the rhythm they make for you to your Phoebe account and to <strong style={{ color: WARM }}>{user?.email}</strong>.
+          </p>
+          {error && <p style={{ color: "#e87a7a", fontSize: 13.5, fontFamily: FONT }}>{error}</p>}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button type="button" onClick={() => setStep(5)} style={{ ...primary, background: "transparent" }}>Back</button>
+            <button type="button" disabled={sending} onClick={submit} style={{ ...primary, flex: 1, opacity: sending ? 0.6 : 1 }}>
+              {sending ? "Sending…" : "Send"}
+            </button>
+          </div>
+        </>) : (<>
+          <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT, lineHeight: 1.45 }}>
+            Your rhythm will arrive in your account and by email. Your answers are saved here while you sign up.
+          </p>
+          <button type="button" onClick={() => { saveDraft(); setLocation(`/signin?mode=signup&redirect=${back}`); }} style={primary}>Create an account</button>
+          <button type="button" onClick={() => { saveDraft(); setLocation(`/signin?redirect=${back}`); }}
+            style={{ ...primary, background: "transparent", fontWeight: 600 }}>I already have an account</button>
+          <button type="button" onClick={() => setStep(5)} style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 14, cursor: "pointer" }}>Back</button>
+        </>)}
       </>)}
 
       {step === 7 && (<>
-        <h1 style={{ fontSize: 25, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.22 }}>Thank you, {name.trim().split(" ")[0]}.</h1>
+        <h1 style={{ fontSize: 25, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.22 }}>Thank you{sentName ? `, ${sentName.trim().split(" ")[0]}` : ""}.</h1>
         <p style={{ fontSize: 15, color: "rgba(240,237,230,0.9)", fontFamily: FONT, lineHeight: 1.55 }}>
-          {profile.displayName} will read what you wrote and put together a rhythm for you. It will come to {email.trim()}.
+          {profile.displayName} will read what you wrote and put together a rhythm for you. It will arrive in your Phoebe account{sentEmail ? ` and at ${sentEmail}` : ""}.
         </p>
       </>)}
     </div>

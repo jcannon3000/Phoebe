@@ -494,6 +494,7 @@ const AdminMinistriesPage = lazy(() => import("./pages/admin-ministries"));
 const AdminBreathPlacesPage = lazy(() => import("./pages/admin-breath-places"));
 const AdminPresetsPage = lazy(() => import("@/pages/admin-presets"));
 const AdminLeadersPage = lazy(() => import("@/pages/admin-leaders"));
+const AdminLeaderIntakePage = lazy(() => import("@/pages/admin-leader-intake"));
 const LeaderPage = lazy(() => import("@/pages/leader-page"));
 const AdminWeekliesPage = lazy(() => import("@/pages/admin-weeklies"));
 const AdminCacLibraryPage = lazy(() => import("@/pages/admin-cac-library"));
@@ -1357,6 +1358,7 @@ function Router() {
       <Route path="/admin/breath-places" component={AdminBreathPlacesPage} />
       {/* The starter rhythms + the default one, as data (owner). */}
       <Route path="/admin/presets" component={AdminPresetsPage} />
+      <Route path="/admin/leaders/:id" component={AdminLeaderIntakePage} />
       <Route path="/admin/leaders" component={AdminLeadersPage} />
       <Route path="/with/:slug" component={LeaderPage} />
       <Route path="/admin/weeklies" component={AdminWeekliesPage} />

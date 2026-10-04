@@ -33,7 +33,16 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 export default function PrescribeRoutinePage() {
   // slug is absent on the /prescribe (app-wide preset, super admin) route.
   const { slug } = useParams<{ slug?: string }>();
-  const backTarget = slug ? `/communities/${slug}/rule-of-life` : "/admin/tools";
+  // Designing for a leader-page response (?intake=ID): finishing sends it to them.
+  const intakeId = useMemo(() => {
+    try {
+      const n = Number(new URLSearchParams(window.location.search).get("intake"));
+      return Number.isInteger(n) && n > 0 ? n : null;
+    } catch { return null; }
+  }, []);
+  const [person, setPerson] = useState<{ name: string; email: string } | null>(null);
+  const [delivery, setDelivery] = useState<{ emailed: boolean; pushed: boolean } | null>(null);
+  const backTarget = intakeId ? `/admin/leaders/${intakeId}` : slug ? `/communities/${slug}/rule-of-life` : "/admin/tools";
   const [, setLocation] = useLocation();
   const snapRef = useRef<Record<string, string> | null>(null);
   const restoredRef = useRef(false);
@@ -68,6 +77,16 @@ export default function PrescribeRoutinePage() {
     setPhase("name");
   }, []);
 
+  useEffect(() => {
+    if (!intakeId) return;
+    apiRequest("GET", `/api/leader/intakes/${intakeId}`).then((r: any) => {
+      const i = r?.intake;
+      if (!i) return;
+      setPerson({ name: i.name, email: i.email });
+      setLabel((cur) => cur || `A rhythm for ${String(i.name).trim().split(/\s+/)[0]}`);
+    }).catch(() => { /* the naming screen still works without it */ });
+  }, [intakeId]);
+
   // Snapshot the admin's own routine on entry; restore on leave.
   useEffect(() => {
     snapRef.current = snapshotRoutine();
@@ -101,6 +120,17 @@ export default function PrescribeRoutinePage() {
     if (!spec || busy) return;
     setBusy(true); setError(null);
     try {
+      if (intakeId) {
+        // Mint, attach to the response, and deliver (push + email) in one step.
+        const r = await apiRequest("POST", `/api/leader/intakes/${intakeId}/finish`, {
+          spec, label: label.trim() || undefined,
+        }) as { url?: string; emailed?: boolean; pushed?: boolean };
+        if (!r?.url) throw new Error("no url");
+        setUrl(r.url);
+        setDelivery({ emailed: !!r.emailed, pushed: !!r.pushed });
+        setPhase("done");
+        return;
+      }
       // No slug → app-wide preset (server requires super admin for that path).
       const res = await apiRequest("POST", "/api/prescribed-routines", {
         ...(slug ? { groupSlug: slug } : {}), spec, label: label.trim() || undefined,
@@ -109,7 +139,7 @@ export default function PrescribeRoutinePage() {
       setUrl(res.url);
       setPhase("done");
     } catch {
-      setError(slug
+      setError(intakeId ? "Couldn't create and send it. Please try again." : slug
         ? "Couldn't create the link. Make sure you're an admin of this community."
         : "Couldn't create the link. Preset rules need an app super admin.");
     } finally {
@@ -180,6 +210,11 @@ export default function PrescribeRoutinePage() {
           <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT, marginTop: 8 }}>
             Give it a short name the person will see — or leave it blank.
           </p>
+          {intakeId && person && (
+            <p style={{ fontSize: 13.5, color: SAGE, fontFamily: FONT, marginTop: 8 }}>
+              Sending will notify {person.name}'s phone and email {person.email}. You'll also get the link.
+            </p>
+          )}
         </div>
         <input
           value={label}
@@ -193,7 +228,7 @@ export default function PrescribeRoutinePage() {
           type="button" onClick={create} disabled={busy}
           style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", borderRadius: 14, padding: "15px 20px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer", opacity: busy ? 0.6 : 1 }}
         >
-          {busy ? "Creating…" : "Create share link"}
+          {busy ? (intakeId ? "Sending…" : "Creating…") : intakeId && person ? `Send to ${person.name.trim().split(/\s+/)[0]}` : "Create share link"}
         </button>
         <button
           type="button" onClick={() => setLocation(backTarget)}
@@ -210,13 +245,19 @@ export default function PrescribeRoutinePage() {
     <div style={wrap}>
       <div>
         <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: SAGE, fontFamily: FONT, marginBottom: 6 }}>
-          Link ready 🔗
+          {intakeId ? "Sent 🌿" : "Link ready 🔗"}
         </p>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.25 }}>
-          {label.trim() ? `“${label.trim()}” is ready to share` : "Your routine link is ready"}
+          {intakeId && person ? `Sent to ${person.name}` : label.trim() ? `“${label.trim()}” is ready to share` : "Your routine link is ready"}
         </h1>
-        <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT, marginTop: 8 }}>
-          Send this to the person. When they open it, they'll be asked whether to add this rhythm to their account.
+        <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT, marginTop: 8, lineHeight: 1.5 }}>
+          {intakeId && person && delivery
+            ? [
+                delivery.emailed ? `Emailed to ${person.email}.` : `The email to ${person.email} did not go through.`,
+                delivery.pushed ? "A notification went to their phone." : "No phone notification (no phone with notifications on) — they'll find it in the email.",
+                "Here is the link too, if you'd like to send it yourself.",
+              ].join(" ")
+            : "Send this to the person. When they open it, they'll be asked whether to add this rhythm to their account."}
         </p>
       </div>
       <div style={{ ...card, wordBreak: "break-all", color: "rgba(182,210,188,0.9)", fontFamily: FONT, fontSize: 13 }}>

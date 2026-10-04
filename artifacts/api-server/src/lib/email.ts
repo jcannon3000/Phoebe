@@ -1061,3 +1061,82 @@ export async function sendWeeklyDigestEmail(opts: {
     return false;
   }
 }
+
+/**
+ * A leader's routine, sent to the person it was designed for (/routine/:token).
+ * One-to-one and transactional: no unsubscribe footer, like the moment link.
+ */
+export async function sendLeaderRoutineEmail(opts: {
+  to: string; name: string; leaderName: string; url: string;
+}): Promise<boolean> {
+  const gmail = await getGmailClient();
+  if (!gmail) { console.warn("Gmail client unavailable — skipping leader routine email"); return false; }
+  const first = (opts.name ?? "").trim().split(/\s+/)[0] || "there";
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f9f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7f4;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e8e2d9;padding:40px 36px;">
+        <tr><td>
+          <div style="margin-bottom:28px;"><img src="https://withphoebe.app/phoebe-app-icon.png" width="32" height="32" alt="" style="vertical-align:middle;border-radius:8px;border:0;margin-right:10px;"><span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;vertical-align:middle;">Phoebe</span></div>
+          <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">A rhythm of prayer, made for you</h1>
+          <p style="margin:0 0 20px;font-size:15px;color:#6b6460;line-height:1.6;">
+            Hi ${escapeHtml(first)}, thank you for telling ${escapeHtml(opts.leaderName)} how you'd like to pray. They read what you wrote and put together a daily rhythm for you.
+          </p>
+          <a href="${opts.url}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">See your rhythm \u{2192}</a>
+          <p style="margin:24px 0 0;font-size:13px;color:#9b938d;line-height:1.6;">
+            Open it, look it over, and add it to your day when you're ready. You can change any part of it afterwards.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text = [
+    `Hi ${first},`,
+    "",
+    `Thank you for telling ${opts.leaderName} how you'd like to pray. They read what you wrote and put together a daily rhythm for you:`,
+    opts.url,
+    "",
+    "Open it, look it over, and add it to your day when you're ready. You can change any part of it afterwards.",
+    "",
+    "— Phoebe",
+  ].join("\n");
+  try {
+    const raw = encodeMimeMessage({ to: opts.to, subject: `${opts.leaderName} made you a rhythm of prayer`, html, text });
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+    return true;
+  } catch (err) {
+    const parsed = parseGmailError(err);
+    console.error("[email] sendLeaderRoutineEmail FAILED", { to: opts.to, ...parsed });
+    return false;
+  }
+}
+
+/** Tells a leader a new response arrived. To the leader only; plain and short. */
+export async function sendLeaderIntakeNoticeEmail(opts: {
+  to: string; applicantName: string; applicantEmail: string; adminUrl: string;
+}): Promise<boolean> {
+  const gmail = await getGmailClient();
+  if (!gmail) return false;
+  const text = [
+    `${opts.applicantName} (${opts.applicantEmail}) just answered your five questions about how they'd like to pray.`,
+    "",
+    "Read it and design their routine:",
+    opts.adminUrl,
+  ].join("\n");
+  const html = `<p style="font-family:-apple-system,sans-serif;font-size:15px;color:#2d2a26;line-height:1.6;">${escapeHtml(opts.applicantName)} (${escapeHtml(opts.applicantEmail)}) just answered your five questions about how they'd like to pray.</p><p style="font-family:-apple-system,sans-serif;font-size:15px;"><a href="${opts.adminUrl}" style="color:#4a7c59;">Read it and design their routine →</a></p>`;
+  try {
+    const raw = encodeMimeMessage({ to: opts.to, subject: `${opts.applicantName} answered your prayer questions`, html, text });
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+    return true;
+  } catch (err) {
+    const parsed = parseGmailError(err);
+    console.error("[email] sendLeaderIntakeNoticeEmail FAILED", { to: opts.to, ...parsed });
+    return false;
+  }
+}

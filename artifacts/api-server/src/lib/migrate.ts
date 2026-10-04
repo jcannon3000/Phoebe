@@ -2846,6 +2846,7 @@ export async function migrate() {
       )
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS routine_intakes_by_leader ON routine_intakes(leader_profile_id)`);
+    await run(client, `ALTER TABLE routine_intakes ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
     // Envs created before presets: relax the original NOT NULL.
     await run(client, `
       ALTER TABLE prescribed_routines ALTER COLUMN group_id DROP NOT NULL
