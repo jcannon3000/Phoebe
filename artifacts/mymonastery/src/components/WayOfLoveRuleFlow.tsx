@@ -1923,16 +1923,18 @@ export default function WayOfLoveRuleFlow({
    * file already fixed once on that step.
    */
   const [customRefused, setCustomRefused] = useState(false);
-  const addCustom = () => {
+  /** True when a practice was written. False when the field was empty or the
+   *  add was refused (the cap) — the caller must not carry on in that case. */
+  const addCustom = (): boolean => {
     const title = customTitle.trim();
-    if (!title) return;
+    if (!title) return false;
     const goalNum = parseInt(customGoal, 10);
     const reading: ReadingConfig | undefined = customIsReading
       ? { unit: customUnit, ...(Number.isFinite(goalNum) && goalNum > 0 ? { goal: goalNum } : {}) }
       : undefined;
     if (!addCustomAnchor(title, customEmoji.trim() || (customIsReading ? "📖" : "🌿"), customSlot, reading)) {
       setCustomRefused(true);
-      return; // keep what they typed — they may want to remove something first
+      return false; // keep what they typed — they may want to remove something first
     }
     setCustomRefused(false);
     setCustomTitle("");
@@ -1940,6 +1942,23 @@ export default function WayOfLoveRuleFlow({
     setCustomGoal("");
     setCustomList(getCustomAnchors());
     setAddingCustom(false);
+    return true;
+  };
+  /** The typed relational practice ("Add your own — e.g. Write a letter"):
+   *  true when written; false when empty or refused (the cap), so Continue
+   *  does not carry on without it. */
+  const addRelationalDraft = (): boolean => {
+    const title = customRelationalTitle.trim();
+    if (!title) return false;
+    touchedRef.current = true;
+    if (addCustomRelationalPractice(title)) {
+      setCustomRelationalTitle("");
+      setCustomRelationalRefused(false);
+      setCustomList(getCustomAnchors());
+      return true;
+    }
+    setCustomRelationalRefused(true);
+    return false;
   };
   const toggleExtra = (k: "examen" | "listening" | "podcasts" | "prayerList") => {
     touchedRef.current = true;
@@ -6822,18 +6841,7 @@ export default function WayOfLoveRuleFlow({
             />
             <button
               type="button"
-              onClick={() => {
-                const title = customRelationalTitle.trim();
-                if (!title) return;
-                touchedRef.current = true;
-                if (addCustomRelationalPractice(title)) {
-                  setCustomRelationalTitle("");
-                  setCustomRelationalRefused(false);
-                  setCustomList(getCustomAnchors());
-                } else {
-                  setCustomRelationalRefused(true);
-                }
-              }}
+              onClick={() => { addRelationalDraft(); }}
               style={{ flexShrink: 0, background: "rgba(46,107,64,0.30)", border: `1px solid ${CARD_B_ACTIVE}`, borderRadius: 12, padding: "0 18px", color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
             >
               {t("common.add", { defaultValue: "Add" })}
@@ -6863,7 +6871,12 @@ export default function WayOfLoveRuleFlow({
             flow ends with this line and this one never had it, so the only
             control on the screen was Back — you could reach the step, choose
             on it, and have no way forward from it. */}
-        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => {
+          // A name left in "Add your own" is still a practice (owner,
+          // 2026-10-04) — add it, as the Add button would, before moving on.
+          if (!prescribe && customRelationalTitle.trim() && !addRelationalDraft()) return;
+          goNext();
+        })}
       </>,
     );
   }
@@ -7129,7 +7142,25 @@ export default function WayOfLoveRuleFlow({
           </div>
         ) : (
           <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <button onClick={isLastStep ? () => commit() : goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+            <button
+              onClick={() => {
+                /**
+                 * A NAME LEFT IN THE FIELD IS STILL A PRACTICE (owner,
+                 * 2026-10-04: "it should get saved if they have something in
+                 * there cas thats what they'd expect"). Someone types
+                 * "Morning Walk", picks Morning, and taps Save — never Add —
+                 * and the walk was simply gone from the home (screen
+                 * recording). Continue and Save now add what is in the form
+                 * first, exactly as Add would, and only then go on. Only while
+                 * the form is on screen: text left behind by an abandoned "Add
+                 * a practice" sub-slide is not something they can see. A
+                 * refused add (the eight-practice cap) shows its message and
+                 * stays here rather than saving without it.
+                 */
+                if (showForm && customTitle.trim() && !addCustom()) return;
+                if (isLastStep) commit(); else goNext();
+              }}
+              style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
               {/* "Save", not "Save my daily rhythm" (owner) — it is the last
                   tap of the flow and it goes straight to the home. */}
               {isLastStep ? t("wol_rule.finish_save", { defaultValue: "Save" }) : t("ruleOfLife.continue", { defaultValue: "Continue" })}
