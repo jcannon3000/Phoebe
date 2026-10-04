@@ -716,6 +716,7 @@ export default function PsalmsPage() {
           Visio all wear: floating, blurred, Back · counter · Next. */}
       <DeckNavPill
         label={`${index + 1} of ${total} · Psalms`}
+        intro={false}
         back={{ onClick: back }}
         primary={{ label: atEnd ? "Done" : "Next", onClick: advance }}
       />

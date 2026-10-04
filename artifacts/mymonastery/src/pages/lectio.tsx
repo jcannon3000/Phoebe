@@ -734,7 +734,7 @@ export default function LectioPage() {
           dimmed control rather than no control: there is nothing to go back
           to from the first screen, and nothing to advance to until a reading
           is picked, so the whole bar has no work to do. */}
-      {!atStart && <PhoebeRise show={step === PICK + 1} />}
+      <PhoebeRise show={atStart} />
       {!atStart && <nav
         aria-label="Slide navigation"
         style={{

@@ -56,6 +56,7 @@ import {
   setReflectionSource,
   setSideEntry,
   getSideLevel,
+  getSideBaseLevel,
   getExplicitSideLevel,
   type OfficeLevel,
   getSideEntry,
@@ -954,7 +955,7 @@ export default function WayOfLoveRuleFlow({
   const [anchorReflectionBySide, setAnchorReflectionBySide] = useState<Partial<Record<OfficeSide, ReflectionSource>>>(() => {
     const out: Partial<Record<OfficeSide, ReflectionSource>> = {};
     for (const s of ["morning", "evening"] as OfficeSide[]) {
-      if (getSideLevel(s) !== "fdd") continue;
+      if (getSideBaseLevel(s) !== "fdd") continue;
       const src = getSideReflectionExplicit(s);
       if (src) out[s] = src;
     }
@@ -1173,11 +1174,11 @@ export default function WayOfLoveRuleFlow({
      * itself writes "none" for these, and so does this now.
      */
     const seed = (s: OfficeSide): PrayChoice => {
-      if (getSideLevel(s) === "custom") {
-        const named = anchorPracticeFor(getSideCustomName(s));
+      if (getSideBaseLevel(s) === "custom") {
+        const named = anchorPracticeFor(storedSideCustomName(s));
         if (named?.key === "visio" || named?.key === "walk" || named?.key === "listening") return "none";
       }
-      return anchorFromLevel(getSideLevel(s), s);
+      return anchorFromLevel(getSideBaseLevel(s), s);
     };
     return { morning: seed("morning"), evening: seed("evening") };
   });
@@ -1186,7 +1187,7 @@ export default function WayOfLoveRuleFlow({
   // re-opening Customize keeps the chosen form.
   const [bcpForm, setBcpForm] = useState<Record<OfficeSide, "offices" | "devotion" | "psalms" | "compline" | "readings">>(() => {
     const form = (s: OfficeSide): "offices" | "devotion" | "psalms" | "compline" | "readings" => {
-      const p = prayFromLevel(getSideLevel(s));
+      const p = prayFromLevel(getSideBaseLevel(s));
       return p === "offices" || p === "devotion" || p === "psalms" || p === "compline" || p === "readings" ? p : "offices";
     };
     return { morning: form("morning"), evening: form("evening") };
@@ -1493,8 +1494,8 @@ export default function WayOfLoveRuleFlow({
     // Contemplative Prayer + the Examen are add-ons now (not office anchors), so
     // seed them from the saved office LEVEL (reflect-sit / examen) — plus the
     // examen home card — rather than from prayBySide.
-    const silentSeed = getSideContemplation("morning") || getSideContemplation("evening") || getSideLevel("morning") === "reflect-sit" || getSideLevel("evening") === "reflect-sit";
-    const examenSeed = homeCardOn(seedLayout(user), "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen";
+    const silentSeed = getSideContemplation("morning") || getSideContemplation("evening") || getSideBaseLevel("morning") === "reflect-sit" || getSideBaseLevel("evening") === "reflect-sit";
+    const examenSeed = homeCardOn(seedLayout(user), "examen") || getSideBaseLevel("morning") === "examen" || getSideBaseLevel("evening") === "examen";
     setContemplative((c) => touchedRef.current ? c : {
       cobreathe: !creationHeldBySide() && homeCardOn(seedLayout(user), "cobreathe"),
       audio: homeCardOn(seedLayout(user), "listening"),
@@ -1514,8 +1515,8 @@ export default function WayOfLoveRuleFlow({
     });
     // Per-side Contemplative Prayer — re-seed once the home layout lands.
     setContemplationBySide((p) => touchedRef.current ? p : {
-      morning: getSideContemplationExplicit("morning") ?? (getSideLevel("morning") === "reflect-sit"),
-      evening: getSideContemplationExplicit("evening") ?? (getSideLevel("evening") === "reflect-sit"),
+      morning: getSideContemplationExplicit("morning") ?? (getSideBaseLevel("morning") === "reflect-sit"),
+      evening: getSideContemplationExplicit("evening") ?? (getSideBaseLevel("evening") === "reflect-sit"),
     });
   }, [user]);
 
@@ -1535,7 +1536,7 @@ export default function WayOfLoveRuleFlow({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: !creationHeldBySide() && homeCardOn(seedLayout(user), "cobreathe"),
     audio: homeCardOn(seedLayout(user), "listening"),
-    examen: homeCardOn(seedLayout(user), "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen",
+    examen: homeCardOn(seedLayout(user), "examen") || getSideBaseLevel("morning") === "examen" || getSideBaseLevel("evening") === "examen",
     walk: homeCardOn(seedLayout(user), "walk"),
     // Visio Divina — praying with an artwork. Same shape as its siblings.
     visio: homeCardOn(seedLayout(user), "visio"),
@@ -1633,8 +1634,8 @@ export default function WayOfLoveRuleFlow({
   const [customPracticeOn, setCustomPracticeOn] = useState(false);
   const [customPracticeName, setCustomPracticeName] = useState("");
   const [contemplationBySide, setContemplationBySide] = useState<Record<OfficeSide, boolean>>(() => ({
-    morning: getSideContemplationExplicit("morning") ?? (getSideLevel("morning") === "reflect-sit"),
-    evening: getSideContemplationExplicit("evening") ?? (getSideLevel("evening") === "reflect-sit"),
+    morning: getSideContemplationExplicit("morning") ?? (getSideBaseLevel("morning") === "reflect-sit"),
+    evening: getSideContemplationExplicit("evening") ?? (getSideBaseLevel("evening") === "reflect-sit"),
   }));
   const anyContemplation = contemplationBySide.morning || contemplationBySide.evening;
   const toggleContemplationSide = (side: OfficeSide) => {
@@ -1717,8 +1718,8 @@ export default function WayOfLoveRuleFlow({
       // LEGACY: a side written before the kinds existed, as an ownPractice
       // named after a real practice. Recovered so an existing rule re-opens
       // as the practice it is rather than as "Create your own".
-      if (getSideLevel(s) === "custom") {
-        const named = anchorPracticeFor(getSideCustomName(s));
+      if (getSideBaseLevel(s) === "custom") {
+        const named = anchorPracticeFor(storedSideCustomName(s));
         if (named?.key === "visio") return "visio";
         if (named?.key === "walk") return "walk";
         if (named?.key === "listening") return "audio";
@@ -1726,7 +1727,7 @@ export default function WayOfLoveRuleFlow({
         // the comparison could never be true — TypeScript said as much. Those
         // two are recovered from the KIND below, which is how they are stored.
       }
-      const on = getSideContemplationExplicit(s) ?? (getSideLevel(s) === "reflect-sit");
+      const on = getSideContemplationExplicit(s) ?? (getSideBaseLevel(s) === "reflect-sit");
       if (!on) return null;
       // The kind IS the form — per side, all five. (The global was the
       // last-written side's kind, so a split rule re-opened with both sides
@@ -2081,6 +2082,10 @@ export default function WayOfLoveRuleFlow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guest, prescribe, pilot]);
 
+  // EVERY SEED READS THE STANDING RULE: getSideBaseLevel / storedSideCustomName, never
+  // getSideLevel / getSideCustomName, which answer for TODAY - a weekday rule's Saturday
+  // practice, or a swap (whose suppression below only starts after the first render's seeds).
+  // Seeding from today made Save write today's practice over the everyday one (audit 2026-10-04).
   // The one-day practice swap is invisible in here — see officePrefs'
   // setDaySwapSuppressed. Every seed below answers "what is the STANDING
   // rule", and commit() writes the whole rule back; letting the swap through
@@ -2194,8 +2199,8 @@ export default function WayOfLoveRuleFlow({
     // defaultPrayerLevel ("intercessions"), so re-seeding from it would keep
     // re-presetting Customize to Community for users who never chose it.
     setPrayBySide({
-      morning: anchorFromLevel(getSideLevel("morning"), "morning"),
-      evening: anchorFromLevel(getSideLevel("evening"), "evening"),
+      morning: anchorFromLevel(getSideBaseLevel("morning"), "morning"),
+      evening: anchorFromLevel(getSideBaseLevel("evening"), "evening"),
     });
     // The server's contemplationGoalMinutes is the authoritative current goal —
     // prefill from it so Customize opens on what they actually have set (a stale

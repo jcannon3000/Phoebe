@@ -19,8 +19,9 @@ function contentBottom(navTop: number): number {
   const isFixedChrome = (el: Element | null): boolean => {
     for (let e = el; e && e !== document.body; e = e.parentElement) {
       if (e.hasAttribute("data-phoebe-rise") || e.hasAttribute("data-phoebe-stand") || e.tagName === "NAV") return true;
-      const pos = getComputedStyle(e).position;
-      if (pos === "fixed") return true;
+      // Fixed CHROME is small (a header, a pill). A fixed full-screen page wrapper (lectio, the
+      // psalms decks) holds the content itself, so it does not make its children chrome.
+      if (getComputedStyle(e).position === "fixed" && e.getBoundingClientRect().height < vh * 0.6) return true;
     }
     return false;
   };
@@ -54,6 +55,9 @@ export function PhoebeRise({ show = true }: { show?: boolean }) {
   const [box, setBox] = useState<{ h: number; bottom: number; room: boolean } | null>(null);
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => {
+    // Hidden = no measuring at all: this sits beside every deck's nav pill, and walking the DOM
+    // on every mutation of a slide she is not on is pure cost.
+    if (!show) return;
     const measure = () => {
       const nav = document.querySelector('nav[aria-label="Slide navigation"]') ?? document.querySelector("[data-phoebe-stand]");
       // No slide-navigation pill (a chooser-style intro): she stands on the bottom of the screen.
@@ -70,7 +74,7 @@ export function PhoebeRise({ show = true }: { show?: boolean }) {
     mo.observe(document.body, { childList: true, subtree: true, characterData: true });
     window.addEventListener("resize", soon);
     return () => { later.forEach(clearTimeout); window.clearTimeout(timer.current); mo.disconnect(); window.removeEventListener("resize", soon); };
-  }, []);
+  }, [show]);
   // Intro slides only (owner, 2026-10-03: "phoebe should only show up on the intro slides not
   // the slideshow itself"). Unmounting when hidden lets the rise and fade play again the next
   // time an intro appears.
