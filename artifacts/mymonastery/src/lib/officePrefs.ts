@@ -756,6 +756,13 @@ export function baseSideCustomName(side: OfficeSide): string {
     return localStorage.getItem(`phoebe:office:custom-name:${side}`) ?? "";
   } catch { return ""; }
 }
+/** The name as STORED for the everyday rule - not today's weekend name or a day swap. What the
+ *  customizer shows and writes back, so a Saturday visit cannot overwrite the weekday name. */
+export function storedSideCustomName(side: OfficeSide): string {
+  try {
+    return localStorage.getItem(`phoebe:office:custom-name:${side}`) ?? "";
+  } catch { return ""; }
+}
 export function setSideCustomName(side: OfficeSide, v: string): void {
   try {
     localStorage.setItem(`phoebe:office:custom-name:${side}`, v);
