@@ -2289,6 +2289,10 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayed_together_sent_date TEXT`);
     // ...and for the 2pm "Happy Feast of ___" push.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS feast_day_sent_date TEXT`);
+    // When a row BECAME an account — created_at is when the phone first
+    // opened the app, which is not the same day for a device that upgrades in
+    // place. Left NULL for existing rows; the metrics fall back to created_at.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS account_created_at TIMESTAMP`);
     // Daily steps goal (Apple Health) + one-per-day "reached" push dedupe.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_step_goal INTEGER NOT NULL DEFAULT 0`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_step_reached_date TEXT`);

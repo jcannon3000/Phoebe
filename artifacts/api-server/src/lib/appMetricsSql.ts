@@ -332,14 +332,22 @@ SELECT
   (SELECT COUNT(DISTINCT k.person) FROM kept k JOIN devices d ON d.person = k.person WHERE k.day >= $2)::int AS prayed_device_week,
   (SELECT COUNT(DISTINCT k.person) FROM kept k JOIN devices d ON d.person = k.person WHERE k.day >= $4)::int AS prayed_device_month,
 
-  -- Accounts: signed-up users. A device that signs UP is upgraded in place
-  -- and keeps its first-seen date; one that signs IN to an existing account
-  -- is merged and is not a user of its own.
+  -- Accounts: signed-up users. One that signs IN to an existing account is
+  -- merged and is not a user of its own.
+  --
+  -- DATED BY WHEN IT BECAME AN ACCOUNT, not by created_at. A device that signs
+  -- UP is upgraded in place and keeps its first-seen date, so counting
+  -- created_at reported no sign-ups on a day someone really signed up (owner,
+  -- 2026-10-04: "it says no near accounts were created today, but i saw
+  -- someone create an acount"). account_created_at is stamped at sign-up on
+  -- both paths; rows that predate the column are NULL and fall back to
+  -- created_at, which is the old answer for old rows and the right one for
+  -- every account made from here on.
   (SELECT COUNT(*) FROM users WHERE NOT is_anonymous AND merged_into_user_id IS NULL)::int AS accounts_total,
   (SELECT COUNT(*) FROM users WHERE NOT is_anonymous AND merged_into_user_id IS NULL
-     AND to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS accounts_today,
+     AND to_char((COALESCE(account_created_at, created_at) AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS accounts_today,
   (SELECT COUNT(*) FROM users WHERE NOT is_anonymous AND merged_into_user_id IS NULL
-     AND to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS accounts_week,
+     AND to_char((COALESCE(account_created_at, created_at) AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS accounts_week,
   (SELECT COUNT(*) FROM devices)::int AS devices_total,
   (SELECT COUNT(*) FROM devices d JOIN users u ON u.id = d.person
      WHERE to_char((u.created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS devices_today,

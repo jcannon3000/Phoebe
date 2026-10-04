@@ -1337,25 +1337,17 @@ export async function runVtsCommentarySender(opts: { forceNow?: boolean } = {}):
  * reached a phone, and a skip for anyone whose read is already recorded today.
  * Super admins get it whether or not they follow, and whether or not they have read.
  *
- * ADMINS ONLY UNTIL NOUWEN_REFLECT_PUSH=true (owner: "lets try it", then "hold off ... until that is built"). It copies a
- * line of another publisher's text out to people (see the note on resolveTodayNouwenQuestion
- * in routes/nouwen), so keep that switch in mind.
+ * IT GOES TO EVERYONE (owner, 2026-10-04). NOUWEN_REFLECT_PUSH=false still
+ * holds it back to super admins — worth remembering that it copies a line of
+ * another publisher's text out to people (see the note on
+ * resolveTodayNouwenQuestion in routes/nouwen).
  */
 const NOUWEN_REFLECT_TIME = "10:00";
 
-function followsNouwen(ruleConfig: unknown, homeLayout: unknown): boolean {
-  try {
-    const layout = homeLayout as { order?: string[]; hidden?: string[] } | null;
-    if (layout && Array.isArray(layout.order)) {
-      return layout.order.includes("nouwen") && !(layout.hidden ?? []).includes("nouwen");
-    }
-    const values = (ruleConfig as { values?: Record<string, string> } | null)?.values;
-    if (!values) return false;
-    return values["phoebe:office:reflection-source"] === "nouwen"
-      || values["phoebe:office:reflection:morning"] === "nouwen"
-      || values["phoebe:office:reflection:evening"] === "nouwen";
-  } catch { return false; }
-}
+/* `followsNouwen` lived here. It tested whether a person carried the Nouwen
+   card or had it as their reflection source, and it — not the admin gate
+   above it, which was already open — is why only three pushes went out on
+   2026-10-03. Deleted rather than left unused (owner, 2026-10-04). */
 
 export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   // ON FOR EVERYONE since the build that opens the reading is live on the App Store (owner,
@@ -1363,14 +1355,25 @@ export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {
   // everyone"). Set NOUWEN_REFLECT_PUSH=false to hold it back to super admins only.
   const everyone = process.env["NOUWEN_REFLECT_PUSH"] !== "false";
   try {
-    const rows = await db
-      .select({
-        userId: usersTable.id,
-        userTimezone: usersTable.timezone,
-        ruleConfig: usersTable.ruleConfig,
-        homeLayout: usersTable.homeLayout,
-      })
-      .from(usersTable);
+    /**
+     * Now that it goes to everyone, "everyone" is every account AND every
+     * device user — thousands of rows, most without a live push token, since
+     * the no-login version gives a phone a user row whether or not it ever
+     * granted notifications. Each row costs two queries and a push attempt
+     * inside the window, so the fan-out is filtered to users who can actually
+     * receive one. This changes nobody's delivery: a user with neither a
+     * token nor a subscription had no way to be reached.
+     */
+    const rowsRes = await db.execute(sql`
+      SELECT u.id AS "userId", u.timezone AS "userTimezone"
+      FROM users u
+      WHERE u.push_enabled IS DISTINCT FROM false
+        AND (
+          EXISTS (SELECT 1 FROM device_tokens dt WHERE dt.user_id = u.id AND dt.invalidated_at IS NULL)
+          OR EXISTS (SELECT 1 FROM web_push_subscriptions ws WHERE ws.user_id = u.id AND ws.invalidated_at IS NULL)
+        )`);
+    const rows = ((rowsRes as unknown as { rows?: Array<{ userId: number; userTimezone: string | null }> }).rows
+      ?? (rowsRes as unknown as Array<{ userId: number; userTimezone: string | null }>)) as Array<{ userId: number; userTimezone: string | null }>;
     const adminRes = await db.execute(sql`
       SELECT u.id AS "userId" FROM users u JOIN beta_users b ON lower(b.email) = lower(u.email)
       WHERE b.is_admin = true`);
@@ -1382,7 +1385,21 @@ export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {
       try {
         const isAdmin = admins.has(r.userId);
         if (!everyone && !isAdmin) continue;
-        if (!isAdmin && !followsNouwen(r.ruleConfig, r.homeLayout)) continue;
+        /**
+         * EVERYONE MEANS EVERYONE (owner, 2026-10-04: "I hope it goes to
+         * everyone, in the anayltics it says only three went out" · "it used
+         * to be admin gated but now it should just go to everyone").
+         *
+         * The admin gate had already been opened. A SECOND filter sat under
+         * it: a non-admin also had to FOLLOW Nouwen — the card in their home
+         * layout, or the source on their rhythm. Only a handful do, so
+         * opening the first gate changed almost nothing and three pushes went
+         * out. The follow test is gone.
+         *
+         * Still skipped: anyone who already read today's meditation (there is
+         * nothing to nudge them toward), and anyone whose master
+         * notifications switch is off (inside sendPushToUser).
+         */
         const tz = r.userTimezone || "America/New_York";
         if (!opts.forceNow && !isWithinTickWindow(tz, NOUWEN_REFLECT_TIME)) continue;
         const today = todayInZone(tz);

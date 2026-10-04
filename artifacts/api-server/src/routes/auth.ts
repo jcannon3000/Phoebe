@@ -865,6 +865,10 @@ router.post(
         passwordHash,
         isAnonymous: false,
         officesOnly: officesOnly === true,
+        // TODAY is when this became an account. `created_at` stays the day
+        // the phone first opened the app, which is what made App Metrics
+        // report no sign-ups on days there were some.
+        accountCreatedAt: new Date(),
       })
       .where(and(eq(usersTable.id, anonUserId), eq(usersTable.isAnonymous, true)))
       .returning();
@@ -874,7 +878,7 @@ router.post(
   if (!user) {
     [user] = await db
       .insert(usersTable)
-      .values({ email: normalizedEmail, name: trimmedName, passwordHash, officesOnly: officesOnly === true })
+      .values({ email: normalizedEmail, name: trimmedName, passwordHash, officesOnly: officesOnly === true, accountCreatedAt: new Date() })
       .returning();
   }
 

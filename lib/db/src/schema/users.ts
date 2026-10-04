@@ -204,6 +204,20 @@ export const usersTable = pgTable("users", {
   // naming the day's commemoration, to everyone (owner, 2026-10-01). One per
   // local day; NULL = never sent.
   feastDaySentDate: text("feast_day_sent_date"),
+  /**
+   * WHEN THIS BECAME AN ACCOUNT, which is not `created_at`.
+   *
+   * A phone that already has an anonymous device user and then signs up is
+   * UPGRADED IN PLACE (routes/auth.ts) — same row, same id, so everything
+   * keyed to it carries over, and `created_at` stays the day that PHONE first
+   * opened the app. App Metrics counted sign-ups by `created_at` and so
+   * reported none on a day someone really did sign up (owner, 2026-10-04:
+   * "it says no new accounts were created today, but i saw someone create an
+   * account"). Set at sign-up on both paths — the in-place upgrade and a
+   * fresh insert. NULL on rows that predate this column; the metrics fall
+   * back to created_at for those.
+   */
+  accountCreatedAt: timestamp("account_created_at"),
   // Daily steps goal (Apple Health). When > 0, the home card shows progress and
   // the server pushes "you hit your step goal" the first time today's synced
   // steps cross it. 0 = off.
