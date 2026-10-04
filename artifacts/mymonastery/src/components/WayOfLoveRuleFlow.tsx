@@ -4982,6 +4982,13 @@ export default function WayOfLoveRuleFlow({
             is operative: open the slide, press Continue, you're in the
             interview. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* PRESET IS BACK AT THE TOP (owner, 2026-10-04: "put preset back at the top"). */}
+          {choiceRow(
+            effectiveEntryChoice === "preset",
+            `📋 ${t("wol_rule.entry3_preset", { defaultValue: "Choose a preset routine" })}`,
+            t("wol_rule.entry3_preset_sub", { defaultValue: "Begin from one of Phoebe's preset routines." }),
+            () => setEntryChoice("preset"),
+          )}
           {interviewOnOffer && choiceRow(
             effectiveEntryChoice === "ask",
             prescribe
@@ -5016,15 +5023,6 @@ export default function WayOfLoveRuleFlow({
             t("wol_rule.entry_revert_sub", { defaultValue: "Restore a rhythm you kept before." }),
             () => setEntryChoice("revert"),
           )}
-          {/* RESET TO DEFAULT (owner, 2026-10-03: "of the top cards, have 'reset to default' be
-              an option"). The same wipe-and-reseed Settings offers; the Continue below asks
-              before it runs. */}
-          {!prescribe && choiceRow(
-            effectiveEntryChoice === "reset",
-            `🔄 ${t("wol_rule.entry_reset", { defaultValue: "Reset to default" })}`,
-            t("wol_rule.entry_reset_sub", { defaultValue: "Start over with Phoebe's standard daily rhythm. What you've already prayed stays." }),
-            () => setEntryChoice("reset"),
-          )}
           {/* TURN OFF (owner, 2026-09-29: "a fourth option, at the bottom of
               the screen, that could revert to just the practices view on the
               home screen"). Nothing is deleted — lib/routineStart keeps the
@@ -5040,7 +5038,7 @@ export default function WayOfLoveRuleFlow({
         {/* Below the rows, above Continue - Continue is a sticky bar with its own panel, so
             anything after it slid underneath (owner, 2026-10-03: "that card at the bottom"). */}
         <div style={{ marginTop: 28 }}>
-          <PhoebeHelpCard onBrowse={() => { setPresetPending(null); setManualMode("preset"); setEntryChoiceMade(true); }} />
+          {!prescribe && <PhoebeHelpCard onAsk={() => setLocation("/with/jeremy")} />}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => {
           if (effectiveEntryChoice === "ask") {
