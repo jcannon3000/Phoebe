@@ -5,13 +5,31 @@ import { useEffect, useRef, useState } from "react";
 // bottom of any slideshow that has room at the bottom"). Mounted beside each deck's
 // nav[aria-label="Slide navigation"]. She measures the lowest thing on the slide (text,
 // controls, pictures - not fixed chrome, not full-bleed backgrounds) and the top of the nav
-// pill; her height is two thirds of the gap, and when the gap is too small for her (or the
+// pill; her height is one fixed size per phone (see phoebeHeight), and when the gap is too small for her (or the
 // slide scrolls past the pill) she fades out instead. She is cut at the waist in the source
 // art, so she stands on the pill's top edge. Decoration only: no taps, hidden from assistive
 // tech. The rise plays once, the first time she appears.
 const ASPECT = 420 / 538;
-const MAX_H = 320;
 const MIN_H = 90;
+
+/**
+ * ONE SIZE FOR EVERY SLIDESHOW (owner, 2026-10-04: "have them all the same
+ * size, as big as they are on evening prayer" — Psalms and the Rosary were
+ * standing 320px tall, nearly three times the Evening Prayer one).
+ *
+ * She used to take two thirds of whatever room a slide left, so the emptier the
+ * intro, the bigger she was. Now her height depends only on the phone: this
+ * line fits the height she had on the Evening Prayer intro at 390x844 (114px),
+ * 393x852 (117) and 430x932 (144). If the Evening Prayer layout changes, re-fit
+ * it. A phone too short for her (an iPhone SE: it comes out at 53) gets none,
+ * as Evening Prayer did.
+ */
+function phoebeHeight(viewportH: number): number {
+  return Math.round(0.341 * viewportH - 174);
+}
+/** She needs this much of her own height again as free room above the bar, or
+ *  she'd stand on the text — Evening Prayer leaves 1.5x, so 1.4x is lenient. */
+const ROOM_FACTOR = 1.4;
 
 function contentBottom(navTop: number): number {
   const vh = window.innerHeight;
@@ -63,9 +81,10 @@ export function PhoebeRise({ show = true }: { show?: boolean }) {
       // No slide-navigation pill (a chooser-style intro): she stands on the bottom of the screen.
       const top = nav ? (nav as HTMLElement).getBoundingClientRect().top : window.innerHeight - 8;
       const gap = top - contentBottom(top);
-      const h = Math.min(MAX_H, Math.floor(gap * (2 / 3)));
+      const h = phoebeHeight(window.innerHeight);
       const bottom = nav ? Math.round(window.innerHeight - top + 2) : 0;
-      setBox((b) => (h >= MIN_H ? { h, bottom, room: true } : b ? { ...b, room: false } : b));
+      const fits = h >= MIN_H && gap >= h * ROOM_FACTOR;
+      setBox((b) => (fits ? { h, bottom, room: true } : b ? { ...b, room: false } : b));
     };
     const soon = () => { window.clearTimeout(timer.current); timer.current = window.setTimeout(measure, 80); };
     measure();
@@ -83,7 +102,9 @@ export function PhoebeRise({ show = true }: { show?: boolean }) {
     <>
       <style>{`
         @keyframes phoebe-rise { from { opacity: 0; transform: translate(-50%, 18px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        .phoebe-rise { animation: phoebe-rise 1100ms cubic-bezier(0.22, 1, 0.36, 1) 700ms both; }
+        /* In sooner (owner, 2026-10-04: "it needs to come in a little earlier"):
+           she was fully up at about 1.8s (700ms wait + 1100ms rise); now 1.1s. */
+        .phoebe-rise { animation: phoebe-rise 800ms cubic-bezier(0.22, 1, 0.36, 1) 300ms both; }
         @media (prefers-reduced-motion: reduce) { .phoebe-rise { animation: none; } }
       `}</style>
       <div

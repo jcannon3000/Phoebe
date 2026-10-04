@@ -1,8 +1,8 @@
 // First-open welcome for the PUBLIC no-login home — a quiet "begin here" note
 // that sits under the date at the top of the day, telling the newcomer the
 // simple daily rhythm is laid out below and the app will walk them through it.
-// The FIRST card has no CTA — the rhythm cards beneath ARE the walk-through;
-// the second (returning) card carries a pill into the customizer. Dismissible
+// Both states carry a "Shape your routine" pill into the customizer (owner,
+// 2026-10-04). Retires after a few days of use. Dismissible
 // once, device-local, guests only (the caller gates on the guest shape).
 
 import { useState } from "react";
@@ -110,17 +110,15 @@ export function GuestWelcomeCard() {
           ? "You've begun. Return each day and let the rhythm hold you — one practice at a time."
           : "Phoebe carries a simple daily rhythm of prayer, laid out below. Each day it will walk you through it, one practice at a time."}
       </p>
-      {/* The customize hint rides the SECOND card — the returning "Develop a
-          daily habit" state — not "Begin here". On day one the ask is simply
-          to pray what's already laid out; pointing a brand-new user at the
-          customizer first gives them a settings errand before they've prayed
-          anything. Once they've begun, shaping the rhythm is the natural
-          next move. */}
-      {/* Owner: "on the second welcome card, have a cta pill that would take
-          them to the customizer." This was prose telling them to go hunt for a
-          menu item — an instruction to navigate rather than a way to. Now it is
-          the tap itself. */}
-      {hasPrayed && (
+      {/* "SHAPE YOUR ROUTINE" ON BOTH STATES (owner, 2026-10-04: "the home card
+          with the begin card should have a button to shape routine on the
+          first one too"). It used to ride only the second, returning card —
+          on day one the ask was simply to pray what is laid out, and pointing a
+          newcomer at the customizer first read as a settings errand. The owner
+          would rather the way in be there from the start; the card still retires
+          itself on the third day of use (WELCOME_RETIRES_AFTER_DAYS), so it is
+          only ever offered to someone who is still new. */}
+      {(
         <button
           type="button"
           onClick={() => setLocation("/rule-of-life")}

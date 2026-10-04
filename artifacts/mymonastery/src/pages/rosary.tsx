@@ -1130,7 +1130,9 @@ export default function RosaryPage() {
           whole, and there was no Back except the one in the corner. */}
       <DeckNavPill
         label={navLabel}
-        intro={isIntro}
+        // NO PHOEBE ON THE ROSARY (owner, 2026-10-04: "dont have it on rosary").
+        // The bar would stand her on any "1 of N" slide by default.
+        intro={false}
         back={{ onClick: goBack, disabled: isIntro }}
         primary={{ label: primary.label, onClick: primary.onClick }}
       />
