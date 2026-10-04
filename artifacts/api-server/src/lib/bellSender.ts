@@ -1342,7 +1342,15 @@ export async function runVtsCommentarySender(opts: { forceNow?: boolean } = {}):
  * another publisher's text out to people (see the note on
  * resolveTodayNouwenQuestion in routes/nouwen).
  */
-const NOUWEN_REFLECT_TIME = "10:00";
+/**
+ * 15:30, SHARP (owner, 2026-10-04: "lets try to be more exact with the
+ * notifications, lets do the feast at 10:30 and the question at 3:30"). The
+ * question moved from 10:00 and is matched with isAtOrJustAfterMinute on the
+ * scheduler's 1-MINUTE tick (EXACT_MINUTE_SENDERS), not the ±15-minute window
+ * of the 15-minute tick, so it lands on the minute rather than anywhere in a
+ * half hour. The per-day dedupe key below already prevents a second send.
+ */
+const NOUWEN_REFLECT_TIME = "15:30";
 
 /* `followsNouwen` lived here. It tested whether a person carried the Nouwen
    card or had it as their reflection source, and it — not the admin gate
@@ -1380,6 +1388,8 @@ export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {
     const adminRows = ((adminRes as unknown as { rows?: Array<{ userId: number }> }).rows ?? (adminRes as unknown as Array<{ userId: number }>)) as Array<{ userId: number }>;
     const admins = new Set(adminRows.map((a) => a.userId));
 
+    // One clock reading for the whole fan-out — see isAtOrJustAfterMinute.
+    const tickNow = new Date();
     let question: { question: string; url: string } | null | undefined;
     for (const r of rows) {
       try {
@@ -1401,7 +1411,7 @@ export async function runNouwenReflectionSender(opts: { forceNow?: boolean } = {
          * notifications switch is off (inside sendPushToUser).
          */
         const tz = r.userTimezone || "America/New_York";
-        if (!opts.forceNow && !isWithinTickWindow(tz, NOUWEN_REFLECT_TIME)) continue;
+        if (!opts.forceNow && !isAtOrJustAfterMinute(tz, NOUWEN_REFLECT_TIME, tickNow)) continue;
         const today = todayInZone(tz);
         const dedupeKey = `${today}-nouwen-reflect`;
 
@@ -1974,7 +1984,9 @@ export async function runPrayedTogetherSender(opts: { forceNow?: boolean } = {})
  * 276 of 365 days carry something. On the other 89 nothing is sent: a push
  * that says "Happy Feast of" with nothing after it is worse than silence.
  */
-const FEAST_DAY_TIME = "14:00";
+/** 10:30, SHARP (owner, 2026-10-04) — it was 14:00. Exact-minute tick, like the
+ *  question; feast_day_sent_date already dedupes the day. */
+const FEAST_DAY_TIME = "10:30";
 
 /** "2026-10-18" → "10-18", the key the generated table uses (no padding). */
 export function feastKeyFor(ymd: string): string {
@@ -2032,9 +2044,10 @@ export async function runFeastDaySender(opts: { forceNow?: boolean } = {}): Prom
     const result = await db.execute(sql.raw(FEAST_DAY_CANDIDATES_SQL));
     const rows = ((result as unknown as { rows?: FeastDayRow[] }).rows ?? (result as unknown as FeastDayRow[])) as FeastDayRow[];
 
+    const tickNow = new Date(); // one clock reading for the whole fan-out
     const recipients = feastDayRecipients(rows, {
       todayFor: (tz) => todayInZone(tz),
-      inWindow: (tz) => !!opts.forceNow || isWithinTickWindow(tz, FEAST_DAY_TIME),
+      inWindow: (tz) => !!opts.forceNow || isAtOrJustAfterMinute(tz, FEAST_DAY_TIME, tickNow),
     });
 
     for (const r of recipients) {
@@ -2501,6 +2514,7 @@ export async function runWeeklyDigestSender(opts: { forceNow?: boolean } = {}): 
 
 let bellInterval: ReturnType<typeof setInterval> | null = null;
 let officeReminderInterval: ReturnType<typeof setInterval> | null = null;
+let exactMinuteInterval: ReturnType<typeof setInterval> | null = null;
 
 // Each sender wrapped via withSchedulerLog: insert a "running" row in
 // scheduler_runs at start, update to "completed" or "failed" at end.
@@ -2541,14 +2555,10 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // too"). The sender, its recipient rules and the push stay in the file; to bring it back,
   // put this line back:
   // { name: "prayed-together",       run: runPrayedTogetherSender },
-  // "Happy Feast of ___" — 14:00, to everyone reachable, on the 276 days of
-  // the year that carry a commemoration (owner, 2026-10-01).
-  { name: "feast-day",              run: runFeastDaySender },
+  // "Happy Feast of ___" — now 10:30 and "A moment to reflect" — now 15:30 run
+  // on the 1-MINUTE tick below (EXACT_MINUTE_SENDERS), not here.
   // VTS Dean's Commentary — weekday ~8am nudge for readers who follow it.
   { name: "vts-commentary",        run: runVtsCommentarySender },
-  // "A moment to reflect" - the Nouwen reading's reflection question, ~10am, to its
-  // followers who have not read it yet. On; NOUWEN_REFLECT_PUSH=false limits it to admins.
-  { name: "nouwen-reflection",     run: runNouwenReflectionSender },
   // "Want to take a moment to breathe" - 7pm, to Breathing Together keepers who have not
   // breathed today. On; BREATH_MOMENT_PUSH=false turns it off.
   { name: "breath-moment",         run: runBreathMomentSender },
@@ -2582,6 +2592,17 @@ const OFFICE_REMINDER_SENDERS: Array<{ name: string; run: () => Promise<void> }>
   { name: "parish-office-morning-followup", run: runParishOfficeMorningFollowUpSender },
 ];
 
+// "Happy Feast of ___" (10:30, to everyone reachable, on the 276 days of the year
+// that carry a commemoration — owner, 2026-10-01) and "A moment to reflect" (the
+// Nouwen reading's question, 15:30, to everyone who has not read it yet). Both on
+// the 1-minute tick so each lands ON its minute (owner, 2026-10-04: "more exact
+// with the notifications"); feast_day_sent_date / the nouwen-reflect dedupe key
+// make a second send impossible.
+const EXACT_MINUTE_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
+  { name: "feast-day",              run: runFeastDaySender },
+  { name: "nouwen-reflection",     run: runNouwenReflectionSender },
+];
+
 // Senders currently mid-run. The office reminders tick every 60 SECONDS, but a
 // fan-out over the whole user base is serial and can take longer than that —
 // and dedupe is a read-then-write (the sent-date is stamped AFTER the push), so
@@ -2609,9 +2630,12 @@ function fireSenderList(senders: Array<{ name: string; run: () => Promise<void> 
 
 export function startBellScheduler(): void {
   if (bellInterval) return;
-  logger.info("[bell-scheduler] started — first run in 45s, then every 15 min; office reminders every 1 min");
+  logger.info("[bell-scheduler] started — first run in 45s, then every 15 min; office reminders, the feast and the question every 1 min");
   setTimeout(() => fireSenderList(SCHEDULER_SENDERS), 45_000);
   bellInterval = setInterval(() => fireSenderList(SCHEDULER_SENDERS), 15 * 60 * 1000);
   setTimeout(() => fireSenderList(OFFICE_REMINDER_SENDERS), 15_000);
   officeReminderInterval = setInterval(() => fireSenderList(OFFICE_REMINDER_SENDERS), 60 * 1000);
+  // The feast and the question, on the minute — the same 1-minute tick.
+  setTimeout(() => fireSenderList(EXACT_MINUTE_SENDERS), 20_000);
+  exactMinuteInterval = setInterval(() => fireSenderList(EXACT_MINUTE_SENDERS), 60 * 1000);
 }
