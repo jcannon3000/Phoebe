@@ -2815,6 +2815,37 @@ export async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    // ── Leader pages + the routine questionnaire answers they receive. FKs to
+    //    users and prescribed_routines, so it lives after the latter exists.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS leader_profiles (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        slug TEXT NOT NULL UNIQUE,
+        display_name TEXT NOT NULL,
+        welcome TEXT,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS routine_intakes (
+        id SERIAL PRIMARY KEY,
+        leader_profile_id INTEGER NOT NULL REFERENCES leader_profiles(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        morning TEXT NOT NULL DEFAULT '',
+        evening TEXT NOT NULL DEFAULT '',
+        connect TEXT NOT NULL DEFAULT '',
+        grow TEXT NOT NULL DEFAULT '',
+        newsletters JSONB NOT NULL DEFAULT '[]'::jsonb,
+        status TEXT NOT NULL DEFAULT 'new',
+        prescribed_routine_id INTEGER REFERENCES prescribed_routines(id) ON DELETE SET NULL,
+        sent_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS routine_intakes_by_leader ON routine_intakes(leader_profile_id)`);
     // Envs created before presets: relax the original NOT NULL.
     await run(client, `
       ALTER TABLE prescribed_routines ALTER COLUMN group_id DROP NOT NULL

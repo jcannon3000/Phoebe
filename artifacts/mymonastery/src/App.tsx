@@ -493,6 +493,8 @@ const CustomizePage = lazy(() => import("./pages/customize"));
 const AdminMinistriesPage = lazy(() => import("./pages/admin-ministries"));
 const AdminBreathPlacesPage = lazy(() => import("./pages/admin-breath-places"));
 const AdminPresetsPage = lazy(() => import("@/pages/admin-presets"));
+const AdminLeadersPage = lazy(() => import("@/pages/admin-leaders"));
+const LeaderPage = lazy(() => import("@/pages/leader-page"));
 const AdminWeekliesPage = lazy(() => import("@/pages/admin-weeklies"));
 const AdminCacLibraryPage = lazy(() => import("@/pages/admin-cac-library"));
 const ThisSundayPage = lazy(() => import("@/pages/this-sunday"));
@@ -1102,6 +1104,8 @@ const GUEST_ALLOWED_PREFIX = [
   // account; a truly session-less visitor still sees the landing and the
   // accept simply asks them to try again after the app provisions one.
   "/routine/",
+  // A leader's page (/with/:slug) — the five-question routine form, open to anyone.
+  "/with/",
   // Single-practice invite links (/practice/:key) — shareable the same way.
   "/practice/",
   // Printable parish/community invite SIGN (/sign/:token) — a leader prints the
@@ -1353,6 +1357,8 @@ function Router() {
       <Route path="/admin/breath-places" component={AdminBreathPlacesPage} />
       {/* The starter rhythms + the default one, as data (owner). */}
       <Route path="/admin/presets" component={AdminPresetsPage} />
+      <Route path="/admin/leaders" component={AdminLeadersPage} />
+      <Route path="/with/:slug" component={LeaderPage} />
       <Route path="/admin/weeklies" component={AdminWeekliesPage} />
       <Route path="/admin/cac-library" component={AdminCacLibraryPage} />
       {/* App Metrics is web-only (owner, 2026-09-26: "make it so that I

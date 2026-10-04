@@ -27,6 +27,8 @@ export const IMMERSIVE_PRACTICE_PREFIXES: readonly string[] = [
   // Designing your rule is also a sitting you shouldn't be interrupted during;
   // its Continue hovers at the bottom of the screen.
   "/rule-of-life", "/customize",
+  // A leader's questionnaire page: a form being filled in, not a place for prompts.
+  "/with",
 ];
 
 /** Is this a full-screen practice deck, whatever mode or params it carries? */

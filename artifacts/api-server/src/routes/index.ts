@@ -61,6 +61,7 @@ import reflectionsRouter from "./reflections";
 import ruleOfLifeRouter from "./ruleOfLife";
 import buildfaithRouter from "./buildfaith";
 import prescribedRoutinesRouter from "./prescribed-routines";
+import leaderProfilesRouter from "./leader-profiles";
 import routineInterviewRouter from "./routine-interview";
 import routinePresetsRouter from "./routine-presets";
 import andrewsRouter from "./andrews";
@@ -204,6 +205,7 @@ router.use(reflectionsRouter);
 router.use(buildfaithRouter);
 router.use("/rule-of-life", ruleOfLifeRouter);
 router.use(prescribedRoutinesRouter);
+router.use(leaderProfilesRouter);
 // The editable starter rhythms + the default one (super-admin writes, public reads).
 router.use(routinePresetsRouter);
 // "Andrew's Version" — the weekly inbox practice; who sees it is the

@@ -199,6 +199,12 @@ export default function AdminToolsPage() {
                   onClick={() => setLocation("/find-your-rhythm")}
                 />
                 <LinkRow
+                  emoji="🌿"
+                  label="Leader page"
+                  description="Your link for the five questions, and the answers people send"
+                  onClick={() => setLocation("/admin/leaders")}
+                />
+                <LinkRow
                   emoji="🧭"
                   label="Preset rhythm link"
                   description="Design a rule of life anyone can join via link"
