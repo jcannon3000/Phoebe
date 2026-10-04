@@ -47,12 +47,14 @@ export type DeckNavPillProps = {
   };
   /** One quiet line above the pill (e.g. "Pause before continuing"). */
   hint?: string | null;
+  /** Is this the deck's intro slide? Phoebe stands above the pill on it. Defaults to the counter reading "1 of N". */
+  intro?: boolean;
   /** Extra lift when something else (a player bar) sits under the pill. */
   bottomOffsetPx?: number;
   style?: CSSProperties;
 };
 
-export default function DeckNavPill({ label, back, primary, hint, bottomOffsetPx = 16, style }: DeckNavPillProps) {
+export default function DeckNavPill({ label, back, primary, hint, intro, bottomOffsetPx = 16, style }: DeckNavPillProps) {
   const holding = !!primary.hold?.active;
   const inert = !!primary.inert || holding;
   const seconds = primary.hold?.seconds ?? 12;
@@ -63,7 +65,7 @@ export default function DeckNavPill({ label, back, primary, hint, bottomOffsetPx
         @keyframes deck-cta-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .deck-cta-rise { animation: deck-cta-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both; }
       `}</style>
-      <PhoebeRise show={/^\s*1\s+of\b/i.test(label)} />
+      <PhoebeRise show={intro ?? /^\s*1\s+of\b/i.test(label)} />
       <nav
         aria-label="Slide navigation"
         style={{

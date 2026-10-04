@@ -1130,6 +1130,7 @@ export default function RosaryPage() {
           whole, and there was no Back except the one in the corner. */}
       <DeckNavPill
         label={navLabel}
+        intro={isIntro}
         back={{ onClick: goBack, disabled: isIntro }}
         primary={{ label: primary.label, onClick: primary.onClick }}
       />

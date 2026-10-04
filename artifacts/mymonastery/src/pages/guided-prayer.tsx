@@ -17,6 +17,7 @@ import { artworkById } from "@/lib/visioSelect";
 import { tidyArtist, tidyDate, safeArtUrl } from "@/lib/artistName";
 import { guidedPrayerArtIds, guidedPrayerArtRatio } from "@/lib/guidedPrayerArt";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
+import { PhoebeRise } from "@/components/PhoebeRise";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 
 // ── Simple Guided Prayer (PACT) ─────────────────────────────────────────────
@@ -715,7 +716,8 @@ export default function GuidedPrayerPage() {
       {/* Bottom controls — the office band: quiet movement dots where the deck
           puts its "X of Y" counter, then the frosted pill
           (CobreatheHowToIntro.tsx:234-244). */}
-      <div className="absolute left-0 right-0 flex flex-col items-center" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 22px)", zIndex: 2 }}>
+      <PhoebeRise show={isIntro} />
+      <div data-phoebe-stand className="absolute left-0 right-0 flex flex-col items-center" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 22px)", zIndex: 2 }}>
         {stage && (
           <div className="flex items-center justify-center gap-1.5" style={{ marginBottom: 16 }}>
             {MOVEMENTS.map((m) => (

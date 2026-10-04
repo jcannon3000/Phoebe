@@ -19,6 +19,7 @@ import DeckNavPill from "@/components/DeckNavPill";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 import { CtaArrow } from "@/components/CtaArrow";
+import { PhoebeRise } from "@/components/PhoebeRise";
 
 // ── /psalms — Praying the Psalms, rendered like the daily office ─────────────
 //
@@ -444,6 +445,7 @@ export default function PsalmsPage() {
     return (
       <div style={{ ...officeThemeStyle(display.backdrop, display.font), position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
         {Backdrop}
+        <PhoebeRise />
         <OfficeDisplaySheet open={displayOpen} onClose={() => setDisplayOpen(false)} />
         {header(goHome)}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "8px 28px", gap: 16 }}>

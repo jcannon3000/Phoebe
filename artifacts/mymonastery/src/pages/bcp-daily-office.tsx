@@ -5293,7 +5293,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       </main>
 
       {/* Bottom nav pill — Back · section · Next/Done. Mirrors Lectio. */}
-      <PhoebeRise show={slideIdx === 0} />
+      <PhoebeRise show={slideIdx === 0 && minLoadDone} />
       <nav
         aria-label="Slide navigation"
         style={{

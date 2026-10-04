@@ -28,6 +28,7 @@ import { attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { getSideContemplation, getSideLevel, getSideContemplationKind } from "@/lib/officePrefs";
 import { addGuestSilenceMinutes, markGuestBreathKeptToday } from "@/lib/guestSilenceLog";
 import { creditAnchorPractice } from "@/lib/officeManualLog";
+import { PhoebeRise } from "@/components/PhoebeRise";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
@@ -1196,6 +1197,7 @@ export default function CobreathePage() {
 
   return (
     <Layout bgPhoto={introBgPhoto}>
+      <PhoebeRise />
       <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "var(--app-dvh)" }}>
       <div className="max-w-xl mx-auto w-full flex flex-col flex-1 justify-start">
         {/* "Before you begin" intro — same shape as a devotion's opening slide

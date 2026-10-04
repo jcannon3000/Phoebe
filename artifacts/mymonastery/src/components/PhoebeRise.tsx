@@ -18,7 +18,7 @@ function contentBottom(navTop: number): number {
   let bottom = 0;
   const isFixedChrome = (el: Element | null): boolean => {
     for (let e = el; e && e !== document.body; e = e.parentElement) {
-      if (e.hasAttribute("data-phoebe-rise") || e.tagName === "NAV") return true;
+      if (e.hasAttribute("data-phoebe-rise") || e.hasAttribute("data-phoebe-stand") || e.tagName === "NAV") return true;
       const pos = getComputedStyle(e).position;
       if (pos === "fixed") return true;
     }
@@ -55,12 +55,12 @@ export function PhoebeRise({ show = true }: { show?: boolean }) {
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => {
     const measure = () => {
-      const nav = document.querySelector('nav[aria-label="Slide navigation"]');
-      if (!nav) { setBox((b) => (b ? { ...b, room: false } : b)); return; }
-      const top = (nav as HTMLElement).getBoundingClientRect().top;
+      const nav = document.querySelector('nav[aria-label="Slide navigation"]') ?? document.querySelector("[data-phoebe-stand]");
+      // No slide-navigation pill (a chooser-style intro): she stands on the bottom of the screen.
+      const top = nav ? (nav as HTMLElement).getBoundingClientRect().top : window.innerHeight - 8;
       const gap = top - contentBottom(top);
       const h = Math.min(MAX_H, Math.floor(gap * (2 / 3)));
-      const bottom = Math.round(window.innerHeight - top + 2);
+      const bottom = nav ? Math.round(window.innerHeight - top + 2) : 0;
       setBox((b) => (h >= MIN_H ? { h, bottom, room: true } : b ? { ...b, room: false } : b));
     };
     const soon = () => { window.clearTimeout(timer.current); timer.current = window.setTimeout(measure, 80); };
@@ -79,7 +79,7 @@ export function PhoebeRise({ show = true }: { show?: boolean }) {
     <>
       <style>{`
         @keyframes phoebe-rise { from { opacity: 0; transform: translate(-50%, 18px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        .phoebe-rise { animation: phoebe-rise 1100ms cubic-bezier(0.22, 1, 0.36, 1) 500ms both; }
+        .phoebe-rise { animation: phoebe-rise 1100ms cubic-bezier(0.22, 1, 0.36, 1) 700ms both; }
         @media (prefers-reduced-motion: reduce) { .phoebe-rise { animation: none; } }
       `}</style>
       <div

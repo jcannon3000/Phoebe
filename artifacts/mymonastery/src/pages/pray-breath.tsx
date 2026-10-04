@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { enqueueSession } from "@/lib/sessionOutbox";
+import { PhoebeRise } from "@/components/PhoebeRise";
 
 // ── BETA "Pray the breath" ──────────────────────────────────────────────────
 // A Co-Breathe variant where, instead of photos of the earth, the top half of
@@ -171,6 +172,7 @@ export default function PrayBreathPage() {
 
   return (
     <Layout bgPhoto={introBgPhoto}>
+      <PhoebeRise />
       <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "var(--app-dvh)" }}>
         <div className="max-w-xl mx-auto w-full flex flex-col flex-1 justify-start">
           <div className="flex flex-col items-center text-center pt-8">
