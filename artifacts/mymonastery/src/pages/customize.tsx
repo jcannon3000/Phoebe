@@ -16,6 +16,7 @@ import {
   type ReflectionSource,
   setSideContemplationKind, setSideDayRules, setDaySwapSuppressed, clearSideDaySwap,
   TRACKED_REFLECTION_SOURCES, UNOFFERED_REFLECTION_SOURCES,
+  setLectioMode,
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin, predatesSeedStamp } from "@/lib/guestSeed";
 import { RULE_PRESETS, type RulePreset, type OfficeSideKey } from "@/lib/rulePresets";
@@ -592,6 +593,14 @@ clearSideDaySwap("morning"); clearSideDaySwap("evening");
       if (preset.pray === "examen" || eveningChoice === "examen") {
         wanted.examen = false;
       }
+      /**
+       * WHICH WAY LECTIO IS KEPT, when the rule says so (Guided Audio asks for
+       * the guided audio). The full customizer writes this through the same
+       * setter when it adopts; this page had no lectio-keeping rule to write
+       * until now, and the header above is explicit that a rule must not mean
+       * two different things depending on which editor you opened.
+       */
+      if (preset.lectioMode) setLectioMode(preset.lectioMode);
       for (const [key, on] of Object.entries(wanted)) {
         if (!order.includes(key)) order.push(key);
         if (on) hidden.delete(key); else hidden.add(key);

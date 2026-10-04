@@ -3078,6 +3078,11 @@ export default function WayOfLoveRuleFlow({
       cobreathe: false, audio: false, examen: false, walk: false, visio: false, icons: false, taize: false, andrews: false, spirituals: false, compline: false, noonday: false, reading: false, lectio: false, rosary: false, payg: false,
       ...(preset.practices ?? {}),
     });
+    // WHICH WAY LECTIO IS KEPT, when the rule says (Guided Audio asks for the
+    // guided audio). Through the same pair the picker uses — the state for
+    // this screen, and setLectioMode for the write /lectio reads. A rule that
+    // doesn't say leaves the person's own setting alone.
+    if (preset.lectioMode) { setLectioModeState(preset.lectioMode); setLectioMode(preset.lectioMode); }
     /**
      * REPLACEMENT, NOT ACCUMULATION. The header on RulePreset promises
      * "nothing carries over from the rule being replaced", and that was true
@@ -3131,12 +3136,18 @@ export default function WayOfLoveRuleFlow({
     // Every SlottedPractice — a key missing here survives a preset as a stale
     // phoebe:slot:* the edit list can read back as a ghost row (icons, taizé
     // and spirituals were missing).
-    for (const k of ["cobreathe", "listening", "examen", "walk", "reading", "visio", "icons", "taize", "spirituals"] as const) {
+    // "lectio" and "rosary" were missing from this list, which is the very
+    // drift the note above warns about — they are SlottedPractices, so their
+    // phoebe:slot:* survived a preset as a ghost row in the edit list. Guided
+    // Audio is the first rule to slot lectio, so it would have shown up at
+    // once.
+    for (const k of ["cobreathe", "listening", "examen", "walk", "reading", "visio", "icons", "taize", "spirituals", "lectio", "rosary"] as const) {
       const wanted = (preset.practiceSlots ?? {})[k] != null
         || (k === "cobreathe" && preset.practices?.cobreathe)
         || (k === "listening" && preset.practices?.audio)
         || (k === "examen" && preset.practices?.examen)
         || (k === "walk" && preset.practices?.walk)
+        || (k === "lectio" && preset.practices?.lectio)
         || (k === "visio" && preset.practices?.visio);
       if (!wanted) { try { localStorage.removeItem(`phoebe:slot:${k}`); } catch { /* ignore */ } }
     }
