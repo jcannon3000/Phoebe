@@ -56,7 +56,20 @@ export function usePracticeDirectory(): PracticeEntry[] {
     // Start, and the Breathing Together pill. No ?sit here: from Practices
     // there is no side to take a length from, so their own default stands.
     { offlineKey: "contemplation", emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", href: "/contemplation?begin=1" },
-    { offlineKey: "lectio", emoji: "📜", label: "Lectio Divina", sub: "Meditate on today's readings", href: "/lectio" },
+    /**
+     * ?read=1 — THE MENU ALWAYS OPENS THE PAGE, never the audio (owner,
+     * 2026-10-04: "the lectio practice on the practice menu goes straight to
+     * the audio instead of first going to the intro page with the scriptures
+     * selections").
+     *
+     * /lectio hands straight off to the guided audio when the person's RULE
+     * keeps lectio that way (pages/lectio's one-door redirect). That is right
+     * for their own rhythm card — it is the practice they chose — but this is
+     * the catalogue, where someone is coming to pick a reading. The page it
+     * lands on carries the 🎧 Guided Lectio Divina pill, so the audio is one
+     * tap away rather than unreachable.
+     */
+    { offlineKey: "lectio", emoji: "📜", label: "Lectio Divina", sub: "Meditate on today's readings", href: "/lectio?read=1" },
     // Novenas hidden for all users — see lib/novenaFlag.ts. The row that
     // stood here on 2026-09-23 came out again the same day ("take out
     // novenas"); it opened /novena-library.

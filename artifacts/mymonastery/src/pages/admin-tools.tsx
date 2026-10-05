@@ -1,6 +1,5 @@
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
-import { isNativeShell } from "@/lib/isNativeShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { ToggleRow as Toggle } from "@/components/ToggleRow";
@@ -335,14 +334,17 @@ export default function AdminToolsPage() {
                     there too, so an old link or a bookmark can't reach it.
                     Nothing is removed: the page is the same page, on a
                     browser. */}
-                {!isNativeShell() && (
-                  <LinkRow
-                    emoji="📊"
-                    label="App Metrics"
-                    description="People, practices kept, readings — today, the last 7 days, this month"
-                    onClick={() => setLocation("/admin/users")}
-                  />
-                )}
+                {/* NO APP METRICS ROW AT ALL NOW (owner, 2026-10-04: "Hide
+                    the analytics from the admin accounts on admin tools").
+                    Every admin who opens this page saw the app's numbers; the
+                    row is the thing that put them in front of them, so the row
+                    is what goes.
+
+                    The PAGE is untouched and still refuses on native, so the
+                    owner's own bookmark to /admin/users on a browser works
+                    exactly as before — the same arrangement the note below
+                    this one described when the row was merely hidden in the
+                    app. Nothing is deleted; it is simply not offered here. */}
                 <LinkRow
                   emoji="🎞️"
                   label="Formation Deck"
