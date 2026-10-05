@@ -41,6 +41,8 @@ export default function PrescribeRoutinePage() {
     } catch { return null; }
   }, []);
   const [person, setPerson] = useState<{ name: string; email: string } | null>(null);
+  const [theirAnswers, setTheirAnswers] = useState<Array<{ q: string; a: string }>>([]);
+  const [showAnswers, setShowAnswers] = useState(false);
   const [delivery, setDelivery] = useState<{ emailed: boolean; pushed: boolean } | null>(null);
   const backTarget = intakeId ? `/admin/leaders/${intakeId}` : slug ? `/communities/${slug}/rule-of-life` : "/admin/tools";
   const [, setLocation] = useLocation();
@@ -83,6 +85,15 @@ export default function PrescribeRoutinePage() {
       const i = r?.intake;
       if (!i) return;
       setPerson({ name: i.name, email: i.email });
+      const reflections: Record<string, string> = {
+        cac: "Daily Meditation (CAC)", fdd: "Forward Day by Day", ssje: "SSJE", vts: "Dean's Commentary",
+        nouwen: "Nouwen Daily Devotion", payg: "Pray As You Go", taizeprayer: "Taizé Daily Prayer",
+      };
+      setTheirAnswers([
+        { q: "Morning", a: i.morning }, { q: "Evening", a: i.evening }, { q: "How they connect with God", a: i.connect },
+        { q: "Content format that works best", a: i.format }, { q: "How they'd like to grow", a: i.grow },
+        { q: "Daily reflections they'd like", a: (Array.isArray(i.newsletters) ? i.newsletters : []).map((k: string) => reflections[k] ?? k).join(", ") },
+      ].filter((x) => String(x.a ?? "").trim()));
       setLabel((cur) => cur || `A rhythm for ${String(i.name).trim().split(/\s+/)[0]}`);
     }).catch(() => { /* the naming screen still works without it */ });
   }, [intakeId]);
@@ -174,10 +185,38 @@ export default function PrescribeRoutinePage() {
       <Layout bgPhoto={flowLeaf} chromeless onClose={() => setLocation(backTarget)}>
         <WayOfLoveRuleFlow
           prescribe
+          manualOnly={!!intakeId}
           onPrescribe={handlePrescribe}
           onBack={() => setLocation(backTarget)}
           onDone={() => { /* unused in prescribe mode — commit() routes to onPrescribe */ }}
         />
+        {/* Designing from someone's answers: keep them one tap away. */}
+        {intakeId && theirAnswers.length > 0 && (
+          <>
+            <button type="button" onClick={() => setShowAnswers(true)}
+              style={{ position: "fixed", top: "calc(var(--safe-top, 0px) + 10px)", left: 14, zIndex: 70,
+                background: "rgba(9,26,16,0.7)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+                color: WARM, border: "1px solid rgba(143,175,150,0.35)", borderRadius: 999, padding: "8px 14px",
+                fontSize: 13.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+              {person ? `${person.name.trim().split(/\s+/)[0]}'s answers` : "Their answers"}
+            </button>
+            {showAnswers && (
+              <div role="dialog" aria-modal="true" onClick={() => setShowAnswers(false)}
+                style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(4,12,7,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                <div onClick={(e) => e.stopPropagation()}
+                  style={{ background: "rgba(9,26,16,0.95)", border: "1px solid rgba(46,107,64,0.45)", borderRadius: 18, padding: 18, maxWidth: 420, width: "100%", maxHeight: "80vh", overflowY: "auto", boxSizing: "border-box" }}>
+                  {theirAnswers.map((x) => (
+                    <p key={x.q} style={{ margin: "0 0 14px", fontFamily: FONT, fontSize: 14.5, color: WARM, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                      <span style={{ display: "block", fontSize: 12.5, color: SAGE }}>{x.q}</span>{x.a}
+                    </p>
+                  ))}
+                  <button type="button" onClick={() => setShowAnswers(false)}
+                    style={{ width: "100%", background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", borderRadius: 12, padding: "12px 16px", fontSize: 15, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>Close</button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </Layout>
     );
   }

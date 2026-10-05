@@ -259,15 +259,7 @@ export default function RoutineInterviewPage() {
     [],
   );
 
-  // Designing from someone's answers (?intake=ID, from a leader's inbox): their five
-  // answers stand in for the opening questions, so we go straight to suggesting.
-  const intakeId = useMemo(() => {
-    try {
-      const n = Number(new URLSearchParams(window.location.search).get("intake"));
-      return Number.isInteger(n) && n > 0 ? n : null;
-    } catch { return null; }
-  }, []);
-  const [phase, setPhase] = useState<Phase>(intakeId ? "thinking-guide" : "describe");
+  const [phase, setPhase] = useState<Phase>("describe");
   /**
    * Rebuilding from nothing, or changing what's already there.
    *
@@ -685,39 +677,6 @@ export default function RoutineInterviewPage() {
     for (const k of [...pickReflections, ...pickPractices]) if (k !== pickMorning && k !== pickEvening && !chosen.some((c) => c.key === k)) chosen.push({ key: k });
     void submitFollowups(undefined, 0, chosen);
   };
-
-  // A leader's inbox sent us here with a person's answers: read them in and suggest.
-  useEffect(() => {
-    if (!intakeId || !prescribe) return;
-    let cancelled = false;
-    apiRequest("GET", `/api/leader/intakes/${intakeId}`)
-      .then((r: any) => {
-        if (cancelled) return;
-        const i = r?.intake;
-        if (!i) throw new Error("not_found");
-        const reflections: Record<string, string> = {
-          cac: "Daily Meditation (Center for Action and Contemplation)", fdd: "Forward Day by Day", ssje: "Brother, Give Us a Word (SSJE)",
-          vts: "Dean's Commentary (Virginia Theological Seminary)", nouwen: "Daily Devotion (Henri Nouwen Society)",
-          payg: "Pray As You Go", taizeprayer: "Taize Daily Prayer",
-        };
-        const lines = [
-          ["How do you pray, or how would you like to pray, in the morning?", i.morning],
-          ["How do you pray, or how would you like to pray, in the evening?", i.evening],
-          ["How do you best connect with God?", i.connect],
-          ["What content format works best for you (reading on screen, listening on the way to work…)?", i.format],
-          ["How would you like to grow in your prayer life?", i.grow],
-        ].filter(([, a]) => String(a ?? "").trim()).map(([q, a]) => `${q}\n${String(a).trim()}`);
-        const wants = Array.isArray(i.newsletters) && i.newsletters.length
-          ? `Daily reflections they would like to read: ${i.newsletters.map((k: string) => reflections[k] ?? k).join("; ")}.` : "";
-        const text = [`${i.name} told us how they would like to pray.`, ...lines, wants].filter(Boolean).join("\n\n");
-        if (text.length < 40) throw new Error("too_short");
-        setDescription(text);
-        void startGuided(text);
-      })
-      .catch((e: any) => { if (!cancelled) { setError(errorText(e?.body?.error ?? e?.message ?? "")); setPhase("describe"); } });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   /**
    * Hand the finished routine to prescribe-routine.tsx.

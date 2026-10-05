@@ -1,7 +1,7 @@
 /**
  * ONE RESPONSE: what a person answered on a leader's page, and the door to
- * design their routine. "Start designing routine" opens the guided interview
- * seeded with their answers; finishing it sends the routine to their phone and
+ * design their routine. "Start designing routine" opens the manual customizer
+ * (their answers one tap away); finishing it sends the routine to their phone and
  * email (prescribe-routine.tsx), and shows the link here too.
  */
 import { useParams, useLocation } from "wouter";
@@ -44,8 +44,8 @@ export default function AdminLeaderIntakePage() {
   const [note, setNote] = useState<string | null>(null);
   const i = data?.intake;
 
-  const design = () =>
-    setLocation(`/routine-interview?prescribe=1&intake=${id}&from=${encodeURIComponent(`/prescribe?intake=${id}`)}`);
+  // By hand, in the full customizer (not the AI interview): their answers sit beside it.
+  const design = () => setLocation(`/prescribe?intake=${id}`);
 
   async function resend() {
     setNote(null);
