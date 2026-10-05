@@ -1062,16 +1062,22 @@ export async function sendWeeklyDigestEmail(opts: {
   }
 }
 
+export type EmailRoutineRow = { emoji: string; label: string; sub: string };
+
 /**
- * A leader's routine, sent to the person it was designed for (/routine/:token).
- * One-to-one and transactional: no unsubscribe footer, like the moment link.
+ * A leader's designed routine, sent to the person it was designed for (/routine/:token).
+ * It shows the routine itself. One-to-one and transactional: no unsubscribe footer.
  */
 export async function sendLeaderRoutineEmail(opts: {
-  to: string; name: string; leaderName: string; url: string;
+  to: string; name: string; leaderName: string; url: string; rows: EmailRoutineRow[];
 }): Promise<boolean> {
   const gmail = await getGmailClient();
   if (!gmail) { console.warn("Gmail client unavailable — skipping leader routine email"); return false; }
   const first = (opts.name ?? "").trim().split(/\s+/)[0] || "there";
+  const rowsHtml = opts.rows.map((r) => `
+          <tr><td style="padding:10px 0;border-top:1px solid #eee8de;font-size:15px;color:#2d2a26;line-height:1.45;">
+            <span style="font-size:18px;">${escapeHtml(r.emoji)}</span>&nbsp; <strong>${escapeHtml(r.label)}</strong>${r.sub ? `<br><span style="color:#6b6460;font-size:13.5px;">${escapeHtml(r.sub)}</span>` : ""}
+          </td></tr>`).join("");
   const html = `
 <!DOCTYPE html>
 <html>
@@ -1082,13 +1088,15 @@ export async function sendLeaderRoutineEmail(opts: {
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e8e2d9;padding:40px 36px;">
         <tr><td>
           <div style="margin-bottom:28px;"><img src="https://withphoebe.app/phoebe-app-icon.png" width="32" height="32" alt="" style="vertical-align:middle;border-radius:8px;border:0;margin-right:10px;"><span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;vertical-align:middle;">Phoebe</span></div>
-          <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">A rhythm of prayer, made for you</h1>
+          <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${escapeHtml(opts.leaderName)} designed a rhythm of prayer for you</h1>
           <p style="margin:0 0 20px;font-size:15px;color:#6b6460;line-height:1.6;">
-            Hi ${escapeHtml(first)}, thank you for telling ${escapeHtml(opts.leaderName)} how you'd like to pray. They read what you wrote and put together a daily rhythm for you.
+            Hi ${escapeHtml(first)}, they read what you wrote about how you'd like to pray, and put this together:
           </p>
-          <a href="${opts.url}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">See your rhythm \u{2192}</a>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">${rowsHtml}
+          </table>
+          <a href="${opts.url}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">Add it to your day \u{2192}</a>
           <p style="margin:24px 0 0;font-size:13px;color:#9b938d;line-height:1.6;">
-            Open it, look it over, and add it to your day when you're ready. You can change any part of it afterwards.
+            Sign in to Phoebe to add it, and change any part of it afterwards.
           </p>
         </td></tr>
       </table>
@@ -1099,15 +1107,19 @@ export async function sendLeaderRoutineEmail(opts: {
   const text = [
     `Hi ${first},`,
     "",
-    `Thank you for telling ${opts.leaderName} how you'd like to pray. They read what you wrote and put together a daily rhythm for you:`,
+    `${opts.leaderName} read what you wrote about how you'd like to pray, and designed this rhythm of prayer for you:`,
+    "",
+    ...opts.rows.map((r) => `${r.emoji} ${r.label}${r.sub ? ` — ${r.sub}` : ""}`),
+    "",
+    "Add it to your day:",
     opts.url,
     "",
-    "Open it, look it over, and add it to your day when you're ready. You can change any part of it afterwards.",
+    "Sign in to Phoebe to add it, and change any part of it afterwards.",
     "",
     "— Phoebe",
   ].join("\n");
   try {
-    const raw = encodeMimeMessage({ to: opts.to, subject: `${opts.leaderName} made you a rhythm of prayer`, html, text });
+    const raw = encodeMimeMessage({ to: opts.to, subject: `${opts.leaderName} designed a rhythm of prayer for you`, html, text });
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {
@@ -1117,21 +1129,34 @@ export async function sendLeaderRoutineEmail(opts: {
   }
 }
 
-/** Tells a leader a new response arrived. To the leader only; plain and short. */
+/**
+ * Tells a leader that someone wants their help designing a rhythm of prayer, with what
+ * the person wrote. To the leader only.
+ */
 export async function sendLeaderIntakeNoticeEmail(opts: {
   to: string; applicantName: string; applicantEmail: string; adminUrl: string;
+  answers: Array<{ q: string; a: string }>;
 }): Promise<boolean> {
   const gmail = await getGmailClient();
   if (!gmail) return false;
+  const answered = opts.answers.filter((x) => x.a.trim());
   const text = [
-    `${opts.applicantName} (${opts.applicantEmail}) just answered your five questions about how they'd like to pray.`,
+    `${opts.applicantName} (${opts.applicantEmail}) would like your help designing a rhythm of prayer.`,
     "",
-    "Read it and design their routine:",
+    "Here is what they wrote:",
+    "",
+    ...answered.flatMap((x) => [x.q, x.a.trim(), ""]),
+    "Read it and start designing their routine:",
     opts.adminUrl,
   ].join("\n");
-  const html = `<p style="font-family:-apple-system,sans-serif;font-size:15px;color:#2d2a26;line-height:1.6;">${escapeHtml(opts.applicantName)} (${escapeHtml(opts.applicantEmail)}) just answered your five questions about how they'd like to pray.</p><p style="font-family:-apple-system,sans-serif;font-size:15px;"><a href="${opts.adminUrl}" style="color:#4a7c59;">Read it and design their routine →</a></p>`;
+  const answersHtml = answered.map((x) =>
+    `<p style="margin:0 0 14px;font-size:14px;color:#6b6460;">${escapeHtml(x.q)}<br><span style="font-size:15px;color:#2d2a26;white-space:pre-wrap;">${escapeHtml(x.a.trim())}</span></p>`).join("");
+  const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;">
+<p style="font-size:15px;color:#2d2a26;line-height:1.6;"><strong>${escapeHtml(opts.applicantName)}</strong> (${escapeHtml(opts.applicantEmail)}) would like your help designing a rhythm of prayer. Here is what they wrote:</p>
+${answersHtml}
+<p style="font-size:15px;"><a href="${opts.adminUrl}" style="color:#4a7c59;">Read it and start designing their routine \u{2192}</a></p></div>`;
   try {
-    const raw = encodeMimeMessage({ to: opts.to, subject: `${opts.applicantName} answered your prayer questions`, html, text });
+    const raw = encodeMimeMessage({ to: opts.to, subject: `${opts.applicantName} would like your help designing a rhythm of prayer`, html, text });
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {

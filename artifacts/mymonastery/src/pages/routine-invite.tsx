@@ -37,7 +37,13 @@ type RoutineSpec = {
   homeLayout: { order: string[]; hidden: string[]; v?: number };
   ruleConfig: Record<string, string>;
 };
-type LandingData = { label: string | null; groupName: string | null; createdByName: string | null; spec: RoutineSpec };
+type LandingRow = { emoji: string; label: string; sub: string };
+type LandingData = {
+  label: string | null; groupName: string | null; createdByName: string | null; spec: RoutineSpec;
+  // What the routine actually contains, from the server (the client's coarse summary can't tell a
+  // contemplative morning from an office), and whether it was designed for one particular person.
+  rows?: LandingRow[]; designedFor?: boolean;
+};
 
 // Human labels for the home-layout module keys we surface in the summary.
 const CARD_LABELS: Record<string, string> = {
@@ -214,7 +220,12 @@ export default function RoutineInvitePage() {
       </div>
 
       <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
-        {lines.length === 0 ? (
+        {data.rows && data.rows.length > 0 ? data.rows.map((r, i) => (
+          <p key={i} style={{ color: "rgba(240,237,230,0.95)", fontFamily: FONT, fontSize: 14.5, lineHeight: 1.35 }}>
+            <span aria-hidden>{r.emoji}</span>&nbsp; <strong style={{ fontWeight: 600 }}>{r.label}</strong>
+            {r.sub ? <span style={{ color: SAGE }}> — {r.sub}</span> : null}
+          </p>
+        )) : lines.length === 0 ? (
           <p style={{ color: "rgba(182,210,188,0.9)", fontFamily: FONT, fontSize: 14 }}>A gentle daily rhythm.</p>
         ) : lines.map((l, i) => (
           <p key={i} style={{ color: "rgba(240,237,230,0.95)", fontFamily: FONT, fontSize: 14.5, lineHeight: 1.35 }}>{l}</p>
@@ -225,8 +236,10 @@ export default function RoutineInvitePage() {
         This sets your offices, practices, and silence. Your prayer list and everything personal stays exactly as it is.
       </p>
 
-      {!user ? (
-        PHOEBE_GUEST_ENABLED ? (
+      {/* A routine designed for a particular person needs a real ACCOUNT: it was sent to
+          theirs, and an anonymous device user is not one. */}
+      {!user || (data.designedFor && user.isAnonymous) ? (
+        PHOEBE_GUEST_ENABLED && !data.designedFor ? (
           // Public no-login app: a newcomer (e.g. someone who just scanned the
           // parish QR sign) begins RIGHT HERE — no account. We provision an
           // anonymous device user behind the scenes and apply the rhythm.
@@ -264,7 +277,7 @@ export default function RoutineInvitePage() {
                 // round-trip the fellow/companion invites use) — without it the
                 // link silently dies for every brand-new invitee.
                 try { sessionStorage.setItem("phoebe:routine-token", token ?? ""); } catch { /* ignore */ }
-                setLocation("/signin");
+                setLocation(`/signin?redirect=${encodeURIComponent(`/routine/${token ?? ""}`)}`);
               }}
               style={primaryBtn}
             >

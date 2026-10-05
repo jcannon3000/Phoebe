@@ -1991,15 +1991,15 @@ export function sendWeeklyDigestPush(
 
 
 /**
- * "{Leader} made you a rhythm" — a leader's designed routine, to a person who
+ * "{Leader} designed a rhythm of prayer for you" — a leader's designed routine, to a person who
  * answered their questions and already has an account. Opens the same
  * /routine/:token review page the emailed link does; nothing is applied until
  * they tap "Add this rhythm to my day".
  */
 export function sendLeaderRoutinePush(userId: number, opts: { leaderName: string; token: string }) {
   return sendPushToUser(userId, {
-    title: `${opts.leaderName} made you a rhythm`,
-    body: "A daily rhythm of prayer, put together from what you told them. Open it to look it over.",
+    title: `${opts.leaderName} designed a rhythm of prayer for you`,
+    body: "Put together from what you told them. Open it to see it and add it to your day.",
     path: `/routine/${opts.token}`,
     threadId: "leader-routine",
     collapseId: `leader-routine-${opts.token}`,

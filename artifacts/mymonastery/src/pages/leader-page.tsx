@@ -4,12 +4,13 @@
  * account needed. The answers go to that leader's inbox (/admin/leaders), who
  * designs a routine for them and sends it by link or to their account.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { Layout } from "@/components/layout";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -27,7 +28,7 @@ const NEWSLETTER_LABELS: Record<string, string> = {
 
 type Profile = { displayName: string; welcome: string | null; newsletters: string[] };
 
-const QUESTIONS: { key: "morning" | "evening" | "connect" | "grow"; title: string; hint: string; placeholder: string }[] = [
+const QUESTIONS: { key: "morning" | "evening" | "connect" | "format" | "grow"; title: string; hint: string; placeholder: string }[] = [
   { key: "morning", title: "How do you pray, or how would you like to pray, in the morning?",
     hint: "A few quiet minutes, a short reading, the Daily Office, nothing at all — whatever is true for you.",
     placeholder: "In the morning I'd like to…" },
@@ -37,10 +38,16 @@ const QUESTIONS: { key: "morning" | "evening" | "connect" | "grow"; title: strin
   { key: "connect", title: "How do you best connect with God?",
     hint: "Silence, scripture, music, walking, other people, being outdoors, writing…",
     placeholder: "I feel closest to God when…" },
+  { key: "format", title: "What content format works best for you?",
+    hint: "Reading on the screen, listening on the way to work, watching, something in your hands…",
+    placeholder: "I'd rather…" },
   { key: "grow", title: "How would you like to grow in your prayer life?",
     hint: "Say it however it comes. There is no wrong answer.",
     placeholder: "I'd like to…" },
 ];
+
+const NQ = QUESTIONS.length; // the written questions; then reflections, then the account step, then thanks
+const STEP_NEWS = NQ + 1, STEP_ACCOUNT = NQ + 2, STEP_THANKS = NQ + 3, TOTAL = NQ + 1;
 
 export default function LeaderPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -53,7 +60,7 @@ export default function LeaderPage() {
 
   // 0 = welcome, 1-4 = the four written questions, 5 = newsletters, 6 = who you are, 7 = thanks
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState({ morning: "", evening: "", connect: "", grow: "" });
+  const [answers, setAnswers] = useState({ morning: "", evening: "", connect: "", format: "", grow: "" });
   const [newsletters, setNewsletters] = useState<string[]>([]);
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -75,7 +82,7 @@ export default function LeaderPage() {
       const d = JSON.parse(raw) as { answers?: typeof answers; newsletters?: string[] };
       if (d.answers) setAnswers((a) => ({ ...a, ...d.answers }));
       if (Array.isArray(d.newsletters)) setNewsletters(d.newsletters);
-      if (new URLSearchParams(window.location.search).get("resume") === "1") setStep(6);
+      if (new URLSearchParams(window.location.search).get("resume") === "1") setStep(STEP_ACCOUNT);
     } catch { /* no draft */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -83,9 +90,10 @@ export default function LeaderPage() {
     try { localStorage.setItem(draftKey, JSON.stringify({ answers, newsletters })); } catch { /* blocked */ }
   }
 
-  const leaf = LEAF_PHOTOS[0];
+  // The same full-screen leaf the customizer sits on, picked once so it can't reshuffle between steps.
+  const leaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
   const wrap: React.CSSProperties = {
-    position: "relative", minHeight: "var(--app-dvh)", display: "flex", flexDirection: "column",
+    minHeight: "var(--app-dvh)", display: "flex", flexDirection: "column",
     justifyContent: "center", gap: 16, maxWidth: 480, margin: "0 auto",
     padding: "calc(var(--safe-top, 0px) + 28px) 22px calc(env(safe-area-inset-bottom, 0px) + 28px)",
   };
@@ -101,19 +109,24 @@ export default function LeaderPage() {
     width: "100%", background: "rgba(200,212,192,0.07)", border: "1px solid rgba(46,107,64,0.4)",
     borderRadius: 12, padding: "14px 16px", color: WARM, fontSize: 16, fontFamily: FONT, outline: "none",
   };
-  const Backdrop = () => (
-    <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, backgroundColor: "#091A10",
-      backgroundImage: leaf ? `url(${leaf})` : undefined, backgroundSize: "cover", backgroundPosition: "center", opacity: leaf ? 0.5 : 1 }} />
+  // Leaf backdrop + a frosted panel, like every other screen. Closing (the X) goes home.
+  const shell = (children: ReactNode) => (
+    <Layout bgPhoto={leaf} chromeless onClose={() => setLocation("/dashboard")}>
+      <div style={wrap}>
+        <div style={{ ...card, padding: 24, borderRadius: 22, display: "flex", flexDirection: "column", gap: 16 }}>
+          {children}
+        </div>
+      </div>
+    </Layout>
   );
 
-  if (isLoading) return <div style={wrap}><Backdrop /><p style={{ color: SAGE, fontFamily: FONT, textAlign: "center" }}>Loading…</p></div>;
+  if (isLoading) return shell(<p style={{ color: SAGE, fontFamily: FONT, textAlign: "center" }}>Loading…</p>);
   if (isError || !profile) {
-    return (
-      <div style={wrap}><Backdrop />
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: WARM, fontFamily: FONT }}>This page isn't available</h1>
-        <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT }}>Double-check the link you were sent.</p>
-      </div>
-    );
+    return shell(<>
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: WARM, fontFamily: FONT }}>This page isn't available</h1>
+      <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT }}>Double-check the link you were sent.</p>
+      <button type="button" onClick={() => setLocation("/dashboard")} style={primary}>Done</button>
+    </>);
   }
 
   const hasAccount = !!user && !user.isAnonymous;
@@ -127,7 +140,7 @@ export default function LeaderPage() {
       });
       setSentName(r?.name ?? user?.name ?? ""); setSentEmail(r?.email ?? user?.email ?? "");
       try { localStorage.removeItem(draftKey); } catch { /* blocked */ }
-      setStep(7);
+      setStep(STEP_THANKS);
     } catch (e) {
       setError(String((e as Error)?.message ?? "").includes("account_required")
         ? "Please sign in first, then send."
@@ -135,10 +148,9 @@ export default function LeaderPage() {
     } finally { setSending(false); }
   }
 
-  const q = step >= 1 && step <= 4 ? QUESTIONS[step - 1] : null;
+  const q = step >= 1 && step <= NQ ? QUESTIONS[step - 1] : null;
 
-  return (
-    <div style={wrap}><Backdrop />
+  return shell(<>
       {step === 0 && (<>
         <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: SAGE, fontFamily: FONT }}>A rhythm for you 🌿</p>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.2 }}>
@@ -147,12 +159,12 @@ export default function LeaderPage() {
         <p style={{ fontSize: 15, color: "rgba(240,237,230,0.9)", fontFamily: FONT, lineHeight: 1.5 }}>
           {profile.welcome?.trim() || "Tell me a little about how you'd like to pray, and I'll put together a daily rhythm for you."}
         </p>
-        <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT }}>Five short questions. It takes about three minutes.</p>
+        <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT }}>{TOTAL} short questions. It takes about three minutes.</p>
         <button type="button" onClick={() => setStep(1)} style={primary}>Begin</button>
       </>)}
 
       {q && (<>
-        <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: SAGE, fontFamily: FONT }}>Question {step} of 5</p>
+        <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: SAGE, fontFamily: FONT }}>Question {step} of {TOTAL}</p>
         <h1 style={{ fontSize: 23, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.25 }}>{q.title}</h1>
         <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT, lineHeight: 1.45 }}>{q.hint}</p>
         <textarea
@@ -166,8 +178,8 @@ export default function LeaderPage() {
         </div>
       </>)}
 
-      {step === 5 && (<>
-        <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: SAGE, fontFamily: FONT }}>Question 5 of 5</p>
+      {step === STEP_NEWS && (<>
+        <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: SAGE, fontFamily: FONT }}>Question {TOTAL} of {TOTAL}</p>
         <h1 style={{ fontSize: 23, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.25 }}>Would you like a daily reflection to read?</h1>
         <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT, lineHeight: 1.45 }}>Choose any that appeal to you, or none.</p>
         <div style={{ ...card, display: "flex", flexDirection: "column", gap: 4, padding: 8 }}>
@@ -186,12 +198,12 @@ export default function LeaderPage() {
           })}
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button type="button" onClick={() => setStep(4)} style={{ ...primary, background: "transparent" }}>Back</button>
-          <button type="button" onClick={() => setStep(6)} style={{ ...primary, flex: 1 }}>Next</button>
+          <button type="button" onClick={() => setStep(NQ)} style={{ ...primary, background: "transparent" }}>Back</button>
+          <button type="button" onClick={() => setStep(STEP_ACCOUNT)} style={{ ...primary, flex: 1 }}>Next</button>
         </div>
       </>)}
 
-      {step === 6 && (<>
+      {step === STEP_ACCOUNT && (<>
         <h1 style={{ fontSize: 23, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.25 }}>
           {hasAccount ? `Send this to ${profile.displayName}` : "Make an account to receive your rhythm"}
         </h1>
@@ -203,7 +215,7 @@ export default function LeaderPage() {
           </p>
           {error && <p style={{ color: "#e87a7a", fontSize: 13.5, fontFamily: FONT }}>{error}</p>}
           <div style={{ display: "flex", gap: 10 }}>
-            <button type="button" onClick={() => setStep(5)} style={{ ...primary, background: "transparent" }}>Back</button>
+            <button type="button" onClick={() => setStep(STEP_NEWS)} style={{ ...primary, background: "transparent" }}>Back</button>
             <button type="button" disabled={sending} onClick={submit} style={{ ...primary, flex: 1, opacity: sending ? 0.6 : 1 }}>
               {sending ? "Sending…" : "Send"}
             </button>
@@ -215,16 +227,16 @@ export default function LeaderPage() {
           <button type="button" onClick={() => { saveDraft(); setLocation(`/signin?mode=signup&redirect=${back}`); }} style={primary}>Create an account</button>
           <button type="button" onClick={() => { saveDraft(); setLocation(`/signin?redirect=${back}`); }}
             style={{ ...primary, background: "transparent", fontWeight: 600 }}>I already have an account</button>
-          <button type="button" onClick={() => setStep(5)} style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 14, cursor: "pointer" }}>Back</button>
+          <button type="button" onClick={() => setStep(STEP_NEWS)} style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 14, cursor: "pointer" }}>Back</button>
         </>)}
       </>)}
 
-      {step === 7 && (<>
+      {step === STEP_THANKS && (<>
         <h1 style={{ fontSize: 25, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.22 }}>Thank you{sentName ? `, ${sentName.trim().split(" ")[0]}` : ""}.</h1>
         <p style={{ fontSize: 15, color: "rgba(240,237,230,0.9)", fontFamily: FONT, lineHeight: 1.55 }}>
           {profile.displayName} will read what you wrote and put together a rhythm for you. It will arrive in your Phoebe account{sentEmail ? ` and at ${sentEmail}` : ""}.
         </p>
+        <button type="button" onClick={() => setLocation("/dashboard")} style={primary}>Done</button>
       </>)}
-    </div>
-  );
+  </>);
 }

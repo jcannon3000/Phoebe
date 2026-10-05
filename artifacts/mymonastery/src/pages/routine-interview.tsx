@@ -704,6 +704,7 @@ export default function RoutineInterviewPage() {
           ["How do you pray, or how would you like to pray, in the morning?", i.morning],
           ["How do you pray, or how would you like to pray, in the evening?", i.evening],
           ["How do you best connect with God?", i.connect],
+          ["What content format works best for you (reading on screen, listening on the way to work…)?", i.format],
           ["How would you like to grow in your prayer life?", i.grow],
         ].filter(([, a]) => String(a ?? "").trim()).map(([q, a]) => `${q}\n${String(a).trim()}`);
         const wants = Array.isArray(i.newsletters) && i.newsletters.length

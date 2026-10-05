@@ -31,6 +31,8 @@ export const routineIntakesTable = pgTable("routine_intakes", {
   morning: text("morning").notNull().default(""),
   evening: text("evening").notNull().default(""),
   connect: text("connect").notNull().default(""),
+  // What content format works best: reading on screen, listening on the way to work…
+  format: text("format").notNull().default(""),
   grow: text("grow").notNull().default(""),
   newsletters: jsonb("newsletters").$type<string[]>().notNull().default([]),
   // new → crafted (a routine was designed) → sent (delivered to them)

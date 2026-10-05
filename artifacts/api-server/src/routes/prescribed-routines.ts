@@ -14,10 +14,12 @@ import {
   db,
   prescribedRoutinesTable,
   usersTable,
+  routineIntakesTable,
   groupsTable,
   groupMembersTable,
 } from "@workspace/db";
 import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
+import { describeSpec } from "../lib/routineDescribe";
 import { isSuperAdminUser } from "../lib/superAdmin";
 
 const router: IRouter = Router();
@@ -81,6 +83,7 @@ router.get("/prescribed-routines/:token", async (req, res): Promise<void> => {
   if (!/^[a-f0-9]{32}$/i.test(token)) { res.status(404).json({ error: "Not found" }); return; }
   try {
     const [row] = await db.select({
+      id: prescribedRoutinesTable.id,
       label: prescribedRoutinesTable.label,
       spec: prescribedRoutinesTable.spec,
       groupId: prescribedRoutinesTable.groupId,
@@ -93,11 +96,23 @@ router.get("/prescribed-routines/:token", async (req, res): Promise<void> => {
       ? await db.select({ name: groupsTable.name }).from(groupsTable).where(eq(groupsTable.id, row.groupId)).limit(1)
       : [undefined];
     const [creator] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, row.createdByUserId)).limit(1);
+    // What the routine ACTUALLY contains, in the app's own words (its morning may be a
+    // contemplative sit, not an office) - the landing's coarse office summary got that wrong.
+    let rows: Array<{ emoji: string; label: string; sub: string; section: string }> = [];
+    try {
+      rows = describeSpec(row.spec as Parameters<typeof describeSpec>[0])
+        .map((r) => ({ emoji: r.emoji, label: r.label, sub: r.sub, section: r.section }));
+    } catch { /* fall back to the client's own summary */ }
+    // Designed for one particular person (a leader's page response): they need an ACCOUNT to receive it.
+    const [designed] = await db.select({ id: routineIntakesTable.id }).from(routineIntakesTable)
+      .where(eq(routineIntakesTable.prescribedRoutineId, row.id)).limit(1);
     res.json({
       label: row.label,
       groupName: group?.name ?? null,
       createdByName: creator?.name ?? null,
       spec: row.spec,
+      rows,
+      designedFor: !!designed,
     });
   } catch (err) {
     console.error("[prescribed-routines] get failed:", err);

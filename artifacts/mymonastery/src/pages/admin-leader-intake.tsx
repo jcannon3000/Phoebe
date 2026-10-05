@@ -27,7 +27,7 @@ const NEWSLETTER_LABELS: Record<string, string> = {
 };
 
 type Intake = {
-  id: number; name: string; email: string; morning: string; evening: string; connect: string; grow: string;
+  id: number; name: string; email: string; morning: string; evening: string; connect: string; format: string; grow: string;
   newsletters: string[]; status: "new" | "crafted" | "sent"; createdAt: string; prescribedRoutineId: number | null;
 };
 
@@ -72,6 +72,7 @@ export default function AdminLeaderIntakePage() {
             ["How do you pray, or how would you like to pray, in the morning?", i.morning],
             ["How do you pray, or how would you like to pray, in the evening?", i.evening],
             ["How do you best connect with God?", i.connect],
+            ["What content format works best for you?", i.format],
             ["How would you like to grow in your prayer life?", i.grow],
           ] as const).map(([q, a]) => (
             <div key={q} style={CARD}>

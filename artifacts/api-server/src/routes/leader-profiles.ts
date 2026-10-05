@@ -15,6 +15,7 @@ import { db, leaderProfilesTable, routineIntakesTable, prescribedRoutinesTable, 
 import { sendLeaderRoutineEmail, sendLeaderIntakeNoticeEmail } from "../lib/email";
 import { sendLeaderRoutinePush } from "../lib/pushSender";
 import { sanitizeSpec } from "../lib/routineSpec";
+import { describeSpec } from "../lib/routineDescribe";
 import type { RoutineIntake } from "@workspace/db";
 import { rateLimit } from "../lib/rate-limit";
 import { isSuperAdminUser } from "../lib/superAdmin";
@@ -30,6 +31,17 @@ function getUserId(req: unknown): number | null {
 export const INTAKE_NEWSLETTERS = ["cac", "fdd", "ssje", "vts", "nouwen", "payg", "taizeprayer"] as const;
 
 const APP_BASE = (process.env["APP_BASE_URL"] ?? "https://withphoebe.app").replace(/\/$/, "");
+const QUESTION_LABELS = {
+  morning: "How do you pray, or how would you like to pray, in the morning?",
+  evening: "How do you pray, or how would you like to pray, in the evening?",
+  connect: "How do you best connect with God?",
+  format: "What content format works best for you?",
+  grow: "How would you like to grow in your prayer life?",
+} as const;
+const NEWSLETTER_NAMES: Record<string, string> = {
+  cac: "Daily Meditation (CAC)", fdd: "Forward Day by Day", ssje: "SSJE", vts: "Dean's Commentary",
+  nouwen: "Nouwen Daily Devotion", payg: "Pray As You Go", taizeprayer: "Taizé Daily Prayer",
+};
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const clip = (v: unknown, n: number): string => (typeof v === "string" ? v.trim().slice(0, n) : "");
@@ -68,18 +80,21 @@ router.post("/leaders/:slug/intake", rateLimit({
     ? [...new Set((b["newsletters"] as unknown[]).filter((k): k is string => typeof k === "string"))]
         .filter((k) => (INTAKE_NEWSLETTERS as readonly string[]).includes(k))
     : [];
-  await db.insert(routineIntakesTable).values({
-    leaderProfileId: p.id, userId: me.id, name, email,
+  const fields = {
     morning: clip(b["morning"], 2000), evening: clip(b["evening"], 2000),
-    connect: clip(b["connect"], 2000), grow: clip(b["grow"], 2000),
-    newsletters,
-  });
+    connect: clip(b["connect"], 2000), format: clip(b["format"], 2000), grow: clip(b["grow"], 2000),
+  };
+  await db.insert(routineIntakesTable).values({ leaderProfileId: p.id, userId: me.id, name, email, ...fields, newsletters });
   res.json({ ok: true, name, email });
   // Tell the leader. After the reply: a mail hiccup must never fail the person's submission.
   void (async () => {
     try {
       const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, p.userId));
-      if (u?.email) await sendLeaderIntakeNoticeEmail({ to: u.email, applicantName: name, applicantEmail: email, adminUrl: `${APP_BASE}/admin/leaders` });
+      if (u?.email) await sendLeaderIntakeNoticeEmail({ to: u.email, applicantName: name, applicantEmail: email, adminUrl: `${APP_BASE}/admin/leaders`,
+        answers: [
+          ...(Object.keys(QUESTION_LABELS) as Array<keyof typeof QUESTION_LABELS>).map((k) => ({ q: QUESTION_LABELS[k], a: fields[k] })),
+          { q: "Daily reflections they'd like", a: newsletters.map((k) => NEWSLETTER_NAMES[k] ?? k).join(", ") },
+        ] });
     } catch (err) { console.error("[leader-intake] notice failed", err); }
   })();
 });
@@ -163,7 +178,9 @@ async function deliverIntake(intake: RoutineIntake): Promise<{ ok: boolean; emai
   if (!routine || !profile) return { ok: false, emailed: false, pushed: false, url: null };
   const url = `${APP_BASE}/routine/${routine.token}`;
 
-  const emailed = await sendLeaderRoutineEmail({ to: intake.email, name: intake.name, leaderName: profile.displayName, url }).catch(() => false);
+  let rows: Array<{ emoji: string; label: string; sub: string }> = [];
+  try { rows = describeSpec(routine.spec as Parameters<typeof describeSpec>[0]).map((r) => ({ emoji: r.emoji, label: r.label, sub: r.sub })); } catch { /* the email still carries the link */ }
+  const emailed = await sendLeaderRoutineEmail({ to: intake.email, name: intake.name, leaderName: profile.displayName, url, rows }).catch(() => false);
   let pushed = false;
   try {
     const targetId = intake.userId ?? (await db.select({ id: usersTable.id }).from(usersTable).where(sql`lower(${usersTable.email}) = ${intake.email.toLowerCase()}`))[0]?.id;
