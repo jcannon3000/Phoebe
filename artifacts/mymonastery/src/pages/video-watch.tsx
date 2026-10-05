@@ -177,10 +177,17 @@ export default function VideoWatchPage() {
             "bleed" so no border or corner fights it. */}
         {id && !failed ? (
           <div className="video-bleed">
-            {/* fitContent: most of these are recordings, not films — an audio
-                upload with a square sleeve, which the player would otherwise
-                show small between two black bars (owner, 2026-10-01). */}
-            <YouTubePlayer videoId={id} autoplay frame="bleed" fitContent onEnded={() => {}} onError={() => setFailed(true)} />
+            {/* FULL WIDTH, 16:9, NOT CROPPED TO THE PICTURE (owner,
+                2026-10-05: "lets not do the thing anymore where they are
+                zoomed in to a square, but have the full width on the screen").
+                It was `fitContent` for four days: the frame took the
+                picture's shape and the player was laid out 174% wide and
+                centred so the black bars fell outside. The cost was in that
+                prop's own note — the ends of YouTube's control bar are
+                cropped with the bars — and with autoplay blocked until a
+                gesture, a cropped control bar is a video that will not
+                start. */}
+            <YouTubePlayer videoId={id} autoplay frame="bleed" onEnded={() => {}} onError={() => setFailed(true)} />
           </div>
         ) : (
           /* A recording that has gone: the catalogues are a hand-made list of
