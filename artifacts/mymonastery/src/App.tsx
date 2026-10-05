@@ -1,6 +1,7 @@
 import { COMMUNITY_FEATURES_ENABLED, COMMUNITY_ROUTE_PREFIXES } from "@/lib/communityFlag";
 import { firstRunPending } from "@/lib/finderEntry";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { LEADER_PAGES_ENABLED } from "@/lib/leaderFlag";
 import { RouteFallback } from "@/components/RouteFallback";
 import { hasPrayerSurface } from "@/lib/prayerSurface";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
@@ -496,6 +497,7 @@ const AdminPresetsPage = lazy(() => import("@/pages/admin-presets"));
 const AdminLeadersPage = lazy(() => import("@/pages/admin-leaders"));
 const AdminLeaderIntakePage = lazy(() => import("@/pages/admin-leader-intake"));
 const LeaderPage = lazy(() => import("@/pages/leader-page"));
+const LeaderPagesHidden = () => <RedirectTo to="/dashboard" />;
 const AdminWeekliesPage = lazy(() => import("@/pages/admin-weeklies"));
 const AdminCacLibraryPage = lazy(() => import("@/pages/admin-cac-library"));
 const ThisSundayPage = lazy(() => import("@/pages/this-sunday"));
@@ -1358,9 +1360,10 @@ function Router() {
       <Route path="/admin/breath-places" component={AdminBreathPlacesPage} />
       {/* The starter rhythms + the default one, as data (owner). */}
       <Route path="/admin/presets" component={AdminPresetsPage} />
-      <Route path="/admin/leaders/:id" component={AdminLeaderIntakePage} />
-      <Route path="/admin/leaders" component={AdminLeadersPage} />
-      <Route path="/with/:slug" component={LeaderPage} />
+      {/* Leader pages are hidden for now - see lib/leaderFlag. */}
+      <Route path="/admin/leaders/:id" component={LEADER_PAGES_ENABLED ? AdminLeaderIntakePage : LeaderPagesHidden} />
+      <Route path="/admin/leaders" component={LEADER_PAGES_ENABLED ? AdminLeadersPage : LeaderPagesHidden} />
+      <Route path="/with/:slug" component={LEADER_PAGES_ENABLED ? LeaderPage : LeaderPagesHidden} />
       <Route path="/admin/weeklies" component={AdminWeekliesPage} />
       <Route path="/admin/cac-library" component={AdminCacLibraryPage} />
       {/* App Metrics is web-only (owner, 2026-09-26: "make it so that I
