@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { LEADER_PAGES_ENABLED } from "@/lib/leaderFlag";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
@@ -197,12 +198,21 @@ export default function AdminToolsPage() {
                   description="Three questions and two follow-ups that recommend a routine"
                   onClick={() => setLocation("/find-your-rhythm")}
                 />
-                <LinkRow
-                  emoji="🌿"
-                  label="Leader page"
-                  description="Your link for the five questions, and the answers people send"
-                  onClick={() => setLocation("/admin/leaders")}
-                />
+                {/* Behind the same switch as the feature itself (owner,
+                    2026-10-04: "Actually lets revert this all for now, or just
+                    hide it"). /admin/leaders redirects to the home while
+                    LEADER_PAGES_ENABLED is false, so an ungated row here would
+                    be a tool that bounces — and flipping the flag back on must
+                    bring the door back WITH it, which is why this is gated
+                    rather than deleted. */}
+                {LEADER_PAGES_ENABLED && (
+                  <LinkRow
+                    emoji="🌿"
+                    label="Leader page"
+                    description="Your link for the five questions, and the answers people send"
+                    onClick={() => setLocation("/admin/leaders")}
+                  />
+                )}
                 <LinkRow
                   emoji="🧭"
                   label="Preset rhythm link"
@@ -310,12 +320,15 @@ export default function AdminToolsPage() {
                   description="Paste a Substack link and it becomes a publication"
                   onClick={() => setLocation("/admin/weeklies")}
                 />
-                <LinkRow
-                  emoji="🌱"
-                  label="Preset routines"
-                  description="Edit the starter rhythms and the default one"
-                  onClick={() => setLocation("/admin/presets")}
-                />
+                {/* NO PRESET EDITOR (owner, 2026-10-04: "WE should have
+                    gotten rid of admin overides on all"). The named rules are
+                    the ones that ship in the app; nothing stored can stand in
+                    front of them any more (lib/rulePresetsStore's
+                    getEffectiveRulePresets), so an editor here would write
+                    rows nothing reads — a tool that promises a change it
+                    cannot make, which is how the admin DEFAULT rhythm went
+                    wrong before it was removed on 2026-10-01. The page and its
+                    route are left on disk, unreachable from here. */}
                 <LinkRow
                   emoji="💬"
                   label="Routine interview"

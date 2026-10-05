@@ -69,27 +69,33 @@ function readCache(): Overlay | null {
  * applied. Falls back to the built-ins alone whenever there is no cache, the
  * cache is unreadable, or a row's body isn't a usable rule.
  */
+/**
+ * THERE ARE NO ADMIN PRESET OVERRIDES ANY MORE (owner, 2026-10-04: "WE should
+ * have gotten rid of admin overides on all").
+ *
+ * The named rules are the ones that ship in the app — RULE_PRESETS — and
+ * nothing in the database can stand in front of them. This is the same ruling
+ * the admin DEFAULT rhythm got on 2026-10-01 ("get rid of the overide
+ * entirely"), extended to the rest of the picker, and for the same reason:
+ * the failure is SILENT and can only be found by reading production.
+ *
+ * WHAT IT WAS DOING. This merged a stored row over each built-in field by
+ * field, and added any row whose slug matched no built-in. One row was live —
+ * `centering` — holding the CAC meditation, a gratitude practice, and
+ * `sides: {morning: false, evening: false}`, which is almost certainly a
+ * mis-save. So the owner's "switch Centering Prayer to the Nouwen devotion"
+ * (6a96b64e) shipped in code and changed nothing anyone could see, and the
+ * rule people adopted had both sides turned off. The ADD branch was worse in
+ * prospect: a preset deleted from the code list kept appearing, because the
+ * stored row stopped being an override and became an addition.
+ *
+ * The stored rows can stay in the database; nothing reads them. The FETCH
+ * stays too — getStoredDefaultSeed's withdrawal path reads `readCache() !==
+ * null` to move devices off the old admin default, and that only becomes true
+ * once a device has fetched.
+ */
 export function getEffectiveRulePresets(): RulePreset[] {
-  const overlay = readCache();
-  if (!overlay || overlay.presets.length === 0) return RULE_PRESETS;
-  const bySlug = new Map(overlay.presets.map((p) => [p.slug, p]));
-  const out: RulePreset[] = [];
-  for (const built of RULE_PRESETS) {
-    const row = bySlug.get(built.id);
-    if (!row) { out.push(built); continue; }
-    bySlug.delete(built.id);
-    if (row.hidden) continue; // taken off the picker, body kept server-side
-    // The stored body wins, but only field by field — a row written by an
-    // older admin build that doesn't know about a field added since must not
-    // delete it from the rule people see.
-    out.push({ ...built, ...row.body, id: built.id });
-  }
-  // Anything left is an ADDED preset, in the admin's order, after the built-ins.
-  const added = [...bySlug.values()]
-    .filter((r) => !r.hidden && r.body && typeof r.body.title === "string")
-    .sort((a, b) => (a.sortOrder ?? 1e6) - (b.sortOrder ?? 1e6))
-    .map((r) => ({ ...r.body, id: r.body.id || r.slug }));
-  return [...out, ...added];
+  return RULE_PRESETS;
 }
 
 /**
