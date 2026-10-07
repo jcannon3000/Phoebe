@@ -5153,9 +5153,13 @@ export default function WayOfLoveRuleFlow({
     return shell(
       <>
         {backRow(goPrev)}
-        {stepHeader(t("wol_rule.contemplative_eyebrow", { defaultValue: "Return" }), t("wol_rule.contemplative_title", { defaultValue: "Choose a contemplative practice" }))}
+        {/* "ADDITIONAL PRACTICES", not "contemplative practices" (owner, 2026-10-07:
+            "why dont we call that slide additional practices"): it now holds
+            Midday Prayer, Compline, Audio Divina and the rest, which are not
+            all contemplative. */}
+        {stepHeader(t("wol_rule.contemplative_eyebrow", { defaultValue: "Return" }), t("wol_rule.contemplative_title", { defaultValue: "Additional practices" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 20px" }}>
-          {t("wol_rule.contemplative_body", { defaultValue: "Choose the contemplative practices for your day — each becomes its own card." })}
+          {t("wol_rule.contemplative_body", { defaultValue: "Choose the additional practices for your day — each becomes its own card." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {/* First, and the one that leads to the Silence page. Turning it on
@@ -5190,13 +5194,15 @@ export default function WayOfLoveRuleFlow({
               }
             },
           )}
-          {/* MIDDAY PRAYER IS NOT OFFERED HERE ANY MORE (owner, 2026-10-01:
-              "Take out Midday Prayer from the full customizer"). It is OFFERED
-              nowhere in this flow, but a person who already has it keeps it:
-              `contemplative.noonday` is still hydrated and still written on
-              save, and the summary row below carries its own remove, so
-              nothing is switched off and nobody is stranded with a card they
-              can no longer take away. */}
+          {/* MIDDAY PRAYER IS OFFERED HERE AGAIN (owner, 2026-10-07: "We want
+              Midday Prayer to be availible in the contemplative practices
+              slide of the full customizer"). It was taken out of the full
+              customizer on 2026-10-01; the wiring never left —
+              `contemplative.noonday` stayed hydrated and written on save, and
+              the summary row carries its own remove — so this is only the row
+              back, ahead of Compline, the prayer book's other standalone
+              office. */}
+          {choiceRow(contemplative.noonday, `☀️ ${t("wol_rule.cp_noonday", { defaultValue: "Midday Prayer" })}`, t("wol_rule.cp_noonday_sub", { defaultValue: "A short office for noon, from the prayer book." }), () => toggleContemplative("noonday"))}
           {!complineAlreadyPrimary && choiceRow(contemplative.compline, `🌙 ${t("wol_rule.cp_compline", { defaultValue: "Compline" })}`, t("wol_rule.cp_compline_sub", { defaultValue: "The night office — available from 7pm." }), () => toggleContemplative("compline"))}
           {!anchoredAsForm("audio") && choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Connecting with God through music." }), () => toggleContemplative("audio"))}
           {/* Pray As You Go Daily, among the contemplative practices (owner,
