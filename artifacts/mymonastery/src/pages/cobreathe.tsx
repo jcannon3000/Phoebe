@@ -29,6 +29,7 @@ import { getSideContemplation, getSideLevel, getSideContemplationKind } from "@/
 import { addGuestSilenceMinutes, markGuestBreathKeptToday } from "@/lib/guestSilenceLog";
 import { creditAnchorPractice } from "@/lib/officeManualLog";
 import { PhoebeRise } from "@/components/PhoebeRise";
+import { recordBreath } from "@/lib/breathRecord";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
@@ -513,8 +514,15 @@ export default function CobreathePage() {
       // "make sure breathing together is counting people who dont have accounts
       // too"); this used to skip them, so a phone without an account never
       // reached the day's count or the all-time breaths.
-      if (!user) return { ok: true, count: 1 } as unknown as BreathState & { ok: boolean };
-      return apiRequest<BreathState & { ok: boolean }>("POST", "/api/breath/today", {
+      /**
+       * A SESSIONLESS phone now gets a device user and IS recorded (owner,
+       * 2026-10-07: "people are breathing together and it is not showing" ·
+       * "myabe its that they are not signed in"). lib/breathRecord mints one
+       * and retries; only if that fails do we keep the old answer — a faked
+       * success, because the breath really was prayed and an error screen over
+       * it would be a lie in the other direction.
+       */
+      const rec = await recordBreath<BreathState & { ok: boolean }>({
         day,
         seconds,
         // Only the place's id and a boolean — never coordinates. See
@@ -527,6 +535,7 @@ export default function CobreathePage() {
         placeSlug: place?.slug ?? null,
         placeVerified,
       });
+      return rec ?? ({ ok: true, count: 1 } as unknown as BreathState & { ok: boolean });
     },
     onSuccess: (resp) => {
       setDoneState(resp);

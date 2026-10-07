@@ -18,14 +18,30 @@ const MIN_H = 90;
  * standing 320px tall, nearly three times the Evening Prayer one).
  *
  * She used to take two thirds of whatever room a slide left, so the emptier the
- * intro, the bigger she was. Now her height depends only on the phone: this
- * line fits the height she had on the Evening Prayer intro at 390x844 (114px),
- * 393x852 (117) and 430x932 (144). If the Evening Prayer layout changes, re-fit
- * it. A phone too short for her (an iPhone SE: it comes out at 53) gets none,
- * as Evening Prayer did.
+ * intro, the bigger she was. Now her height depends only on the phone, fitted
+ * to the height she had on the Evening Prayer intro at 390x844, 393x852 and
+ * 430x932 (114, 117, 144px). If that layout changes, re-fit it.
+ *
+ * THE SLOPE MATTERS MORE THAN THE FIT (owner, 2026-10-07: "The phoebe pop up
+ * is no longer coming up on morning and evening prayer intro slides").
+ *
+ * The first fit, `0.341 * h - 174`, passed through those three points with a
+ * slope steep enough that it fell under MIN_H at a viewport of 774 — and then
+ * produced NOTHING, not a smaller Phoebe. 774 is not a hypothetical: a phone's
+ * SCREEN is 844 or 852 tall, but the in-app WebView reports what is left after
+ * the safe areas and the app's own chrome, which lands in the 740s and 750s.
+ * Measured in the pane on the Morning Prayer intro: at 375x812 she stands
+ * 103px tall; at 393x760 the formula gives 85 and she is absent altogether.
+ * Every tall-screen iPhone running the native app was on the wrong side of
+ * that line, which is why she "stopped" while the web page still had her.
+ *
+ * This line is flatter through the same points (121, 123, 143), so a 740-760
+ * viewport gets a real 95-100px Phoebe instead of nothing, while a genuinely
+ * short phone (an iPhone SE at 667 comes out at 77) still falls under MIN_H
+ * and gets none, as Evening Prayer did.
  */
 function phoebeHeight(viewportH: number): number {
-  return Math.round(0.341 * viewportH - 174);
+  return Math.round(0.25 * viewportH - 90);
 }
 /** She needs this much of her own height again as free room above the bar, or
  *  she'd stand on the text — Evening Prayer leaves 1.5x, so 1.4x is lenient. */

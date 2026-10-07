@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { recordBreath } from "@/lib/breathRecord";
 import { CobreatheBreath, DEFAULT_TOTAL_BREATHS, CYCLE_MS } from "@/components/CobreatheBreath";
 import { CobreatheSummary } from "@/components/CobreatheSummary";
 import { addBreathsThisWeek } from "@/lib/cobreatheTally";
@@ -129,8 +130,12 @@ export function CobreatheOverlay({
     // before the breath finishes, so a captured `day` could be yesterday's
     // (e.g. the breath crosses midnight).
     const d = localDay();
-    void apiRequest<BreathResp>("POST", "/api/breath/today", { day: d, seconds: secondsKept })
+    // lib/breathRecord: a phone with no session is given a device user first,
+    // or its breath reaches nobody and is missing from the day's count
+    // (owner, 2026-10-07).
+    void recordBreath<BreathResp>({ day: d, seconds: secondsKept })
       .then((r) => {
+        if (!r) return; /* still no way to record it — the breath happened anyway */
         setResp(r);
         queryClient.invalidateQueries({ queryKey: ["/api/breath/today", d] });
       })

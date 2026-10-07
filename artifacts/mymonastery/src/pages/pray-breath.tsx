@@ -11,6 +11,7 @@ import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { enqueueSession } from "@/lib/sessionOutbox";
 import { PhoebeRise } from "@/components/PhoebeRise";
+import { recordBreath } from "@/lib/breathRecord";
 
 // ── BETA "Pray the breath" ──────────────────────────────────────────────────
 // A Co-Breathe variant where, instead of photos of the earth, the top half of
@@ -103,8 +104,9 @@ export default function PrayBreathPage() {
   // set, and log the time as a contemplation sit on finish — same as Co-Breathe,
   // so a prayed breath counts toward the daily rhythm like any other silence.
   const record = useMutation({
-    mutationFn: (seconds: number) =>
-      apiRequest("POST", "/api/breath/today", { day, seconds }),
+    // Through lib/breathRecord, so a phone with no session is given a device
+    // user and counted rather than 401ing into nothing (owner, 2026-10-07).
+    mutationFn: (seconds: number) => recordBreath({ day, seconds }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/breath/today", day] }),
   });
   const handleReachTarget = useCallback((secondsKept: number) => {
