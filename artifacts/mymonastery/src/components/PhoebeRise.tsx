@@ -44,8 +44,11 @@ function phoebeHeight(viewportH: number): number {
   return Math.round(0.25 * viewportH - 90);
 }
 /** She needs this much of her own height again as free room above the bar, or
- *  she'd stand on the text — Evening Prayer leaves 1.5x, so 1.4x is lenient. */
-const ROOM_FACTOR = 1.4;
+ *  she'd stand on the text. Evening Prayer leaves 1.5x. It was 1.4, which left a
+ *  774-tall in-app WebView 6px short (gap 140, needed 146) so she was absent on
+ *  real iPhones (owner, 2026-10-08: "still not seeing the phoebe figure");
+ *  1.1 keeps her clear of the buttons at 750-774 and still hides her on a short SE. */
+const ROOM_FACTOR = 1.1;
 
 function contentBottom(navTop: number): number {
   const vh = window.innerHeight;
