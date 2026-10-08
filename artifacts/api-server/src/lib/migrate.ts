@@ -4031,6 +4031,25 @@ export async function migrate() {
       )
     `);
 
+    // ── announcements — a note from the owner shown at the top of every home,
+    // optionally pushed once (routes/announcements.ts). Raw SQL only, no
+    // pgTable: nothing else reads it.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS announcements (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        link_path TEXT,
+        link_label TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMPTZ,
+        retired_at TIMESTAMPTZ,
+        push_sent_at TIMESTAMPTZ,
+        push_count INTEGER,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
+
     // ── simulator_marks — (user, Eastern day) pairs that came from the iOS
     // Simulator or the Android emulator (lib/simulatorMarks.ts). App Metrics
     // leaves those out (owner, 2026-09-16: "make sure simulator sessions are

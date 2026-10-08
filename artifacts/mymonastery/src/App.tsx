@@ -512,6 +512,7 @@ const AdminUserMetricsPage = lazy(() => import("./pages/admin-user-metrics"));
 const MenuPrayPage = lazy(() => import("./pages/menu-pray"));
 const MyPrayerFeedsPage = lazy(() => import("./pages/my-prayer-feeds"));
 const AdminNewsletterPage = lazy(() => import("./pages/admin-newsletter"));
+const AdminAnnouncementsPage = lazy(() => import("./pages/admin-announcements"));
 const LearnPage = lazy(() => import("./pages/learn"));
 const SpiritualJourneyPage = lazy(() => import("./pages/spiritual-journey"));
 const CenteringPrayerCoursePage = lazy(() => import("./pages/centering-prayer"));
@@ -1378,6 +1379,7 @@ function Router() {
       </Route>
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />
+      <Route path="/admin/announcements" component={AdminAnnouncementsPage} />
       <Route path="/prayer-list">{() => <PrayerGate><PrayerListPage /></PrayerGate>}</Route>
       <Route path="/my-prayer-requests" component={MyPrayerRequestsPage} />
       <Route path="/prayer-mode">{() => <PrayerGate><PrayerModePage /></PrayerGate>}</Route>

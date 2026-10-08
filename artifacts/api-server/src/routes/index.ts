@@ -68,6 +68,7 @@ import andrewsRouter from "./andrews";
 import livingChurchRouter from "./living-church";
 import weekliesRouter from "./weeklies";
 import appSettingsRouter from "./app-settings";
+import announcementsRouter from "./announcements";
 import readerPageRouter from "./reader-page";
 import routineAuditRouter from "./routine-audit";
 import routineSnapshotsRouter from "./routine-snapshots";
@@ -215,6 +216,8 @@ router.use(andrewsRouter);
 // from its feed; who sees the card is the "livingChurchPublic" switch.
 router.use(livingChurchRouter);
 router.use(appSettingsRouter);
+// A note from the owner on everyone's home, optionally pushed once.
+router.use(announcementsRouter);
 // The passage text the readers open on oremus, for the device to keep offline.
 // The reading PAGE itself, for the device to keep and the reader to open.
 router.use(readerPageRouter);

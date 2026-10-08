@@ -387,6 +387,12 @@ export default function AdminToolsPage() {
                   onClick={() => setLocation("/admin/spirituals")}
                 />
                 <LinkRow
+                  emoji="📣"
+                  label="Announcement"
+                  description="A note on everyone's home, with an optional notification"
+                  onClick={() => setLocation("/admin/announcements")}
+                />
+                <LinkRow
                   emoji="📨"
                   label="Newsletter"
                   description="Email Phoebe users"

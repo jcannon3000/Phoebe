@@ -17,6 +17,7 @@ import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
+import { AnnouncementCard } from "@/components/AnnouncementCard";
 import { DailyProgressBody, rhythmGradientRgb, PracticeCard, PUBLICATION_NAME, REFLECTION_EMOJI } from "@/components/DailyProgressBody";
 import { openDailyReflection } from "@/lib/dailyReflections";
 import { getSideReflectionExplicit } from "@/lib/officePrefs";
@@ -7414,6 +7415,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
           {/* PUBLIC first-open welcome — a dismissible "begin here" note under
               the date: names the given rhythm and promises the daily
               walk-through. Guests only. */}
+          {!eventsOnly && <AnnouncementCard />}
           {!eventsOnly && isGuestShape && <GuestWelcomeCard />}
           {/* Shown once, straight after "Start a routine": what they now have
               and where to change it (owner, 2026-09-28). */}
