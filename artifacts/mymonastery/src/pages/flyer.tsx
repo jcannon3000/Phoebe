@@ -351,7 +351,7 @@ async function drawFlyerBack(canvas: HTMLCanvasElement) {
 
   // Two passages, the width of the page.
   const passages: Array<[string, string]> = [
-    ["A structure that holds.", "For centuries, monks have kept steady through hard times with structured habits of prayer: fixed times, a familiar order, simple practices repeated daily. Decided once and returned to daily, prayer no longer waits on mood or a free afternoon."],
+    ["A structure that holds.", "For centuries, monks have kept steady through hard times with structured habits of prayer: fixed times, a familiar order, simple practices repeated daily."],
     ["Phoebe walks you through it.", "Open the app and it shows what comes next in your day and leads you through it, one practice at a time. The routine is yours to shape: choose your practices, set the times, and change them as your days change."],
   ];
   let py = 440;
