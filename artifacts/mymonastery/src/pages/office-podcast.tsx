@@ -84,7 +84,7 @@ const SOURCE_META: Record<OfficeAudioSource, {
       `Common Worship ${side === "evening" ? "Evening" : "Morning"} Prayer from the Church of England, read aloud. A new recording every day.`,
   },
   "gregory": {
-    label: "Gregorian",
+    label: "Chanted BCP",
     provider: "The Daily Office Chanted",
     blurb: (side) =>
       `${side === "evening" ? "Evening" : "Morning"} Prayer from the Book of Common Prayer, sung in plainchant. A new recording every day.`,

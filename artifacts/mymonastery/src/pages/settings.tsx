@@ -1002,9 +1002,9 @@ function OfficeReminderSettings() {
 function OfficeAudioSourceSettings() {
   const { officeAudioSource } = useOfficePrefs();
   const options: Array<{ value: OfficeAudioSource; label: string; sub: string; emoji: string }> = [
-    { value: "forward-movement", label: "Forward Movement", sub: "The US 1979 Book of Common Prayer offices, read aloud.", emoji: "📖" },
+    // Forward Movement is retired from this picker (owner, 2026-10-11).
+    { value: "gregory", label: "Chanted BCP", sub: "The Book of Common Prayer offices, sung in plainchant.", emoji: "🎵" },
     { value: "church-of-england", label: "Church of England", sub: "Common Worship Morning & Evening Prayer.", emoji: "⛪" },
-    { value: "gregory", label: "Gregorian", sub: "The Daily Office sung in plainchant.", emoji: "🎵" },
   ];
   return (
     <>

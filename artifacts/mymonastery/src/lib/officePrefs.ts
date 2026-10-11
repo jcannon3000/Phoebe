@@ -116,8 +116,19 @@ export function isTrackedReflectionSource(s: ReflectionSource): boolean {
   return (TRACKED_REFLECTION_SOURCES as readonly string[]).includes(s);
 }
 
+/**
+ * TWO SOURCES: CHANTED BCP, THEN THE CHURCH OF ENGLAND (owner, 2026-10-11:
+ * "Actualy just take forward out its bad" · "So have the two be Chanted BCP
+ * and Church of England", and the chanted one first).
+ *
+ * "forward-movement" stays in the TYPE because it is a value already stored on
+ * phones, and getOfficeAudioSource has to recognise it in order to move those
+ * listeners onto the chanted office. It is simply no longer offered anywhere.
+ * Compline is NOT affected — that is Forward Movement's own feed through the
+ * compline-office-podcast surface, a different thing from this picker.
+ */
 export type OfficeAudioSource = "forward-movement" | "church-of-england" | "gregory";
-const OFFICE_AUDIO_SOURCES: OfficeAudioSource[] = ["forward-movement", "church-of-england", "gregory"];
+const OFFICE_AUDIO_SOURCES: OfficeAudioSource[] = ["gregory", "church-of-england"];
 
 // "venite" opens the office on venite.app in the browser rather than in any
 // Phoebe surface — Morning/Evening Prayer only (see lib/venite.ts).
@@ -263,16 +274,25 @@ export function getShowVtsClose(): boolean { return getReflectionSource() === "v
 // Which tradition the read-aloud Morning/Evening Prayer plays. Forward
 // Movement = the US 1979 BCP offices (the original, default); Church of
 // England = Common Worship Morning/Evening Prayer. The office-podcast
-// player lets you switch live; Settings sets the default. Default =
-// "forward-movement" so nothing changes for existing listeners.
+// player lets you switch live; Settings sets the default.
+//
+// DEFAULT = THE CHANTED BCP, and anyone stored on Forward Movement is moved
+// onto it (owner, 2026-10-11). A stored value that is no longer offered would
+// otherwise leave the picker showing nothing selected while the server quietly
+// kept serving the old feed — the listener would never hear the change.
 export function getOfficeAudioSource(): OfficeAudioSource {
   try {
     const raw = localStorage.getItem(KEY_OFFICE_AUDIO_SOURCE);
     if (raw && (OFFICE_AUDIO_SOURCES as string[]).includes(raw)) {
       return raw as OfficeAudioSource;
     }
+    // Retired: move them, and write it through so every other reader agrees.
+    if (raw === "forward-movement") {
+      try { localStorage.setItem(KEY_OFFICE_AUDIO_SOURCE, "gregory"); } catch { /* private mode */ }
+      return "gregory";
+    }
   } catch { /* private mode */ }
-  return "forward-movement";
+  return "gregory";
 }
 export type LectioMode = "slideshow" | "audio";
 export function getLectioMode(): LectioMode {
