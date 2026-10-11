@@ -259,6 +259,14 @@ const THEMES: Array<{ key: string; label: string; emoji: string; keywords: strin
     keywords: ["prayer", "pray", "intercession", "examen", "rule of life", "spiritual practice", "morning prayer", "evening prayer", "compline"] },
 ];
 
+// The Daily Office Chanted — the Episcopal offices sung in plainchant, one
+// channel carrying Morning Prayer, Evening Prayer and Compline. Declared
+// HERE, above SHOWS, because SHOWS is a top-level object literal evaluated
+// at module load: left further down the file it sits in the temporal dead
+// zone and the whole podcast router throws on boot (tsc catches it as
+// "used before its declaration" — heed that, it is a real crash).
+const GREGORY_FEED = "https://feed.podbean.com/thedailyofficechanted/feed.xml";
+
 export const SHOWS: Record<string, Show> = {
   // ── Forward Movement daily offices ──────────────────────────────────
   "morning-office": {
@@ -293,10 +301,21 @@ export const SHOWS: Record<string, Show> = {
     browseEpisodes: 50,
     slug: "compline",
     title: "Compline",
-    artist: "Forward Movement",
+    /**
+     * THE CHANTED OFFICE, like the other two (owner, 2026-10-11: Forward
+     * Movement is out of the office audio, and Compline follows it).
+     *
+     * This is a COMBINED feed — Morning Prayer, Evening Prayer and Compline in
+     * one channel, an episode each, every day — where Forward Movement's was
+     * Compline alone. So the /today handler below filters to the Compline
+     * titles BEFORE picking the night's episode; without that filter the
+     * "published on the listener's date" rule would hand back that morning's
+     * Morning Prayer at bedtime.
+     */
+    artist: "The Daily Office Chanted",
     publisher: "forward-movement",
-    feedUrl: "https://feeds.megaphone.fm/FDMV3439145045",
-    artwork: null,
+    feedUrl: GREGORY_FEED,
+    artwork: "https://pbcdn1.podbean.com/imglogo/image-logo/21622684/Logo_2048x2048.jpg",
   },
   // Pray As You Go — the Jesuits in Britain's daily prayer session: music,
   // a scripture reading and a few questions, about twelve minutes. Owner,
@@ -1184,7 +1203,6 @@ const COE_SHOW: Show = {
 // plainchant. Like the Church of England feed, ONE combined feed carries all
 // the day's offices (Morning Prayer ~3am, Evening Prayer ~3pm, Compline ~6pm),
 // each episode titled by its office, so we load the feed and filter by title.
-const GREGORY_FEED = "https://feed.podbean.com/thedailyofficechanted/feed.xml";
 const GREGORY_SHOW: Show = {
   slug: "gregory-daily-office",
   title: "The Daily Office Chanted",
@@ -1213,14 +1231,22 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
   if (!show) { res.status(404).json({ error: "Unknown show" }); return; }
   res.setHeader("Cache-Control", "public, max-age=600");
 
-  // Compline: TONIGHT'S episode, not the newest. It posts about 5:30 PM
-  // Eastern, so at midday the newest item is still last night's. Match the
-  // episode published on the listener's own date (?date=YYYY-MM-DD); before it
-  // posts, the same weekday from last week in the same season (the weekly
-  // order repeats), then any episode for that weekday, then the newest.
+  // Compline: TONIGHT'S episode, not the newest. It posts about 6 PM
+  // Eastern, so at midday the newest Compline is still last night's. Match
+  // the episode published on the listener's own date (?date=YYYY-MM-DD);
+  // before it posts, fall back as below and end on the newest — which is
+  // last night's, the right thing to hand someone at four in the afternoon.
+  //
+  // The weekday-and-season fallbacks read Forward Movement's title shape
+  // ("Compline, Mondays in Ordinary Time"). The chanted feed titles its
+  // episodes by date instead ("Compline — Saturday, Oct 10"), so those two
+  // steps simply find nothing there and the newest wins. Left in place: they
+  // cost nothing, and they are what any Compline-only feed would need.
   if (slug === "compline") {
-    const feed = await loadFeed(show, 14);
-    const eps = feed.episodes;
+    // 14 was a fortnight of a Compline-only feed; the chanted feed carries
+    // three offices a day, so take more and keep only the Compline ones.
+    const feed = await loadFeed(show, 40);
+    const eps = feed.episodes.filter((e) => (e.title ?? "").toLowerCase().includes("compline"));
     const rawDate = String(req.query.date ?? "");
     const nyYmd = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(d);
     const ymd = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : nyYmd(new Date());
