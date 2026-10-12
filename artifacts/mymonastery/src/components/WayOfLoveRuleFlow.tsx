@@ -1134,7 +1134,7 @@ export default function WayOfLoveRuleFlow({
   // reflection + minutes are instant; the server office-prefs (the global
   // default + goal) hydrate a moment later for users whose pref was set
   // globally without a per-side override.
-  // Default to 5 minutes — a gentle starting goal. A saved goal hydrates from the
+  // No goal until one is chosen or stored. A saved goal hydrates from the
   // server pref below (contemplationGoalMinutes) when the user has one (any value
   // is kept, e.g. 144); clearing the field on the goal step sets "No goal" (0).
   // GUESTS have no server pref to hydrate from — their goal is the device-local
@@ -1147,7 +1147,18 @@ export default function WayOfLoveRuleFlow({
       // through to "5" here resurrected the Silence card on the first commit.
       return String(getGuestSilenceGoalMinRaw() ?? 0);
     }
-    return "5";
+    /**
+     * "0", NOT "5" (owner, 2026-10-12: "it is turning silence back on for 5
+     * minutes when I hadn't previously had it in my routine"). A signed-in
+     * account with no goal stored has contemplationGoalMinutes 0, which the
+     * hydration below (> 0 only) never overwrites — so the "5" seed stood,
+     * and every reader of goalMin took it for a real choice: the Silence row
+     * on the contemplative slide opened ticked, the Silence slide was asked,
+     * and the review listed "Silence · 5 min a day". Turning silence ON here
+     * writes its own value (chooseGoal("20") / the add-minutes picker), so the
+     * seed was never needed as a picker default.
+     */
+    return "0";
   });
   // Notification style — closing step. "gentle" (default) = today's one
   // reminder per side; "nudge" = also send the ~3h-later follow-up when that
