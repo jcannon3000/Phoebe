@@ -14,8 +14,16 @@ import { sendPushToUsers } from "../lib/pushSender";
  * One announcement is live at a time: the newest that has not been retired and
  * has not expired. Writing a new one replaces the old on every home. The push is
  * a CHOICE made on the admin page (a checkbox, then a confirm) — nothing here
- * ever sends on its own, and it goes out once: push_sent_at is set before the
- * fan-out starts, so a double-click or a retry cannot send it twice.
+ * ever sends on its own, and it goes out at most once.
+ *
+ * TWO GUARDS, AND BOTH ARE NEEDED. The admin page sends a `clientKey` with each
+ * submission; the INSERT is ON CONFLICT (client_key) DO NOTHING, so a retry after
+ * a lost response finds the ORIGINAL row instead of creating a second one (and a
+ * second push to everyone). Then push_sent_at is claimed with an atomic
+ * UPDATE ... WHERE push_sent_at IS NULL before the fan-out starts, so only one
+ * request can ever win the send even if two reach the same row. Before the key,
+ * every POST inserted a fresh row, so that claim was always the first and only
+ * claim on its own row and guarded nothing.
  *
  * Audience of the push: every user with a device token or a web-push
  * subscription, signed in or not (a phone without an account is an anonymous
@@ -51,6 +59,17 @@ const shape = (r: Row) => ({
   pushCount: r.push_count,
 });
 
+/** What every visitor gets from the PUBLIC endpoint: only what the home card
+ *  shows. pushCount / pushSentAt / createdAt describe the owner's audience and
+ *  are for the admin page alone. */
+const publicShape = (r: Row) => ({
+  id: r.id,
+  title: r.title,
+  body: r.body,
+  linkPath: r.link_path,
+  linkLabel: r.link_label,
+});
+
 function uid(req: Request): number | null {
   const u = req.user as { id?: number } | undefined;
   return typeof u?.id === "number" ? u.id : null;
@@ -80,7 +99,7 @@ router.get("/announcements/active", async (_req: Request, res: Response): Promis
       WHERE retired_at IS NULL AND (expires_at IS NULL OR expires_at > NOW())
       ORDER BY created_at DESC, id DESC LIMIT 1`);
     const row = (r.rows as Row[])[0];
-    res.json({ announcement: row ? shape(row) : null });
+    res.json({ announcement: row ? publicShape(row) : null });
   } catch (err) {
     console.warn("[announcements] read failed:", err);
     res.json({ announcement: null });
@@ -102,11 +121,22 @@ router.get("/admin/announcements/audience", async (req: Request, res: Response):
   res.json({ count: (await pushAudience()).length });
 });
 
+/**
+ * WHO A PUSH CAN ACTUALLY REACH — the same rule the feast and Nouwen senders
+ * use: a live token or subscription (invalidated_at IS NULL: APNs / the browser
+ * reported the rest dead) and the person's master switch not off. It was every
+ * row in both token tables, so "sent to N people" counted dead devices and
+ * people who had turned notifications off, and the inflated number was saved.
+ */
 async function pushAudience(): Promise<number[]> {
   const r = await db.execute(sql`
-    SELECT user_id FROM device_tokens
-    UNION
-    SELECT user_id FROM web_push_subscriptions`);
+    SELECT u.id AS user_id
+    FROM users u
+    WHERE u.push_enabled IS DISTINCT FROM false
+      AND (
+        EXISTS (SELECT 1 FROM device_tokens dt WHERE dt.user_id = u.id AND dt.invalidated_at IS NULL)
+        OR EXISTS (SELECT 1 FROM web_push_subscriptions ws WHERE ws.user_id = u.id AND ws.invalidated_at IS NULL)
+      )`);
   return (r.rows as Array<{ user_id: number }>).map((x) => x.user_id);
 }
 
@@ -125,13 +155,25 @@ router.post("/admin/announcements", async (req: Request, res: Response): Promise
   const linkLabel = linkPath && typeof b.linkLabel === "string" && b.linkLabel.trim() ? b.linkLabel.trim().slice(0, 30) : linkPath ? "Open" : null;
   const days = typeof b.expiresInDays === "number" && b.expiresInDays > 0 ? Math.min(Math.floor(b.expiresInDays), 365) : null;
   const wantPush = b.push === true;
+  // One key per submission, made by the admin page. Optional: a request without
+  // one (an older cached page) behaves as it always did.
+  const clientKey = typeof b.clientKey === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(b.clientKey) ? b.clientKey : null;
 
   const ins = await db.execute(sql`
-    INSERT INTO announcements (title, body, link_path, link_label, expires_at, created_by)
+    INSERT INTO announcements (title, body, link_path, link_label, expires_at, created_by, client_key)
     VALUES (${title}, ${body}, ${linkPath}, ${linkLabel},
-            ${days ? sql`NOW() + make_interval(days => ${days})` : sql`NULL`}, ${userId})
+            ${days ? sql`NOW() + make_interval(days => ${days})` : sql`NULL`}, ${userId}, ${clientKey})
+    ON CONFLICT (client_key) DO NOTHING
     RETURNING *`);
   let row = (ins.rows as Row[])[0];
+  if (!row && clientKey) {
+    // A retry of a submission that already landed: hand back the ORIGINAL row. If
+    // that attempt died before its push was claimed, the claim below still lets
+    // this retry finish it, exactly once.
+    const prior = await db.execute(sql`SELECT * FROM announcements WHERE client_key = ${clientKey}`);
+    row = (prior.rows as Row[])[0];
+  }
+  if (!row) { res.status(500).json({ error: "Could not save the announcement." }); return; }
 
   if (wantPush) {
     // Claim the send BEFORE fanning out: a second request finds push_sent_at set.

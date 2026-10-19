@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -17,6 +17,13 @@ const labelStyle = { color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk
 const inputStyle = { backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" };
 const when = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+/** A fresh id for one submission. The server turns a second request carrying the
+ *  same one into "that one already landed" rather than a second post and push. */
+function newSubmissionKey(): string {
+  try { if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID(); } catch { /* fall through */ }
+  return `k${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+}
 
 function statusOf(r: Row): string {
   if (r.retiredAt) return "Retired";
@@ -56,6 +63,18 @@ export default function AdminAnnouncementsPage() {
   });
   const reach = audience?.count ?? 0;
 
+  // ONE KEY PER DISTINCT SUBMISSION. A retry of the same form after a failed or
+  // lost response sends the same key, so the server returns the announcement that
+  // already landed instead of posting and pushing it again; editing anything
+  // makes a new key, because then it is a different announcement; a success
+  // clears it. (The key is a ref, not state: it must not re-render the page.)
+  const keyRef = useRef<{ sig: string; key: string } | null>(null);
+  const submissionKey = (): string => {
+    const sig = JSON.stringify([title.trim(), body.trim(), linkPath.trim(), linkLabel.trim(), days, push]);
+    if (!keyRef.current || keyRef.current.sig !== sig) keyRef.current = { sig, key: newSubmissionKey() };
+    return keyRef.current.key;
+  };
+
   const post = useMutation({
     mutationFn: () =>
       apiRequest("POST", "/api/admin/announcements", {
@@ -65,8 +84,10 @@ export default function AdminAnnouncementsPage() {
         linkLabel: linkLabel.trim() || undefined,
         expiresInDays: days === "never" ? undefined : Number(days),
         push,
+        clientKey: submissionKey(),
       }),
     onSuccess: (res: { announcement: Row }) => {
+      keyRef.current = null;
       toast({ title: res.announcement.pushSentAt ? `Posted, and sent to ${res.announcement.pushCount ?? 0} people.` : "Posted." });
       setTitle(""); setBody(""); setLinkPath(""); setLinkLabel(""); setPush(false); setConfirming(false);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/announcements"] });

@@ -4049,6 +4049,11 @@ export async function migrate() {
         created_by INTEGER REFERENCES users(id) ON DELETE SET NULL
       )
     `);
+    // One key per admin-page submission, so a retry after a lost response finds
+    // the original row instead of posting (and pushing) a second time. NULLs are
+    // distinct in a unique index, so keyless rows never collide.
+    await run(client, `ALTER TABLE announcements ADD COLUMN IF NOT EXISTS client_key TEXT`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS announcements_client_key_uq ON announcements (client_key)`);
 
     // ── simulator_marks — (user, Eastern day) pairs that came from the iOS
     // Simulator or the Android emulator (lib/simulatorMarks.ts). App Metrics
