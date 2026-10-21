@@ -830,7 +830,7 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
               ))}
             </div>
             <p className="mt-4 px-1 text-[11px] italic leading-relaxed" style={{ color: "rgba(143,175,150,0.5)" }}>
-              Videos courtesy of Contemplative Outreach on YouTube. Your progress is saved on this device.
+              Videos courtesy of {course.videoCredit} on YouTube. Your progress is saved on this device.
             </p>
             {/* AT THE BOTTOM (owner, 2026-09-19: "Make sure at the bottom of
                 the page they can remove the course from their Home Screen?").

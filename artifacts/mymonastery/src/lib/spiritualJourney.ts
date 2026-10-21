@@ -43,6 +43,15 @@ export interface JourneyCourse {
   author: string;
   tagline: string;
   playlistUrl: string;
+  /**
+   * WHOSE CHANNEL THE VIDEOS ARE ON — the credit under the contents, and not
+   * the same thing as `author`: Fr. Keating teaches these courses, but it is
+   * Contemplative Outreach who upload them. Required, not optional with a
+   * default: the page used to name Contemplative Outreach for every course, so
+   * the prayer-book videos were credited to them on sight (2026-10-21). A
+   * course that cannot say whose videos it plays should not ship.
+   */
+  videoCredit: string;
   units: JourneyUnit[];
   /** Show the "put it into practice" bridge (sit now / make it daily) —
    *  the Centering Prayer course teaches a PRACTICE, so learning flows
@@ -63,6 +72,7 @@ export const CENTERING_PRAYER: JourneyCourse = {
     "Learn the method at the heart of the contemplative life — five short talks, then the prayer itself: twenty minutes of consenting to God's presence and action within.",
   playlistUrl:
     "https://www.youtube.com/playlist?list=PLBE6fmRmYU8g6CAOwq4-IEvpSnbBxKfRO",
+  videoCredit: "Contemplative Outreach",
   practiceBridge: true,
   units: [
     {
@@ -110,6 +120,7 @@ export const SPIRITUAL_JOURNEY: JourneyCourse = {
     "The deeper course — Fr. Keating's full series on the contemplative path and the healing of the whole person, walked one talk at a time. Begin with the Centering Prayer course, then continue here.",
   playlistUrl:
     "https://www.youtube.com/playlist?list=PLBE6fmRmYU8g6CAOwq4-IEvpSnbBxKfRO",
+  videoCredit: "Contemplative Outreach",
   units: [
     {
       id: "foundations",

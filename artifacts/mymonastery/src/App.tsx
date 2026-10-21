@@ -516,6 +516,7 @@ const AdminAnnouncementsPage = lazy(() => import("./pages/admin-announcements"))
 const LearnPage = lazy(() => import("./pages/learn"));
 const SpiritualJourneyPage = lazy(() => import("./pages/spiritual-journey"));
 const CenteringPrayerCoursePage = lazy(() => import("./pages/centering-prayer"));
+const BcpVideosPage = lazy(() => import("./pages/bcp-videos"));
 const TaizePrayerStreamPage = lazy(() => import("./pages/taize-prayer-stream"));
 const WayOfLoveCoursePage = lazy(() => import("./pages/way-of-love-course"));
 const CacCoursesPage = lazy(() => import("./pages/cac-courses"));
@@ -1015,7 +1016,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // already-allowlisted /rule-of-life flow, so excluding it broke that flow
   // partway through.
   "/find-your-rhythm", "/routine-interview", "/routine-audit", "/routine-history",
-  "/journey", "/centering-prayer", "/taize-prayer", "/way-of-love-course", "/learn",
+  "/journey", "/centering-prayer", "/bcp-videos", "/taize-prayer", "/way-of-love-course", "/learn",
   "/begin-prayer", "/prayer-chooser",
   // Media the guest's OWN office routes to: the listen-medium office podcasts
   // (begin-prayer's flow=daily hand-off) and the watch-medium pages (the
@@ -1535,6 +1536,7 @@ function Router() {
       <Route path="/learn" component={LearnPage} />
       <Route path="/journey" component={SpiritualJourneyPage} />
       <Route path="/centering-prayer" component={CenteringPrayerCoursePage} />
+      <Route path="/bcp-videos" component={BcpVideosPage} />
       <Route path="/taize-prayer" component={TaizePrayerStreamPage} />
       <Route path="/way-of-love-course" component={WayOfLoveCoursePage} />
       <Route path="/cac-home" component={CacHomePage} />

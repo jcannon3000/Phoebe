@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { useCacLibrary } from "@/hooks/useCacLibrary";
 import { useCacCourses, useShowCourses, courseCompletion } from "@/lib/cacCourses";
 import { seasonCardLines } from "@/components/HomeLearnSection";
+import { BCP_VIDEOS_INDEX } from "@/lib/bcpVideos";
 
 // Courses — the guided courses, as their own menu category (the drawer's
 // Courses row and /menu's Courses group both land here). Open to everyone,
@@ -133,11 +134,30 @@ export default function MenuLearnPage() {
             // and stay.
           ],
         },
+        {
+          header: online ? "Watch" : "Watch · not available offline",
+          items: [
+            { emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", muted: !online, onClick: () => go("/centering-prayer") },
+            { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", muted: !online, onClick: () => go("/journey") },
+            /**
+             * THE PRAYER BOOK ITSELF (owner, 2026-10-21, with three links:
+             * "On the learn page i want to create a list of videos about the
+             * Book of Common Prayer by Gospel Simplicity"). Three
+             * conversations from Austin Suggs's channel, in the course shell
+             * every YouTube teaching here uses — see lib/bcpVideos.
+             */
+            { emoji: "📖", label: "The Book of Common Prayer", sub: `Gospel Simplicity · ${BCP_VIDEOS_INDEX.total} videos`, muted: !online, onClick: () => go("/bcp-videos") },
+          ],
+        },
         /**
          * AUDIOBOOKS — a section of its own (owner, 2026-09-23: "Make the
          * second section 'Audiobooks'" · "put it in there"). A book read
          * straight through is a different thing from a course of talks, and
          * saying so lets more of them arrive here without crowding Listen.
+         *
+         * LAST, under the videos (owner, 2026-10-21: "I want Interior Castle
+         * to be bellow the videos on the learn page"). It sat between Listen
+         * and Watch, which put a single book above every course on the page.
          */
         // Nothing to head when the feed hasn't answered yet — a lone header
         // over empty space reads as a section that failed.
@@ -156,13 +176,6 @@ export default function MenuLearnPage() {
             };
           }),
         }]),
-        {
-          header: online ? "Watch" : "Watch · not available offline",
-          items: [
-            { emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", muted: !online, onClick: () => go("/centering-prayer") },
-            { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", muted: !online, onClick: () => go("/journey") },
-          ],
-        },
       ]}
     />
   );
