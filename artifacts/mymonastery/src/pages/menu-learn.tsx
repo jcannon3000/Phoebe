@@ -137,16 +137,18 @@ export default function MenuLearnPage() {
         {
           header: online ? "Watch" : "Watch · not available offline",
           items: [
-            { emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", muted: !online, onClick: () => go("/centering-prayer") },
-            { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", muted: !online, onClick: () => go("/journey") },
             /**
-             * THE PRAYER BOOK ITSELF (owner, 2026-10-21, with three links:
-             * "On the learn page i want to create a list of videos about the
-             * Book of Common Prayer by Gospel Simplicity"). Three
-             * conversations from Austin Suggs's channel, in the course shell
-             * every YouTube teaching here uses — see lib/bcpVideos.
+             * THE PRAYER BOOK ITSELF, FIRST OF THE VIDEO SERIES (owner,
+             * 2026-10-21, with three links: "On the learn page i want to
+             * create a list of videos about the Book of Common Prayer by
+             * Gospel Simplicity"; then 2026-10-26: "i want book of common
+             * prayer to be the first video series"). Three conversations from
+             * Austin Suggs's channel, in the course shell every YouTube
+             * teaching here uses — see lib/bcpVideos.
              */
             { emoji: "📖", label: "The Book of Common Prayer", sub: `Gospel Simplicity · ${BCP_VIDEOS_INDEX.total} videos`, muted: !online, onClick: () => go("/bcp-videos") },
+            { emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", muted: !online, onClick: () => go("/centering-prayer") },
+            { emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", muted: !online, onClick: () => go("/journey") },
           ],
         },
         /**

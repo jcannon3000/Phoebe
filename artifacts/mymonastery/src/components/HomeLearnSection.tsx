@@ -255,11 +255,12 @@ export function HomeLearnSection() {
    * on their home whatever they are holding.
    */
   {
+    // 📖 the prayer book — the same book the offices are prayed from — FIRST of
+    // the video series, as on the Learn page (owner, 2026-10-26).
+    cards.push({ ...videoCourseCard(BCP_VIDEOS, "\u{1F4D6}", BCP_VIDEOS_INDEX, "/bcp-videos", bcpVideos), updatedAt: snapshotProgress(BCP_VIDEOS.id).updatedAt ?? 0 });
     // 🧘🏽 the sit itself, 🧭 a journey — neither a cross.
     cards.push({ ...videoCourseCard(CENTERING_PRAYER, "\u{1F9D8}\u{1F3FD}", CENTERING_INDEX, "/centering-prayer", centering), updatedAt: snapshotProgress(CENTERING_PRAYER.id).updatedAt ?? 0 });
     cards.push({ ...videoCourseCard(SPIRITUAL_JOURNEY, "\u{1F9ED}", JOURNEY_INDEX, "/journey", journey), updatedAt: snapshotProgress(SPIRITUAL_JOURNEY.id).updatedAt ?? 0 });
-    // 📖 the prayer book — the same book the offices are prayed from.
-    cards.push({ ...videoCourseCard(BCP_VIDEOS, "\u{1F4D6}", BCP_VIDEOS_INDEX, "/bcp-videos", bcpVideos), updatedAt: snapshotProgress(BCP_VIDEOS.id).updatedAt ?? 0 });
   }
   {
     const nextLesson = WOL_LESSONS.find((l) => !wol.completed.has(l.key)) ?? WOL_LESSONS[0];

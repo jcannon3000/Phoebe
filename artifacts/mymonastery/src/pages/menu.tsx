@@ -13,6 +13,7 @@ import { MenuHub, type MenuHubGroup } from "@/components/MenuHub";
 import { sundayLectionaryQuery } from "@/lib/sundayLectionary";
 import { shouldOfferWidget } from "@/lib/widgetPresence";
 import { useTranslation } from "react-i18next";
+import { BCP_VIDEOS_INDEX } from "@/lib/bcpVideos";
 
 // ── /menu — the top-level navigation page (replaces the drawer) ─────────────
 //
@@ -138,6 +139,10 @@ export default function MenuPage() {
   // Both video courses on every platform (owner, 2026-09-18: "Why am I still
   // not seeing the centering prayer courses on mobile?") — they play in the app
   // now (lib/videoEmbed), so the web-only gate that stood here is gone.
+  // The prayer-book videos come FIRST of the video series (owner, 2026-10-26: "i
+  // want book of common prayer to be the first video series"). They were wired
+  // into Learn and the home on 2026-10-21 but never listed here.
+  learn.items.push({ emoji: "📖", label: "The Book of Common Prayer", sub: `Gospel Simplicity · ${BCP_VIDEOS_INDEX.total} videos`, onClick: () => go("/bcp-videos") });
   learn.items.push({ emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", onClick: () => go("/centering-prayer") });
   learn.items.push({ emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") });
   learn.items.push({ emoji: "❤️", label: "The Way of Love with Bishop Budde", sub: "Bishop Mariann Budde", onClick: () => go("/way-of-love-course") });
